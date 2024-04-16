@@ -11,11 +11,11 @@ def serve_protocol(port):
 
 def serve_body(port):
     import stretch.comms.send_body as sb
-    sock, poll = sb.initialize(port)
+    sock, robot = sb.initialize(port)
     while True:
-        sb.send_status(sock, poll)
-        sb.send_parameters(sock, poll)
-        sb.send_urdf(sock, poll)
+        sb.send_status(sock, robot)
+        sb.send_parameters(sock, robot)
+        sb.send_urdf(sock, robot)
 
 
 def serve_all():
