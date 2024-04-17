@@ -10,10 +10,10 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation as R
 
-from home_robot.motion.rrt import RRT
-from home_robot.motion.rrt_connect import RRTConnect
-from home_robot.motion.shortcut import Shortcut
-from home_robot.utils.simple_env import SimpleEnv
+from stretch.motion.algo.rrt import RRT
+from stretch.motion.algo.rrt_connect import RRTConnect
+from stretch.motion.algo.shortcut import Shortcut
+from stretch.motion.utils.simple_env import SimpleEnv
 
 
 def _run_simple_env(planner, env, start, goal, visualize: bool = False):
