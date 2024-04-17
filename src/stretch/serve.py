@@ -9,13 +9,14 @@ def serve_protocol(port):
         sp.send_spp(sock, poll)
 
 
-def serve_body(port):
+def serve_body(status_port, moveby_port):
     import stretch.comms.send_body as sb
-    sock, robot = sb.initialize(port)
+    status_sock, moveby_sock, moveby_poll, robot = sb.initialize(status_port, moveby_port)
     while True:
-        sb.send_status(sock, robot)
-        sb.send_parameters(sock, robot)
-        sb.send_urdf(sock, robot)
+        sb.send_status(status_sock, robot)
+        sb.exec_moveby(moveby_sock, moveby_poll, robot)
+        # sb.send_parameters(sock, robot)
+        # sb.send_urdf(sock, robot)
 
 
 def serve_all():
@@ -26,8 +27,9 @@ def serve_all():
     port = base_port
     serve_protocol_process = multiprocessing.Process(target=serve_protocol, args=(port,))
 
-    port += 1
-    serve_body_process = multiprocessing.Process(target=serve_body, args=(port,))
+    port += 1; status_port = port
+    port += 1; moveby_port = port
+    serve_body_process = multiprocessing.Process(target=serve_body, args=(status_port, moveby_port,))
 
     try:
         serve_protocol_process.start()
