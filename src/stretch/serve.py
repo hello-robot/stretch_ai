@@ -19,6 +19,14 @@ def serve_body(status_port, moveby_port):
         # sb.send_urdf(sock, robot)
 
 
+def serve_head_nav_cam(camarr_port, camb64_port):
+    import stretch.comms.send_head_nav_cam as shnc
+    camarr_sock, camb64_sock, camera = shnc.initialize(camarr_port, camb64_port)
+    while True:
+        shnc.send_imagery_as_numpy_arr(camarr_sock, camera)
+        shnc.send_imagery_as_base64_str(camb64_sock, camera)
+
+
 def serve_all():
     d = stretch_body.device.Device(name='stretchpy', req_params=False)
     base_port = d.params.get('base_port', 20200)
@@ -31,9 +39,14 @@ def serve_all():
     port += 1; moveby_port = port
     serve_body_process = multiprocessing.Process(target=serve_body, args=(status_port, moveby_port,))
 
+    port += 1; camarr_port = port
+    port += 1; camb64_port = port
+    serve_head_nav_cam_process = multiprocessing.Process(target=serve_head_nav_cam, args=(camarr_port, camb64_port,))
+
     try:
         serve_protocol_process.start()
         serve_body_process.start()
+        serve_head_nav_cam_process.start()
         while True:
             pass
     finally:
@@ -41,3 +54,5 @@ def serve_all():
         serve_protocol_process.join()
         serve_body_process.terminate()
         serve_body_process.join()
+        serve_head_nav_cam_process.terminate()
+        serve_head_nav_cam_process.join()
