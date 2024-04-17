@@ -9,8 +9,8 @@ from typing import Callable, List
 
 import numpy as np
 
-from home_robot.motion.base import Planner, PlanResult
-from home_robot.motion.rrt import TreeNode
+from stretch.motion.base import Planner, PlanResult
+from stretch.motion.algo.rrt import TreeNode
 
 
 class Shortcut(Planner):

@@ -17,5 +17,8 @@ setuptools.setup(
     install_requires=[
         'pyzmq',
         'pytest',
+        'numpy',
+        'scipy',
+        'matplotlib',
     ]
 )

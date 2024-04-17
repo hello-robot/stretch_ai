@@ -5,7 +5,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, List, Optional
 
-from home_robot.motion.space import ConfigurationSpace
+from .space import ConfigurationSpace
 
 """
 This just defines the standard interface for a motion planner
