@@ -3,13 +3,17 @@ import json
 import stretch_body.robot
 
 
-def initialize(port):
+def initialize(status_port, moveby_port):
     # zeromq
     ctx = zmq.Context()
-    sock = ctx.socket(zmq.PUB)
-    sock.setsockopt(zmq.SNDHWM, 1)
-    sock.setsockopt(zmq.RCVHWM, 1)
-    sock.bind(f"tcp://*:{port}")
+    status_sock = ctx.socket(zmq.PUB)
+    status_sock.setsockopt(zmq.SNDHWM, 1)
+    status_sock.setsockopt(zmq.RCVHWM, 1)
+    status_sock.bind(f"tcp://*:{status_port}")
+    moveby_sock = ctx.socket(zmq.REP)
+    moveby_sock.bind(f"tcp://*:{moveby_port}")
+    moveby_poll = zmq.Poller()
+    moveby_poll.register(moveby_sock, flags=zmq.POLLIN)
 
     # stretch body
     robot = stretch_body.robot.Robot()
@@ -22,11 +26,47 @@ def initialize(port):
     if not is_homed:
         robot.home()
 
-    return sock, robot
+    return status_sock, moveby_sock, moveby_poll, robot
 
 
 def send_status(sock, robot):
     sock.send_json(json.dumps(robot.get_status()))
+
+
+def exec_moveby(sock, poll, robot):
+    socks = dict(poll.poll(40.0)) # 25hz
+    if not (sock in socks and socks[sock] == zmq.POLLIN):
+        return
+
+    pose = json.loads(sock.recv_json())
+    if "translate_mobile_base" in pose and "rotate_mobile_base" in pose:
+        sock.send_string("Rejected: Cannot translate & rotate mobile base simultaneously")
+        return
+
+    if "joint_lift" in pose:
+        robot.lift.move_by(pose["joint_lift"])
+    if "joint_arm" in pose:
+        robot.arm.move_by(pose["joint_arm"])
+    if "wrist_extension" in pose:
+        robot.arm.move_by(pose["wrist_extension"])
+    if "translate_mobile_base" in pose:
+        robot.base.translate_by(pose["translate_mobile_base"])
+    if "rotate_mobile_base" in pose:
+        robot.base.rotate_by(pose["rotate_mobile_base"])
+    robot.push_command()
+    if "joint_wrist_yaw" in pose:
+        robot.end_of_arm.move_by("wrist_yaw", pose["joint_wrist_yaw"])
+    if "joint_wrist_pitch" in pose:
+        robot.end_of_arm.move_by("wrist_pitch", pose["joint_wrist_pitch"])
+    if "joint_wrist_roll" in pose:
+        robot.end_of_arm.move_by("wrist_roll", pose["joint_wrist_roll"])
+    if "joint_gripper" in pose:
+        robot.end_of_arm.move_by("stretch_gripper", pose["joint_gripper"])
+    if "joint_head_pan" in pose:
+        robot.head.move_by("head_pan", pose["joint_head_pan"])
+    if "joint_head_tilt" in pose:
+        robot.head.move_by("head_tilt", pose["joint_head_tilt"])
+    sock.send_string("Accepted")
 
 
 def send_parameters(sock, robot):
