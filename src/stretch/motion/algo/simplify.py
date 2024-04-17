@@ -201,9 +201,9 @@ class SimplifyXYT(Planner):
 
 
 if __name__ == "__main__":
-    from home_robot.motion.rrt_connect import RRTConnect
-    from home_robot.motion.shortcut import Shortcut
-    from home_robot.utils.simple_env import SimpleEnv
+    from stretch.motion.algo.rrt_connect import RRTConnect
+    from stretch.motion.algo.shortcut import Shortcut
+    from stretch.motion.utils.simple_env import SimpleEnv
 
     start, goal, obs = np.array([1.0, 1.0]), np.array([9.0, 9.0]), np.array([2.0, 7.0])
     env = SimpleEnv(obs)
