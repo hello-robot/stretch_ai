@@ -1,4 +1,5 @@
 import setuptools
+
 from stretch.version import __version__
 
 with open("../README.md", "r") as fh:
@@ -15,10 +16,11 @@ setuptools.setup(
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
     install_requires=[
-        'pyzmq',
-        'pytest',
-        'numpy',
-        'scipy',
-        'matplotlib',
-    ]
+        "pre-commit",
+        "pyzmq",
+        "pytest",
+        "numpy",
+        "scipy",
+        "matplotlib",
+    ],
 )
