@@ -1,4 +1,6 @@
 import zmq
+import cv2
+import numpy as np
 
 
 def initialize(ip_addr, camarr_port, camb64_port):
@@ -20,3 +22,9 @@ def initialize(ip_addr, camarr_port, camb64_port):
 
 def recv_imagery_as_numpy_arr(sock):
     return sock.recv_pyobj()
+
+
+def recv_imagery_as_base64_str(sock):
+    b64_str = sock.recv()
+    b64_arr = np.asarray(bytearray(b64_str), dtype=np.uint8)
+    return cv2.imdecode(b64_arr, cv2.IMREAD_COLOR)
