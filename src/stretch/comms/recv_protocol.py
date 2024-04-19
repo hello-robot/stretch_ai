@@ -1,4 +1,5 @@
 import zmq
+
 from stretch.exceptions.connection import MismatchedProtocolException
 from stretch.version import __stretchpy_protocol__ as STRETCHPY_PROTOCOL
 

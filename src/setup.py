@@ -17,6 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         "pre-commit",
+        "pyyaml",
         "pyzmq",
         "pytest",
         "numpy",

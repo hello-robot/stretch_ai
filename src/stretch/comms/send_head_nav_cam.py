@@ -1,6 +1,8 @@
 import io
+
 import cv2
 import zmq
+
 import stretch.drivers.head_nav_cam as driver
 
 
@@ -29,7 +31,7 @@ def send_imagery_as_numpy_arr(sock, camera):
 def send_imagery_as_base64_str(sock, camera):
     did_encode, buffer = cv2.imencode(".jpg", camera.get_image())
     if not did_encode:
-        print('Warning: failed to encode head nav cam image. Skipping...')
+        print("Warning: failed to encode head nav cam image. Skipping...")
         return
     io_buffer = io.BytesIO(buffer)
     sock.send(io_buffer.read())
