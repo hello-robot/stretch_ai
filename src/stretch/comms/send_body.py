@@ -1,5 +1,6 @@
 import zmq
 import json
+import numbers
 import stretch_body.robot
 
 
@@ -39,20 +40,24 @@ def exec_moveby(sock, poll, robot):
         return
 
     pose = json.loads(sock.recv_json())
-    if "translate_mobile_base" in pose and "rotate_mobile_base" in pose:
+    if "joint_translate" in pose and "joint_rotate" in pose:
         sock.send_string("Rejected: Cannot translate & rotate mobile base simultaneously")
         return
+    for joint, moveby_amount in pose.items():
+        if not isinstance(moveby_amount, numbers.Real):
+            sock.send_string(f"Rejected: Cannot move {joint} by {moveby_amount} amount")
+            return
 
+    if "joint_translate" in pose:
+        robot.base.translate_by(pose["joint_translate"])
+    if "joint_rotate" in pose:
+        robot.base.rotate_by(pose["joint_rotate"])
     if "joint_lift" in pose:
         robot.lift.move_by(pose["joint_lift"])
     if "joint_arm" in pose:
         robot.arm.move_by(pose["joint_arm"])
     if "wrist_extension" in pose:
         robot.arm.move_by(pose["wrist_extension"])
-    if "translate_mobile_base" in pose:
-        robot.base.translate_by(pose["translate_mobile_base"])
-    if "rotate_mobile_base" in pose:
-        robot.base.rotate_by(pose["rotate_mobile_base"])
     robot.push_command()
     if "joint_wrist_yaw" in pose:
         robot.end_of_arm.move_by("wrist_yaw", pose["joint_wrist_yaw"])

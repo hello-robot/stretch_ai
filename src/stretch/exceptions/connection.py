@@ -6,3 +6,6 @@ class MismatchedProtocolException(StretchException):
     version of StretchPy.
     """
 
+
+class NotConnectedException(StretchException):
+    """StretchPy client is not connected to the robot"""
