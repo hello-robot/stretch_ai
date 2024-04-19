@@ -1,8 +1,9 @@
 import numbers
-from stretch.utils import auth
-from stretch.comms import recv_protocol, recv_body, recv_head_nav_cam
-from stretch.exceptions.motion import MoveByMotionNotAcceptedException
+
+from stretch.comms import recv_body, recv_head_nav_cam, recv_protocol
 from stretch.exceptions.connection import NotConnectedException
+from stretch.exceptions.motion import MoveByMotionNotAcceptedException
+from stretch.utils import auth
 
 
 class StretchClient:

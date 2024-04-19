@@ -2,10 +2,22 @@ import cv2
 
 
 class HeadNavCam:
-
-    def __init__(self, port='/dev/hello-nav-head-camera', imgformat='MJPG', size=[800, 600],
-                 fps=100, brightness=10, contrast=30, saturation=80, hue=0, gamma=80,
-                 gain=10, white_balance_temp=4600, sharpness=3, backlight=1):
+    def __init__(
+        self,
+        port="/dev/hello-nav-head-camera",
+        imgformat="MJPG",
+        size=[800, 600],
+        fps=100,
+        brightness=10,
+        contrast=30,
+        saturation=80,
+        hue=0,
+        gamma=80,
+        gain=10,
+        white_balance_temp=4600,
+        sharpness=3,
+        backlight=1,
+    ):
         self.port = port
         self.imgformat = imgformat
         self.size = size

@@ -1,6 +1,8 @@
 import argparse
 import multiprocessing
+
 import stretch_body.device
+
 import stretch.version  # defines package-wide version & protocol
 
 

@@ -1,7 +1,8 @@
-import zmq
 import json
 import numbers
+
 import stretch_body.robot
+import zmq
 
 
 def initialize(status_port, moveby_port):
@@ -19,7 +20,7 @@ def initialize(status_port, moveby_port):
     # stretch body
     robot = stretch_body.robot.Robot()
     robot.startup()
-    is_runstopped = robot.status['pimu']['runstop_event']
+    is_runstopped = robot.status["pimu"]["runstop_event"]
     if is_runstopped:
         robot.pimu.runstop_event_reset()
         robot.push_command()
@@ -35,13 +36,16 @@ def send_status(sock, robot):
 
 
 def exec_moveby(sock, poll, robot):
-    socks = dict(poll.poll(40.0)) # 25hz
+    socks = dict(poll.poll(40.0))  # 25hz
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
     pose = json.loads(sock.recv_json())
+
     if "joint_translate" in pose and "joint_rotate" in pose:
-        sock.send_string("Rejected: Cannot translate & rotate mobile base simultaneously")
+        sock.send_string(
+            "Rejected: Cannot translate & rotate mobile base simultaneously"
+        )
         return
     for joint, moveby_amount in pose.items():
         if not isinstance(moveby_amount, numbers.Real):

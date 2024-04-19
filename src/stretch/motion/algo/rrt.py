@@ -13,8 +13,7 @@ from typing import Callable, List, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from stretch.motion.base import Planner, PlanResult
-from stretch.motion.base import ConfigurationSpace, Node
+from stretch.motion.base import ConfigurationSpace, Node, Planner, PlanResult
 
 
 class TreeNode:

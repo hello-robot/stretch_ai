@@ -1,6 +1,8 @@
 import os
-import yaml
 from pathlib import Path
+
+import yaml
+
 from stretch.exceptions.authentication import NotLoggedInException
 
 
