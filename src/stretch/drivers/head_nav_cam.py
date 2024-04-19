@@ -40,6 +40,7 @@ class HeadNavCam:
 
     def get_image(self):
         _, img = self.cap.read()
+        img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
         return img
 
     def stream(self):
