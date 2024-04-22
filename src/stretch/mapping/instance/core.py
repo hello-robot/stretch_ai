@@ -10,8 +10,9 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
-from home_robot.utils.point_cloud_torch import get_bounds
 from torch import Tensor
+
+from stretch.utils.point_cloud_torch import get_bounds
 
 
 @dataclass
@@ -210,7 +211,7 @@ class Instance:
             self.bounds = get_bounds(self.point_cloud)
 
     def _show_point_cloud_open3d(self, **kwargs):
-        from home_robot.utils.point_cloud import show_point_cloud
+        from stretch.utils.point_cloud import show_point_cloud
 
         show_point_cloud(self.point_cloud, self.point_cloud_rgb / 255.0, **kwargs)
 
@@ -223,10 +224,11 @@ class Instance:
         Returns:
             ptc_fig: Plotly visualization of pointcloud
         """
-        from home_robot.utils.bboxes_3d_plotly import plot_scene_with_bboxes
-        from home_robot.utils.data_tools.dict import update
         from pytorch3d.structures import Pointclouds
         from pytorch3d.vis.plotly_vis import AxisArgs, plot_scene
+
+        from stretch.utils.bboxes_3d_plotly import plot_scene_with_bboxes
+        from stretch.utils.data_tools.dict import update
 
         # Show points
         features = [self.point_cloud_rgb] if self.point_cloud_rgb is not None else None

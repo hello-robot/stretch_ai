@@ -16,15 +16,18 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 import cv2
 import numpy as np
 import torch
-from home_robot.core.interfaces import Observations
-from home_robot.mapping.instance import Instance, InstanceView
-from home_robot.mapping.instance.matching import (
+from PIL import Image
+from torch import Tensor
+
+from stretch.core.interfaces import Observations
+from stretch.mapping.instance import Instance, InstanceView
+from stretch.mapping.instance.matching import (
     Bbox3dOverlapMethodEnum,
     dot_product_similarity,
     get_bbox_similarity,
 )
-from home_robot.perception.encoders import ClipEncoder
-from home_robot.utils.bboxes_3d import (
+from stretch.perception.encoders import ClipEncoder
+from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
     box3d_nms,
     box3d_overlap_from_bounds,
@@ -32,12 +35,10 @@ from home_robot.utils.bboxes_3d import (
     get_box_bounds_from_verts,
     get_box_verts_from_bounds,
 )
-from home_robot.utils.image import dilate_or_erode_mask, interpolate_image
-from home_robot.utils.point_cloud import show_point_cloud
-from home_robot.utils.point_cloud_torch import get_bounds
-from home_robot.utils.voxel import drop_smallest_weight_points
-from PIL import Image
-from torch import Tensor
+from stretch.utils.image import dilate_or_erode_mask, interpolate_image
+from stretch.utils.point_cloud import show_point_cloud
+from stretch.utils.point_cloud_torch import get_bounds
+from stretch.utils.voxel import drop_smallest_weight_points
 
 logger = logging.getLogger(__name__)
 

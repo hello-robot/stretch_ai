@@ -2,12 +2,13 @@ from enum import Enum, auto
 from typing import List, Optional, Union
 
 import torch
-from home_robot.utils.bboxes_3d import (
+from torch import Tensor
+
+from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
     box3d_overlap_from_bounds,
     box3d_volume_from_bounds,
 )
-from torch import Tensor
 
 from .core import Instance, InstanceView
 
