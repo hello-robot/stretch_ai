@@ -27,6 +27,7 @@ setuptools.setup(
         "torch",
         "torchvision",
         "torch_geometric",
+        "trimesh",
     ],
     extras_require={
         "dev": [
