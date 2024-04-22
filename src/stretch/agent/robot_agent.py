@@ -561,17 +561,6 @@ class RobotAgent:
         """Clean up at the end if possible"""
         self.finish()
 
-    def finish(self):
-        """Clean up at the end if possible"""
-        print("Finishing different processes:")
-        if self.parameters["start_ui_server"]:
-            print("- Stopping UI server...")
-            stop_demo_ui_server()
-        if self._publisher is not None:
-            print("- Stopping publisher...")
-            self._publisher.cancel()
-        print("... Done.")
-
     def publish_limited_obs(self):
         obs = self.robot.get_observation()
         self.obs_count += 1
@@ -811,8 +800,6 @@ class RobotAgent:
             print(i, name, instance.score)
 
     def start(self, goal: Optional[str] = None, visualize_map_at_start: bool = False):
-        if self._publisher is not None:
-            self._publisher.start()
         # Tuck the arm away
         print("Sending arm to  home...")
         self.robot.switch_to_manipulation_mode()

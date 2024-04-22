@@ -42,9 +42,9 @@ from typing import List, Optional, Sequence, Tuple, Union
 import numpy as np
 import torch
 
-# from pytorch3d.common.datatypes import Device, make_device
-# from pytorch3d.ops import box3d_overlap
-# from pytorch3d.structures import utils as struct_utils
+from pytorch3d.common.datatypes import Device, make_device
+from pytorch3d.ops import box3d_overlap
+from pytorch3d.structures import utils as struct_utils
 from torch import Tensor
 
 

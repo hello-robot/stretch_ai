@@ -71,13 +71,6 @@ CONTROL_CONFIG_DIR = str(
 )
 
 
-def get_control_config(cfg_name):
-    with hydra.initialize_config_dir(CONTROL_CONFIG_DIR):
-        cfg = hydra.compose(config_name=cfg_name)
-
-    return cfg
-
-
 def load_config(
     visualize: bool = False, print_images: bool = True, config_path=None, **kwargs
 ):
