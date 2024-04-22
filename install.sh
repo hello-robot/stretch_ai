@@ -6,22 +6,20 @@ export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
 ENV_NAME=stretchpy
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
+export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 echo "=============================================="
 echo "         INSTALLING STRETCH AI TOOLS"
 echo "=============================================="
-echo "Make sure:"
-echo " - Conda env is active"
-echo " - CUDA_HOME is set"
-echo "Currently:"
-echo " - CUDA_HOME=$CUDA_HOME"
-echo " - python=`which python`"
-echo ""
 echo "---------------------------------------------"
 echo "Environment name: $ENV_NAME"
 echo "PyTorch Version: $PYTORCH_VERSION"
 echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
 echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
+echo "---------------------------------------------"
+echo "Currently:"
+echo " - CUDA_HOME=$CUDA_HOME"
+echo " - python=`which python`"
 echo "---------------------------------------------"
 read -p "Does all this look correct? (y/n) " yn
 case $yn in
