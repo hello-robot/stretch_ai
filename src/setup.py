@@ -26,6 +26,7 @@ setuptools.setup(
         "matplotlib",
         "torch",
         "torchvision",
+        "torch_geometric",
     ],
     extras_require={
         "dev": [
