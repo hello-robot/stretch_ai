@@ -27,15 +27,9 @@ from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpace,
     plan_to_frontier,
 )
-from stretch.motion import (
-    ConfigurationSpace,
-    PlanResult,
-    RRTConnect,
-    Shortcut,
-    SimplifyXYT,
-)
+from stretch.motion import ConfigurationSpace, PlanResult
+from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import get_encoder
-from stretch.utils.demo_chat import DemoChat, start_demo_ui_server, stop_demo_ui_server
 from stretch.utils.threading import Interval
 
 
@@ -235,26 +229,6 @@ class RobotAgent:
         print(f"Writing logs to {self.path}")
         os.makedirs(self.path, exist_ok=True)
         os.makedirs(f"{self.path}/viz_data", exist_ok=True)
-
-        # Assume this will only be needed for hw demo, but not for sim
-        if parameters["start_ui_server"]:
-            with atomic_write(f"{self.path}/viz_data/vocab_dict.pkl", mode="wb") as f:
-                pickle.dump(self.semantic_sensor.seg_id_to_name, f)
-
-        if parameters["start_ui_server"]:
-            start_demo_ui_server()
-        if parameters["chat"]:
-            self.chat = DemoChat(f"{self.path}/demo_chat.json")
-            if self.parameters["limited_obs_publish_sleep"] > 0:
-                self._publisher = Interval(
-                    self.publish_limited_obs,
-                    sleep_time=self.parameters["limited_obs_publish_sleep"],
-                )
-            else:
-                self._publisher = None
-        else:
-            self.chat = None
-            self._publisher = None
 
         self.openai_key = None
         self.task = None
