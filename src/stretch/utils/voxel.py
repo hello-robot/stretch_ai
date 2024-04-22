@@ -11,9 +11,11 @@ from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-import open3d
 import torch
 from torch import Tensor
+from torch_geometric.nn.pool.consecutive import consecutive_cluster
+from torch_geometric.nn.pool.voxel_grid import voxel_grid
+from torch_geometric.utils import add_self_loops, scatter
 
 
 class VoxelizedPointcloud:
@@ -284,7 +286,6 @@ def voxelize(
         cluster_consecutive_idx (LongTensor): Packed idx -- contiguous in cluster ID. E.g. [0, 0, 2, 1, 1, 2]
         batch_sample: See https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/pool/max_pool.html
     """
-
     voxel_cluster = voxel_grid(
         pos=pos, batch=batch, size=voxel_size, start=start, end=end
     )
@@ -314,12 +315,6 @@ def scatter_weighted_mean(
         Tensor: Agggregated features, weighted by weights and normalized by weights_cluster
     """
     assert dim == 0, "Dim != 0 not yet implemented"
-
-    def scatter(*args, **kwargs):
-        raise NotImplementedError(
-            "scatter not yet implemented - should be from torch geometric"
-        )
-
     feature_cluster = scatter(
         features * weights[:, None], cluster, dim=dim, reduce="sum"
     )
