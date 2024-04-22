@@ -124,7 +124,7 @@ def main(
 
         if show_svm:
             # x0 = np.array([0, 0, 0])
-            footprint = dummy_robot.get_robot_model().get_footprint()
+            footprint = dummy_robot.get_footprint()
             print(f"{x0} valid = {space.is_valid(x0)}")
             voxel_map.show(
                 instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint
@@ -230,7 +230,7 @@ def main(
                 print("Plan found:")
                 for i, node in enumerate(res.trajectory):
                     print(i, "/", len(res.trajectory), node.state)
-                footprint = dummy_robot.get_robot_model().get_footprint()
+                footprint = dummy_robot.get_footprint()
                 sampled_xyt = res.trajectory[-1].state
                 xyz = np.array([sampled_xyt[0], sampled_xyt[1], 0.1])
                 # Display the sampled goal location that we can reach

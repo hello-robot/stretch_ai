@@ -6,10 +6,10 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from stretch.motion.kinematics import HelloStretchKinematics
-
 # from stretch.core.robot import ControlMode, RobotClient
-from stretch.motion.robot import RobotModel
+from stretch.motion import Footprint, RobotModel
+
+# from stretch.motion.kinematics import HelloStretchKinematics
 
 
 class DummyStretchClient:  # (RobotClient):
@@ -33,6 +33,8 @@ class DummyStretchClient:  # (RobotClient):
         https://github.com/hello-robot/stretch_ros/blob/master/hello_helpers/src/hello_helpers/hello_misc.py
         """
 
+        print("warning: dummy client not functional")
+        """
         # Robot model
         self._robot_model = HelloStretchKinematics(
             urdf_path=urdf_path,
@@ -42,6 +44,8 @@ class DummyStretchClient:  # (RobotClient):
             ee_link_name=ee_link_name,
             manip_mode_controlled_joints=manip_mode_controlled_joints,
         )
+        """
+        self._robot_model = self
 
     def navigate_to(self, xyt, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
@@ -54,6 +58,11 @@ class DummyStretchClient:  # (RobotClient):
     def switch_to_navigation_mode(self):
         # return self._base_control_mode == ControlMode.NAVIGATION
         return True
+
+    def get_footprint(self) -> Footprint:
+        """Return footprint for the robot. This is expected to be a mask."""
+        # Note: close to the actual measurements
+        return Footprint(width=0.34, length=0.33, width_offset=0.0, length_offset=-0.1)
 
     def get_robot_model(self) -> RobotModel:
         """return a model of the robot for planning"""
