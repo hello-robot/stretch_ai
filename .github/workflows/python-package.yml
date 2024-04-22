@@ -17,9 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
-
     steps:
-      steps:
     - uses: actions/checkout@v4
     - uses: Jimver/cuda-toolkit@v0.2.15
       id: cuda-toolkit
