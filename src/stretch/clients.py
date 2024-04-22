@@ -1,9 +1,9 @@
 import numbers
 
-from stretch.comms import recv_body, recv_head_nav_cam, recv_protocol
-from stretch.exceptions.connection import NotConnectedException
-from stretch.exceptions.motion import MoveByMotionNotAcceptedException
-from stretch.utils import auth
+from .comms import recv_body, recv_head_nav_cam, recv_protocol
+from .exceptions.connection import NotConnectedException
+from .exceptions.motion import MoveByMotionNotAcceptedException
+from .utils import auth
 
 
 class StretchClient:
@@ -17,6 +17,8 @@ class StretchClient:
           ip_addr: Instead of index, connect to a robot at "ip_addr:port"
           port: Instead of index, connect to a robot at "ip_addr:port"
         """
+        self.connected = False
+
         # Get address
         if not (ip_addr and port):
             ip_addr, port = auth.get_robot_address(index)

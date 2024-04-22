@@ -46,9 +46,12 @@ for img in stretch.stream_nav_camera():
 
 ## Development
 
-### Pre Commit Hooks
+Clone this repo on your Stretch and PC, and install it locally using pip with the "editable" flag:
 
 ```
-pip install pre-commit
+cd stretchpy/src
+pip install -e .[dev]
 pre-commit install
 ```
+
+Then follow the quickstart section.

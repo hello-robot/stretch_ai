@@ -3,7 +3,7 @@ import multiprocessing
 
 import stretch_body.device
 
-import stretch.version  # defines package-wide version & protocol
+import stretch.versions  # defines package-wide version & protocol
 
 
 def serve_protocol(port):
@@ -93,5 +93,5 @@ if __name__ == "__main__":
     )
     args, _ = parser.parse_known_args()
 
-    print(f"StretchPy Server v{stretch.version.__version__}")
+    print(f"StretchPy Server v{stretch.versions.__version__}")
     serve_all(args.port)
