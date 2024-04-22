@@ -1,6 +1,8 @@
 import setuptools
 
-from stretch.version import __version__
+__version__ = None
+with open("stretch/versions.py") as f:
+    exec(f.read())  # overrides __version__
 
 with open("../README.md", "r") as fh:
     long_description = fh.read()
@@ -16,12 +18,18 @@ setuptools.setup(
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
     install_requires=[
-        "pre-commit",
         "pyyaml",
         "pyzmq",
-        "pytest",
         "numpy",
+        "opencv-python",
         "scipy",
         "matplotlib",
     ],
+    extras_require={
+        "dev": [
+            "pre-commit",
+            "pytest",
+            "flake8",
+        ]
+    },
 )

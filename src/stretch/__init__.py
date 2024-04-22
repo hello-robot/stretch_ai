@@ -1,10 +1,8 @@
-# TODO: fix this
-# import inspect
-# from stretch.utils import auth
-# from stretch.client import StretchClient
-#
-# if not auth.am_robot():
-#    _robot = StretchClient()
-#    for name, member in inspect.getmembers(_robot, inspect.ismethod):
-#        if not name.startswith("_"):
-#            globals()[name] = member
+import inspect as _inspect
+
+from stretch.clients import StretchClient
+
+_client = StretchClient()
+for _name, _member in _inspect.getmembers(_client, _inspect.ismethod):
+    if not _name.startswith("_"):
+        globals()[_name] = _member

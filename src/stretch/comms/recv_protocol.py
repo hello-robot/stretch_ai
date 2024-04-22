@@ -1,7 +1,7 @@
 import zmq
 
 from stretch.exceptions.connection import MismatchedProtocolException
-from stretch.version import __stretchpy_protocol__ as STRETCHPY_PROTOCOL
+from stretch.versions import __stretchpy_protocol__ as STRETCHPY_PROTOCOL
 
 
 def initialize(ip_addr, port):

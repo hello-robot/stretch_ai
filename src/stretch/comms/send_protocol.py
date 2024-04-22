@@ -1,6 +1,6 @@
 import zmq
 
-from stretch.version import __stretchpy_protocol__ as STRETCHPY_PROTOCOL
+from stretch.versions import __stretchpy_protocol__ as STRETCHPY_PROTOCOL
 
 
 def initialize(port):
