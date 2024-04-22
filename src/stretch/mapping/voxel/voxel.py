@@ -127,7 +127,7 @@ class SparseVoxelMap(object):
         voxel_kwargs: Dict[str, Any] = {},
         encoder: Optional[ClipEncoder] = None,
         map_2d_device: str = "cpu",
-        use_instance_memory: bool = True,
+        use_instance_memory: bool = False,
         use_median_filter: bool = False,
         median_filter_size: int = 5,
         median_filter_max_error: float = 0.01,
@@ -146,6 +146,9 @@ class SparseVoxelMap(object):
         self.obs_min_height = obs_min_height
         self.obs_max_height = obs_max_height
         self.obs_min_density = obs_min_density
+
+        if use_instance_memory:
+            raise NotImplementedError("no instance memory yet")
 
         # Smoothing kernel params
         self.smooth_kernel_size = smooth_kernel_size
@@ -225,10 +228,14 @@ class SparseVoxelMap(object):
         """Clear out the entire voxel map."""
         self.observations = []
         # Create an instance memory to associate bounding boxes in space
-        self.instances = InstanceMemory(
-            num_envs=1,
-            **self.instance_memory_kwargs,
-        )
+        if self.use_instance_memory:
+            self.instances = InstanceMemory(
+                num_envs=1,
+                **self.instance_memory_kwargs,
+            )
+        else:
+            self.instances = None
+
         # Create voxelized pointcloud
         self.voxel_pcd = VoxelizedPointcloud(
             voxel_size=self.voxel_resolution,
@@ -249,7 +256,8 @@ class SparseVoxelMap(object):
         self._visited = torch.zeros(self.grid_size, device=self.map_2d_device)
 
         # Store instances detected (all of them for now)
-        self.instances.reset()
+        if self.use_instance_memory:
+            self.instances.reset()
 
         self.voxel_pcd.reset()
 
