@@ -24,6 +24,8 @@ setuptools.setup(
         "opencv-python",
         "scipy",
         "matplotlib",
+        "torch",
+        "torchvision",
     ],
     extras_require={
         "dev": [
