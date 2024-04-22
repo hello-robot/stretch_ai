@@ -28,6 +28,13 @@ setuptools.setup(
         "torchvision",
         "torch_geometric",
         "trimesh",
+        "openai-clip",
+        "open3d",
+        "yacs",
+        "loguru",
+        "atomicwrites",
+        "transformers",
+        "scikit-image",
     ],
     extras_require={
         "dev": [

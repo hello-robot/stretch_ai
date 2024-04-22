@@ -19,7 +19,7 @@ from PIL import Image
 from torchvision import transforms
 from transformers import Owlv2ForObjectDetection, Owlv2Processor
 
-from stretch.agent.multitask import Parameters
+from stretch.agent import Parameters
 from stretch.core.robot import GraspClient, RobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import (
@@ -35,11 +35,7 @@ from stretch.motion import (
     SimplifyXYT,
 )
 from stretch.perception.encoders import get_encoder
-from stretch.utils.demo_chat import (
-    DemoChat,
-    start_demo_ui_server,
-    stop_demo_ui_server,
-)
+from stretch.utils.demo_chat import DemoChat, start_demo_ui_server, stop_demo_ui_server
 from stretch.utils.threading import Interval
 
 
