@@ -31,8 +31,8 @@ case $yn in
 esac
 mamba env remove -n $ENV_NAME -y
 mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y 
-mamba install pytorch3d -c pytorch3d -y
 source activate $ENV_NAME
+pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_geometric
