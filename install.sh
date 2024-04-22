@@ -4,7 +4,7 @@
 export PYTORCH_VERSION=2.1.2
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-ENV_NAME=stretchpy
+ENV_NAME=stretchpy3
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 echo "=============================================="
@@ -29,9 +29,13 @@ case $yn in
 	* ) echo Invalid response!;
 		exit 1;;
 esac
-conda env remove -n $ENV_NAME -y
-conda create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION python=$PYTHON_VERSION -y 
+mamba env remove -n $ENV_NAME -y
+mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y 
+mamba install pytorch3d -c pytorch3d -y
 source activate $ENV_NAME
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_geometric
+pip install -e ./src[dev]
+# Open3d is an optional dependency - not included in setup.py since not supported on 3.12
+pip install open3d
