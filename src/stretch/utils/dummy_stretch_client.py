@@ -8,7 +8,8 @@ import numpy as np
 
 # from stretch.core.robot import ControlMode, RobotClient
 from stretch.motion.robot import RobotModel
-from stretch.motion.stretch import HelloStretchKinematics
+
+# from stretch.motion.kinematics import HelloStretchKinematics
 
 
 class DummyStretchClient:  # (RobotClient):
@@ -33,6 +34,7 @@ class DummyStretchClient:  # (RobotClient):
         """
 
         # Robot model
+        """
         self._robot_model = HelloStretchKinematics(
             urdf_path=urdf_path,
             ik_type=ik_type,
@@ -41,10 +43,9 @@ class DummyStretchClient:  # (RobotClient):
             ee_link_name=ee_link_name,
             manip_mode_controlled_joints=manip_mode_controlled_joints,
         )
+        """
 
-    def navigate_to(
-        self, xyt, relative=False, blocking=False
-    ):
+    def navigate_to(self, xyt, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
         raise NotImplementedError()
 

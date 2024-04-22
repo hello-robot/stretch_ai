@@ -36,6 +36,7 @@ setuptools.setup(
         "transformers",
         "scikit-image",
         "scikit-fmm",
+        "pybullet",
     ],
     extras_require={
         "dev": [

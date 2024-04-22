@@ -302,41 +302,6 @@ class RobotAgent:
 
         return True
 
-    def get_output_from_gpt4v(self, world_rep):
-        import sys
-
-        from stretch.utils.cortex_gpt4v_agent import CortexGPT4VAgent
-
-        # TODO: put these into config
-        img_size = 256
-        temperature = 0.2
-        max_tokens = 50
-        root_dir = (
-            os.environ["HOME_ROBOT_ROOT"] if os.environ["HOME_ROBOT_ROOT"] else ""
-        )
-        with open(
-            os.path.join(
-                root_dir, "src/stretch/stretch/agent/multitask/prompt_eplan.txt"
-            ),
-            "r",
-        ) as f:
-            prompt = f.read()
-
-        gpt_agent = CortexGPT4VAgent(
-            cfg=dict(
-                img_size=img_size,
-                prompt=prompt,
-                api_key=self.openai_key,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-        )
-        gpt_agent.reset()
-        plan = gpt_agent.act_on_observations(
-            0, world_rep, goal=self.task, debug_path=None
-        )
-        return plan
-
     def get_plan_from_vlm(
         self,
         current_pose=None,

@@ -42,7 +42,7 @@ def plan_to_deltas(xyt0, plan):
     "--config-path",
     "-c",
     type=click.Path(),
-    default="src/stretch_hw/configs/default.yaml",
+    default="configs/default.yaml",
     help="Path to planner config.",
 )
 @click.option(
