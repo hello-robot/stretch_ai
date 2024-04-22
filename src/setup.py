@@ -35,6 +35,7 @@ setuptools.setup(
         "atomicwrites",
         "transformers",
         "scikit-image",
+        "scikit-fmm",
     ],
     extras_require={
         "dev": [
