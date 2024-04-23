@@ -129,13 +129,13 @@ class HybridAction(Action):
     ):
         """Make sure that we were passed a useful generic action here. Process it into something useful."""
         if action is not None:
-            if type(action) == HybridAction:
+            if isinstance(action, HybridAction):
                 self.action_type = action.action_type
-            if type(action) == DiscreteNavigationAction:
+            if isinstance(action, DiscreteNavigationAction):
                 self.action_type = ActionType.DISCRETE
-            elif type(action) == ContinuousNavigationAction:
+            elif isinstance(action, ContinuousNavigationAction):
                 self.action_type = ActionType.CONTINUOUS_NAVIGATION
-            elif type(action) == ContinuousEndEffectorAction:
+            elif isinstance(action, ContinuousEndEffectorAction):
                 self.action_type = ActionType.CONTINUOUS_EE_MANIPULATION
             else:
                 self.action_type = ActionType.CONTINUOUS_MANIPULATION

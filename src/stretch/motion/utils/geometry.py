@@ -7,6 +7,7 @@ from typing import Iterable, Tuple
 
 import numpy as np
 import sophuspy as sp
+from scipy.spatial.transform import Rotation
 
 PI2 = 2 * np.pi
 
