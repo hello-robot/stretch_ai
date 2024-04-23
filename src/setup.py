@@ -18,7 +18,7 @@ setuptools.setup(
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
     install_requires=[
-        "pyyaml",
+        "torch" "pyyaml",
         "pyzmq",
         "numpy",
         "opencv-python",

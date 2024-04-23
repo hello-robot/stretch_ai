@@ -46,10 +46,12 @@ for img in stretch.stream_nav_camera():
 
 ## Advanced Installation
 
-If you want to install AI code using pytorch, run the following:
+If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
 ```
 ./install.sh
 ```
+
+Caution, it may take a while! Several libraries are built from source to avoid potential compatibility issues.
 
 You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferrably 11.8.
 
@@ -57,6 +59,23 @@ Open3D is an optional dependency used by some 3d visualizations. It does not wor
 ```
 pip install open3d
 ```
+
+### Verifying Advanced Installation
+
+The most common issue is with `torch_cluster`, or that cuda is set up wrong. Make sure it runs by starting `python` and running:
+```python
+import torch_cluster
+import torch
+torch.cuda.is_available()
+torch.rand(3, 3).to("cuda")
+```
+
+You should see:
+  - `torch_cluster` imports successfully
+  - `True` for `torch.cuda.is_available()`
+  - No errors for `torch.rand(3, 3).to("cuda")`
+
+### Voxel Map Visualization
 
 You can test the voxel code on a captured pickle file:
 ```bash
