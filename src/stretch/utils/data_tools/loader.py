@@ -28,14 +28,14 @@ class Trial(object):
         image_keys = group[base.IMAGE_KEYS][()]
         temporal_keys = (
             str(temporal_keys, "utf-8")
-            if type(temporal_keys) == bytes
+            if isinstance(temporal_keys, bytes)
             else temporal_keys
         )
         config_keys = (
-            str(config_keys, "utf-8") if type(config_keys) == bytes else config_keys
+            str(config_keys, "utf-8") if isinstance(config_keys, bytes) else config_keys
         )
         image_keys = (
-            str(image_keys, "utf-8") if type(image_keys) == bytes else image_keys
+            str(image_keys, "utf-8") if isinstance(image_keys, bytes) else image_keys
         )
         self.temporal_keys = temporal_keys.split(",")
         self.config_keys = config_keys.split(",")
