@@ -15,5 +15,5 @@ def initialize(port):
 def send_spp(sock, poll):
     socks = dict(poll.poll(20.0))  # 50hz
     if sock in socks and socks[sock] == zmq.POLLIN:
-        message = sock.recv_string()
+        # message = sock.recv_string()
         sock.send_string(STRETCHPY_PROTOCOL)
