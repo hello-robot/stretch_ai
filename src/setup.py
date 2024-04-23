@@ -24,6 +24,7 @@ setuptools.setup(
         "opencv-python",
         "scipy",
         "matplotlib",
+        "sophuspy",
     ],
     extras_require={
         "dev": [
