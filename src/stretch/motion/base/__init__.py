@@ -1,2 +1,2 @@
 from .base import Planner, PlanResult
-from .space import ConfigurationSpace, Node
+from .space import XYT, ConfigurationSpace, Node

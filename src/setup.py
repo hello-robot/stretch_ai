@@ -18,13 +18,26 @@ setuptools.setup(
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
     install_requires=[
+        "torch",
+        "torchvision",
         "pyyaml",
         "pyzmq",
         "numpy",
         "opencv-python",
         "scipy",
         "matplotlib",
+        "trimesh",
+        "openai-clip",
+        "yacs",
+        "loguru",
+        "atomicwrites",
+        "transformers",
+        "scikit-image",
+        "pybullet",
         "sophuspy",
+        # These are not supported in python 3.12
+        "scikit-fmm",
+        "open3d",
     ],
     extras_require={
         "dev": [
