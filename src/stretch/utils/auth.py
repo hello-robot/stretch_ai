@@ -8,7 +8,7 @@ from stretch.exceptions.authentication import NotLoggedInException
 
 def am_robot() -> bool:
     """Returns whether this is running on a Stretch robot"""
-    return os.environ.get("HELLO_FLEET_ID") != None
+    return os.environ.get("HELLO_FLEET_ID") is not None
 
 
 def get_robot_address(index: int):
