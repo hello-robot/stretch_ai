@@ -557,27 +557,6 @@ class RobotAgent:
         else:
             return self.ask("please type any task you want the robot to do: ")
 
-    def __del__(self):
-        """Clean up at the end if possible"""
-        self.finish()
-
-    def publish_limited_obs(self):
-        obs = self.robot.get_observation()
-        self.obs_count += 1
-        with atomic_write(f"{self.path}/viz_data/{self.obs_count}.pkl", mode="wb") as f:
-            logger.trace(
-                f"Saving limited observation to pickle file: {f'{self.path}/viz_data/{self.obs_count}.pkl'}"
-            )
-            pickle.dump(
-                dict(
-                    obs=obs,
-                    limited_obs=True,
-                    current_state=self.current_state,
-                ),
-                f,
-            )
-        return True
-
     def update(self, visualize_map=False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = self.robot.get_observation()

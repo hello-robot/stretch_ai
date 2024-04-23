@@ -33,6 +33,7 @@ setuptools.setup(
         "scikit-image",
         "scikit-fmm",
         "pybullet",
+        "sophuspy",
     ],
     extras_require={
         "dev": [
