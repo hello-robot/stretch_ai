@@ -44,6 +44,30 @@ for img in stretch.stream_nav_camera():
     cv2.waitKey(1)
 ```
 
+## Advanced Installation
+
+If you want to install AI code using pytorch, run the following:
+```
+./install.sh
+```
+
+You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferrably 11.8.
+
+Open3D is an optional dependency used by some 3d visualizations. It does not work in Python 3.12, as of April 2024. Install it with:
+```
+pip install open3d
+```
+
+You can test the voxel code on a captured pickle file:
+```bash
+python -m stretch.agent.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+```
+
+Optional open3d visualization of the scene:
+```bash
+python -m stretch.agent.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+```
+
 ## Development
 
 Clone this repo on your Stretch and PC, and install it locally using pip with the "editable" flag:
