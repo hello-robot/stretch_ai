@@ -33,9 +33,11 @@ setuptools.setup(
         "atomicwrites",
         "transformers",
         "scikit-image",
-        "scikit-fmm",
         "pybullet",
         "sophuspy",
+        # These are not supported in python 3.12
+        "scikit-fmm",
+        "open3d",
     ],
     extras_require={
         "dev": [
