@@ -8,7 +8,7 @@ from stretch.utils.config import get_config
 
 
 class Parameters(object):
-    """Wrapper class for handling parameters safely"""
+    """Wrapper class for handling parameters safely. Sets defaults and provides access to different parameters used by the motion planner and the voxel representation."""
 
     def __init__(self, **kwargs):
         self.data = kwargs
