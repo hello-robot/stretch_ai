@@ -97,4 +97,4 @@ pip install -e .[dev]
 pre-commit install
 ```
 
-Then follow the quickstart section.
+Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
