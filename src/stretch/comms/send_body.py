@@ -5,7 +5,7 @@ import stretch_body.robot
 import zmq
 
 
-def initialize(status_port, moveby_port):
+def initialize(status_port, moveby_port, basevel_port):
     # zeromq
     ctx = zmq.Context()
     status_sock = ctx.socket(zmq.PUB)
@@ -16,6 +16,10 @@ def initialize(status_port, moveby_port):
     moveby_sock.bind(f"tcp://*:{moveby_port}")
     moveby_poll = zmq.Poller()
     moveby_poll.register(moveby_sock, flags=zmq.POLLIN)
+    basevel_sock = ctx.socket(zmq.REP)
+    basevel_sock.bind(f"tcp://*:{basevel_port}")
+    basevel_poll = zmq.Poller()
+    basevel_poll.register(basevel_sock, flags=zmq.POLLIN)
 
     # stretch body
     robot = stretch_body.robot.Robot()
@@ -28,7 +32,7 @@ def initialize(status_port, moveby_port):
     if not is_homed:
         robot.home()
 
-    return status_sock, moveby_sock, moveby_poll, robot
+    return status_sock, moveby_sock, moveby_poll, basevel_sock, basevel_poll, robot
 
 
 def send_status(sock, robot):
@@ -75,6 +79,24 @@ def exec_moveby(sock, poll, robot):
         robot.head.move_by("head_pan", pose["joint_head_pan"])
     if "joint_head_tilt" in pose:
         robot.head.move_by("head_tilt", pose["joint_head_tilt"])
+    sock.send_string("Accepted")
+
+
+def exec_basevel(sock, poll, robot):
+    socks = dict(poll.poll(40.0))
+    if not (sock in socks and socks[sock] == zmq.POLLIN):
+        return
+
+    twist = json.loads(sock.recv_json())
+
+    if len(twist.keys() & ["translational_vel", "rotational_vel"]) != 2:
+        sock.send_string(
+            "Rejected: twist commands require both translational + rotational components"
+        )
+        return
+
+    robot.base.set_velocity(twist["translational_vel"], twist["rotational_vel"])
+    robot.push_command()
     sock.send_string("Accepted")
 
 
