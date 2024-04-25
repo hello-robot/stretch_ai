@@ -2,7 +2,10 @@ import numbers
 
 from .comms import recv_body, recv_head_nav_cam, recv_protocol
 from .exceptions.connection import NotConnectedException
-from .exceptions.motion import MoveByMotionNotAcceptedException
+from .exceptions.motion import (
+    BaseVelocityNotAcceptedException,
+    MoveByMotionNotAcceptedException,
+)
 from .utils import auth
 
 
@@ -35,13 +38,14 @@ class StretchClient:
         # Connect to body
         status_port = self.port + 1
         moveby_port = self.port + 2
-        self.status_sock, self.moveby_sock = recv_body.initialize(
-            self.ip_addr, status_port, moveby_port
+        basevel_port = self.port + 3
+        self.status_sock, self.moveby_sock, self.basevel_sock = recv_body.initialize(
+            self.ip_addr, status_port, moveby_port, basevel_port
         )
 
         # Connect to head nav camera
-        hncarr_port = self.port + 3
-        hncb64_port = self.port + 4
+        hncarr_port = self.port + 4
+        hncb64_port = self.port + 5
         _, self.hncb64_sock = recv_head_nav_cam.initialize(
             self.ip_addr, hncarr_port, hncb64_port
         )
@@ -102,6 +106,27 @@ class StretchClient:
                 )
         if pose:
             recv_body.send_moveby(self.moveby_sock, pose)
+
+    def set_base_velocity(self, translational_vel: float, rotational_vel: float):
+        """Moves robot's mobile base at a given velocity
+
+        Translational velocity (m/s) is the speed at which the base travels forward.
+        Rotational velocity (rad/s) is the speed at which the base rotates counter-clockwise.
+        """
+        if not self.connected:
+            raise NotConnectedException("use the connect() method")
+        translational_vel = translational_vel if translational_vel is not None else 0.0
+        rotational_vel = rotational_vel if rotational_vel is not None else 0.0
+        twist = {
+            "translational_vel": translational_vel,
+            "rotational_vel": rotational_vel,
+        }
+        for component, speed in twist.items():
+            if not isinstance(speed, numbers.Real):
+                raise BaseVelocityNotAcceptedException(
+                    f"Cannot move {component} at {speed} speed"
+                )
+        recv_body.send_basevel(self.basevel_sock, twist)
 
     def take_nav_picture(self):
         """Returns numpy BGR image from Head Nav camera"""
