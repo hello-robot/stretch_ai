@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 import pybullet as pb
 
-from stretch.motion.ik_solver_base import IKSolverBase
+from stretch.motion.base.ik_solver_base import IKSolverBase
 from stretch.motion.robot import RobotModel
 from stretch.utils.bullet import PbArticulatedObject, PbClient
 

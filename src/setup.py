@@ -35,6 +35,7 @@ setuptools.setup(
         "scikit-image",
         "pybullet",
         "sophuspy",
+        "pin",  # Pinocchio IK solver
         "pynput",
         # These are not supported in python 3.12
         "scikit-fmm",
