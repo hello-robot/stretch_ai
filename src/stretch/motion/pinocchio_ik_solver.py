@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pinocchio
 from scipy.spatial.transform import Rotation as R
+from loguru import logger
 
 from stretch.motion.base.ik_solver_base import IKSolverBase
 from stretch.motion.utils.bullet import PybulletIKSolver
@@ -43,22 +44,29 @@ class PinocchioIKSolver:
         # print([f.name for f in self.model.frames])
         self.ee_frame_idx = [f.name for f in self.model.frames].index(ee_link_name)
 
-        print(f"{controlled_joints=}")
-        for j in controlled_joints:
-            idx = self.model.getJointId(j)
-            idx_q = self.model.idx_qs[idx]
-            print(f"{j=} {idx=} {idx_q=}")
-
         self.controlled_joints_by_name = {}
         self.controlled_joints = []
         self.controlled_joint_names = controlled_joints
-        for j in controlled_joints:
-            if j != "ignore":
-                idx = self.model.idx_qs[self.model.getJointId(j)]
-            else:
+        for joint in controlled_joints:
+            if joint == "ignore":
                 idx = -1
+            else:
+                jid = self.model.getJointId(joint)
+                if jid >= len(self.model.idx_qs):
+                    logger.error(f"{joint=} {jid=} not in model.idx_qs")
+                    raise RuntimeError(f"Invalid urdf at {urdf_path=}: missing {joint=}")
+                else:
+                    idx = self.model.idx_qs[jid]
             self.controlled_joints.append(idx)
-            self.controlled_joints_by_name[j] = idx
+            self.controlled_joints_by_name[joint] = idx
+
+        logger.info(f"{controlled_joints=}")
+        for j in controlled_joints:
+            idx = self.model.getJointId(j)
+            idx_q = self.model.idx_qs[idx]
+            logger.info(f"{j=} {idx=} {idx_q=}")
+
+
 
     def get_dof(self) -> int:
         """returns dof for the manipulation chain"""
