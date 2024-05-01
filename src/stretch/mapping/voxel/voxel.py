@@ -297,14 +297,19 @@ class SparseVoxelMap(object):
 
         # Allow task_observations to provide semantic sensor
         def _pop_with_task_obs_default(k, default=None):
+            if task_obs is None:
+                return None
             res = kwargs.pop(k, task_obs.get(k, None))
             if res is not None:
                 res = self.fix_type(res)
             return res
 
-        instance_image = _pop_with_task_obs_default("instance_image")
-        instance_classes = _pop_with_task_obs_default("instance_classes")
-        instance_scores = _pop_with_task_obs_default("instance_scores")
+        if task_obs is not None:
+            instance_image = _pop_with_task_obs_default("instance_image")
+            instance_classes = _pop_with_task_obs_default("instance_classes")
+            instance_scores = _pop_with_task_obs_default("instance_scores")
+        else:
+            instance_image, instance_classes, instance_scores = None, None, None
 
         self.add(
             camera_pose=camera_pose,
