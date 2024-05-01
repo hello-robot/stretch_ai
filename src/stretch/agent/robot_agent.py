@@ -33,78 +33,6 @@ from stretch.perception.encoders import get_encoder
 from stretch.utils.threading import Interval
 
 
-def publish_obs(
-    model: SparseVoxelMapNavigationSpace,
-    path: str,
-    state: str,
-    timestep: int,
-    target_id: Dict[str, int] = None,
-):
-    """publish observation for use by the UI. For now this works by writing files to disk."""
-    # NOTE: this requires 'pip install atomicwrites'
-    with atomic_write(f"{path}/{timestep}.pkl", mode="wb") as f:
-        instances = model.voxel_map.get_instances()
-        model_obs = model.voxel_map.observations[-1]
-        if len(instances) > 0:
-            bounds, names = zip(*[(v.bounds, v.category_id) for v in instances])
-            bounds = torch.stack(bounds, dim=0)
-            names = torch.stack(names, dim=0).unsqueeze(-1)
-            scores = torch.tensor([ins.score for ins in instances])
-            embeds = (
-                torch.stack(
-                    [
-                        ins.get_image_embedding(aggregation_method="mean")
-                        for ins in instances
-                    ]
-                )
-                .cpu()
-                .detach()
-            )
-        else:
-            bounds = torch.zeros(0, 3, 2)
-            names = torch.zeros(0, 1)
-            scores = torch.zeros(
-                0,
-            )
-            embeds = torch.zeros(0, 512)
-
-        # Map
-        obstacles, explored = model.voxel_map.get_2d_map()
-        obstacles = obstacles.int()
-        explored = explored.int()
-
-        logger.info(f"Saving observation to pickle file: {f'{path}/{timestep}.pkl'}")
-        pickle.dump(
-            dict(
-                limited_obs=False,
-                rgb=model_obs.rgb.cpu().detach(),
-                depth=model_obs.depth.cpu().detach(),
-                instance_image=model_obs.instance.cpu().detach(),
-                instance_classes=model_obs.instance_classes.cpu().detach(),
-                instance_scores=model_obs.instance_scores.cpu().detach(),
-                camera_pose=model_obs.camera_pose.cpu().detach(),
-                camera_K=model_obs.camera_K.cpu().detach(),
-                xyz_frame=model_obs.xyz_frame,
-                box_bounds=bounds,
-                box_names=names,
-                box_scores=scores,
-                box_embeddings=embeds,
-                obstacles=obstacles.cpu().detach(),
-                explored=explored.cpu().detach(),
-                current_state=state,
-                target_id=target_id,
-            ),
-            f,
-        )
-
-    # Print out all the instances we have seen
-    for i, instance in enumerate(model.voxel_map.get_instances()):
-        for j, view in enumerate(instance.instance_views):
-            filename = f"{path}/instances/instance{i}_view{j}.png"
-            if not os.path.exists(filename):
-                image = Image.fromarray(view.cropped_image.byte().cpu().numpy())
-                image.save(filename)
-
 
 class RobotAgent:
     """Basic demo code. Collects everything that we need to make this work."""
@@ -114,8 +42,8 @@ class RobotAgent:
     def __init__(
         self,
         robot: RobotClient,
-        semantic_sensor,
         parameters: Dict[str, Any],
+        semantic_sensor: Optional = None,
         grasp_client: Optional[GraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
@@ -178,6 +106,7 @@ class RobotAgent:
                 derivative_filter_threshold=parameters.get(
                     "filters/derivative_filter_threshold", 0.5
                 ),
+                use_instance_memory=(self.semantic_sensor is not None),
                 instance_memory_kwargs={
                     "min_pixels_for_instance_view": parameters.get(
                         "min_pixels_for_instance_view", 100
@@ -537,17 +466,18 @@ class RobotAgent:
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
-        if self.chat is not None:
-            self.chat.output(msg)
-        else:
-            print(msg)
+        #if self.chat is not None:
+        #    self.chat.output(msg)
+        # TODO: support other ways of saying
+        print(msg)
 
     def ask(self, msg: str) -> str:
         """Receive input from the user either via the command line or something else"""
-        if self.chat is not None:
-            return self.chat.input(msg)
-        else:
-            return input(msg)
+        #if self.chat is not None:
+        #  return self.chat.input(msg)
+        #else:
+        # TODO: support other ways of saying
+        return input(msg)
 
     def get_command(self):
         if (
@@ -563,25 +493,16 @@ class RobotAgent:
         self.obs_history.append(obs)
         self.obs_count += 1
         obs_count = self.obs_count
-        # Semantic prediction
-        obs = self.semantic_sensor.predict(obs)
+        # Optionally do this
+        if self.semantic_sensor is not None:
+            # Semantic prediction
+            obs = self.semantic_sensor.predict(obs)
         self.voxel_map.add_obs(obs)
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show waht was happening
             self.voxel_map.get_2d_map(debug=True)
 
-        # Send message to user interface
-        if self.chat is not None:
-            publish_obs(self.space, self.path, self.current_state, obs_count)
-
-        # self.save_svm(".")
-        # TODO: remove stupid debug things
-        # instances = self.voxel_map.get_instances()
-        # for ins in instances:
-        #     if len(ins.instance_views) >= 10:
-        #         import pdb; pdb.set_trace()
-        # self.voxel_map.show()
 
     def plan_to_instance(
         self,
@@ -769,6 +690,10 @@ class RobotAgent:
 
     def print_found_classes(self, goal: Optional[str] = None):
         """Helper. print out what we have found according to detic."""
+        if self.semantic_sensor is None:
+            logger.warn("Tried to print classes without semantic sensor!")
+            return
+
         instances = self.voxel_map.get_instances()
         if goal is not None:
             print(f"Looking for {goal}.")

@@ -94,8 +94,8 @@ def main(
         print(parameters)
         agent = RobotAgent(
             dummy_robot,
-            None,
             parameters,
+            None,
             rpc_stub=None,
             grasp_client=None,
             voxel_map=loaded_voxel_map,
