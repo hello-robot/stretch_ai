@@ -1,9 +1,13 @@
+import time
+import argparse
+import numpy as np
 from pynput import keyboard
 
 import stretch
+from stretch.navigation.utils import OrbSlamVisualizer
 
-keys = {"up": False, "down": False, "left": False, "right": False, "escape": False}
 
+keys = {'up': False, 'down': False, 'left': False, 'right': False, 'escape': False}
 
 def on_press(key):
     if key == keyboard.Key.up:
@@ -33,6 +37,7 @@ listener = keyboard.Listener(on_press=on_press, on_release=on_release, suppress=
 
 
 def base_keyboard_teleop(apply_translation_vel=0.12, apply_rotational_vel=0.7):
+    print("ORBSLAM3 DEMO IS RUNNING")
     print("Use four arrow keys to teleoperate the mobile base around")
     print("Press the 'escape' key to exit")
     while not keys["escape"]:
@@ -47,8 +52,27 @@ def base_keyboard_teleop(apply_translation_vel=0.12, apply_rotational_vel=0.7):
         stretch.set_base_velocity(translation_vel, rotational_vel)
 
 
+def feature_matching_dance():
+    print("\nINITIALIZING FEATURE MATCHING BY JOGGING HEAD")
+    t = np.linspace(0, 2*np.pi, 40, endpoint=True)
+    deltas = 0.05 * np.sin(t)
+    for d in deltas:
+        stretch.move_by(joint_head_pan=d, joint_head_tilt=d)
+        time.sleep(0.05)
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='ORB-SLAM3 Demo showcasing relative pose estimation computed on imagery from the head nav camera')
+    parser.add_argument("vocab_path", type=str, help="ORB-SLAM3 vocabulary path")
+    parser.add_argument("config_path", type=str, help="ORB-SLAM3 config path")
+    args = parser.parse_args()
+
+    # Initialize ORB-SLAM3 viz
     stretch.connect()
+    visualizer = OrbSlamVisualizer(args.vocab_path, args.config_path, stretch._client.ip_addr, stretch._client.port)
+    feature_matching_dance()
+
+    # Initialize base teleop
     listener.start()
     base_keyboard_teleop()
     listener.stop()
