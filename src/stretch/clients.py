@@ -107,8 +107,8 @@ class StretchClient:
         if pose:
             recv_body.send_moveby(self.moveby_sock, pose)
 
-    def set_base_velocity(self, translational_vel: float, rotational_vel: float):
-        """Moves robot's mobile base at a given velocity
+    def drive(self, translational_vel: float, rotational_vel: float):
+        """Drives robot's mobile base at a given velocity
 
         Translational velocity (m/s) is the speed at which the base travels forward.
         Rotational velocity (rad/s) is the speed at which the base rotates counter-clockwise.

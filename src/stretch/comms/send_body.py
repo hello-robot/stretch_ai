@@ -1,8 +1,8 @@
 import json
 import numbers
-
-import stretch_body.robot
 import zmq
+
+import stretch.drivers.body as driver
 
 
 def initialize(status_port, moveby_port, basevel_port):
@@ -22,24 +22,16 @@ def initialize(status_port, moveby_port, basevel_port):
     basevel_poll.register(basevel_sock, flags=zmq.POLLIN)
 
     # stretch body
-    robot = stretch_body.robot.Robot()
-    robot.startup()
-    is_runstopped = robot.status["pimu"]["runstop_event"]
-    if is_runstopped:
-        robot.pimu.runstop_event_reset()
-        robot.push_command()
-    is_homed = robot.is_homed()
-    if not is_homed:
-        robot.home()
+    body = driver.Body()
 
-    return status_sock, moveby_sock, moveby_poll, basevel_sock, basevel_poll, robot
+    return status_sock, moveby_sock, moveby_poll, basevel_sock, basevel_poll, body
 
 
-def send_status(sock, robot):
-    sock.send_json(json.dumps(robot.get_status()))
+def send_status(sock, body):
+    sock.send_json(json.dumps(body.get_status()))
 
 
-def exec_moveby(sock, poll, robot):
+def exec_moveby(sock, poll, body):
     socks = dict(poll.poll(40.0))  # 25hz
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
@@ -56,53 +48,23 @@ def exec_moveby(sock, poll, robot):
             sock.send_string(f"Rejected: Cannot move {joint} by {moveby_amount} amount")
             return
 
-    if "joint_translate" in pose:
-        robot.base.translate_by(pose["joint_translate"])
-    if "joint_rotate" in pose:
-        robot.base.rotate_by(pose["joint_rotate"])
-    if "joint_lift" in pose:
-        robot.lift.move_by(pose["joint_lift"])
-    if "joint_arm" in pose:
-        robot.arm.move_by(pose["joint_arm"])
-    if "wrist_extension" in pose:
-        robot.arm.move_by(pose["wrist_extension"])
-    robot.push_command()
-    if "joint_wrist_yaw" in pose:
-        robot.end_of_arm.move_by("wrist_yaw", pose["joint_wrist_yaw"])
-    if "joint_wrist_pitch" in pose:
-        robot.end_of_arm.move_by("wrist_pitch", pose["joint_wrist_pitch"])
-    if "joint_wrist_roll" in pose:
-        robot.end_of_arm.move_by("wrist_roll", pose["joint_wrist_roll"])
-    if "joint_gripper" in pose:
-        robot.end_of_arm.move_by("stretch_gripper", pose["joint_gripper"])
-    if "joint_head_pan" in pose:
-        robot.head.move_by("head_pan", pose["joint_head_pan"])
-    if "joint_head_tilt" in pose:
-        robot.head.move_by("head_tilt", pose["joint_head_tilt"])
-    sock.send_string("Accepted")
+    result = body.move_by(pose)
+    sock.send_string(result)
 
 
-def exec_basevel(sock, poll, robot):
+def exec_basevel(sock, poll, body):
     socks = dict(poll.poll(40.0))
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
     twist = json.loads(sock.recv_json())
-
-    if len(twist.keys() & ["translational_vel", "rotational_vel"]) != 2:
-        sock.send_string(
-            "Rejected: twist commands require both translational + rotational components"
-        )
-        return
-
-    robot.base.set_velocity(twist["translational_vel"], twist["rotational_vel"])
-    robot.push_command()
+    body.drive(twist)
     sock.send_string("Accepted")
 
 
-def send_parameters(sock, robot):
+def send_parameters(sock, body):
     pass
 
 
-def send_urdf(sock, robot):
+def send_urdf(sock, body):
     pass
