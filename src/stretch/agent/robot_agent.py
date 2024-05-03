@@ -33,7 +33,6 @@ from stretch.perception.encoders import get_encoder
 from stretch.utils.threading import Interval
 
 
-
 class RobotAgent:
     """Basic demo code. Collects everything that we need to make this work."""
 
@@ -466,16 +465,16 @@ class RobotAgent:
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
-        #if self.chat is not None:
+        # if self.chat is not None:
         #    self.chat.output(msg)
         # TODO: support other ways of saying
         print(msg)
 
     def ask(self, msg: str) -> str:
         """Receive input from the user either via the command line or something else"""
-        #if self.chat is not None:
+        # if self.chat is not None:
         #  return self.chat.input(msg)
-        #else:
+        # else:
         # TODO: support other ways of saying
         return input(msg)
 
@@ -492,7 +491,6 @@ class RobotAgent:
         obs = self.robot.get_observation()
         self.obs_history.append(obs)
         self.obs_count += 1
-        obs_count = self.obs_count
         # Optionally do this
         if self.semantic_sensor is not None:
             # Semantic prediction
@@ -502,7 +500,6 @@ class RobotAgent:
         if visualize_map:
             # Now draw 2d maps to show waht was happening
             self.voxel_map.get_2d_map(debug=True)
-
 
     def plan_to_instance(
         self,

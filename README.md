@@ -75,6 +75,23 @@ You should see:
   - `True` for `torch.cuda.is_available()`
   - No errors for `torch.rand(3, 3).to("cuda")`
 
+## Example Apps
+
+### Dex Teleop + DobbE
+
+On the robot:
+```bash
+python -m stretch.demos.dex_teleop.send_d405_images -r
+python -m stretch.demos.dex_teleop.follower
+```
+
+On a remote, GPU-enabled laptop or workstation connected to the [dex telop setup](https://github.com/hello-robot/stretch_dex_teleop):
+```bash
+python -m stretch.demos.dex_teleop.leader
+```
+
+[Read the Dex Teleop documentation](docs/dex_teleop.md) for more details.
+
 ### Voxel Map Visualization
 
 You can test the voxel code on a captured pickle file:
@@ -86,6 +103,8 @@ Optional open3d visualization of the scene:
 ```bash
 python -m stretch.agent.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
+
+### 
 
 ## Development
 

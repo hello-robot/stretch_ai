@@ -1,0 +1,92 @@
+# Be careful with length_mm values. Stickers and printouts can vary
+# significantly from your expectations. You should measure them
+# directly. For example, in a prototype robot the stickers were closer
+# to 23mm wide than 24mm. This 1mm difference resulted in > 1cm of
+# error in the depths for the marker pose estimates when only using
+# RGB images.
+
+'230':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_left_top'
+  link: 'None'
+'231':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_right_top'
+  link: 'None'
+'232':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_left_bottom'
+  link: 'None'
+'233':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_right_bottom'
+  link: 'None'
+'234':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_left_front'
+  link: 'None'
+'235':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_right_front'
+  link: 'None'
+'236':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_left_side'
+  link: 'None'
+'237':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'left_tongs_right_side'
+  link: 'None'
+'228':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_left_top'
+  link: 'None'
+'229':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_right_top'
+  link: 'None'
+'238':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_left_bottom'
+  link: 'None'
+'239':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_right_bottom'
+  link: 'None'
+'240':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_left_front'
+  link: 'None'
+'241':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_right_front'
+  link: 'None'
+'242':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_left_side'
+  link: 'None'
+'243':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'right_tongs_right_side'
+  link: 'None'
+'default':
+  length_mm: 56
+  use_rgb_only: True
+  name: 'default'
+  link: 'None'

@@ -6,8 +6,8 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pinocchio
-from scipy.spatial.transform import Rotation as R
 from loguru import logger
+from scipy.spatial.transform import Rotation as R
 
 from stretch.motion.base.ik_solver_base import IKSolverBase
 from stretch.motion.utils.bullet import PybulletIKSolver
@@ -54,7 +54,9 @@ class PinocchioIKSolver:
                 jid = self.model.getJointId(joint)
                 if jid >= len(self.model.idx_qs):
                     logger.error(f"{joint=} {jid=} not in model.idx_qs")
-                    raise RuntimeError(f"Invalid urdf at {urdf_path=}: missing {joint=}")
+                    raise RuntimeError(
+                        f"Invalid urdf at {urdf_path=}: missing {joint=}"
+                    )
                 else:
                     idx = self.model.idx_qs[jid]
             self.controlled_joints.append(idx)
@@ -65,8 +67,6 @@ class PinocchioIKSolver:
             idx = self.model.getJointId(j)
             idx_q = self.model.idx_qs[idx]
             logger.info(f"{j=} {idx=} {idx_q=}")
-
-
 
     def get_dof(self) -> int:
         """returns dof for the manipulation chain"""

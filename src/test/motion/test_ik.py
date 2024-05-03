@@ -2,10 +2,13 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import numpy as np
 import os
 import timeit
+
+import numpy as np
+
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
+
 
 def test_fk_ik():
     # Create IK Solver
@@ -20,10 +23,10 @@ def test_fk_ik():
         "joint_mobile_base_rotation",
     ]
     manip_ik_solver = PinocchioIKSolver(
-            urdf_path,
-            "link_grasp_center",
-            ik_joints_allowed_to_move,
-        )
+        urdf_path,
+        "link_grasp_center",
+        ik_joints_allowed_to_move,
+    )
 
     state = {
         "joint_mobile_base_rotation": 0.0,
@@ -37,17 +40,19 @@ def test_fk_ik():
     # Test Forward Kinematics
     ee_pose = manip_ik_solver.compute_fk(state)
     print(ee_pose)
-    assert(ee_pose is not None), "FK failed"
+    assert ee_pose is not None, "FK failed"
 
     # Test Inverse Kinematics
     ee_position = np.array([-0.03, -0.4, 0.9])
     ee_orientation = np.array([0, 0, 0, 1])
     res, success, info = manip_ik_solver.compute_ik(
-        ee_position, ee_orientation, q_init=state,
+        ee_position,
+        ee_orientation,
+        q_init=state,
     )
     print("Result =", res)
     print("Success =", success)
-    assert(success), "IK failed"
+    assert success, "IK failed"
 
     dt_sum = 0
     # Speed test
@@ -59,15 +64,17 @@ def test_fk_ik():
         ee_orientation = np.random.rand(4)
         ee_orientation /= np.linalg.norm(ee_orientation)
         res, success, info = manip_ik_solver.compute_ik(
-            ee_position, ee_orientation, q_init=state,
+            ee_position,
+            ee_orientation,
+            q_init=state,
         )
         t1 = timeit.default_timer()
         dt_sum += t1 - t0
     print("Average time per IK call =", dt_sum / 1000)
     hz = 1 / (dt_sum / 1000)
     print("Average rate =", hz)
-    assert(hz > 100), "IK solver too slow"
+    assert hz > 100, "IK solver too slow"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_fk_ik()
