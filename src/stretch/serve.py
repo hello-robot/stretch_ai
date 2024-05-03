@@ -23,14 +23,14 @@ def serve_body(status_port, moveby_port, basevel_port):
         moveby_poll,
         basevel_sock,
         basevel_poll,
-        robot,
+        body,
     ) = sb.initialize(status_port, moveby_port, basevel_port)
     while True:
-        sb.send_status(status_sock, robot)
-        sb.exec_moveby(moveby_sock, moveby_poll, robot)
-        sb.exec_basevel(basevel_sock, basevel_poll, robot)
-        # sb.send_parameters(sock, robot)
-        # sb.send_urdf(sock, robot)
+        sb.send_status(status_sock, body)
+        sb.exec_moveby(moveby_sock, moveby_poll, body)
+        sb.exec_basevel(basevel_sock, basevel_poll, body)
+        # sb.send_parameters(sock, body)
+        # sb.send_urdf(sock, body)
 
 
 def serve_head_nav_cam(camarr_port, camb64_port):

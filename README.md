@@ -44,6 +44,9 @@ for img in stretch.stream_nav_camera():
     cv2.waitKey(1)
 ```
 
+Check out the docs on:
+ - [Getting status](./docs/status.md)
+
 ## Advanced Installation
 
 If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
