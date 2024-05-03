@@ -37,6 +37,7 @@ setuptools.setup(
         "sophuspy",
         "pin",  # Pinocchio IK solver
         "pynput",
+        "orbslam3",
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
