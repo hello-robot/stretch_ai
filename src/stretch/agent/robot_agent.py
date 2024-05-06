@@ -7,6 +7,7 @@ import datetime
 import os
 import pickle
 import time
+import timeit
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -488,7 +489,16 @@ class RobotAgent:
 
     def update(self, visualize_map=False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
-        obs = self.robot.get_observation()
+        obs = None
+        t0 = timeit.default_timer()
+
+        while obs is None:
+            obs = self.robot.get_observation()
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10:
+                logger.error("Failed to get observation")
+                return
+
         self.obs_history.append(obs)
         self.obs_count += 1
         # Optionally do this
@@ -688,7 +698,7 @@ class RobotAgent:
     def print_found_classes(self, goal: Optional[str] = None):
         """Helper. print out what we have found according to detic."""
         if self.semantic_sensor is None:
-            logger.warn("Tried to print classes without semantic sensor!")
+            logger.warning("Tried to print classes without semantic sensor!")
             return
 
         instances = self.voxel_map.get_instances()
@@ -701,15 +711,16 @@ class RobotAgent:
             print(i, name, instance.score)
 
     def start(self, goal: Optional[str] = None, visualize_map_at_start: bool = False):
-        # Tuck the arm away
-        print("Sending arm to  home...")
-        self.robot.switch_to_manipulation_mode()
 
         # Call the robot's own startup hooks
         started = self.robot.start()
         if started:
             # update here
             self.update()
+
+        # Tuck the arm away
+        print("Sending arm to  home...")
+        self.robot.switch_to_manipulation_mode()
 
         # Add some debugging stuff - show what 3d point clouds look like
         if visualize_map_at_start:
