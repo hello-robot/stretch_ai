@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# (c) 2024 Hello Robot by Chris Paxton
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -13,17 +13,16 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d
-import rospy
+import rclpy
 import torch
-from home_robot_hw.remote import StretchClient
-from home_robot_hw.utils.grasping import GraspPlanner
 from PIL import Image
 
 # Mapping and perception
 import stretch.utils.depth as du
-from stretch.agent.multitask import get_parameters
-from stretch.agent.multitask.robot_agent import RobotAgent
-from stretch.perception import create_semantic_sensor
+from stretch.agent import get_parameters
+from stretch.agent.receiver import HomeRobotZmqClient
+from stretch.agent.robot_agent import RobotAgent
+from stretch.core.robot import RobotClient
 
 # Import planning tools for exploration
 from stretch.perception.encoders import ClipEncoder
@@ -32,26 +31,15 @@ from stretch.perception.encoders import ClipEncoder
 from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.utils.visualization import get_x_and_y_from_path
 
-
-def do_manipulation_test(demo, object_to_find, location_to_place):
-    """Run a quick manipulation test, picking and placing right in front of the robot."""
-    print("- Switch to manipulation mode")
-    demo.robot.switch_to_manipulation_mode()
-    time.sleep(1.0)
-    rate = rospy.Rate(10)
-    while not rospy.is_shutdown():
-        print(f"- Try to grasp {object_to_find}")
-        # result = demo.grasp(object_goal=object_to_find)
-        # print(f"{result=}")
-        # if not result:
-        #    continue
-        print(f"- Try to place {object_to_find} on {location_to_place}")
-        result = demo.place(object_goal=location_to_place)
-        print(f"{result=}")
-        rate.sleep()
+# TODO: semantic sensor code from HomeRobot
+# from stretch.perception import create_semantic_sensor
 
 
 @click.command()
+@click.option("--local", is_flag=True, help="Run code locally on the robot.")
+@click.option("--recv_port", default=4401, help="Port to receive observations on")
+@click.option("--send_port", default=4402, help="Port to send actions to on the robot")
+@click.option("--robot_ip", default="192.168.1.15")
 @click.option("--rate", default=5, type=int)
 @click.option("--visualize", default=False, is_flag=True)
 @click.option("--manual-wait", default=False, is_flag=True)
@@ -80,7 +68,7 @@ def do_manipulation_test(demo, object_to_find, location_to_place):
     is_flag=True,
     help="write out images of every object we found",
 )
-@click.option("--parameter-file", default="src/stretch_hw/configs/default.yaml")
+@click.option("--parameter-file", default="configs/default_planner.yaml")
 def main(
     rate,
     visualize,
@@ -101,7 +89,68 @@ def main(
     vlm_server_addr: str = "127.0.0.1",
     vlm_server_port: str = "50054",
     write_instance_images: bool = False,
-    parameter_file: str = "src/stretch_hw/configs/default.yaml",
+    parameter_file: str = "src/stretch/config/default_planner.yaml",
+    local: bool = True,
+    recv_port: int = 4401,
+    send_port: int = 4402,
+    robot_ip: str = "192.168.1.15",
+    **kwargs,
+):
+    robot = HomeRobotZmqClient(
+        robot_ip=robot_ip,
+        recv_port=recv_port,
+        send_port=send_port,
+        use_remote_computer=(not local),
+    )
+    # Call demo_main with all the arguments
+    demo_main(
+        robot,
+        rate=rate,
+        visualize=visualize,
+        manual_wait=manual_wait,
+        output_filename=output_filename,
+        navigate_home=navigate_home,
+        device_id=device_id,
+        verbose=verbose,
+        show_intermediate_maps=show_intermediate_maps,
+        show_final_map=show_final_map,
+        show_paths=show_paths,
+        random_goals=random_goals,
+        test_grasping=test_grasping,
+        force_explore=force_explore,
+        no_manip=no_manip,
+        explore_iter=explore_iter,
+        use_vlm=use_vlm,
+        vlm_server_addr=vlm_server_addr,
+        vlm_server_port=vlm_server_port,
+        write_instance_images=write_instance_images,
+        parameter_file=parameter_file,
+        **kwargs,
+    )
+
+
+def demo_main(
+    robot: RobotClient,
+    rate,
+    visualize,
+    manual_wait,
+    output_filename,
+    navigate_home: bool = True,
+    device_id: int = 0,
+    verbose: bool = True,
+    show_intermediate_maps: bool = False,
+    show_final_map: bool = False,
+    show_paths: bool = False,
+    random_goals: bool = True,
+    test_grasping: bool = False,
+    force_explore: bool = False,
+    no_manip: bool = False,
+    explore_iter: int = 10,
+    use_vlm: bool = False,
+    vlm_server_addr: str = "127.0.0.1",
+    vlm_server_port: str = "50054",
+    write_instance_images: bool = False,
+    parameter_file: str = "src/robot_hw_python/configs/default.yaml",
     **kwargs,
 ):
     """
@@ -123,38 +172,30 @@ def main(
     parameters = get_parameters(parameter_file)
     print(parameters)
 
-    stub = None
-    if use_vlm:
-        if parameters.get("vlm_option", "rpc") == "rpc":
-            try:
-                from stretch.utils.rpc import get_vlm_rpc_stub
-            except KeyError:
-                print(
-                    "Environment not configured for RPC connection! Needs $ACCEL_CORTEX to be set."
-                )
-            stub = get_vlm_rpc_stub(vlm_server_addr, vlm_server_port)
-
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
     print("- Connect to Stretch")
-    # TODO(bshah): replace this with the ZMQ version of the client
-    robot = StretchClient()
-    robot.nav.navigate_to([0, 0, 0])
 
     if explore_iter >= 0:
         parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = parameters.get_task_goals()
 
     print("- Create semantic sensor based on detic")
-    config, semantic_sensor = create_semantic_sensor(
-        device_id=device_id, verbose=verbose
-    )
+    # _, semantic_sensor = create_semantic_sensor(
+    #    device_id=device_id, verbose=verbose
+    # )
+    semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    grasp_client = GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
-    demo = RobotAgent(
-        robot, semantic_sensor, parameters, rpc_stub=stub, grasp_client=grasp_client
+    grasp_client = (
+        None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
     )
-    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
+
+    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    demo.start(goal=object_to_find, visualize_map_at_start=False)
+
+    print("- Reset robot to [0, 0, 0]")
+    robot.navigate_to([0, 0, 0], blocking=True)
+
     if object_to_find is not None:
         print(f"\nSearch for {object_to_find} and {location_to_place}")
         matches = demo.get_found_instances_by_class(object_to_find)
@@ -162,15 +203,11 @@ def main(
     else:
         matches = []
 
-    # Run grasping test - just grab whatever is in front of the robot
-    if test_grasping:
-        do_manipulation_test(demo, object_to_find, location_to_place)
-        return
-
+    # Rotate in place
     if parameters["in_place_rotation_steps"] > 0:
         demo.rotate_in_place(
             steps=parameters["in_place_rotation_steps"],
-            visualize=False,  # show_intermediate_maps,
+            visualize=show_intermediate_maps,
         )
 
     # Run the actual procedure
@@ -250,6 +287,9 @@ def main(
         else:
             pc_xyz, pc_rgb = demo.voxel_map.get_xyz_rgb()
 
+        if pc_rgb is None:
+            return
+
         # Create pointcloud and write it out
         if len(output_pcd_filename) > 0:
             print(f"Write pcd to {output_pcd_filename}...")
@@ -263,8 +303,7 @@ def main(
             demo.save_instance_images(".")
 
         demo.go_home()
-        demo.finish()
-        rospy.signal_shutdown("done")
+        robot.stop()
 
 
 if __name__ == "__main__":

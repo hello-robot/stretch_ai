@@ -7,19 +7,18 @@ import os
 from typing import List, Optional, Tuple
 
 import numpy as np
-import pybullet as pb
+from scipy.spatial.transform.rotation import Rotation
 
 import stretch.utils.bullet as hrb
 from stretch.core.interfaces import ContinuousFullBodyAction
-from stretch.motion.bullet import BulletRobotModel, PybulletIKSolver
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint
+from stretch.motion.utils.bullet import BulletRobotModel, PybulletIKSolver
 from stretch.utils.pose import to_matrix
 
 # Stretch stuff
-DEFAULT_STRETCH_URDF = "assets/hab_stretch/urdf/stretch_dex_wrist_simplified.urdf"
-PLANNER_STRETCH_URDF = "assets/hab_stretch/urdf/planner_calibrated.urdf"
-MANIP_STRETCH_URDF = "assets/hab_stretch/urdf/stretch_manip_mode.urdf"
+PLANNER_STRETCH_URDF = "configs/urdf/planner_calibrated.urdf"
+MANIP_STRETCH_URDF = "configs/urdf/stretch_manip_mode.urdf"
 
 STRETCH_HOME_Q = np.array(
     [
@@ -192,7 +191,7 @@ class HelloStretchIdx:
     HEAD_TILT = 10
 
 
-class HelloStretchKinematics(BulletRobotModel):
+class HelloStretchKinematics:
     """Define motion planning structure for the robot. Exposes kinematics."""
 
     # DEFAULT_BASE_HEIGHT = 0.09
@@ -289,6 +288,7 @@ class HelloStretchKinematics(BulletRobotModel):
         # You can set one of the visualize flags to true to debug IK issues
         self._manip_dof = len(self._manip_mode_controlled_joints)
         if "pybullet" in ik_type:
+            raise NotImplementedError("pybullet IK solver not supported")
             ranges = np.zeros((self._manip_dof, 2))
             ranges[:, 0] = self._to_manip_format(self.range[:, 0])
             ranges[:, 1] = self._to_manip_format(self.range[:, 1])
@@ -340,9 +340,8 @@ class HelloStretchKinematics(BulletRobotModel):
             )
         self.full_body_urdf_path = os.path.join(root, full_body_urdf)
         self.manip_mode_urdf_path = os.path.join(root, manip_urdf)
-        super(HelloStretchKinematics, self).__init__(
-            name=name, urdf_path=self.full_body_urdf_path, visualize=visualize
-        )
+        self.name = name
+        self.visualize = visualize
 
         # DOF: 3 for ee roll/pitch/yaw
         #      1 for gripper
@@ -357,10 +356,8 @@ class HelloStretchKinematics(BulletRobotModel):
         self.range = np.zeros((self.dof, 2))
 
         # Create object reference
-        self.set_pose = self.ref.set_pose
-        self.set_joint_position = self.ref.set_joint_position
-
-        self._update_joints()
+        # self.set_pose = self.ref.set_pose
+        # self.set_joint_position = self.ref.set_joint_position
 
         self._ik_type = ik_type
         self._ee_link_name = (
@@ -745,7 +742,7 @@ class HelloStretchKinematics(BulletRobotModel):
 
     def ik(self, pose, q0):
         pos, rot = pose
-        se3 = pb.getMatrixFromQuaternion(rot)
+        se3 = Rotation.from_quat(rot).as_matrix()
         pose = np.eye(4)
         pose[:3, :3] = np.array(se3).reshape(3, 3)
         x, y, z = pos

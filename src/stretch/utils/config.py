@@ -32,8 +32,8 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         opts: command line arguments overriding the config
     """
     try:
-        if os.environ["HOME_ROBOT_ROOT"]:
-            path = os.path.join(os.environ["HOME_ROBOT_ROOT"], path)
+        if os.environ["STRETCHPY_ROOT"]:
+            path = os.path.join(os.environ["STRETCHPY_ROOT"], path)
     except KeyError:
         logger.warning(
             "HOME_ROBOT_ROOT environment variable not set when trying to read configs!"

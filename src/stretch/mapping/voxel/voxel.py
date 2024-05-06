@@ -267,6 +267,8 @@ class SparseVoxelMap(object):
 
     def get_instances(self) -> List[Instance]:
         """Return a list of all viewable instances"""
+        if self.instances is None:
+            return []
         return list(self.instances.instances[0].values())
 
     def fix_type(self, tensor: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
