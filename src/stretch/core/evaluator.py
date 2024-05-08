@@ -28,6 +28,7 @@ class Evaluator:
         color_image: np.ndarray,
         depth_image: np.ndarray,
         display_received_images: bool = True,
+        **kwargs,
     ) -> dict:
         """Overwrite this to implement a simple loop operating on camera logic. Designed to decrease the amount of boilerplate code needed to implement a perception loop. Returns a results dict, which can be basically anything."""
 

@@ -73,7 +73,7 @@ class RobotClient:
                 # After extracting image, pass it to whatever is going to use it.
                 # Results are currently ignored.
                 # TODO: we might want to change this code path to something a bit better.
-                _ = evaluator.apply(color_image, depth_image)
+                _ = evaluator.apply(color_image, depth_image, image_gamma=d405_output["image_gamma"], image_scaling=d405_output["image_scaling"])
 
                 loop_timer.mark_end()
                 if self.verbose:

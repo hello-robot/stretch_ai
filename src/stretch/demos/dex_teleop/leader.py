@@ -4,15 +4,18 @@ import cv2
 import numpy as np
 import zmq
 from scipy.spatial.transform import Rotation
+from typing import Optional
 
 import stretch.demos.dex_teleop.dex_teleop_parameters as dt
 import stretch.demos.dex_teleop.goal_from_teleop as gt
 import stretch.demos.dex_teleop.webcam_teleop_interface as wt
 import stretch.motion.simple_ik as si
 from stretch.core import Evaluator
-from stretch.demos.dex_teleop.client import RobotClient
+from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.geometry import get_rotation_from_xyz
+from stretch.utils.point_cloud import show_point_cloud
+from stretch.utils.image import Camera
 
 use_gripper_center = True
 
@@ -95,6 +98,7 @@ class DexTeleopLeader(Evaluator):
         force_record: bool = False,
     ):
         super().__init__()
+        self.camera = None
 
         # TODO: fix these two things
         manipulate_on_ground = False
@@ -153,16 +157,29 @@ class DexTeleopLeader(Evaluator):
         self.prev_goal_dict = None
 
     def apply(
-        self, color_image, depth_image, display_received_images: bool = True
+            self, color_image, depth_image, image_gamma: Optional[float] = None, image_scaling: Optional[float] = None, display_received_images: bool = True
     ) -> dict:
         """Take in image data and other data received by the robot and process it appropriately. Will run the aruco marker detection, predict a goal send that goal to the robot, and save everything to disk for learning."""
 
         assert (self.camera_info is not None) and (
             self.depth_scale is not None
         ), "ERROR: YoloServoPerception: set_camera_parameters must be called prior to apply. self.camera_info or self.depth_scale is None"
+        if self.camera is None:
+            self.camera = Camera.from_K(self.camera_info['camera_matrix'], width=color_image.shape[1], height=color_image.shape[0])
+    
+        print("depth_image", depth_image.shape)
+        print("depth scaling", self.depth_scale)
+        print("image scaling", image_scaling)
+        print("image gamma", image_gamma)
+        print(np.unique(depth_image))
+        display_point_cloud = True
 
         # Convert depth to meters
-        depth_image = depth_image / 1000
+        depth_image = depth_image.astype(np.float32) * self.depth_scale
+        if display_point_cloud:
+            print("depth scale", self.depth_scale)
+            xyz = self.camera.depth_to_xyz(depth_image)
+            show_point_cloud(xyz, color_image / 255, orig=np.zeros(3))
 
         if display_received_images:
             # change depth to be h x w x 3

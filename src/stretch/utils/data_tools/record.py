@@ -175,10 +175,10 @@ class FileDataRecorder:
 
         # TODO: remove debug code
         # This should be 192 x 256 x 4 bytes = 196608 bytes per image
-        # buffer = np.frombuffer(
-        #        liblzfse.decompress(target_depth_filename.read_bytes()), dtype=np.float32
-        #    )
-        # breakpoint()
+        buffer = np.frombuffer(
+                liblzfse.decompress(target_depth_filename.read_bytes()), dtype=np.float32
+           )
+        breakpoint()
 
 
 class FileDataReader:
