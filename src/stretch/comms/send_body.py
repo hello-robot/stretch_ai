@@ -36,7 +36,9 @@ def exec_moveby(sock, poll, body):
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
-    pose = json.loads(sock.recv_json())
+    pose = sock.recv_json()
+    if isinstance(pose, str):
+        pose = json.loads(pose)
 
     if "joint_translate" in pose and "joint_rotate" in pose:
         sock.send_string(
@@ -57,7 +59,9 @@ def exec_basevel(sock, poll, body):
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
-    twist = json.loads(sock.recv_json())
+    twist = sock.recv_json()
+    if isinstance(twist, str):
+        twist = json.loads(twist)
     body.drive(twist)
     sock.send_string("Accepted")
 
