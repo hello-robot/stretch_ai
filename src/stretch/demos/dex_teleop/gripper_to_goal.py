@@ -57,6 +57,8 @@ class GripperToGoal:
     _use_simple_gripper_rules = not use_gripper_center
     max_rotation_change = 0.5
 
+    debug_base_rotation: bool = False
+
     def _create_ik_solver(
         self,
         urdf_path,
@@ -71,8 +73,11 @@ class GripperToGoal:
         self,
         robot_speed,
         starting_configuration,
-        robot_allowed_to_move,
-        using_stretch_2,
+        robot: rb.Robot,
+        robot_move: rm.RobotMove,
+        simple_ik: Optional[si.SimpleIK] = None,
+        robot_allowed_to_move: bool = True,
+        using_stretch_2: bool = False,
     ):
         if using_stretch_2:
             self.grip_range = dt.dex_wrist_grip_range
@@ -80,6 +85,8 @@ class GripperToGoal:
             self.grip_range = dt.dex_wrist_3_grip_range
 
         self.using_stretch_2 = using_stretch_2
+        self.robot_move = robot_move
+        self.robot = robot
 
         self.joints_allowed_to_move = [
             "stretch_gripper",
@@ -150,34 +157,12 @@ class GripperToGoal:
 
         if self._use_simple_gripper_rules:
             # Initialize IK
-            print("Simple IK setup")
-            self.simple_ik = si.SimpleIK()
-            print("Done")
+            if self.simple_ik is None:
+                print("Simple IK setup")
+                self.simple_ik = si.SimpleIK()
+                print("Done")
         else:
             self.simple_ik = None
-
-        ##########################################################
-        # Prepare the robot last to avoid errors due to blocking calls
-        # associated with other aspects of setting things up, such as
-        # initializing SimpleIK.
-        self.robot = None
-        self.robot = rb.Robot()
-        self.robot.startup()
-
-        print("stretch_body file imported =", rb.__file__)
-        transport_version = self.robot.arm.motor.transport.version
-        print("stretch_body using transport version =", transport_version)
-
-        self.robot_move = rm.RobotMove(self.robot, speed=robot_speed)
-        self.robot_move.print_settings()
-
-        self.robot_move.to_configuration(starting_configuration, speed="default")
-        self.robot.push_command()
-        self.robot.wait_command()
-
-        # Set the current mobile base angle to be 0.0 radians.
-        self.robot.base.reset_odometry()
-        ##########################################################
 
         self.print_robot_status_thread_timing = False
         self.debug_wrist_orientation = False
@@ -455,11 +440,12 @@ class GripperToGoal:
                 -self.max_rotation_change,
                 self.max_rotation_change,
             )
-            print()
-            print("Debugging base rotation:")
-            print(f"{new_goal_configuration['joint_mobile_base_rotation']=}")
-            print(f"{self.filtered_wrist_position_configuration[0]=}")
-            print(f"{new_goal_configuration['joint_mobile_base_rotate_by']=}")
+            if self.debug_base_rotation:
+                print()
+                print("Debugging base rotation:")
+                print(f"{new_goal_configuration['joint_mobile_base_rotation']=}")
+                print(f"{self.filtered_wrist_position_configuration[0]=}")
+                print(f"{new_goal_configuration['joint_mobile_base_rotate_by']=}")
             print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
             # remove virtual joint and approximate motion with rotate_by using joint_mobile_base_rotate_by
             del new_goal_configuration["joint_mobile_base_rotation"]

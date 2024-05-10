@@ -80,11 +80,14 @@ You should see:
 
 ## Example Apps
 
-### Dex Teleop + DobbE
+### Dex Teleop for Data Collection
 
-On the robot:
+Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. It has two components:
+  - `follower` runs on the robot, publishes video and state information, and receives goals from a large remote server
+  - `leader` runs on a GPU enabled desktop or laptop, where you can run a larger neural network.
+
+To start it, on the robot, run:
 ```bash
-python -m stretch.demos.dex_teleop.send_d405_images -r
 python -m stretch.demos.dex_teleop.follower
 ```
 
