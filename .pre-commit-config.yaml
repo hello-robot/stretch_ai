@@ -14,6 +14,10 @@ repos:
     rev: 5.0.4
     hooks:
       - id: flake8
+        exclude: |
+            (?x)^(
+                | examples/
+            ) | setup.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v0.981
