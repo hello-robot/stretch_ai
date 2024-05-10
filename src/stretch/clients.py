@@ -1,12 +1,24 @@
 import numbers
 
-from .comms import recv_body, recv_head_nav_cam, recv_protocol
+from .comms import recv_body, recv_head_nav_cam, recv_protocol, recv_realsense
 from .exceptions.connection import NotConnectedException
 from .exceptions.motion import (
     BaseVelocityNotAcceptedException,
     MoveByMotionNotAcceptedException,
 )
 from .utils import auth
+
+
+def require_connection(function):
+    print(function, function.__name__)
+
+    def wrapper_function(self, *args, **kwargs):
+        print("before {}".format(function.__name__))
+        if not self.connected:
+            raise NotConnectedException("use the connect() method")
+        return function(self, *args, **kwargs)
+
+    return wrapper_function
 
 
 class StretchClient:
@@ -48,6 +60,20 @@ class StretchClient:
         hncb64_port = self.port + 5
         _, self.hncb64_sock = recv_head_nav_cam.initialize(
             self.ip_addr, hncarr_port, hncb64_port
+        )
+
+        # EE realsense
+        ee_arr_port = self.port + 6
+        ee_b64_port = self.port + 7
+        self.ee_arr_sock, self.ee_b64_sock = recv_realsense.initialize(
+            self.ip_addr, ee_arr_port, ee_b64_port
+        )
+
+        # Head realsense
+        head_arr_port = self.port + 8
+        head_b64_port = self.port + 9
+        self.head_arr_sock, self.head_b64_sock = recv_realsense.initialize(
+            self.ip_addr, head_arr_port, head_b64_port
         )
 
         self.connected = True
@@ -128,16 +154,34 @@ class StretchClient:
                 )
         recv_body.send_basevel(self.basevel_sock, twist)
 
+    @require_connection
     def take_nav_picture(self):
         """Returns numpy BGR image from Head Nav camera"""
-        if not self.connected:
-            raise NotConnectedException("use the connect() method")
         return recv_head_nav_cam.recv_imagery_as_base64_str(self.hncb64_sock)
 
+    @require_connection
+    def take_head_picture(self):
+        """Get a single frame from the robot head camera."""
+        # TODO: replace with proto
+        return self.get_head_frame()["color_image"]
+
+    @require_connection
+    def take_ee_picture(self):
+        """Get a single frame from ee camera"""
+        # TODO: replace with proto
+        return self.get_ee_frame()["color_image"]
+
+    @require_connection
+    def get_ee_frame(self):
+        return recv_realsense.recv_compressed_msg(self.ee_b64_sock)
+
+    @require_connection
+    def get_head_frame(self):
+        return recv_realsense.recv_compressed_msg(self.head_b64_sock)
+
+    @require_connection
     def stream_nav_camera(self):
         """Returns Python generator to stream numpy BGR imagery
         from Head Nav camera"""
-        if not self.connected:
-            raise NotConnectedException("use the connect() method")
         while True:
             yield self.take_nav_picture()

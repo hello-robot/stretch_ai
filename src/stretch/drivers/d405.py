@@ -1,14 +1,55 @@
+from typing import Tuple
+
 import cv2
 import numpy as np
 import pyrealsense2 as rs
-from stretch_ai.servo.d405_helpers_without_pyrealsense import (
+
+from stretch.drivers.d405_without_pyrealsense import (
     get_depth_scale,
     pixel_from_3d,
     pixel_to_3d,
 )
+from stretch.drivers.realsense_base import Realsense
 
 exposure_keywords = ["low", "medium", "auto"]
 exposure_range = [0, 500000]
+
+
+class D405(Realsense):
+    def __init__(self, exposure):
+        self.pipeline, self.profile = start_d405(exposure)
+
+        print("Connecting to D405 and getting camera info...")
+        self.depth_camera_info, self.color_camera_info = self.read_camera_infos()
+        print(f"  depth camera: {self.depth_camera_info}")
+        print(f"  color camera: {self.color_camera_info}")
+
+    def get_camera_infos(self):
+        return self.depth_camera_info, self.color_camera_info
+
+    def get_images(self) -> Tuple[np.ndarray, np.ndarray]:
+        depth_frame, color_frame = self.get_frames()
+        depth_image = np.asanyarray(depth_frame.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
+        return depth_image, color_image
+
+    def get_message(self) -> dict:
+        """Get a message that can be sent via ZMQ"""
+        depth_camera_info, color_camera_info = self.get_camera_infos()
+        depth_scale = self.get_depth_scale()
+        depth_image, color_image = self.get_images()
+        d405_output = {
+            "depth_camera_info": depth_camera_info,
+            "color_camera_info": color_camera_info,
+            "depth_scale": depth_scale,
+            "depth_image": depth_image,
+            "color_image": color_image,
+        }
+        return d405_output
+
+    def stop(self):
+        """Close everything down so we can end cleanly."""
+        self.pipeline.stop()
 
 
 def exposure_argument_is_valid(value):
@@ -111,51 +152,3 @@ def start_d405(exposure):
         stereo_sensor.set_option(rs.option.exposure, exposure_value)
 
     return pipeline, profile
-
-
-def get_camera_info(frame):
-    intrinsics = rs.video_stream_profile(frame.profile).get_intrinsics()
-
-    # from Intel's documentation
-    # https://intelrealsense.github.io/librealsense/python_docs/_generated/pyrealsense2.intrinsics.html#pyrealsense2.intrinsics
-    # "
-    # coeffs	Distortion coefficients
-    # fx	Focal length of the image plane, as a multiple of pixel width
-    # fy	Focal length of the image plane, as a multiple of pixel height
-    # height	Height of the image in pixels
-    # model	Distortion model of the image
-    # ppx	Horizontal coordinate of the principal point of the image, as a pixel offset from the left edge
-    # ppy	Vertical coordinate of the principal point of the image, as a pixel offset from the top edge
-    # width	Width of the image in pixels
-    # "
-
-    # out = {
-    #     'dist_model' : intrinsics.model,
-    #     'dist_coeff' : intrinsics.coeffs,
-    #     'fx' : intrinsics.fx,
-    #     'fy' : intrinsics.fy,
-    #     'height' : intrinsics.height,
-    #     'width' : intrinsics.width,
-    #     'ppx' : intrinsics.ppx,
-    #     'ppy' : intrinsics.ppy
-    #     }
-
-    camera_matrix = np.array(
-        [
-            [intrinsics.fx, 0.0, intrinsics.ppx],
-            [0.0, intrinsics.fy, intrinsics.ppy],
-            [0.0, 0.0, 1.0],
-        ]
-    )
-
-    distortion_model = intrinsics.model
-
-    distortion_coefficients = np.array(intrinsics.coeffs)
-
-    camera_info = {
-        "camera_matrix": camera_matrix,
-        "distortion_coefficients": distortion_coefficients,
-        "distortion_model": distortion_model,
-    }
-
-    return camera_info

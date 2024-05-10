@@ -3,10 +3,12 @@ import time
 
 import cv2
 import numpy as np
-import stretch_ai.servo.d405_helpers as dh
-import stretch_ai.utils.loop_timer as lt
 import zmq
 from stretch_ai.utils.image import adjust_gamma
+
+import stretch.drivers.d405 as dh
+import stretch.utils.loop_stats as lt
+from stretch.drivers.d405 import D405
 
 
 ###########################
@@ -33,12 +35,13 @@ def autoAdjustments_with_convertScaleAbs(img):
 
 
 def main(use_remote_computer, d405_port, exposure, scaling, gamma):
+    d405 = None
     try:
         print("cv2.__version__ =", cv2.__version__)
         print("cv2.__path__ =", cv2.__path__)
         print("sys.version =", sys.version)
 
-        pipeline, profile = dh.start_d405(exposure)
+        d405 = D405(exposure)
         first_frame = True
 
         context = zmq.Context()
@@ -55,26 +58,20 @@ def main(use_remote_computer, d405_port, exposure, scaling, gamma):
 
         socket.bind(address)
 
-        loop_timer = lt.LoopTimer()
+        loop_timer = lt.LoopStats("d405_sender")
 
         # Run in a loop, get images and publish them.
         while True:
-            loop_timer.start_of_iteration()
-
-            frames = pipeline.wait_for_frames()
-            depth_frame = frames.get_depth_frame()
-            color_frame = frames.get_color_frame()
-
-            if (not depth_frame) or (not color_frame):
-                continue
+            loop_timer.mark_start()
 
             if first_frame:
-                depth_scale = dh.get_depth_scale(profile)
+                depth_scale = d405.get_depth_scale()
                 print("depth_scale = ", depth_scale)
                 print()
 
-                depth_camera_info = dh.get_camera_info(depth_frame)
-                color_camera_info = dh.get_camera_info(color_frame)
+                # Get camera info
+                depth_camera_info, color_camera_info = d405.get_camera_infos()
+
                 print_camera_info = True
                 if print_camera_info:
                     for camera_info, name in [
@@ -94,6 +91,7 @@ def main(use_remote_computer, d405_port, exposure, scaling, gamma):
                     "depth_scale": depth_scale,
                 }
 
+            depth_frame, color_frame = d405.get_frames()
             depth_image = np.asanyarray(depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
@@ -135,11 +133,12 @@ def main(use_remote_computer, d405_port, exposure, scaling, gamma):
 
             socket.send_pyobj(d405_output)
 
-            loop_timer.end_of_iteration()
+            loop_timer.mark_end()
             loop_timer.pretty_print()
 
     finally:
-        pipeline.stop()
+        if d405 is not None:
+            d405.stop()
 
 
 if __name__ == "__main__":

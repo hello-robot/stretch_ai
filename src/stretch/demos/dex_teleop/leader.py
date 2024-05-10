@@ -96,6 +96,7 @@ class DexTeleopLeader(Evaluator):
         user_name: str = "default_user",
         env_name: str = "default_env",
         force_record: bool = False,
+        display_point_cloud: bool = False,
     ):
         super().__init__()
         self.camera = None
@@ -103,6 +104,7 @@ class DexTeleopLeader(Evaluator):
         # TODO: fix these two things
         manipulate_on_ground = False
         slide_lift_range = False
+        self.display_point_cloud = display_point_cloud
 
         self.use_fastest_mode = use_fastest_mode
         self.left_handed = left_handed
@@ -167,16 +169,9 @@ class DexTeleopLeader(Evaluator):
         if self.camera is None:
             self.camera = Camera.from_K(self.camera_info['camera_matrix'], width=color_image.shape[1], height=color_image.shape[0])
     
-        print("depth_image", depth_image.shape)
-        print("depth scaling", self.depth_scale)
-        print("image scaling", image_scaling)
-        print("image gamma", image_gamma)
-        print(np.unique(depth_image))
-        display_point_cloud = True
-
         # Convert depth to meters
         depth_image = depth_image.astype(np.float32) * self.depth_scale
-        if display_point_cloud:
+        if self.display_point_cloud:
             print("depth scale", self.depth_scale)
             xyz = self.camera.depth_to_xyz(depth_image)
             show_point_cloud(xyz, color_image / 255, orig=np.zeros(3))
@@ -271,6 +266,7 @@ if __name__ == "__main__":
         default=None,
         help="The filename of the recorded session to replay, if set..",
     )
+    parser.add_argument("--display_point_cloud", action="store_true")
     args = parser.parse_args()
 
     client = RobotClient(
@@ -286,6 +282,8 @@ if __name__ == "__main__":
         user_name=args.user_name,
         task_name=args.task_name,
         env_name=args.env_name,
+        force_record=args.force,
+        display_point_cloud=args.display_point_cloud,
     )
     try:
         client.run(evaluator)
