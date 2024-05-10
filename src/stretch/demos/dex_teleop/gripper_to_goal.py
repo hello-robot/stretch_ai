@@ -170,7 +170,7 @@ class GripperToGoal:
         self.max_allowed_wrist_yaw_change = dt.max_allowed_wrist_yaw_change
         self.max_allowed_wrist_roll_change = dt.max_allowed_wrist_roll_change
 
-    def get_current_position(self):
+    def get_current_config(self):
         state = {
             "joint_mobile_base_rotation": 0.0,
             "joint_lift": self.robot.status["lift"]["pos"],
@@ -182,7 +182,7 @@ class GripperToGoal:
         return state
 
     def get_current_ee_pose(self):
-        state = self.get_current_position()
+        state = self.get_current_config()
         return self.manip_ik_solver.compute_fk(state)
 
     def __del__(self):
@@ -241,7 +241,7 @@ class GripperToGoal:
             new_goal_configuration = self.simple_ik.ik_rotary_base(wrist_position)
         else:
             res, success, info = self.manip_ik_solver.compute_ik(
-                wrist_position, gripper_orientation, q_init=self.get_current_position()
+                wrist_position, gripper_orientation, q_init=self.get_current_config()
             )
             new_goal_configuration = self.manip_ik_solver.q_array_to_dict(res)
             if not success:
@@ -572,7 +572,7 @@ if __name__ == "__main__":
             print("Commanded goal =")
             pp.pp(goal_dict)
             print("Current position =")
-            pp.pp(gripper_to_goal.get_current_position())
+            pp.pp(gripper_to_goal.get_current_config())
             print("Current ee pose =")
             pos, quat = gripper_to_goal.get_current_ee_pose()
             r = Rotation.from_quat(quat)

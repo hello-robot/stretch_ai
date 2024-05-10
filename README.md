@@ -89,6 +89,8 @@ Dex teleop is a low-cost system for providing user demonstrations of dexterous s
 To start it, on the robot, run:
 ```bash
 python -m stretch.demos.dex_teleop.follower
+# You can run it in fast mode once you are comfortable with execution
+python -m stretch.demos.dex_teleop.follower --fast
 ```
 
 On a remote, GPU-enabled laptop or workstation connected to the [dex telop setup](https://github.com/hello-robot/stretch_dex_teleop):
