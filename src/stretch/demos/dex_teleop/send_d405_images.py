@@ -34,7 +34,15 @@ def autoAdjustments_with_convertScaleAbs(img):
 ###########################
 
 
-def main(use_remote_computer, d405_port, exposure, scaling, gamma):
+def main(
+    use_remote_computer,
+    d405_port,
+    exposure,
+    scaling,
+    gamma,
+    verbose: bool = True,
+    brighten_image: bool = False,
+):
     d405 = None
     try:
         print("cv2.__version__ =", cv2.__version__)
@@ -95,11 +103,13 @@ def main(use_remote_computer, d405_port, exposure, scaling, gamma):
             depth_image = np.asanyarray(depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
-            print(f"{depth_image.shape=} {color_image.shape=}")
+            if verbose:
+                print(f"{depth_image.shape=} {color_image.shape=}")
 
             if gamma != 1.0:
                 color_image = adjust_gamma(color_image, gamma)
-                print(f" - gamma adjustment {gamma}")
+                if verbose:
+                    print(f" - gamma adjustment {gamma}")
 
             if scaling != 1.0:
                 color_image = cv2.resize(
@@ -116,11 +126,12 @@ def main(use_remote_computer, d405_port, exposure, scaling, gamma):
                     fy=scaling,
                     interpolation=cv2.INTER_NEAREST,
                 )
-                print(f" - scaled by {scaling}")
+                if verbose:
+                    print(f" - scaled by {scaling}")
 
-            print(f"{depth_image.shape=} {color_image.shape=}")
+            if verbose:
+                print(f"{depth_image.shape=} {color_image.shape=}")
 
-            brighten_image = False
             if brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
 
@@ -134,7 +145,8 @@ def main(use_remote_computer, d405_port, exposure, scaling, gamma):
             socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
-            loop_timer.pretty_print()
+            if verbose:
+                loop_timer.pretty_print()
 
     finally:
         if d405 is not None:

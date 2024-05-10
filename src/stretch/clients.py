@@ -10,10 +10,7 @@ from .utils import auth
 
 
 def require_connection(function):
-    print(function, function.__name__)
-
     def wrapper_function(self, *args, **kwargs):
-        print("before {}".format(function.__name__))
         if not self.connected:
             raise NotConnectedException("use the connect() method")
         return function(self, *args, **kwargs)
