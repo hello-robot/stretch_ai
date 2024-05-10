@@ -53,27 +53,13 @@ class RobotClient:
         """Run the client. Optionally pass in an eval function."""
 
         loop_timer = lt.LoopStats(self.name)
-        first_frame = True
 
         try:
             while True:
 
                 loop_timer.mark_start()
-
-                d405_output = self.d405_socket.recv_pyobj()
-                color_image = d405_output["color_image"]
-                depth_image = d405_output["depth_image"]
-                depth_camera_info = d405_output["depth_camera_info"]
-                depth_scale = d405_output["depth_scale"]
-
-                if first_frame and evaluator is not None:
-                    evaluator.set_camera_parameters(depth_camera_info, depth_scale)
-                    first_frame = False
-
-                # After extracting image, pass it to whatever is going to use it.
-                # Results are currently ignored.
-                # TODO: we might want to change this code path to something a bit better.
-                _ = evaluator.apply(color_image, depth_image, image_gamma=d405_output["image_gamma"], image_scaling=d405_output["image_scaling"])
+                message = self.d405_socket.recv_pyobj()
+                _ = evaluator.apply(message)
 
                 loop_timer.mark_end()
                 if self.verbose:

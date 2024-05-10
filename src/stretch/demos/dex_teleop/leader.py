@@ -5,6 +5,7 @@ import numpy as np
 import zmq
 from scipy.spatial.transform import Rotation
 from typing import Optional
+import math
 
 import stretch.demos.dex_teleop.dex_teleop_parameters as dt
 import stretch.demos.dex_teleop.goal_from_teleop as gt
@@ -27,6 +28,12 @@ def process_goal_dict(goal_dict, prev_goal_dict=None) -> dict:
     - compute quaternion
     - fix offsets if necessary
     """
+
+    if "gripper_x_axis" not in goal_dict:
+        # If we don't have the necessary information, return the goal_dict as is
+        # This means tool was not detected
+        goal_dict["valid"] = False
+        return goal_dict
 
     # Convert goal dict into a quaternion
     # Start by getting the rotation as a usable object
@@ -67,7 +74,7 @@ def process_goal_dict(goal_dict, prev_goal_dict=None) -> dict:
         # print(T1[:3, 3])
 
     goal_dict["use_gripper_center"] = use_gripper_center
-    if prev_goal_dict is not None:
+    if prev_goal_dict is not None and "gripper_orientation" in prev_goal_dict:
 
         T0 = np.eye(4)
         r0 = Rotation.from_quat(prev_goal_dict["gripper_orientation"])
@@ -80,11 +87,24 @@ def process_goal_dict(goal_dict, prev_goal_dict=None) -> dict:
             T[:3, :3]
         ).as_quat()
 
+        goal_dict["valid"] = True
+    else:
+        goal_dict["valid"] = False
+
     return goal_dict
 
 
 class DexTeleopLeader(Evaluator):
     """A class for evaluating the DexTeleop system."""
+
+
+    # Configurations for the head
+    look_at_ee_cfg = np.array([-np.pi / 2, -np.pi / 4])
+    look_front_cfg = np.array([0.0, math.radians(-30)])
+    look_ahead_cfg = np.array([0.0, 0.0])
+    look_close_cfg = np.array([0.0, math.radians(-45)])
+    look_down_cfg = np.array([0.0, math.radians(-58)])
+
 
     def __init__(
         self,
@@ -158,10 +178,18 @@ class DexTeleopLeader(Evaluator):
         self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name)
         self.prev_goal_dict = None
 
-    def apply(
-            self, color_image, depth_image, image_gamma: Optional[float] = None, image_scaling: Optional[float] = None, display_received_images: bool = True
+    def apply(self, message, display_received_images: bool = True
     ) -> dict:
         """Take in image data and other data received by the robot and process it appropriately. Will run the aruco marker detection, predict a goal send that goal to the robot, and save everything to disk for learning."""
+
+        color_image = message["ee_cam/color_image"]
+        depth_image = message["ee_cam/depth_image"]
+        depth_camera_info = message["ee_cam/depth_camera_info"]
+        depth_scale = message["ee_cam/depth_scale"]
+        image_gamma=message["ee_cam/image_gamma"]
+        image_scaling=message["ee_cam/image_scaling"]
+        if self.camera_info is None:
+            self.set_camera_parameters(depth_camera_info, depth_scale)
 
         assert (self.camera_info is not None) and (
             self.depth_scale is not None
@@ -183,6 +211,10 @@ class DexTeleopLeader(Evaluator):
             cv2.imshow("EE RGB/Depth Image", combined)
             # cv2.imshow('Received Depth Image', depth_image)
 
+        # By default, no head or base commands
+        head_cfg = None
+        xyt = None
+
         # Wait for spacebar to be pressed and start/stop recording
         # Spacebar is 32
         # Escape is 27
@@ -199,36 +231,56 @@ class DexTeleopLeader(Evaluator):
                     # Try to terminate
                     print("[LEADER] Force recording done. Terminating.")
                     return None
-        if key == 27:
+            head_cfg = self.look_ahead_cfg if not self._recording else self.look_at_ee_cfg
+        elif key == 27:
             if self._recording:
                 self._need_to_write = True
             self._recording = False
             self.set_done()
             print("[LEADER] Recording stopped. Terminating.")
+        if not self._recording:
+            # Process WASD keys for motion
+            if key == ord("w"):
+                xyt = np.array([0.2, 0.0, 0.0])
+            elif key == ord("a"):
+                xyt = np.array([0.0, 0.0, -np.pi/8])
+            elif key == ord("s"):
+                xyt = np.array([-0.2, 0.0, 0.0])
+            elif key == ord("d"):
+                xyt = np.array([0.0, 0.0, np.pi/8])
 
         markers = self.webcam_aruco_detector.process_next_frame()
+
+        # Set up commands to be sent to the robot
         goal_dict = self.goal_from_markers.get_goal_dict(markers)
 
         if goal_dict is not None:
             # Convert goal dict into a quaternion
             process_goal_dict(goal_dict, self.prev_goal_dict)
+        else:
+            # Goal dict that is not worth processing
+            goal_dict = {"valid": False}
+        if head_cfg is not None:
+            goal_dict["head_config"] = head_cfg
+        if xyt is not None:
+            goal_dict["move_xyt"] = xyt
 
-            if self._recording:
-                print("[LEADER] goal_dict =")
-                pp.pprint(goal_dict)
+        if self._recording:
+            print("[LEADER] goal_dict =")
+            pp.pprint(goal_dict)
 
-            if self._recording and self.prev_goal_dict is not None:
-                self._recorder.add(
-                    color_image,
-                    depth_image,
-                    goal_dict["relative_gripper_position"],
-                    goal_dict["relative_gripper_orientation"],
-                    goal_dict["grip_width"],
-                )
+        if self._recording and self.prev_goal_dict is not None and goal_dict["valid"]:
+            self._recorder.add(
+                color_image,
+                depth_image,
+                goal_dict["relative_gripper_position"],
+                goal_dict["relative_gripper_orientation"],
+                goal_dict["grip_width"],
+            )
 
-            # Send goal_dict to robot
-            self.goal_send_socket.send_pyobj(goal_dict)
-            self.prev_goal_dict = goal_dict
+        # Send goal_dict to robot
+        self.goal_send_socket.send_pyobj(goal_dict)
+        self.prev_goal_dict = goal_dict
 
         if self._need_to_write:
             print("[LEADER] Writing data to disk.")

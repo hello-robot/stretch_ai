@@ -476,3 +476,20 @@ def adjust_intrinsics_matrix(K, old_size, new_size):
     K_new[1, 2] *= scale_y  # Adjust c_y
 
     return K_new
+
+
+def adjust_gamma(image: np.ndarray, gamma: float = 1.0):
+    """Build a lookup table mapping the pixel values [0, 255] to their adjusted gamma values. Gamma correction is used to adjust the brightness of an image. Gamma = 1.0 has no effect, gamma < 1.0 darkens the image, and gamma > 1.0 brightens the image.
+
+    Args:
+        image (numpy.ndarray): The image to adjust.
+        gamma (float): The gamma value to apply to the image.
+    """
+
+    invGamma = 1.0 / gamma
+    table = np.array(
+        [((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]
+    ).astype("uint8")
+
+    # apply gamma correction using the lookup table
+    return cv2.LUT(image, table)
