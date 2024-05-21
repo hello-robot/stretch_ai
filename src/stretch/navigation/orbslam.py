@@ -3,16 +3,22 @@ import threading
 import time
 from typing import List, Tuple
 
-import stretch.comms.recv_head_nav_cam as recv_head_nav_cam
-from stretch.navigation.base import Pose, Slam 
-
 import cv2
 import numpy as np
 import orbslam3
 
+import stretch.comms.recv_head_nav_cam as recv_head_nav_cam
+from stretch.navigation.base import Pose, Slam
+
+
 class OrbSlam(Slam):
-    def __init__(self, vocab_path: str = "", config_path: str = "",
-                 camera_ip_addr: str = "", base_port: int = -1):
+    def __init__(
+        self,
+        vocab_path: str = "",
+        config_path: str = "",
+        camera_ip_addr: str = "",
+        base_port: int = -1,
+    ):
         """
         Constructor for Slam class.
         Creates ORB-SLAM3 backend and camera sockets.
@@ -23,9 +29,13 @@ class OrbSlam(Slam):
         camera_ip_addr (str): Camera's (Head) ZMQ IP address.
         base_port (int): Camera's (Head) ZMQ port.
         """
-        assert vocab_path != "","Vocabulary path should not be \
+        assert (
+            vocab_path != ""
+        ), "Vocabulary path should not be \
                                  an empty string."
-        assert config_path != "", "ORB-SLAM3 config file path should not be \
+        assert (
+            config_path != ""
+        ), "ORB-SLAM3 config file path should not be \
                                    an empty string."
         assert camera_ip_addr != "", "Camera's ZMQ IP address must be set."
         assert base_port != -1, "Camera's ZMQ port must be set."
@@ -33,13 +43,13 @@ class OrbSlam(Slam):
         self.vocab_path = vocab_path
         self.config_path = config_path
 
-        self.slam_system = orbslam3.System(self.vocab_path,
-                                           self.config_path,
-                                           orbslam3.Sensor.MONOCULAR)
+        self.slam_system = orbslam3.System(
+            self.vocab_path, self.config_path, orbslam3.Sensor.MONOCULAR
+        )
         self.slam_system.set_use_viewer(False)
-        _, self.camera_sock = recv_head_nav_cam.initialize(camera_ip_addr,
-                                                           base_port+4,
-                                                           base_port+5)
+        _, self.camera_sock = recv_head_nav_cam.initialize(
+            camera_ip_addr, base_port + 4, base_port + 5
+        )
 
         self.image = None
         self.timestamp = None
@@ -55,7 +65,7 @@ class OrbSlam(Slam):
         Initializes ORB-SLAM3 backend.
         """
         self.slam_system.initialize()
-    
+
     def set_use_viewer(self, use_viewer: bool = True):
         """
         Use ORB_SLAM3's visualization GUI. Must be called before initialize()
@@ -94,7 +104,8 @@ class OrbSlam(Slam):
         while True:
             self.image = cv2.cvtColor(
                 recv_head_nav_cam.recv_imagery_as_base64_str(self.camera_sock),
-                cv2.COLOR_RGB2BGR)
+                cv2.COLOR_RGB2BGR,
+            )
             self.timestamp = time.time()
 
     def slam_thread(self):
@@ -105,18 +116,17 @@ class OrbSlam(Slam):
             if type(self.image) == np.ndarray and self.timestamp:
                 current_image = copy.deepcopy(self.image)
                 self.image = None
-                self.slam_system.process_image_mono(current_image,
-                                                    self.timestamp)
+                self.slam_system.process_image_mono(current_image, self.timestamp)
 
                 self.trajectory_points.clear()
                 for point in self.slam_system.get_trajectory_points():
                     ## Extract timestamp and quaternion
                     timestamp = point[0]
                     q = np.array([point[4], point[5], point[6], point[7]])
-                    
+
                     # Extract translation vector
                     twc = np.array([point[1], point[2], point[3]])
-                    
+
                     # Compute Euler angles
                     q /= np.linalg.norm(q)  # Normalize quaternion
 
@@ -136,13 +146,9 @@ class OrbSlam(Slam):
                     # Yaw (z-axis rotation)
                     yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
 
-                    self.trajectory_points.append(Pose(timestamp,
-                                                       twc[0],
-                                                       twc[1],
-                                                       twc[2],
-                                                       roll,
-                                                       pitch,
-                                                       yaw))
+                    self.trajectory_points.append(
+                        Pose(timestamp, twc[0], twc[1], twc[2], roll, pitch, yaw)
+                    )
 
                 if len(self.trajectory_points) > 0:
                     self.pose = self.trajectory_points[-1]
@@ -153,10 +159,8 @@ class OrbSlam(Slam):
         Creates threads for listening incoming image frames and
         processing them through the SLAM pipeline.
         """
-        self.camera_thread = \
-            threading.Thread(target=self.camera_thread, args=())
-        self.slam_thread = \
-            threading.Thread(target=self.slam_thread, args=())
+        self.camera_thread = threading.Thread(target=self.camera_thread, args=())
+        self.slam_thread = threading.Thread(target=self.slam_thread, args=())
 
         self.camera_thread.start()
         self.slam_thread.start()
