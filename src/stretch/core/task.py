@@ -2,6 +2,10 @@ import abc
 from typing import Optional
 
 
+class Operation:
+    pass
+
+
 class Operation(abc.ABC):
     def __init__(
         self,
