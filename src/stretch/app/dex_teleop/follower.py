@@ -17,7 +17,7 @@ import stretch.motion.simple_ik as si
 import stretch.utils.loop_stats as lt
 from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
-from stretch.utils.image import adjust_gamma
+from stretch.utils.image import adjust_gamma, autoAdjustments_with_convertScaleAbs
 
 HEAD_CONFIG = "head_config"
 EE_POS = "wrist_position"
