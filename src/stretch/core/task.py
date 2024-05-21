@@ -24,6 +24,9 @@ class Operation(abc.ABC):
         self.on_success = on_success
         self.on_failure = on_failure
 
+        if self.parent is not None and self.parent.on_success is None:
+            self.parent.on_success = self
+
     @abc.abstractmethod
     def can_start(self) -> bool:
         """Returns true if the operation can begin or not."""
@@ -56,10 +59,20 @@ class Task:
     def add_operation(self, operation):
         """Add this operation into the task."""
         # We will set the initial operation if not there
-        if self.operation.parent is None:
-            if self.initial_operation is not None:
-                raise ValueError("Cannot have more than one initial operation.")
-            self.initial_operation = operation
+        if self.initial_operation is None:
+            if operation.parent is None:
+                self.initial_operation = operation
+
+        # Get the last operation to make it easier to add
+        prev_operation = (
+            self._all_operations[-1] if len(self._all_operations) > 0 else None
+        )
+
+        if len(self._all_operations) > 0:
+            if prev_operation.on_success is None:
+                # If we have a previous operation, set the parent
+                prev_operation.on_success = operation
+
         # Add it to the list
         self._all_operations.append(operation)
 
@@ -71,17 +84,16 @@ class Task:
         while self.current_operation is not None:
             if self.current_operation.can_start():
                 self.current_operation.run()
+                if self.current_operation.was_successful():
+                    # Transition if we were successful
+                    self.current_operation = self.current_operation.on_success
+                else:
+                    # And if we failed
+                    self.current_operation = self.current_operation.on_failure
             else:
                 print(f"Operation {self.current_operation.name} cannot start.")
                 if self.current_operation.on_cannot_start is None:
                     raise ValueError("Cannot start critical operation.")
                 self.current_operation = self.current_operation.on_cannot_start
-
-            if self.current_operation.was_successful():
-                # Transition if we were successful
-                self.current_operation = self.current_operation.on_success
-            else:
-                # And if we failed
-                self.current_operation = self.current_operation.on_failure
 
         print("Task complete.")
