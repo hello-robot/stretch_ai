@@ -55,9 +55,15 @@ class Task:
         self.current_operation = None
         self.initial_operation = None
         self._all_operations = []
+        self._terminal_operations = []
 
-    def add_operation(self, operation):
-        """Add this operation into the task."""
+    def add_operation(self, operation, terminal: bool = False):
+        """Add this operation into the task.
+
+        Args:
+            operation: The operation to add.
+            terminal: Whether this operation will end the task plan or not.
+        """
         # We will set the initial operation if not there
         if self.initial_operation is None:
             if operation.parent is None:
@@ -67,9 +73,12 @@ class Task:
         prev_operation = (
             self._all_operations[-1] if len(self._all_operations) > 0 else None
         )
+        # We can add this to the list of terminal operations for the task plan
+        if terminal:
+            self._terminal_operations.append(operation)
 
         if len(self._all_operations) > 0:
-            if prev_operation.on_success is None:
+            if prev_operation.on_success is None and not terminal:
                 # If we have a previous operation, set the parent
                 prev_operation.on_success = operation
 
