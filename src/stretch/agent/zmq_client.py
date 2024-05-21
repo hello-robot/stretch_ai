@@ -108,6 +108,25 @@ class HomeRobotZmqClient(RobotClient):
             compass = self._obs["compass"]
         return np.concatenate([gps, compass], axis=-1)
 
+    def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
+        """Move the arm to a particular joint configuration.
+
+        Args:
+            joint_angles: 6 or Nx6 array of the joint angles to move to
+            blocking: Whether to block until the motion is complete
+        """
+        if isinstance(joint_angles, list):
+            joint_angles = np.array(joint_angles)
+        assert (
+            joint_angles.shape[-1] == 6
+        ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
+        with self._act_lock:
+            self._next_action["joint"] = joint_angles
+            self._next_action["manip_blocking"] = blocking
+
+        # Blocking is handled in here
+        self.send_action()
+
     def navigate_to(
         self, xyt: ContinuousNavigationAction, relative=False, blocking=False
     ):
