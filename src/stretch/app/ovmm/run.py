@@ -20,8 +20,8 @@ from PIL import Image
 # Mapping and perception
 import stretch.utils.depth as du
 from stretch.agent import get_parameters
-from stretch.agent.receiver import HomeRobotZmqClient
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.robot import RobotClient
 
 # Import planning tools for exploration
