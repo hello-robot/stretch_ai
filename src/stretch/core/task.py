@@ -77,7 +77,7 @@ class Task:
         if terminal:
             self._terminal_operations.append(operation)
 
-        if len(self._all_operations) > 0:
+        if prev_operation is not None:
             if prev_operation.on_success is None and not terminal:
                 # If we have a previous operation, set the parent
                 prev_operation.on_success = operation
