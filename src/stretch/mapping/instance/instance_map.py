@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import shutil
-import warnings
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -799,14 +798,12 @@ class InstanceMemory:
                 volume = float(box3d_volume_from_bounds(bounds).squeeze())
 
                 if volume < float(self.min_instance_vol):
-                    warnings.warn(
+                    logger.info(
                         f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
-                        UserWarning,
                     )
                 elif volume > float(self.max_instance_vol):
-                    warnings.warn(
+                    logger.info(
                         f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
-                        UserWarning,
                     )
                 elif (
                     min(
@@ -816,19 +813,16 @@ class InstanceMemory:
                     )
                     < self.min_instance_thickness
                 ):
-                    warnings.warn(
+                    logger.info(
                         f"Skipping a flat instance with {n_points} points",
-                        UserWarning,
                     )
                 elif (bounds[2][0] + bounds[2][1]) / 2.0 < self.min_instance_height:
-                    warnings.warn(
+                    logger.info(
                         f"Skipping a instance with low height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
-                        UserWarning,
                     )
                 elif (bounds[2][0] + bounds[2][1]) / 2.0 > self.max_instance_height:
-                    warnings.warn(
+                    logger.info(
                         f"Skipping a instance with high height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
-                        UserWarning,
                     )
                 else:
                     # get instance view
@@ -850,9 +844,8 @@ class InstanceMemory:
                     # append instance view to list of instance views
                     self.unprocessed_views[env_id][instance_id.item()] = instance_view
             else:
-                warnings.warn(
+                logger.info(
                     f"Skipping a small instance with {n_mask} pixels",
-                    UserWarning,
                 )
 
             t1 = timeit.default_timer()

@@ -230,7 +230,7 @@ class SparseVoxelMap(object):
         if self.use_instance_memory:
             self.instances = InstanceMemory(
                 num_envs=1,
-                encoder=self.encoder,
+                # encoder=self.encoder,
                 **self.instance_memory_kwargs,
             )
         else:
