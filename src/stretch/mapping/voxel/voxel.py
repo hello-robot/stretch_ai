@@ -6,6 +6,7 @@ import copy
 import logging
 import math
 import pickle
+import timeit
 from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -229,6 +230,7 @@ class SparseVoxelMap(object):
         if self.use_instance_memory:
             self.instances = InstanceMemory(
                 num_envs=1,
+                encoder=self.encoder,
                 **self.instance_memory_kwargs,
             )
         else:
@@ -466,6 +468,8 @@ class SparseVoxelMap(object):
 
         # Add instance views to memory
         if self.use_instance_memory:
+            # Add to instance memory
+            t0 = timeit.default_timer()
             instance = instance_image.clone()
 
             self.instances.process_instances_for_env(
@@ -479,9 +483,11 @@ class SparseVoxelMap(object):
                 background_instance_labels=[self.background_instance_label],
                 valid_points=valid_depth,
                 pose=base_pose,
-                encoder=self.encoder,
             )
+            t1 = timeit.default_timer()
             self.instances.associate_instances_to_memory()
+            t2 = timeit.default_timer()
+            print("Instance memory processing time: ", t1 - t0, t2 - t1)
 
         # Add to voxel grid
         if feats is not None:

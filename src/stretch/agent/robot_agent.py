@@ -452,7 +452,7 @@ class RobotAgent:
         else:
             return self.ask("please type any task you want the robot to do: ")
 
-    def update(self, visualize_map=False):
+    def update(self, visualize_map: bool = False, debug_instances: bool = False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
         t0 = timeit.default_timer()
@@ -475,6 +475,20 @@ class RobotAgent:
         if visualize_map:
             # Now draw 2d maps to show waht was happening
             self.voxel_map.get_2d_map(debug=True)
+
+        debug_instances = True
+        if debug_instances:
+            import matplotlib
+
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            instances = self.voxel_map.get_instances()
+            for instance in instances:
+                best_view = instance.get_best_view()
+                plt.imshow(best_view.get_image())
+                plt.axis("off")
+                plt.show()
 
     def plan_to_instance(
         self,

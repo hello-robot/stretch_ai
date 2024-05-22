@@ -134,6 +134,7 @@ class InstanceMemory:
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
         open_vocab_cat_map_file: str = None,
+        encoder: Optional[ClipEncoder] = None,
     ):
         """See class definition for information about InstanceMemory
 
@@ -161,6 +162,7 @@ class InstanceMemory:
         self.global_box_nms_thresh = global_box_nms_thresh
         self.instance_box_compression_drop_prop = instance_box_compression_drop_prop
         self.instance_box_compression_resolution = instance_box_compression_resolution
+        self.encoder = encoder
 
         self.min_instance_vol = min_instance_vol
         self.max_instance_vol = max_instance_vol
@@ -587,6 +589,30 @@ class InstanceMemory:
         )
         return image_downsampled
 
+    def filter_background_preds_using_clip(self, cropped_image, embedding):
+        """
+        Filter out background predictions using CLIP embeddings.
+        """
+        background_classes = (["wall", "ceiling", "floor", "others"],)
+        clip_threshold = 1
+        img_embeddings = embedding.unsqueeze(0)
+        class_embeddings = torch.cat(
+            [self.encoder.encode_text(bgc) for bgc in background_classes]
+        ).to(cropped_image.device)
+        img_embeddings /= img_embeddings.norm(dim=-1, keepdim=True)
+
+    def get_open_vocab_labels(self, cropped_image):
+        img_embeddings = (
+            self.encoder.encode_image(cropped_image).to(cropped_image.device).unsqueeze(0)
+        )
+        class_embeddings = torch.cat([self.encoder.encode_text(ovc) for ovc in self.open_vocab]).to(
+            cropped_image.device
+        )
+        img_embeddings /= img_embeddings.norm(dim=-1, keepdim=True)
+        class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
+        scores = (100.0 * img_embeddings @ class_embeddings.T).softmax(dim=-1).squeeze()
+        return self.open_vocab[torch.argmax(scores).item()]
+
     def process_instances_for_env(
         self,
         env_id: int,
@@ -601,7 +627,6 @@ class InstanceMemory:
         background_instance_labels: List[int] = [0],
         valid_points: Optional[Tensor] = None,
         pose: Optional[Tensor] = None,
-        encoder: Optional[ClipEncoder] = None,
     ):
         """
         Process instance information in the current frame and add instance views to the list of unprocessed views for future association.
@@ -668,9 +693,14 @@ class InstanceMemory:
         else:
             valid_points_downsampled = valid_points
 
+        import timeit
+
+        t0 = timeit.default_timer()
         # unique instances
         instance_ids = torch.unique(instance_seg)
         for instance_id in instance_ids:
+            t0 = timeit.default_timer()
+
             # skip background
             if instance_id in background_instance_labels:
                 continue
@@ -746,47 +776,14 @@ class InstanceMemory:
             cropped_image = self.get_cropped_image(image, bbox)
             instance_mask = self.get_cropped_image(instance_mask.unsqueeze(0), bbox)
 
-            # image_array = np.array(cropped_image * instance_mask, dtype=np.uint8)
-            # image_debug = Image.fromarray(image_array)
-            # image_debug.show()
-
             # get embedding
-            if encoder is not None:
+            if self.encoder is not None:
                 # embedding = encoder.encode_image(cropped_image).to(cropped_image.device)
-                embedding = encoder.encode_image(cropped_image * instance_mask).to(
+                embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
                     cropped_image.device
                 )
             else:
                 embedding = None
-
-            # im = Image.fromarray(np.array(cropped_image.to(torch.uint8)))
-            # im.save('test1.png')
-
-            def get_open_vocab_labels():
-                img_embeddings = (
-                    encoder.encode_image(cropped_image).to(cropped_image.device).unsqueeze(0)
-                )
-                class_embeddings = torch.cat(
-                    [encoder.encode_text(ovc) for ovc in self.open_vocab]
-                ).to(cropped_image.device)
-                img_embeddings /= img_embeddings.norm(dim=-1, keepdim=True)
-                class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
-                scores = (100.0 * img_embeddings @ class_embeddings.T).softmax(dim=-1).squeeze()
-                return self.open_vocab[torch.argmax(scores).item()]
-
-            def filter_background_preds_using_clip(
-                background_classes=["wall", "ceiling", "floor", "others"],
-                clip_threshold=1,
-            ):
-                img_embeddings = embedding.unsqueeze(0)
-                class_embeddings = torch.cat(
-                    [encoder.encode_text(bgc) for bgc in background_classes]
-                ).to(cropped_image.device)
-                img_embeddings /= img_embeddings.norm(dim=-1, keepdim=True)
-                class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
-                # print ((100.0 * img_embeddings @ class_embeddings.T).softmax(dim=-1))
-
-            # filter_background_preds_using_clip()
 
             # get point cloud
             point_mask_downsampled = instance_mask_downsampled & valid_points_downsampled
@@ -834,10 +831,6 @@ class InstanceMemory:
                         UserWarning,
                     )
                 else:
-                    # # get open-vocab labels
-                    # open_vocab_label = get_open_vocab_labels()
-                    # print(f"open vocab detected as: {open_vocab_label}")
-
                     # get instance view
                     instance_view = InstanceView(
                         bbox=bbox,
@@ -862,9 +855,8 @@ class InstanceMemory:
                     UserWarning,
                 )
 
-            # save cropped image with timestep in filename
-            if self.debug_visualize:
-                raise NotImplementedError("Image saving should be handled with a logger class")
+            t1 = timeit.default_timer()
+            print(f"Instance {instance_id} took {t1-t0} seconds")
 
         # This timestep should be passable (e.g. for Spot we have a Datetime object)
         self.timesteps[env_id] += 1
