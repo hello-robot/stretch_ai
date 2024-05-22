@@ -147,9 +147,6 @@ class SparseVoxelMap(object):
         self.obs_max_height = obs_max_height
         self.obs_min_density = obs_min_density
 
-        if use_instance_memory:
-            raise NotImplementedError("no instance memory yet")
-
         # Smoothing kernel params
         self.smooth_kernel_size = smooth_kernel_size
         if self.smooth_kernel_size > 0:
@@ -186,6 +183,7 @@ class SparseVoxelMap(object):
         self.encoder = encoder
         self.map_2d_device = map_2d_device
 
+        # Create kernel(s) for obstacle dilation over 2d/3d maps
         if self.pad_obstacles > 0:
             self.dilate_obstacles_kernel = torch.nn.Parameter(
                 torch.from_numpy(skimage.morphology.disk(self.pad_obstacles))
