@@ -7,12 +7,13 @@ from copy import deepcopy
 
 import cv2
 import numpy as np
-import stretch_ai.teleop.dex_teleop_parameters as dt
-import stretch_ai.teleop.teleop_aruco_detector as ad
-import stretch_ai.teleop.webcam as wc
 import yaml
 from scipy.spatial.transform import Rotation
 from yaml.loader import SafeLoader
+
+import stretch.teleop.dex_teleop_parameters as dt
+import stretch.teleop.teleop_aruco_detector as ad
+import stretch.teleop.webcam as wc
 
 
 def pixel_from_3d(xyz, camera_info):

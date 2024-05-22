@@ -3,9 +3,10 @@ import pprint as pp
 from multiprocessing import shared_memory
 
 import numpy as np
-import stretch_ai.motion.simple_ik as si
-import stretch_ai.teleop.dex_teleop_parameters as dt
-import stretch_ai.teleop.webcam_teleop_interface as wt
+
+import stretch.motion.simple_ik as si
+import stretch.teleop.dex_teleop_parameters as dt
+import stretch.teleop.webcam_teleop_interface as wt
 
 
 class GoalFromMarkers:
