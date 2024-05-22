@@ -85,9 +85,7 @@ class SimpleIK:
         self.end_effector_name = "link_wrist_yaw"
 
         self.rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
-        self.prismatic_urdf_file_name = (
-            "./stretch_base_translation_ik_with_fixed_wrist.urdf"
-        )
+        self.prismatic_urdf_file_name = "./stretch_base_translation_ik_with_fixed_wrist.urdf"
 
         self.rotary_urdf = load_urdf(self.rotary_urdf_file_name)
         self.prismatic_urdf = load_urdf(self.prismatic_urdf_file_name)
@@ -137,12 +135,8 @@ class SimpleIK:
         print("SimpleIK: self.prismatic_joint_limits =", self.prismatic_joint_limits)
         print()
 
-        self.rotary_end_effector_link = self.rotary_urdf.link_map[
-            self.end_effector_name
-        ]
-        self.prismatic_end_effector_link = self.prismatic_urdf.link_map[
-            self.end_effector_name
-        ]
+        self.rotary_end_effector_link = self.rotary_urdf.link_map[self.end_effector_name]
+        self.prismatic_end_effector_link = self.prismatic_urdf.link_map[self.end_effector_name]
 
         zero_cfg = {k: 0.0 for k in self.rotary_base_joints}
         zero_fk = self.rotary_urdf.link_fk(cfg=zero_cfg, links=[self.end_effector_name])
@@ -214,9 +208,7 @@ class SimpleIK:
                     joint_value = angle_diff_rad(joint_value, 0.0)
                 # print('SimpleIK clip_with_joint_limits initial joint_name, joint_value, lower_limit, upper_limit =',
                 # joint_name, joint_value, lower_limit, upper_limit)
-                robot_configuration[joint_name] = np.clip(
-                    joint_value, lower_limit, upper_limit
-                )
+                robot_configuration[joint_name] = np.clip(joint_value, lower_limit, upper_limit)
                 # print('SimpleIK clipped joint_value =', np.clip(joint_value, lower_limit, upper_limit))
         # print('SimpleIK clip_with_joint_limits final robot_configuration=', robot_configuration)
 
@@ -275,9 +267,7 @@ class SimpleIK:
         cfg = robot_configuration
 
         if use_urdf:
-            urdf_fk = self.prismatic_urdf.link_fk(
-                cfg=cfg, links=[self.end_effector_name]
-            )
+            urdf_fk = self.prismatic_urdf.link_fk(cfg=cfg, links=[self.end_effector_name])
             wrist_position = urdf_fk[self.prismatic_end_effector_link].dot(
                 np.array([0.0, 0.0, 0.0, 1.0])
             )[:3]
@@ -377,9 +367,7 @@ if __name__ == "__main__":
         print("joint configuration =", cfg)
         print("wrist_position_simple =", wrist_position_simple)
         print("wrist_position_urdf =", wrist_position_urdf)
-        print(
-            "time for Simple FK =", "{:.4f}".format(duration * 1000.0), "milliseconds"
-        )
+        print("time for Simple FK =", "{:.4f}".format(duration * 1000.0), "milliseconds")
         speedup = old_duration / duration
         print("speedup over urchin FK =", "{:.4f}".format(speedup))
         if wrist_position_simple is not None:
@@ -403,9 +391,7 @@ if __name__ == "__main__":
             (
                 optimized_configuration,
                 optimized_end_effector_pose,
-            ) = optas_ik.perform_ik_optimization(
-                wrist_position_goal, nominal_ik_urdf_configuration
-            )
+            ) = optas_ik.perform_ik_optimization(wrist_position_goal, nominal_ik_urdf_configuration)
             old_end_time = time.time()
             old_duration = old_end_time - old_start_time
             print("Optas IK optimized configuration =", optimized_configuration)
@@ -422,14 +408,10 @@ if __name__ == "__main__":
 
             simple_ik.clip_with_joint_limits(cfg)
             print("clipped IK configuration =", cfg)
-            clipped_wrist_position_simple = simple_ik.fk_rotary_base(
-                cfg, use_urdf=False
-            )
+            clipped_wrist_position_simple = simple_ik.fk_rotary_base(cfg, use_urdf=False)
             print("clipped FK wrist position =", clipped_wrist_position_simple)
 
-            error = np.linalg.norm(
-                np.array(wrist_position_goal) - wrist_position_simple
-            )
+            error = np.linalg.norm(np.array(wrist_position_goal) - wrist_position_simple)
             print(
                 "time for Simple IK =",
                 "{:.4f}".format(duration * 1000.0),
@@ -479,9 +461,7 @@ if __name__ == "__main__":
         print("joint configuration =", cfg)
         print("wrist_position_simple =", wrist_position_simple)
         print("wrist_position_urdf =", wrist_position_urdf)
-        print(
-            "time for Simple FK =", "{:.4f}".format(duration * 1000.0), "milliseconds"
-        )
+        print("time for Simple FK =", "{:.4f}".format(duration * 1000.0), "milliseconds")
         speedup = old_duration / duration
         print("speedup over urchin FK =", "{:.4f}".format(speedup))
         if wrist_position_simple is not None:
@@ -507,14 +487,10 @@ if __name__ == "__main__":
 
             simple_ik.clip_with_joint_limits(cfg)
             print("clipped IK configuration =", cfg)
-            clipped_wrist_position_simple = simple_ik.fk_prismatic_base(
-                cfg, use_urdf=False
-            )
+            clipped_wrist_position_simple = simple_ik.fk_prismatic_base(cfg, use_urdf=False)
             print("clipped FK wrist position =", clipped_wrist_position_simple)
 
-            error = np.linalg.norm(
-                np.array(wrist_position_goal) - wrist_position_simple
-            )
+            error = np.linalg.norm(np.array(wrist_position_goal) - wrist_position_simple)
             print(
                 "time for Simple IK =",
                 "{:.4f}".format(duration * 1000.0),

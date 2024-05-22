@@ -137,9 +137,7 @@ class FilePublisher:
             # Maybe wait for user input
             if wait_keypress_for_continue:
                 while not timer.event.is_set():
-                    _ = input(
-                        f"\nPress enter to continue ({len(os.listdir(obs_dir))}):"
-                    )
+                    _ = input(f"\nPress enter to continue ({len(os.listdir(obs_dir))}):")
                     timer.unpause()
                     time.sleep(0.1)
             timer.join()

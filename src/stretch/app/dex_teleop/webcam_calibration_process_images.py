@@ -19,9 +19,7 @@ def main():
     image_width = 1920
     image_height = 1080
 
-    image_directory = wc.get_calibration_directory(
-        camera_name, image_width, image_height
-    )
+    image_directory = wc.get_calibration_directory(camera_name, image_width, image_height)
     image_base_name = "webcam_calibration_image"
 
     file_name_pattern = image_directory + image_base_name + "_*.png"
@@ -115,9 +113,7 @@ def main():
                     print("********************************")
                     print()
 
-                aruco.drawDetectedCornersCharuco(
-                    color_image, charuco_corners, charuco_ids
-                )
+                aruco.drawDetectedCornersCharuco(color_image, charuco_corners, charuco_ids)
 
         cv2.imshow("Detected Charuco Corners", color_image)
         cv2.waitKey(1)
@@ -158,8 +154,7 @@ def main():
 
     # Convert from Numpy arrays to human-readable lists
     calibration_results = {
-        (k): (v.tolist() if "tolist" in dir(v) else v)
-        for k, v in calibration_results.items()
+        (k): (v.tolist() if "tolist" in dir(v) else v) for k, v in calibration_results.items()
     }
 
     results_file_time = time.strftime("%Y%m%d%H%M%S")

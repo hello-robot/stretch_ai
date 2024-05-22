@@ -60,9 +60,7 @@ def show_pcd(
     Optional origin and rotation params are for showing origin coordinate.
     Optional grasps param for showing a list of 6D poses as coordinate frames.
     """
-    geoms = create_visualization_geometries(
-        pcd=pcd, orig=orig, R=R, grasps=grasps, size=size
-    )
+    geoms = create_visualization_geometries(pcd=pcd, orig=orig, R=R, grasps=grasps, size=size)
     o3d.visualization.draw_geometries(geoms)
 
     if save is not None:
@@ -106,9 +104,7 @@ def create_visualization_geometries(
 
     geoms = [pcd]
     if orig is not None:
-        coords = o3d.geometry.TriangleMesh.create_coordinate_frame(
-            origin=orig, size=size
-        )
+        coords = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=orig, size=size)
         if R is not None:
             coords = coords.rotate(R, orig)
         geoms.append(coords)
@@ -265,9 +261,7 @@ R_CORRECTION = tra.euler_matrix(0, 0, np.pi / 2)[:3, :3]
 
 def opengl_depth_to_xyz(depth, camera):
     """get depth from numpy using simple pinhole camera model"""
-    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(
-        1, 2, 0
-    )
+    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(1, 2, 0)
     z = depth
     # pixel indices start at top-left corner. for these equations, it starts at bottom-left
     # indices[..., 0] = np.flipud(indices[..., 0])
@@ -280,9 +274,7 @@ def opengl_depth_to_xyz(depth, camera):
 
 def depth_to_xyz(depth, camera):
     """get depth from numpy using simple pinhole camera model"""
-    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(
-        1, 2, 0
-    )
+    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(1, 2, 0)
     z = depth
     # pixel indices start at top-left corner. for these equations, it starts at bottom-left
     x = (indices[:, :, 1] - camera.px) * (z / camera.fx)
@@ -334,9 +326,7 @@ def add_multiplicative_noise(depth_img, gamma_shape=10000, gamma_scale=0.0001):
 
     # Multiplicative noise: Gamma random variable
     # This will randomly shift around points locally
-    multiplicative_noise = np.random.gamma(
-        gamma_shape, gamma_scale, size=depth_img.shape
-    )
+    multiplicative_noise = np.random.gamma(gamma_shape, gamma_scale, size=depth_img.shape)
     # Apply this noise to the depth image
     depth_img = multiplicative_noise * depth_img
     return depth_img
@@ -357,15 +347,11 @@ def add_additive_noise_to_xyz(
 
     # Additive noise: Gaussian process, approximated by zero-mean anisotropic Gaussian random variable,
     #                 which is rescaled with bicubic interpolation.
-    gp_rescale_factor = np.random.randint(
-        gp_rescale_factor_range[0], gp_rescale_factor_range[1]
-    )
+    gp_rescale_factor = np.random.randint(gp_rescale_factor_range[0], gp_rescale_factor_range[1])
     gp_scale = np.random.uniform(gaussian_scale_range[0], gaussian_scale_range[1])
 
     small_H, small_W = (np.array([H, W]) / gp_rescale_factor).astype(int)
-    additive_noise = np.random.normal(
-        loc=0.0, scale=gp_scale, size=(small_H, small_W, C)
-    )
+    additive_noise = np.random.normal(loc=0.0, scale=gp_scale, size=(small_H, small_W, C))
     additive_noise = cv2.resize(additive_noise, (W, H), interpolation=cv2.INTER_CUBIC)
     if valid_mask is not None:
         # use this to add to the image
@@ -376,9 +362,7 @@ def add_additive_noise_to_xyz(
     return xyz_img
 
 
-def dropout_random_ellipses(
-    depth_img, dropout_mean, gamma_shape=10000, gamma_scale=0.0001
-):
+def dropout_random_ellipses(depth_img, dropout_mean, gamma_shape=10000, gamma_scale=0.0001):
     """Randomly drop a few ellipses in the image for robustness.
     This is adapted from the DexNet 2.0 code.
     Their code: https://github.com/BerkeleyAutomation/gqcnn/blob/75040b552f6f7fb264c27d427b404756729b5e88/gqcnn/sgd_optimizer.py
@@ -390,9 +374,7 @@ def dropout_random_ellipses(
     num_ellipses_to_dropout = np.random.poisson(dropout_mean)
 
     # Sample ellipse centers
-    nonzero_pixel_indices = np.array(
-        np.where(depth_img > 0)
-    ).T  # Shape: [#nonzero_pixels x 2]
+    nonzero_pixel_indices = np.array(np.where(depth_img > 0)).T  # Shape: [#nonzero_pixels x 2]
     dropout_centers_indices = np.random.choice(
         nonzero_pixel_indices.shape[0], size=num_ellipses_to_dropout
     )

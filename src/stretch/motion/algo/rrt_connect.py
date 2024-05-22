@@ -74,9 +74,7 @@ class RRTConnect(RRT):
             next_state = self.space.sample()
             # If they both connect, you won!
             res0, closest_node = self.step_planner(nodes=nodes0, next_state=next_state)
-            res1, final_node = self.step_planner(
-                nodes=nodes1, next_state=closest_node.state
-            )
+            res1, final_node = self.step_planner(nodes=nodes1, next_state=closest_node.state)
             if res1.success:
                 # We found a path! Now we just need to extract it
                 path1 = closest_node.backup()

@@ -85,9 +85,7 @@ def sophus2posquat(se3: sp.SE3) -> Tuple[Iterable[float], Iterable[float]]:
     return pos, quat
 
 
-def interpolate_angles(
-    start_angle: float, end_angle: float, step_size: float = 0.1
-) -> float:
+def interpolate_angles(start_angle: float, end_angle: float, step_size: float = 0.1) -> float:
     """Interpolate between two angles in radians with a given step size."""
     start_angle = start_angle % PI2
     end_angle = end_angle % PI2

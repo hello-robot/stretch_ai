@@ -20,8 +20,8 @@ from PIL import Image
 # Mapping and perception
 import stretch.utils.depth as du
 from stretch.agent import get_parameters
-from stretch.agent.receiver import HomeRobotZmqClient
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.robot import RobotClient
 
 # Import planning tools for exploration
@@ -186,9 +186,7 @@ def demo_main(
     semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    grasp_client = (
-        None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
-    )
+    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
 
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(goal=object_to_find, visualize_map_at_start=False)
@@ -230,9 +228,7 @@ def demo_main(
             print("!!!!!!!!!!!!!!!!!!!!!")
             print("Query the VLM.")
             print(f"VLM's response: {demo.get_plan_from_vlm()}")
-            input(
-                "# TODO: execute the above plan (seems like we are not doing it right now)"
-            )
+            input("# TODO: execute the above plan (seems like we are not doing it right now)")
 
         if len(matches) == 0:
             print("No matching objects. We're done here.")

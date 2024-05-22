@@ -81,6 +81,4 @@ def test_execution_time_ms():
         time.sleep(1 / target_freq)
         test_stats.mark_end()
 
-        assert np.isclose(
-            test_stats.status["execution_time_ns"], (1 / target_freq) * 1e9, atol=1e7
-        )
+        assert np.isclose(test_stats.status["execution_time_ns"], (1 / target_freq) * 1e9, atol=1e7)

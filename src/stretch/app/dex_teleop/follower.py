@@ -17,7 +17,7 @@ import stretch.motion.simple_ik as si
 import stretch.utils.loop_stats as lt
 from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
-from stretch.utils.image import adjust_gamma
+from stretch.utils.image import adjust_gamma, autoAdjustments_with_convertScaleAbs
 
 HEAD_CONFIG = "head_config"
 EE_POS = "wrist_position"
@@ -68,9 +68,7 @@ class DexTeleopFollower:
             self.robot_move = rm.RobotMove(self.robot, speed=robot_speed)
             self.robot_move.print_settings()
 
-            self.robot_move.to_configuration(
-                self.starting_configuration, speed="default"
-            )
+            self.robot_move.to_configuration(self.starting_configuration, speed="default")
             self.robot.push_command()
             self.robot.wait_command()
 
@@ -94,9 +92,7 @@ class DexTeleopFollower:
 
         # Define the center position for the wrist that corresponds with
         # the teleop origin.
-        self.center_wrist_position = self.simple_ik.fk_rotary_base(
-            self.center_configuration
-        )
+        self.center_wrist_position = self.simple_ik.fk_rotary_base(self.center_configuration)
 
         # Create a socket for sending information
         self.context = zmq.Context()

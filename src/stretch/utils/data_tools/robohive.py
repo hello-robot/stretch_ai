@@ -69,9 +69,7 @@ class rand_policy:
     help="seed for generating environment instances",
     default=123,
 )
-@click.option(
-    "-n", "--num_episodes", type=int, help="number of episodes to visualize", default=10
-)
+@click.option("-n", "--num_episodes", type=int, help="number of episodes to visualize", default=10)
 @click.option(
     "-r",
     "--render",
@@ -79,12 +77,8 @@ class rand_policy:
     help="visualize onscreen or offscreen",
     default="onscreen",
 )
-@click.option(
-    "-c", "--camera_name", type=str, default=None, help=("Camera name for rendering")
-)
-@click.option(
-    "-o", "--output_dir", type=str, default="./", help=("Directory to save the outputs")
-)
+@click.option("-c", "--camera_name", type=str, default=None, help=("Camera name for rendering"))
+@click.option("-o", "--output_dir", type=str, default="./", help=("Directory to save the outputs"))
 @click.option(
     "-on",
     "--output_name",
@@ -92,9 +86,7 @@ class rand_policy:
     default=None,
     help=("The name to save the outputs as"),
 )
-@click.option(
-    "-sp", "--save_paths", type=bool, default=False, help=("Save the rollout paths")
-)
+@click.option("-sp", "--save_paths", type=bool, default=False, help=("Save the rollout paths"))
 @click.option(
     "-pp",
     "--plot_paths",
@@ -126,11 +118,7 @@ def main(
 
     # seed and load environments
     np.random.seed(seed)
-    env = (
-        gym.make(env_name)
-        if env_args is None
-        else gym.make(env_name, **(eval(env_args)))
-    )
+    env = gym.make(env_name) if env_args is None else gym.make(env_name, **(eval(env_args)))
     env.seed(seed)
 
     # resolve policy and outputs
@@ -163,11 +151,7 @@ def main(
         o = env.reset()
         t = 0
         while t < horizon and done is False:
-            a = (
-                pi.get_action(o)[0]
-                if mode == "exploration"
-                else pi.get_action(o)[1]["evaluation"]
-            )
+            a = pi.get_action(o)[0] if mode == "exploration" else pi.get_action(o)[1]["evaluation"]
             next_o, rwd, done, env_info = env.step(a)
             writer.add_frame(observation=o, action=a, reward=rwd, done=done)
             o = next_o

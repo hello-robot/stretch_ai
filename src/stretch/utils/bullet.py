@@ -13,12 +13,7 @@ import trimesh
 import trimesh.transformations as tra
 
 # Helpers
-from stretch.utils.image import (
-    T_CORRECTION,
-    Camera,
-    opengl_depth_to_xyz,
-    z_from_opengl_depth,
-)
+from stretch.utils.image import T_CORRECTION, Camera, opengl_depth_to_xyz, z_from_opengl_depth
 
 """
 This file contains simple tools for creating and loading objects in pybullet for easy simulation
@@ -76,9 +71,7 @@ class PbObject(object):
         )
 
     def set_pose(self, pos, rot):
-        pb.resetBasePositionAndOrientation(
-            self.id, pos, rot, physicsClientId=self.client
-        )
+        pb.resetBasePositionAndOrientation(self.id, pos, rot, physicsClientId=self.client)
 
     def get_aabb(self):
         mins, maxs = pb.getAABB(self.id, physicsClientId=self.client)
@@ -90,9 +83,7 @@ class PbObject(object):
         raise NotImplementedError()
 
     def get_pose(self):
-        pos, orn = pb.getBasePositionAndOrientation(
-            self.id, physicsClientId=self.client
-        )
+        pos, orn = pb.getBasePositionAndOrientation(self.id, physicsClientId=self.client)
         return np.array(pos), np.array(orn)
 
     def is_colliding(self, other, distance=0.001):
@@ -126,13 +117,9 @@ class PbArticulatedObject(PbObject):
         self.controllable_joint_infos = []
         self.controllable_joint_name_to_idx = {}
         for i in range(self.num_joints):
-            self.joint_infos.append(
-                PbJointInfo(*pb.getJointInfo(self.id, i, self.client))
-            )
+            self.joint_infos.append(PbJointInfo(*pb.getJointInfo(self.id, i, self.client)))
             # self.joint_infos[-1].name = self.joint_infos[-1].name.decode()
-            self._link_idx[self.joint_infos[-1].link_name.decode()] = self.joint_infos[
-                -1
-            ].index
+            self._link_idx[self.joint_infos[-1].link_name.decode()] = self.joint_infos[-1].index
             info = self.joint_infos[-1]
             if info.type in [0, 1, 2]:
                 controllable_idx = len(self.controllable_joint_infos)
@@ -173,10 +160,7 @@ class PbArticulatedObject(PbObject):
         return len(self.controllable_joint_infos)
 
     def controllable_joints_to_indices(self, controlled_joints):
-        return [
-            self.controllable_joint_name_to_idx[joint_name]
-            for joint_name in controlled_joints
-        ]
+        return [self.controllable_joint_name_to_idx[joint_name] for joint_name in controlled_joints]
 
     def set_joint_positions(self, positions, indices=None):
         """set joint positions of a bullet articulated object"""
@@ -267,9 +251,7 @@ class PbCamera(Camera):
         # alpha = self.width / (r - l)  # pixels per meter
         # Convert to pixels per meter
         alpha = self.width / (2 * r)
-        focal_length = (
-            self.near_val * alpha
-        )  # focal length of virtual camera (frustum camera)
+        focal_length = self.near_val * alpha  # focal length of virtual camera (frustum camera)
         fx = focal_length
         fy = focal_length
         self.fx = fx
@@ -378,12 +360,8 @@ class PbClient(object):
         self.obj_name_to_id[name] = obj.id
         return obj
 
-    def add_articulated_object(
-        self, name, urdf_filename, assets_path=None, static=False
-    ):
-        obj = PbArticulatedObject(
-            name, urdf_filename, assets_path, static=static, client=self.id
-        )
+    def add_articulated_object(self, name, urdf_filename, assets_path=None, static=False):
+        obj = PbArticulatedObject(name, urdf_filename, assets_path, static=static, client=self.id)
         self.objects[name] = obj
         self.obj_name_to_id[name] = obj.id
         return obj

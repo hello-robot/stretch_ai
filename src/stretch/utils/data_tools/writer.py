@@ -48,13 +48,9 @@ class DataWriter(object):
         data = self.fix_data(data)
         for k, v in data.items():
             if k in self.config_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in config data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in config data already.")
             if k in self.temporal_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in temporal data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in temporal data already.")
             if k not in self.img_data:
                 self.img_data[k] = []
             data = image.img_to_bytes(v)
@@ -66,13 +62,9 @@ class DataWriter(object):
         for k, v in data.items():
             # TODO check data types here
             if k in self.config_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in config data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in config data already.")
             if k in self.img_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in image data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in image data already.")
             if k not in self.temporal_data:
                 self.temporal_data[k] = []
             self.temporal_data[k].append(v)
@@ -112,17 +104,11 @@ class DataWriter(object):
         for k, v in data.items():
             # TODO check data types here
             if k in self.config_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in config data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in config data already.")
             if k in self.temporal_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in temporal data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in temporal data already.")
             if k in self.img_data:
-                raise RuntimeError(
-                    "duplicate key: " + str(k) + " was in image data already."
-                )
+                raise RuntimeError("duplicate key: " + str(k) + " was in image data already.")
             self.config_data[k] = v
         return True
 

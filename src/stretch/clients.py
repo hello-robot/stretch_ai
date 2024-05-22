@@ -2,10 +2,7 @@ import numbers
 
 from .comms import recv_body, recv_head_nav_cam, recv_protocol, recv_realsense
 from .exceptions.connection import NotConnectedException
-from .exceptions.motion import (
-    BaseVelocityNotAcceptedException,
-    MoveByMotionNotAcceptedException,
-)
+from .exceptions.motion import BaseVelocityNotAcceptedException, MoveByMotionNotAcceptedException
 from .utils import auth
 
 
@@ -55,9 +52,7 @@ class StretchClient:
         # Connect to head nav camera
         hncarr_port = self.port + 4
         hncb64_port = self.port + 5
-        _, self.hncb64_sock = recv_head_nav_cam.initialize(
-            self.ip_addr, hncarr_port, hncb64_port
-        )
+        _, self.hncb64_sock = recv_head_nav_cam.initialize(self.ip_addr, hncarr_port, hncb64_port)
 
         # EE realsense
         ee_arr_port = self.port + 6
@@ -146,9 +141,7 @@ class StretchClient:
         }
         for component, speed in twist.items():
             if not isinstance(speed, numbers.Real):
-                raise BaseVelocityNotAcceptedException(
-                    f"Cannot move {component} at {speed} speed"
-                )
+                raise BaseVelocityNotAcceptedException(f"Cannot move {component} at {speed} speed")
         recv_body.send_basevel(self.basevel_sock, twist)
 
     @require_connection

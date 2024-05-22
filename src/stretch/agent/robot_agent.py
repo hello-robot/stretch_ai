@@ -23,11 +23,7 @@ from transformers import Owlv2ForObjectDetection, Owlv2Processor
 from stretch.agent import Parameters
 from stretch.core.robot import GraspClient, RobotClient
 from stretch.mapping.instance import Instance
-from stretch.mapping.voxel import (
-    SparseVoxelMap,
-    SparseVoxelMapNavigationSpace,
-    plan_to_frontier,
-)
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import get_encoder
@@ -66,9 +62,7 @@ class RobotAgent:
         self.encoder = get_encoder(parameters["encoder"], parameters["encoder_args"])
         self.obs_count = 0
         self.obs_history = []
-        self.guarantee_instance_is_reachable = (
-            parameters.guarantee_instance_is_reachable
-        )
+        self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
 
@@ -86,9 +80,7 @@ class RobotAgent:
                 min_depth=parameters["min_depth"],
                 max_depth=parameters["max_depth"],
                 pad_obstacles=parameters["pad_obstacles"],
-                add_local_radius_points=parameters.get(
-                    "add_local_radius_points", default=True
-                ),
+                add_local_radius_points=parameters.get("add_local_radius_points", default=True),
                 remove_visited_from_obstacles=parameters.get(
                     "remove_visited_from_obstacles", default=False
                 ),
@@ -97,12 +89,8 @@ class RobotAgent:
                 smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
                 use_median_filter=parameters.get("filters/use_median_filter", False),
                 median_filter_size=parameters.get("filters/median_filter_size", 5),
-                median_filter_max_error=parameters.get(
-                    "filters/median_filter_max_error", 0.01
-                ),
-                use_derivative_filter=parameters.get(
-                    "filters/use_derivative_filter", False
-                ),
+                median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+                use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
                 derivative_filter_threshold=parameters.get(
                     "filters/derivative_filter_threshold", 0.5
                 ),
@@ -111,16 +99,12 @@ class RobotAgent:
                     "min_pixels_for_instance_view": parameters.get(
                         "min_pixels_for_instance_view", 100
                     ),
-                    "min_instance_thickness": parameters.get(
-                        "min_instance_thickness", 0.01
-                    ),
+                    "min_instance_thickness": parameters.get("min_instance_thickness", 0.01),
                     "min_instance_vol": parameters.get("min_instance_vol", 1e-6),
                     "max_instance_vol": parameters.get("max_instance_vol", 10.0),
                     "min_instance_height": parameters.get("min_instance_height", 0.1),
                     "max_instance_height": parameters.get("max_instance_height", 1.8),
-                    "open_vocab_cat_map_file": parameters.get(
-                        "open_vocab_cat_map_file", None
-                    ),
+                    "open_vocab_cat_map_file": parameters.get("open_vocab_cat_map_file", None),
                 },
             )
 
@@ -143,18 +127,12 @@ class RobotAgent:
         # Create a simple motion planner
         self.planner = RRTConnect(self.space, self.space.is_valid)
         if parameters["motion_planner"]["shortcut_plans"]:
-            self.planner = Shortcut(
-                self.planner, parameters["motion_planner"]["shortcut_iter"]
-            )
+            self.planner = Shortcut(self.planner, parameters["motion_planner"]["shortcut_iter"])
         if parameters["motion_planner"]["simplify_plans"]:
-            self.planner = SimplifyXYT(
-                self.planner, min_step=0.05, max_step=1.0, num_steps=8
-            )
+            self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
-        self.path = os.path.expanduser(
-            f"data/hw_exps/{self.parameters['name']}/{timestamp}"
-        )
+        self.path = os.path.expanduser(f"data/hw_exps/{self.parameters['name']}/{timestamp}")
         print(f"Writing logs to {self.path}")
         os.makedirs(self.path, exist_ok=True)
         os.makedirs(f"{self.path}/viz_data", exist_ok=True)
@@ -263,30 +241,22 @@ class RobotAgent:
                         ">>>>>> gpt4v cannot find a plan, the robot should explore more >>>>>>>>>"
                     )
                 elif output == "gpt4v API error":
-                    print(
-                        ">>>>>> there is something wrong with the gpt4v api >>>>>>>>>"
-                    )
+                    print(">>>>>> there is something wrong with the gpt4v api >>>>>>>>>")
                 else:
                     actions = output.split("; ")
                     for action_id, action in enumerate(actions):
                         crop_id = int(re.search(r"img_(\d+)", action).group(1))
-                        global_id = world_representation.object_images[
-                            crop_id
-                        ].instance_id
+                        global_id = world_representation.object_images[crop_id].instance_id
                         plt.subplot(1, len(actions), action_id + 1)
                         plt.imshow(
-                            self.voxel_map.get_instances()[global_id]
-                            .get_best_view()
-                            .get_image()
+                            self.voxel_map.get_instances()[global_id].get_best_view().get_image()
                         )
                         plt.title(action.split("(")[0] + f" instance {global_id}")
                         plt.axis("off")
                     plt.suptitle(self.task)
                     plt.show()
         else:
-            assert (
-                self.rpc_stub is not None
-            ), "must have RPC stub to connect to remote VLM"
+            assert self.rpc_stub is not None, "must have RPC stub to connect to remote VLM"
             world_representation = self.get_observations(current_pose=current_pose)
             # This is not a very stable import
             # So we guard it under this part where it's necessary
@@ -413,17 +383,13 @@ class RobotAgent:
             logger.warn("Plan was not confirmed")
             return
 
-        pick_instance_id, place_instance_id = parse_pick_and_place_plan(
-            world_representation, plan
-        )
+        pick_instance_id, place_instance_id = parse_pick_and_place_plan(world_representation, plan)
 
         if not pick_instance_id:
             # Navigating to a cup or bottle
             for i, each_instance in enumerate(instances):
                 if (
-                    self.vocab.goal_id_to_goal_name[
-                        int(each_instance.category_id.item())
-                    ]
+                    self.vocab.goal_id_to_goal_name[int(each_instance.category_id.item())]
                     in self.parameters["pick_categories"]
                 ):
                     pick_instance_id = i
@@ -432,9 +398,7 @@ class RobotAgent:
         if not place_instance_id:
             for i, each_instance in enumerate(instances):
                 if (
-                    self.vocab.goal_id_to_goal_name[
-                        int(each_instance.category_id.item())
-                    ]
+                    self.vocab.goal_id_to_goal_name[int(each_instance.category_id.item())]
                     in self.parameters["place_categories"]
                 ):
                     place_instance_id = i
@@ -547,9 +511,7 @@ class RobotAgent:
 
         if not has_plan:
             # Call planner
-            res = self.plan_to_bounds(
-                instance.bounds, start, verbose, max_tries, radius_m
-            )
+            res = self.plan_to_bounds(instance.bounds, start, verbose, max_tries, radius_m)
             if instance_id >= 0:
                 self._cached_plans[instance_id] = res
 
@@ -608,9 +570,7 @@ class RobotAgent:
             return PlanResult(success=False, reason="no valid plans found")
         return res
 
-    def move_to_any_instance(
-        self, matches: List[Tuple[int, Instance]], max_try_per_instance=10
-    ):
+    def move_to_any_instance(self, matches: List[Tuple[int, Instance]], max_try_per_instance=10):
         """Check instances and find one we can move to"""
         self.current_state = "NAV_TO_INSTANCE"
         self.robot.move_to_nav_posture()
@@ -679,13 +639,9 @@ class RobotAgent:
                 if r == 0:
                     self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
                 elif r == 1:
-                    self.robot.navigate_to(
-                        [0, 0, np.pi / 4], relative=True, blocking=True
-                    )
+                    self.robot.navigate_to([0, 0, np.pi / 4], relative=True, blocking=True)
                 elif r == 2:
-                    self.robot.navigate_to(
-                        [0, 0, -np.pi / 4], relative=True, blocking=True
-                    )
+                    self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
                 return False
 
             time.sleep(1.0)
@@ -852,9 +808,7 @@ class RobotAgent:
                 plt.show()
         return relationships
 
-    def get_all_reachable_instances(
-        self, current_pose=None
-    ) -> List[Tuple[int, Instance]]:
+    def get_all_reachable_instances(self, current_pose=None) -> List[Tuple[int, Instance]]:
         """get all reachable instances with their ids and cache the motion plans"""
         reachable_matches = []
         start = self.robot.get_base_pose() if current_pose is None else current_pose
@@ -910,9 +864,7 @@ class RobotAgent:
             instance_id(int): a unique int identifying this instance
             instance(Instance): information about a particular object we believe exists
         """
-        matches = self.get_found_instances_by_class(
-            goal=goal, threshold=threshold, debug=debug
-        )
+        matches = self.get_found_instances_by_class(goal=goal, threshold=threshold, debug=debug)
         reachable_matches = []
         self._cached_plans = {}
         start = self.robot.get_base_pose()
@@ -950,9 +902,7 @@ class RobotAgent:
         print("- try to motion plan there")
         start = self.robot.get_base_pose()
         goal = np.array([0, 0, 0])
-        print(
-            f"- Current pose is valid: {self.space.is_valid(self.robot.get_base_pose())}"
-        )
+        print(f"- Current pose is valid: {self.space.is_valid(self.robot.get_base_pose())}")
         print(f"-   start pose is valid: {self.space.is_valid(start)}")
         print(f"-    goal pose is valid: {self.space.is_valid(goal)}")
         res = self.planner.plan(start, goal)
@@ -1110,13 +1060,9 @@ class RobotAgent:
                 if r == 0:
                     self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
                 elif r == 1:
-                    self.robot.navigate_to(
-                        [0, 0, np.pi / 4], relative=True, blocking=True
-                    )
+                    self.robot.navigate_to([0, 0, np.pi / 4], relative=True, blocking=True)
                 elif r == 2:
-                    self.robot.navigate_to(
-                        [0, 0, -np.pi / 4], relative=True, blocking=True
-                    )
+                    self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
 
             # Append latest observations
             self.update()

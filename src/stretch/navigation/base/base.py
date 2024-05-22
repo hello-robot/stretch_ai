@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+
 class Slam(ABC):
     """slam base class - placeholder"""
 
@@ -19,14 +20,16 @@ class Pose(ABC):
         self.pitch = 0.0
         self.yaw = 0.0
 
-    def __init__(self,
-                 timestamp: float,
-                 x: float,
-                 y: float,
-                 z: float,
-                 roll: float,
-                 pitch: float,
-                 yaw: float):
+    def __init__(
+        self,
+        timestamp: float,
+        x: float,
+        y: float,
+        z: float,
+        roll: float,
+        pitch: float,
+        yaw: float,
+    ):
         self.timestamp = timestamp
         self.x = x
         self.y = y
@@ -105,11 +108,11 @@ class Slam(ABC):
     def initialize(self):
         """initialize slam backend"""
         raise NotImplementedError
-    
+
     def get_pose(self) -> Pose:
         """returns camera pose"""
         raise NotImplementedError
-    
+
     def get_trajectory_points(self) -> List[Pose]:
         """returns camera trajectory points"""
         raise NotImplementedError

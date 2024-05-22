@@ -144,14 +144,10 @@ class GotoVelocityController:
             print(
                 f"WARNING: sent a goal with lower distance than target error tolerance! Linear err = {lin_err}, Angular error = {xyt_err[2]}"
             )
-            new_lin_tol = max(
-                self.cfg.min_lin_error_tol, self.cfg.lin_error_ratio * lin_err
-            )
+            new_lin_tol = max(self.cfg.min_lin_error_tol, self.cfg.lin_error_ratio * lin_err)
             print(f" -> setting linear tolerance to {new_lin_tol}")
             self.control.set_linear_error_tolerance(new_lin_tol)
-            new_ang_tol = max(
-                self.cfg.min_ang_error_tol, self.cfg.ang_error_ratio * xyt_err[2]
-            )
+            new_ang_tol = max(self.cfg.min_ang_error_tol, self.cfg.ang_error_ratio * xyt_err[2])
             print(f" -> setting angular tolerance to {new_ang_tol}")
             self.control.set_angular_error_tolerance(new_ang_tol)
 
@@ -194,8 +190,6 @@ class GotoVelocityController:
         self._is_done = done
 
         if self.verbose:
-            print(
-                " - err =", lin_err, xyt_err[2], "done =", done, "cmd =", v_cmd, w_cmd
-            )
+            print(" - err =", lin_err, xyt_err[2], "done =", done, "cmd =", v_cmd, w_cmd)
 
         return v_cmd, w_cmd

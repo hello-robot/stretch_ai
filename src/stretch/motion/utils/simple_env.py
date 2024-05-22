@@ -38,12 +38,7 @@ class SimpleEnv:
             # Out of bounds
             return False
         ox, oy = self.obstacle_pos
-        if (
-            x > ox
-            and y > oy
-            and x < ox + self.obstacle_size
-            and y < oy + self.obstacle_size
-        ):
+        if x > ox and y > oy and x < ox + self.obstacle_size and y < oy + self.obstacle_size:
             # inside the obstacle
             return False
         return True
