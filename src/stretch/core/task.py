@@ -7,7 +7,9 @@ class Operation:
 
 
 class Operation(abc.ABC):
-    """An operation is a single unit of work that can be executed. It can be part of a task. It also has an associated set of pre- and post-conditions. Operations can be chained together to form an executable task."""
+    """An operation is a single unit of work that can be executed. It can be part of a task. It
+    also has an associated set of pre- and post-conditions. Operations can be chained together to
+    form an executable task."""
 
     def __init__(
         self,
@@ -34,7 +36,8 @@ class Operation(abc.ABC):
 
     @abc.abstractmethod
     def run(self) -> None:
-        """Evaluate a particular operation. This will result in some changes to the world. Should set self._started to True."""
+        """Evaluate a particular operation. This will result in some changes to the world. Should
+        set self._started to True."""
         self._started = True
         raise NotImplementedError
 
