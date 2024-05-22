@@ -83,13 +83,9 @@ def get_similarity(
         # Handle the case where there is no embedding to examine
         # If we return visual similarity, only then do we use it
         if visual_similarity is not None:
-            visual_similarity[
-                overlap_similarity < view_matching_config.box_min_iou_thresh
-            ] = 0.0
+            visual_similarity[overlap_similarity < view_matching_config.box_min_iou_thresh] = 0.0
             # print (f'valid clip score: {visual_similarity}')
-            similarity += (
-                visual_similarity * view_matching_config.visual_similarity_weight
-            )
+            similarity += visual_similarity * view_matching_config.visual_similarity_weight
     return similarity
 
 
@@ -320,13 +316,9 @@ class InstanceMemory:
         global_instances = self.get_instances_by_ids(
             env_id=env_id, global_instance_idxs=global_instance_ids
         )
-        return_dict = {
-            gid: inst for gid, inst in zip(global_instance_ids, global_instances)
-        }
+        return_dict = {gid: inst for gid, inst in zip(global_instance_ids, global_instances)}
         if category_id is not None:
-            return_dict = {
-                gid: g for gid, g in return_dict.items() if g.category_id == category_id
-            }
+            return_dict = {gid: g for gid, g in return_dict.items() if g.category_id == category_id}
         return return_dict
 
     def associate_instances_to_memory(self):
@@ -352,13 +344,9 @@ class InstanceMemory:
             NotImplementedError: When an unrecognized instance association method is specified.
         """
         for env_id in range(self.num_envs):
-            for local_instance_id, instance_view in self.unprocessed_views[
-                env_id
-            ].items():
+            for local_instance_id, instance_view in self.unprocessed_views[env_id].items():
                 match_category_id = (
-                    instance_view.category_id
-                    if self.view_matching_config.within_class
-                    else None
+                    instance_view.category_id if self.view_matching_config.within_class else None
                 )
                 # image_array = np.array(instance_view.cropped_image, dtype=np.uint8)
                 # image_debug = Image.fromarray(image_array)
@@ -428,9 +416,7 @@ class InstanceMemory:
                 else:
                     matched_global_instance_id = list(global_instance_ids)[matched_idx]
 
-                self.add_view_to_instance(
-                    env_id, local_instance_id, matched_global_instance_id
-                )
+                self.add_view_to_instance(env_id, local_instance_id, matched_global_instance_id)
 
         # # TODO: Add option to do global
         # if self.global_box_nms_thresh > 0.0:
@@ -460,9 +446,7 @@ class InstanceMemory:
             )
         return instance_view
 
-    def add_view_to_instance(
-        self, env_id: int, local_instance_id: int, global_instance_id: int
-    ):
+    def add_view_to_instance(self, env_id: int, local_instance_id: int, global_instance_id: int):
         """
         Update instance associations and memory based on instance view information.
 
@@ -577,9 +561,7 @@ class InstanceMemory:
             )
         self.associate_instances_to_memory()
 
-    def _interpolate_image(
-        self, image: Tensor, scale_factor: float = 1.0, mode: str = "nearest"
-    ):
+    def _interpolate_image(self, image: Tensor, scale_factor: float = 1.0, mode: str = "nearest"):
         """
         Interpolates images by the specified scale_factor using the specific interpolation mode.
 
@@ -678,9 +660,7 @@ class InstanceMemory:
 
         # Valid points
         if valid_points is None:
-            valid_points = torch.full_like(
-                image[0], True, dtype=torch.bool, device=image.device
-            )
+            valid_points = torch.full_like(image[0], True, dtype=torch.bool, device=image.device)
         if self.du_scale != 1:
             valid_points_downsampled = interpolate_image(
                 valid_points, scale_factor=1 / self.du_scale
@@ -735,9 +715,7 @@ class InstanceMemory:
                 instance_mask_downsampled = self._interpolate_image(
                     instance_mask, scale_factor=1 / self.du_scale
                 )
-                image_downsampled = self._interpolate_image(
-                    image, scale_factor=1 / self.du_scale
-                )
+                image_downsampled = self._interpolate_image(image, scale_factor=1 / self.du_scale)
             else:
                 instance_mask_downsampled = instance_mask
                 image_downsampled = image
@@ -786,20 +764,14 @@ class InstanceMemory:
 
             def get_open_vocab_labels():
                 img_embeddings = (
-                    encoder.encode_image(cropped_image)
-                    .to(cropped_image.device)
-                    .unsqueeze(0)
+                    encoder.encode_image(cropped_image).to(cropped_image.device).unsqueeze(0)
                 )
                 class_embeddings = torch.cat(
                     [encoder.encode_text(ovc) for ovc in self.open_vocab]
                 ).to(cropped_image.device)
                 img_embeddings /= img_embeddings.norm(dim=-1, keepdim=True)
                 class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
-                scores = (
-                    (100.0 * img_embeddings @ class_embeddings.T)
-                    .softmax(dim=-1)
-                    .squeeze()
-                )
+                scores = (100.0 * img_embeddings @ class_embeddings.T).softmax(dim=-1).squeeze()
                 return self.open_vocab[torch.argmax(scores).item()]
 
             def filter_background_preds_using_clip(
@@ -817,13 +789,9 @@ class InstanceMemory:
             # filter_background_preds_using_clip()
 
             # get point cloud
-            point_mask_downsampled = (
-                instance_mask_downsampled & valid_points_downsampled
-            )
+            point_mask_downsampled = instance_mask_downsampled & valid_points_downsampled
             point_cloud_instance = point_cloud[point_mask_downsampled]
-            point_cloud_rgb_instance = image_downsampled.permute(1, 2, 0)[
-                point_mask_downsampled
-            ]
+            point_cloud_rgb_instance = image_downsampled.permute(1, 2, 0)[point_mask_downsampled]
 
             n_points = point_mask_downsampled.sum()
             n_mask = instance_mask_downsampled.sum()
@@ -896,9 +864,7 @@ class InstanceMemory:
 
             # save cropped image with timestep in filename
             if self.debug_visualize:
-                raise NotImplementedError(
-                    "Image saving should be handled with a logger class"
-                )
+                raise NotImplementedError("Image saving should be handled with a logger class")
 
         # This timestep should be passable (e.g. for Spot we have a Datetime object)
         self.timesteps[env_id] += 1
@@ -957,9 +923,7 @@ class InstanceMemory:
         if instance_box_compression_drop_prop is None:
             instance_box_compression_drop_prop = self.instance_box_compression_drop_prop
         if instance_box_compression_resolution is None:
-            instance_box_compression_resolution = (
-                self.instance_box_compression_resolution
-            )
+            instance_box_compression_resolution = self.instance_box_compression_resolution
 
         # Do NMS on global bboxes
         if nms_thresh > 0.0 and len(self.get_instances(env_id)) > 0:
@@ -974,15 +938,10 @@ class InstanceMemory:
                         voxel_size=instance_box_compression_resolution,
                     )
                 num_global_inst = len(self.get_instances(env_id))
-                self.global_instance_nms(
-                    0, within_category=True, nms_iou_thresh=nms_thresh
-                )
+                self.global_instance_nms(0, within_category=True, nms_iou_thresh=nms_thresh)
 
         # Compute tighter boxes by dropping lowest-weight points
-        if (
-            instance_box_compression_drop_prop > 0.0
-            and len(self.get_instances(env_id)) > 0
-        ):
+        if instance_box_compression_drop_prop > 0.0 and len(self.get_instances(env_id)) > 0:
             compress_instance_bounds_(
                 instances=self.get_instances(env_id),
                 drop_prop=instance_box_compression_drop_prop,
@@ -1029,22 +988,14 @@ class InstanceMemory:
             ).unique()
             for category_id in categories:
                 category_id = int(category_id)
-                ids_to_instances = self.get_ids_to_instances(
-                    env_id, category_id=category_id
-                )
-                ids, instances = list(ids_to_instances.keys()), list(
-                    ids_to_instances.values()
-                )
-                instance_bounds = torch.stack(
-                    [inst.bounds for inst in instances], dim=0
-                )
+                ids_to_instances = self.get_ids_to_instances(env_id, category_id=category_id)
+                ids, instances = list(ids_to_instances.keys()), list(ids_to_instances.values())
+                instance_bounds = torch.stack([inst.bounds for inst in instances], dim=0)
                 confidences = torch.stack([inst.score for inst in instances], dim=0)
                 # Could implement a different NMS designed for partial views
                 # Idea: Go over bounding boxes large-to-small
                 # If intersection / small_volume > thresh -- assign small -> large
-                confidences = box3d_volume_from_bounds(
-                    instance_bounds
-                )  # Larger boxes get priority
+                confidences = box3d_volume_from_bounds(instance_bounds)  # Larger boxes get priority
                 keep, vol, iou, assignments = box3d_sub_box_suppression(
                     instance_bounds,
                     confidence_score=confidences,
@@ -1054,9 +1005,7 @@ class InstanceMemory:
                     # Map the sequential ids from box3d_nms to the instanceMemory global id
                     keep_id = ids[keep_id]
                     delete_ids = [ids[d_id] for d_id in delete_ids]
-                    inst_to_keep = self.get_instance(
-                        env_id=env_id, global_instance_id=int(keep_id)
-                    )
+                    inst_to_keep = self.get_instance(env_id=env_id, global_instance_id=int(keep_id))
                     for delete_id in delete_ids:
                         inst_to_delete = self.pop_global_instance(
                             env_id, global_instance_id=int(delete_id), skip_reindex=True
@@ -1075,9 +1024,7 @@ class InstanceMemory:
                 iou_threshold=nms_iou_thresh,
             )
             for keep_id, delete_ids in assignments.items():
-                inst_to_keep = self.get_instance(
-                    env_id=env_id, global_instance_id=int(keep_id)
-                )
+                inst_to_keep = self.get_instance(env_id=env_id, global_instance_id=int(keep_id))
                 for delete_id in delete_ids:
                     inst_to_delete = self.pop_global_instance(
                         env_id, global_instance_id=int(delete_id), skip_reindex=True
@@ -1087,9 +1034,7 @@ class InstanceMemory:
         self.reindex_global_instances(env_id)
 
 
-def box3d_sub_box_suppression(
-    bounds: Tensor, confidence_score: Tensor, iou_threshold: float = 0.3
-):
+def box3d_sub_box_suppression(bounds: Tensor, confidence_score: Tensor, iou_threshold: float = 0.3):
     """
     Non-max suppression where boxes inside other boxes get suppressed
 

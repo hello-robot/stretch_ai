@@ -150,12 +150,8 @@ class BBoxes3D:
             if self._N > 0:
                 self.device = self._bounds_list[0].device
                 for p in self._bounds_list:
-                    if len(p) > 0 and (
-                        p.dim() != 3 or p.shape[1] != 3 or p.shape[2] != 2
-                    ):
-                        raise ValueError(
-                            "BBoxes in list must be of shape Px3x2 or empty"
-                        )
+                    if len(p) > 0 and (p.dim() != 3 or p.shape[1] != 3 or p.shape[2] != 2):
+                        raise ValueError("BBoxes in list must be of shape Px3x2 or empty")
                     if p.device != self.device:
                         raise ValueError("All boxes must be on the same device")
 
@@ -182,9 +178,7 @@ class BBoxes3D:
             self._P = self._bounds_padded.shape[1]
             self.device = self._bounds_padded.device
             self.valid = torch.ones((self._N,), dtype=torch.bool, device=self.device)
-            self._num_boxes_per_scene = torch.tensor(
-                [self._P] * self._N, device=self.device
-            )
+            self._num_boxes_per_scene = torch.tensor([self._P] * self._N, device=self.device)
             self.equisized = True
         else:
             raise ValueError(
@@ -243,9 +237,7 @@ class BBoxes3D:
                     number of boxes in each scene."
                 )
             if aux_input.device != self.device:
-                raise ValueError(
-                    "All auxiliary inputs must be on the same device as the boxes."
-                )
+                raise ValueError("All auxiliary inputs must be on the same device as the boxes.")
             aux_input_C = aux_input.shape[2]
             return None, aux_input, aux_input_C
         else:
@@ -283,13 +275,9 @@ class BBoxes3D:
             valid_but_empty = p == 0 and d is not None and d.ndim == 2
             if p > 0 or valid_but_empty:
                 if p != d.shape[0]:
-                    raise ValueError(
-                        "A scene has mismatched numbers of boxes and inputs"
-                    )
+                    raise ValueError("A scene has mismatched numbers of boxes and inputs")
                 if d.dim() != 2:
-                    raise ValueError(
-                        "A scene auxiliary input must be of shape PxC or empty"
-                    )
+                    raise ValueError("A scene auxiliary input must be of shape PxC or empty")
                 if aux_input_C is None:
                     aux_input_C = d.shape[1]
                 elif aux_input_C != d.shape[1]:
@@ -401,9 +389,7 @@ class BBoxes3D:
             ), "bounds_padded is required to compute bounds_list."
             bounds_list = []
             for i in range(self._N):
-                bounds_list.append(
-                    self._bounds_padded[i, : self.num_boxes_per_scene()[i]]
-                )
+                bounds_list.append(self._bounds_padded[i, : self.num_boxes_per_scene()[i]])
             self._bounds_list = bounds_list
         return self._bounds_list
 
@@ -633,12 +619,8 @@ class BBoxes3D:
         names_list = self.names_list()
         features_list = self.features_list()
         if self.isempty():
-            self._bounds_packed = torch.zeros(
-                (0, 3), dtype=torch.float32, device=self.device
-            )
-            self._packed_to_scene_idx = torch.zeros(
-                (0,), dtype=torch.int64, device=self.device
-            )
+            self._bounds_packed = torch.zeros((0, 3), dtype=torch.float32, device=self.device)
+            self._packed_to_scene_idx = torch.zeros((0,), dtype=torch.int64, device=self.device)
             self._scene_to_packed_first_idx = torch.zeros(
                 (0,), dtype=torch.int64, device=self.device
             )
@@ -689,9 +671,7 @@ class BBoxes3D:
                 new_names = self.names_padded().clone()
             if features_padded is not None:
                 new_features = self.features_padded().clone()
-        other = self.__class__(
-            bounds=new_bounds, names=new_names, features=new_features
-        )
+        other = self.__class__(bounds=new_bounds, names=new_names, features=new_features)
         for k in self._INTERNAL_TENSORS:
             v = getattr(self, k)
             if torch.is_tensor(v):
@@ -725,9 +705,7 @@ class BBoxes3D:
                 new_names = self.names_padded().detach()
             if features_padded is not None:
                 new_features = self.features_padded().detach()
-        other = self.__class__(
-            bounds=new_bounds, names=new_names, features=new_features
-        )
+        other = self.__class__(bounds=new_bounds, names=new_names, features=new_features)
         for k in self._INTERNAL_TENSORS:
             v = getattr(self, k)
             if torch.is_tensor(v):
@@ -1049,12 +1027,8 @@ def box3d_intersection_from_bounds(boxes1: Tensor, boxes2: Tensor, eps: float = 
     n_boxes1 = len(boxes1)
     n_boxes2 = len(boxes2)
 
-    assert (
-        boxes1.ndim == 3 and boxes1.shape[-1] == 2 and boxes1.shape[-2] == 3
-    ), boxes1.shape
-    assert (
-        boxes2.ndim == 3 and boxes2.shape[-1] == 2 and boxes2.shape[-2] == 3
-    ), boxes2.shape
+    assert boxes1.ndim == 3 and boxes1.shape[-1] == 2 and boxes1.shape[-2] == 3, boxes1.shape
+    assert boxes2.ndim == 3 and boxes2.shape[-1] == 2 and boxes2.shape[-2] == 3, boxes2.shape
     boxes1_min, boxes1_max = torch.unbind(boxes1, dim=-1)
     boxes2_min, boxes2_max = torch.unbind(boxes2, dim=-1)
     intersection_min = torch.maximum(

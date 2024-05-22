@@ -27,9 +27,7 @@ def depth_to_xyz(depth: torch.Tensor, camera: Camera):
     # xs, ys = torch.meshgrid(
     #     torch.arange(0, width), torch.arange(0, height), indexing="xy", device=depth.device
     # )
-    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(
-        1, 2, 0
-    )
+    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(1, 2, 0)
     z = depth
 
     # pixel indices start at top-left corner. for these equations, it starts at bottom-left
@@ -77,9 +75,9 @@ def unproject_masked_depth_to_xyz_coordinates(
     xyz = torch.cat((xy, torch.ones_like(xy[..., :1])), dim=-1)
 
     # Associates poses and intrinsics with XYZ coordinates.
-    inv_intrinsics = inv_intrinsics[:, None, None, :, :].expand(
-        batch_size, height, width, 3, 3
-    )[flipped_mask.squeeze(1)]
+    inv_intrinsics = inv_intrinsics[:, None, None, :, :].expand(batch_size, height, width, 3, 3)[
+        flipped_mask.squeeze(1)
+    ]
     pose = pose[:, None, None, :, :].expand(batch_size, height, width, 4, 4)[
         flipped_mask.squeeze(1)
     ]
@@ -88,9 +86,7 @@ def unproject_masked_depth_to_xyz_coordinates(
     # Applies intrinsics and extrinsics.
     xyz = xyz.to(inv_intrinsics).unsqueeze(1) @ inv_intrinsics.permute([0, 2, 1])
     xyz = xyz * depth[:, None, None]
-    xyz = (xyz[..., None, :] * pose[..., None, :3, :3]).sum(dim=-1) + pose[
-        ..., None, :3, 3
-    ]
+    xyz = (xyz[..., None, :] * pose[..., None, :3, :3]).sum(dim=-1) + pose[..., None, :3, 3]
     xyz = xyz.squeeze(1)
 
     return xyz
@@ -114,15 +110,11 @@ def add_additive_noise_to_xyz(
 
     # Additive noise: Gaussian process, approximated by zero-mean anisotropic Gaussian random variable,
     #                 which is rescaled with bicubic interpolation.
-    gp_rescale_factor = np.random.randint(
-        gp_rescale_factor_range[0], gp_rescale_factor_range[1]
-    )
+    gp_rescale_factor = np.random.randint(gp_rescale_factor_range[0], gp_rescale_factor_range[1])
     gp_scale = np.random.uniform(gaussian_scale_range[0], gaussian_scale_range[1])
 
     small_H, small_W = (np.array([H, W]) / gp_rescale_factor).astype(int)
-    additive_noise = np.random.normal(
-        loc=0.0, scale=gp_scale, size=(small_H, small_W, C)
-    )
+    additive_noise = np.random.normal(loc=0.0, scale=gp_scale, size=(small_H, small_W, C))
     additive_noise = cv2.resize(additive_noise, (W, H), interpolation=cv2.INTER_CUBIC)
     additive_noise = torch.tensor(additive_noise).to(xyz_img.device)
     if valid_mask is not None:
@@ -217,8 +209,7 @@ def get_one_point_per_voxel_from_pointcloud(
 
     if use_random_centers:
         random_offsets = (
-            torch.rand(grid_cell_counts.shape[0]).to(grid_cell_counts.device)
-            * grid_cell_counts
+            torch.rand(grid_cell_counts.shape[0]).to(grid_cell_counts.device) * grid_cell_counts
         ).int()
     else:
         random_offsets = 0

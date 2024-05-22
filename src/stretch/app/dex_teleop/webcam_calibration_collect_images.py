@@ -40,9 +40,7 @@ while num_images < num_images_to_collect:
 
     if (curr_time - prev_save_time) > time_between_images_sec:
         num_images = num_images + 1
-        file_name = (
-            image_directory + image_base_name + "_" + str(num_images).zfill(4) + ".png"
-        )
+        file_name = image_directory + image_base_name + "_" + str(num_images).zfill(4) + ".png"
         print("save", file_name)
         cv2.imwrite(file_name, color_image)
         prev_save_time = curr_time

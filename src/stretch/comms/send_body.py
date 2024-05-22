@@ -42,9 +42,7 @@ def exec_moveby(sock, poll, body):
         pose = json.loads(pose)
 
     if "joint_translate" in pose and "joint_rotate" in pose:
-        sock.send_string(
-            "Rejected: Cannot translate & rotate mobile base simultaneously"
-        )
+        sock.send_string("Rejected: Cannot translate & rotate mobile base simultaneously")
         return
     for joint, moveby_amount in pose.items():
         if not isinstance(moveby_amount, numbers.Real):

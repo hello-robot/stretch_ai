@@ -73,9 +73,7 @@ class Task:
                 self.initial_operation = operation
 
         # Get the last operation to make it easier to add
-        prev_operation = (
-            self._all_operations[-1] if len(self._all_operations) > 0 else None
-        )
+        prev_operation = self._all_operations[-1] if len(self._all_operations) > 0 else None
         # We can add this to the list of terminal operations for the task plan
         if terminal:
             self._terminal_operations.append(operation)

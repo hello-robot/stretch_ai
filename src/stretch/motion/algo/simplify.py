@@ -133,9 +133,7 @@ class SimplifyXYT(Planner):
                             # Add it to the stack
                             if verbose:
                                 print("add to stack")
-                            new_nodes.append(
-                                TreeNode(parent=anchor_node, state=prev_node.state)
-                            )
+                            new_nodes.append(TreeNode(parent=anchor_node, state=prev_node.state))
                             added = True
                             anchor_node = prev_node
                             # Distance from previous to current node, since we're setting anchor to previous node
@@ -147,18 +145,14 @@ class SimplifyXYT(Planner):
                         # We turned, so start again from here
                         # Check to see if we moved since the anchor node
                         if cum_dist > self.dist_tol:
-                            new_nodes.append(
-                                TreeNode(parent=anchor_node, state=prev_node.state)
-                            )
+                            new_nodes.append(TreeNode(parent=anchor_node, state=prev_node.state))
                             anchor_node = new_nodes[-1]
                             cum_dist = dist
                         new_nodes.append(TreeNode(parent=anchor_node, state=node.state))
                         if not is_2d:
                             if not (
-                                np.abs(anchor_node.state[0] - node.state[0])
-                                < self.dist_tol
-                                and np.abs(anchor_node.state[1] - node.state[1])
-                                < self.dist_tol
+                                np.abs(anchor_node.state[0] - node.state[0]) < self.dist_tol
+                                and np.abs(anchor_node.state[1] - node.state[1]) < self.dist_tol
                             ):
                                 raise RuntimeError(
                                     f"Trajectory inconsistent: {anchor_node.state} vs {node.state}"
@@ -195,9 +189,7 @@ class SimplifyXYT(Planner):
         if new_nodes is not None:
             return PlanResult(True, new_nodes, planner=self)
         else:
-            return PlanResult(
-                False, reason="simplification and verification failed!", planner=self
-            )
+            return PlanResult(False, reason="simplification and verification failed!", planner=self)
 
 
 if __name__ == "__main__":

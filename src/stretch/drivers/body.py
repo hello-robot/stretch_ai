@@ -25,9 +25,7 @@ class Body:
             "timestamp": time.time(),
             "voltage": float(body_status["pimu"]["voltage"]),
             "current": float(body_status["pimu"]["current"]),
-            "is_charge_port_detecting_plug": bool(
-                body_status["pimu"]["charger_connected"]
-            ),
+            "is_charge_port_detecting_plug": bool(body_status["pimu"]["charger_connected"]),
             "is_charging": bool(body_status["pimu"]["charger_is_charging"]),
             "is_runstopped": bool(body_status["pimu"]["runstop_event"]),
             "is_homed": bool(self.robot.is_homed()),
@@ -75,9 +73,7 @@ class Body:
             "velocity": float(body_status["head"]["head_pan"]["vel"]),
             "effort": -1 * float(body_status["head"]["head_pan"]["effort"]),
             "is_tracking": bool(
-                self.robot.head.get_joint("head_pan").motor.get_moving_status()
-                & (1 << 0)
-                == 0
+                self.robot.head.get_joint("head_pan").motor.get_moving_status() & (1 << 0) == 0
             ),
             "upper_limit": float(
                 self.robot.head.get_joint("head_pan").soft_motion_limits["hard"][1]
@@ -92,9 +88,7 @@ class Body:
             "velocity": float(body_status["head"]["head_tilt"]["vel"]),
             "effort": -1 * float(body_status["head"]["head_tilt"]["effort"]),
             "is_tracking": bool(
-                self.robot.head.get_joint("head_tilt").motor.get_moving_status()
-                & (1 << 0)
-                == 0
+                self.robot.head.get_joint("head_tilt").motor.get_moving_status() & (1 << 0) == 0
             ),
             "upper_limit": float(
                 self.robot.head.get_joint("head_tilt").soft_motion_limits["hard"][1]
@@ -111,19 +105,14 @@ class Body:
             "velocity": float(body_status["end_of_arm"]["wrist_yaw"]["vel"]),
             "effort": -1 * float(body_status["end_of_arm"]["wrist_yaw"]["effort"]),
             "is_tracking": bool(
-                self.robot.end_of_arm.get_joint("wrist_yaw").motor.get_moving_status()
-                & (1 << 0)
+                self.robot.end_of_arm.get_joint("wrist_yaw").motor.get_moving_status() & (1 << 0)
                 == 0
             ),
             "upper_limit": float(
-                self.robot.end_of_arm.get_joint("wrist_yaw").soft_motion_limits["hard"][
-                    1
-                ]
+                self.robot.end_of_arm.get_joint("wrist_yaw").soft_motion_limits["hard"][1]
             ),
             "lower_limit": float(
-                self.robot.end_of_arm.get_joint("wrist_yaw").soft_motion_limits["hard"][
-                    0
-                ]
+                self.robot.end_of_arm.get_joint("wrist_yaw").soft_motion_limits["hard"][0]
             ),
         }
         status["joint_wrist_yaw"] = wrist_yaw_status
@@ -132,19 +121,14 @@ class Body:
             "velocity": float(body_status["end_of_arm"]["wrist_pitch"]["vel"]),
             "effort": -1 * float(body_status["end_of_arm"]["wrist_pitch"]["effort"]),
             "is_tracking": bool(
-                self.robot.end_of_arm.get_joint("wrist_pitch").motor.get_moving_status()
-                & (1 << 0)
+                self.robot.end_of_arm.get_joint("wrist_pitch").motor.get_moving_status() & (1 << 0)
                 == 0
             ),
             "upper_limit": float(
-                self.robot.end_of_arm.get_joint("wrist_pitch").soft_motion_limits[
-                    "hard"
-                ][1]
+                self.robot.end_of_arm.get_joint("wrist_pitch").soft_motion_limits["hard"][1]
             ),
             "lower_limit": float(
-                self.robot.end_of_arm.get_joint("wrist_pitch").soft_motion_limits[
-                    "hard"
-                ][0]
+                self.robot.end_of_arm.get_joint("wrist_pitch").soft_motion_limits["hard"][0]
             ),
         }
         if (
@@ -161,63 +145,44 @@ class Body:
                 body_status["end_of_arm"]["wrist_roll"]["effort"]
             ),  # doesn't need to be multiplied by -1
             "is_tracking": bool(
-                self.robot.end_of_arm.get_joint("wrist_roll").motor.get_moving_status()
-                & (1 << 0)
+                self.robot.end_of_arm.get_joint("wrist_roll").motor.get_moving_status() & (1 << 0)
                 == 0
             ),
             "upper_limit": float(
-                self.robot.end_of_arm.get_joint("wrist_roll").soft_motion_limits[
-                    "hard"
-                ][1]
+                self.robot.end_of_arm.get_joint("wrist_roll").soft_motion_limits["hard"][1]
             ),
             "lower_limit": float(
-                self.robot.end_of_arm.get_joint("wrist_roll").soft_motion_limits[
-                    "hard"
-                ][0]
+                self.robot.end_of_arm.get_joint("wrist_roll").soft_motion_limits["hard"][0]
             ),
         }
         status["joint_wrist_roll"] = wrist_roll_status
 
         # gripper joint state
-        range_rad = self.robot.end_of_arm.get_joint(
-            "stretch_gripper"
-        ).soft_motion_limits["hard"]
+        range_rad = self.robot.end_of_arm.get_joint("stretch_gripper").soft_motion_limits["hard"]
         range_robotis = (
-            self.robot.end_of_arm.motors["stretch_gripper"].world_rad_to_pct(
-                range_rad[0]
-            ),
-            self.robot.end_of_arm.motors["stretch_gripper"].world_rad_to_pct(
-                range_rad[1]
-            ),
+            self.robot.end_of_arm.motors["stretch_gripper"].world_rad_to_pct(range_rad[0]),
+            self.robot.end_of_arm.motors["stretch_gripper"].world_rad_to_pct(range_rad[1]),
         )
         range_finger_rad = (
-            self.robot.end_of_arm.motors[
-                "stretch_gripper"
-            ].gripper_conversion.robotis_to_finger(range_robotis[0]),
-            self.robot.end_of_arm.motors[
-                "stretch_gripper"
-            ].gripper_conversion.robotis_to_finger(range_robotis[1]),
+            self.robot.end_of_arm.motors["stretch_gripper"].gripper_conversion.robotis_to_finger(
+                range_robotis[0]
+            ),
+            self.robot.end_of_arm.motors["stretch_gripper"].gripper_conversion.robotis_to_finger(
+                range_robotis[1]
+            ),
         )
         gripper_status = {
             "position": float(
-                body_status["end_of_arm"]["stretch_gripper"]["gripper_conversion"][
-                    "finger_rad"
-                ]
+                body_status["end_of_arm"]["stretch_gripper"]["gripper_conversion"]["finger_rad"]
             ),
             "velocity": float(
-                body_status["end_of_arm"]["stretch_gripper"]["gripper_conversion"][
-                    "finger_vel"
-                ]
+                body_status["end_of_arm"]["stretch_gripper"]["gripper_conversion"]["finger_vel"]
             ),
             "effort": float(
-                body_status["end_of_arm"]["stretch_gripper"]["gripper_conversion"][
-                    "finger_effort"
-                ]
+                body_status["end_of_arm"]["stretch_gripper"]["gripper_conversion"]["finger_effort"]
             ),
             "is_tracking": bool(
-                self.robot.end_of_arm.get_joint(
-                    "stretch_gripper"
-                ).motor.get_moving_status()
+                self.robot.end_of_arm.get_joint("stretch_gripper").motor.get_moving_status()
                 & (1 << 0)
                 == 0
             ),

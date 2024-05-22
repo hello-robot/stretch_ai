@@ -107,21 +107,15 @@ class VoxelizedPointcloud:
             self._mins, self._maxs = pos_mins, pos_maxs
             # recompute_voxels = True
         else:
-            assert (
-                self._maxs is not None
-            ), "How did self._mins get set without self._maxs?"
+            assert self._maxs is not None, "How did self._mins get set without self._maxs?"
             # recompute_voxels = torch.any(pos_mins < self._mins) or torch.any(self._maxs < pos_maxs)
             self._mins = torch.min(self._mins, pos_mins)
             self._maxs = torch.max(self._maxs, pos_maxs)
 
         if self._points is None:
-            assert (
-                self._features is None
-            ), "How did self._points get unset while _features is set?"
+            assert self._features is None, "How did self._points get unset while _features is set?"
             # assert self._rgbs is None, "How did self._points get unset while _rgbs is set?"
-            assert (
-                self._weights is None
-            ), "How did self._points get unset while _weights is set?"
+            assert self._weights is None, "How did self._points get unset while _weights is set?"
             all_points, all_features, all_weights, all_rgb = (
                 points,
                 features,
@@ -133,9 +127,7 @@ class VoxelizedPointcloud:
             all_points = torch.cat([self._points, points], dim=0)
             all_weights = torch.cat([self._weights, weights], dim=0)
             all_features = (
-                torch.cat([self._features, features], dim=0)
-                if (features is not None)
-                else None
+                torch.cat([self._features, features], dim=0) if (features is not None) else None
             )
             all_rgb = torch.cat([self._rgb, rgb], dim=0) if (rgb is not None) else None
         # Future optimization:
@@ -286,9 +278,7 @@ def voxelize(
         cluster_consecutive_idx (LongTensor): Packed idx -- contiguous in cluster ID. E.g. [0, 0, 2, 1, 1, 2]
         batch_sample: See https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/pool/max_pool.html
     """
-    voxel_cluster = voxel_grid(
-        pos=pos, batch=batch, size=voxel_size, start=start, end=end
-    )
+    voxel_cluster = voxel_grid(pos=pos, batch=batch, size=voxel_size, start=start, end=end)
     cluster_consecutive_idx, perm = consecutive_cluster(voxel_cluster)
     batch_sample = batch[perm] if batch is not None else None
     cluster_idx = voxel_cluster
@@ -315,9 +305,7 @@ def scatter_weighted_mean(
         Tensor: Agggregated features, weighted by weights and normalized by weights_cluster
     """
     assert dim == 0, "Dim != 0 not yet implemented"
-    feature_cluster = scatter(
-        features * weights[:, None], cluster, dim=dim, reduce="sum"
-    )
+    feature_cluster = scatter(features * weights[:, None], cluster, dim=dim, reduce="sum")
     feature_cluster = feature_cluster / weights_cluster[:, None]
     return feature_cluster
 
@@ -353,14 +341,10 @@ def reduce_pointcloud(
         weights = torch.ones_like(pos[..., 0])
     weights_cluster = scatter(weights, voxel_cluster, dim=0, reduce="sum")
 
-    pos_cluster = scatter_weighted_mean(
-        pos, weights, voxel_cluster, weights_cluster, dim=0
-    )
+    pos_cluster = scatter_weighted_mean(pos, weights, voxel_cluster, weights_cluster, dim=0)
 
     if rgbs is not None:
-        rgb_cluster = scatter_weighted_mean(
-            rgbs, weights, voxel_cluster, weights_cluster, dim=0
-        )
+        rgb_cluster = scatter_weighted_mean(rgbs, weights, voxel_cluster, weights_cluster, dim=0)
     else:
         rgb_cluster = None
 
@@ -374,18 +358,14 @@ def reduce_pointcloud(
     elif feature_reduce == "max":
         feature_cluster = scatter(features, voxel_cluster, dim=0, reduce="max")
     elif feature_reduce == "sum":
-        feature_cluster = scatter(
-            features * weights[:, None], voxel_cluster, dim=0, reduce="sum"
-        )
+        feature_cluster = scatter(features * weights[:, None], voxel_cluster, dim=0, reduce="sum")
     else:
         raise NotImplementedError(f"Unknown feature reduction method {feature_reduce}")
 
     return pos_cluster, feature_cluster, weights_cluster, rgb_cluster
 
 
-def scatter3d(
-    voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int]
-) -> Tensor:
+def scatter3d(voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int]) -> Tensor:
     """Scatter weights into a 3d voxel grid of the appropriate size.
 
     Args:

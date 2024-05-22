@@ -28,9 +28,7 @@ class RobotClient(ABC):
         self._base_control_mode = ControlMode.IDLE
 
     @abstractmethod
-    def navigate_to(
-        self, xyt: ContinuousNavigationAction, relative=False, blocking=False
-    ):
+    def navigate_to(self, xyt: ContinuousNavigationAction, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
         raise NotImplementedError()
 

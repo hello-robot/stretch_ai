@@ -78,9 +78,7 @@ class D435i(Realsense):
 
         if exposure == "auto":
             # Use autoexposre
-            self.stereo_sensor = (
-                self.pipeline.get_active_profile().get_device().query_sensors()[0]
-            )
+            self.stereo_sensor = self.pipeline.get_active_profile().get_device().query_sensors()[0]
             self.stereo_sensor.set_option(rs.option.enable_auto_exposure, True)
         else:
             default_exposure = 33000
@@ -91,9 +89,7 @@ class D435i(Realsense):
             else:
                 exposure_value = int(exposure)
 
-            self.stereo_sensor = (
-                self.pipeline.get_active_profile().get_device().query_sensors()[0]
-            )
+            self.stereo_sensor = self.pipeline.get_active_profile().get_device().query_sensors()[0]
             self.stereo_sensor.set_option(rs.option.exposure, exposure_value)
 
 

@@ -76,9 +76,7 @@ class FileDataRecorder:
         """Write out the data to a file."""
 
         # Create the episode directory
-        episode_dir = self.task_dir / datetime.datetime.now().strftime(
-            "%Y-%m-%d--%H-%M-%S"
-        )
+        episode_dir = self.task_dir / datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         episode_dir.mkdir()
 
         # Write the images

@@ -8,9 +8,7 @@ from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
 
 
-def initialize(
-    camarr_port, camb64_port, exposure: str = "low", sensor_type: str = "d405"
-):
+def initialize(camarr_port, camb64_port, exposure: str = "low", sensor_type: str = "d405"):
     # zeromq
     ctx = zmq.Context()
     camarr_sock = ctx.socket(zmq.PUB)

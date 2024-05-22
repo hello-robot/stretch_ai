@@ -83,9 +83,7 @@ def process_goal_dict(goal_dict, prev_goal_dict=None) -> dict:
 
         T = np.linalg.inv(T0) @ T1
         goal_dict["relative_gripper_position"] = T[:3, 3]
-        goal_dict["relative_gripper_orientation"] = Rotation.from_matrix(
-            T[:3, :3]
-        ).as_quat()
+        goal_dict["relative_gripper_orientation"] = Rotation.from_matrix(T[:3, :3]).as_quat()
 
         goal_dict["valid"] = True
     else:
@@ -232,9 +230,7 @@ class DexTeleopLeader(Evaluator):
                     # Try to terminate
                     print("[LEADER] Force recording done. Terminating.")
                     return None
-            head_cfg = (
-                self.look_ahead_cfg if not self._recording else self.look_at_ee_cfg
-            )
+            head_cfg = self.look_ahead_cfg if not self._recording else self.look_at_ee_cfg
         elif key == 27:
             if self._recording:
                 self._need_to_write = True
@@ -307,12 +303,8 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--user-name", type=str, default="default_user")
     parser.add_argument("-t", "--task-name", type=str, default="default_task")
     parser.add_argument("-e", "--env-name", type=str, default="default_env")
-    parser.add_argument(
-        "-r", "--replay", action="store_true", help="Replay a recorded session."
-    )
-    parser.add_argument(
-        "-f", "--force", action="store_true", help="Force data recording."
-    )
+    parser.add_argument("-r", "--replay", action="store_true", help="Replay a recorded session.")
+    parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
     parser.add_argument(
         "-R",

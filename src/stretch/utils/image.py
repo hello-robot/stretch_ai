@@ -31,9 +31,7 @@ class Camera(object):
         """Create a simple pinhole camera given minimal information only. Fov is in degrees"""
         horizontal_fov_rad = np.radians(fov_degrees)
         h_focal_length = width / (2 * np.tan(horizontal_fov_rad / 2))
-        v_focal_length = width / (
-            2 * np.tan(horizontal_fov_rad / 2) * float(height) / width
-        )
+        v_focal_length = width / (2 * np.tan(horizontal_fov_rad / 2) * float(height) / width)
         principal_point_x = (width - 1.0) / 2
         principal_point_y = (height - 1.0) / 2
         return Camera(
@@ -136,9 +134,7 @@ class Camera(object):
 
     def depth_to_xyz(self, depth):
         """get depth from numpy using simple pinhole self model"""
-        indices = np.indices((self.height, self.width), dtype=np.float32).transpose(
-            1, 2, 0
-        )
+        indices = np.indices((self.height, self.width), dtype=np.float32).transpose(1, 2, 0)
         z = depth
         # pixel indices start at top-left corner. for these equations, it starts at bottom-left
         x = (indices[:, :, 1] - self.px) * (z / self.fx)
@@ -223,9 +219,7 @@ def convert_xz_y_to_xyz(camera_pose_xz_y):
 
 def opengl_depth_to_xyz(depth, camera: Camera):
     """get depth from numpy using simple pinhole camera model"""
-    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(
-        1, 2, 0
-    )
+    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(1, 2, 0)
     z = depth
     # pixel indices start at top-left corner. for these equations, it starts at bottom-left
     # indices[..., 0] = np.flipud(indices[..., 0])
@@ -238,9 +232,7 @@ def opengl_depth_to_xyz(depth, camera: Camera):
 
 def depth_to_xyz(depth, camera: Camera):
     """get depth from numpy using simple pinhole camera model"""
-    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(
-        1, 2, 0
-    )
+    indices = np.indices((camera.height, camera.width), dtype=np.float32).transpose(1, 2, 0)
     z = depth
     # pixel indices start at top-left corner. for these equations, it starts at bottom-left
     x = (indices[:, :, 1] - camera.px) * (z / camera.fx)
@@ -292,9 +284,7 @@ def build_mask(
     Returns:
         _type_: Mask of shape target.shape
     """
-    assert (
-        target.ndim == 4
-    ), f"target should be of shape [B, N_channels, H, W], was {target.shape}"
+    assert target.ndim == 4, f"target should be of shape [B, N_channels, H, W], was {target.shape}"
     if target.shape[1] == 1:
         masks = [target[:, t] for t in range(target.shape[1])]
         masks = [(t >= val - tol) & (t <= val + tol) for t in masks]
@@ -352,9 +342,7 @@ def dilate_or_erode_mask(mask: Tensor, radius: int, num_iterations=1) -> Tensor:
     if erode:
         mask = ~mask
     mask = mask.half()
-    conv_kernel = torch.ones(
-        (1, 1, abs_radius, abs_radius), dtype=mask.dtype, device=mask.device
-    )
+    conv_kernel = torch.ones((1, 1, abs_radius, abs_radius), dtype=mask.dtype, device=mask.device)
     for _ in range(num_iterations):
         mask = mask.half()
         mask = F.conv2d(mask, conv_kernel, padding="same")
@@ -487,9 +475,7 @@ def adjust_gamma(image: np.ndarray, gamma: float = 1.0):
     """
 
     invGamma = 1.0 / gamma
-    table = np.array(
-        [((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]
-    ).astype("uint8")
+    table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
 
     # apply gamma correction using the lookup table
     return cv2.LUT(image, table)

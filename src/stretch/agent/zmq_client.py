@@ -130,9 +130,7 @@ class HomeRobotZmqClient(RobotClient):
         # Blocking is handled in here
         self.send_action()
 
-    def navigate_to(
-        self, xyt: ContinuousNavigationAction, relative=False, blocking=False
-    ):
+    def navigate_to(self, xyt: ContinuousNavigationAction, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
@@ -210,12 +208,8 @@ class HomeRobotZmqClient(RobotClient):
                 if self._obs is not None:
                     pos = self._obs["gps"]
                     ang = self._obs["compass"]
-                    moved_dist = (
-                        np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-                    )
-                    angle_dist = (
-                        angle_difference(ang, last_ang) if last_ang is not None else 0
-                    )
+                    moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
+                    angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
                     not_moving = (
                         last_pos is not None
                         and moved_dist < moving_threshold
@@ -240,9 +234,7 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(0.1)
             t1 = timeit.default_timer()
             if t1 - t0 > 15.0:
-                raise RuntimeError(
-                    f"Timeout waiting for block with step id = {block_id}"
-                )
+                raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
@@ -422,9 +414,7 @@ class HomeRobotZmqClient(RobotClient):
             steps += 1
             if verbose:
                 print("Control mode:", self._control_mode)
-                print(
-                    f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
-                )
+                print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
 
     def start(self) -> bool:

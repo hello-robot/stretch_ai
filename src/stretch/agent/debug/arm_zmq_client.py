@@ -66,9 +66,7 @@ class TestArmZmqClient(HomeRobotZmqClient):
             steps += 1
             if verbose:
                 print("Control mode:", self._control_mode)
-                print(
-                    f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
-                )
+                print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
 
 

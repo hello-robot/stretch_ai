@@ -117,8 +117,6 @@ class OpenaiClient:
 
 if __name__ == "__main__":
     client = OpenaiClient()
-    plan = client(
-        "this room is a mess, could you put away the dirty towel?", verbose=True
-    )
+    plan = client("this room is a mess, could you put away the dirty towel?", verbose=True)
     print("\n\n")
     print("OpenAI client returned this plan:", plan)

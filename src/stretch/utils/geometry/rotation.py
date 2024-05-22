@@ -108,12 +108,8 @@ def get_grid(
     theta22 = torch.stack([torch.zeros_like(x), torch.ones_like(x), y], 1)
     theta2 = torch.stack([theta21, theta22], 1)
 
-    rot_grid = F.affine_grid(theta1, torch.Size(grid_size), align_corners=False).to(
-        precision
-    )
-    trans_grid = F.affine_grid(theta2, torch.Size(grid_size), align_corners=False).to(
-        precision
-    )
+    rot_grid = F.affine_grid(theta1, torch.Size(grid_size), align_corners=False).to(precision)
+    trans_grid = F.affine_grid(theta2, torch.Size(grid_size), align_corners=False).to(precision)
 
     return rot_grid, trans_grid
 
