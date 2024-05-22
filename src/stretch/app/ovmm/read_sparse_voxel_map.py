@@ -126,9 +126,7 @@ def main(
             # x0 = np.array([0, 0, 0])
             footprint = dummy_robot.get_footprint()
             print(f"{x0} valid = {space.is_valid(x0)}")
-            voxel_map.show(
-                instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint
-            )
+            voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
             # TODO: remove debug visualization code
             # x1 = np.array([0, 0, np.pi / 4])
             # print(f"{x1} valid = {space.is_valid(x1)}")
@@ -171,9 +169,7 @@ def main(
                 return
 
             # Get frontier sampler
-            sampler = space.sample_closest_frontier(
-                x0, verbose=False, min_dist=0.1, step_dist=0.1
-            )
+            sampler = space.sample_closest_frontier(x0, verbose=False, min_dist=0.1, step_dist=0.1)
             planner = agent.planner
 
             print(f"Closest frontier to {x0}:")

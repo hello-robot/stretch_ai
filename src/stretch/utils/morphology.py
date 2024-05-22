@@ -34,9 +34,7 @@ def binary_erosion(binary_image, kernel):
         binary image tensor of the same shape as input
     """
     return 1 - torch.clamp(
-        torch.nn.functional.conv2d(
-            1 - binary_image, kernel, padding=kernel.shape[-1] // 2
-        ),
+        torch.nn.functional.conv2d(1 - binary_image, kernel, padding=kernel.shape[-1] // 2),
         0,
         1,
     )

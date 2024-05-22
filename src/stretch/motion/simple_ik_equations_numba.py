@@ -47,9 +47,7 @@ def idealized_fk_with_rotary_base(base_angle, lift_distance, arm_distance, b1):
 
 
 @njit
-def calibrated_fk_with_rotary_base(
-    base_angle, lift_distance, arm_distance, b1, l_vector, a_vector
-):
+def calibrated_fk_with_rotary_base(base_angle, lift_distance, arm_distance, b1, l_vector, a_vector):
     # b1 is the distance in the x direction between the mobile base rotational axis to the lift on the ground
 
     # unit vector in the direction of positive lift motion
@@ -105,18 +103,13 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
         (
             (
                 (a3) ** (2) * ((l1) ** (2) + (l2) ** (2))
-                + (
-                    -2 * a3 * (a1 * l1 + a2 * l2) * l3
-                    + ((a1) ** (2) + (a2) ** (2)) * (l3) ** (2)
-                )
+                + (-2 * a3 * (a1 * l1 + a2 * l2) * l3 + ((a1) ** (2) + (a2) ** (2)) * (l3) ** (2))
             )
         )
         ** (-1)
         * ((-1 * l3 * (a1 * x + a2 * y) + a3 * (l1 * x + l2 * y))) ** (-1)
         * (
-            (a3) ** (2)
-            * (l1 * x + l2 * y)
-            * (b1 * l1 * l3 + ((l1) ** (2) + (l2) ** (2)) * z)
+            (a3) ** (2) * (l1 * x + l2 * y) * (b1 * l1 * l3 + ((l1) ** (2) + (l2) ** (2)) * z)
             + (
                 -1
                 * a3
@@ -126,12 +119,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                     + (
                         a1 * b1 * l3 * (2 * l1 * x + l2 * y)
                         + (
-                            a1
-                            * (2 * (l1) ** (2) * x + ((l2) ** (2) * x + l1 * l2 * y))
-                            * z
-                            + a2
-                            * (l1 * l2 * x + ((l1) ** (2) * y + 2 * (l2) ** (2) * y))
-                            * z
+                            a1 * (2 * (l1) ** (2) * x + ((l2) ** (2) * x + l1 * l2 * y)) * z
+                            + a2 * (l1 * l2 * x + ((l1) ** (2) * y + 2 * (l2) ** (2) * y)) * z
                         )
                     )
                 )
@@ -149,12 +138,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                     + (
                                         (a2) ** (2) * l2 * l3 * y * z
                                         + (
-                                            (
-                                                (
-                                                    l3 * (a1 * x + a2 * y)
-                                                    + -1 * a3 * (l1 * x + l2 * y)
-                                                )
-                                            )
+                                            ((l3 * (a1 * x + a2 * y) + -1 * a3 * (l1 * x + l2 * y)))
                                             ** (2)
                                             * (
                                                 (a3) ** (2)
@@ -164,33 +148,17 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                     * ((x) ** (2) + (y) ** (2))
                                                 )
                                                 + (
-                                                    2
-                                                    * a1
-                                                    * a2
-                                                    * l2
-                                                    * z
-                                                    * (b1 * l3 + l1 * z)
+                                                    2 * a1 * a2 * l2 * z * (b1 * l3 + l1 * z)
                                                     + (
                                                         (a2) ** (2)
                                                         * (
-                                                            -1
-                                                            * (b1) ** (2)
-                                                            * (l3) ** (2)
+                                                            -1 * (b1) ** (2) * (l3) ** (2)
                                                             + (
                                                                 (l3) ** (2)
-                                                                * (
-                                                                    (x) ** (2)
-                                                                    + (y) ** (2)
-                                                                )
+                                                                * ((x) ** (2) + (y) ** (2))
                                                                 + (
-                                                                    -2
-                                                                    * b1
-                                                                    * l1
-                                                                    * l3
-                                                                    * z
-                                                                    + -1
-                                                                    * (l1) ** (2)
-                                                                    * (z) ** (2)
+                                                                    -2 * b1 * l1 * l3 * z
+                                                                    + -1 * (l1) ** (2) * (z) ** (2)
                                                                 )
                                                             )
                                                         )
@@ -198,13 +166,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                             (a1) ** (2)
                                                             * (
                                                                 (l3) ** (2)
-                                                                * (
-                                                                    (x) ** (2)
-                                                                    + (y) ** (2)
-                                                                )
-                                                                + -1
-                                                                * (l2) ** (2)
-                                                                * (z) ** (2)
+                                                                * ((x) ** (2) + (y) ** (2))
+                                                                + -1 * (l2) ** (2) * (z) ** (2)
                                                             )
                                                             + 2
                                                             * a3
@@ -216,10 +179,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                     + (
                                                                         -1
                                                                         * l3
-                                                                        * (
-                                                                            (x) ** (2)
-                                                                            + (y) ** (2)
-                                                                        )
+                                                                        * ((x) ** (2) + (y) ** (2))
                                                                         + b1 * l1 * z
                                                                     )
                                                                 )
@@ -228,13 +188,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 * (
                                                                     l1
                                                                     * l3
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
-                                                                    + b1
-                                                                    * (l2) ** (2)
-                                                                    * z
+                                                                    * ((x) ** (2) + (y) ** (2))
+                                                                    + b1 * (l2) ** (2) * z
                                                                 )
                                                             )
                                                         )
@@ -269,9 +224,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
             ** (-1)
             * ((-1 * l3 * (a1 * x + a2 * y) + a3 * (l1 * x + l2 * y))) ** (-1)
             * (
-                (a3) ** (2)
-                * (l1 * x + l2 * y)
-                * (b1 * l1 * l3 + ((l1) ** (2) + (l2) ** (2)) * z)
+                (a3) ** (2) * (l1 * x + l2 * y) * (b1 * l1 * l3 + ((l1) ** (2) + (l2) ** (2)) * z)
                 + (
                     -1
                     * a3
@@ -281,18 +234,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                         + (
                             a1 * b1 * l3 * (2 * l1 * x + l2 * y)
                             + (
-                                a1
-                                * (
-                                    2 * (l1) ** (2) * x
-                                    + ((l2) ** (2) * x + l1 * l2 * y)
-                                )
-                                * z
-                                + a2
-                                * (
-                                    l1 * l2 * x
-                                    + ((l1) ** (2) * y + 2 * (l2) ** (2) * y)
-                                )
-                                * z
+                                a1 * (2 * (l1) ** (2) * x + ((l2) ** (2) * x + l1 * l2 * y)) * z
+                                + a2 * (l1 * l2 * x + ((l1) ** (2) * y + 2 * (l2) ** (2) * y)) * z
                             )
                         )
                     )
@@ -326,30 +269,16 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                         * ((x) ** (2) + (y) ** (2))
                                                     )
                                                     + (
-                                                        2
-                                                        * a1
-                                                        * a2
-                                                        * l2
-                                                        * z
-                                                        * (b1 * l3 + l1 * z)
+                                                        2 * a1 * a2 * l2 * z * (b1 * l3 + l1 * z)
                                                         + (
                                                             (a2) ** (2)
                                                             * (
-                                                                -1
-                                                                * (b1) ** (2)
-                                                                * (l3) ** (2)
+                                                                -1 * (b1) ** (2) * (l3) ** (2)
                                                                 + (
                                                                     (l3) ** (2)
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
+                                                                    * ((x) ** (2) + (y) ** (2))
                                                                     + (
-                                                                        -2
-                                                                        * b1
-                                                                        * l1
-                                                                        * l3
-                                                                        * z
+                                                                        -2 * b1 * l1 * l3 * z
                                                                         + -1
                                                                         * (l1) ** (2)
                                                                         * (z) ** (2)
@@ -360,13 +289,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 (a1) ** (2)
                                                                 * (
                                                                     (l3) ** (2)
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
-                                                                    + -1
-                                                                    * (l2) ** (2)
-                                                                    * (z) ** (2)
+                                                                    * ((x) ** (2) + (y) ** (2))
+                                                                    + -1 * (l2) ** (2) * (z) ** (2)
                                                                 )
                                                                 + 2
                                                                 * a3
@@ -379,14 +303,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                             -1
                                                                             * l3
                                                                             * (
-                                                                                (x)
-                                                                                ** (2)
-                                                                                + (y)
-                                                                                ** (2)
+                                                                                (x) ** (2)
+                                                                                + (y) ** (2)
                                                                             )
-                                                                            + b1
-                                                                            * l1
-                                                                            * z
+                                                                            + b1 * l1 * z
                                                                         )
                                                                     )
                                                                     + -1
@@ -394,13 +314,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                     * (
                                                                         l1
                                                                         * l3
-                                                                        * (
-                                                                            (x) ** (2)
-                                                                            + (y) ** (2)
-                                                                        )
-                                                                        + b1
-                                                                        * (l2) ** (2)
-                                                                        * z
+                                                                        * ((x) ** (2) + (y) ** (2))
+                                                                        + b1 * (l2) ** (2) * z
                                                                     )
                                                                 )
                                                             )
@@ -435,11 +350,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
             * (
                 -1 * (a3) ** (3) * b1 * l1 * (l1 * x + l2 * y)
                 + (
-                    -1
-                    * ((a1) ** (2) + (a2) ** (2))
-                    * (l3) ** (2)
-                    * (a1 * x + a2 * y)
-                    * z
+                    -1 * ((a1) ** (2) + (a2) ** (2)) * (l3) ** (2) * (a1 * x + a2 * y) * z
                     + (
                         (a3) ** (2)
                         * (
@@ -468,37 +379,21 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                 + (
                                                     (a1) ** (2) * l2 * l3 * y * z
                                                     + (
-                                                        2
-                                                        * (a2) ** (2)
-                                                        * l2
-                                                        * l3
-                                                        * y
-                                                        * z
+                                                        2 * (a2) ** (2) * l2 * l3 * y * z
                                                         + (
                                                             (
                                                                 (
-                                                                    l3
-                                                                    * (a1 * x + a2 * y)
-                                                                    + -1
-                                                                    * a3
-                                                                    * (l1 * x + l2 * y)
+                                                                    l3 * (a1 * x + a2 * y)
+                                                                    + -1 * a3 * (l1 * x + l2 * y)
                                                                 )
                                                             )
                                                             ** (2)
                                                             * (
                                                                 (a3) ** (2)
                                                                 * (
-                                                                    -1
-                                                                    * (b1) ** (2)
-                                                                    * (l2) ** (2)
-                                                                    + (
-                                                                        (l1) ** (2)
-                                                                        + (l2) ** (2)
-                                                                    )
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
+                                                                    -1 * (b1) ** (2) * (l2) ** (2)
+                                                                    + ((l1) ** (2) + (l2) ** (2))
+                                                                    * ((x) ** (2) + (y) ** (2))
                                                                 )
                                                                 + (
                                                                     2
@@ -511,24 +406,13 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                         (a2) ** (2)
                                                                         * (
                                                                             -1
-                                                                            * (b1)
-                                                                            ** (2)
-                                                                            * (l3)
-                                                                            ** (2)
+                                                                            * (b1) ** (2)
+                                                                            * (l3) ** (2)
                                                                             + (
-                                                                                (l3)
-                                                                                ** (2)
+                                                                                (l3) ** (2)
                                                                                 * (
-                                                                                    (x)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    + (
-                                                                                        y
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (x) ** (2)
+                                                                                    + (y) ** (2)
                                                                                 )
                                                                                 + (
                                                                                     -2
@@ -537,43 +421,22 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                     * l3
                                                                                     * z
                                                                                     + -1
-                                                                                    * (
-                                                                                        l1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        z
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (l1) ** (2)
+                                                                                    * (z) ** (2)
                                                                                 )
                                                                             )
                                                                         )
                                                                         + (
                                                                             (a1) ** (2)
                                                                             * (
-                                                                                (l3)
-                                                                                ** (2)
+                                                                                (l3) ** (2)
                                                                                 * (
-                                                                                    (x)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    + (
-                                                                                        y
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (x) ** (2)
+                                                                                    + (y) ** (2)
                                                                                 )
                                                                                 + -1
-                                                                                * (l2)
-                                                                                ** (2)
-                                                                                * (z)
-                                                                                ** (2)
+                                                                                * (l2) ** (2)
+                                                                                * (z) ** (2)
                                                                             )
                                                                             + 2
                                                                             * a3
@@ -581,27 +444,15 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                 a2
                                                                                 * l2
                                                                                 * (
-                                                                                    (b1)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * l3
+                                                                                    (b1) ** (2) * l3
                                                                                     + (
                                                                                         -1
                                                                                         * l3
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + b1
                                                                                         * l1
@@ -614,26 +465,11 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                     l1
                                                                                     * l3
                                                                                     * (
-                                                                                        (
-                                                                                            x
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        + (
-                                                                                            y
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (x) ** (2)
+                                                                                        + (y) ** (2)
                                                                                     )
                                                                                     + b1
-                                                                                    * (
-                                                                                        l2
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (l2) ** (2)
                                                                                     * z
                                                                                 )
                                                                             )
@@ -692,27 +528,11 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                     + (
                                                         -1 * a1 * a2 * l2 * l3 * x * z
                                                         + (
-                                                            a2
-                                                            * a3
-                                                            * (l1) ** (2)
-                                                            * y
-                                                            * z
+                                                            a2 * a3 * (l1) ** (2) * y * z
                                                             + (
-                                                                -1
-                                                                * a1
-                                                                * a3
-                                                                * l1
-                                                                * l2
-                                                                * y
-                                                                * z
+                                                                -1 * a1 * a3 * l1 * l2 * y * z
                                                                 + (
-                                                                    -1
-                                                                    * a1
-                                                                    * a2
-                                                                    * l1
-                                                                    * l3
-                                                                    * y
-                                                                    * z
+                                                                    -1 * a1 * a2 * l1 * l3 * y * z
                                                                     + (
                                                                         (a1) ** (2)
                                                                         * l2
@@ -724,66 +544,32 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                 (
                                                                                     l3
                                                                                     * (
-                                                                                        a1
-                                                                                        * x
-                                                                                        + a2
-                                                                                        * y
+                                                                                        a1 * x
+                                                                                        + a2 * y
                                                                                     )
                                                                                     + -1
                                                                                     * a3
                                                                                     * (
-                                                                                        l1
-                                                                                        * x
-                                                                                        + l2
-                                                                                        * y
+                                                                                        l1 * x
+                                                                                        + l2 * y
                                                                                     )
                                                                                 )
                                                                             )
                                                                             ** (2)
                                                                             * (
-                                                                                (a3)
-                                                                                ** (2)
+                                                                                (a3) ** (2)
                                                                                 * (
                                                                                     -1
-                                                                                    * (
-                                                                                        b1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        l2
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (b1) ** (2)
+                                                                                    * (l2) ** (2)
                                                                                     + (
-                                                                                        (
-                                                                                            l1
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        + (
-                                                                                            l2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l1) ** (2)
+                                                                                        + (l2)
+                                                                                        ** (2)
                                                                                     )
                                                                                     * (
-                                                                                        (
-                                                                                            x
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        + (
-                                                                                            y
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (x) ** (2)
+                                                                                        + (y) ** (2)
                                                                                     )
                                                                                 )
                                                                                 + (
@@ -793,36 +579,19 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                     * l2
                                                                                     * z
                                                                                     * (
-                                                                                        b1
-                                                                                        * l3
-                                                                                        + l1
-                                                                                        * z
+                                                                                        b1 * l3
+                                                                                        + l1 * z
                                                                                     )
                                                                                     + (
-                                                                                        (
-                                                                                            a2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (a2) ** (2)
                                                                                         * (
                                                                                             -1
-                                                                                            * (
-                                                                                                b1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            * (
-                                                                                                l3
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (b1)
+                                                                                            ** (2)
+                                                                                            * (l3)
+                                                                                            ** (2)
                                                                                             + (
-                                                                                                (
-                                                                                                    l3
-                                                                                                )
+                                                                                                (l3)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -863,16 +632,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             )
                                                                                         )
                                                                                         + (
-                                                                                            (
-                                                                                                a1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (a1)
+                                                                                            ** (2)
                                                                                             * (
-                                                                                                (
-                                                                                                    l3
-                                                                                                )
+                                                                                                (l3)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -1014,10 +777,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                         a2 * b1 * l3 * (l1 * x + 3 * l2 * y)
                         + (
                             a2 * l1 * (l1 * x + l2 * y) * z
-                            + -1
-                            * a1
-                            * l2
-                            * (-2 * b1 * l3 * x + (l1 * x * z + l2 * y * z))
+                            + -1 * a1 * l2 * (-2 * b1 * l3 * x + (l1 * x * z + l2 * y * z))
                         )
                     )
                     + (
@@ -1034,29 +794,11 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                         + (
                                             -1 * (a1) ** (3) * l2 * l3 * (x) ** (2) * z
                                             + (
-                                                2
-                                                * a1
-                                                * (a2) ** (2)
-                                                * l1
-                                                * l3
-                                                * x
-                                                * y
-                                                * z
+                                                2 * a1 * (a2) ** (2) * l1 * l3 * x * y * z
                                                 + (
-                                                    -2
-                                                    * (a1) ** (2)
-                                                    * a2
-                                                    * l2
-                                                    * l3
-                                                    * x
-                                                    * y
-                                                    * z
+                                                    -2 * (a1) ** (2) * a2 * l2 * l3 * x * y * z
                                                     + (
-                                                        (a2) ** (3)
-                                                        * l1
-                                                        * l3
-                                                        * (y) ** (2)
-                                                        * z
+                                                        (a2) ** (3) * l1 * l3 * (y) ** (2) * z
                                                         + (
                                                             -1
                                                             * a1
@@ -1072,17 +814,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 * (
                                                                     (
                                                                         (
-                                                                            l3
-                                                                            * (
-                                                                                a1 * x
-                                                                                + a2 * y
-                                                                            )
+                                                                            l3 * (a1 * x + a2 * y)
                                                                             + -1
                                                                             * a3
-                                                                            * (
-                                                                                l1 * x
-                                                                                + l2 * y
-                                                                            )
+                                                                            * (l1 * x + l2 * y)
                                                                         )
                                                                     )
                                                                     ** (2)
@@ -1090,21 +825,15 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                         (a3) ** (2)
                                                                         * (
                                                                             -1
-                                                                            * (b1)
-                                                                            ** (2)
-                                                                            * (l2)
-                                                                            ** (2)
+                                                                            * (b1) ** (2)
+                                                                            * (l2) ** (2)
                                                                             + (
-                                                                                (l1)
-                                                                                ** (2)
-                                                                                + (l2)
-                                                                                ** (2)
+                                                                                (l1) ** (2)
+                                                                                + (l2) ** (2)
                                                                             )
                                                                             * (
-                                                                                (x)
-                                                                                ** (2)
-                                                                                + (y)
-                                                                                ** (2)
+                                                                                (x) ** (2)
+                                                                                + (y) ** (2)
                                                                             )
                                                                         )
                                                                         + (
@@ -1113,47 +842,20 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                             * a2
                                                                             * l2
                                                                             * z
-                                                                            * (
-                                                                                b1 * l3
-                                                                                + l1 * z
-                                                                            )
+                                                                            * (b1 * l3 + l1 * z)
                                                                             + (
-                                                                                (a2)
-                                                                                ** (2)
+                                                                                (a2) ** (2)
                                                                                 * (
                                                                                     -1
-                                                                                    * (
-                                                                                        b1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        l3
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (b1) ** (2)
+                                                                                    * (l3) ** (2)
                                                                                     + (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + (
                                                                                             -2
@@ -1162,60 +864,27 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             * l3
                                                                                             * z
                                                                                             + -1
-                                                                                            * (
-                                                                                                l1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            * (
-                                                                                                z
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l1)
+                                                                                            ** (2)
+                                                                                            * (z)
+                                                                                            ** (2)
                                                                                         )
                                                                                     )
                                                                                 )
                                                                                 + (
-                                                                                    (a1)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (a1) ** (2)
                                                                                     * (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + -1
-                                                                                        * (
-                                                                                            l2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        * (
-                                                                                            z
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        * (l2)
+                                                                                        ** (2)
+                                                                                        * (z) ** (2)
                                                                                     )
                                                                                     + 2
                                                                                     * a3
@@ -1223,12 +892,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                         a2
                                                                                         * l2
                                                                                         * (
-                                                                                            (
-                                                                                                b1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (b1)
+                                                                                            ** (2)
                                                                                             * l3
                                                                                             + (
                                                                                                 -1
@@ -1258,9 +923,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             l1
                                                                                             * l3
                                                                                             * (
-                                                                                                (
-                                                                                                    x
-                                                                                                )
+                                                                                                (x)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -1272,12 +935,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                                 )
                                                                                             )
                                                                                             + b1
-                                                                                            * (
-                                                                                                l2
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l2)
+                                                                                            ** (2)
                                                                                             * z
                                                                                         )
                                                                                     )
@@ -1292,17 +951,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 * (
                                                                     (
                                                                         (
-                                                                            l3
-                                                                            * (
-                                                                                a1 * x
-                                                                                + a2 * y
-                                                                            )
+                                                                            l3 * (a1 * x + a2 * y)
                                                                             + -1
                                                                             * a3
-                                                                            * (
-                                                                                l1 * x
-                                                                                + l2 * y
-                                                                            )
+                                                                            * (l1 * x + l2 * y)
                                                                         )
                                                                     )
                                                                     ** (2)
@@ -1310,21 +962,15 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                         (a3) ** (2)
                                                                         * (
                                                                             -1
-                                                                            * (b1)
-                                                                            ** (2)
-                                                                            * (l2)
-                                                                            ** (2)
+                                                                            * (b1) ** (2)
+                                                                            * (l2) ** (2)
                                                                             + (
-                                                                                (l1)
-                                                                                ** (2)
-                                                                                + (l2)
-                                                                                ** (2)
+                                                                                (l1) ** (2)
+                                                                                + (l2) ** (2)
                                                                             )
                                                                             * (
-                                                                                (x)
-                                                                                ** (2)
-                                                                                + (y)
-                                                                                ** (2)
+                                                                                (x) ** (2)
+                                                                                + (y) ** (2)
                                                                             )
                                                                         )
                                                                         + (
@@ -1333,47 +979,20 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                             * a2
                                                                             * l2
                                                                             * z
-                                                                            * (
-                                                                                b1 * l3
-                                                                                + l1 * z
-                                                                            )
+                                                                            * (b1 * l3 + l1 * z)
                                                                             + (
-                                                                                (a2)
-                                                                                ** (2)
+                                                                                (a2) ** (2)
                                                                                 * (
                                                                                     -1
-                                                                                    * (
-                                                                                        b1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        l3
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (b1) ** (2)
+                                                                                    * (l3) ** (2)
                                                                                     + (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + (
                                                                                             -2
@@ -1382,60 +1001,27 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             * l3
                                                                                             * z
                                                                                             + -1
-                                                                                            * (
-                                                                                                l1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            * (
-                                                                                                z
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l1)
+                                                                                            ** (2)
+                                                                                            * (z)
+                                                                                            ** (2)
                                                                                         )
                                                                                     )
                                                                                 )
                                                                                 + (
-                                                                                    (a1)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (a1) ** (2)
                                                                                     * (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + -1
-                                                                                        * (
-                                                                                            l2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        * (
-                                                                                            z
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        * (l2)
+                                                                                        ** (2)
+                                                                                        * (z) ** (2)
                                                                                     )
                                                                                     + 2
                                                                                     * a3
@@ -1443,12 +1029,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                         a2
                                                                                         * l2
                                                                                         * (
-                                                                                            (
-                                                                                                b1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (b1)
+                                                                                            ** (2)
                                                                                             * l3
                                                                                             + (
                                                                                                 -1
@@ -1478,9 +1060,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             l1
                                                                                             * l3
                                                                                             * (
-                                                                                                (
-                                                                                                    x
-                                                                                                )
+                                                                                                (x)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -1492,12 +1072,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                                 )
                                                                                             )
                                                                                             + b1
-                                                                                            * (
-                                                                                                l2
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l2)
+                                                                                            ** (2)
                                                                                             * z
                                                                                         )
                                                                                     )
@@ -1519,11 +1095,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                         )
                         + a3
                         * (
-                            (a1) ** (2)
-                            * l2
-                            * l3
-                            * x
-                            * (b1 * l3 * x + -2 * (l1 * x + l2 * y) * z)
+                            (a1) ** (2) * l2 * l3 * x * (b1 * l3 * x + -2 * (l1 * x + l2 * y) * z)
                             + (
                                 (a2) ** (2)
                                 * l3
@@ -1539,20 +1111,12 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                     * l3
                                     * (
                                         b1 * l3 * x * (l1 * x + 2 * l2 * y)
-                                        + (
-                                            (l1) ** (2) * (x) ** (2)
-                                            + -1 * (l2) ** (2) * (y) ** (2)
-                                        )
+                                        + ((l1) ** (2) * (x) ** (2) + -1 * (l2) ** (2) * (y) ** (2))
                                         * z
                                     )
                                     + (-1 * l2 * x + l1 * y)
                                     * (
-                                        (
-                                            (
-                                                l3 * (a1 * x + a2 * y)
-                                                + -1 * a3 * (l1 * x + l2 * y)
-                                            )
-                                        )
+                                        ((l3 * (a1 * x + a2 * y) + -1 * a3 * (l1 * x + l2 * y)))
                                         ** (2)
                                         * (
                                             (a3) ** (2)
@@ -1562,35 +1126,24 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                 * ((x) ** (2) + (y) ** (2))
                                             )
                                             + (
-                                                2
-                                                * a1
-                                                * a2
-                                                * l2
-                                                * z
-                                                * (b1 * l3 + l1 * z)
+                                                2 * a1 * a2 * l2 * z * (b1 * l3 + l1 * z)
                                                 + (
                                                     (a2) ** (2)
                                                     * (
                                                         -1 * (b1) ** (2) * (l3) ** (2)
                                                         + (
-                                                            (l3) ** (2)
-                                                            * ((x) ** (2) + (y) ** (2))
+                                                            (l3) ** (2) * ((x) ** (2) + (y) ** (2))
                                                             + (
                                                                 -2 * b1 * l1 * l3 * z
-                                                                + -1
-                                                                * (l1) ** (2)
-                                                                * (z) ** (2)
+                                                                + -1 * (l1) ** (2) * (z) ** (2)
                                                             )
                                                         )
                                                     )
                                                     + (
                                                         (a1) ** (2)
                                                         * (
-                                                            (l3) ** (2)
-                                                            * ((x) ** (2) + (y) ** (2))
-                                                            + -1
-                                                            * (l2) ** (2)
-                                                            * (z) ** (2)
+                                                            (l3) ** (2) * ((x) ** (2) + (y) ** (2))
+                                                            + -1 * (l2) ** (2) * (z) ** (2)
                                                         )
                                                         + 2
                                                         * a3
@@ -1602,22 +1155,14 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 + (
                                                                     -1
                                                                     * l3
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
+                                                                    * ((x) ** (2) + (y) ** (2))
                                                                     + b1 * l1 * z
                                                                 )
                                                             )
                                                             + -1
                                                             * a1
                                                             * (
-                                                                l1
-                                                                * l3
-                                                                * (
-                                                                    (x) ** (2)
-                                                                    + (y) ** (2)
-                                                                )
+                                                                l1 * l3 * ((x) ** (2) + (y) ** (2))
                                                                 + b1 * (l2) ** (2) * z
                                                             )
                                                         )
@@ -1684,37 +1229,21 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                 + (
                                                     -1 * (a1) ** (2) * l2 * l3 * y * z
                                                     + (
-                                                        -2
-                                                        * (a2) ** (2)
-                                                        * l2
-                                                        * l3
-                                                        * y
-                                                        * z
+                                                        -2 * (a2) ** (2) * l2 * l3 * y * z
                                                         + (
                                                             (
                                                                 (
-                                                                    l3
-                                                                    * (a1 * x + a2 * y)
-                                                                    + -1
-                                                                    * a3
-                                                                    * (l1 * x + l2 * y)
+                                                                    l3 * (a1 * x + a2 * y)
+                                                                    + -1 * a3 * (l1 * x + l2 * y)
                                                                 )
                                                             )
                                                             ** (2)
                                                             * (
                                                                 (a3) ** (2)
                                                                 * (
-                                                                    -1
-                                                                    * (b1) ** (2)
-                                                                    * (l2) ** (2)
-                                                                    + (
-                                                                        (l1) ** (2)
-                                                                        + (l2) ** (2)
-                                                                    )
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
+                                                                    -1 * (b1) ** (2) * (l2) ** (2)
+                                                                    + ((l1) ** (2) + (l2) ** (2))
+                                                                    * ((x) ** (2) + (y) ** (2))
                                                                 )
                                                                 + (
                                                                     2
@@ -1727,24 +1256,13 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                         (a2) ** (2)
                                                                         * (
                                                                             -1
-                                                                            * (b1)
-                                                                            ** (2)
-                                                                            * (l3)
-                                                                            ** (2)
+                                                                            * (b1) ** (2)
+                                                                            * (l3) ** (2)
                                                                             + (
-                                                                                (l3)
-                                                                                ** (2)
+                                                                                (l3) ** (2)
                                                                                 * (
-                                                                                    (x)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    + (
-                                                                                        y
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (x) ** (2)
+                                                                                    + (y) ** (2)
                                                                                 )
                                                                                 + (
                                                                                     -2
@@ -1753,43 +1271,22 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                     * l3
                                                                                     * z
                                                                                     + -1
-                                                                                    * (
-                                                                                        l1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        z
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (l1) ** (2)
+                                                                                    * (z) ** (2)
                                                                                 )
                                                                             )
                                                                         )
                                                                         + (
                                                                             (a1) ** (2)
                                                                             * (
-                                                                                (l3)
-                                                                                ** (2)
+                                                                                (l3) ** (2)
                                                                                 * (
-                                                                                    (x)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    + (
-                                                                                        y
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (x) ** (2)
+                                                                                    + (y) ** (2)
                                                                                 )
                                                                                 + -1
-                                                                                * (l2)
-                                                                                ** (2)
-                                                                                * (z)
-                                                                                ** (2)
+                                                                                * (l2) ** (2)
+                                                                                * (z) ** (2)
                                                                             )
                                                                             + 2
                                                                             * a3
@@ -1797,27 +1294,15 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                 a2
                                                                                 * l2
                                                                                 * (
-                                                                                    (b1)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * l3
+                                                                                    (b1) ** (2) * l3
                                                                                     + (
                                                                                         -1
                                                                                         * l3
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + b1
                                                                                         * l1
@@ -1830,26 +1315,11 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                     l1
                                                                                     * l3
                                                                                     * (
-                                                                                        (
-                                                                                            x
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        + (
-                                                                                            y
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (x) ** (2)
+                                                                                        + (y) ** (2)
                                                                                     )
                                                                                     + b1
-                                                                                    * (
-                                                                                        l2
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (l2) ** (2)
                                                                                     * z
                                                                                 )
                                                                             )
@@ -1908,27 +1378,11 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                     + (
                                                         -1 * a1 * a2 * l2 * l3 * x * z
                                                         + (
-                                                            a2
-                                                            * a3
-                                                            * (l1) ** (2)
-                                                            * y
-                                                            * z
+                                                            a2 * a3 * (l1) ** (2) * y * z
                                                             + (
-                                                                -1
-                                                                * a1
-                                                                * a3
-                                                                * l1
-                                                                * l2
-                                                                * y
-                                                                * z
+                                                                -1 * a1 * a3 * l1 * l2 * y * z
                                                                 + (
-                                                                    -1
-                                                                    * a1
-                                                                    * a2
-                                                                    * l1
-                                                                    * l3
-                                                                    * y
-                                                                    * z
+                                                                    -1 * a1 * a2 * l1 * l3 * y * z
                                                                     + (
                                                                         (a1) ** (2)
                                                                         * l2
@@ -1941,66 +1395,32 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                 (
                                                                                     l3
                                                                                     * (
-                                                                                        a1
-                                                                                        * x
-                                                                                        + a2
-                                                                                        * y
+                                                                                        a1 * x
+                                                                                        + a2 * y
                                                                                     )
                                                                                     + -1
                                                                                     * a3
                                                                                     * (
-                                                                                        l1
-                                                                                        * x
-                                                                                        + l2
-                                                                                        * y
+                                                                                        l1 * x
+                                                                                        + l2 * y
                                                                                     )
                                                                                 )
                                                                             )
                                                                             ** (2)
                                                                             * (
-                                                                                (a3)
-                                                                                ** (2)
+                                                                                (a3) ** (2)
                                                                                 * (
                                                                                     -1
-                                                                                    * (
-                                                                                        b1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        l2
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (b1) ** (2)
+                                                                                    * (l2) ** (2)
                                                                                     + (
-                                                                                        (
-                                                                                            l1
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        + (
-                                                                                            l2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l1) ** (2)
+                                                                                        + (l2)
+                                                                                        ** (2)
                                                                                     )
                                                                                     * (
-                                                                                        (
-                                                                                            x
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        + (
-                                                                                            y
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (x) ** (2)
+                                                                                        + (y) ** (2)
                                                                                     )
                                                                                 )
                                                                                 + (
@@ -2010,36 +1430,19 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                     * l2
                                                                                     * z
                                                                                     * (
-                                                                                        b1
-                                                                                        * l3
-                                                                                        + l1
-                                                                                        * z
+                                                                                        b1 * l3
+                                                                                        + l1 * z
                                                                                     )
                                                                                     + (
-                                                                                        (
-                                                                                            a2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (a2) ** (2)
                                                                                         * (
                                                                                             -1
-                                                                                            * (
-                                                                                                b1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            * (
-                                                                                                l3
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (b1)
+                                                                                            ** (2)
+                                                                                            * (l3)
+                                                                                            ** (2)
                                                                                             + (
-                                                                                                (
-                                                                                                    l3
-                                                                                                )
+                                                                                                (l3)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -2080,16 +1483,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             )
                                                                                         )
                                                                                         + (
-                                                                                            (
-                                                                                                a1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (a1)
+                                                                                            ** (2)
                                                                                             * (
-                                                                                                (
-                                                                                                    l3
-                                                                                                )
+                                                                                                (l3)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -2231,10 +1628,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                         a2 * b1 * l3 * (l1 * x + 3 * l2 * y)
                         + (
                             a2 * l1 * (l1 * x + l2 * y) * z
-                            + -1
-                            * a1
-                            * l2
-                            * (-2 * b1 * l3 * x + (l1 * x * z + l2 * y * z))
+                            + -1 * a1 * l2 * (-2 * b1 * l3 * x + (l1 * x * z + l2 * y * z))
                         )
                     )
                     + (
@@ -2251,29 +1645,11 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                         + (
                                             -1 * (a1) ** (3) * l2 * l3 * (x) ** (2) * z
                                             + (
-                                                2
-                                                * a1
-                                                * (a2) ** (2)
-                                                * l1
-                                                * l3
-                                                * x
-                                                * y
-                                                * z
+                                                2 * a1 * (a2) ** (2) * l1 * l3 * x * y * z
                                                 + (
-                                                    -2
-                                                    * (a1) ** (2)
-                                                    * a2
-                                                    * l2
-                                                    * l3
-                                                    * x
-                                                    * y
-                                                    * z
+                                                    -2 * (a1) ** (2) * a2 * l2 * l3 * x * y * z
                                                     + (
-                                                        (a2) ** (3)
-                                                        * l1
-                                                        * l3
-                                                        * (y) ** (2)
-                                                        * z
+                                                        (a2) ** (3) * l1 * l3 * (y) ** (2) * z
                                                         + (
                                                             -1
                                                             * a1
@@ -2288,17 +1664,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 * (
                                                                     (
                                                                         (
-                                                                            l3
-                                                                            * (
-                                                                                a1 * x
-                                                                                + a2 * y
-                                                                            )
+                                                                            l3 * (a1 * x + a2 * y)
                                                                             + -1
                                                                             * a3
-                                                                            * (
-                                                                                l1 * x
-                                                                                + l2 * y
-                                                                            )
+                                                                            * (l1 * x + l2 * y)
                                                                         )
                                                                     )
                                                                     ** (2)
@@ -2306,21 +1675,15 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                         (a3) ** (2)
                                                                         * (
                                                                             -1
-                                                                            * (b1)
-                                                                            ** (2)
-                                                                            * (l2)
-                                                                            ** (2)
+                                                                            * (b1) ** (2)
+                                                                            * (l2) ** (2)
                                                                             + (
-                                                                                (l1)
-                                                                                ** (2)
-                                                                                + (l2)
-                                                                                ** (2)
+                                                                                (l1) ** (2)
+                                                                                + (l2) ** (2)
                                                                             )
                                                                             * (
-                                                                                (x)
-                                                                                ** (2)
-                                                                                + (y)
-                                                                                ** (2)
+                                                                                (x) ** (2)
+                                                                                + (y) ** (2)
                                                                             )
                                                                         )
                                                                         + (
@@ -2329,47 +1692,20 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                             * a2
                                                                             * l2
                                                                             * z
-                                                                            * (
-                                                                                b1 * l3
-                                                                                + l1 * z
-                                                                            )
+                                                                            * (b1 * l3 + l1 * z)
                                                                             + (
-                                                                                (a2)
-                                                                                ** (2)
+                                                                                (a2) ** (2)
                                                                                 * (
                                                                                     -1
-                                                                                    * (
-                                                                                        b1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        l3
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (b1) ** (2)
+                                                                                    * (l3) ** (2)
                                                                                     + (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + (
                                                                                             -2
@@ -2378,60 +1714,27 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             * l3
                                                                                             * z
                                                                                             + -1
-                                                                                            * (
-                                                                                                l1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            * (
-                                                                                                z
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l1)
+                                                                                            ** (2)
+                                                                                            * (z)
+                                                                                            ** (2)
                                                                                         )
                                                                                     )
                                                                                 )
                                                                                 + (
-                                                                                    (a1)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (a1) ** (2)
                                                                                     * (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + -1
-                                                                                        * (
-                                                                                            l2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        * (
-                                                                                            z
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        * (l2)
+                                                                                        ** (2)
+                                                                                        * (z) ** (2)
                                                                                     )
                                                                                     + 2
                                                                                     * a3
@@ -2439,12 +1742,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                         a2
                                                                                         * l2
                                                                                         * (
-                                                                                            (
-                                                                                                b1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (b1)
+                                                                                            ** (2)
                                                                                             * l3
                                                                                             + (
                                                                                                 -1
@@ -2474,9 +1773,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             l1
                                                                                             * l3
                                                                                             * (
-                                                                                                (
-                                                                                                    x
-                                                                                                )
+                                                                                                (x)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -2488,12 +1785,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                                 )
                                                                                             )
                                                                                             + b1
-                                                                                            * (
-                                                                                                l2
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l2)
+                                                                                            ** (2)
                                                                                             * z
                                                                                         )
                                                                                     )
@@ -2509,17 +1802,10 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 * (
                                                                     (
                                                                         (
-                                                                            l3
-                                                                            * (
-                                                                                a1 * x
-                                                                                + a2 * y
-                                                                            )
+                                                                            l3 * (a1 * x + a2 * y)
                                                                             + -1
                                                                             * a3
-                                                                            * (
-                                                                                l1 * x
-                                                                                + l2 * y
-                                                                            )
+                                                                            * (l1 * x + l2 * y)
                                                                         )
                                                                     )
                                                                     ** (2)
@@ -2527,21 +1813,15 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                         (a3) ** (2)
                                                                         * (
                                                                             -1
-                                                                            * (b1)
-                                                                            ** (2)
-                                                                            * (l2)
-                                                                            ** (2)
+                                                                            * (b1) ** (2)
+                                                                            * (l2) ** (2)
                                                                             + (
-                                                                                (l1)
-                                                                                ** (2)
-                                                                                + (l2)
-                                                                                ** (2)
+                                                                                (l1) ** (2)
+                                                                                + (l2) ** (2)
                                                                             )
                                                                             * (
-                                                                                (x)
-                                                                                ** (2)
-                                                                                + (y)
-                                                                                ** (2)
+                                                                                (x) ** (2)
+                                                                                + (y) ** (2)
                                                                             )
                                                                         )
                                                                         + (
@@ -2550,47 +1830,20 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                             * a2
                                                                             * l2
                                                                             * z
-                                                                            * (
-                                                                                b1 * l3
-                                                                                + l1 * z
-                                                                            )
+                                                                            * (b1 * l3 + l1 * z)
                                                                             + (
-                                                                                (a2)
-                                                                                ** (2)
+                                                                                (a2) ** (2)
                                                                                 * (
                                                                                     -1
-                                                                                    * (
-                                                                                        b1
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
-                                                                                    * (
-                                                                                        l3
-                                                                                    )
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    * (b1) ** (2)
+                                                                                    * (l3) ** (2)
                                                                                     + (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + (
                                                                                             -2
@@ -2599,60 +1852,27 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             * l3
                                                                                             * z
                                                                                             + -1
-                                                                                            * (
-                                                                                                l1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            * (
-                                                                                                z
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l1)
+                                                                                            ** (2)
+                                                                                            * (z)
+                                                                                            ** (2)
                                                                                         )
                                                                                     )
                                                                                 )
                                                                                 + (
-                                                                                    (a1)
-                                                                                    ** (
-                                                                                        2
-                                                                                    )
+                                                                                    (a1) ** (2)
                                                                                     * (
-                                                                                        (
-                                                                                            l3
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        (l3) ** (2)
                                                                                         * (
-                                                                                            (
-                                                                                                x
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
-                                                                                            + (
-                                                                                                y
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (x)
+                                                                                            ** (2)
+                                                                                            + (y)
+                                                                                            ** (2)
                                                                                         )
                                                                                         + -1
-                                                                                        * (
-                                                                                            l2
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
-                                                                                        * (
-                                                                                            z
-                                                                                        )
-                                                                                        ** (
-                                                                                            2
-                                                                                        )
+                                                                                        * (l2)
+                                                                                        ** (2)
+                                                                                        * (z) ** (2)
                                                                                     )
                                                                                     + 2
                                                                                     * a3
@@ -2660,12 +1880,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                         a2
                                                                                         * l2
                                                                                         * (
-                                                                                            (
-                                                                                                b1
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            (b1)
+                                                                                            ** (2)
                                                                                             * l3
                                                                                             + (
                                                                                                 -1
@@ -2695,9 +1911,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                             l1
                                                                                             * l3
                                                                                             * (
-                                                                                                (
-                                                                                                    x
-                                                                                                )
+                                                                                                (x)
                                                                                                 ** (
                                                                                                     2
                                                                                                 )
@@ -2709,12 +1923,8 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                                                 )
                                                                                             )
                                                                                             + b1
-                                                                                            * (
-                                                                                                l2
-                                                                                            )
-                                                                                            ** (
-                                                                                                2
-                                                                                            )
+                                                                                            * (l2)
+                                                                                            ** (2)
                                                                                             * z
                                                                                         )
                                                                                     )
@@ -2736,11 +1946,7 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                         )
                         + a3
                         * (
-                            (a1) ** (2)
-                            * l2
-                            * l3
-                            * x
-                            * (b1 * l3 * x + -2 * (l1 * x + l2 * y) * z)
+                            (a1) ** (2) * l2 * l3 * x * (b1 * l3 * x + -2 * (l1 * x + l2 * y) * z)
                             + (
                                 (a2) ** (2)
                                 * l3
@@ -2756,20 +1962,12 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                     * l3
                                     * (
                                         b1 * l3 * x * (l1 * x + 2 * l2 * y)
-                                        + (
-                                            (l1) ** (2) * (x) ** (2)
-                                            + -1 * (l2) ** (2) * (y) ** (2)
-                                        )
+                                        + ((l1) ** (2) * (x) ** (2) + -1 * (l2) ** (2) * (y) ** (2))
                                         * z
                                     )
                                     + (l2 * x + -1 * l1 * y)
                                     * (
-                                        (
-                                            (
-                                                l3 * (a1 * x + a2 * y)
-                                                + -1 * a3 * (l1 * x + l2 * y)
-                                            )
-                                        )
+                                        ((l3 * (a1 * x + a2 * y) + -1 * a3 * (l1 * x + l2 * y)))
                                         ** (2)
                                         * (
                                             (a3) ** (2)
@@ -2779,35 +1977,24 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                 * ((x) ** (2) + (y) ** (2))
                                             )
                                             + (
-                                                2
-                                                * a1
-                                                * a2
-                                                * l2
-                                                * z
-                                                * (b1 * l3 + l1 * z)
+                                                2 * a1 * a2 * l2 * z * (b1 * l3 + l1 * z)
                                                 + (
                                                     (a2) ** (2)
                                                     * (
                                                         -1 * (b1) ** (2) * (l3) ** (2)
                                                         + (
-                                                            (l3) ** (2)
-                                                            * ((x) ** (2) + (y) ** (2))
+                                                            (l3) ** (2) * ((x) ** (2) + (y) ** (2))
                                                             + (
                                                                 -2 * b1 * l1 * l3 * z
-                                                                + -1
-                                                                * (l1) ** (2)
-                                                                * (z) ** (2)
+                                                                + -1 * (l1) ** (2) * (z) ** (2)
                                                             )
                                                         )
                                                     )
                                                     + (
                                                         (a1) ** (2)
                                                         * (
-                                                            (l3) ** (2)
-                                                            * ((x) ** (2) + (y) ** (2))
-                                                            + -1
-                                                            * (l2) ** (2)
-                                                            * (z) ** (2)
+                                                            (l3) ** (2) * ((x) ** (2) + (y) ** (2))
+                                                            + -1 * (l2) ** (2) * (z) ** (2)
                                                         )
                                                         + 2
                                                         * a3
@@ -2819,22 +2006,14 @@ def calibrated_ik_with_rotary_base(wrist_position, b1, l_vector, a_vector):
                                                                 + (
                                                                     -1
                                                                     * l3
-                                                                    * (
-                                                                        (x) ** (2)
-                                                                        + (y) ** (2)
-                                                                    )
+                                                                    * ((x) ** (2) + (y) ** (2))
                                                                     + b1 * l1 * z
                                                                 )
                                                             )
                                                             + -1
                                                             * a1
                                                             * (
-                                                                l1
-                                                                * l3
-                                                                * (
-                                                                    (x) ** (2)
-                                                                    + (y) ** (2)
-                                                                )
+                                                                l1 * l3 * ((x) ** (2) + (y) ** (2))
                                                                 + b1 * (l2) ** (2) * z
                                                             )
                                                         )

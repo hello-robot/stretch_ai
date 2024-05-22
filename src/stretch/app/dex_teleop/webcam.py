@@ -99,9 +99,7 @@ class Webcam:
             calibration_directory = get_calibration_directory(
                 self.camera_name, image_width, image_height
             )
-            file_name_pattern = (
-                calibration_directory + "camera_calibration_results_*.yaml"
-            )
+            file_name_pattern = calibration_directory + "camera_calibration_results_*.yaml"
             file_names = glob.glob(file_name_pattern)
             file_names.sort()
             if len(file_names) > 0:
@@ -121,9 +119,7 @@ class Webcam:
 
             print("Webcam: Loaded camera calibration results from file =", file_name)
             print("Webcam: Loaded camera calibration results =", camera_calibration)
-            self.color_camera_info["camera_matrix"] = np.array(
-                camera_calibration["camera_matrix"]
-            )
+            self.color_camera_info["camera_matrix"] = np.array(camera_calibration["camera_matrix"])
             self.color_camera_info["distortion_coefficients"] = np.array(
                 camera_calibration["distortion_coefficients"]
             )

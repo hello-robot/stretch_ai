@@ -21,8 +21,7 @@ class ReplayMessage:
 class ReplayManager:
     def __init__(self, read_paths):
         self._srcs = {
-            read_path: a0.ReaderSync(a0.File(read_path), a0.INIT_OLDEST)
-            for read_path in read_paths
+            read_path: a0.ReaderSync(a0.File(read_path), a0.INIT_OLDEST) for read_path in read_paths
         }
 
         self._pq = queue.PriorityQueue()

@@ -23,6 +23,4 @@ aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_1000)
 # ids	        array of id used markers The first markers in the dictionary are used to fill the white chessboard squares.
 ########
 
-board = aruco.CharucoBoard(
-    size=(5, 7), squareLength=0.04, markerLength=0.02, dictionary=aruco_dict
-)
+board = aruco.CharucoBoard(size=(5, 7), squareLength=0.04, markerLength=0.02, dictionary=aruco_dict)

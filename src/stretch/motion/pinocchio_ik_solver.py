@@ -54,9 +54,7 @@ class PinocchioIKSolver:
                 jid = self.model.getJointId(joint)
                 if jid >= len(self.model.idx_qs):
                     logger.error(f"{joint=} {jid=} not in model.idx_qs")
-                    raise RuntimeError(
-                        f"Invalid urdf at {urdf_path=}: missing {joint=}"
-                    )
+                    raise RuntimeError(f"Invalid urdf at {urdf_path=}: missing {joint=}")
                 else:
                     idx = self.model.idx_qs[jid]
             self.controlled_joints.append(idx)
@@ -146,9 +144,7 @@ class PinocchioIKSolver:
             # Override the number of attempts
             num_attempts = 1
 
-        desired_ee_pose = pinocchio.SE3(
-            R.from_quat(quat_desired).as_matrix(), pos_desired
-        )
+        desired_ee_pose = pinocchio.SE3(R.from_quat(quat_desired).as_matrix(), pos_desired)
         while True:
             pinocchio.forwardKinematics(self.model, self.data, q)
             pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
@@ -222,15 +218,9 @@ class PositionIKOptimizer(IKSolverBase):
 
         cem_params = {} if cem_params is None else cem_params
         max_iterations = (
-            cem_params["max_iterations"]
-            if "max_iterations" in cem_params
-            else self.max_iterations
+            cem_params["max_iterations"] if "max_iterations" in cem_params else self.max_iterations
         )
-        num_samples = (
-            cem_params["num_samples"]
-            if "num_samples" in cem_params
-            else self.num_samples
-        )
+        num_samples = cem_params["num_samples"] if "num_samples" in cem_params else self.num_samples
         num_top = cem_params["num_top"] if "num_top" in cem_params else self.num_top
 
         self.opt = CEM(
@@ -265,9 +255,7 @@ class PositionIKOptimizer(IKSolverBase):
             pos_out, rot_out = self.ik_solver.compute_fk(q)
 
             cost_pos = np.linalg.norm(pos - pos_out)
-            cost_rot = (
-                1 - (rot_out * quat_desired).sum() ** 2
-            )  # TODO: just minimize dr?
+            cost_rot = 1 - (rot_out * quat_desired).sum() ** 2  # TODO: just minimize dr?
 
             cost = self.pos_wt * cost_pos + self.ori_wt * cost_rot
 

@@ -64,9 +64,7 @@ def test_shortcut_rrt_simple_env(start, goal, obs, visualize: bool = False):
     planner1 = Shortcut(planner0)
     res0 = _run_simple_env(planner0, env, start, goal, False)
     res1 = _run_simple_env(planner1, env, start, goal, visualize)
-    assert len(res0.trajectory) >= len(
-        res1.trajectory
-    ), "Shortcut should not make plans longer"
+    assert len(res0.trajectory) >= len(res1.trajectory), "Shortcut should not make plans longer"
 
 
 @pytest.mark.parametrize(
@@ -83,9 +81,7 @@ def test_shortcut_rrt_connect_simple_env(start, goal, obs, visualize: bool = Fal
     planner1 = Shortcut(planner0)
     res0 = _run_simple_env(planner0, env, start, goal, False)
     res1 = _run_simple_env(planner1, env, start, goal, visualize)
-    assert len(res0.trajectory) >= len(
-        res1.trajectory
-    ), "Shortcut should not make plans longer"
+    assert len(res0.trajectory) >= len(res1.trajectory), "Shortcut should not make plans longer"
 
 
 @pytest.mark.parametrize(

@@ -76,9 +76,7 @@ class FileDataRecorder:
         """Write out the data to a file."""
 
         # Create the episode directory
-        episode_dir = self.task_dir / datetime.datetime.now().strftime(
-            "%Y-%m-%d--%H-%M-%S"
-        )
+        episode_dir = self.task_dir / datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         episode_dir.mkdir()
 
         # Write the images
@@ -175,7 +173,7 @@ class FileDataRecorder:
 
         # TODO: remove debug code
         # This should be 192 x 256 x 4 bytes = 196608 bytes per image
-        #buffer = np.frombuffer(
+        # buffer = np.frombuffer(
         #        liblzfse.decompress(target_depth_filename.read_bytes()), dtype=np.float32
         #   )
 

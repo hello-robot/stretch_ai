@@ -87,9 +87,7 @@ def create_disk(radius: float, size: int):
 def get_x_and_y_from_path(path: List[torch.Tensor]) -> Tuple[List[float]]:
     x_list, y_list = zip(
         *[
-            (t[0].item(), t[1].item())
-            if t.dim() == 1
-            else (t[0, 0].item(), t[0, 1].item())
+            (t[0].item(), t[1].item()) if t.dim() == 1 else (t[0, 0].item(), t[0, 1].item())
             for t in path
         ]
     )
@@ -146,9 +144,7 @@ def resize_image_to_fit(img, target_width, target_height):
     )  # Assuming white canvas
     y_offset = (target_height - new_height) // 2
     x_offset = (target_width - new_width) // 2
-    canvas[
-        y_offset : y_offset + new_height, x_offset : x_offset + new_width
-    ] = resized_img
+    canvas[y_offset : y_offset + new_height, x_offset : x_offset + new_width] = resized_img
 
     return canvas
 

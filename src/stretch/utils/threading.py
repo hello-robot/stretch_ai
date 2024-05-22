@@ -39,9 +39,7 @@ class Interval(threading.Thread):
 
     """
 
-    def __init__(
-        self, fn: Callable, sleep_time: float, count: int = None, daemon=False
-    ):
+    def __init__(self, fn: Callable, sleep_time: float, count: int = None, daemon=False):
         threading.Thread.__init__(self, daemon=daemon)
         self.event = threading.Event()
         self.fn = fn
@@ -61,9 +59,7 @@ class Interval(threading.Thread):
             return_val = self.fn()
 
             if return_val not in [True, False]:
-                raise ValueError(
-                    "Function run in Interval must return a bool (is_not_finished)"
-                )
+                raise ValueError("Function run in Interval must return a bool (is_not_finished)")
             if not return_val:
                 self.cancel()
             if self.sleep_time is None:
