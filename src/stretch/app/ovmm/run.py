@@ -189,7 +189,7 @@ def demo_main(
     grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
 
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
-    demo.start(goal=object_to_find, visualize_map_at_start=False)
+    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
 
     print("- Reset robot to [0, 0, 0]")
     robot.navigate_to([0, 0, 0], blocking=True)

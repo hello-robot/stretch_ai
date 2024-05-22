@@ -186,6 +186,7 @@ class RobotAgent:
         logger.info("Rotate in place")
         if steps <= 0:
             return False
+
         step_size = 2 * np.pi / steps
         i = 0
         while i < steps:
