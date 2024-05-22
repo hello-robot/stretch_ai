@@ -24,15 +24,15 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.robot import RobotClient
 
+# TODO: semantic sensor code from HomeRobot
+from stretch.perception import create_semantic_sensor
+
 # Import planning tools for exploration
 from stretch.perception.encoders import ClipEncoder
 
 # Chat and UI tools
 from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.utils.visualization import get_x_and_y_from_path
-
-# TODO: semantic sensor code from HomeRobot
-# from stretch.perception import create_semantic_sensor
 
 
 @click.command()
@@ -180,10 +180,7 @@ def demo_main(
     object_to_find, location_to_place = parameters.get_task_goals()
 
     print("- Create semantic sensor based on detic")
-    # _, semantic_sensor = create_semantic_sensor(
-    #    device_id=device_id, verbose=verbose
-    # )
-    semantic_sensor = None
+    _, semantic_sensor = create_semantic_sensor(device_id=device_id, verbose=verbose)
 
     print("- Start robot agent with data collection")
     grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)

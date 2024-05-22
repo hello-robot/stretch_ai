@@ -704,6 +704,7 @@ class RobotAgent:
                 orig=np.zeros(3),
                 xyt=self.robot.get_base_pose(),
                 footprint=self.robot.get_robot_model().get_footprint(),
+                instances=True,
             )
 
         self.print_found_classes(goal)
