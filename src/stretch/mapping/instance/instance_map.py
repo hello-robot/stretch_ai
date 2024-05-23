@@ -8,7 +8,6 @@ import logging
 import os
 import shutil
 import timeit
-from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
@@ -23,8 +22,10 @@ from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance, InstanceView
 from stretch.mapping.instance.matching import (
     Bbox3dOverlapMethodEnum,
+    ViewMatchingConfig,
     dot_product_similarity,
     get_bbox_similarity,
+    get_similarity,
 )
 from stretch.perception.encoders import ClipEncoder
 from stretch.utils.bboxes_3d import (
@@ -41,52 +42,6 @@ from stretch.utils.point_cloud_torch import get_bounds
 from stretch.utils.voxel import drop_smallest_weight_points
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ViewMatchingConfig:
-    within_class: bool = True
-
-    box_match_mode: Bbox3dOverlapMethodEnum = Bbox3dOverlapMethodEnum.ONE_SIDED_IOU
-    box_overlap_eps: float = 1e-7
-    box_min_iou_thresh: float = 0.4
-    box_overlap_weight: float = 0.15
-
-    visual_similarity_weight: float = 1.0
-    min_similarity_thresh: float = 0.8
-
-
-def get_similarity(
-    instance_bounds1: Tensor,
-    instance_bounds2: Tensor,
-    visual_embedding1: Tensor,
-    visual_embedding2: Tensor,
-    text_embedding1: Optional[Tensor] = None,
-    text_embedding2: Optional[Tensor] = None,
-    view_matching_config: ViewMatchingConfig = ViewMatchingConfig(),
-):
-    # BBox similarity
-    overlap_similarity = get_bbox_similarity(
-        instance_bounds1,
-        instance_bounds2,
-        overlap_eps=view_matching_config.box_overlap_eps,
-        mode=view_matching_config.box_match_mode,
-    )
-    # print (f'bbox score: {overlap_similarity}')
-    similarity = overlap_similarity * view_matching_config.box_overlap_weight
-
-    if view_matching_config.visual_similarity_weight > 0.0:
-        visual_similarity = dot_product_similarity(
-            visual_embedding1, visual_embedding2, normalize=False
-        )
-        # print (f'clip score: {visual_similarity}')
-        # Handle the case where there is no embedding to examine
-        # If we return visual similarity, only then do we use it
-        if visual_similarity is not None:
-            visual_similarity[overlap_similarity < view_matching_config.box_min_iou_thresh] = 0.0
-            # print (f'valid clip score: {visual_similarity}')
-            similarity += visual_similarity * view_matching_config.visual_similarity_weight
-    return similarity
 
 
 class InstanceMemory:
@@ -347,7 +302,9 @@ class InstanceMemory:
         """
         for env_id in range(self.num_envs):
             for local_instance_id, instance_view in self.unprocessed_views[env_id].items():
-                print(f"{env_id=}, {local_instance_id=}")
+                print(
+                    f"{env_id=}, {local_instance_id=} current views = {len(self.instances[env_id])}"
+                )
                 match_category_id = (
                     instance_view.category_id if self.view_matching_config.within_class else None
                 )
@@ -400,6 +357,7 @@ class InstanceMemory:
                     view_matching_config=self.view_matching_config,
                 )
                 max_similarity, matched_idx = similarity.max(dim=1)
+                print(f"{max_similarity=}, {matched_idx=}", similarity)
                 total_weight = (
                     self.view_matching_config.visual_similarity_weight
                     + self.view_matching_config.box_overlap_weight
@@ -407,10 +365,13 @@ class InstanceMemory:
                 max_similarity = max_similarity / total_weight
 
                 if max_similarity < self.view_matching_config.min_similarity_thresh:
+                    # Create a new instance here
                     matched_global_instance_id = len(self.instances[env_id])  # + 1
                 else:
+                    # Do not create a new instance!
                     matched_global_instance_id = list(global_instance_ids)[matched_idx]
 
+                print("Add to instance:", env_id, local_instance_id, matched_global_instance_id)
                 self.add_view_to_instance(env_id, local_instance_id, matched_global_instance_id)
 
         # # TODO: Add option to do global NMS
@@ -467,6 +428,7 @@ class InstanceMemory:
 
         # get global instance
         global_instance = self.instances[env_id].get(global_instance_id, None)
+        breakpoint()
         if global_instance is None:
             global_instance = Instance(
                 global_id=global_instance_id,
