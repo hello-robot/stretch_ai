@@ -32,10 +32,11 @@ class SceneGraph:
                     self.relationships.append((ins_a.global_id, ins_b.global_id, "near"))
 
     def get_ins_center_pos(self, idx: int):
-        """Get teh center of an instance based on point cloud"""
+        """Get the center of an instance based on point cloud"""
         return torch.mean(self.instances[idx].point_cloud, axis=0)
 
     def get_instance_image(self, idx: int) -> np.ndarray:
+        """Get a viewable image from tensorized instances"""
         return (
             (
                 self.instances[idx].get_best_view().cropped_image
