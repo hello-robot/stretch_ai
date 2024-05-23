@@ -25,11 +25,20 @@ class SceneGraph:
                 if idx_a == idx_b:
                     continue
                 # TODO: add "on", "in" ... relationships
+                # Add "near" relationship for if something is near something else - aka just within some distance threshold
                 if (
                     self.near(ins_a.global_id, ins_b.global_id)
                     and (ins_b.global_id, ins_a.global_id, "near") not in self.relationships
                 ):
                     self.relationships.append((ins_a.global_id, ins_b.global_id, "near"))
+
+                # Add "on" relationship for if something is on top of something else
+                if (self.on(ins_a.global_id, ins_b.global_id)) and (
+                    ins_b.global_id,
+                    ins_a.global_id,
+                    "on",
+                ) not in self.relationships:
+                    self.relationships.append((ins_a.global_id, ins_b.global_id, "on"))
 
     def get_ins_center_pos(self, idx: int):
         """Get the center of an instance based on point cloud"""
@@ -78,14 +87,17 @@ class SceneGraph:
         dist = torch.pairwise_distance(
             self.get_ins_center_pos(ins_a), self.get_ins_center_pos(ins_b)
         ).item()
-        if dist < self.parameters["max_near_distance"]:
+        if dist < self.parameters["scene_graph"]["max_near_distance"]:
             return True
         return False
 
     def on(self, ins_a, ins_b):
-        if (
-            self.near(ins_a, ins_b)
-            and self.get_ins_center_pos(ins_a)[2] > self.get_ins_center_pos(ins_b)[2]
-        ):
-            return True
+        """On is defined as near and above, within some tolerance"""
+        if self.near(ins_a, ins_b):
+            z_dist = self.get_ins_center_pos(ins_a)[2] - self.get_ins_center_pos(ins_b)[2]
+            if (
+                z_dist < self.parameters["scene_graph"]["max_on_height"]
+                and z_dist > self.parameters["scene_graph"]["min_on_height"]
+            ):
+                return True
         return False
