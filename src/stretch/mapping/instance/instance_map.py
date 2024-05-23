@@ -428,7 +428,6 @@ class InstanceMemory:
 
         # get global instance
         global_instance = self.instances[env_id].get(global_instance_id, None)
-        breakpoint()
         if global_instance is None:
             global_instance = Instance(
                 global_id=global_instance_id,

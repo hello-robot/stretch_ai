@@ -26,9 +26,9 @@ class ViewMatchingConfig:
     box_match_mode: Bbox3dOverlapMethodEnum = Bbox3dOverlapMethodEnum.ONE_SIDED_IOU
     box_overlap_eps: float = 1e-7
     box_min_iou_thresh: float = 0.4
-    box_overlap_weight: float = 0.15
+    box_overlap_weight: float = 0.5  # High weight on bounding box overlap
 
-    visual_similarity_weight: float = 1.0
+    visual_similarity_weight: float = 0.5
     min_similarity_thresh: float = 0.8
 
 
@@ -164,6 +164,7 @@ def get_similarity(
     text_embedding2: Optional[Tensor] = None,
     view_matching_config: ViewMatchingConfig = ViewMatchingConfig(),
 ):
+    """Compute similarity based on bounding boxes for now"""
     # BBox similarity
     overlap_similarity = get_bbox_similarity(
         instance_bounds1,
