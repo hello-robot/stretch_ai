@@ -1,5 +1,6 @@
 from typing import List
 
+import numpy as np
 import torch
 
 from stretch.core.parameters import Parameters
@@ -26,7 +27,7 @@ class SceneGraph:
                 # TODO: add "on", "in" ... relationships
                 if (
                     self.near(ins_a.global_id, ins_b.global_id)
-                    and (ins_b.global_id, ins_a.global_id, "near") not in relationships
+                    and (ins_b.global_id, ins_a.global_id, "near") not in self.relationships
                 ):
                     self.relationships.append((ins_a.global_id, ins_b.global_id, "near"))
 
@@ -34,37 +35,39 @@ class SceneGraph:
         """Get teh center of an instance based on point cloud"""
         return torch.mean(self.instances[idx].point_cloud, axis=0)
 
+    def get_instance_image(self, idx: int) -> np.ndarray:
+        return (
+            (
+                self.instances[idx].get_best_view().cropped_image
+                * self.instances[idx].get_best_view().mask
+                / 255.0
+            )
+            .detach()
+            .cpu()
+            .numpy()
+        )
+
     def get_relationships(self, debug: bool = False):
         # show symbolic relationships
         if debug:
             for idx_a, idx_b, rel in self.relationships:
                 print(idx_a, idx_b, rel)
+
+                img_a = self.get_instance_image(idx_a)
+                img_b = self.get_instance_image(idx_b)
+                breakpoint()
+
+                import matplotlib
+
+                matplotlib.use("TkAgg")
                 import matplotlib.pyplot as plt
 
                 plt.subplot(1, 2, 1)
-                plt.imshow(
-                    (
-                        instances[idx_a].get_best_view().cropped_image
-                        * instances[idx_a].get_best_view().mask
-                        / 255.0
-                    )
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
+                plt.imshow(img_a)
                 plt.title("Instance A is " + rel)
                 plt.axis("off")
                 plt.subplot(1, 2, 2)
-                plt.imshow(
-                    (
-                        instances[idx_b].get_best_view().cropped_image
-                        * instances[idx_b].get_best_view().mask
-                        / 255.0
-                    )
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
+                plt.imshow(img_b)
                 plt.title("Instance B")
                 plt.axis("off")
                 plt.show()

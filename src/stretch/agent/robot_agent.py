@@ -495,8 +495,9 @@ class RobotAgent:
             # Now draw 2d maps to show waht was happening
             self.voxel_map.get_2d_map(debug=True)
 
-        debug_instances = True
         if debug_instances:
+            # We need to load and configure matplotlib here
+            # to make sure that it's set up properly.
             import matplotlib
 
             matplotlib.use("TkAgg")
