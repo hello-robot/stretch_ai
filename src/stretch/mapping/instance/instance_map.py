@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import shutil
+import timeit
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -322,7 +323,7 @@ class InstanceMemory:
             return_dict = {gid: g for gid, g in return_dict.items() if g.category_id == category_id}
         return return_dict
 
-    def associate_instances_to_memory(self):
+    def associate_instances_to_memory(self, debug: bool = True):
         """
         Associate instance views with existing instances or create new instances based on matching criteria.
 
@@ -346,18 +347,13 @@ class InstanceMemory:
         """
         for env_id in range(self.num_envs):
             for local_instance_id, instance_view in self.unprocessed_views[env_id].items():
+                print(f"{env_id=}, {local_instance_id=}")
                 match_category_id = (
                     instance_view.category_id if self.view_matching_config.within_class else None
                 )
                 # image_array = np.array(instance_view.cropped_image, dtype=np.uint8)
                 # image_debug = Image.fromarray(image_array)
                 # image_debug.show()
-                if instance_view.embedding is not None:
-                    instance_view_embedding = instance_view.embedding / torch.norm(
-                        instance_view.embedding, dim=-1, keepdim=True
-                    )
-                else:
-                    instance_view_embedding = None
                 global_ids_to_instances = self.get_ids_to_instances(
                     env_id, category_id=match_category_id
                 )
@@ -377,10 +373,8 @@ class InstanceMemory:
                         for inst_id, instance in global_ids_to_instances.items()
                     ]
                 )
-                # global_view_embedding = [view.embedding for view in self.instances[env_id].instance_views]
-                # global_view_text_embedding = [inst.category_id for inst in self.instances[env_id]]
 
-                # # BBox similartit
+                # # BBox similarity
                 # overlap_similarity = get_bbox_similarity(
                 #     instance_view.bounds.unsqueeze(0),
                 #     global_bounds,
@@ -399,7 +393,7 @@ class InstanceMemory:
                 similarity = get_similarity(
                     instance_bounds1=instance_view.bounds.unsqueeze(0),
                     instance_bounds2=global_bounds,
-                    visual_embedding1=instance_view_embedding,
+                    visual_embedding1=instance_view.embedding,
                     visual_embedding2=global_embedding,
                     text_embedding1=None,
                     text_embedding2=None,
@@ -419,7 +413,7 @@ class InstanceMemory:
 
                 self.add_view_to_instance(env_id, local_instance_id, matched_global_instance_id)
 
-        # # TODO: Add option to do global
+        # # TODO: Add option to do global NMS
         # if self.global_box_nms_thresh > 0.0:
         #     for env_id in range(self.num_envs):
         #         self.global_instance_nms(env_id)
@@ -691,8 +685,6 @@ class InstanceMemory:
             )
         else:
             valid_points_downsampled = valid_points
-
-        import timeit
 
         t0 = timeit.default_timer()
         # unique instances

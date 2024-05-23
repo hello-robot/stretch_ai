@@ -23,7 +23,7 @@ from torch import Tensor
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance, InstanceMemory, InstanceView
 from stretch.motion import Footprint, PlanResult, RobotModel
-from stretch.perception.encoders import ClipEncoder
+from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import BBoxes3D
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
@@ -95,7 +95,7 @@ class SparseVoxelMap(object):
         background_instance_label (int): The label for the background instance.
         instance_memory_kwargs (Dict[str, Any]): Additional instance memory configuration.
         voxel_kwargs (Dict[str, Any]): Additional voxel configuration.
-        encoder (Optional[ClipEncoder]): An encoder for feature embeddings (optional).
+        encoder (Optional[BaseImageTextEncoder]): An encoder for feature embeddings (optional).
         map_2d_device (str): The device for 2D mapping.
         use_instance_memory (bool): Whether to create object-centric instance memory.
     """
@@ -126,7 +126,7 @@ class SparseVoxelMap(object):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder: Optional[ClipEncoder] = None,
+        encoder: Optional[BaseImageTextEncoder] = None,
         map_2d_device: str = "cpu",
         use_instance_memory: bool = False,
         use_median_filter: bool = False,

@@ -27,9 +27,6 @@ from stretch.core.robot import RobotClient
 # TODO: semantic sensor code from HomeRobot
 from stretch.perception import create_semantic_sensor
 
-# Import planning tools for exploration
-from stretch.perception.encoders import ClipEncoder
-
 # Chat and UI tools
 from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.utils.visualization import get_x_and_y_from_path

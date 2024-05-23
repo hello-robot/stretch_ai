@@ -55,7 +55,6 @@ class SceneGraph:
 
                 img_a = self.get_instance_image(idx_a)
                 img_b = self.get_instance_image(idx_b)
-                breakpoint()
 
                 import matplotlib
 
