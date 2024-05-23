@@ -1,16 +1,21 @@
+from typing import List
+
 import torch
 
+from stretch.core.parameters import Parameters
 from stretch.mapping.instance import Instance
 
 
 class SceneGraph:
     """Compute a very simple scene graph. Use it to extract relationships between instances."""
 
-    def get_ins_center_pos(self, idx: int):
-        """Get teh center of an instance based on point cloud"""
-        return torch.mean(self.instances[idx].point_cloud, axis=0)
+    def __init__(self, parameters: Parameters, instances: List[Instance]):
+        self.parameters = parameters
+        self.instances = instances
+        self.relationships = []
+        self.update(instances)
 
-    def __init__(self, instances):
+    def update(self, instances):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""
         self.relationships = []
         self.instances = instances
@@ -24,6 +29,10 @@ class SceneGraph:
                     and (ins_b.global_id, ins_a.global_id, "near") not in relationships
                 ):
                     self.relationships.append((ins_a.global_id, ins_b.global_id, "near"))
+
+    def get_ins_center_pos(self, idx: int):
+        """Get teh center of an instance based on point cloud"""
+        return torch.mean(self.instances[idx].point_cloud, axis=0)
 
     def get_relationships(self, debug: bool = False):
         # show symbolic relationships

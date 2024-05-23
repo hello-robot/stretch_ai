@@ -19,9 +19,9 @@ from PIL import Image
 
 # Mapping and perception
 import stretch.utils.depth as du
-from stretch.agent import get_parameters
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
+from stretch.core import get_parameters
 from stretch.core.robot import RobotClient
 
 # TODO: semantic sensor code from HomeRobot

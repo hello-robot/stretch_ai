@@ -18,9 +18,8 @@ from atomicwrites import atomic_write
 from loguru import logger
 from PIL import Image
 from torchvision import transforms
-from transformers import Owlv2ForObjectDetection, Owlv2Processor
 
-from stretch.agent import Parameters
+from stretch.core.parameters import Parameters
 from stretch.core.robot import GraspClient, RobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
@@ -29,6 +28,8 @@ from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import get_encoder
 from stretch.utils.threading import Interval
+
+# from transformers import Owlv2ForObjectDetection, Owlv2Processor
 
 
 class RobotAgent:
@@ -284,8 +285,12 @@ class RobotAgent:
 
         instance_relationships = None
         if self.use_scene_graph:
-            scene_graph = SceneGraph(instances)
-            instance_relationships = scene_graph.get_relationships(debug=True)
+            if self.scene_graph is None:
+                self.scene_graph = SceneGraph(self.parameters, instances)
+            else:
+                self.scene_graph.update(instances)
+            # For debugging and extraction
+            instance_relationships = self.scene_graph.get_relationships(debug=True)
 
         world_representation = get_obj_centric_world_representation(
             instances,
@@ -478,7 +483,11 @@ class RobotAgent:
         self.voxel_map.add_obs(obs)
 
         if self.use_scene_graph:
-            self.scene_graph = SceneGraph(self.voxel_map.get_instances())
+            if self.scene_graph is None:
+                self.scene_graph = SceneGraph(self.parameters, self.voxel_map.get_instances())
+            else:
+                self.scene_graph.update(self.voxel_map.get_instances())
+            # For debugging - TODO delete this code
             self.scene_graph.get_relationships(debug=True)
 
         # Add observation - helper function will unpack it
