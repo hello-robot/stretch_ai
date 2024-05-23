@@ -125,6 +125,9 @@ class RobotAgent:
         self._object_attempts = {}
         self._cached_plans = {}
 
+        # Store the current scene graph computed from detected objects
+        self.scene_graph = None
+
         # Create a simple motion planner
         self.planner = RRTConnect(self.space, self.space.is_valid)
         if parameters["motion_planner"]["shortcut_plans"]:
@@ -473,6 +476,11 @@ class RobotAgent:
             # Semantic prediction
             obs = self.semantic_sensor.predict(obs)
         self.voxel_map.add_obs(obs)
+
+        if self.use_scene_graph:
+            self.scene_graph = SceneGraph(self.voxel_map.get_instances())
+            self.scene_graph.get_relationships(debug=True)
+
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show waht was happening
@@ -758,9 +766,6 @@ class RobotAgent:
             if name.lower() == goal.lower():
                 matching_instances.append((i, instance))
         return self.filter_matches(matching_instances, threshold=threshold)
-
-    def get_ins_center_pos(self, idx):
-        return torch.mean(self.voxel_map.get_instances()[idx].point_cloud, axis=0)
 
     def extract_symbolic_spatial_info(self, instances, debug=False):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""

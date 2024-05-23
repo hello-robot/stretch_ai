@@ -6,9 +6,14 @@ from stretch.mapping.instance import Instance
 class SceneGraph:
     """Compute a very simple scene graph. Use it to extract relationships between instances."""
 
+    def get_ins_center_pos(self, idx: int):
+        """Get teh center of an instance based on point cloud"""
+        return torch.mean(self.instances[idx].point_cloud, axis=0)
+
     def __init__(self, instances):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""
         self.relationships = []
+        self.instances = instances
         for idx_a, ins_a in enumerate(instances):
             for idx_b, ins_b in enumerate(instances):
                 if idx_a == idx_b:
@@ -24,6 +29,7 @@ class SceneGraph:
         # show symbolic relationships
         if debug:
             for idx_a, idx_b, rel in self.relationships:
+                print(idx_a, idx_b, rel)
                 import matplotlib.pyplot as plt
 
                 plt.subplot(1, 2, 1)
