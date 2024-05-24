@@ -132,6 +132,7 @@ class InstanceMemory:
 
         self.instance_view_score_aggregation_mode = instance_view_score_aggregation_mode
         self.min_pixels_for_instance_view = min_pixels_for_instance_view
+        self.min_percent_for_instance_view = min_percent_for_instance_view
         # self.instance_association_within_class = instance_association_within_class
         self.log_dir = log_dir
 
