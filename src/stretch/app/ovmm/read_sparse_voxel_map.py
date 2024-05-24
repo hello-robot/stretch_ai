@@ -12,7 +12,8 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 
-from stretch.agent import RobotAgent, get_parameters
+from stretch.agent import RobotAgent
+from stretch.core import get_parameters
 from stretch.mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.mapping.voxel import plan_to_frontier
 from stretch.utils.dummy_stretch_client import DummyStretchClient
