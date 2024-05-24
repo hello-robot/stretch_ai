@@ -58,8 +58,20 @@ def plan_to_deltas(xyt0, plan):
 )
 @click.option("--show-svm", "-s", type=bool, is_flag=True, default=False)
 @click.option("--pkl-is-svm", "-p", type=bool, is_flag=True, default=False)
-@click.option("--test-planning", type=bool, is_flag=True, default=False)
-@click.option("--test-sampling", type=bool, is_flag=True, default=False)
+@click.option(
+    "--test-planning",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test motion planning to frontier positions",
+)
+@click.option(
+    "--test-sampling",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test sampling instances and trying to plan to them",
+)
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
 @click.option("--query", "-q", type=str, default="")
@@ -195,16 +207,13 @@ def main(
                 print(i, "sampled", goal, "success =", res.success)
                 if res.success:
                     plan_to_deltas(x0, res)
-                # Try to plan
-                # res = plan_to_frontier(
-                #     start,
-                #    planner,
-                #    space,
-                #    voxel_map,
-                #    try_to_plan_iter=try_to_plan_iter,
-                #    visualize=False,
-                # )
-                # print("Planning result:", res)
+                    if show_svm:
+                        voxel_map.show(
+                            instances=show_instances,
+                            orig=start_xyz,
+                            xyt=goal.cpu().numpy(),
+                            footprint=footprint,
+                        )
 
             print("... done sampling frontier points.")
         if test_sampling:
