@@ -78,6 +78,7 @@ class InstanceMemory:
         erode_mask_num_iter: int = 1,
         instance_view_score_aggregation_mode="max",
         min_pixels_for_instance_view=100,
+        min_percent_for_instance_view=0.2,
         log_dir: Optional[str] = "instances",
         log_dir_overwrite_ok: bool = False,
         view_matching_config: ViewMatchingConfig = ViewMatchingConfig(),
@@ -745,8 +746,15 @@ class InstanceMemory:
             n_points = point_mask_downsampled.sum()
             n_mask = instance_mask_downsampled.sum()
 
+            percent_points = n_mask / (instance_mask.shape[0] * instance_mask.shape[1])
+            # print(f"{n_mask=} {n_points=} {percent_points=} {instance_mask.shape=}")
+
             # Create InstanceView if the view is large enough
-            if n_mask >= self.min_pixels_for_instance_view and n_points > 1:
+            if (
+                n_mask >= self.min_pixels_for_instance_view
+                and n_points > 1
+                and percent_points > self.min_percent_for_instance_view
+            ):
                 bounds = get_bounds(point_cloud_instance)
                 volume = float(box3d_volume_from_bounds(bounds).squeeze())
 
