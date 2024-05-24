@@ -1030,7 +1030,6 @@ class SparseVoxelMap(object):
 
         # Create a combined point cloud
         # Do the other stuff we need to show instances
-        # pc_xyz, pc_rgb, pc_feats = self.get_data()
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
         if orig is None:
