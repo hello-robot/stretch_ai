@@ -13,6 +13,7 @@ import zmq
 from loguru import logger
 
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
+from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
 from stretch.motion.kinematics import HelloStretchKinematics
 from stretch.motion.robot import RobotModel
@@ -27,6 +28,7 @@ class HomeRobotZmqClient(RobotClient):
         robot_ip: str = "192.168.1.15",
         recv_port: int = 4401,
         send_port: int = 4402,
+        parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
         ik_type: str = "pinocchio",
@@ -53,6 +55,11 @@ class HomeRobotZmqClient(RobotClient):
         self.recv_port = recv_port
         self.send_port = send_port
         self.reset()
+
+        self._parameters = parameters
+        self._moving_threshold = parameters["motion"]["moving_threshold"]
+        self._angle_threshold = parameters["motion"]["angle_threshold"]
+        self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
 
         # Robot model
         self._robot_model = HelloStretchKinematics(
@@ -195,14 +202,20 @@ class HomeRobotZmqClient(RobotClient):
         self,
         block_id: int,
         verbose: bool = True,
-        moving_threshold: float = 1e-4,
-        angle_threshold: float = 1e-4,
-        min_steps_not_moving: int = 1,
+        moving_threshold: Optional[float] = None,
+        angle_threshold: Optional[float] = None,
+        min_steps_not_moving: Optioanl[int] = 1,
     ):
         t0 = timeit.default_timer()
         last_pos = None
         last_ang = None
         not_moving_count = 0
+        if moving_threshold is None:
+            moving_threshold = self._moving_threshold
+        if angle_threshold is None:
+            angle_threshold = self._angle_threshold
+        if min_steps_not_moving is None:
+            min_steps_not_moving = self._min_steps_not_moving
         while True:
             with self._obs_lock:
                 if self._obs is not None:
