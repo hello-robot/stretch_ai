@@ -41,8 +41,8 @@ plan_with_reachable_instances: True
 plan_with_scene_graph: True
 scene_graph:
   max_near_distance: 0.3
-  min_on_distance: 0.05
-  max_on_distance: 0.2
+  min_on_height: 0.05
+  max_on_height: 0.2
 
 # Navigation space - used for motion planning and computing goals.
 step_size: 0.1

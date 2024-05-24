@@ -106,7 +106,7 @@ class RobotAgent:
                     "max_instance_vol": parameters.get("max_instance_vol", 10.0),
                     "min_instance_height": parameters.get("min_instance_height", 0.1),
                     "max_instance_height": parameters.get("max_instance_height", 1.8),
-                    "open_vocab_cat_map_file": parameters.get("open_vocab_cat_map_file", None),
+                    "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
                 },
             )
 
