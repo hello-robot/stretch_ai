@@ -54,6 +54,13 @@ class SearchForObjectOnFloorOperation(Operation):
         self.robot = robot
         self.parameters = parameters
 
+        # Overload failure to just retry this one
+        if self.on_failure is not None:
+            raise RuntimeError(
+                "Cannot have on_failure set for SearchForObjectOnFloorOperation - it will just retry itself."
+            )
+        self.on_failure = self
+
     def can_start(self) -> bool:
         return self.manager.found_receptacle()
 
@@ -63,22 +70,40 @@ class SearchForObjectOnFloorOperation(Operation):
 
         # Check to see if we have an object on the floor worth finding
 
+        # Check to see if there is a visitable frontier
+
+        # If no visitable frontier, pick a random point nearby and just wander around
+
         self._successful = True
 
     def was_successful(self) -> bool:
-        return self._successful
+        return self._successful and self.manager.found_receptacle()
+
+
+class PreGraspObjectOperation(Operation):
+    """Move the robot to a position looking at the object using the navigation/manipulation camera."""
+
+    pass
 
 
 class GraspObjectOperation(Operation):
+    """Move the robot to grasp, using the end effector camera."""
+
     pass
 
 
 class ResetArmOperation(Operation):
+    """Send the arm back to home"""
+
     def __init__(self, name, manager, **kwargs):
         super().__init__(name, **kwargs)
         self.manager = manager
         self.robot = manager.robot
         self.parameters = manager.parameters
+
+    def can_start(self) -> bool:
+        """This one has no special requirements"""
+        return True
 
 
 class PickupManager:
@@ -92,12 +117,23 @@ class PickupManager:
 
     def get_task(self):
         """Create a task"""
-        task = Task()
 
+        # Put the robot into navigation mode
         go_to_navigation_mode = GoToNavOperation("go to navigation mode", self)
+
+        # Spin in place to find objects.
         rotate_in_place = RotateInPlaceOperation(self, parent=go_to_navigation_mode)
+
+        # Look for the target receptacle
         search_for_receptacle = SearchForReceptacle(self, parent=rotate_in_place)
+
+        # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(self, parent=search_for_receptacle)
+
+        # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
+        go_to_object = GoToObjectOperation(
+            "go to object", self, parent=search_for_object, on_cannot_start=search_for_object
+        )
 
         # These two are supposed to just move the object around
         manipulation_mode = ResetArmOperation(
@@ -106,9 +142,25 @@ class PickupManager:
         reset_arm = ResetArmOperation("reset arm to retry", self, on_success=grasp_object)
 
         # When about to start, run object detection and try to find the object. If not in front of us, explore again.
-        grasp_object = GraspObjectOperation(
-            self, parent=manipulation_mode, on_failure=reset_arm, on_cannot_start=search_for_object
+        # If we cannot find the object, we should go back to the search_for_object operation.
+        # To determine if we can start, we just check to see if there's a detectable object nearby.
+        pregrasp_object = PreGraspObjectOperation(
+            self, parent=manipulation_mode, on_failure=reset_arm, on_cannot_start=go_to_object
         )
+        # If we cannot start, we should go back to the search_for_object operation.
+        # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
+        grasp_object = GraspObjectOperation(
+            self, parent=pregrasp_object, on_failure=reset_arm, on_cannot_start=go_to_object
+        )
+
+        task.add_operation(go_to_navigation_mode)
+        task.add_operation(rotate_in_place)
+        task.add_operation(search_for_receptacle)
+        task.add_operation(search_for_object)
+        task.add_operation(go_to_object)
+        task.add_operation(manipulation_mode)
+        task.add_operation(pregrasp_object)
+        task.add_operation(grasp_object)
 
         return task
 
