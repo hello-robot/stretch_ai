@@ -36,6 +36,7 @@ in_place_rotation_steps: 8
 # in_place_rotation_steps: 0
 
 # Instance memory parameters
+# These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
 instance_memory:
   min_instance_thickness: 0.01
   min_instance_vol: 1e-6
