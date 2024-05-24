@@ -148,9 +148,6 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["nav_blocking"] = blocking
         self.send_action()
 
-        # Set a sleep based on expected hz at which we receive updates from the robot
-        time.sleep(0.2)
-
     def reset(self):
         """Reset everything in the robot's internal state"""
         self._control_mode = None
@@ -220,7 +217,7 @@ class HomeRobotZmqClient(RobotClient):
             with self._obs_lock:
                 if self._obs is not None:
                     pos = self._obs["gps"]
-                    ang = self._obs["compass"]
+                    ang = self._obs["compass"][0]
                     moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
                     angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
                     not_moving = (
@@ -233,6 +230,7 @@ class HomeRobotZmqClient(RobotClient):
                     else:
                         not_moving_count = 0
                     last_pos = pos
+                    last_ang = ang
                     if verbose:
                         print(
                             f"Waiting for step={block_id} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
@@ -244,7 +242,7 @@ class HomeRobotZmqClient(RobotClient):
                     ):
                         break
                     self._obs = None
-            time.sleep(0.1)
+            time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > 15.0:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
