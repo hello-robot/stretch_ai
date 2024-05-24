@@ -36,7 +36,7 @@ filters:
 motion:
   moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
   angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
-  min_steps_not_moving: 3  # How many steps the robot has to not move before we consider it "stopped"
+  min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
 
 # Exploration
 in_place_rotation_steps: 8
