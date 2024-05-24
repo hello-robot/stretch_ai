@@ -413,6 +413,9 @@ class SparseVoxelMapNavigationSpace(XYT):
         """Compute frontier regions of the map"""
 
         obstacles, explored = self.voxel_map.get_2d_map()
+        # These are all positions considered valid for moving to and on.
+        traversible = explored & ~obstacles
+
         # Extract edges from our explored mask
         obstacles = binary_dilation(
             obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
@@ -425,7 +428,6 @@ class SparseVoxelMapNavigationSpace(XYT):
         edges = get_edges(less_explored)
 
         # Do not explore obstacles any more
-        traversible = explored & ~obstacles
         frontier_edges = edges & ~obstacles
 
         kernel = self._get_kernel(expand_size)
@@ -495,10 +497,6 @@ class SparseVoxelMapNavigationSpace(XYT):
         m[start_x, start_y] = 0
         m = np.ma.masked_array(m, ~traversible)
 
-        # import pickle
-        # with open('debug_m.pkl', 'wb') as f:
-        #     pickle.dump(m, f)
-        # print (~traversible)
         if not self.has_zero_contour(m):
             if verbose:
                 print("traversible frontier had zero contour! no where to go.")
