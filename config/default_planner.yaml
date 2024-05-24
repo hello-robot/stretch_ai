@@ -84,5 +84,6 @@ limited_obs_publish_sleep: 0.5
 command: "pick up a bottle and put it on the chair"
 name: "stretch"
 exploration_steps: 10
-object_to_find: "bottle"
+# object_to_find: "bottle"
+object_to_find: "toy_vehicle"
 location_to_place: "chair"
