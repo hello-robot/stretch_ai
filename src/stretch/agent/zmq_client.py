@@ -384,7 +384,7 @@ class HomeRobotZmqClient(RobotClient):
         if blocking:
             # Wait for the command to
             self._wait_for_action(block_id)
-            time.sleep(5.0)
+            time.sleep(0.2)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
