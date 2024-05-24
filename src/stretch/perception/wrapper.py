@@ -207,7 +207,7 @@ def create_semantic_sensor(
     device_id: int = 0,
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
-    config_path="configs/perception.yaml",
+    config_path="config/perception.yaml",
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""

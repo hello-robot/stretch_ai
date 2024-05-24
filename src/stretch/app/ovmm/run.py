@@ -65,7 +65,7 @@ from stretch.utils.visualization import get_x_and_y_from_path
     is_flag=True,
     help="write out images of every object we found",
 )
-@click.option("--parameter-file", default="configs/default_planner.yaml")
+@click.option("--parameter-file", default="config/default_planner.yaml")
 def main(
     rate,
     visualize,
@@ -86,7 +86,7 @@ def main(
     vlm_server_addr: str = "127.0.0.1",
     vlm_server_port: str = "50054",
     write_instance_images: bool = False,
-    parameter_file: str = "src/stretch/config/default_planner.yaml",
+    parameter_file: str = "config/default_planner.yaml",
     local: bool = True,
     recv_port: int = 4401,
     send_port: int = 4402,
@@ -147,7 +147,7 @@ def demo_main(
     vlm_server_addr: str = "127.0.0.1",
     vlm_server_port: str = "50054",
     write_instance_images: bool = False,
-    parameter_file: str = "src/robot_hw_python/configs/default.yaml",
+    parameter_file: str = "config/default.yaml",
     **kwargs,
 ):
     """

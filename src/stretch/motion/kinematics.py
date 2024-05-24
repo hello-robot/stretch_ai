@@ -17,8 +17,8 @@ from stretch.motion.utils.bullet import BulletRobotModel, PybulletIKSolver
 from stretch.utils.pose import to_matrix
 
 # Stretch stuff
-PLANNER_STRETCH_URDF = "configs/urdf/planner_calibrated.urdf"
-MANIP_STRETCH_URDF = "configs/urdf/stretch_manip_mode.urdf"
+PLANNER_STRETCH_URDF = "config/urdf/planner_calibrated.urdf"
+MANIP_STRETCH_URDF = "config/urdf/stretch_manip_mode.urdf"
 
 STRETCH_HOME_Q = np.array(
     [
