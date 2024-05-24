@@ -63,14 +63,14 @@ def plan_to_deltas(xyt0, plan):
     type=bool,
     is_flag=True,
     default=False,
-    help="test motion planning to frontier positions",
+    help="test motion planning to frontier positions. if show-svm is also set, will display location of valid goals we found.",
 )
 @click.option(
     "--test-sampling",
     type=bool,
     is_flag=True,
     default=False,
-    help="test sampling instances and trying to plan to them",
+    help="test sampling instances and trying to plan to them.",
 )
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
