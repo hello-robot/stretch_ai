@@ -179,16 +179,10 @@ def get_similarity(
         visual_similarity = dot_product_similarity(
             visual_embedding1, visual_embedding2, normalize=False
         )
-        # print (f'clip score: {visual_similarity}')
         # Handle the case where there is no embedding to examine
         # If we return visual similarity, only then do we use it
         if visual_similarity is not None:
             visual_similarity[overlap_similarity < view_matching_config.box_min_iou_thresh] = 0.0
-            # print (f'valid clip score: {visual_similarity}')
             similarity += visual_similarity * view_matching_config.visual_similarity_weight
-
-        print(
-            f"{visual_similarity=} {similarity=} {overlap_similarity=} {view_matching_config.visual_similarity_weight=} {view_matching_config.box_overlap_weight=}"
-        )
 
     return similarity

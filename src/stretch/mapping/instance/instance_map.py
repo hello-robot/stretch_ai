@@ -303,9 +303,6 @@ class InstanceMemory:
         """
         for env_id in range(self.num_envs):
             for local_instance_id, instance_view in self.unprocessed_views[env_id].items():
-                print(
-                    f"{env_id=}, {local_instance_id=} current views = {len(self.instances[env_id])}"
-                )
                 match_category_id = (
                     instance_view.category_id if self.view_matching_config.within_class else None
                 )
@@ -332,22 +329,7 @@ class InstanceMemory:
                     ]
                 )
 
-                # # BBox similarity
-                # overlap_similarity = get_bbox_similarity(
-                #     instance_view.bounds.unsqueeze(0),
-                #     global_bounds,
-                #     overlap_eps=self.view_matching_config.box_overlap_eps,
-                #     mode=self.view_matching_config.box_match_mode
-                # )
-
-                # visual_similarity = dot_product_similarity(instance_view_embedding, global_embedding, normalize=False)
-                # visual_similarity[overlap_similarity < self.view_matching_config.box_min_iou_thresh] = 0.0
-
-                # total_weight = self.view_matching_config.visual_similarity_weight + self.view_matching_config.box_overlap_weight
-                # similarity = (
-                #     overlap_similarity * self.view_matching_config.box_overlap_weight
-                #     + visual_similarity.to(overlap_similarity.device) * self.view_matching_config.visual_similarity_weight
-                # )
+                # Similarity config
                 similarity = get_similarity(
                     instance_bounds1=instance_view.bounds.unsqueeze(0),
                     instance_bounds2=global_bounds,
@@ -358,7 +340,6 @@ class InstanceMemory:
                     view_matching_config=self.view_matching_config,
                 )
                 max_similarity, matched_idx = similarity.max(dim=1)
-                print(f"{max_similarity=}, {matched_idx=}", similarity)
                 total_weight = (
                     self.view_matching_config.visual_similarity_weight
                     + self.view_matching_config.box_overlap_weight
@@ -372,7 +353,6 @@ class InstanceMemory:
                     # Do not create a new instance!
                     matched_global_instance_id = list(global_instance_ids)[matched_idx]
 
-                print("Add to instance:", env_id, local_instance_id, matched_global_instance_id)
                 self.add_view_to_instance(env_id, local_instance_id, matched_global_instance_id)
 
         # # TODO: Add option to do global NMS
@@ -747,7 +727,6 @@ class InstanceMemory:
             n_mask = instance_mask_downsampled.sum()
 
             percent_points = n_mask / (instance_mask.shape[0] * instance_mask.shape[1])
-            # print(f"{n_mask=} {n_points=} {percent_points=} {instance_mask.shape=}")
 
             # Create InstanceView if the view is large enough
             if (

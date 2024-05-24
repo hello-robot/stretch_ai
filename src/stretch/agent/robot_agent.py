@@ -276,7 +276,7 @@ class RobotAgent:
             else:
                 self.scene_graph.update(self.voxel_map.get_instances())
             # For debugging - TODO delete this code
-            self.scene_graph.get_relationships(debug=True)
+            self.scene_graph.get_relationships(debug=False)
 
         # Add observation - helper function will unpack it
         if visualize_map:
