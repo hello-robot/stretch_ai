@@ -156,15 +156,6 @@ class RobotAgent:
 
         self.openai_key = None
         self.task = None
-        # disable owlvit for now
-        # self.to_pil = transforms.ToPILImage()
-        # self.processor = Owlv2Processor.from_pretrained(
-        #     "google/owlv2-base-patch16-ensemble"
-        # )
-        # self.model = Owlv2ForObjectDetection.from_pretrained(
-        #     "google/owlv2-base-patch16-ensemble"
-        # )
-        # self.owlv2_threshold = 0.2
 
     def set_openai_key(self, key):
         self.openai_key = key
@@ -235,57 +226,6 @@ class RobotAgent:
         with open(filename, "wb") as f:
             pickle.dump(self.voxel_map, f)
         print(f"SVM logged to {filename}")
-
-    def template_planning(self, obs, goal):
-        if not obs:
-            return None
-        # TODO: add optional supports for LangSAM, OWLVit etc.
-        return self.planning_with_owlv2(obs, goal)
-
-    def planning_with_owlv2(self, obs, goal):
-        # goal is an OVMM-style query
-        target_obj = goal.split(" ")[1]
-        # start_recep = goal.split(" ")[3]
-        goal_recep = goal.split(" ")[5]
-
-        res = []
-
-        # using owlv2 to make sure the target is detected in the instance image
-        # TODO: add start recep check using coordinates
-        for target in [target_obj, goal_recep]:
-            # TODO: implement this
-            # obs = self.sort_by_clip_similarity(obs, target)
-            img = self.to_pil(obs.object_images[-1].image.permute(2, 0, 1) / 255.0)
-            text = [["a photo of a " + target]]
-            inputs = self.processor(text=text, images=img, return_tensors="pt")
-            outputs = self.model(**inputs)
-            # Target image sizes (height, width) to rescale box predictions [batch_size, 2]
-            target_sizes = torch.Tensor([img.size[::-1]])
-            # Convert outputs (bounding boxes and class logits) to COCO API
-            results = self.processor.post_process_object_detection(
-                outputs=outputs, threshold=0.1, target_sizes=target_sizes
-            )
-            i = 0  # Retrieve predictions for the first image for the corresponding text queries
-            text = text[i]
-            boxes, scores, labels = (
-                results[i]["boxes"],
-                results[i]["scores"],
-                results[i]["labels"],
-            )
-            if len(scores) == 0 or max(scores) < self.owlv2_threshold:
-                print(f"nothing ({target}) detected by owlv2")
-                res.append(None)
-            else:
-                # Print detected objects and rescaled box coordinates
-                for box, score, label in zip(boxes, scores, labels):
-                    box = [round(i, 2) for i in box.tolist()]
-                    print(
-                        f"Detected {text[label]} with confidence {round(score.item(), 3)} at location {box}"
-                    )
-                res.append(obs.object_images[-1].instance_id)
-        if None in res:
-            return "explore"
-        return f"goto(img_{res[0]}); pickup(img_{res[0]}); goto(img_{res[-1]}); placeon(img_{res[0]}, img_{res[-1]})"
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""

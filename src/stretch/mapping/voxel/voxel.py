@@ -491,6 +491,14 @@ class SparseVoxelMap(object):
             print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
 
             # Now mask out pixels that are part of instances
+            import matplotlib
+
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            plt.imshow(instance_image)
+            plt.show()
+
             breakpoint()
 
         # Add to voxel grid
