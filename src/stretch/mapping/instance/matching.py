@@ -186,6 +186,8 @@ def get_similarity(
             visual_similarity[overlap_similarity < view_matching_config.box_min_iou_thresh] = 0.0
             # print (f'valid clip score: {visual_similarity}')
             similarity += visual_similarity * view_matching_config.visual_similarity_weight
+            print(
+                f"{visual_similarity=} {similarity=} {overlap_similarity=} {view_matching_config.visual_similarity_weight=} {view_matching_config.box_overlap_weight=}"
+            )
 
-    breakpoint()
     return similarity
