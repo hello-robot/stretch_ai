@@ -9,6 +9,9 @@ import random
 from pathlib import Path
 
 import click
+import matplotlib
+
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -43,7 +46,7 @@ def plan_to_deltas(xyt0, plan):
     "--config-path",
     "-c",
     type=click.Path(),
-    default="configs/default.yaml",
+    default="config/default_planner.yaml",
     help="Path to planner config.",
 )
 @click.option(
