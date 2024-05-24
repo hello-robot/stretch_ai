@@ -9,4 +9,9 @@ from .abstract_env import Env
 from .abstract_perception import PerceptionModule
 from .evaluator import Evaluator
 from .interfaces import Action, Observations
+
+# Tools for managing parameters for planning and task configuration
 from .parameters import Parameters, get_parameters
+
+# Abstract robot client interface
+from .robot import RobotClient

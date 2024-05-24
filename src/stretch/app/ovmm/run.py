@@ -21,8 +21,7 @@ from PIL import Image
 import stretch.utils.depth as du
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import get_parameters
-from stretch.core.robot import RobotClient
+from stretch.core import Parameters, RobotClient, get_parameters
 
 # TODO: semantic sensor code from HomeRobot
 from stretch.perception import create_semantic_sensor
@@ -93,15 +92,22 @@ def main(
     robot_ip: str = "192.168.1.15",
     **kwargs,
 ):
+
+    print("- Load parameters")
+    parameters = get_parameters(parameter_file)
+    print(parameters)
+
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         recv_port=recv_port,
         send_port=send_port,
         use_remote_computer=(not local),
+        parameters=parameters,
     )
     # Call demo_main with all the arguments
     demo_main(
         robot,
+        parameters=parameters,
         rate=rate,
         visualize=visualize,
         manual_wait=manual_wait,
@@ -147,6 +153,7 @@ def demo_main(
     vlm_server_addr: str = "127.0.0.1",
     vlm_server_port: str = "50054",
     write_instance_images: bool = False,
+    parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     **kwargs,
 ):
@@ -165,9 +172,10 @@ def demo_main(
     output_pcd_filename = output_filename + "_" + formatted_datetime + ".pcd"
     output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
 
-    print("- Load parameters")
-    parameters = get_parameters(parameter_file)
-    print(parameters)
+    if parameters is None:
+        print("- Load parameters")
+        parameters = get_parameters(parameter_file)
+        print(parameters)
 
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
     print("- Connect to Stretch")
