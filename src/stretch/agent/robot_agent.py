@@ -200,21 +200,17 @@ class RobotAgent:
         while i < steps:
             self.robot.navigate_to([0, 0, step_size], relative=True, blocking=True)
 
-            # Add an observation after the move
-            self.update()
-            if visualize:
-                self.voxel_map.show(
-                    orig=np.zeros(3),
-                    xyt=self.robot.get_base_pose(),
-                    footprint=self.robot.get_robot_model().get_footprint(),
-                )
-
             if self.robot.last_motion_failed():
                 # We have a problem!
                 self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
                 i = 0
+                continue
             else:
                 i += 1
+
+            # Add an observation after the move
+            print("---- UPDATE ----")
+            self.update()
 
             if visualize:
                 self.voxel_map.show(
