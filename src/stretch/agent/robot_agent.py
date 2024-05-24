@@ -199,9 +199,16 @@ class RobotAgent:
         i = 0
         while i < steps:
             self.robot.navigate_to([0, 0, step_size], relative=True, blocking=True)
-            # TODO remove debug code
-            # print(i, self.robot.get_base_pose())
+
+            # Add an observation after the move
             self.update()
+            if visualize:
+                self.voxel_map.show(
+                    orig=np.zeros(3),
+                    xyt=self.robot.get_base_pose(),
+                    footprint=self.robot.get_robot_model().get_footprint(),
+                )
+
             if self.robot.last_motion_failed():
                 # We have a problem!
                 self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
@@ -493,23 +500,12 @@ class RobotAgent:
 
         # Call the robot's own startup hooks
         started = self.robot.start()
-        if started:
+        if not started:
             # update here
-            self.update()
+            raise RuntimeError("Robot failed to start!")
 
         # Tuck the arm away
         print("Sending arm to  home...")
-        self.robot.switch_to_manipulation_mode()
-
-        # Add some debugging stuff - show what 3d point clouds look like
-        if visualize_map_at_start:
-            print("- Visualize map at first timestep")
-            self.voxel_map.show(
-                orig=np.zeros(3),
-                xyt=self.robot.get_base_pose(),
-                footprint=self.robot.get_robot_model().get_footprint(),
-            )
-
         self.robot.move_to_nav_posture()
         print("... done.")
 
