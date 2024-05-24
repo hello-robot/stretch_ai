@@ -652,13 +652,11 @@ class RobotAgent:
         return filtered_matches
 
     def go_home(self):
-        """Simple helper function to send the robot home safely after a trial."""
+        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there."""
         print("Go back to (0, 0, 0) to finish...")
         print("- change posture and switch to navigation mode")
         self.current_state = "NAV_TO_HOME"
-        # self.robot.move_to_nav_posture()
-        # self.robot.head.look_close(blocking=False)
-        self.robot.switch_to_navigation_mode()
+        self.robot.move_to_nav_posture()
 
         print("- try to motion plan there")
         start = self.robot.get_base_pose()
