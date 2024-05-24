@@ -77,7 +77,7 @@ motion_planner:
 # These should be less strict than whatever parameters the low-level controller is using; this will
 # make sure that the motions end up looking smooth.
 trajectory_pos_err_threshold: 0.15
-trajectory_rot_err_threshold: 0.5
+trajectory_rot_err_threshold: 0.6
 trajectory_per_step_timeout: 3.0
 
 # User interface

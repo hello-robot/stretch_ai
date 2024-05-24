@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -39,6 +39,21 @@ class SceneGraph:
                     "on",
                 ) not in self.relationships:
                     self.relationships.append((ins_a.global_id, ins_b.global_id, "on"))
+            # Add "on floor" relationship for if something is on the floor
+            if self.on_floor(ins_a.global_id):
+                self.relationships.append((ins_a.global_id, "floor", "on"))
+
+    def get_matching_relations(
+        self, id0: Optional[int], id1: Optional[int], relation: Optional[str]
+    ) -> List[Tuple[int, int, str]]:
+        """Get all relationships between two instances"""
+        return [
+            rel
+            for rel in self.relationships
+            if (id0 is None or rel[0] == id0)
+            and (id1 is None or rel[1] == id1.global_id)
+            and (rel[2] == relation or relation is None)
+        ]
 
     def get_ins_center_pos(self, idx: int):
         """Get the center of an instance based on point cloud"""
@@ -100,4 +115,11 @@ class SceneGraph:
                 and z_dist > self.parameters["scene_graph"]["min_on_height"]
             ):
                 return True
+        return False
+
+    def on_floor(self, ins_a):
+        """Check if an instance is on the floor"""
+        pos = self.get_ins_center_pos(ins_a)
+        if pos[2] < self.parameters["scene_graph"]["max_on_height"] and pos[2] > 0:
+            return True
         return False
