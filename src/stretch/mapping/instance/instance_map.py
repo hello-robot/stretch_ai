@@ -37,7 +37,6 @@ from stretch.utils.bboxes_3d import (
     get_box_verts_from_bounds,
 )
 from stretch.utils.image import dilate_or_erode_mask, interpolate_image
-from stretch.utils.point_cloud import show_point_cloud
 from stretch.utils.point_cloud_torch import get_bounds
 from stretch.utils.voxel import drop_smallest_weight_points
 

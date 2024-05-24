@@ -487,7 +487,11 @@ class SparseVoxelMap(object):
             t1 = timeit.default_timer()
             self.instances.associate_instances_to_memory()
             t2 = timeit.default_timer()
-            print("Instance memory processing time: ", t1 - t0, t2 - t1)
+
+            print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
+
+            # Now mask out pixels that are part of instances
+            breakpoint()
 
         # Add to voxel grid
         if feats is not None:

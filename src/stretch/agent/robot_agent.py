@@ -227,93 +227,6 @@ class RobotAgent:
 
         return True
 
-    def get_plan_from_vlm(
-        self,
-        current_pose=None,
-        show_prompts=False,
-        show_plan=False,
-        plan_file="vlm_plan.txt",
-    ):
-        """This is a connection to a remote thing for getting language commands"""
-        from stretch.utils.rpc import get_output_from_world_representation
-
-        if self.parameters["vlm_option"] == "gpt4v":
-            if not self.openai_key:
-                self.openai_key = input(
-                    "You are using GPT4v for planning, please type in your openai key: "
-                )
-            if not self.task or not self.parameters["replanning"]:
-                # gpt4v agent has replanning capability, so we save the task here and plan multiple times
-                self.task = self.get_command()
-            world_representation = self.get_observations(
-                task=self.task, current_pose=current_pose, show_prompts=show_prompts
-            )
-            output = self.get_output_from_gpt4v(world_representation)
-            if show_plan:
-                import re
-
-                import matplotlib.pyplot as plt
-
-                if output == "explore":
-                    print(
-                        ">>>>>> gpt4v cannot find a plan, the robot should explore more >>>>>>>>>"
-                    )
-                elif output == "gpt4v API error":
-                    print(">>>>>> there is something wrong with the gpt4v api >>>>>>>>>")
-                else:
-                    actions = output.split("; ")
-                    for action_id, action in enumerate(actions):
-                        crop_id = int(re.search(r"img_(\d+)", action).group(1))
-                        global_id = world_representation.object_images[crop_id].instance_id
-                        plt.subplot(1, len(actions), action_id + 1)
-                        plt.imshow(
-                            self.voxel_map.get_instances()[global_id].get_best_view().get_image()
-                        )
-                        plt.title(action.split("(")[0] + f" instance {global_id}")
-                        plt.axis("off")
-                    plt.suptitle(self.task)
-                    plt.show()
-        else:
-            assert self.rpc_stub is not None, "must have RPC stub to connect to remote VLM"
-            world_representation = self.get_observations(current_pose=current_pose)
-            # This is not a very stable import
-            # So we guard it under this part where it's necessary
-            output = get_output_from_world_representation(
-                self.rpc_stub, world_representation, self.get_command()
-            )
-        if self.parameters["save_vlm_plan"]:
-            with open(plan_file, "w") as f:
-                f.write(output)
-            print(f"Task plan generated from VLMs has been written to {plan_file}")
-        return output
-
-    def get_observations(self, show_prompts=False, task=None, current_pose=None):
-        from stretch.utils.rpc import get_obj_centric_world_representation
-
-        if self.plan_with_reachable_instances:
-            instances = self.get_all_reachable_instances(current_pose=current_pose)
-        else:
-            instances = self.voxel_map.get_instances()
-
-        instance_relationships = None
-        if self.use_scene_graph:
-            if self.scene_graph is None:
-                self.scene_graph = SceneGraph(self.parameters, instances)
-            else:
-                self.scene_graph.update(instances)
-            # For debugging and extraction
-            instance_relationships = self.scene_graph.get_relationships(debug=True)
-
-        world_representation = get_obj_centric_world_representation(
-            instances,
-            self.parameters["vlm_context_length"],
-            self.parameters["sample_strategy"],
-            task=task,
-            text_features=self.encode_text(task),
-            scene_graph=instance_relationships,
-        )
-        return world_representation
-
     def save_svm(self, path, filename: Optional[str] = None):
         """Debugging code for saving out an SVM"""
         if filename is None:
@@ -373,83 +286,6 @@ class RobotAgent:
         if None in res:
             return "explore"
         return f"goto(img_{res[0]}); pickup(img_{res[0]}); goto(img_{res[-1]}); placeon(img_{res[0]}, img_{res[-1]})"
-
-    def execute_vlm_plan(self):
-        """Get plan from vlm and execute it"""
-        assert self.rpc_stub is not None, "must have RPC stub to connect to remote VLM"
-        # This is not a very stable import
-        # So we guard it under this part where it's necessary
-        from stretch.utils.rpc import (
-            get_obj_centric_world_representation,
-            get_output_from_world_representation,
-            parse_pick_and_place_plan,
-        )
-
-        instances = self.voxel_map.get_instances()
-        world_representation = get_obj_centric_world_representation(
-            instances, self.parameters["vlm_context_length"]
-        )
-
-        # Xiaohan: comment this for now, and change it to owlv2 plan generation
-        output = get_output_from_world_representation(
-            self.rpc_stub, world_representation, self.get_command()
-        )
-        plan = output.action
-        # TODO: need testing on real robot: command should only be OVMM-style
-        # plan = self.template_planning(world_representation, self.get_command())
-
-        def confirm_plan(p):
-            return True  # might need to merge demo_refactor to find this function
-
-        logger.info(f"Received plan: {plan}")
-        if not confirm_plan(plan):
-            logger.warn("Plan was not confirmed")
-            return
-
-        pick_instance_id, place_instance_id = parse_pick_and_place_plan(world_representation, plan)
-
-        if not pick_instance_id:
-            # Navigating to a cup or bottle
-            for i, each_instance in enumerate(instances):
-                if (
-                    self.vocab.goal_id_to_goal_name[int(each_instance.category_id.item())]
-                    in self.parameters["pick_categories"]
-                ):
-                    pick_instance_id = i
-                    break
-
-        if not place_instance_id:
-            for i, each_instance in enumerate(instances):
-                if (
-                    self.vocab.goal_id_to_goal_name[int(each_instance.category_id.item())]
-                    in self.parameters["place_categories"]
-                ):
-                    place_instance_id = i
-                    break
-
-        if pick_instance_id is None or place_instance_id is None:
-            logger.warn("No instances found - exploring instead")
-
-            self.run_exploration(
-                5,  # TODO: pass rate into parameters
-                False,  # TODO: pass manual_wait into parameters
-                explore_iter=self.parameters["exploration_steps"],
-                task_goal=None,
-                go_home_at_end=False,  # TODO: pass into parameters
-            )
-
-            self.say("Exploring")
-
-            return
-
-        self.say("Navigating to instance ")
-        self.say(f"Instance id: {pick_instance_id}")
-        success = self.navigate_to_an_instance(
-            pick_instance_id,
-            visualize=self.should_visualize(),
-            should_plan=self.parameters["plan_to_instance"],
-        )
-        self.say(f"Success: {success}")
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
@@ -740,7 +576,6 @@ class RobotAgent:
         # Move the robot into navigation mode
         self.robot.switch_to_navigation_mode()
         print("- Update map after switching to navigation posture")
-        # self.update(visualize_map=visualize_map_at_start)  # Append latest observations
         self.update(visualize_map=False)  # Append latest observations
 
         # Add some debugging stuff - show what 3d point clouds look like
