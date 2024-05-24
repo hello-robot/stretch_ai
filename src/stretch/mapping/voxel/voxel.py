@@ -1053,46 +1053,51 @@ class SparseVoxelMap(object):
             )
 
         if instances:
-            for instance_view in self.get_instances():
-                mins, maxs = (
-                    instance_view.bounds[:, 0].cpu().numpy(),
-                    instance_view.bounds[:, 1].cpu().numpy(),
-                )
-                if np.any(maxs - mins < 1e-5):
-                    logger.info(f"Warning: bad box: {mins} {maxs}")
-                    continue
-                width, height, depth = maxs - mins
+            self._get_instances_open3d(geoms)
 
-                # Create a mesh to visualzie where the instances were seen
-                mesh_box = open3d.geometry.TriangleMesh.create_box(
-                    width=width, height=height, depth=depth
-                )
-
-                # Get vertex array from the mesh
-                vertices = np.asarray(mesh_box.vertices)
-
-                # Translate the vertices to the desired position
-                vertices += mins
-                triangles = np.asarray(mesh_box.triangles)
-
-                # Create a wireframe mesh
-                lines = []
-                for tri in triangles:
-                    lines.append([tri[0], tri[1]])
-                    lines.append([tri[1], tri[2]])
-                    lines.append([tri[2], tri[0]])
-
-                # color = [1.0, 0.0, 0.0]  # Red color (R, G, B)
-                color = np.random.random(3)
-                colors = [color for _ in range(len(lines))]
-                wireframe = open3d.geometry.LineSet(
-                    points=open3d.utility.Vector3dVector(vertices),
-                    lines=open3d.utility.Vector2iVector(lines),
-                )
-                # Get the colors and add to wireframe
-                wireframe.colors = open3d.utility.Vector3dVector(colors)
-                geoms.append(wireframe)
         return geoms
+
+    def _get_instances_open3d(self, geoms: List[open3d.geometry.Geometry]) -> None:
+        """Get open3d geometries to append"""
+        for instance_view in self.get_instances():
+            mins, maxs = (
+                instance_view.bounds[:, 0].cpu().numpy(),
+                instance_view.bounds[:, 1].cpu().numpy(),
+            )
+            if np.any(maxs - mins < 1e-5):
+                logger.info(f"Warning: bad box: {mins} {maxs}")
+                continue
+            width, height, depth = maxs - mins
+
+            # Create a mesh to visualzie where the instances were seen
+            mesh_box = open3d.geometry.TriangleMesh.create_box(
+                width=width, height=height, depth=depth
+            )
+
+            # Get vertex array from the mesh
+            vertices = np.asarray(mesh_box.vertices)
+
+            # Translate the vertices to the desired position
+            vertices += mins
+            triangles = np.asarray(mesh_box.triangles)
+
+            # Create a wireframe mesh
+            lines = []
+            for tri in triangles:
+                lines.append([tri[0], tri[1]])
+                lines.append([tri[1], tri[2]])
+                lines.append([tri[2], tri[0]])
+
+            # color = [1.0, 0.0, 0.0]  # Red color (R, G, B)
+            color = np.random.random(3)
+            colors = [color for _ in range(len(lines))]
+            wireframe = open3d.geometry.LineSet(
+                points=open3d.utility.Vector3dVector(vertices),
+                lines=open3d.utility.Vector2iVector(lines),
+            )
+            # Get the colors and add to wireframe
+            wireframe.colors = open3d.utility.Vector3dVector(colors)
+            geoms.append(wireframe)
 
     def _get_o3d_robot_footprint_geometry(
         self,

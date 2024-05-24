@@ -13,7 +13,7 @@ import skimage.morphology
 import torch
 
 from stretch.mapping.voxel import SparseVoxelMap
-from stretch.motion import XYT, RobotModel
+from stretch.motion import XYT, Footprint, RobotModel
 from stretch.utils.geometry import angle_difference, interpolate_angles
 from stretch.utils.morphology import (
     binary_dilation,
@@ -22,6 +22,7 @@ from stretch.utils.morphology import (
     find_closest_point_on_mask,
     get_edges,
 )
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 
 
 class SparseVoxelMapNavigationSpace(XYT):
@@ -697,15 +698,60 @@ class SparseVoxelMapNavigationSpace(XYT):
         # We failed to find anything useful
         yield None
 
+    def _get_open3d_geometries(
+        self,
+        instances: bool,
+        orig: Optional[np.ndarray] = None,
+        norm: float = 255.0,
+        xyt: Optional[np.ndarray] = None,
+        footprint: Optional[Footprint] = None,
+        **backend_kwargs,
+    ):
+        """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
+
+        # Create a combined point cloud
+        # Do the other stuff we need to show instances
+        points, _, _, rgb = self.voxel_map.voxel_pcd.get_pointcloud()
+        pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
+        if orig is None:
+            orig = np.zeros(3)
+        geoms = create_visualization_geometries(pcd=pcd, orig=orig)
+
+        # Get the explored/traversible area
+        obstacles, explored = self.voxel_map.get_2d_map()
+        frontier, outside, traversible = self.get_frontier()
+
+        # Visualize traversible area and frontier from the motion planner
+        geoms += self.voxel_map._get_boxes_from_points(traversible, [0, 1, 0])
+        geoms += self.voxel_map._get_boxes_from_points(frontier, [0, 1, 1])
+        geoms += self.voxel_map._get_boxes_from_points(obstacles, [1, 0, 0])
+
+        if xyt is not None and footprint is not None:
+            geoms += self.voxel_map._get_boxes_from_points(
+                footprint.get_rotated_mask(self.voxel_map.grid_resolution, float(xyt[2])),
+                [0, 0, 1],
+                is_map=False,
+                height=0.1,
+                offset=xyt[:2],
+            )
+
+        if instances:
+            geoms.append(self.voxel_map._get_instances_open3d(geoms))
+        return geoms
+
     def show(
         self,
         instances: bool = False,
         orig: Optional[np.ndarray] = None,
         norm: float = 255.0,
+        xyt: Optional[np.ndarray] = None,
+        footprint: Optional[Footprint] = None,
         backend: str = "open3d",
     ):
-        """Tool for debugging map representations that we have created"""
-        geoms = self.voxel_map._get_open3d_geometries(instances, orig, norm)
+        """Tool for debugging map representations that we have created. By default will display"""
+        geoms = self._get_open3d_geometries(
+            instances=instances, orig=orig, norm=norm, xyt=xyt, footprint=footprint
+        )
 
         # lazily import open3d - it's a tough dependency
         import open3d
