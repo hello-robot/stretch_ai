@@ -203,8 +203,6 @@ class RobotAgent:
             if self.robot.last_motion_failed():
                 # We have a problem!
                 raise RuntimeError("Robot is stuck!")
-                # self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
-                # i = 0
                 # continue
             else:
                 i += 1

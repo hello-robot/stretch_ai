@@ -21,6 +21,7 @@ from pytorch3d.structures import Pointclouds
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
+from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory, InstanceView
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
@@ -142,7 +143,6 @@ class SparseVoxelMap(object):
             use_instance_memory(bool): if we should create object-centric instance memory
         """
         # TODO: We an use fastai.store_attr() to get rid of this boilerplate code
-        self.resolution = resolution
         self.feature_dim = feature_dim
         self.obs_min_height = obs_min_height
         self.obs_max_height = obs_max_height
@@ -208,17 +208,10 @@ class SparseVoxelMap(object):
             create_disk(self._disk_size, (2 * self._disk_size) + 1)
         ).to(map_2d_device)
 
-        if grid_size is not None:
-            self.grid_size = [grid_size[0], grid_size[1]]
-        else:
-            self.grid_size = DEFAULT_GRID_SIZE
-        # Track the center of the grid - (0, 0) in our coordinate system
-        # We then just need to update everything when we want to track obstacles
-        self.grid_origin = Tensor(self.grid_size + [0], device=map_2d_device) // 2
-        # Used to track the offset from our observations so maps dont use too much space
-
-        # Used for tensorized bounds checks
-        self._grid_size_t = Tensor(self.grid_size, device=map_2d_device)
+        self.grid = GridParams(grid_size, self.resolution, map_2d_device)
+        self.grid_size = self.grid.grid_size
+        self.grid_origin = self.grid.grid_origin
+        self.resolution = self.grid.resolution
 
         # Init variables
         self.reset()
@@ -513,16 +506,8 @@ class SparseVoxelMap(object):
         assert bounds.shape[0] == 3, "bounding boxes in xyz"
         assert bounds.shape[1] == 2, "min and max"
         assert (len(bounds.shape)) == 2, "only one bounding box"
-        mins = torch.floor(self.xy_to_grid_coords(bounds[:2, 0])).long()
-        maxs = torch.ceil(self.xy_to_grid_coords(bounds[:2, 1])).long()
         obstacles, explored = self.get_2d_map()
-        mask = torch.zeros_like(explored)
-        mask[mins[0] : maxs[0] + 1, mins[1] : maxs[1] + 1] = True
-        if debug:
-            import matplotlib.pyplot as plt
-
-            plt.imshow(obstacles.int() + explored.int() + mask.int())
-        return mask
+        return self.grid.mask_from_bounds(obstacles, explored, bounds, debug)
 
     def _update_visited(self, base_pose: Tensor):
         """Update 2d map of where robot has visited"""
@@ -804,18 +789,6 @@ class SparseVoxelMap(object):
         self._2d_last_updated = self._seq
         return obstacles, explored
 
-    def xy_to_grid_coords(self, xy: torch.Tensor) -> Optional[np.ndarray]:
-        """convert xy point to grid coords"""
-        assert xy.shape[-1] == 2, "coords must be Nx2 or 2d array"
-        # Handle convertion
-        if isinstance(xy, np.ndarray):
-            xy = torch.from_numpy(xy).float()
-        grid_xy = (xy / self.grid_resolution) + self.grid_origin[:2]
-        if torch.any(grid_xy >= self._grid_size_t) or torch.any(grid_xy < torch.zeros(2)):
-            return None
-        else:
-            return grid_xy
-
     def plan_to_grid_coords(self, plan_result: PlanResult) -> Optional[List[torch.Tensor]]:
         """Convert a plan properly into grid coordinates"""
         if not plan_result.success:
@@ -823,19 +796,8 @@ class SparseVoxelMap(object):
         else:
             traj = []
             for node in plan_result.trajectory:
-                traj.append(self.xy_to_grid_coords(node.state[:2]))
+                traj.append(self.grid.xy_to_grid_coords(node.state[:2]))
             return traj
-
-    def grid_coords_to_xy(self, grid_coords: torch.Tensor) -> np.ndarray:
-        """convert grid coordinate point to metric world xy point"""
-        assert grid_coords.shape[-1] == 2, "grid coords must be an Nx2 or 2d array"
-        return (grid_coords - self.grid_origin[:2]) * self.grid_resolution
-
-    def grid_coords_to_xyt(self, grid_coords: np.ndarray) -> np.ndarray:
-        """convert grid coordinate point to metric world xyt point"""
-        res = torch.zeros(3)
-        res[:2] = self.grid_coords_to_xy(grid_coords)
-        return res
 
     def get_kd_tree(self) -> open3d.geometry.KDTreeFlann:
         """Return kdtree for collision checks
@@ -951,14 +913,14 @@ class SparseVoxelMap(object):
             raise NotImplementedError("not currently checking against robot base geometry")
         obstacles, explored = self.get_2d_map()
         # Convert xy to grid coords
-        grid_xy = self.xy_to_grid_coords(xyt[:2])
+        grid_xy = self.grid.xy_to_grid_coords(xyt[:2])
         # Check to see if grid coords are explored and obstacle free
         if grid_xy is None:
             # Conversion failed - probably out of bounds
             return False
         obstacles, explored = self.get_2d_map()
         # Convert xy to grid coords
-        grid_xy = self.xy_to_grid_coords(xyt[:2])
+        grid_xy = self.grid.xy_to_grid_coords(xyt[:2])
         # Check to see if grid coords are explored and obstacle free
         if grid_xy is None:
             # Conversion failed - probably out of bounds
