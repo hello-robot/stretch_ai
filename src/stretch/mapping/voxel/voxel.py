@@ -133,18 +133,43 @@ class SparseVoxelMap(object):
         median_filter_max_error: float = 0.01,
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
+        prune_detected_objects: bool = False,
     ):
         """
         Args:
             resolution(float): in meters, size of a voxel
             feature_dim(int): size of feature embeddings to capture per-voxel point (separate from instance memory)
             use_instance_memory(bool): if we should create object-centric instance memory
+            grid_size(Tuple[int, int]): dimensions of the voxel grid (optional)
+            grid_resolution(float): resolution of the grid in meters, e.g. 0.05 = 5cm (optional)
+            obs_min_height(float): minimum height for observations in meters
+            obs_max_height(float): maximum height for observations in meters
+            obs_min_density(float): minimum density for observations
+            smooth_kernel_size(int): size of the smoothing kernel (in grid cells)
+            add_local_radius_points(bool): whether to add local radius points to the explored map, marking them as safe
+            remove_visited_from_obstacles(bool): subtract out observations potentially of the robot
+            local_radius(float): radius for local points in meters
+            min_depth(float): minimum depth for observations in meters
+            max_depth(float): maximum depth for observations in meters
+            pad_obstacles(int): padding for obstacles in grid cells
+            background_instance_label(int): label for the background instance (e.g. -1)
+            instance_memory_kwargs(Dict[str, Any]): additional instance memory configuration
+            voxel_kwargs(Dict[str, Any]): additional voxel configuration
+            encoder(BaseImageTextEncoder): encoder for feature embeddings, maps image and text to feature space (optional)
+            map_2d_device(str): device for 2D mapping
+            use_median_filter(bool): whether to use a median filter to remove bad depth values when mapping and exploring
+            median_filter_size(int): size of the median filter
+            median_filter_max_error(float): maximum error for the median filter
+            use_derivative_filter(bool): whether to use a derivative filter to remove bad depth values when mapping and exploring
+            derivative_filter_threshold(float): threshold for the derivative filter
+            prune_detected_objects(bool): whether to prune detected objects from the voxel map
         """
         # TODO: We an use fastai.store_attr() to get rid of this boilerplate code
         self.feature_dim = feature_dim
         self.obs_min_height = obs_min_height
         self.obs_max_height = obs_max_height
         self.obs_min_density = obs_min_density
+        self.prune_detected_objects = prune_detected_objects
 
         # Smoothing kernel params
         self.smooth_kernel_size = smooth_kernel_size
@@ -479,6 +504,9 @@ class SparseVoxelMap(object):
             self.instances.associate_instances_to_memory()
             t2 = timeit.default_timer()
             print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
+
+        if self.prune_detected_objects:
+            valid_depth = valid_depth & (instance_image == self.background_instance_label)
 
         # Add to voxel grid
         if feats is not None:

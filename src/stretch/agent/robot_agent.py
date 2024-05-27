@@ -120,6 +120,7 @@ class RobotAgent:
                     ),
                     "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
                 },
+                prune_detected_objects=parameters.get("prune_detected_objects", False),
             )
 
         # Create planning space
