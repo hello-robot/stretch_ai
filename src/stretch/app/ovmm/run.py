@@ -197,9 +197,6 @@ def demo_main(
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
 
-    print("- Reset robot to [0, 0, 0]")
-    robot.navigate_to([0, 0, 0], blocking=True)
-
     if object_to_find is not None:
         print(f"\nSearch for {object_to_find} and {location_to_place}")
         matches = demo.get_found_instances_by_class(object_to_find)

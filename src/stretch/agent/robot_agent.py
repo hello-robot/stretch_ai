@@ -198,13 +198,14 @@ class RobotAgent:
         step_size = 2 * np.pi / steps
         i = 0
         while i < steps:
-            self.robot.navigate_to([0, 0, step_size], relative=True, blocking=True)
+            self.robot.navigate_to([0, 0, i * step_size], relative=False, blocking=True)
 
             if self.robot.last_motion_failed():
                 # We have a problem!
-                self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
-                i = 0
-                continue
+                raise RuntimeError("Robot is stuck!")
+                # self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
+                # i = 0
+                # continue
             else:
                 i += 1
 
@@ -715,7 +716,13 @@ class RobotAgent:
 
         if go_to_start_pose:
             print("Go to (0, 0, 0) to start with...")
-            self.robot.navigate_to([0, 0, 0])
+            self.robot.navigate_to([0, 0, 0], wait=True)
+            self.update()
+            self.voxel_map.show(
+                orig=np.zeros(3),
+                xyt=self.robot.get_base_pose(),
+                footprint=self.robot.get_robot_model().get_footprint(),
+            )
 
         all_starts = []
         all_goals = []
