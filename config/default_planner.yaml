@@ -39,8 +39,8 @@ motion:
   min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
 
 # Exploration
-in_place_rotation_steps: 8
-# in_place_rotation_steps: 0
+# in_place_rotation_steps: 8
+in_place_rotation_steps: 0
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.

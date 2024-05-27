@@ -115,17 +115,20 @@ class PickupManager:
         self.found_receptacle = False
         self.receptacle = None
 
-    def get_task(self):
+    def get_task(self, add_rotate: bool = False):
         """Create a task"""
 
         # Put the robot into navigation mode
         go_to_navigation_mode = GoToNavOperation("go to navigation mode", self)
 
-        # Spin in place to find objects.
-        rotate_in_place = RotateInPlaceOperation(self, parent=go_to_navigation_mode)
+        if add_rotate:
+            # Spin in place to find objects.
+            rotate_in_place = RotateInPlaceOperation(self, parent=go_to_navigation_mode)
 
         # Look for the target receptacle
-        search_for_receptacle = SearchForReceptacle(self, parent=rotate_in_place)
+        search_for_receptacle = SearchForReceptacle(
+            self, parent=rotate_in_place if add_rotate else go_to_navigation_mode
+        )
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(self, parent=search_for_receptacle)
@@ -154,7 +157,8 @@ class PickupManager:
         )
 
         task.add_operation(go_to_navigation_mode)
-        task.add_operation(rotate_in_place)
+        if add_rotate:
+            task.add_operation(rotate_in_place)
         task.add_operation(search_for_receptacle)
         task.add_operation(search_for_object)
         task.add_operation(go_to_object)
