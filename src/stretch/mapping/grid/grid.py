@@ -2,6 +2,10 @@ from typing import Optional, Tuple
 
 import numpy as np
 import torch
+from torch import Tensor
+
+# This is how much memory we allocate
+DEFAULT_GRID_SIZE = [1024, 1024]
 
 
 class GridParams:
@@ -11,7 +15,7 @@ class GridParams:
         self,
         grid_size: Tuple[int, int],
         resolution: float,
-        map_2d_device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device("cpu"),
     ):
 
         if grid_size is not None:
@@ -21,12 +25,12 @@ class GridParams:
 
         # Track the center of the grid - (0, 0) in our coordinate system
         # We then just need to update everything when we want to track obstacles
-        self.grid_origin = Tensor(self.grid_size + [0], device=map_2d_device) // 2
+        self.grid_origin = Tensor(self.grid_size + [0], device=device) // 2
         self.resolution = resolution
         # Used to track the offset from our observations so maps dont use too much space
 
         # Used for tensorized bounds checks
-        self._grid_size_t = Tensor(self.grid_size, device=map_2d_device)
+        self._grid_size_t = Tensor(self.grid_size, device=device)
 
     def xy_to_grid_coords(self, xy: torch.Tensor) -> Optional[np.ndarray]:
         """convert xy point to grid coords"""
@@ -34,7 +38,7 @@ class GridParams:
         # Handle convertion
         if isinstance(xy, np.ndarray):
             xy = torch.from_numpy(xy).float()
-        grid_xy = (xy / self.grid_resolution) + self.grid_origin[:2]
+        grid_xy = (xy / self.resolution) + self.grid_origin[:2]
         if torch.any(grid_xy >= self._grid_size_t) or torch.any(grid_xy < torch.zeros(2)):
             return None
         else:
@@ -43,7 +47,7 @@ class GridParams:
     def grid_coords_to_xy(self, grid_coords: torch.Tensor) -> np.ndarray:
         """convert grid coordinate point to metric world xy point"""
         assert grid_coords.shape[-1] == 2, "grid coords must be an Nx2 or 2d array"
-        return (grid_coords - self.grid_origin[:2]) * self.grid_resolution
+        return (grid_coords - self.grid_origin[:2]) * self.resolution
 
     def grid_coords_to_xyt(self, grid_coords: np.ndarray) -> np.ndarray:
         """convert grid coordinate point to metric world xyt point"""

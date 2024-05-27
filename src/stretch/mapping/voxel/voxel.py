@@ -60,8 +60,6 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [1024, 1024]
-
 logger = logging.getLogger(__name__)
 
 
@@ -208,7 +206,7 @@ class SparseVoxelMap(object):
             create_disk(self._disk_size, (2 * self._disk_size) + 1)
         ).to(map_2d_device)
 
-        self.grid = GridParams(grid_size, self.resolution, map_2d_device)
+        self.grid = GridParams(grid_size=grid_size, resolution=resolution, device=map_2d_device)
         self.grid_size = self.grid.grid_size
         self.grid_origin = self.grid.grid_origin
         self.resolution = self.grid.resolution
@@ -731,14 +729,6 @@ class SparseVoxelMap(object):
         explored_soft += self._visited
         explored = explored_soft > 0
 
-        # Also shrink the explored area to build more confidence
-        # That we will not collide with anything while moving around
-        # if self.dilate_obstacles_kernel is not None:
-        #    explored = binary_erosion(
-        #        explored.float().unsqueeze(0).unsqueeze(0),
-        #        self.dilate_obstacles_kernel,
-        #    )[0, 0].bool()
-
         if self.smooth_kernel_size > 0:
             # Opening and closing operations here on explore
             explored = binary_erosion(
@@ -903,7 +893,7 @@ class SparseVoxelMap(object):
         valid_indices = torch.nonzero(mask, as_tuple=False)
         if valid_indices.size(0) > 0:
             random_index = torch.randint(valid_indices.size(0), (1,))
-            return self.grid_coords_to_xy(valid_indices[random_index])
+            return self.grid.grid_coords_to_xy(valid_indices[random_index])
         else:
             return None
 
@@ -947,7 +937,7 @@ class SparseVoxelMap(object):
         # Traversible indices will be a 2xN array, so we need to transpose it.
         # Set to floor/max obs height and bright red
         if is_map:
-            traversible_pts = self.grid_coords_to_xy(traversible_indices.T)
+            traversible_pts = self.grid.grid_coords_to_xy(traversible_indices.T)
         else:
             traversible_pts = (
                 traversible_indices.T - np.ceil([d / 2 for d in traversible.shape])
@@ -1060,52 +1050,6 @@ class SparseVoxelMap(object):
             # Get the colors and add to wireframe
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
-
-    def _get_o3d_robot_footprint_geometry(
-        self,
-        xyt: np.ndarray,
-        dimensions: Optional[np.ndarray] = None,
-        length_offset: float = 0,
-    ):
-        """Get a 3d mesh cube for the footprint of the robot. But this does not work very well for whatever reason."""
-        # Define the dimensions of the cube
-        if dimensions is None:
-            dimensions = np.array([0.2, 0.2, 0.2])  # Cube dimensions (length, width, height)
-
-        x, y, theta = xyt
-        # theta = theta - np.pi/2
-
-        # Create a custom mesh cube with the specified dimensions
-        mesh_cube = open3d.geometry.TriangleMesh.create_box(
-            width=dimensions[0], height=dimensions[1], depth=dimensions[2]
-        )
-
-        # Define the transformation matrix for position and orientation
-        rotation_matrix = np.array(
-            [
-                [math.cos(theta), -math.sin(theta), 0],
-                [math.sin(theta), math.cos(theta), 0],
-                [0, 0, 1],
-            ]
-        )
-        # Calculate the translation offset based on theta
-        length_offset = 0
-        x_offset = length_offset - (dimensions[0] / 2)
-        y_offset = -1 * dimensions[1] / 2
-        dx = (math.cos(theta) * x_offset) + (math.cos(theta - np.pi / 2) * y_offset)
-        dy = (math.sin(theta + np.pi / 2) * y_offset) + (math.sin(theta) * x_offset)
-        translation_vector = np.array([x + dx, y + dy, 0])  # Apply offset based on theta
-        transformation_matrix = np.identity(4)
-        transformation_matrix[:3, :3] = rotation_matrix
-        transformation_matrix[:3, 3] = translation_vector
-
-        # Apply the transformation to the cube
-        mesh_cube.transform(transformation_matrix)
-
-        # Set the color of the cube to blue
-        mesh_cube.paint_uniform_color([0.0, 0.0, 1.0])  # Set color to blue
-
-        return mesh_cube
 
     def _show_open3d(
         self,
