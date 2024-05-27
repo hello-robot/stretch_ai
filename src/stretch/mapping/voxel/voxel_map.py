@@ -446,7 +446,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             expanded_frontier = frontier_edges
 
         outside_frontier = expanded_frontier & ~explored
-        frontier = expanded_frontier & ~obstacles & explored
+        frontier = expanded_frontier & traversible
 
         if debug:
             import matplotlib.pyplot as plt
@@ -722,7 +722,8 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         # Get the explored/traversible area
         obstacles, explored = self.voxel_map.get_2d_map()
-        frontier, outside, traversible = self.get_frontier()
+        frontier, _, traversible = self.get_frontier()
+        traversible = traversible & ~frontier
 
         # Visualize traversible area and frontier from the motion planner
         geoms += self.voxel_map._get_boxes_from_points(traversible, [0, 1, 0])
