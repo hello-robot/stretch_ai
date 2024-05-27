@@ -107,7 +107,6 @@ def main(
     if len(config_path) > 0:
         print("- Load parameters")
         parameters = get_parameters(config_path)
-        print(parameters)
         agent = RobotAgent(
             dummy_robot,
             parameters,

@@ -95,7 +95,6 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
-    print(parameters)
 
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,

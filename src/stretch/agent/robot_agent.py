@@ -718,11 +718,12 @@ class RobotAgent:
             print("Go to (0, 0, 0) to start with...")
             self.robot.navigate_to([0, 0, 0])
             self.update()
-            self.voxel_map.show(
-                orig=np.zeros(3),
-                xyt=self.robot.get_base_pose(),
-                footprint=self.robot.get_robot_model().get_footprint(),
-            )
+            if visualize:
+                self.voxel_map.show(
+                    orig=np.zeros(3),
+                    xyt=self.robot.get_base_pose(),
+                    footprint=self.robot.get_robot_model().get_footprint(),
+                )
 
         all_starts = []
         all_goals = []

@@ -19,7 +19,8 @@ min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
 remove_visited_from_obstacles: False
 min_depth: 0.5
-max_depth: 2.5
+# max_depth: 2.5
+max_depth: 2.0
 
 # Point cloud cleanup
 filters:
