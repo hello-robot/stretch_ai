@@ -6,6 +6,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
+from stretch.perception import create_semantic_sensor
 
 
 class RotateInPlaceOperation(Operation):
@@ -187,6 +188,9 @@ def main(
     send_port: int = 4402,
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
+    device_id: int = 0,
+    verbose: bool = False,
+    show_intermediate_maps: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -198,9 +202,16 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
+    _, semantic_sensor = create_semantic_sensor(
+        device_id=device_id,
+        verbose=verbose,
+        category_map_file=parameters["open_vocab_category_map_file"],
+    )
+
     # Start moving the robot around
+    grasp_client = None
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
-    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
+    demo.start(visualize_map_at_start=show_intermediate_maps)
 
     # After the robot has started...
     agent = PickupManager(robot, parameters)
