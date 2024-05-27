@@ -132,6 +132,7 @@ class RobotAgent:
                 "dilate_frontier_size"
             ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
             dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            grid=self.voxel_map.grid,
         )
 
         # Dictionary storing attempts to visit each object
@@ -714,7 +715,7 @@ class RobotAgent:
 
         if go_to_start_pose:
             print("Go to (0, 0, 0) to start with...")
-            self.robot.navigate_to([0, 0, 0], wait=True)
+            self.robot.navigate_to([0, 0, 0])
             self.update()
             self.voxel_map.show(
                 orig=np.zeros(3),
