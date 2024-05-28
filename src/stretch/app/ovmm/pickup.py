@@ -115,7 +115,14 @@ class NavigateToObjectOperation(ManagedOperation):
 class GraspObjectOperation(ManagedOperation):
     """Move the robot to grasp, using the end effector camera."""
 
-    pass
+    def can_start(self):
+        return self.manager.current_object is not None
+
+    def run(self):
+        breakpoint()
+
+    def was_successful(self):
+        breakpoint()
 
 
 class ResetArmOperation(ManagedOperation):
@@ -150,70 +157,20 @@ class GoToNavOperation(ManagedOperation):
 class PickupManager:
     """Simple robot that will look around and pick up different objects"""
 
-    def __init__(self, robot: RobotAgent, parameters: Parameters) -> None:
-        self.robot = robot
-        self.parameters = parameters
-        self.found_receptacle = False
-        self.receptacle = None
+    def __init__(self, agent: RobotAgent) -> None:
+
+        # Agent wraps high level functionality
+        self.agent = agent
+
+        # Sync these things
+        self.robot = agent.robot
+        self.voxel_map = agent.voxel_map
+        self.navigation_space = agent.space
+        self.semantic_sensor = agent.semantic_sensor
+        self.parameters = agent.parameters
 
         self.current_object = None
         self.current_receptable = None
-
-        # Get visual/text encoder for object search
-        self.encoder = get_encoder(parameters["encoder"], parameters["encoder_args"])
-
-        # Maps
-        self.voxel_map = SparseVoxelMap(
-            resolution=parameters["voxel_size"],
-            local_radius=parameters["local_radius"],
-            obs_min_height=parameters["obs_min_height"],
-            obs_max_height=parameters["obs_max_height"],
-            min_depth=parameters["min_depth"],
-            max_depth=parameters["max_depth"],
-            pad_obstacles=parameters["pad_obstacles"],
-            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
-            remove_visited_from_obstacles=parameters.get(
-                "remove_visited_from_obstacles", default=False
-            ),
-            obs_min_density=parameters["obs_min_density"],
-            encoder=self.encoder,
-            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
-            use_median_filter=parameters.get("filters/use_median_filter", False),
-            median_filter_size=parameters.get("filters/median_filter_size", 5),
-            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
-            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
-            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
-            use_instance_memory=(self.semantic_sensor is not None),
-            instance_memory_kwargs={
-                "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
-                "min_instance_thickness": parameters.get(
-                    "instance_memory/min_instance_thickness", 0.01
-                ),
-                "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
-                "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
-                "min_instance_height": parameters.get("instance_memory/min_instance_height", 0.1),
-                "max_instance_height": parameters.get("instance_memory/max_instance_height", 1.8),
-                "min_pixels_for_instance_view": parameters.get(
-                    "instance_memory/min_pixels_for_instance_view", 100
-                ),
-                "min_percent_for_instance_view": parameters.get(
-                    "instance_memory/min_percent_for_instance_view", 0.2
-                ),
-                "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
-            },
-            prune_detected_objects=parameters.get("prune_detected_objects", False),
-        )
-
-        # Create planning space
-        self.space = SparseVoxelMapNavigationSpace(
-            self.voxel_map,
-            self.robot.get_robot_model(),
-            step_size=parameters["step_size"],
-            rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters["dilate_frontier_size"],
-            dilate_obstacle_size=parameters["dilate_obstacle_size"],
-            grid=self.voxel_map.grid,
-        )
 
     def get_task(self, add_rotate: bool = False, search_for_receptacle: bool = False) -> Task:
         """Create a task plan with loopbacks and recovery from failure"""
@@ -251,9 +208,9 @@ class PickupManager:
         pregrasp_object = PreGraspObjectOperation(
             "prepare to grasp and make sure we can see the object",
             self,
-            parent=manipulation_mode,
-            on_failure=reset_arm,
+            on_failure=None,
             on_cannot_start=go_to_object,
+            retry_on_failure=True,
         )
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
@@ -261,11 +218,11 @@ class PickupManager:
             "grasp the object",
             self,
             parent=pregrasp_object,
-            on_failure=None,
+            on_failure=pregrasp_object,
             on_cannot_start=go_to_object,
-            retry_on_failure=True,
         )
 
+        task = Task()
         task.add_operation(go_to_navigation_mode)
         if add_rotate:
             task.add_operation(rotate_in_place)
@@ -319,12 +276,14 @@ def main(
 
     # Start moving the robot around
     grasp_client = None
+
+    # Agents wrap the robot high level planning interface for now
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
     # After the robot has started...
-    agent = PickupManager(robot, parameters)
-    task = agent.get_task(add_rotate=False, search_for_receptacle=False)
+    manager = PickupManager(demo)
+    task = manager.get_task(add_rotate=False, search_for_receptacle=False)
     task.execute()
 
     # At the end, disable everything

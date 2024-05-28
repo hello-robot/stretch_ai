@@ -96,7 +96,7 @@ class Task:
         # Add it to the list
         self._all_operations.append(operation)
 
-    def start(self):
+    def execute(self):
         """Start the task. This is a blocking loop which will continue until there are no operations left to execute."""
         self.current_operation = self.initial_operation
         if self.current_operation is None:
