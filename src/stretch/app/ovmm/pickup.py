@@ -7,7 +7,7 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
-from stretch.perception import create_semantic_sensor
+from stretch.perception import create_semantic_sensor, get_encoder
 
 
 class ManagedOperation(Operation):
