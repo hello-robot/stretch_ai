@@ -86,7 +86,6 @@ class HomeRobotZmqClient(RobotClient):
         self.send_socket.setsockopt(zmq.SNDHWM, 1)
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
         action_send_address = "tcp://*:" + str(self.send_port)
-        print(f"Publishing actions on {action_send_address}...")
 
         # Use remote computer or whatever
         if use_remote_computer:
@@ -96,6 +95,7 @@ class HomeRobotZmqClient(RobotClient):
             self.recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
             self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
 
+        print("-------- HOME-ROBOT ROS2 ZMQ CLIENT --------")
         print(f"Connecting to {self.recv_address} to receive observations...")
         self.recv_socket.connect(self.recv_address)
         print(f"Connecting to {self.send_address} to send action messages...")

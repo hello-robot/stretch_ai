@@ -22,10 +22,6 @@ class ManagedOperation(Operation):
 class RotateInPlaceOperation(ManagedOperation):
     """Rotate the robot in place"""
 
-    # For debugging
-    show_map_so_far: bool = False
-    show_instances_detected: bool = True
-
     def can_start(self) -> bool:
         return True
 
@@ -46,6 +42,10 @@ class RotateInPlaceOperation(ManagedOperation):
 
 class SearchForReceptacle(ManagedOperation):
     """Find a place to put the objects we find on the floor"""
+
+    # For debugging
+    show_map_so_far: bool = False
+    show_instances_detected: bool = True
 
     def can_start(self) -> bool:
         return True
@@ -70,6 +70,11 @@ class SearchForReceptacle(ManagedOperation):
             plt.show()
 
         # Check to see if we have a receptacle in the map
+        instances = self.manager.instance_memory.get_instances()
+        for i, instance in instances:
+            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+
         breakpoint()
 
         # If no receptacle, pick a random point nearby and just wander around

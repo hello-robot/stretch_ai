@@ -168,7 +168,7 @@ class InstanceMemory:
         self.local_id_to_global_id_map = [{} for _ in range(self.num_envs)]
         self.timesteps = [0 for _ in range(self.num_envs)]
 
-    def get_instance(self, env_id: int, global_instance_id: int) -> Instance:
+    def get_instance(self, global_instance_id: int, env_id: int = 0) -> Instance:
         """
         Retrieve an instance given an environment ID and a global instance ID.
 
@@ -181,7 +181,7 @@ class InstanceMemory:
         """
         return self.instances[env_id][global_instance_id]
 
-    def get_instances(self, env_id) -> List[Instance]:
+    def get_instances(self, env_id: int = 0) -> List[Instance]:
         """Returns a list of all global instances for a single environment"""
         global_instance_ids = self.get_global_instance_ids(env_id)
         if len(global_instance_ids) == 0:

@@ -7,6 +7,7 @@ import json
 import os
 from typing import Any, Dict, Optional, Tuple
 
+import torch
 from loguru import logger
 
 from stretch.core.interfaces import Observations
@@ -105,6 +106,8 @@ class OvmmPerception:
 
     def get_class_name_for_id(self, oid: int) -> str:
         """return name of a class from a detection"""
+        if isinstance(oid, torch.Tensor):
+            oid = int(oid.item())
         return self._current_vocabulary.goal_id_to_goal_name[oid]
 
     def get_class_id_for_name(self, name: str) -> int:
