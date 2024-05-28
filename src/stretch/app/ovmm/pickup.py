@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import click
+import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -20,6 +21,10 @@ class ManagedOperation(Operation):
 
 class RotateInPlaceOperation(ManagedOperation):
     """Rotate the robot in place"""
+
+    # For debugging
+    show_map_so_far: bool = False
+    show_instances_detected: bool = True
 
     def can_start(self) -> bool:
         return True
@@ -47,6 +52,22 @@ class SearchForReceptacle(ManagedOperation):
 
     def run(self) -> None:
         print("Searching for a receptacle on the floor.")
+        print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+
+        if self.show_map_so_far:
+            # This shows us what the robot has found so far
+            self.manager.voxel_map.show(orig=np.zeros(3))
+
+        if self.show_instances_detected:
+            # Show the last instance image
+            import matplotlib
+
+            # TODO: why do we need to configure this every time
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.show()
 
         # Check to see if we have a receptacle in the map
         breakpoint()
