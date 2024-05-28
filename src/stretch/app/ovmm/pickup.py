@@ -71,9 +71,16 @@ class SearchForReceptacle(ManagedOperation):
 
         # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
-        for i, instance in instances:
+        for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+
+            if self.show_instances_detected:
+                view = instance.get_best_view()
+                plt.imshow(view.get_image())
+                plt.title(f"Instance {i} with name {name}")
+                plt.axis("off")
+                plt.show()
 
         breakpoint()
 
