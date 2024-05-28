@@ -51,13 +51,6 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Overload failure to just retry this one
-        if self.on_failure is not None:
-            raise RuntimeError(
-                "Cannot have on_failure set for SearchForObjectOnFloorOperation - it will just retry itself."
-            )
-        self.on_failure = self
-
     def can_start(self) -> bool:
         return self.manager.current_receptacle is not None
 
@@ -91,6 +84,21 @@ class PreGraspObjectOperation(ManagedOperation):
 
     def was_successful(self):
         return self.robot.in_manipulation_mode()
+
+
+class NavigateToObjectOperation(ManagedOperation):
+    def can_start(self):
+        return self.manager.current_object is not None
+
+    def run(self):
+        print("Navigating to the object.")
+        self.robot.switch_to_navigation_mode()
+
+        # Now find the object instance we got from the map
+
+    def was_successful(self):
+        """This will be successful if we got within a reasonable distance of the target object."""
+        return self.robot.in_navigation_mode()
 
 
 class GraspObjectOperation(ManagedOperation):
@@ -140,6 +148,61 @@ class PickupManager:
         self.current_object = None
         self.current_receptable = None
 
+        # Create sparse voxel map using the parameters provided
+        self.voxel_map = SparseVoxelMap(
+            resolution=parameters["voxel_size"],
+            local_radius=parameters["local_radius"],
+            obs_min_height=parameters["obs_min_height"],
+            obs_max_height=parameters["obs_max_height"],
+            min_depth=parameters["min_depth"],
+            max_depth=parameters["max_depth"],
+            pad_obstacles=parameters["pad_obstacles"],
+            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
+            remove_visited_from_obstacles=parameters.get(
+                "remove_visited_from_obstacles", default=False
+            ),
+            obs_min_density=parameters["obs_min_density"],
+            encoder=self.encoder,
+            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
+            use_median_filter=parameters.get("filters/use_median_filter", False),
+            median_filter_size=parameters.get("filters/median_filter_size", 5),
+            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
+            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            use_instance_memory=(self.semantic_sensor is not None),
+            instance_memory_kwargs={
+                "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
+                "min_instance_thickness": parameters.get(
+                    "instance_memory/min_instance_thickness", 0.01
+                ),
+                "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
+                "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
+                "min_instance_height": parameters.get("instance_memory/min_instance_height", 0.1),
+                "max_instance_height": parameters.get("instance_memory/max_instance_height", 1.8),
+                "min_pixels_for_instance_view": parameters.get(
+                    "instance_memory/min_pixels_for_instance_view", 100
+                ),
+                "min_percent_for_instance_view": parameters.get(
+                    "instance_memory/min_percent_for_instance_view", 0.2
+                ),
+                "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
+            },
+            prune_detected_objects=parameters.get("prune_detected_objects", False),
+        )
+
+    # Create planning space
+    self.space = SparseVoxelMapNavigationSpace(
+        self.voxel_map,
+        self.robot.get_robot_model(),
+        step_size=parameters["step_size"],
+        rotation_step_size=parameters["rotation_step_size"],
+        dilate_frontier_size=parameters[
+            "dilate_frontier_size"
+        ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
+        dilate_obstacle_size=parameters["dilate_obstacle_size"],
+        grid=self.voxel_map.grid,
+    )
+
     def get_task(self, add_rotate: bool = False, search_for_receptacle: bool = False) -> Task:
         """Create a task"""
 
@@ -162,19 +225,13 @@ class PickupManager:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            "Search for toys on the floor", self
+            "Search for toys on the floor", self, retry_on_failure=True
         )  # , parent=search_for_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
-        go_to_object = GoToObjectOperation(
+        go_to_object = NavigateToObjectOperation(
             "go to object", self, parent=search_for_object, on_cannot_start=search_for_object
         )
-
-        # These two are supposed to just move the object around
-        manipulation_mode = ResetArmOperation(
-            "go to manipulation mode", self, parent=search_for_object
-        )
-        reset_arm = ResetArmOperation("reset arm to retry", self, on_success=grasp_object)
 
         # When about to start, run object detection and try to find the object. If not in front of us, explore again.
         # If we cannot find the object, we should go back to the search_for_object operation.
@@ -192,8 +249,9 @@ class PickupManager:
             "grasp the object",
             self,
             parent=pregrasp_object,
-            on_failure=reset_arm,
+            on_failure=None,
             on_cannot_start=go_to_object,
+            retry_on_failure=True,
         )
 
         task.add_operation(go_to_navigation_mode)
@@ -203,7 +261,6 @@ class PickupManager:
             task.add_operation(search_for_receptacle)
         task.add_operation(search_for_object)
         task.add_operation(go_to_object)
-        task.add_operation(manipulation_mode)
         task.add_operation(pregrasp_object)
         task.add_operation(grasp_object)
 

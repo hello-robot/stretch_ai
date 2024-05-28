@@ -18,6 +18,7 @@ class Operation(abc.ABC):
         on_success: Optional[Operation] = None,
         on_failure: Optional[Operation] = None,
         on_cannot_start: Optional[Operation] = None,
+        retry_on_failure: bool = False,
     ) -> None:
         self.name = name
         self._started = False
@@ -25,9 +26,18 @@ class Operation(abc.ABC):
         self.on_cannot_start = on_cannot_start
         self.on_success = on_success
         self.on_failure = on_failure
+        self.retry_on_failure = retry_on_failure
 
         if self.parent is not None and self.parent.on_success is None:
             self.parent.on_success = self
+
+        # Overload failure to just retry this one
+        if self.retry_on_failure:
+            if self.on_failure is not None:
+                raise RuntimeError(
+                    f"Cannot have on_failure set for {self.name} - it will just retry itself."
+                )
+            self.on_failure = self
 
     @abc.abstractmethod
     def can_start(self) -> bool:
