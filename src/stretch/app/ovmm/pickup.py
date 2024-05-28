@@ -6,6 +6,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.perception import create_semantic_sensor
 
 
@@ -43,6 +44,16 @@ class SearchForReceptacle(ManagedOperation):
 
     def can_start(self) -> bool:
         return True
+
+    def run(self) -> None:
+        print("Searching for a receptacle.")
+
+        # Check to see if we have a receptacle in the map
+
+        # If no receptacle, pick a random point nearby and just wander around
+
+    def was_successful(self) -> bool:
+        pass
 
 
 class SearchForObjectOnFloorOperation(ManagedOperation):
@@ -148,7 +159,10 @@ class PickupManager:
         self.current_object = None
         self.current_receptable = None
 
-        # Create sparse voxel map using the parameters provided
+        # Get visual/text encoder for object search
+        self.encoder = get_encoder(parameters["encoder"], parameters["encoder_args"])
+
+        # Maps
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             local_radius=parameters["local_radius"],
@@ -190,21 +204,19 @@ class PickupManager:
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
 
-    # Create planning space
-    self.space = SparseVoxelMapNavigationSpace(
-        self.voxel_map,
-        self.robot.get_robot_model(),
-        step_size=parameters["step_size"],
-        rotation_step_size=parameters["rotation_step_size"],
-        dilate_frontier_size=parameters[
-            "dilate_frontier_size"
-        ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
-        dilate_obstacle_size=parameters["dilate_obstacle_size"],
-        grid=self.voxel_map.grid,
-    )
+        # Create planning space
+        self.space = SparseVoxelMapNavigationSpace(
+            self.voxel_map,
+            self.robot.get_robot_model(),
+            step_size=parameters["step_size"],
+            rotation_step_size=parameters["rotation_step_size"],
+            dilate_frontier_size=parameters["dilate_frontier_size"],
+            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            grid=self.voxel_map.grid,
+        )
 
     def get_task(self, add_rotate: bool = False, search_for_receptacle: bool = False) -> Task:
-        """Create a task"""
+        """Create a task plan with loopbacks and recovery from failure"""
 
         # Put the robot into navigation mode
         go_to_navigation_mode = GoToNavOperation("go to navigation mode", self)

@@ -129,9 +129,7 @@ class RobotAgent:
             self.robot.get_robot_model(),
             step_size=parameters["step_size"],
             rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters[
-                "dilate_frontier_size"
-            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
+            dilate_frontier_size=parameters["dilate_frontier_size"],
             dilate_obstacle_size=parameters["dilate_obstacle_size"],
             grid=self.voxel_map.grid,
         )
