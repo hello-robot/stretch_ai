@@ -9,20 +9,24 @@ from stretch.core.task import Operation, Task
 from stretch.perception import create_semantic_sensor
 
 
-class RotateInPlaceOperation(Operation):
-    """Rotate the robot in place"""
-
-    def __init__(self, manager, **kwargs):
-        super().__init__("Rotate in place", **kwargs)
+class ManagedOperation(Operation):
+    def __init__(self, name, manager, **kwargs):
+        super().__init__(name, **kwargs)
+        self.manager = manager
         self.robot = manager.robot
         self.parameters = manager.parameters
-        self.manager = manager
+
+
+class RotateInPlaceOperation(ManagedOperation):
+    """Rotate the robot in place"""
 
     def can_start(self) -> bool:
         return True
 
     def run(self) -> None:
-        print(f"Running {self.name}")
+        print(
+            f"Running {self.name}: rotating for {self.parameters['in_place_rotation_steps']} steps."
+        )
         self._successful = False
         self.robot.rotate_in_place(
             steps=self.parameters["in_place_rotation_steps"],
@@ -34,26 +38,18 @@ class RotateInPlaceOperation(Operation):
         return self._successful
 
 
-class SearchForReceptacle(Operation):
+class SearchForReceptacle(ManagedOperation):
     """Find a place to put the objects we find on the floor"""
-
-    def __init__(self, manager, **kwargs):
-        super().__init__("Search for receptacle", **kwargs)
-        self.manager = manager
-        self.robot = self.manager.robot
-        self.parameters = self.manager.parameters
 
     def can_start(self) -> bool:
         return True
 
 
-class SearchForObjectOnFloorOperation(Operation):
+class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
-    def __init__(self, manager, **kwargs):
-        super().__init__("Search for object", **kwargs)
-        self.robot = robot
-        self.parameters = parameters
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         # Overload failure to just retry this one
         if self.on_failure is not None:
@@ -63,13 +59,14 @@ class SearchForObjectOnFloorOperation(Operation):
         self.on_failure = self
 
     def can_start(self) -> bool:
-        return self.manager.found_receptacle()
+        return self.manager.current_receptacle is not None
 
     def run(self) -> None:
         print("Find a reachable object on the floor.")
         self._successful = False
 
         # Check to see if we have an object on the floor worth finding
+        # TODO: check the manager for this
 
         # Check to see if there is a visitable frontier
 
@@ -81,26 +78,29 @@ class SearchForObjectOnFloorOperation(Operation):
         return self._successful and self.manager.found_receptacle()
 
 
-class PreGraspObjectOperation(Operation):
+class PreGraspObjectOperation(ManagedOperation):
     """Move the robot to a position looking at the object using the navigation/manipulation camera."""
 
-    pass
+    def can_start(self):
+        return self.manager.current_object is not None
+
+    def run(self):
+        print("Moving to a position to grasp the object.")
+        self.robot.switch_to_manip_posture()
+        # This may need to do some more adjustments but this is probab ly ok for now
+
+    def was_successful(self):
+        return self.robot.in_manipulation_mode()
 
 
-class GraspObjectOperation(Operation):
+class GraspObjectOperation(ManagedOperation):
     """Move the robot to grasp, using the end effector camera."""
 
     pass
 
 
-class ResetArmOperation(Operation):
+class ResetArmOperation(ManagedOperation):
     """Send the arm back to home"""
-
-    def __init__(self, name, manager, **kwargs):
-        super().__init__(name, **kwargs)
-        self.manager = manager
-        self.robot = manager.robot
-        self.parameters = manager.parameters
 
     def can_start(self) -> bool:
         """This one has no special requirements"""
@@ -114,14 +114,8 @@ class ResetArmOperation(Operation):
         return self.robot.in_manipulation_mode()
 
 
-class GoToNavOperation(Operation):
+class GoToNavOperation(ManagedOperation):
     """Put the robot into navigation mode"""
-
-    def __init__(self, name, manager, **kwargs):
-        super().__init__(name, **kwargs)
-        self.manager = manager
-        self.robot = manager.robot
-        self.parameters = manager.parameters
 
     def can_start(self) -> bool:
         return True
@@ -143,6 +137,9 @@ class PickupManager:
         self.found_receptacle = False
         self.receptacle = None
 
+        self.current_object = None
+        self.current_receptable = None
+
     def get_task(self, add_rotate: bool = False, search_for_receptacle: bool = False) -> Task:
         """Create a task"""
 
@@ -151,16 +148,22 @@ class PickupManager:
 
         if add_rotate:
             # Spin in place to find objects.
-            rotate_in_place = RotateInPlaceOperation(self, parent=go_to_navigation_mode)
+            rotate_in_place = RotateInPlaceOperation(
+                "Rotate in place", self, parent=go_to_navigation_mode
+            )
 
         if search_for_receptacle:
             # Look for the target receptacle
             search_for_receptacle = SearchForReceptacle(
-                self, parent=rotate_in_place if add_rotate else go_to_navigation_mode
+                "Search for a box",
+                self,
+                parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             )
 
         # Try to expand the frontier and find an object; or just wander around for a while.
-        search_for_object = SearchForObjectOnFloorOperation(self)  # , parent=search_for_receptacle)
+        search_for_object = SearchForObjectOnFloorOperation(
+            "Search for toys on the floor", self
+        )  # , parent=search_for_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = GoToObjectOperation(
@@ -177,12 +180,20 @@ class PickupManager:
         # If we cannot find the object, we should go back to the search_for_object operation.
         # To determine if we can start, we just check to see if there's a detectable object nearby.
         pregrasp_object = PreGraspObjectOperation(
-            self, parent=manipulation_mode, on_failure=reset_arm, on_cannot_start=go_to_object
+            "prepare to grasp and make sure we can see the object",
+            self,
+            parent=manipulation_mode,
+            on_failure=reset_arm,
+            on_cannot_start=go_to_object,
         )
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
         grasp_object = GraspObjectOperation(
-            self, parent=pregrasp_object, on_failure=reset_arm, on_cannot_start=go_to_object
+            "grasp the object",
+            self,
+            parent=pregrasp_object,
+            on_failure=reset_arm,
+            on_cannot_start=go_to_object,
         )
 
         task.add_operation(go_to_navigation_mode)
