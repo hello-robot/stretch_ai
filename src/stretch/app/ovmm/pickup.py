@@ -106,6 +106,33 @@ class ResetArmOperation(Operation):
         """This one has no special requirements"""
         return True
 
+    def run(self) -> None:
+        print("Resetting the arm.")
+        self.robot.switch_to_manip_posture()
+
+    def was_successful(self) -> bool:
+        return self.robot.in_manipulation_mode()
+
+
+class GoToNavOperation(Operation):
+    """Put the robot into navigation mode"""
+
+    def __init__(self, name, manager, **kwargs):
+        super().__init__(name, **kwargs)
+        self.manager = manager
+        self.robot = manager.robot
+        self.parameters = manager.parameters
+
+    def can_start(self) -> bool:
+        return True
+
+    def run(self) -> None:
+        print("Switching to navigation mode.")
+        self.robot.go_to_navigation_mode()
+
+    def was_successful(self) -> bool:
+        return self.robot.in_navigation_mode()
+
 
 class PickupManager:
     """Simple robot that will look around and pick up different objects"""
@@ -217,6 +244,11 @@ def main(
 
     # After the robot has started...
     agent = PickupManager(robot, parameters)
+    task = agent.get_task(add_rotate=False, search_for_receptacle=False)
+    task.execute()
+
+    # At the end, disable everything
+    demo.stop()
 
 
 if __name__ == "__main__":

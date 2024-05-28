@@ -164,6 +164,12 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("navigation")
 
+    def in_navigation_mode(self) -> bool:
+        return self._control_mode == "navigation"
+
+    def in_manipulation_mode(self) -> bool:
+        return self._control_mode == "manipulation"
+
     def switch_to_manipulation_mode(self):
         with self._act_lock:
             self._next_action["control_mode"] = "manipulation"
