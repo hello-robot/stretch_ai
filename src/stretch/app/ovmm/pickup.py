@@ -49,11 +49,12 @@ class SearchForReceptacle(ManagedOperation):
         print("Searching for a receptacle.")
 
         # Check to see if we have a receptacle in the map
+        breakpoint()
 
         # If no receptacle, pick a random point nearby and just wander around
 
     def was_successful(self) -> bool:
-        pass
+        self.manager.current_receptacle is not None
 
 
 class SearchForObjectOnFloorOperation(ManagedOperation):
@@ -103,7 +104,7 @@ class NavigateToObjectOperation(ManagedOperation):
 
     def run(self):
         print("Navigating to the object.")
-        self.robot.switch_to_navigation_mode()
+        self.robot.switch_to_navigation_posture()
 
         # Now find the object instance we got from the map
 
@@ -125,21 +126,6 @@ class GraspObjectOperation(ManagedOperation):
         breakpoint()
 
 
-class ResetArmOperation(ManagedOperation):
-    """Send the arm back to home"""
-
-    def can_start(self) -> bool:
-        """This one has no special requirements"""
-        return True
-
-    def run(self) -> None:
-        print("Resetting the arm.")
-        self.robot.switch_to_manip_posture()
-
-    def was_successful(self) -> bool:
-        return self.robot.in_manipulation_mode()
-
-
 class GoToNavOperation(ManagedOperation):
     """Put the robot into navigation mode"""
 
@@ -148,7 +134,7 @@ class GoToNavOperation(ManagedOperation):
 
     def run(self) -> None:
         print("Switching to navigation mode.")
-        self.robot.go_to_navigation_mode()
+        self.robot.move_to_nav_posture()
 
     def was_successful(self) -> bool:
         return self.robot.in_navigation_mode()
@@ -168,11 +154,15 @@ class PickupManager:
         self.navigation_space = agent.space
         self.semantic_sensor = agent.semantic_sensor
         self.parameters = agent.parameters
+        self.instance_memory = agent.voxel_map.instance_memory
+        assert (
+            instance_memory is not None
+        ), "Make sure instance memory was created! This is configured in parameters file."
 
         self.current_object = None
-        self.current_receptable = None
+        self.current_receptacle = None
 
-    def get_task(self, add_rotate: bool = False, search_for_receptacle: bool = False) -> Task:
+    def get_task(self, add_rotate: bool = False) -> Task:
         """Create a task plan with loopbacks and recovery from failure"""
 
         # Put the robot into navigation mode
@@ -184,18 +174,17 @@ class PickupManager:
                 "Rotate in place", self, parent=go_to_navigation_mode
             )
 
-        if search_for_receptacle:
-            # Look for the target receptacle
-            search_for_receptacle = SearchForReceptacle(
-                "Search for a box",
-                self,
-                parent=rotate_in_place if add_rotate else go_to_navigation_mode,
-            )
+        # Look for the target receptacle
+        search_for_receptacle = SearchForReceptacle(
+            "Search for a box",
+            self,
+            parent=rotate_in_place if add_rotate else go_to_navigation_mode,
+        )
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
             "Search for toys on the floor", self, retry_on_failure=True
-        )  # , parent=search_for_receptacle)
+        )
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
@@ -226,8 +215,7 @@ class PickupManager:
         task.add_operation(go_to_navigation_mode)
         if add_rotate:
             task.add_operation(rotate_in_place)
-        if search_for_receptacle:
-            task.add_operation(search_for_receptacle)
+        task.add_operation(search_for_receptacle)
         task.add_operation(search_for_object)
         task.add_operation(go_to_object)
         task.add_operation(pregrasp_object)
@@ -283,7 +271,7 @@ def main(
 
     # After the robot has started...
     manager = PickupManager(demo)
-    task = manager.get_task(add_rotate=False, search_for_receptacle=False)
+    task = manager.get_task(add_rotate=False)
     task.execute()
 
     # At the end, disable everything
