@@ -61,6 +61,13 @@ class InstanceMemory:
     local_id_to_global_id_map: List[Dict[int, int]] = []
     timesteps: List[int] = []
 
+    def __len__(self):
+        """Figure out how many things we have found"""
+        num_instances = 0
+        for env in self.instances:
+            num_instances += len(env)
+        return num_instances
+
     def __init__(
         self,
         num_envs: int,

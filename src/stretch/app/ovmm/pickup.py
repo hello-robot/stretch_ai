@@ -46,7 +46,7 @@ class SearchForReceptacle(ManagedOperation):
         return True
 
     def run(self) -> None:
-        print("Searching for a receptacle.")
+        print("Searching for a receptacle on the floor.")
 
         # Check to see if we have a receptacle in the map
         breakpoint()
@@ -154,9 +154,9 @@ class PickupManager:
         self.navigation_space = agent.space
         self.semantic_sensor = agent.semantic_sensor
         self.parameters = agent.parameters
-        self.instance_memory = agent.voxel_map.instance_memory
+        self.instance_memory = agent.voxel_map.instances
         assert (
-            instance_memory is not None
+            self.instance_memory is not None
         ), "Make sure instance memory was created! This is configured in parameters file."
 
         self.current_object = None
@@ -270,8 +270,14 @@ def main(
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
     # After the robot has started...
-    manager = PickupManager(demo)
-    task = manager.get_task(add_rotate=False)
+    try:
+        manager = PickupManager(demo)
+        task = manager.get_task(add_rotate=False)
+    except Exception as e:
+        print(f"Error creating task: {e}")
+        demo.stop()
+        return
+
     task.execute()
 
     # At the end, disable everything
