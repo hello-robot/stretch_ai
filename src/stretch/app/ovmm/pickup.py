@@ -116,7 +116,7 @@ class PickupManager:
         self.found_receptacle = False
         self.receptacle = None
 
-    def get_task(self, add_rotate: bool = False):
+    def get_task(self, add_rotate: bool = False, search_for_receptacle: bool = False) -> Task:
         """Create a task"""
 
         # Put the robot into navigation mode
@@ -126,13 +126,14 @@ class PickupManager:
             # Spin in place to find objects.
             rotate_in_place = RotateInPlaceOperation(self, parent=go_to_navigation_mode)
 
-        # Look for the target receptacle
-        search_for_receptacle = SearchForReceptacle(
-            self, parent=rotate_in_place if add_rotate else go_to_navigation_mode
-        )
+        if search_for_receptacle:
+            # Look for the target receptacle
+            search_for_receptacle = SearchForReceptacle(
+                self, parent=rotate_in_place if add_rotate else go_to_navigation_mode
+            )
 
         # Try to expand the frontier and find an object; or just wander around for a while.
-        search_for_object = SearchForObjectOnFloorOperation(self, parent=search_for_receptacle)
+        search_for_object = SearchForObjectOnFloorOperation(self)  # , parent=search_for_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = GoToObjectOperation(
@@ -160,7 +161,8 @@ class PickupManager:
         task.add_operation(go_to_navigation_mode)
         if add_rotate:
             task.add_operation(rotate_in_place)
-        task.add_operation(search_for_receptacle)
+        if search_for_receptacle:
+            task.add_operation(search_for_receptacle)
         task.add_operation(search_for_object)
         task.add_operation(go_to_object)
         task.add_operation(manipulation_mode)
