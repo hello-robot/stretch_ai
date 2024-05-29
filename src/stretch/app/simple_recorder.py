@@ -81,7 +81,7 @@ def main(
         ax.scatter(X, Y, s=20, color="b")
 
         # Plot the arrows indicating direction
-        Q = ax.quiver(X, Y, np.cos(theta), np.sin(theta), angles="xy", scale_units="xy", scale=1)
+        Q = ax.quiver(X, Y, np.cos(theta), np.sin(theta), angles="xy", scale_units="xy", scale=0.05)
         ax.quiverkey(Q, 0.9, 0.95, 1, "Direction", labelpos="E", coordinates="figure")
 
         plt.show()
