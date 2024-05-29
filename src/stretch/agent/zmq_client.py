@@ -21,6 +21,10 @@ from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
 
+# TODO: debug code - remove later if necessary
+# import faulthandler
+# faulthandler.enable()
+
 
 class HomeRobotZmqClient(RobotClient):
     def __init__(
@@ -55,6 +59,10 @@ class HomeRobotZmqClient(RobotClient):
         self.recv_port = recv_port
         self.send_port = send_port
         self.reset()
+
+        # Variables we set here should not change
+        self._iter = 0  # Tracks number of actions set, never reset this
+        self._seq_id = 0  # Number of messages we received
 
         self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
@@ -156,7 +164,6 @@ class HomeRobotZmqClient(RobotClient):
         self._thread = None
         self._finish = False
         self._last_step = -1
-        self._iter = 0  # Tracks number of actions set, never reset this
 
     def switch_to_navigation_mode(self):
         with self._act_lock:
@@ -294,6 +301,7 @@ class HomeRobotZmqClient(RobotClient):
             observation.ee_pose = self._obs.get("ee_pose", None)
             observation.camera_K = self._obs.get("camera_K", None)
             observation.camera_pose = self._obs.get("camera_pose", None)
+            observation.seq_id = self._seq_id
         return observation
 
     def execute_trajectory(
@@ -405,6 +413,7 @@ class HomeRobotZmqClient(RobotClient):
             if output is None:
                 continue
 
+            self._seq_id += 1
             output["rgb"] = cv2.imdecode(output["rgb"], cv2.IMREAD_COLOR)
             compressed_depth = output["depth"]
             depth = cv2.imdecode(compressed_depth, cv2.IMREAD_UNCHANGED)

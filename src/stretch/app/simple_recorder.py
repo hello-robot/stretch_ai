@@ -1,3 +1,5 @@
+import time
+
 import click
 import numpy as np
 
@@ -37,11 +39,14 @@ def main(
     started = robot.start()
     if not started:
         raise RuntimeError("Cannot make connection to robot")
+    time.sleep(1.0)
 
     # A test
-    robot.move_to_nav_posture()
+    # robot.move_to_nav_posture()
+    # robot.blocking_spin()
+    # breakpoint()
 
-    last_step = None
+    last_seq_id = None
     observations = []
     try:
         # Loop and read in messages
@@ -49,11 +54,10 @@ def main(
         while True:
             obs = robot.get_observation()
             # Add all unique observations
-            if obs is not None:
-                print(f"Step: {obs['step']}")
-                if obs["step"] != last_step:
-                    last_step = obs["step"]
-                    observations.append(obs)
+            if obs is not None and obs.seq_id != last_seq_id:
+                print(f"Step: {obs.seq_id}")
+                last_seq_id = obs.seq_id
+                observations.append(obs)
     finally:
         # Disconnect from the robot
         robot.stop()
