@@ -215,6 +215,7 @@ class HomeRobotZmqClient(RobotClient):
         moving_threshold: Optional[float] = None,
         angle_threshold: Optional[float] = None,
         min_steps_not_moving: Optional[int] = 1,
+        goal_angle: Optional[float] = None,
     ):
         t0 = timeit.default_timer()
         last_pos = None
@@ -233,6 +234,8 @@ class HomeRobotZmqClient(RobotClient):
                     ang = self._obs["compass"][0]
                     moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
                     angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+                    if goal_angle is not None:
+                        angle_dist_to_goal = angle_difference(ang, goal_angle)
                     not_moving = (
                         last_pos is not None
                         and moved_dist < moving_threshold
@@ -248,6 +251,10 @@ class HomeRobotZmqClient(RobotClient):
                         print(
                             f"Waiting for step={block_id} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
                         )
+                        if goal_angle is not None:
+                            print(
+                                f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}"
+                            )
                     if (
                         self._last_step >= block_id
                         and self._obs["at_goal"]
@@ -364,6 +371,8 @@ class HomeRobotZmqClient(RobotClient):
             curr = self.get_base_pose()
             pos_err = np.linalg.norm(xy - curr[:2])
             rot_err = np.abs(angle_difference(curr[-1], xyt[2]))
+            if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
+                print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
             if verbose:
                 logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
             if pos_err < pos_err_threshold and rot_err < rot_err_threshold:
@@ -389,14 +398,21 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["step"] = block_id
             self._iter += 1
             self.send_socket.send_pyobj(self._next_action)
+
+            # For tracking goal
+            if "xyt" in self._next_action:
+                goal_angle = self._next_action["xyt"][2]
+            else:
+                goal_angle = None
+
             # Empty it out for the next one
             self._next_action = dict()
 
         # Make sure we had time to read
         time.sleep(0.2)
         if blocking:
-            # Wait for the command to
-            self._wait_for_action(block_id)
+            # Wait for the command to finish
+            self._wait_for_action(block_id, goal_angle=goal_angle, verbose=True)
             time.sleep(0.2)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
