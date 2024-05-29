@@ -1,10 +1,14 @@
 import time
 
 import click
+import matplotlib
 import numpy as np
 
 from stretch.agent import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
+
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 
 @click.command()
@@ -61,7 +65,6 @@ def main(
     finally:
         # Disconnect from the robot
         robot.stop()
-        breakpoint()
 
 
 if __name__ == "__main__":
