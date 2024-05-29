@@ -691,6 +691,77 @@ class RobotAgent:
                 best_score = goal_score
         return best_instance
 
+    def go_to_frontier(self, start: np.ndarray, rate: int = 10, manual_wait: bool = False) -> bool:
+        """Motion plan to a frontier location."""
+        self.print_found_classes(task_goal)
+        start = self.robot.get_base_pose()
+        start_is_valid = self.space.is_valid(start, verbose=True)
+        # if start is not valid move backwards a bit
+        if not start_is_valid:
+            print("Start not valid. back up a bit.")
+
+            # TODO: debug here -- why start is not valid?
+            # self.update()
+            # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
+            print(f"robot base pose: {self.robot.get_base_pose()}")
+
+            print("--- STARTS ---")
+            for a_start, a_goal in zip(all_starts, all_goals):
+                print(
+                    "start =",
+                    a_start,
+                    self.space.is_valid(a_start),
+                    "goal =",
+                    a_goal,
+                    self.space.is_valid(a_goal),
+                )
+
+            self.robot.navigate_to([-0.1, 0, 0], relative=True)
+            continue
+
+        print("       Start:", start)
+        # sample a goal
+        if random_goals:
+            goal = next(self.space.sample_random_frontier()).cpu().numpy()
+        else:
+            res = plan_to_frontier(
+                start,
+                self.planner,
+                self.space,
+                self.voxel_map,
+                try_to_plan_iter=try_to_plan_iter,
+                visualize=False,  # visualize,
+                expand_frontier_size=self.default_expand_frontier_size,
+            )
+
+        # if it succeeds, execute a trajectory to this position
+        if res.success:
+            no_success_explore = False
+            print("Plan successful!")
+            for i, pt in enumerate(res.trajectory):
+                print(i, pt.state)
+            all_starts.append(start)
+            all_goals.append(res.trajectory[-1].state)
+            if visualize:
+                print("Showing goal location:")
+                robot_center = np.zeros(3)
+                robot_center[:2] = self.robot.get_base_pose()[:2]
+                self.voxel_map.show(
+                    orig=robot_center,
+                    xyt=res.trajectory[-1].state,
+                    footprint=self.robot.get_robot_model().get_footprint(),
+                )
+            if not dry_run:
+                self.robot.execute_trajectory(
+                    [pt.state for pt in res.trajectory],
+                    pos_err_threshold=self.pos_err_threshold,
+                    rot_err_threshold=self.rot_err_threshold,
+                )
+        else:
+            return False
+
+        return True
+
     def run_exploration(
         self,
         rate: int = 10,
@@ -732,71 +803,9 @@ class RobotAgent:
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
-            self.print_found_classes(task_goal)
-            start = self.robot.get_base_pose()
-            start_is_valid = self.space.is_valid(start, verbose=True)
-            # if start is not valid move backwards a bit
-            if not start_is_valid:
-                print("Start not valid. back up a bit.")
 
-                # TODO: debug here -- why start is not valid?
-                # self.update()
-                # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
-                print(f"robot base pose: {self.robot.get_base_pose()}")
-
-                print("--- STARTS ---")
-                for a_start, a_goal in zip(all_starts, all_goals):
-                    print(
-                        "start =",
-                        a_start,
-                        self.space.is_valid(a_start),
-                        "goal =",
-                        a_goal,
-                        self.space.is_valid(a_goal),
-                    )
-
-                self.robot.navigate_to([-0.1, 0, 0], relative=True)
-                continue
-
-            print("       Start:", start)
-            # sample a goal
-            if random_goals:
-                goal = next(self.space.sample_random_frontier()).cpu().numpy()
-            else:
-                res = plan_to_frontier(
-                    start,
-                    self.planner,
-                    self.space,
-                    self.voxel_map,
-                    try_to_plan_iter=try_to_plan_iter,
-                    visualize=False,  # visualize,
-                    expand_frontier_size=self.default_expand_frontier_size,
-                )
-
-            # if it succeeds, execute a trajectory to this position
-            if res.success:
-                no_success_explore = False
-                print("Plan successful!")
-                for i, pt in enumerate(res.trajectory):
-                    print(i, pt.state)
-                all_starts.append(start)
-                all_goals.append(res.trajectory[-1].state)
-                if visualize:
-                    print("Showing goal location:")
-                    robot_center = np.zeros(3)
-                    robot_center[:2] = self.robot.get_base_pose()[:2]
-                    self.voxel_map.show(
-                        orig=robot_center,
-                        xyt=res.trajectory[-1].state,
-                        footprint=self.robot.get_robot_model().get_footprint(),
-                    )
-                if not dry_run:
-                    self.robot.execute_trajectory(
-                        [pt.state for pt in res.trajectory],
-                        pos_err_threshold=self.pos_err_threshold,
-                        rot_err_threshold=self.rot_err_threshold,
-                    )
-            else:
+            succcess = self.go_to_frontier(start=start, rate=rate)
+            if not success:
                 if self._retry_on_fail:
                     print("Failed. Try again!")
                     continue
@@ -804,6 +813,7 @@ class RobotAgent:
                     print("Failed. Quitting!")
                     break
 
+            # Error handling
             if self.robot.last_motion_failed():
                 print("!!!!!!!!!!!!!!!!!!!!!!")
                 print("ROBOT IS STUCK! Move back!")

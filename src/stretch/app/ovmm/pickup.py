@@ -69,8 +69,16 @@ class SearchForReceptacle(ManagedOperation):
             plt.imshow(self.manager.voxel_map.observations[0].instance)
             plt.show()
 
+        start = self.manager.robot.get_current_state()
+        if not self.manager.navigation_space.is_valid(start):
+            raise RuntimeError(
+                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+
         # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
+        receptacle_options = []
+        print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
@@ -82,9 +90,24 @@ class SearchForReceptacle(ManagedOperation):
                 plt.axis("off")
                 plt.show()
 
-        breakpoint()
+            # Find a box
+            if "box" in name:
+                receptacle_options.append(instance)
 
+                # Check to see if we can motion plan to box or not
+                plan = self.manager.agent.plan_to_instance(instance, start=start)
+                if plan.success:
+                    print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
+                    self.manager.current_receptacle = instance
+                    return
+
+        print("None found. Moving to frontier.")
         # If no receptacle, pick a random point nearby and just wander around
+        if self.manager.current_receptacle is None:
+            # Find a point on the frontier and move there
+            self.manager.agent.plan_to_frontier(start=start)
+
+            # Then fail
 
     def was_successful(self) -> bool:
         self.manager.current_receptacle is not None
