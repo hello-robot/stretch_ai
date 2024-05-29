@@ -17,6 +17,8 @@ class ManagedOperation(Operation):
         self.manager = manager
         self.robot = manager.robot
         self.parameters = manager.parameters
+        self.navigation_space = manager.navigation_space
+        self.agent = manager.agent
 
 
 class RotateInPlaceOperation(ManagedOperation):
@@ -69,8 +71,9 @@ class SearchForReceptacle(ManagedOperation):
             plt.imshow(self.manager.voxel_map.observations[0].instance)
             plt.show()
 
-        start = self.manager.robot.get_current_state()
-        if not self.manager.navigation_space.is_valid(start):
+        # Get the current location of the robot
+        start = self.robot.get_base_pose()
+        if not self.navigation_space.is_valid(start):
             raise RuntimeError(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
@@ -147,7 +150,7 @@ class PreGraspObjectOperation(ManagedOperation):
 
     def run(self):
         print("Moving to a position to grasp the object.")
-        self.robot.switch_to_manip_posture()
+        self.robot.move_to_manip_posture()
         # This may need to do some more adjustments but this is probab ly ok for now
 
     def was_successful(self):
@@ -160,7 +163,7 @@ class NavigateToObjectOperation(ManagedOperation):
 
     def run(self):
         print("Navigating to the object.")
-        self.robot.switch_to_navigation_posture()
+        self.robot.move_to_nav_posture()
 
         # Now find the object instance we got from the map
 
@@ -284,6 +287,7 @@ class PickupManager:
 @click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
 @click.option("--recv_port", default=4401, help="Port to receive messages from the robot")
 @click.option("--send_port", default=4402, help="Port to send messages to the robot")
+@click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--local",
     is_flag=True,
@@ -301,6 +305,7 @@ def main(
     device_id: int = 0,
     verbose: bool = False,
     show_intermediate_maps: bool = False,
+    reset: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -324,6 +329,9 @@ def main(
     # Agents wrap the robot high level planning interface for now
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
+    if reset:
+        robot.move_to_nav_posture()
+        robot.navigate_to([0.0, 0.0, 0.0], blocking=True)
 
     # After the robot has started...
     try:
