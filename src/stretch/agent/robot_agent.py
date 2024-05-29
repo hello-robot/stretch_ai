@@ -699,27 +699,8 @@ class RobotAgent:
         # if start is not valid move backwards a bit
         if not start_is_valid:
             print("Start not valid. back up a bit.")
+            return False
 
-            # TODO: debug here -- why start is not valid?
-            # self.update()
-            # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
-            print(f"robot base pose: {self.robot.get_base_pose()}")
-
-            print("--- STARTS ---")
-            for a_start, a_goal in zip(all_starts, all_goals):
-                print(
-                    "start =",
-                    a_start,
-                    self.space.is_valid(a_start),
-                    "goal =",
-                    a_goal,
-                    self.space.is_valid(a_goal),
-                )
-
-            self.robot.navigate_to([-0.1, 0, 0], relative=True)
-            continue
-
-        print("       Start:", start)
         # sample a goal
         if random_goals:
             goal = next(self.space.sample_random_frontier()).cpu().numpy()
@@ -803,7 +784,17 @@ class RobotAgent:
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
+            start = self.robot.get_base_pose()
+            start_is_valid = self.space.is_valid(start, verbose=True)
+            # if start is not valid move backwards a bit
+            if not start_is_valid:
+                print("Start not valid. back up a bit.")
+                print(f"robot base pose: {self.robot.get_base_pose()}")
+                self.robot.navigate_to([-0.1, 0, 0], relative=True)
+                continue
 
+            # Now actually plan to the frontier
+            print("       Start:", start)
             succcess = self.go_to_frontier(start=start, rate=rate)
             if not success:
                 if self._retry_on_fail:
