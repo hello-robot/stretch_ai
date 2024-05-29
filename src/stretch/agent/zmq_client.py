@@ -371,8 +371,9 @@ class HomeRobotZmqClient(RobotClient):
             curr = self.get_base_pose()
             pos_err = np.linalg.norm(xy - curr[:2])
             rot_err = np.abs(angle_difference(curr[-1], xyt[2]))
-            if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
-                print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
+            # TODO: code for debugging slower rotations
+            # if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
+            #     print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
             if verbose:
                 logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
             if pos_err < pos_err_threshold and rot_err < rot_err_threshold:
