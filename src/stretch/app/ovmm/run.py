@@ -289,10 +289,6 @@ def demo_main(
             return
 
         # Create pointcloud and write it out
-        if len(output_pcd_filename) > 0:
-            print(f"Write pcd to {output_pcd_filename}...")
-            pcd = numpy_to_pcd(pc_xyz, pc_rgb / 255)
-            open3d.io.write_point_cloud(output_pcd_filename, pcd)
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
             demo.voxel_map.write_to_pickle(output_pkl_filename)
