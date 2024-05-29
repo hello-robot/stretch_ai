@@ -720,34 +720,7 @@ class RobotAgent:
                 visualize=False,  # visualize,
                 expand_frontier_size=self.default_expand_frontier_size,
             )
-
-        # if it succeeds, execute a trajectory to this position
-        if res.success:
-            no_success_explore = False
-            print("Plan successful!")
-            for i, pt in enumerate(res.trajectory):
-                print(i, pt.state)
-            all_starts.append(start)
-            all_goals.append(res.trajectory[-1].state)
-            if visualize:
-                print("Showing goal location:")
-                robot_center = np.zeros(3)
-                robot_center[:2] = self.robot.get_base_pose()[:2]
-                self.voxel_map.show(
-                    orig=robot_center,
-                    xyt=res.trajectory[-1].state,
-                    footprint=self.robot.get_robot_model().get_footprint(),
-                )
-            if not dry_run:
-                self.robot.execute_trajectory(
-                    [pt.state for pt in res.trajectory],
-                    pos_err_threshold=self.pos_err_threshold,
-                    rot_err_threshold=self.rot_err_threshold,
-                )
-        else:
-            return False
-
-        return True
+        return res
 
     def run_exploration(
         self,
@@ -802,16 +775,40 @@ class RobotAgent:
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
-            succcess = self.go_to_frontier(
+            res = self.go_to_frontier(
                 start=start, rate=rate, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
             )
-            if not success:
-                if self._retry_on_fail:
-                    print("Failed. Try again!")
-                    continue
-                else:
-                    print("Failed. Quitting!")
-                    break
+
+            # if it succeeds, execute a trajectory to this position
+            if res.success:
+                no_success_explore = False
+                print("Plan successful!")
+                for i, pt in enumerate(res.trajectory):
+                    print(i, pt.state)
+                all_starts.append(start)
+                all_goals.append(res.trajectory[-1].state)
+                if visualize:
+                    print("Showing goal location:")
+                    robot_center = np.zeros(3)
+                    robot_center[:2] = self.robot.get_base_pose()[:2]
+                    self.voxel_map.show(
+                        orig=robot_center,
+                        xyt=res.trajectory[-1].state,
+                        footprint=self.robot.get_robot_model().get_footprint(),
+                    )
+                if not dry_run:
+                    self.robot.execute_trajectory(
+                        [pt.state for pt in res.trajectory],
+                        pos_err_threshold=self.pos_err_threshold,
+                        rot_err_threshold=self.rot_err_threshold,
+                    )
+                if not res.success:
+                    if self._retry_on_fail:
+                        print("Failed. Try again!")
+                        continue
+                    else:
+                        print("Failed. Quitting!")
+                        break
 
             # Error handling
             if self.robot.last_motion_failed():
