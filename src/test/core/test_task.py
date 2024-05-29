@@ -62,7 +62,7 @@ def test_task():
     assert data.num == 6, "From 0, data should get transmuted into 6"
 
     data.num = 1
-    task.start()
+    task.execute()
 
     assert (
         data.num == 8
