@@ -38,6 +38,9 @@ def main(
     if not started:
         raise RuntimeError("Cannot make connection to robot")
 
+    # A test
+    robot.move_to_nav_posture()
+
     last_step = None
     observations = []
     try:
