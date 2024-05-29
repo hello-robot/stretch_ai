@@ -697,6 +697,7 @@ class RobotAgent:
         rate: int = 10,
         manual_wait: bool = False,
         random_goals: bool = False,
+        try_to_plan_iter: int = 10,
     ) -> bool:
         """Motion plan to a frontier location."""
         start = self.robot.get_base_pose()
@@ -801,7 +802,9 @@ class RobotAgent:
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
-            succcess = self.go_to_frontier(start=start, rate=rate)
+            succcess = self.go_to_frontier(
+                start=start, rate=rate, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
+            )
             if not success:
                 if self._retry_on_fail:
                     print("Failed. Try again!")
