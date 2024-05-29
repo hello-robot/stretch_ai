@@ -1,3 +1,4 @@
+import pickle
 import time
 
 import click
@@ -65,6 +66,29 @@ def main(
     finally:
         # Disconnect from the robot
         robot.stop()
+
+        X, Y = [], []
+        theta = []
+        for obs in observations:
+            X.append(obs.gps[0])
+            Y.append(obs.gps[1])
+            theta.append(obs.compass)
+
+        # Create a figure and axis
+        fig, ax = plt.subplots()
+
+        # Plot the (x, y) points
+        ax.scatter(X, Y, s=20, color="b")
+
+        # Plot the arrows indicating direction
+        Q = ax.quiver(X, Y, np.cos(theta), np.sin(theta), angles="xy", scale_units="xy", scale=1)
+        ax.quiverkey(Q, 0.9, 0.95, 1, "Direction", labelpos="E", coordinates="figure")
+
+        plt.show()
+
+        print("Saving observations to file")
+        with open("observations.pkl", "wb") as f:
+            pickle.dump(observations, f)
 
 
 if __name__ == "__main__":

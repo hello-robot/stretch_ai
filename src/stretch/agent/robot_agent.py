@@ -691,9 +691,14 @@ class RobotAgent:
                 best_score = goal_score
         return best_instance
 
-    def go_to_frontier(self, start: np.ndarray, rate: int = 10, manual_wait: bool = False) -> bool:
+    def go_to_frontier(
+        self,
+        start: np.ndarray,
+        rate: int = 10,
+        manual_wait: bool = False,
+        random_goals: bool = False,
+    ) -> bool:
         """Motion plan to a frontier location."""
-        self.print_found_classes(task_goal)
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
         # if start is not valid move backwards a bit
@@ -795,6 +800,7 @@ class RobotAgent:
 
             # Now actually plan to the frontier
             print("       Start:", start)
+            self.print_found_classes(task_goal)
             succcess = self.go_to_frontier(start=start, rate=rate)
             if not success:
                 if self._retry_on_fail:
