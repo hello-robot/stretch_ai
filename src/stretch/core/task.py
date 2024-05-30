@@ -69,6 +69,7 @@ class Task:
         self.initial_operation = None
         self._all_operations = []
         self._terminal_operations = []
+        self._operations = dict()
 
     def add_operation(self, operation, terminal: bool = False):
         """Add this operation into the task.
@@ -77,6 +78,10 @@ class Task:
             operation: The operation to add.
             terminal: Whether this operation will end the task plan or not.
         """
+
+        # Add the operation
+        self._operations[operation.name] = operation
+
         # We will set the initial operation if not there
         if self.initial_operation is None:
             if operation.parent is None:
@@ -95,6 +100,24 @@ class Task:
 
         # Add it to the list
         self._all_operations.append(operation)
+
+    def connect_on_failure(self, operation_name: str, on_failure_name: str):
+        """Connect the operation to the on_failure operation."""
+        operation = self._operations[operation_name]
+        on_failure = self._operations[on_failure_name]
+        operation.on_failure = on_failure
+
+    def connect_on_cannot_start(self, operation_name: str, on_cannot_start_name: str):
+        """Connect the operation to the on_cannot_start operation."""
+        operation = self._operations[operation_name]
+        on_cannot_start = self._operations[on_cannot_start_name]
+        operation.on_cannot_start = on_cannot_start
+
+    def connect_on_success(self, operation_name: str, on_success_name: str):
+        """Connect the operation to the on_success operation."""
+        operation = self._operations[operation_name]
+        on_success = self._operations[on_success_name]
+        operation.on_success = on_success
 
     def execute(self):
         """Start the task. This is a blocking loop which will continue until there are no operations left to execute."""

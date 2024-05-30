@@ -345,7 +345,7 @@ def main(
     task.execute()
 
     # At the end, disable everything
-    demo.stop()
+    robot.stop()
 
 
 if __name__ == "__main__":
