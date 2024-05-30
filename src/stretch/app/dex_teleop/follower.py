@@ -10,9 +10,9 @@ import numpy as np
 import stretch_body.robot as rb
 import zmq
 
-import stretch.demos.dex_teleop.dex_teleop_parameters as dt
-import stretch.demos.dex_teleop.gripper_to_goal as gg
-import stretch.demos.dex_teleop.robot_move as rm
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.gripper_to_goal as gg
+import stretch.app.dex_teleop.robot_move as rm
 import stretch.motion.simple_ik as si
 import stretch.utils.loop_stats as lt
 from stretch.drivers.d405 import D405
