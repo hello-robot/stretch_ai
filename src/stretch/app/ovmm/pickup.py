@@ -20,6 +20,9 @@ class ManagedOperation(Operation):
         self.navigation_space = manager.navigation_space
         self.agent = manager.agent
 
+    def update(self):
+        self.agent.update()
+
 
 class RotateInPlaceOperation(ManagedOperation):
     """Rotate the robot in place"""
@@ -47,12 +50,17 @@ class SearchForReceptacle(ManagedOperation):
 
     # For debugging
     show_map_so_far: bool = False
-    show_instances_detected: bool = True
+    show_instances_detected: bool = False
 
     def can_start(self) -> bool:
         return True
 
     def run(self) -> None:
+        """Search for a receptacle on the floor."""
+
+        # Update world map
+        self.update()
+
         print("Searching for a receptacle on the floor.")
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
 
@@ -108,16 +116,22 @@ class SearchForReceptacle(ManagedOperation):
         # If no receptacle, pick a random point nearby and just wander around
         if self.manager.current_receptacle is None:
             # Find a point on the frontier and move there
-            self.manager.agent.plan_to_frontier(start=start)
-
-            # Then fail
+            res = self.manager.agent.go_to_frontier(start=start)
+            # After moving
+            self.update()
+            return
 
     def was_successful(self) -> bool:
-        self.manager.current_receptacle is not None
+        res = self.manager.current_receptacle is not None
+        print(f"{self.name}: Successfully found a receptacle!")
+        return res
 
 
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
+
+    show_map_so_far: bool = True
+    show_instances_detected: bool = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -129,8 +143,44 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         print("Find a reachable object on the floor.")
         self._successful = False
 
-        # Check to see if we have an object on the floor worth finding
-        # TODO: check the manager for this
+        # Update world map
+        self.agent.update()
+
+        # Get the current location of the robot
+        start = self.robot.get_base_pose()
+        if not self.navigation_space.is_valid(start):
+            raise RuntimeError(
+                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+
+        if self.show_instances_detected:
+            # Show the last instance image
+            import matplotlib
+
+            # TODO: why do we need to configure this every time
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.show()
+
+        # Check to see if we have a receptacle in the map
+        instances = self.manager.instance_memory.get_instances()
+        receptacle_options = []
+        print("Check explored instances for reachable receptacles:")
+        for i, instance in enumerate(instances):
+            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+
+            if self.show_instances_detected:
+                view = instance.get_best_view()
+                plt.imshow(view.get_image())
+                plt.title(f"Instance {i} with name {name}")
+                plt.axis("off")
+                plt.show()
+
+            if "toy" in name:
+                breakpoint()
 
         # Check to see if there is a visitable frontier
 
@@ -139,7 +189,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         self._successful = True
 
     def was_successful(self) -> bool:
-        return self._successful and self.manager.found_receptacle()
+        return self._successful and self.manager.current_receptacle is not None
 
 
 class PreGraspObjectOperation(ManagedOperation):

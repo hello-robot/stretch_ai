@@ -273,12 +273,7 @@ class RobotAgent:
         self.voxel_map.add_obs(obs)
 
         if self.use_scene_graph:
-            if self.scene_graph is None:
-                self.scene_graph = SceneGraph(self.parameters, self.voxel_map.get_instances())
-            else:
-                self.scene_graph.update(self.voxel_map.get_instances())
-            # For debugging - TODO delete this code
-            self.scene_graph.get_relationships(debug=False)
+            self._update_scene_graph()
 
         # Add observation - helper function will unpack it
         if visualize_map:
@@ -299,6 +294,20 @@ class RobotAgent:
                 plt.imshow(best_view.get_image())
                 plt.axis("off")
                 plt.show()
+
+    def _update_scene_graph(self):
+        """Update the scene graph with the latest observations."""
+        if self.scene_graph is None:
+            self.scene_graph = SceneGraph(self.parameters, self.voxel_map.get_instances())
+        else:
+            self.scene_graph.update(self.voxel_map.get_instances())
+        # For debugging - TODO delete this code
+        self.scene_graph.get_relationships(debug=False)
+
+    def get_scene_graph(self) -> SceneGraph:
+        """Return scene graph, such as it is."""
+        self._update_scene_graph()
+        return self.scene_graph
 
     def plan_to_instance(
         self,
