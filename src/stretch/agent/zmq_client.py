@@ -15,8 +15,8 @@ from loguru import logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
+from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchKinematics
-from stretch.motion.robot import RobotModel
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
@@ -322,6 +322,10 @@ class HomeRobotZmqClient(RobotClient):
         relative: bool = False,
     ):
         """Execute a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
+
+        if isinstance(trajectory, PlanResult):
+            trajectory = [pt.state for pt in trajectory.trajectory]
+
         for i, pt in enumerate(trajectory):
             assert (
                 len(pt) == 3 or len(pt) == 2

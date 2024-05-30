@@ -47,11 +47,15 @@ class SceneGraph:
         self, id0: Optional[int], id1: Optional[int], relation: Optional[str]
     ) -> List[Tuple[int, int, str]]:
         """Get all relationships between two instances"""
+        if isinstance(id1, Instance):
+            id1 = id1.global_id
+        if isinstance(id0, Instance):
+            id0 = id0.global_id
         return [
             rel
             for rel in self.relationships
             if (id0 is None or rel[0] == id0)
-            and (id1 is None or rel[1] == id1.global_id)
+            and (id1 is None or rel[1] == id1)
             and (rel[2] == relation or relation is None)
         ]
 

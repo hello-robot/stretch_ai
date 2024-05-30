@@ -166,12 +166,15 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
 
         # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
+
+        # Compute scene graph from instance memory so that we can use it
+        scene_graph = self.agent.get_scene_graph()
+
         receptacle_options = []
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
-
             if self.show_instances_detected:
                 view = instance.get_best_view()
                 plt.imshow(view.get_image())
@@ -180,25 +183,63 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                 plt.show()
 
             if "toy" in name:
-                breakpoint()
+                relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
+                if len(relations) > 0:
+                    # We found a matching relation!
+                    print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
+
+                    # Move to object on floor
+                    plan = self.manager.agent.plan_to_instance(instance, start=start)
+                    if plan.success:
+                        print(
+                            f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
+                        )
+                        self.manager.current_object = instance
+                        return
 
         # Check to see if there is a visitable frontier
+        print("Nothing found.   Moving to frontier.")
+        if self.manager.current_object is None:
+            # Find a point on the frontier and move there
+            res = self.agent.go_to_frontier(start=start)
 
+        # TODO: better behavior
         # If no visitable frontier, pick a random point nearby and just wander around
 
-        self._successful = True
-
     def was_successful(self) -> bool:
-        return self._successful and self.manager.current_receptacle is not None
+        return self.manager.current_object is not None
 
 
 class PreGraspObjectOperation(ManagedOperation):
     """Move the robot to a position looking at the object using the navigation/manipulation camera."""
 
+    plan = None
+
     def can_start(self):
-        return self.manager.current_object is not None
+        self.plan = None
+        if self.manager.current_object is None:
+            return False
+
+        start = self.robot.get_base_pose()
+        if not self.navigation_space.is_valid(start):
+            raise RuntimeError(
+                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+
+        # Motion plan to the object
+        plan = self.manager.agent.plan_to_instance(self.manager.current_object, start=start)
+        if plan.success:
+            self.plan = plan
+            return True
 
     def run(self):
+
+        # Execute the trajectory
+        assert (
+            self.plan is not None
+        ), "Did you make sure that we had a plan? You should call can_start() before run()."
+        self.robot.execute_trajectory(self.plan)
+
         print("Moving to a position to grasp the object.")
         self.robot.move_to_manip_posture()
         # This may need to do some more adjustments but this is probab ly ok for now
