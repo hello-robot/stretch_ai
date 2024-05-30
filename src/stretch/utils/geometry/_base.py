@@ -15,6 +15,20 @@ def normalize_ang_error(ang):
     return (ang + np.pi) % (2 * np.pi) - np.pi
 
 
+def point_global_to_base(XYZ, current_pose):
+    """
+    Transforms the point cloud into geocentric frame to account for
+    camera position
+    Input:
+        XYZ                     : ...x3
+        current_pose            : base position (x, y, theta (radians))
+    Output:
+        XYZ : ...x3
+    """
+    pose_world2target = xyt2sophus(current_pose)
+    return (pose_world2target.inverse() * xyz2sophus(XYZ.T)).xyz().T
+
+
 def xyt_global_to_base(XYT, current_pose):
     """
     Transforms the point cloud into geocentric frame to account for
@@ -44,6 +58,13 @@ def xyt_base_to_global(out_XYT, current_pose):
     pose_world2base = xyt2sophus(current_pose)
     pose_world2target = pose_world2base * pose_base2target
     return sophus2xyt(pose_world2target)
+
+
+def xyz2sophus(xyz: np.ndarray) -> sp.SE3:
+    """
+    Converts XYZ coordinates to an sophus SE3 pose object.
+    """
+    return sp.SE3(xyz=xyz)
 
 
 def xyt2sophus(xyt: np.ndarray) -> sp.SE3:

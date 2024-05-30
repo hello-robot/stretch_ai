@@ -591,11 +591,6 @@ class HelloStretchKinematics:
         for qi, ai in self.interpolate_arm(qi, qg, step):
             yield qi, ai
 
-    def get_link_pose(self, link_name, q=None):
-        if q is not None:
-            self.set_config(q)
-        return self.ref.get_link_pose(link_name)
-
     def manip_fk(self, q: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
         """manipulator specific forward kinematics; uses separate URDF than the full-body fk() method"""
         assert q.shape == (self.dof,)
@@ -605,13 +600,6 @@ class HelloStretchKinematics:
 
         ee_pos, ee_quat = self.manip_ik_solver.compute_fk(q)
         return ee_pos.copy(), ee_quat.copy()
-
-    def fk(self, q=None, as_matrix=False) -> Tuple[np.ndarray, np.ndarray]:
-        """forward kinematics"""
-        pose = self.get_link_pose(self.ee_link_name, q)
-        if as_matrix:
-            return to_matrix(*pose)
-        return pose
 
     def update_head(self, qi: np.ndarray, look_at) -> np.ndarray:
         """move head based on look_at and return the joint-state"""
@@ -783,9 +771,7 @@ class HelloStretchKinematics:
         return q, success, debug_info
 
     def get_ee_pose(self, q=None):
-        if q is not None:
-            self.set_config(q)
-        return self.ref.get_link_pose(self._grasp_frame)
+        raise NotImplementedError()
 
     def update_look_front(self, q):
         """look in front so we can see the floor"""

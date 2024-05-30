@@ -35,7 +35,7 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         if os.environ["STRETCHPY_ROOT"]:
             path = os.path.join(os.environ["STRETCHPY_ROOT"], path)
     except KeyError:
-        logger.warning("HOME_ROBOT_ROOT environment variable not set when trying to read configs!")
+        logger.warning("STRETCHPY_ROOT environment variable not set when trying to read configs!")
 
     # Start with our code's config
     config = Config()

@@ -240,6 +240,22 @@ class PreGraspObjectOperation(ManagedOperation):
         ), "Did you make sure that we had a plan? You should call can_start() before run()."
         self.robot.execute_trajectory(self.plan)
 
+        # Orient the robot towards the object and use the end effector camera to pick it up
+        xyt = self.plan.trajectory[-1].state
+        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=10.0)
+
+        # Now we should be able to see the object
+        obs = self.robot.get_observation()
+        joint_state = obs.joint
+        model = self.robot.get_robot_model()
+
+        # Get the center of the object point cloud so that we can look at it
+        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        from stretch.utils.geometry import point_global_to_base, xyt_global_to_base
+
+        relative_xyz = point_global_to_base(object_xyz, xyt)
+        breakpoint()
+
         print("Moving to a position to grasp the object.")
         self.robot.move_to_manip_posture()
         # This may need to do some more adjustments but this is probab ly ok for now
@@ -422,7 +438,7 @@ def main(
     demo.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
         robot.move_to_nav_posture()
-        robot.navigate_to([0.0, 0.0, 0.0], blocking=True)
+        robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
 
     # After the robot has started...
     try:

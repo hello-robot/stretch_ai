@@ -145,7 +145,9 @@ class HomeRobotZmqClient(RobotClient):
         # Blocking is handled in here
         self.send_action()
 
-    def navigate_to(self, xyt: ContinuousNavigationAction, relative=False, blocking=False):
+    def navigate_to(
+        self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
+    ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
@@ -154,7 +156,7 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["xyt"] = xyt
             self._next_action["nav_relative"] = relative
             self._next_action["nav_blocking"] = blocking
-        self.send_action()
+        self.send_action(timeout=timeout)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -212,6 +214,7 @@ class HomeRobotZmqClient(RobotClient):
         self,
         block_id: int,
         verbose: bool = True,
+        timeout: float = 10.0,
         moving_threshold: Optional[float] = None,
         angle_threshold: Optional[float] = None,
         min_steps_not_moving: Optional[int] = 1,
@@ -264,7 +267,7 @@ class HomeRobotZmqClient(RobotClient):
                     self._obs = None
             time.sleep(0.01)
             t1 = timeit.default_timer()
-            if t1 - t0 > 15.0:
+            if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
@@ -391,7 +394,7 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def send_action(self):
+    def send_action(self, timeout: float = 10.0):
         """Send the next action to the robot"""
         print("-> sending", self._next_action)
         blocking = False
@@ -417,7 +420,7 @@ class HomeRobotZmqClient(RobotClient):
         time.sleep(0.2)
         if blocking:
             # Wait for the command to finish
-            self._wait_for_action(block_id, goal_angle=goal_angle, verbose=True)
+            self._wait_for_action(block_id, goal_angle=goal_angle, verbose=True, timeout=timeout)
             time.sleep(0.2)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
