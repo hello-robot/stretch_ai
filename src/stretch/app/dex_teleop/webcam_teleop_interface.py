@@ -66,7 +66,9 @@ class WebcamArucoDetector:
                 + ", was not found, so no ArUco markers will be detected."
             )
 
-        self.aruco_detector = ad.ArucoDetector(marker_info=self.marker_info, show_debug_images=show_debug_images)
+        self.aruco_detector = ad.ArucoDetector(
+            marker_info=self.marker_info, show_debug_images=show_debug_images
+        )
         self.aruco_detector.show_debug_images = True
         self.tongs_prefix = tongs_prefix
 

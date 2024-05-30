@@ -149,11 +149,15 @@ class DexTeleopLeader(Evaluator):
 
         if left_handed:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
-                tongs_prefix="left", visualize_detections=False, show_debug_images=debug_aruco,
+                tongs_prefix="left",
+                visualize_detections=False,
+                show_debug_images=debug_aruco,
             )
         else:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
-                tongs_prefix="right", visualize_detections=False, show_debug_images=debug_aruco,
+                tongs_prefix="right",
+                visualize_detections=False,
+                show_debug_images=debug_aruco,
             )
 
         # Initialize IK
