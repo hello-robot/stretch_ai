@@ -214,6 +214,7 @@ class PreGraspObjectOperation(ManagedOperation):
     """Move the robot to a position looking at the object using the navigation/manipulation camera."""
 
     plan = None
+    show_object_in_voxel_grid: bool = False
 
     def can_start(self):
         self.plan = None
@@ -244,21 +245,28 @@ class PreGraspObjectOperation(ManagedOperation):
         xyt = self.plan.trajectory[-1].state
         self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=10.0)
 
-        # Now we should be able to see the object
+        print("Moving to a position to grasp the object.")
+        self.robot.move_to_manip_posture()
+
+        # Now we should be able to see the object if we orient gripper properly
+        # Get the end effector pose
         obs = self.robot.get_observation()
         joint_state = obs.joint
         model = self.robot.get_robot_model()
+        ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # Get the center of the object point cloud so that we can look at it
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        if self.show_object_in_voxel_grid:
+            self.agent.voxel_map.show(orig=object_xyz.cpu().numpy())
         from stretch.utils.geometry import point_global_to_base, xyt_global_to_base
 
+        xyt = self.robot.get_base_pose()
         relative_xyz = point_global_to_base(object_xyz, xyt)
-        breakpoint()
 
-        print("Moving to a position to grasp the object.")
-        self.robot.move_to_manip_posture()
-        # This may need to do some more adjustments but this is probab ly ok for now
+        # Compute the angles necessary
+
+        breakpoint()
 
     def was_successful(self):
         return self.robot.in_manipulation_mode()

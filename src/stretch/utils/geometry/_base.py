@@ -26,7 +26,7 @@ def point_global_to_base(XYZ, current_pose):
         XYZ : ...x3
     """
     pose_world2target = xyt2sophus(current_pose)
-    return (pose_world2target.inverse() * xyz2sophus(XYZ.T)).xyz().T
+    return (pose_world2target.inverse() * xyz2sophus(XYZ)).translation()
 
 
 def xyt_global_to_base(XYT, current_pose):
@@ -64,7 +64,7 @@ def xyz2sophus(xyz: np.ndarray) -> sp.SE3:
     """
     Converts XYZ coordinates to an sophus SE3 pose object.
     """
-    return sp.SE3(xyz=xyz)
+    return sp.SE3(np.eye(3), xyz)
 
 
 def xyt2sophus(xyt: np.ndarray) -> sp.SE3:
