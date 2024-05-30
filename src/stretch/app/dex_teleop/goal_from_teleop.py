@@ -5,8 +5,8 @@ from multiprocessing import shared_memory
 import numpy as np
 
 import stretch.motion.simple_ik as si
-import stretch.teleop.dex_teleop_parameters as dt
-import stretch.teleop.webcam_teleop_interface as wt
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.webcam_teleop_interface as wt
 
 
 class GoalFromMarkers:

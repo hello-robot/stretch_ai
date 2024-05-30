@@ -7,9 +7,9 @@ import numpy as np
 import zmq
 from scipy.spatial.transform import Rotation
 
-import stretch.demos.dex_teleop.dex_teleop_parameters as dt
-import stretch.demos.dex_teleop.goal_from_teleop as gt
-import stretch.demos.dex_teleop.webcam_teleop_interface as wt
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.goal_from_teleop as gt
+import stretch.app.dex_teleop.webcam_teleop_interface as wt
 import stretch.motion.simple_ik as si
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
@@ -113,6 +113,7 @@ class DexTeleopLeader(Evaluator):
         env_name: str = "default_env",
         force_record: bool = False,
         display_point_cloud: bool = False,
+        debug_aruco: bool = False,
     ):
         super().__init__()
         self.camera = None
@@ -148,11 +149,11 @@ class DexTeleopLeader(Evaluator):
 
         if left_handed:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
-                tongs_prefix="left", visualize_detections=False
+                tongs_prefix="left", visualize_detections=False, show_debug_images=debug_aruco,
             )
         else:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
-                tongs_prefix="right", visualize_detections=False
+                tongs_prefix="right", visualize_detections=False, show_debug_images=debug_aruco,
             )
 
         # Initialize IK
