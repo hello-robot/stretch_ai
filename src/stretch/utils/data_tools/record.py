@@ -131,9 +131,6 @@ class FileDataRecorder:
             # Write the string to the file
             file.write("Completed")
 
-        with open(episode_dir / "state.json", "w") as f:
-            json.dump(self.states, f)
-
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)
 
