@@ -106,6 +106,8 @@ class FileDataRecorder:
             self.write_image(rgb, depth, episode_dir, i)
 
         for i, (rgb, depth) in enumerate(zip(self.head_rgbs, self.head_depths)):
+            if rgb is None or depth is None:
+                continue
             self.write_image(rgb, depth, episode_dir, i, head=True)
 
         # Run video processing
