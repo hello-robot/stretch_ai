@@ -190,9 +190,11 @@ class DexTeleopLeader(Evaluator):
         image_gamma = message["ee_cam/image_gamma"]
         image_scaling = message["ee_cam/image_scaling"]
 
-        #head_color_image = compression.unzip(message["head_cam/color_image"])
-        #head_depth_image = compression.unzip(message["head_cam/depth_image"])
-        #head_depth_camera_info = message["head_cam/depth_camera_info"]
+        # Get head information from the message as well
+        head_color_image = compression.from_webp(message["head_cam/color_image"])
+        head_depth_image = compression.unzip_depth(message["head_cam/depth_image"])
+        head_depth_camera_info = message["head_cam/depth_camera_info"]
+        head_depth_scale = message["head_cam/depth_scale"]
 
         if self.camera_info is None:
             self.set_camera_parameters(depth_camera_info, depth_scale)
@@ -209,6 +211,7 @@ class DexTeleopLeader(Evaluator):
 
         # Convert depth to meters
         depth_image = depth_image.astype(np.float32) * self.depth_scale
+        head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
         if self.display_point_cloud:
             print("depth scale", self.depth_scale)
             xyz = self.camera.depth_to_xyz(depth_image)
@@ -218,8 +221,14 @@ class DexTeleopLeader(Evaluator):
             # change depth to be h x w x 3
             depth_image_x3 = np.stack((depth_image,) * 3, axis=-1)
             combined = np.hstack((color_image / 255, depth_image_x3 / 4))
-            cv2.imshow("EE RGB/Depth Image", combined)
-            # cv2.imshow('Received Depth Image', depth_image)
+
+            # Head images
+            head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
+            head_combined = np.hstack((head_color_image / 255, depth_image_x3 / 4))
+
+            # Combine both images from ee and head
+            combined = np.vstack((combined, head_combined))
+            cv2.imshow("Observed RGB/Depth Image", combined)
 
         # By default, no head or base commands
         head_cfg = None
