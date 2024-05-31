@@ -184,7 +184,7 @@ class DexTeleopLeader(Evaluator):
         """Take in image data and other data received by the robot and process it appropriately. Will run the aruco marker detection, predict a goal send that goal to the robot, and save everything to disk for learning."""
 
         color_image = compression.from_webp(message["ee_cam/color_image"])
-        depth_image = compression.unzip_depth(message["ee_cam/depth_image"])
+        depth_image = compression.unzip_depth(message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"])
         depth_camera_info = message["ee_cam/depth_camera_info"]
         depth_scale = message["ee_cam/depth_scale"]
         image_gamma = message["ee_cam/image_gamma"]
