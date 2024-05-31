@@ -1,3 +1,8 @@
+import numpy as np
+
+from stretch.agent.robot_agent import RobotAgent
+from stretch.core.task import Operation, Task
+
 from .operations import (
     GoToNavOperation,
     GraspObjectOperation,

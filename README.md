@@ -131,7 +131,7 @@ python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\
 This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
 
 ```bash
-python -m stretch.app.pickup
+python -m stretch.app.pickup.run
 ```
 
 ### 

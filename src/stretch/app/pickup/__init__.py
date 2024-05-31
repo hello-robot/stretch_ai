@@ -1,3 +1,4 @@
+from .manager import PickupManager
 from .operations import (
     GoToNavOperation,
     GraspObjectOperation,
@@ -7,7 +8,3 @@ from .operations import (
     SearchForObjectOnFloorOperation,
     SearchForReceptacle,
 )
-from .pickup import PickupManager, main
-
-if __name__ == "__main__":
-    main()
