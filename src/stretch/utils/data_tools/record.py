@@ -105,9 +105,14 @@ class FileDataRecorder:
         for i, (rgb, depth) in enumerate(zip(self.rgbs, self.depths)):
             self.write_image(rgb, depth, episode_dir, i)
 
+        for i, (rgb, depth) in enumerate(zip(self.head_rgbs, self.head_depths)):
+            self.write_image(rgb, depth, episode_dir, i, head=True)
+
         # Run video processing
         self.process_rgb_to_video(episode_dir)
         self.process_depth_to_bin(episode_dir)
+        self.process_rgb_to_video(episode_dir, head=True)
+        self.process_depth_to_bin(episode_dir, head=True)
 
         # Bookkeeping for DobbE
         # Write an empty file
@@ -123,23 +128,20 @@ class FileDataRecorder:
 
         self.reset()
 
-    def write_image(self, rgb, depth, episode_dir, i, head_rgb=None, head_depth=None):
+    def write_image(self, rgb, depth, episode_dir, i, head: bool = False):
         """Write out image data from both head and end effector"""
-        rgb_dir = episode_dir / RGB_FOLDER_NAME
+        if head:
+            rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
+            depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
+        else:
+            rgb_dir = episode_dir / RGB_FOLDER_NAME
+            depth_dir = episode_dir / DEPTH_FOLDER_NAME
+
         rgb_dir.mkdir(exist_ok=True)
-        depth_dir = episode_dir / DEPTH_FOLDER_NAME
         depth_dir.mkdir(exist_ok=True)
+
         cv2.imwrite(str(rgb_dir / f"{i:06}.png"), rgb)
         cv2.imwrite(str(depth_dir / f"{i:06}.png"), depth)
-
-        if head_rgb is not None:
-            head_rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
-            head_rgb_dir.mkdir(exist_ok=True)
-            cv2.imwrite(str(head_rgb_dir / f"{i:06}.png"), rgb)
-        if head_depth is not None:
-            head_depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
-            head_depth_dir.mkdir(exist_ok=True)
-            cv2.imwrite(str(head_depth_dir / f"{i:06}.png"), depth)
 
     def process_rgb_to_video(self, episode_dir, head: bool = False):
         start_time = time.perf_counter()
