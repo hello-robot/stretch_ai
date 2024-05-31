@@ -14,6 +14,7 @@ import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.gripper_to_goal as gg
 import stretch.app.dex_teleop.robot_move as rm
 import stretch.motion.simple_ik as si
+import stretch.utils.compression as compression
 import stretch.utils.loop_stats as lt
 from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
@@ -239,15 +240,15 @@ class DexTeleopFollower:
             d405_output = {
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,
-                "ee_cam/color_image": color_image,
-                "ee_cam/depth_image": depth_image,
+                "ee_cam/color_image": compression.zip(color_image),
+                "ee_cam/depth_image": compression.zip(depth_image),
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,
                 "head_cam/color_camera_info": head_color_camera_info,
                 "head_cam/depth_camera_info": head_depth_camera_info,
-                "head_cam/color_image": head_color_image,
-                "head_cam/depth_image": head_depth_image,
+                "head_cam/color_image": compression.zip(head_color_image),
+                "head_cam/depth_image": compression.zip(head_depth_image),
                 "head_cam/depth_scale": head_depth_scale,
                 "head_cam/image_gamma": self.gamma,
                 "head_cam/image_scaling": self.scaling,
@@ -259,7 +260,7 @@ class DexTeleopFollower:
             self.send_socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
-            if verbose:
+            if True or verbose:
                 loop_timer.pretty_print()
 
     def start(self):
