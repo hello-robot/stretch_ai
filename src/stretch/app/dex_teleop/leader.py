@@ -17,6 +17,7 @@ from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.geometry import get_rotation_from_xyz
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
+import stretch.utils.compression as compression
 
 use_gripper_center = True
 
@@ -182,13 +183,17 @@ class DexTeleopLeader(Evaluator):
     def apply(self, message, display_received_images: bool = True) -> dict:
         """Take in image data and other data received by the robot and process it appropriately. Will run the aruco marker detection, predict a goal send that goal to the robot, and save everything to disk for learning."""
 
-        color_image = message["ee_cam/color_image"]
-        depth_image = message["ee_cam/depth_image"]
+        color_image = compression.unzip(message["ee_cam/color_image"])
+        depth_image = compression.unzip(message["ee_cam/depth_image"])
         depth_camera_info = message["ee_cam/depth_camera_info"]
         depth_scale = message["ee_cam/depth_scale"]
         image_gamma = message["ee_cam/image_gamma"]
         image_scaling = message["ee_cam/image_scaling"]
-        breakpoint()
+
+        #head_color_image = compression.unzip(message["head_cam/color_image"])
+        #head_depth_image = compression.unzip(message["head_cam/depth_image"])
+        #head_depth_camera_info = message["head_cam/depth_camera_info"]
+
         if self.camera_info is None:
             self.set_camera_parameters(depth_camera_info, depth_scale)
 
