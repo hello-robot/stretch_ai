@@ -40,16 +40,37 @@ def unzip_depth(compressed_bytes):
     return buffer
 
 
-def to_webp(numpy_array):
-    pil_img = Image.fromarray(numpy_array)
-    pic = webp.WebPPicture.from_pil(pil_img)
-    config = webp.WebPConfig.new(quality=80)
-    webp_data = pic.encode(config).buffer()
-    return webp_data
+def to_webp(img: np.ndarray):
+    """
+    Converts a NumPy array to a WebP image (bytes).
+
+    Args:
+        arr (numpy.ndarray): The input NumPy array.
+
+    Returns:
+        bytes: The WebP image data as bytes.
+    """
+    # Convert the NumPy array to a PIL Image
+    img = Image.fromarray(img)
+
+    # Create a BytesIO object to store the WebP image data
+    webp_bytes = io.BytesIO()
+
+    # Save the image as WebP format to the BytesIO object
+    img.save(webp_bytes, format="WebP")
+
+    # Get the bytes from the BytesIO object
+    webp_bytes = webp_bytes.getvalue()
+    return webp_bytes
 
 
 def from_webp(webp_data) -> np.ndarray:
-    webp_file = io.BytesIO(webp_data)
-    webp_data = webp.WebPData.from_buffer(webp_file.read())
-    numpy_array = webp_data.decode_ndarray()
-    return numpy_array
+    # Create a BytesIO object from the WebP image data
+    webp_io = io.BytesIO(webp_bytes)
+
+    # Open the WebP image from the BytesIO object
+    img = Image.open(webp_io)
+
+    # Convert the PIL Image to a NumPy array
+    arr = np.array(img)
+    return img
