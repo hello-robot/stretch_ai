@@ -232,13 +232,21 @@ class DexTeleopFollower:
             depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
             head_depth_image, head_color_image = self._get_images(from_head=True, verbose=verbose)
 
-            # import timeit
-            # t0 = timeit.default_timer()
-            # data1 = compression.zip(color_image)
-            # t1 = timeit.default_timer()
-            # data2 = compression.to_webp(color_image)
-            # t2 = timeit.default_timer()
-            # print(t1 - t0, len(data1), t2 -t1, len(data2))
+            import timeit
+
+            t0 = timeit.default_timer()
+            compressed_depth_image = compression.zip_depth(depth_image)
+            compressed_head_depth_image = compression.zip_depth(head_depth_image)
+            t1 = timeit.default_timer()
+            compressed_color_image = compression.to_webp(color_image)
+            compressed_head_color_image = compression.to_webp(head_color_image)
+            t2 = timeit.default_timer()
+            print(
+                t1 - t0,
+                f"{len(compressed_depth_image)=}",
+                t2 - t1,
+                f"{len(compressed_color_image)=}",
+            )
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -249,8 +257,8 @@ class DexTeleopFollower:
             d405_output = {
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,
-                "ee_cam/color_image": compression.to_webp(color_image),
-                "ee_cam/depth_image": compression.to_webp(depth_image),
+                "ee_cam/color_image": compressed_color_image,
+                "ee_cam/depth_image": compressed_depth_image,
                 "ee_cam/color_image": color_image,
                 "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,

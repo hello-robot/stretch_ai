@@ -1,13 +1,14 @@
 import io
 import pickle
 
+import liblzfse
 import numpy as np
 import webp
 from PIL import Image
 
 
 ## Compress Python Object to Bytes
-def zip(obj):
+def zip_depth(obj: np.ndarray):
     """
     Compresses a Python object to bytes using pickle.
 
@@ -17,12 +18,14 @@ def zip(obj):
     Returns:
         bytes: The compressed bytes representation of the object.
     """
-    compressed_bytes = pickle.dumps(obj)
+    # compressed_bytes = pickle.dumps(obj)
+    compressed_bytes = liblzfse.compress(obj.astype(np.int16).tobytes())
+    # depth_bytes = liblzfse.compress(depth_array.astype(np.float32).tobytes())
     return compressed_bytes
 
 
 ## Decompress Bytes to Python Object
-def unzip(compressed_bytes):
+def unzip_depth(compressed_bytes):
     """
     Decompresses bytes to a Python object using pickle.
 
@@ -32,8 +35,9 @@ def unzip(compressed_bytes):
     Returns:
         The decompressed Python object.
     """
-    obj = pickle.loads(compressed_bytes)
-    return obj
+    # obj = pickle.loads(compressed_bytes)
+    buffer = np.frombuffer(liblzfse.decompress(compressed_bytes), dtype=np.int16)
+    return buffer
 
 
 def to_webp(numpy_array):
