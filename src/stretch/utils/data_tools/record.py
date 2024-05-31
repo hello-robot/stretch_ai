@@ -5,7 +5,7 @@ import logging
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 import cv2
 import liblzfse
@@ -76,6 +76,9 @@ class FileDataRecorder:
         xyz: np.ndarray,
         quaternion: np.ndarray,
         gripper: float,
+        ee_pos: np.ndarray,
+        ee_rot: np.ndarray,
+        config: Dict[str, float],
         head_rgb: Optional[np.ndarray] = None,
         head_depth: Optional[np.ndarray] = None,
     ):
@@ -91,6 +94,9 @@ class FileDataRecorder:
             "quats": quaternion.tolist(),
             "gripper": gripper,
             "step": self.step,
+            "ee_pos": ee_pos.tolist(),
+            "ee_rot": ee_rot.tolist(),
+            "config": config,
         }
         self.step += 1
 
@@ -124,6 +130,9 @@ class FileDataRecorder:
         with open(str(episode_dir / "completed.txt"), "w") as file:
             # Write the string to the file
             file.write("Completed")
+
+        with open(episode_dir / "state.json", "w") as f:
+            json.dump(self.states, f)
 
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)

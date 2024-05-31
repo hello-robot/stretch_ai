@@ -315,8 +315,11 @@ class DexTeleopLeader(Evaluator):
                 goal_dict["relative_gripper_position"],
                 goal_dict["relative_gripper_orientation"],
                 goal_dict["grip_width"],
-                head_color_image=head_color_image,
-                head_depth_image=head_depth_image,
+                head_rgb=head_color_image,
+                head_depth=head_depth_image,
+                config=message["robot/config"],
+                ee_pos=message["robot/ee_position"],
+                ee_rot=message["robot/ee_rotation"],
             )
 
         # Send goal_dict to robot
