@@ -57,7 +57,7 @@ def to_webp(img: np.ndarray):
     webp_bytes = io.BytesIO()
 
     # Save the image as WebP format to the BytesIO object
-    img.save(webp_bytes, format="WebP", lossless=True)
+    img.save(webp_bytes, format="WebP", lossless=False)
 
     # Get the bytes from the BytesIO object
     webp_bytes = webp_bytes.getvalue()
