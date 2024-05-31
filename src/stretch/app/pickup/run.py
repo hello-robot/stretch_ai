@@ -10,6 +10,8 @@ from stretch.core.task import Operation, Task
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.perception import create_semantic_sensor, get_encoder
 
+from .manager import PickupManager
+
 
 @click.command()
 @click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
@@ -67,7 +69,7 @@ def main(
         task = manager.get_task(add_rotate=False)
     except Exception as e:
         print(f"Error creating task: {e}")
-        demo.stop()
+        robot.stop()
         return
 
     task.execute()
