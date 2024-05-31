@@ -224,7 +224,7 @@ class DexTeleopLeader(Evaluator):
 
             # Head images
             head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
-            head_combined = np.hstack((head_color_image / 255, depth_image_x3 / 4))
+            head_combined = np.hstack((head_color_image / 255, head_depth_image_x3 / 4))
 
             # Combine both images from ee and head
             combined = np.vstack((combined, head_combined))
