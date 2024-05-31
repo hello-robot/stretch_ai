@@ -69,8 +69,16 @@ class FileDataRecorder:
         self.data_dicts = {}
         self.step = 0
 
-    def add(self, ee_rgb: np.ndarray, ee_depth: np.ndarray, xyz: np.ndarray, quaternion: np.ndarray, gripper: float, head_rgb: Optional[np.ndarray] = None,
-            head_depth: Optional[np.ndarray] = None):
+    def add(
+        self,
+        ee_rgb: np.ndarray,
+        ee_depth: np.ndarray,
+        xyz: np.ndarray,
+        quaternion: np.ndarray,
+        gripper: float,
+        head_rgb: Optional[np.ndarray] = None,
+        head_depth: Optional[np.ndarray] = None,
+    ):
         """Add data to the recorder."""
         ee_rgb = cv2.resize(ee_rgb, (256, 192), interpolation=cv2.INTER_AREA)
         ee_depth = cv2.resize(ee_depth, (256, 192), interpolation=cv2.INTER_NEAREST)
@@ -123,7 +131,7 @@ class FileDataRecorder:
         depth_dir.mkdir(exist_ok=True)
         cv2.imwrite(str(rgb_dir / f"{i:06}.png"), rgb)
         cv2.imwrite(str(depth_dir / f"{i:06}.png"), depth)
-        
+
         if head_rgb is not None:
             head_rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
             head_rgb_dir.mkdir(exist_ok=True)
@@ -133,7 +141,7 @@ class FileDataRecorder:
             head_depth_dir.mkdir(exist_ok=True)
             cv2.imwrite(str(head_depth_dir / f"{i:06}.png"), depth)
 
-    def process_rgb_to_video(self, episode_dir, head: bool =False):
+    def process_rgb_to_video(self, episode_dir, head: bool = False):
         start_time = time.perf_counter()
         # First, find out a sample filename
         if head:

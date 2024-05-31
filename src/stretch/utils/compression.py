@@ -1,11 +1,11 @@
 import io
 import pickle
+from typing import Optional, Tuple
 
 import liblzfse
 import numpy as np
 import webp
 from PIL import Image
-from typing import Tuple, Optional
 
 
 ## Compress Python Object to Bytes
