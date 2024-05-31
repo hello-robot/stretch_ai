@@ -175,45 +175,58 @@ class DexTeleopFollower:
     def robot_head_forward(self):
         self.set_head_config([0, 0])
 
+    def _get_images(self, from_head: bool = False):
+        """Get the images from the end effector camera"""
+        if from_head:
+            print("Getting head images:")
+            depth_frame, color_frame = self.head_cam.get_frames()
+        else:
+            print("Getting end effector images:")
+            depth_frame, color_frame = self.ee_cam.get_frames()
+        depth_image = np.asanyarray(depth_frame.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
+
+        if verbose:
+            print(f"{depth_image.shape=} {color_image.shape=}")
+
+        if self.gamma != 1.0:
+            color_image = adjust_gamma(color_image, self.gamma)
+            if verbose:
+                print(f" - gamma adjustment {self.gamma}")
+
+        if self.scaling != 1.0:
+            color_image = cv2.resize(
+                color_image,
+                (0, 0),
+                fx=self.scaling,
+                fy=self.scaling,
+                interpolation=cv2.INTER_AREA,
+            )
+            depth_image = cv2.resize(
+                depth_image,
+                (0, 0),
+                fx=self.scaling,
+                fy=self.scaling,
+                interpolation=cv2.INTER_NEAREST,
+            )
+            if verbose:
+                print(f" - scaled by {self.scaling}")
+
+        if verbose:
+            print(f"{depth_image.shape=} {color_image.shape=}")
+        return depth_image, color_image
+
     def spin_send_images(self, verbose: bool = False):
         """Send the images here as well"""
         loop_timer = lt.LoopStats("d405_sender", target_loop_rate=15)
         depth_camera_info, color_camera_info = self.ee_cam.get_camera_infos()
+        head_depth_camera_info, head_color_camera_info = self.head_cam.get_camera_infos()
         depth_scale = self.ee_cam.get_depth_scale()
+        head_depth_scale = self.head_cam.get_depth_scale()
         while not self._done:
             loop_timer.mark_start()
-            depth_frame, color_frame = self.ee_cam.get_frames()
-            depth_image = np.asanyarray(depth_frame.get_data())
-            color_image = np.asanyarray(color_frame.get_data())
-
-            if verbose:
-                print(f"{depth_image.shape=} {color_image.shape=}")
-
-            if self.gamma != 1.0:
-                color_image = adjust_gamma(color_image, self.gamma)
-                if verbose:
-                    print(f" - gamma adjustment {self.gamma}")
-
-            if self.scaling != 1.0:
-                color_image = cv2.resize(
-                    color_image,
-                    (0, 0),
-                    fx=self.scaling,
-                    fy=self.scaling,
-                    interpolation=cv2.INTER_AREA,
-                )
-                depth_image = cv2.resize(
-                    depth_image,
-                    (0, 0),
-                    fx=self.scaling,
-                    fy=self.scaling,
-                    interpolation=cv2.INTER_NEAREST,
-                )
-                if verbose:
-                    print(f" - scaled by {self.scaling}")
-
-            if verbose:
-                print(f"{depth_image.shape=} {color_image.shape=}")
+            depth_image, color_image = self._get_images(from_head=False)
+            head_depth_image, head_color_image = self._get_images(from_head=True)
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -229,6 +242,13 @@ class DexTeleopFollower:
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,
+                "head_cam/color_camera_info": head_color_camera_info,
+                "head_cam/depth_camera_info": head_depth_camera_info,
+                "head_cam/color_image": head_color_image,
+                "head_cam/depth_image": head_depth_image,
+                "head_cam/depth_scale": head_depth_scale,
+                "head_cam/image_gamma": self.gamma,
+                "head_cam/image_scaling": self.scaling,
                 "robot/config": config,
                 "robot/ee_position": ee_pos,
                 "robot/ee_rotation": ee_rot,

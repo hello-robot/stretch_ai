@@ -188,6 +188,7 @@ class DexTeleopLeader(Evaluator):
         depth_scale = message["ee_cam/depth_scale"]
         image_gamma = message["ee_cam/image_gamma"]
         image_scaling = message["ee_cam/image_scaling"]
+        breakpoint()
         if self.camera_info is None:
             self.set_camera_parameters(depth_camera_info, depth_scale)
 
