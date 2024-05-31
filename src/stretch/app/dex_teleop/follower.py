@@ -226,10 +226,19 @@ class DexTeleopFollower:
         head_depth_camera_info, head_color_camera_info = self.head_cam.get_camera_infos()
         depth_scale = self.ee_cam.get_depth_scale()
         head_depth_scale = self.head_cam.get_depth_scale()
+
         while not self._done:
             loop_timer.mark_start()
             depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
             head_depth_image, head_color_image = self._get_images(from_head=True, verbose=verbose)
+
+            # import timeit
+            # t0 = timeit.default_timer()
+            # data1 = compression.zip(color_image)
+            # t1 = timeit.default_timer()
+            # data2 = compression.to_webp(color_image)
+            # t2 = timeit.default_timer()
+            # print(t1 - t0, len(data1), t2 -t1, len(data2))
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -240,15 +249,17 @@ class DexTeleopFollower:
             d405_output = {
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,
-                "ee_cam/color_image": compression.zip(color_image),
-                "ee_cam/depth_image": compression.zip(depth_image),
+                "ee_cam/color_image": compression.to_webp(color_image),
+                "ee_cam/depth_image": compression.to_webp(depth_image),
+                "ee_cam/color_image": color_image,
+                "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,
                 "head_cam/color_camera_info": head_color_camera_info,
                 "head_cam/depth_camera_info": head_depth_camera_info,
-                "head_cam/color_image": compression.zip(head_color_image),
-                "head_cam/depth_image": compression.zip(head_depth_image),
+                # "head_cam/color_image": compression.zip(head_color_image),
+                # "head_cam/depth_image": compression.zip(head_depth_image),
                 "head_cam/depth_scale": head_depth_scale,
                 "head_cam/image_gamma": self.gamma,
                 "head_cam/image_scaling": self.scaling,
