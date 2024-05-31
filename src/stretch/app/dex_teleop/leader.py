@@ -183,16 +183,18 @@ class DexTeleopLeader(Evaluator):
     def apply(self, message, display_received_images: bool = True) -> dict:
         """Take in image data and other data received by the robot and process it appropriately. Will run the aruco marker detection, predict a goal send that goal to the robot, and save everything to disk for learning."""
 
-        color_image = compression.unzip(message["ee_cam/color_image"])
-        depth_image = compression.unzip(message["ee_cam/depth_image"])
+        color_image = compression.from_webp(message["ee_cam/color_image"])
+        depth_image = compression.unzip_depth(message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"])
         depth_camera_info = message["ee_cam/depth_camera_info"]
         depth_scale = message["ee_cam/depth_scale"]
         image_gamma = message["ee_cam/image_gamma"]
         image_scaling = message["ee_cam/image_scaling"]
 
-        #head_color_image = compression.unzip(message["head_cam/color_image"])
-        #head_depth_image = compression.unzip(message["head_cam/depth_image"])
-        #head_depth_camera_info = message["head_cam/depth_camera_info"]
+        # Get head information from the message as well
+        head_color_image = compression.from_webp(message["head_cam/color_image"])
+        head_depth_image = compression.unzip_depth(message["head_cam/depth_image"], message["head_cam/depth_image/shape"])
+        head_depth_camera_info = message["head_cam/depth_camera_info"]
+        head_depth_scale = message["head_cam/depth_scale"]
 
         if self.camera_info is None:
             self.set_camera_parameters(depth_camera_info, depth_scale)
@@ -209,6 +211,7 @@ class DexTeleopLeader(Evaluator):
 
         # Convert depth to meters
         depth_image = depth_image.astype(np.float32) * self.depth_scale
+        head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
         if self.display_point_cloud:
             print("depth scale", self.depth_scale)
             xyz = self.camera.depth_to_xyz(depth_image)
@@ -218,8 +221,28 @@ class DexTeleopLeader(Evaluator):
             # change depth to be h x w x 3
             depth_image_x3 = np.stack((depth_image,) * 3, axis=-1)
             combined = np.hstack((color_image / 255, depth_image_x3 / 4))
-            cv2.imshow("EE RGB/Depth Image", combined)
-            # cv2.imshow('Received Depth Image', depth_image)
+
+            # Head images
+            head_depth_image = cv2.rotate(head_depth_image, cv2.ROTATE_90_CLOCKWISE)
+            head_color_image = cv2.rotate(head_color_image, cv2.ROTATE_90_CLOCKWISE)
+            head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
+            head_combined = np.hstack((head_color_image / 255, head_depth_image_x3 / 4))
+
+            # Get the current height and width
+            (height, width) = combined.shape[:2]
+            (head_height, head_width) = head_combined.shape[:2]
+
+            # Calculate the aspect ratio
+            aspect_ratio = float(head_width) / float(head_height)
+
+            # Calculate the new height based on the aspect ratio
+            new_height = int(width / aspect_ratio)
+
+            head_combined = cv2.resize(head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR)
+
+            # Combine both images from ee and head
+            combined = np.vstack((combined, head_combined))
+            cv2.imshow("Observed RGB/Depth Image", combined)
 
         # By default, no head or base commands
         head_cfg = None

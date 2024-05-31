@@ -5,6 +5,7 @@ import liblzfse
 import numpy as np
 import webp
 from PIL import Image
+from typing import Tuple, Optional
 
 
 ## Compress Python Object to Bytes
@@ -25,7 +26,7 @@ def zip_depth(obj: np.ndarray):
 
 
 ## Decompress Bytes to Python Object
-def unzip_depth(compressed_bytes):
+def unzip_depth(compressed_bytes, shape: Optional[Tuple[int, int]] = None) -> np.ndarray:
     """
     Decompresses bytes to a Python object using pickle.
 
@@ -37,6 +38,8 @@ def unzip_depth(compressed_bytes):
     """
     # obj = pickle.loads(compressed_bytes)
     buffer = np.frombuffer(liblzfse.decompress(compressed_bytes), dtype=np.uint16)
+    if shape is not None:
+        buffer = buffer.reshape(*shape)
     return buffer
 
 
