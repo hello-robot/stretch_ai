@@ -192,7 +192,7 @@ class DexTeleopLeader(Evaluator):
 
         # Get head information from the message as well
         head_color_image = compression.from_webp(message["head_cam/color_image"])
-        head_depth_image = compression.unzip_depth(message["head_cam/depth_image"])
+        head_depth_image = compression.unzip_depth(message["head_cam/depth_image"], message["head_cam/depth_image/shape"])
         head_depth_camera_info = message["head_cam/depth_camera_info"]
         head_depth_scale = message["head_cam/depth_scale"]
 
