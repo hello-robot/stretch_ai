@@ -69,13 +69,13 @@ class FileDataRecorder:
         self.data_dicts = {}
         self.step = 0
 
-    def add(self, ee_rgb: np.ndarray, depth: np.ndarray, xyz: np.ndarray, quaternion: np.ndarray, gripper: float, head_rgb: Optional[np.ndarray] = None,
+    def add(self, ee_rgb: np.ndarray, ee_depth: np.ndarray, xyz: np.ndarray, quaternion: np.ndarray, gripper: float, head_rgb: Optional[np.ndarray] = None,
             head_depth: Optional[np.ndarray] = None):
         """Add data to the recorder."""
-        rgb = cv2.resize(rgb, (256, 192), interpolation=cv2.INTER_AREA)
-        depth = cv2.resize(depth, (256, 192), interpolation=cv2.INTER_NEAREST)
-        self.rgbs.append(rgb)
-        self.depths.append(depth)
+        ee_rgb = cv2.resize(ee_rgb, (256, 192), interpolation=cv2.INTER_AREA)
+        ee_depth = cv2.resize(ee_depth, (256, 192), interpolation=cv2.INTER_NEAREST)
+        self.rgbs.append(ee_rgb)
+        self.depths.append(ee_depth)
         self.head_rgbs.append(head_rgb)
         self.head_depths.append(head_depth)
         self.data_dicts[self.step] = {

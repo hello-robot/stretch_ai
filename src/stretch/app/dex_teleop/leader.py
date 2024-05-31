@@ -223,8 +223,22 @@ class DexTeleopLeader(Evaluator):
             combined = np.hstack((color_image / 255, depth_image_x3 / 4))
 
             # Head images
+            head_depth_image = cv2.rotate(head_depth_image, cv2.ROTATE_90_CLOCKWISE)
+            head_color_image = cv2.rotate(head_color_image, cv2.ROTATE_90_CLOCKWISE)
             head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
             head_combined = np.hstack((head_color_image / 255, head_depth_image_x3 / 4))
+
+            # Get the current height and width
+            (height, width) = combined.shape[:2]
+            (head_height, head_width) = head_combined.shape[:2]
+
+            # Calculate the aspect ratio
+            aspect_ratio = float(head_width) / float(head_height)
+
+            # Calculate the new height based on the aspect ratio
+            new_height = int(width / aspect_ratio)
+
+            head_combined = cv2.resize(head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR)
 
             # Combine both images from ee and head
             combined = np.vstack((combined, head_combined))
