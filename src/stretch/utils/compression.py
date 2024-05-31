@@ -19,7 +19,7 @@ def zip_depth(obj: np.ndarray):
         bytes: The compressed bytes representation of the object.
     """
     # compressed_bytes = pickle.dumps(obj)
-    compressed_bytes = liblzfse.compress(obj.astype(np.int16).tobytes())
+    compressed_bytes = liblzfse.compress(obj.astype(np.uint16).tobytes())
     # depth_bytes = liblzfse.compress(depth_array.astype(np.float32).tobytes())
     return compressed_bytes
 
@@ -36,7 +36,7 @@ def unzip_depth(compressed_bytes):
         The decompressed Python object.
     """
     # obj = pickle.loads(compressed_bytes)
-    buffer = np.frombuffer(liblzfse.decompress(compressed_bytes), dtype=np.int16)
+    buffer = np.frombuffer(liblzfse.decompress(compressed_bytes), dtype=np.uint16)
     return buffer
 
 
@@ -57,7 +57,7 @@ def to_webp(img: np.ndarray):
     webp_bytes = io.BytesIO()
 
     # Save the image as WebP format to the BytesIO object
-    img.save(webp_bytes, format="WebP")
+    img.save(webp_bytes, format="WebP", lossless=True)
 
     # Get the bytes from the BytesIO object
     webp_bytes = webp_bytes.getvalue()
@@ -66,11 +66,11 @@ def to_webp(img: np.ndarray):
 
 def from_webp(webp_data) -> np.ndarray:
     # Create a BytesIO object from the WebP image data
-    webp_io = io.BytesIO(webp_bytes)
+    webp_io = io.BytesIO(webp_data)
 
     # Open the WebP image from the BytesIO object
     img = Image.open(webp_io)
 
     # Convert the PIL Image to a NumPy array
     arr = np.array(img)
-    return img
+    return arr

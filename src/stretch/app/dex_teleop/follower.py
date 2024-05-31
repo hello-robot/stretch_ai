@@ -237,9 +237,11 @@ class DexTeleopFollower:
             t0 = timeit.default_timer()
             compressed_depth_image = compression.zip_depth(depth_image)
             compressed_head_depth_image = compression.zip_depth(head_depth_image)
+            # depth_image2 = compression.unzip_depth(compressed_depth_image)
             t1 = timeit.default_timer()
             compressed_color_image = compression.to_webp(color_image)
             compressed_head_color_image = compression.to_webp(head_color_image)
+            # color_image2 = compression.from_webp(compressed_color_image)
             t2 = timeit.default_timer()
             print(
                 t1 - t0,
@@ -247,6 +249,7 @@ class DexTeleopFollower:
                 t2 - t1,
                 f"{len(compressed_color_image)=}",
             )
+            # breakpoint()
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -258,7 +261,9 @@ class DexTeleopFollower:
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,
                 "ee_cam/color_image": compressed_color_image,
+                "ee_cam/color_image/shape": color_image.shape,
                 "ee_cam/depth_image": compressed_depth_image,
+                "ee_cam/depth_image/shape": depth_image.shape,
                 "ee_cam/color_image": color_image,
                 "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,
