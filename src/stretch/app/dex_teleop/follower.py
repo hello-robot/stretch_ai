@@ -175,13 +175,15 @@ class DexTeleopFollower:
     def robot_head_forward(self):
         self.set_head_config([0, 0])
 
-    def _get_images(self, from_head: bool = False):
+    def _get_images(self, from_head: bool = False, verbose: bool = False):
         """Get the images from the end effector camera"""
         if from_head:
-            print("Getting head images:")
+            if verbose:
+                print("Getting head images:")
             depth_frame, color_frame = self.head_cam.get_frames()
         else:
-            print("Getting end effector images:")
+            if verbose:
+                print("Getting end effector images:")
             depth_frame, color_frame = self.ee_cam.get_frames()
         depth_image = np.asanyarray(depth_frame.get_data())
         color_image = np.asanyarray(color_frame.get_data())
@@ -225,8 +227,8 @@ class DexTeleopFollower:
         head_depth_scale = self.head_cam.get_depth_scale()
         while not self._done:
             loop_timer.mark_start()
-            depth_image, color_image = self._get_images(from_head=False)
-            head_depth_image, head_color_image = self._get_images(from_head=True)
+            depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
+            head_depth_image, head_color_image = self._get_images(from_head=True, verbose=verbose)
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
