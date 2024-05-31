@@ -5,7 +5,7 @@ import logging
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import cv2
 import liblzfse
