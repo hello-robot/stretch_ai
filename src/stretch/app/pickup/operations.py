@@ -4,6 +4,7 @@ import numpy as np
 
 from stretch.core.task import Operation
 from stretch.motion.kinematics import HelloStretchIdx
+from stretch.utils.geometry import point_global_to_base
 
 
 class ManagedOperation(Operation):
@@ -129,9 +130,6 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     show_map_so_far: bool = True
     show_instances_detected: bool = True
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def can_start(self) -> bool:
         return self.manager.current_receptacle is not None
 
@@ -224,23 +222,14 @@ class PreGraspObjectOperation(ManagedOperation):
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
 
-        # Motion plan to the object
-        plan = self.manager.agent.plan_to_instance(self.manager.current_object, start=start)
-        if plan.success:
-            self.plan = plan
-            return True
+        # Get the center of the object point cloud so that we can look at it
+        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        dist = np.linalg.norm(object_xyz[:2] - start[:2])
+        if dist > 1.0:
+            print(f"Object is too far away to grasp: {dist}")
+            return False
 
     def run(self):
-
-        # Execute the trajectory
-        assert (
-            self.plan is not None
-        ), "Did you make sure that we had a plan? You should call can_start() before run()."
-        self.robot.execute_trajectory(self.plan)
-
-        # Orient the robot towards the object and use the end effector camera to pick it up
-        xyt = self.plan.trajectory[-1].state
-        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=10.0)
 
         print("Moving to a position to grasp the object.")
         self.robot.move_to_manip_posture()
@@ -262,8 +251,6 @@ class PreGraspObjectOperation(ManagedOperation):
             self.agent.voxel_map.show(
                 orig=object_xyz.cpu().numpy(), xyt=xyt, footprint=self.robot_model.get_footprint()
             )
-        from stretch.utils.geometry import point_global_to_base, xyt_global_to_base
-
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
@@ -281,27 +268,60 @@ class PreGraspObjectOperation(ManagedOperation):
 
         # Strip out fields from the full robot state to only get the 6dof manipulator state
         # TODO: we should probably handle this in the zmq wrapper.
-        arm_cmd = self.robot_model.config_to_manip_command(joint_state)
-        self.robot.arm_to(arm_cmd, blocking=True)
+        # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
+        self.robot.arm_to(joint_state, blocking=True)
 
         # It does not take long to execute these commands
         time.sleep(2.0)
-
-        breakpoint()
 
     def was_successful(self):
         return self.robot.in_manipulation_mode()
 
 
 class NavigateToObjectOperation(ManagedOperation):
+
+    plan = None
+
+    def __init__(self, *args, to_receptacle=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.to_receptacle = to_receptacle
+
+    def get_target(self):
+        if self.to_receptacle:
+            return self.manager.current_receptacle
+        else:
+            return self.manager.current_object
+
     def can_start(self):
-        return self.manager.current_object is not None
+        self.plan = None
+        if self.get_target() is None:
+            return False
+
+        start = self.robot.get_base_pose()
+        if not self.navigation_space.is_valid(start):
+            raise RuntimeError(
+                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+
+        # Motion plan to the object
+        plan = self.manager.agent.plan_to_instance(self.manager.current_object, start=start)
+        if plan.success:
+            self.plan = plan
+            return True
 
     def run(self):
         print("Navigating to the object.")
         self.robot.move_to_nav_posture()
 
-        # Now find the object instance we got from the map
+        # Execute the trajectory
+        assert (
+            self.plan is not None
+        ), "Did you make sure that we had a plan? You should call can_start() before run()."
+        self.robot.execute_trajectory(self.plan)
+
+        # Orient the robot towards the object and use the end effector camera to pick it up
+        xyt = self.plan.trajectory[-1].state
+        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=10.0)
 
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""
@@ -311,14 +331,46 @@ class NavigateToObjectOperation(ManagedOperation):
 class GraspObjectOperation(ManagedOperation):
     """Move the robot to grasp, using the end effector camera."""
 
+    use_pitch_from_vertical: bool = True
+
     def can_start(self):
-        return self.manager.current_object is not None
+        return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
     def run(self):
+
+        # Now we should be able to see the object if we orient gripper properly
+        # Get the end effector pose
+        obs = self.robot.get_observation()
+        joint_state = obs.joint
+        model = self.robot.get_robot_model()
+
+        # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
+        ee_pos, ee_rot = model.manip_fk(joint_state)
+        relative_object_xyz = point_global_to_base(object_xyz, xyt)
+
+        # Compute the angles necessary
+        if self.use_pitch_from_vertical:
+            # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
+            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
+            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            pitch_from_vertical = np.arctan2(dy, dz)
+            # current_ee_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+        else:
+            pitch_from_vertical = 0.0
+
+        # Joint state goal
+        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+
+        # Strip out fields from the full robot state to only get the 6dof manipulator state
+        # TODO: we should probably handle this in the zmq wrapper.
+        # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
+        self.robot.arm_to(joint_state, blocking=True)
+
         breakpoint()
 
     def was_successful(self):
-        breakpoint()
+        """Return true if successful"""
+        return True
 
 
 class GoToNavOperation(ManagedOperation):

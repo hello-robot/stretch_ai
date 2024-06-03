@@ -135,6 +135,16 @@ class HomeRobotZmqClient(RobotClient):
         """
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
+        if len(joint_angles) > 6:
+            print(
+                "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
+            )
+            # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
+            joint_angles = self._robot_model.config_to_manip_command(joint_angles)
+        if len(joint_angles) < 6:
+            raise ValueError(
+                "joint_angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
+            )
         assert (
             joint_angles.shape[-1] == 6
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"

@@ -62,7 +62,16 @@ class PickupManager:
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
-            "go to object", self, parent=search_for_object, on_cannot_start=search_for_object
+            "go to object",
+            self,
+            parent=search_for_object,
+            on_cannot_start=search_for_object,
+            to_receptacle=False,
+        )
+
+        # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
+        go_to_receptacle = NavigateToObjectOperation(
+            "go to receptacle", self, on_cannot_start=search_for_receptacle, to_receptacle=True
         )
 
         # When about to start, run object detection and try to find the object. If not in front of us, explore again.
@@ -94,5 +103,6 @@ class PickupManager:
         task.add_operation(go_to_object)
         task.add_operation(pregrasp_object)
         task.add_operation(grasp_object)
+        task.add_operation(go_to_receptacle)
 
         return task
