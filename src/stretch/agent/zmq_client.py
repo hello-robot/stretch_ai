@@ -167,13 +167,33 @@ class HomeRobotZmqClient(RobotClient):
         self._finish = False
         self._last_step = -1
 
+    def open_gripper(self, blocking: bool = True):
+        """Open the gripper based on hard-coded presets."""
+        gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][1]
+        self.gripper_to(gripper_target, blocking)
+
+    def close_gripper(self, blocking: bool = True):
+        """Close the gripper based on hard-coded presets."""
+        gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][0]
+        self.gripper_to(gripper_target, blocking)
+
+    def gripper_to(self, target: float, blocking: bool = True):
+        """Send the gripper to a target position."""
+        with self._act_lock:
+            self._next_action["gripper"] = target
+            self._next_action["gripper_blocking"] = blocking
+        if blocking:
+            time.sleep(2.0)
+
     def switch_to_navigation_mode(self):
+        """Velocity control of the robot base."""
         with self._act_lock:
             self._next_action["control_mode"] = "navigation"
         self.send_action()
         self._wait_for_mode("navigation")
 
     def in_navigation_mode(self) -> bool:
+        """Returns true if we are navigating (robot head forward, velocity control on)"""
         return self._control_mode == "navigation"
 
     def in_manipulation_mode(self) -> bool:

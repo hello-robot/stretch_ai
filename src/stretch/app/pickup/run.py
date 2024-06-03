@@ -47,6 +47,8 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
+    robot.open_gripper()
+    robot.close_gripper()
     _, semantic_sensor = create_semantic_sensor(
         device_id=device_id,
         verbose=verbose,
