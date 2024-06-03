@@ -365,23 +365,6 @@ class HelloStretchKinematics:
         """return degrees of freedom of the robot"""
         return self.dof
 
-    def set_head_config(self, q):
-        # WARNING: this sets all configs
-        bidxs = [HelloStretchIdx.HEAD_PAN, HelloStretchIdx.HEAD_TILT]
-        bidxs = [self.joint_idx[b] for b in bidxs]
-        if len(q) == self.dof:
-            qidxs = bidxs
-        elif len(q) == 2:
-            qidxs = [0, 1]
-        else:
-            raise RuntimeError("unsupported number of head joints")
-
-        for idx, qidx in zip(bidxs, qidxs):
-            # Idx is the urdf joint index
-            # qidx is the idx in the provided query
-            qq = q[qidx]
-            self.ref.set_joint_position(idx, qq)
-
     def sample_uniform(self, q0=None, pos=None, radius=2.0):
         """Sample random configurations to seed the ik planner"""
         q = (np.random.random(self.dof) * self._rngs) + self._mins
@@ -501,10 +484,6 @@ class HelloStretchKinematics:
         for idx in idxs:
             self.ref.set_joint_position(idx, val)
 
-    def vanish(self):
-        """get rid of the robot"""
-        self.ref.set_pose([0, 0, 1000], [0, 0, 0, 1])
-
     def set_config(self, q):
         assert len(q) == self.dof
         x, y, theta = q[:3]
@@ -521,33 +500,6 @@ class HelloStretchKinematics:
         # Finally set the arm and gripper as groups
         self._set_joint_group(self.arm_idx, q[HelloStretchIdx.ARM] / 4.0)
         self._set_joint_group(self.gripper_idx, q[HelloStretchIdx.GRIPPER])
-
-    def plan_look_at(self, q0, xyz):
-        """assume this is a relative xyz"""
-        dx, dy = xyz[:2] - q0[:2]
-        theta0 = q0[2]
-        thetag = np.arctan2(dy, dx)
-        action = np.zeros(self.dof)
-
-        dist = np.abs(thetag - theta0)
-        # Dumb check to see if we can get the rotation right
-        if dist > np.pi:
-            thetag -= np.pi / 2
-            dist = np.abs(thetag - theta0)
-        # Getting the direction right here
-        dirn = 1.0 if thetag > theta0 else -1.0
-        action[2] = dist * dirn
-
-        look_action = q0.copy()
-        self.update_look_ahead(look_action)
-
-        # Compute the angle
-        head_height = 1.2
-        distance = np.linalg.norm([dx, dy])
-
-        look_action[HelloStretchIdx.HEAD_TILT] = -1 * np.arctan((head_height - xyz[2]) / distance)
-
-        return [action, look_action]
 
     def interpolate(self, q0, qg, step=None, xy_tol=0.05, theta_tol=0.01):
         """interpolate from initial to final configuration. for this robot we break it up into
@@ -761,7 +713,7 @@ class HelloStretchKinematics:
 
         if q is not None and success:
             q = self._from_manip_format(q, default_q)
-            self.set_config(q)
+            # self.set_config(q)
 
         return q, success, debug_info
 
@@ -863,6 +815,7 @@ class HelloStretchKinematics:
         q = configuration to test
         ignored = other objects to NOT check against
         """
+        raise NotImplementedError("validate not yet supported")
         self.set_config(q)
         # Check robot height
         if q[HelloStretchIdx.LIFT] >= 1.0:

@@ -250,6 +250,8 @@ class PreGraspObjectOperation(ManagedOperation):
         obs = self.robot.get_observation()
         joint_state = obs.joint
         model = self.robot.get_robot_model()
+
+        # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
         ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # Get the center of the object point cloud so that we can look at it
