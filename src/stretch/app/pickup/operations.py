@@ -413,13 +413,24 @@ class GraspObjectOperation(ManagedOperation):
             self._success = False
             return
 
+        # Lift the arm up a bit
+        target_joint_state_lifted = target_joint_state.copy()
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += 0.5
+
         # Move to the target joint state
+        print(f"{self.name}: Moving to grasp position.")
         self.robot.arm_to(target_joint_state, blocking=True)
         time.sleep(3.0)
+        print(f"{self.name}: Closing the gripper.")
         self.robot.close_gripper(blocking=True)
         time.sleep(2.0)
+        print(f"{self.name}: Lifting the arm up so as not to hit the base.")
+        self.robot.arm_to(target_joint_state_lifted, blocking=True)
+        time.sleep(3.0)
+        print(f"{self.name}: Return arm to initial configuration.")
         self.robot.arm_to(joint_state, blocking=True)
         time.sleep(3.0)
+        print(f"{self.name}: Done.")
         self._success = True
 
     def was_successful(self):
