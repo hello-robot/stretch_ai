@@ -398,6 +398,7 @@ class GraspObjectOperation(ManagedOperation):
             self._success = False
 
         # Move to the target joint state
+        breakpoint()
         self.robot.arm_to(target_joint_state, blocking=True)
         time.sleep(1.0)
         self.robot.close_gripper(blocking=True)

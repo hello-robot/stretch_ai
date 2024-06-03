@@ -508,6 +508,10 @@ class RobotAgent:
             # update here
             raise RuntimeError("Robot failed to start!")
 
+        # First, open the gripper...
+        self.robot.switch_to_manipulation_mode()
+        self.robot.open_gripper()
+
         # Tuck the arm away
         print("Sending arm to  home...")
         self.robot.move_to_nav_posture()
