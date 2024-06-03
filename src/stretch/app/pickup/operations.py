@@ -1,6 +1,9 @@
+import time
+
 import numpy as np
 
 from stretch.core.task import Operation
+from stretch.motion.kinematics import HelloStretchIdx
 
 
 class ManagedOperation(Operation):
@@ -11,6 +14,7 @@ class ManagedOperation(Operation):
         self.parameters = manager.parameters
         self.navigation_space = manager.navigation_space
         self.agent = manager.agent
+        self.robot_model = self.robot.get_robot_model()
 
     def update(self):
         self.agent.update()
@@ -207,6 +211,7 @@ class PreGraspObjectOperation(ManagedOperation):
 
     plan = None
     show_object_in_voxel_grid: bool = False
+    use_pitch_from_vertical: bool = True
 
     def can_start(self):
         self.plan = None
@@ -249,14 +254,36 @@ class PreGraspObjectOperation(ManagedOperation):
 
         # Get the center of the object point cloud so that we can look at it
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        xyt = self.robot.get_base_pose()
         if self.show_object_in_voxel_grid:
-            self.agent.voxel_map.show(orig=object_xyz.cpu().numpy())
+            # Show where the object is together with the robot base
+            self.agent.voxel_map.show(
+                orig=object_xyz.cpu().numpy(), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
         from stretch.utils.geometry import point_global_to_base, xyt_global_to_base
 
-        xyt = self.robot.get_base_pose()
-        relative_xyz = point_global_to_base(object_xyz, xyt)
+        relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
+        if self.use_pitch_from_vertical:
+            # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
+            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
+            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            pitch_from_vertical = np.arctan2(dy, dz)
+            # current_ee_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+        else:
+            pitch_from_vertical = 0.0
+
+        # Joint state goal
+        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+
+        # Strip out fields from the full robot state to only get the 6dof manipulator state
+        # TODO: we should probably handle this in the zmq wrapper.
+        arm_cmd = self.robot_model.config_to_manip_command(joint_state)
+        self.robot.arm_to(arm_cmd, blocking=True)
+
+        # It does not take long to execute these commands
+        time.sleep(2.0)
 
         breakpoint()
 
