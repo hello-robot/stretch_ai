@@ -338,12 +338,13 @@ class GraspObjectOperation(ManagedOperation):
     """Move the robot to grasp, using the end effector camera."""
 
     use_pitch_from_vertical: bool = True
+    _success: bool = False
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
     def run(self):
-
+        self._success = False
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
@@ -376,11 +377,40 @@ class GraspObjectOperation(ManagedOperation):
         # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
-        breakpoint()
+        # Construct the final end effector pose
+        from scipy.spatial.transform import Rotation
+
+        from stretch.motion.kinematics import STRETCH_GRASP_OFFSET
+
+        pose = np.eye(4)
+        euler = Rotation.from_quat(ee_rot).as_euler("xyz")
+        matrix = Rotation.from_quat(ee_rot).as_matrix()
+        pose[:3, :3] = matrix
+        ee_pose = pose @ STRETCH_GRASP_OFFSET
+        target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
+        target_ee_pos = ee_pose[:3, 3]
+
+        # Add a little bit more offset here, since we often underestimate how far we need to extend
+        target_ee_pos[1] -= 0.05
+
+        target_joint_state, success, info = self.robot_model.manip_ik(
+            (target_ee_pos, target_ee_rot), q0=joint_state
+        )
+        if not success:
+            print("Failed to find a valid IK solution.")
+            self._success = False
+
+        # Move to the target joint state
+        self.robot.arm_to(target_joint_state, blocking=True)
+        time.sleep(1.0)
+        self.robot.close_gripper(blocking=True)
+        time.sleep(1.0)
+        self.robot.arm_to(joint_state, blocking=True)
+        time.sleep(1.0)
 
     def was_successful(self):
         """Return true if successful"""
-        return True
+        return self._success
 
 
 class GoToNavOperation(ManagedOperation):
