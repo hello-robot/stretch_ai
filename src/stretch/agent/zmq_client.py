@@ -230,7 +230,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 10.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
@@ -240,8 +240,8 @@ class HomeRobotZmqClient(RobotClient):
                     break
             time.sleep(0.1)
             t1 = timeit.default_timer()
-            if t1 - t0 > 5.0:
-                raise RuntimeError(f"Timeout waiting for mode {mode}")
+            if t1 - t0 > timeout:
+                raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
 
     def _wait_for_action(
         self,
