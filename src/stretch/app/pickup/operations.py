@@ -1,9 +1,10 @@
 import time
 
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from stretch.core.task import Operation
-from stretch.motion.kinematics import HelloStretchIdx
+from stretch.motion.kinematics import STRETCH_GRASP_OFFSET, HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
 
@@ -378,10 +379,6 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(joint_state, blocking=True)
 
         # Construct the final end effector pose
-        from scipy.spatial.transform import Rotation
-
-        from stretch.motion.kinematics import STRETCH_GRASP_OFFSET
-
         pose = np.eye(4)
         euler = Rotation.from_quat(ee_rot).as_euler("xyz")
         matrix = Rotation.from_quat(ee_rot).as_matrix()
