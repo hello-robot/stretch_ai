@@ -164,11 +164,6 @@ STRETCH_GRASP_OFFSET[:3, 3] = np.array([0, 0, -1 * STRETCH_STANDOFF_DISTANCE])
 STRETCH_TO_GRASP = np.eye(4)
 STRETCH_TO_GRASP[:3, 3] = np.array([0, 0, STRETCH_STANDOFF_DISTANCE])
 
-# Other stretch parameters
-STRETCH_GRIPPER_OPEN = 0.22
-STRETCH_GRIPPER_CLOSE = -0.2
-STRETCH_HEAD_CAMERA_ROTATIONS = 3  # number of counterclockwise rotations for the head camera
-
 # For EXTEND_ARM action
 STRETCH_ARM_EXTENSION = 0.8
 STRETCH_ARM_LIFT = 0.8

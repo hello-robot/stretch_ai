@@ -16,7 +16,7 @@ from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
 from stretch.motion import PlanResult, RobotModel
-from stretch.motion.kinematics import HelloStretchKinematics
+from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
@@ -169,12 +169,14 @@ class HomeRobotZmqClient(RobotClient):
 
     def open_gripper(self, blocking: bool = True):
         """Open the gripper based on hard-coded presets."""
-        gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][1]
+        gripper_target = self._robot_model.GRIPPER_OPEN
+        print("Opening gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking)
 
     def close_gripper(self, blocking: bool = True):
         """Close the gripper based on hard-coded presets."""
-        gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][0]
+        gripper_target = self._robot_model.GRIPPER_CLOSED
+        print("Closing gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking)
 
     def gripper_to(self, target: float, blocking: bool = True):
@@ -182,6 +184,7 @@ class HomeRobotZmqClient(RobotClient):
         with self._act_lock:
             self._next_action["gripper"] = target
             self._next_action["gripper_blocking"] = blocking
+        self.send_action()
         if blocking:
             time.sleep(2.0)
 
