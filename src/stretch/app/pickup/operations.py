@@ -350,6 +350,9 @@ class GraspObjectOperation(ManagedOperation):
         joint_state = obs.joint
         model = self.robot.get_robot_model()
 
+        # Get the current base pose of the robot
+        xyt = self.robot.get_base_pose()
+
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
         ee_pos, ee_rot = model.manip_fk(joint_state)
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
