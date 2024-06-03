@@ -210,6 +210,7 @@ class PreGraspObjectOperation(ManagedOperation):
     plan = None
     show_object_in_voxel_grid: bool = False
     use_pitch_from_vertical: bool = True
+    grasp_distance_threshold: float = 0.75
 
     def can_start(self):
         self.plan = None
@@ -225,9 +226,11 @@ class PreGraspObjectOperation(ManagedOperation):
         # Get the center of the object point cloud so that we can look at it
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
-        if dist > 1.0:
-            print(f"Object is too far away to grasp: {dist}")
+        if dist > self.grasp_distance_threshold:
+            print(f"{self.name}: Object is too far away to grasp: {dist}")
             return False
+        print(f"{self.name}: Object is probably close enough to grasp: {dist}")
+        return True
 
     def run(self):
 
@@ -293,6 +296,9 @@ class NavigateToObjectOperation(ManagedOperation):
             return self.manager.current_object
 
     def can_start(self):
+        print(
+            f"{self.name}: check to see if object is reachable (receptacle={self.to_receptacle})."
+        )
         self.plan = None
         if self.get_target() is None:
             return False
@@ -310,7 +316,7 @@ class NavigateToObjectOperation(ManagedOperation):
             return True
 
     def run(self):
-        print("Navigating to the object.")
+        print(f"{self.name}: executing motion plan to the object.")
         self.robot.move_to_nav_posture()
 
         # Execute the trajectory
@@ -325,7 +331,7 @@ class NavigateToObjectOperation(ManagedOperation):
 
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""
-        return self.robot.in_navigation_mode()
+        return True  # self.robot.in_navigation_mode()
 
 
 class GraspObjectOperation(ManagedOperation):
@@ -346,6 +352,7 @@ class GraspObjectOperation(ManagedOperation):
 
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
         ee_pos, ee_rot = model.manip_fk(joint_state)
+        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary

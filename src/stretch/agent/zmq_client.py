@@ -146,7 +146,7 @@ class HomeRobotZmqClient(RobotClient):
                 "joint_angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
             )
         assert (
-            joint_angles.shape[-1] == 6
+            len(joint_angles) == 6
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
         with self._act_lock:
             self._next_action["joint"] = joint_angles
