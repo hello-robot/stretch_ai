@@ -220,8 +220,9 @@ class PreGraspObjectOperation(ManagedOperation):
 
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
-                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            # raise RuntimeError(
+            print(
+                f"{self.name}: [ERROR]: Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
 
         # Get the center of the object point cloud so that we can look at it
@@ -383,9 +384,14 @@ class GraspObjectOperation(ManagedOperation):
         euler = Rotation.from_quat(ee_rot).as_euler("xyz")
         matrix = Rotation.from_quat(ee_rot).as_matrix()
         pose[:3, :3] = matrix
+        pose[:3, 3] = relative_object_xyz
         ee_pose = pose @ STRETCH_GRASP_OFFSET
         target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
         target_ee_pos = ee_pose[:3, 3]
+        if target_ee_pos[1] > 0:
+            print(
+                f"{self.name}: graspable objects should be in the negative y direction, got this target position: {target_ee_pos}"
+            )
 
         # Add a little bit more offset here, since we often underestimate how far we need to extend
         target_ee_pos[1] -= 0.05
@@ -396,15 +402,25 @@ class GraspObjectOperation(ManagedOperation):
         if not success:
             print("Failed to find a valid IK solution.")
             self._success = False
+            return
+        elif (
+            target_joint_state[HelloStretchIdx.ARM] < 0
+            or target_joint_state[HelloStretchIdx.LIFT] < 0
+        ):
+            print(
+                f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
+            )
+            self._success = False
+            return
 
         # Move to the target joint state
-        breakpoint()
         self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(1.0)
+        time.sleep(3.0)
         self.robot.close_gripper(blocking=True)
-        time.sleep(1.0)
+        time.sleep(2.0)
         self.robot.arm_to(joint_state, blocking=True)
-        time.sleep(1.0)
+        time.sleep(3.0)
+        self._success = True
 
     def was_successful(self):
         """Return true if successful"""
