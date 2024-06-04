@@ -954,6 +954,31 @@ class HelloStretchKinematics:
         tilt = hab_positions[9]
         return positions, pan, tilt
 
+    def manip_ik_for_grasp_frame(self, ee_pos, ee_rot, q0: Optional[np.ndarray] = None) -> Tuple:
+        # Construct the final end effector pose
+        pose = np.eye(4)
+        euler = Rotation.from_quat(ee_rot).as_euler("xyz")
+        matrix = Rotation.from_quat(ee_rot).as_matrix()
+        pose[:3, :3] = matrix
+        pose[:3, 3] = pos
+        ee_pose = pose @ STRETCH_GRASP_OFFSET
+        target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
+        target_ee_pos = ee_pose[:3, 3]
+        if target_ee_pos[1] > 0:
+            print(
+                f"{self.name}: graspable objects should be in the negative y direction, got this target position: {target_ee_pos}"
+            )
+
+        # TODO: hopefully we do not need this code
+        # Add a little bit more offset here, since we often underestimate how far we need to extend
+        # target_ee_pos[1] -= 0.05
+
+        target_joint_state, success, info = self.manip_ik(
+            (target_ee_pos, target_ee_rot),
+            q0=q0,
+        )
+        return target_joint_state, target_ee_pos, target_ee_rot, success, info
+
 
 if __name__ == "__main__":
     robot = HelloStretchKinematics()

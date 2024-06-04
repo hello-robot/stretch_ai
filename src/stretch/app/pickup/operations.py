@@ -129,7 +129,11 @@ class SearchForReceptacle(ManagedOperation):
         if self.manager.current_receptacle is None:
             # Find a point on the frontier and move there
             res = self.manager.agent.plan_to_frontier(start=start)
-            self.robot.execute_trajectory(res.trajectory, final_timeout=30.0)
+            if res.success:
+                self.robot.execute_trajectory(res.trajectory, final_timeout=30.0)
+            else:
+                self.error("Failed to find a reachable frontier.")
+                raise RuntimeError("Failed to find a reachable frontier.")
             # After moving
             self.update()
             return
@@ -399,25 +403,8 @@ class GraspObjectOperation(ManagedOperation):
         # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
-        # Construct the final end effector pose
-        pose = np.eye(4)
-        euler = Rotation.from_quat(ee_rot).as_euler("xyz")
-        matrix = Rotation.from_quat(ee_rot).as_matrix()
-        pose[:3, :3] = matrix
-        pose[:3, 3] = relative_object_xyz
-        ee_pose = pose @ STRETCH_GRASP_OFFSET
-        target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
-        target_ee_pos = ee_pose[:3, 3]
-        if target_ee_pos[1] > 0:
-            print(
-                f"{self.name}: graspable objects should be in the negative y direction, got this target position: {target_ee_pos}"
-            )
-
-        # Add a little bit more offset here, since we often underestimate how far we need to extend
-        target_ee_pos[1] -= 0.05
-
-        target_joint_state, success, info = self.robot_model.manip_ik(
-            (target_ee_pos, target_ee_rot), q0=joint_state
+        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+            relative_object_xyz, ee_rot, q0=joint_state
         )
         if not success:
             print("Failed to find a valid IK solution.")
@@ -499,22 +486,36 @@ class PlaceObjectOperation(ManagedOperation):
         self.intro("Placing the object on the receptacle.")
         self._successful = False
 
-        # Get object xyz coords
-        object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0)
-
-        # Get max xyz
-        max_xyz = self.manager.current_receptacle.point_cloud.max(axis=0)
-        breakpoint()
-
-        # Placement is at xy = object_xyz[:2], z = max_xyz[2] + margin
-        place_xyz = np.array([object_xyz[0], object_xyz[1], max_xyz[2] + self.place_height_margin])
-
+        # Get initial (carry) joint posture
         obs = self.robot.get_observation()
         joint_state = obs.joint
         model = self.robot.get_robot_model()
 
         # End effector position and orientation in global coordinates
         ee_pos, ee_rot = model.manip_fk(joint_state)
+
+        # Switch to place position
+        print("Move to manip posture")
+        self.robot.move_to_manip_posture()
+
+        # Get object xyz coords
+        object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0)
+        xyt = self.robot.get_base_pose()
+
+        # Get the center of the object point cloud so that we can place there
+        relative_object_xyz = point_global_to_base(object_xyz, xyt)
+
+        # Get max xyz
+        max_xyz = self.manager.current_receptacle.point_cloud.max(axis=0)[0]
+
+        # Placement is at xy = object_xyz[:2], z = max_xyz[2] + margin
+        place_xyz = np.array(
+            [relative_object_xyz[0], relative_object_xyz[1], max_xyz[2] + self.place_height_margin]
+        )
+
+        target_joint_state, _, _, success, info = self.robot_model.manip_ik_for_grasp_frame(
+            place_xyz, ee_rot, q0=joint_state
+        )
 
         # Compute the joint angles for placement using manip ik
         target_joint_state, success, info = self.robot_model.manip_ik(
@@ -523,14 +524,21 @@ class PlaceObjectOperation(ManagedOperation):
 
         # Move to the target joint state
         self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(3.0)
+        time.sleep(5.0)
 
         # Open the gripper
         self.robot.open_gripper(blocking=True)
         time.sleep(2.0)
 
+        # Move directly up
+        target_joint_state_lifted = target_joint_state.copy()
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += 0.5
+        self.robot.arm_to(target_joint_state_lifted, blocking=True)
+        time.sleep(5.0)
+
         # Return arm to initial configuration and switch to nav posture
         self.robot.move_to_nav_posture()
+        time.sleep(2.0)
         self._successful = True
 
     def was_successful(self):
