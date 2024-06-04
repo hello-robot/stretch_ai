@@ -44,9 +44,7 @@ def serve_head_nav_cam(camarr_port, camb64_port):
         shnc.send_imagery_as_base64_str(camb64_sock, camera)
 
 
-def serve_realsense(
-    camarr_port, camb64_port, exposure: str = "low", sensor_type="d405"
-):
+def serve_realsense(camarr_port, camb64_port, exposure: str = "low", sensor_type="d405"):
     import stretch.comms.send_realsense as seer
 
     camarr_sock, camb64_sock, camera = seer.initialize(
@@ -145,9 +143,7 @@ class StretchServer:
 
         # Spawn each component as a separate process
         port = base_port
-        serve_protocol_process = multiprocessing.Process(
-            target=serve_protocol, args=(port,)
-        )
+        serve_protocol_process = multiprocessing.Process(target=serve_protocol, args=(port,))
         self._processes.append(serve_protocol_process)
 
         # Spawn each component as a separate process
@@ -155,16 +151,12 @@ class StretchServer:
         port = self._add_cam_process(serve_head_nav_cam, port)
 
         def serve_ee_realsense(port1, port2):
-            return serve_realsense(
-                port1, port2, exposure=ee_exposure, sensor_type="d405"
-            )
+            return serve_realsense(port1, port2, exposure=ee_exposure, sensor_type="d405")
 
         port = self._add_cam_process(serve_ee_realsense, port)
 
         def serve_head_realsense(port1, port2):
-            return serve_realsense(
-                port1, port2, exposure=head_exposure, sensor_type="d435i"
-            )
+            return serve_realsense(port1, port2, exposure=head_exposure, sensor_type="d435i")
 
         port = self._add_cam_process(serve_head_realsense, port)
         port = self._add_aruco_process(serve_aruco, port)
@@ -186,9 +178,7 @@ class StretchServer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="StretchPy robot server")
-    parser.add_argument(
-        "--port", type=int, help="Set the port offset for StretchPy's sockets"
-    )
+    parser.add_argument("--port", type=int, help="Set the port offset for StretchPy's sockets")
     args, _ = parser.parse_known_args()
 
     print(f"StretchPy Server v{stretch.versions.__version__}")

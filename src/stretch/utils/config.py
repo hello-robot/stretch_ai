@@ -35,9 +35,7 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         if os.environ["STRETCHPY_ROOT"]:
             path = os.path.join(os.environ["STRETCHPY_ROOT"], path)
     except KeyError:
-        logger.warning(
-            "HOME_ROBOT_ROOT environment variable not set when trying to read configs!"
-        )
+        logger.warning("HOME_ROBOT_ROOT environment variable not set when trying to read configs!")
 
     # Start with our code's config
     config = Config()
@@ -66,14 +64,10 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
 
 
 # New configuration system
-CONTROL_CONFIG_DIR = str(
-    Path(stretch.__path__[0]).parent.resolve() / "config" / "control"
-)
+CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
 
 
-def load_config(
-    visualize: bool = False, print_images: bool = True, config_path=None, **kwargs
-):
+def load_config(visualize: bool = False, print_images: bool = True, config_path=None, **kwargs):
     """Load config path for real world experiments and use proper presets."""
     if config_path is None:
         # TODO: make sure this is the right default

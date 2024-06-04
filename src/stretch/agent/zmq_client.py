@@ -80,16 +80,19 @@ class HomeRobotZmqClient(RobotClient):
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
         action_send_address = "tcp://*:" + str(self.send_port)
         print(f"Publishing actions on {action_send_address}...")
-        self.send_socket.bind(action_send_address)
 
         # Use remote computer or whatever
         if use_remote_computer:
-            self.address = "tcp://" + robot_ip + ":" + str(self.recv_port)
+            self.recv_address = "tcp://" + robot_ip + ":" + str(self.recv_port)
+            self.send_address = "tcp://" + robot_ip + ":" + str(self.send_port)
         else:
-            self.address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
+            self.recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
+            self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
 
-        print(f"Connecting to {self.address} to receive observations...")
-        self.recv_socket.connect(self.address)
+        print(f"Connecting to {self.recv_address} to receive observations...")
+        self.recv_socket.connect(self.recv_address)
+        print(f"Connecting to {self.send_address} to send action messages...")
+        self.send_socket.connect(self.send_address)
         print("...connected.")
 
         self._obs_lock = Lock()
@@ -108,9 +111,26 @@ class HomeRobotZmqClient(RobotClient):
             compass = self._obs["compass"]
         return np.concatenate([gps, compass], axis=-1)
 
-    def navigate_to(
-        self, xyt: ContinuousNavigationAction, relative=False, blocking=False
-    ):
+    def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
+        """Move the arm to a particular joint configuration.
+
+        Args:
+            joint_angles: 6 or Nx6 array of the joint angles to move to
+            blocking: Whether to block until the motion is complete
+        """
+        if isinstance(joint_angles, list):
+            joint_angles = np.array(joint_angles)
+        assert (
+            joint_angles.shape[-1] == 6
+        ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
+        with self._act_lock:
+            self._next_action["joint"] = joint_angles
+            self._next_action["manip_blocking"] = blocking
+
+        # Blocking is handled in here
+        self.send_action()
+
+    def navigate_to(self, xyt: ContinuousNavigationAction, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
@@ -188,12 +208,8 @@ class HomeRobotZmqClient(RobotClient):
                 if self._obs is not None:
                     pos = self._obs["gps"]
                     ang = self._obs["compass"]
-                    moved_dist = (
-                        np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-                    )
-                    angle_dist = (
-                        angle_difference(ang, last_ang) if last_ang is not None else 0
-                    )
+                    moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
+                    angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
                     not_moving = (
                         last_pos is not None
                         and moved_dist < moving_threshold
@@ -218,9 +234,7 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(0.1)
             t1 = timeit.default_timer()
             if t1 - t0 > 15.0:
-                raise RuntimeError(
-                    f"Timeout waiting for block with step id = {block_id}"
-                )
+                raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
@@ -400,9 +414,7 @@ class HomeRobotZmqClient(RobotClient):
             steps += 1
             if verbose:
                 print("Control mode:", self._control_mode)
-                print(
-                    f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
-                )
+                print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
 
     def start(self) -> bool:

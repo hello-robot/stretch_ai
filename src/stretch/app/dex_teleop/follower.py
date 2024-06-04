@@ -10,14 +10,15 @@ import numpy as np
 import stretch_body.robot as rb
 import zmq
 
-import stretch.demos.dex_teleop.dex_teleop_parameters as dt
-import stretch.demos.dex_teleop.gripper_to_goal as gg
-import stretch.demos.dex_teleop.robot_move as rm
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.gripper_to_goal as gg
+import stretch.app.dex_teleop.robot_move as rm
 import stretch.motion.simple_ik as si
+import stretch.utils.compression as compression
 import stretch.utils.loop_stats as lt
 from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
-from stretch.utils.image import adjust_gamma
+from stretch.utils.image import adjust_gamma, autoAdjustments_with_convertScaleAbs
 
 HEAD_CONFIG = "head_config"
 EE_POS = "wrist_position"
@@ -68,9 +69,7 @@ class DexTeleopFollower:
             self.robot_move = rm.RobotMove(self.robot, speed=robot_speed)
             self.robot_move.print_settings()
 
-            self.robot_move.to_configuration(
-                self.starting_configuration, speed="default"
-            )
+            self.robot_move.to_configuration(self.starting_configuration, speed="default")
             self.robot.push_command()
             self.robot.wait_command()
 
@@ -94,9 +93,7 @@ class DexTeleopFollower:
 
         # Define the center position for the wrist that corresponds with
         # the teleop origin.
-        self.center_wrist_position = self.simple_ik.fk_rotary_base(
-            self.center_configuration
-        )
+        self.center_wrist_position = self.simple_ik.fk_rotary_base(self.center_configuration)
 
         # Create a socket for sending information
         self.context = zmq.Context()
@@ -179,45 +176,80 @@ class DexTeleopFollower:
     def robot_head_forward(self):
         self.set_head_config([0, 0])
 
+    def _get_images(self, from_head: bool = False, verbose: bool = False):
+        """Get the images from the end effector camera"""
+        if from_head:
+            if verbose:
+                print("Getting head images:")
+            depth_frame, color_frame = self.head_cam.get_frames()
+        else:
+            if verbose:
+                print("Getting end effector images:")
+            depth_frame, color_frame = self.ee_cam.get_frames()
+        depth_image = np.asanyarray(depth_frame.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
+
+        if verbose:
+            print(f"{depth_image.shape=} {color_image.shape=}")
+
+        if self.gamma != 1.0:
+            color_image = adjust_gamma(color_image, self.gamma)
+            if verbose:
+                print(f" - gamma adjustment {self.gamma}")
+
+        if self.scaling != 1.0:
+            color_image = cv2.resize(
+                color_image,
+                (0, 0),
+                fx=self.scaling,
+                fy=self.scaling,
+                interpolation=cv2.INTER_AREA,
+            )
+            depth_image = cv2.resize(
+                depth_image,
+                (0, 0),
+                fx=self.scaling,
+                fy=self.scaling,
+                interpolation=cv2.INTER_NEAREST,
+            )
+            if verbose:
+                print(f" - scaled by {self.scaling}")
+
+        if verbose:
+            print(f"{depth_image.shape=} {color_image.shape=}")
+        return depth_image, color_image
+
     def spin_send_images(self, verbose: bool = False):
         """Send the images here as well"""
         loop_timer = lt.LoopStats("d405_sender", target_loop_rate=15)
         depth_camera_info, color_camera_info = self.ee_cam.get_camera_infos()
+        head_depth_camera_info, head_color_camera_info = self.head_cam.get_camera_infos()
         depth_scale = self.ee_cam.get_depth_scale()
+        head_depth_scale = self.head_cam.get_depth_scale()
+
         while not self._done:
             loop_timer.mark_start()
-            depth_frame, color_frame = self.ee_cam.get_frames()
-            depth_image = np.asanyarray(depth_frame.get_data())
-            color_image = np.asanyarray(color_frame.get_data())
+            depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
+            head_depth_image, head_color_image = self._get_images(from_head=True, verbose=verbose)
 
-            if verbose:
-                print(f"{depth_image.shape=} {color_image.shape=}")
+            import timeit
 
-            if self.gamma != 1.0:
-                color_image = adjust_gamma(color_image, self.gamma)
-                if verbose:
-                    print(f" - gamma adjustment {self.gamma}")
-
-            if self.scaling != 1.0:
-                color_image = cv2.resize(
-                    color_image,
-                    (0, 0),
-                    fx=self.scaling,
-                    fy=self.scaling,
-                    interpolation=cv2.INTER_AREA,
-                )
-                depth_image = cv2.resize(
-                    depth_image,
-                    (0, 0),
-                    fx=self.scaling,
-                    fy=self.scaling,
-                    interpolation=cv2.INTER_NEAREST,
-                )
-                if verbose:
-                    print(f" - scaled by {self.scaling}")
-
-            if verbose:
-                print(f"{depth_image.shape=} {color_image.shape=}")
+            t0 = timeit.default_timer()
+            compressed_depth_image = compression.zip_depth(depth_image)
+            compressed_head_depth_image = compression.zip_depth(head_depth_image)
+            # depth_image2 = compression.unzip_depth(compressed_depth_image)
+            t1 = timeit.default_timer()
+            compressed_color_image = compression.to_webp(color_image)
+            compressed_head_color_image = compression.to_webp(head_color_image)
+            # color_image2 = compression.from_webp(compressed_color_image)
+            t2 = timeit.default_timer()
+            print(
+                t1 - t0,
+                f"{len(compressed_depth_image)=}",
+                t2 - t1,
+                f"{len(compressed_color_image)=}",
+            )
+            # breakpoint()
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -228,11 +260,22 @@ class DexTeleopFollower:
             d405_output = {
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,
+                "ee_cam/color_image": compressed_color_image,
+                "ee_cam/color_image/shape": color_image.shape,
+                "ee_cam/depth_image": compressed_depth_image,
+                "ee_cam/depth_image/shape": depth_image.shape,
                 "ee_cam/color_image": color_image,
                 "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,
+                "head_cam/color_camera_info": head_color_camera_info,
+                "head_cam/depth_camera_info": head_depth_camera_info,
+                # "head_cam/color_image": compression.zip(head_color_image),
+                # "head_cam/depth_image": compression.zip(head_depth_image),
+                "head_cam/depth_scale": head_depth_scale,
+                "head_cam/image_gamma": self.gamma,
+                "head_cam/image_scaling": self.scaling,
                 "robot/config": config,
                 "robot/ee_position": ee_pos,
                 "robot/ee_rotation": ee_rot,
@@ -241,7 +284,7 @@ class DexTeleopFollower:
             self.send_socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
-            if verbose:
+            if True or verbose:
                 loop_timer.pretty_print()
 
     def start(self):

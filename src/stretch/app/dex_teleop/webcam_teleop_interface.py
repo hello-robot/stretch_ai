@@ -7,12 +7,13 @@ from copy import deepcopy
 
 import cv2
 import numpy as np
-import stretch_ai.teleop.dex_teleop_parameters as dt
-import stretch_ai.teleop.teleop_aruco_detector as ad
-import stretch_ai.teleop.webcam as wc
 import yaml
 from scipy.spatial.transform import Rotation
 from yaml.loader import SafeLoader
+
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.teleop_aruco_detector as ad
+import stretch.app.dex_teleop.webcam as wc
 
 
 def pixel_from_3d(xyz, camera_info):
@@ -42,12 +43,10 @@ def pixel_to_3d(xy_pix, z_in, camera_info):
 
 
 class WebcamArucoDetector:
-    def __init__(self, tongs_prefix, visualize_detections=False):
+    def __init__(self, tongs_prefix, visualize_detections=False, show_debug_images: bool = False):
 
         # self.webcam = wc.Webcam(fps=30, image_width=800, image_height=448, use_calibration=True)
-        self.webcam = wc.Webcam(
-            fps=30, image_width=1920, image_height=1080, use_calibration=True
-        )
+        self.webcam = wc.Webcam(fps=30, image_width=1920, image_height=1080, use_calibration=True)
         # self.webcam = wc.Webcam(fps=15, image_width=1920, image_height=1080, use_calibration=True)
 
         self.first_frame = True
@@ -55,9 +54,7 @@ class WebcamArucoDetector:
 
         self.marker_info = {}
         aruco_marker_info_file_name = (
-            "./configs/app/dex_teleop/teleop_aruco_marker_info_"
-            + dt.tongs_to_use
-            + ".yaml"
+            "./configs/app/dex_teleop/teleop_aruco_marker_info_" + dt.tongs_to_use + ".yaml"
         )
         with open(aruco_marker_info_file_name) as f:
             self.marker_info = yaml.load(f, Loader=SafeLoader)
@@ -70,9 +67,8 @@ class WebcamArucoDetector:
             )
 
         self.aruco_detector = ad.ArucoDetector(
-            marker_info=self.marker_info, show_debug_images=True
+            marker_info=self.marker_info, show_debug_images=show_debug_images
         )
-        self.aruco_detector.show_debug_images = True
         self.tongs_prefix = tongs_prefix
 
         # define marker names
@@ -133,9 +129,7 @@ class WebcamArucoDetector:
         tongs_left_side_marker = markers.get(self.left_side_name, None)
         tongs_right_side_marker = markers.get(self.right_side_name, None)
 
-        top_visible = (tongs_left_top_marker is not None) and (
-            tongs_right_top_marker is not None
-        )
+        top_visible = (tongs_left_top_marker is not None) and (tongs_right_top_marker is not None)
         bottom_visible = (tongs_left_bottom_marker is not None) and (
             tongs_right_bottom_marker is not None
         )
@@ -177,11 +171,7 @@ class WebcamArucoDetector:
                             self.tongs_pin_joint_to_tong_tip * 100.0
                         )
                     )
-                    print(
-                        "constant_angle = {:.2f} deg".format(
-                            180.0 * (constant_angle / np.pi)
-                        )
-                    )
+                    print("constant_angle = {:.2f} deg".format(180.0 * (constant_angle / np.pi)))
                     print()
 
                 # Variable angle from the isosceles triangle formed by the centers of the bottom ArUco markers and the tongs pin joint.
@@ -200,20 +190,14 @@ class WebcamArucoDetector:
                             distance_between_markers * 100.0
                         )
                     )
-                    print(
-                        "variable_angle = {:.2f} deg".format(
-                            180.0 * (variable_angle / np.pi)
-                        )
-                    )
+                    print("variable_angle = {:.2f} deg".format(180.0 * (variable_angle / np.pi)))
                     print()
 
                 # Find angular correction to find tongs marker orientation from a single side
                 angle_correction = variable_angle - constant_angle
                 if self.debug_side_marker:
                     print(
-                        "angle_correction = {:.2f} deg".format(
-                            180.0 * (angle_correction / np.pi)
-                        )
+                        "angle_correction = {:.2f} deg".format(180.0 * (angle_correction / np.pi))
                     )
 
                 if left_side_visible:
@@ -268,23 +252,15 @@ class WebcamArucoDetector:
 
         else:
             if bottom_visible:
-                left_bottom_min_dist = tongs_left_bottom_marker[
-                    "min_dist_between_corners"
-                ]
-                right_bottom_min_dist = tongs_left_bottom_marker[
-                    "min_dist_between_corners"
-                ]
+                left_bottom_min_dist = tongs_left_bottom_marker["min_dist_between_corners"]
+                right_bottom_min_dist = tongs_left_bottom_marker["min_dist_between_corners"]
                 bottom_min_dist = min(left_bottom_min_dist, right_bottom_min_dist)
             else:
                 bottom_min_dist = -1.0
 
             if front_visible:
-                left_front_min_dist = tongs_left_front_marker[
-                    "min_dist_between_corners"
-                ]
-                right_front_min_dist = tongs_left_front_marker[
-                    "min_dist_between_corners"
-                ]
+                left_front_min_dist = tongs_left_front_marker["min_dist_between_corners"]
+                right_front_min_dist = tongs_left_front_marker["min_dist_between_corners"]
                 front_min_dist = min(left_front_min_dist, right_front_min_dist)
             else:
                 front_min_dist = -1.0
@@ -296,9 +272,7 @@ class WebcamArucoDetector:
             else:
                 top_min_dist = -1.0
 
-            if (bottom_min_dist >= front_min_dist) and (
-                bottom_min_dist >= top_min_dist
-            ):
+            if (bottom_min_dist >= front_min_dist) and (bottom_min_dist >= top_min_dist):
                 # Best visibility is for the bottom markers
 
                 left_pos = tongs_left_bottom_marker["pos"].copy()
@@ -360,14 +334,10 @@ class WebcamArucoDetector:
                 # Adjust positions to match bottom marker positions
                 half_cube_side = self.cube_side / 2.0
                 bottom_left_pos = (
-                    left_pos
-                    - (half_cube_side * left_z_axis)
-                    - (half_cube_side * left_y_axis)
+                    left_pos - (half_cube_side * left_z_axis) - (half_cube_side * left_y_axis)
                 )
                 bottom_right_pos = (
-                    right_pos
-                    - (half_cube_side * right_z_axis)
-                    - (half_cube_side * right_y_axis)
+                    right_pos - (half_cube_side * right_z_axis) - (half_cube_side * right_y_axis)
                 )
 
                 grip_width = np.linalg.norm(bottom_right_pos - bottom_left_pos)
@@ -480,9 +450,7 @@ class WebcamArucoDetector:
                 distance_between_markers = self.tongs_open_grip_width
             hypotenuse = self.tongs_pin_joint_to_marker_center
             opposite_side = distance_between_markers / 2.0
-            adjacent_side = math.sqrt(
-                (hypotenuse * hypotenuse) - (opposite_side * opposite_side)
-            )
+            adjacent_side = math.sqrt((hypotenuse * hypotenuse) - (opposite_side * opposite_side))
             grip_pos = grip_pos + (-(adjacent_side) * grip_y_axis)
 
             virtual_marker_name = "tongs"

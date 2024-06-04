@@ -27,16 +27,10 @@ class Trial(object):
         config_keys = group[base.CONFIG_KEYS][()]
         image_keys = group[base.IMAGE_KEYS][()]
         temporal_keys = (
-            str(temporal_keys, "utf-8")
-            if isinstance(temporal_keys, bytes)
-            else temporal_keys
+            str(temporal_keys, "utf-8") if isinstance(temporal_keys, bytes) else temporal_keys
         )
-        config_keys = (
-            str(config_keys, "utf-8") if isinstance(config_keys, bytes) else config_keys
-        )
-        image_keys = (
-            str(image_keys, "utf-8") if isinstance(image_keys, bytes) else image_keys
-        )
+        config_keys = str(config_keys, "utf-8") if isinstance(config_keys, bytes) else config_keys
+        image_keys = str(image_keys, "utf-8") if isinstance(image_keys, bytes) else image_keys
         self.temporal_keys = temporal_keys.split(",")
         self.config_keys = config_keys.split(",")
         self.image_keys = image_keys.split(",")
@@ -122,16 +116,13 @@ class DatasetBase(torch.utils.data.Dataset):
             # Check each file to see how many entires it has
             with h5py.File(filename, "r") as h5:
                 for key, h5_trial in h5.items():
-                    if not self.trial_list or (
-                        self.trial_list and key in self.trial_list
-                    ):
+                    if not self.trial_list or (self.trial_list and key in self.trial_list):
                         # check if key demo_status exists, if it does it communicates
                         # whether the trial is a success or failure. Do not include
                         # failures in the dataset. If key does not exist, Trial
                         # is assumed success and included.
                         if (
-                            "demo_status" in h5_trial.keys()
-                            and h5_trial["demo_status"][()] == 1
+                            "demo_status" in h5_trial.keys() and h5_trial["demo_status"][()] == 1
                         ) or "demo_status" not in h5_trial.keys():
                             # Open the trial and extract metadata
                             trial = self.Trial(key, filename, self, h5_trial)

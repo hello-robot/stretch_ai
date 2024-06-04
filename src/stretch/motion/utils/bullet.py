@@ -26,9 +26,7 @@ class BulletRobotModel(RobotModel):
         self.backend = PbClient(visualize=visualize)
         if urdf_path is not None:
             # Create object reference
-            self.ref = self.backend.add_articulated_object(
-                name, urdf_path, assets_path=assets_path
-            )
+            self.ref = self.backend.add_articulated_object(name, urdf_path, assets_path=assets_path)
 
     def get_backend(self):
         """Return model of the robot in bullet - environment for 3d collision checks"""
@@ -61,9 +59,7 @@ class PybulletIKSolver(IKSolverBase):
 
         self.ee_link_name = ee_link_name
         self.ee_idx = self.get_link_names().index(ee_link_name)
-        self.controlled_joints = self.robot.controllable_joints_to_indices(
-            controlled_joints
-        )
+        self.controlled_joints = self.robot.controllable_joints_to_indices(controlled_joints)
         self.controlled_joints = np.array(self.controlled_joints, dtype=np.int32)
 
     def get_joint_names(self):
@@ -152,10 +148,7 @@ class PybulletIKSolver(IKSolverBase):
                 success = True
 
                 if self.range is not None:
-                    if not (
-                        np.all(q_out > self.range[:, 0])
-                        and np.all(q_out < self.range[:, 1])
-                    ):
+                    if not (np.all(q_out > self.range[:, 0]) and np.all(q_out < self.range[:, 1])):
                         if verbose:
                             print("------")
                             print("IK failure:")

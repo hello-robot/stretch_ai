@@ -88,14 +88,14 @@ Dex teleop is a low-cost system for providing user demonstrations of dexterous s
 
 To start it, on the robot, run:
 ```bash
-python -m stretch.demos.dex_teleop.follower
+python -m stretch.app.dex_teleop.follower
 # You can run it in fast mode once you are comfortable with execution
-python -m stretch.demos.dex_teleop.follower --fast
+python -m stretch.app.dex_teleop.follower --fast
 ```
 
 On a remote, GPU-enabled laptop or workstation connected to the [dex telop setup](https://github.com/hello-robot/stretch_dex_teleop):
 ```bash
-python -m stretch.demos.dex_teleop.leader
+python -m stretch.app.dex_teleop.leader
 ```
 
 [Read the Dex Teleop documentation](docs/dex_teleop.md) for more details.
@@ -103,12 +103,12 @@ python -m stretch.demos.dex_teleop.leader
 ### OVMM Exploration
 
 ```bash
-python -m stretch.demos.ovmm.run
+python -m stretch.app.ovmm.run
 ```
 
 You can show visualizations with:
 ```bash
-python -m stretch.demos.ovmm.run --show-intermediate-maps --show-final-map
+python -m stretch.app.ovmm.run --show-intermediate-maps --show-final-map
 ```
 The flag `--show-intermediate-maps` shows the 3d map after each large motion (waypoint reached), and `--show-final-map` shows the final map after exploration is done.
 
@@ -118,12 +118,12 @@ It will record a PCD/PKL file which can be interpreted with the `read_sparse_vox
 
 You can test the voxel code on a captured pickle file:
 ```bash
-python -m stretch.demos.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
 ```
 
 Optional open3d visualization of the scene:
 ```bash
-python -m stretch.demos.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
 ### 

@@ -35,15 +35,11 @@ class LoopStats:
         print(f"--------- LoopStats {self.loop_name} -----------")
         print(f"Target rate (Hz): {self.target_loop_rate:.2f}")
         print(f"Current rate (Hz): {self.status['avg_rate_hz']:.2f}")
-        print(
-            f"Standard deviation of rate history (Hz): {self.status['std_rate_hz']:.2f}"
-        )
+        print(f"Standard deviation of rate history (Hz): {self.status['std_rate_hz']:.2f}")
         print(f"Min rate (Hz): {self.status['min_rate_hz']:.2f}")
         print(f"Max rate (Hz): {self.status['max_rate_hz']:.2f}")
         print(f"Supportable rate (Hz): {self.status['supportable_rate_hz']:.2f}")
-        print(
-            f"Missed / Total: {self.status['missed_loops']} out of {self.status['num_loops']}"
-        )
+        print(f"Missed / Total: {self.status['missed_loops']} out of {self.status['num_loops']}")
 
     def mark_start(self):
         self.status["num_loops"] += 1
@@ -54,15 +50,9 @@ class LoopStats:
             return
 
         # Calculate current/min/max loop rate
-        self.status["curr_rate_hz"] = 1.0 / (
-            (self.ts_loop_start - self.last_ts_loop_start) * 1e-9
-        )
-        self.status["min_rate_hz"] = min(
-            self.status["curr_rate_hz"], self.status["min_rate_hz"]
-        )
-        self.status["max_rate_hz"] = max(
-            self.status["curr_rate_hz"], self.status["max_rate_hz"]
-        )
+        self.status["curr_rate_hz"] = 1.0 / ((self.ts_loop_start - self.last_ts_loop_start) * 1e-9)
+        self.status["min_rate_hz"] = min(self.status["curr_rate_hz"], self.status["min_rate_hz"])
+        self.status["max_rate_hz"] = max(self.status["curr_rate_hz"], self.status["max_rate_hz"])
 
         # Calculate average and supportable loop rate
         if len(self.curr_rate_history) >= self.n_history:
@@ -75,15 +65,11 @@ class LoopStats:
             return
         if len(self.supportable_rate_history) >= self.n_history:
             self.supportable_rate_history.pop(0)
-        self.supportable_rate_history.append(
-            1.0 / (self.status["execution_time_ns"] * 1e-9)
-        )
+        self.supportable_rate_history.append(1.0 / (self.status["execution_time_ns"] * 1e-9))
         self.status["supportable_rate_hz"] = np.mean(self.supportable_rate_history)
 
         # Calculate sleep time to achieve desired loop rate
-        self.sleep_time_s = (1 / self.target_loop_rate) - (
-            self.status["execution_time_ns"] * 1e-9
-        )
+        self.sleep_time_s = (1 / self.target_loop_rate) - (self.status["execution_time_ns"] * 1e-9)
         if (
             self.sleep_time_s < 0.0 and time.time() - self.ts_0 > 5.0
         ):  # Allow 5s for timing to stabilize on startup
@@ -102,9 +88,7 @@ class LoopStats:
         import matplotlib.pyplot as plt
 
         fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
-        fig.suptitle(
-            "Distribution of loop rate (Hz). Target of %.2f " % self.target_loop_rate
-        )
+        fig.suptitle("Distribution of loop rate (Hz). Target of %.2f " % self.target_loop_rate)
         axs.hist(
             x=self.curr_rate_history,
             bins="auto",

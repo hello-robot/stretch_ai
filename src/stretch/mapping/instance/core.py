@@ -76,9 +76,7 @@ class InstanceView:
         import cv2
 
         full_image = self.cropped_image
-        full_image = (
-            (full_image * 255).cpu().numpy().astype(np.uint8).transpose(1, 2, 0)
-        )
+        full_image = (full_image * 255).cpu().numpy().astype(np.uint8).transpose(1, 2, 0)
         # overlay mask on image
         mask = np.zeros(full_image.shape, full_image.dtype)
         mask[:, :] = (0, 0, 255)
@@ -175,9 +173,7 @@ class Instance:
         else:
             # Right now we concatenate point clouds
             # To keep the number of points manageable, we could make the pointcloud a VoxelizedPointcloud class
-            self.point_cloud = torch.cat(
-                [self.point_cloud, instance_view.point_cloud], dim=0
-            )
+            self.point_cloud = torch.cat([self.point_cloud, instance_view.point_cloud], dim=0)
             if self.point_cloud_rgb is not None:
                 self.point_cloud_rgb = torch.cat(
                     [self.point_cloud_rgb, instance_view.point_cloud_rgb],
@@ -196,9 +192,9 @@ class Instance:
             elif self.score_aggregation_method == "max":
                 self.score = max(self.score, instance_view.score)
             elif self.score_aggregation_method == "mean":
-                self.score = (
-                    self.score * len(self.instance_views) + instance_view.score
-                ) / (len(self.instance_views) + 1)
+                self.score = (self.score * len(self.instance_views) + instance_view.score) / (
+                    len(self.instance_views) + 1
+                )
             else:
                 raise NotImplementedError(
                     f'Unknown score_aggregation_method "{self.score_aggregation_method}"'
@@ -260,9 +256,7 @@ class Instance:
         import matplotlib.pyplot as plt
 
         n_views = len(self.instance_views)
-        n_rows = (
-            n_views + n_col - 1
-        ) // n_col  # Calculate the number of rows based on n_col
+        n_rows = (n_views + n_col - 1) // n_col  # Calculate the number of rows based on n_col
 
         plt.figure(figsize=(n_col * imsize, n_rows * imsize))
 
@@ -278,9 +272,7 @@ class Instance:
                 ax = axarr[i]
             else:
                 ax = axarr
-            cropped_image_np = torch.from_numpy(
-                view.cropped_image.detach().cpu().numpy()
-            )
+            cropped_image_np = torch.from_numpy(view.cropped_image.detach().cpu().numpy())
             mask_np = torch.from_numpy(view.mask.detach().cpu().numpy())
             if (
                 mask_np.shape[0] != cropped_image_np.shape[0]
@@ -289,9 +281,9 @@ class Instance:
                 mask_np = mask_np[
                     view.bbox[0, 0] : view.bbox[1, 0], view.bbox[0, 1] : view.bbox[1, 1]
                 ]
-            display_im = cropped_image_np * mask_out_opacity + (
-                1 - mask_out_opacity
-            ) * (cropped_image_np * (mask_np))
+            display_im = cropped_image_np * mask_out_opacity + (1 - mask_out_opacity) * (
+                cropped_image_np * (mask_np)
+            )
             ax.imshow((display_im))
             ax.set_title(f"View {i}")
 

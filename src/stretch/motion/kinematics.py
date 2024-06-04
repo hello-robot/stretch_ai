@@ -167,9 +167,7 @@ STRETCH_TO_GRASP[:3, 3] = np.array([0, 0, STRETCH_STANDOFF_DISTANCE])
 # Other stretch parameters
 STRETCH_GRIPPER_OPEN = 0.22
 STRETCH_GRIPPER_CLOSE = -0.2
-STRETCH_HEAD_CAMERA_ROTATIONS = (
-    3  # number of counterclockwise rotations for the head camera
-)
+STRETCH_HEAD_CAMERA_ROTATIONS = 3  # number of counterclockwise rotations for the head camera
 
 # For EXTEND_ARM action
 STRETCH_ARM_EXTENSION = 0.8
@@ -335,9 +333,7 @@ class HelloStretchKinematics:
             manip_urdf = MANIP_STRETCH_URDF
         else:
             full_body_urdf = os.path.join(urdf_path, "planner_calibrated.urdf")
-            manip_urdf = os.path.join(
-                urdf_path, "planner_calibrated_manipulation_mode.urdf"
-            )
+            manip_urdf = os.path.join(urdf_path, "planner_calibrated_manipulation_mode.urdf")
         self.full_body_urdf_path = os.path.join(root, full_body_urdf)
         self.manip_mode_urdf_path = os.path.join(root, manip_urdf)
         self.name = name
@@ -360,12 +356,8 @@ class HelloStretchKinematics:
         # self.set_joint_position = self.ref.set_joint_position
 
         self._ik_type = ik_type
-        self._ee_link_name = (
-            ee_link_name if ee_link_name is not None else self.default_ee_link_name
-        )
-        self._grasp_frame = (
-            grasp_frame if grasp_frame is not None else STRETCH_GRASP_FRAME
-        )
+        self._ee_link_name = ee_link_name if ee_link_name is not None else self.default_ee_link_name
+        self._grasp_frame = grasp_frame if grasp_frame is not None else STRETCH_GRASP_FRAME
         self._manip_mode_controlled_joints = (
             manip_mode_controlled_joints
             if manip_mode_controlled_joints is not None
@@ -558,9 +550,7 @@ class HelloStretchKinematics:
         head_height = 1.2
         distance = np.linalg.norm([dx, dy])
 
-        look_action[HelloStretchIdx.HEAD_TILT] = -1 * np.arctan(
-            (head_height - xyz[2]) / distance
-        )
+        look_action[HelloStretchIdx.HEAD_TILT] = -1 * np.arctan((head_height - xyz[2]) / distance)
 
         return [action, look_action]
 
@@ -587,9 +577,7 @@ class HelloStretchKinematics:
                 qi, theta0, theta, step[HelloStretchIdx.BASE_THETA]
             ):
                 yield qi, ai
-            for qi, ai in self.interpolate_xy(
-                qi, xy0, dist, step[HelloStretchIdx.BASE_X]
-            ):
+            for qi, ai in self.interpolate_xy(qi, xy0, dist, step[HelloStretchIdx.BASE_X]):
                 yield qi, ai
         else:
             theta = theta0

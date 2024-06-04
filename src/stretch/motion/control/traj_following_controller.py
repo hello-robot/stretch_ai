@@ -35,9 +35,7 @@ class TrajFollower:
         self.e_int = np.zeros(3)
         self._t_prev = 0
 
-    def update_trajectory(
-        self, traj: Callable[[float], Tuple[np.ndarray, np.ndarray, bool]]
-    ):
+    def update_trajectory(self, traj: Callable[[float], Tuple[np.ndarray, np.ndarray, bool]]):
         with self._traj_update_lock:
             self.traj_buffer = traj
 

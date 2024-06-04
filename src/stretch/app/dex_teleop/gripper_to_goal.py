@@ -15,13 +15,13 @@ from hello_helpers import hello_misc as hm
 from scipy.spatial.transform import Rotation
 from stretch_body.robot_params import RobotParams
 
-import stretch.demos.dex_teleop.dex_teleop_parameters as dt
-import stretch.demos.dex_teleop.robot_move as rm
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.robot_move as rm
 import stretch.motion.simple_ik as si
 import stretch.utils.loop_stats as lt
 
 # This tells us if we are using the gripper center for control or not
-from stretch.demos.dex_teleop.leader import use_gripper_center
+from stretch.app.dex_teleop.leader import use_gripper_center
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
 from stretch.utils.geometry import get_rotation_from_xyz
 
@@ -225,13 +225,8 @@ class GripperToGoal:
 
         ###############################
         # INPUT: wrist_position
-        if (
-            "use_gripper_center" in config
-            and config["use_gripper_center"] != use_gripper_center
-        ):
-            raise RuntimeError(
-                "leader and follower are not set up to use the same target poses."
-            )
+        if "use_gripper_center" in config and config["use_gripper_center"] != use_gripper_center:
+            raise RuntimeError("leader and follower are not set up to use the same target poses.")
 
         # Use Simple IK to find configurations for the
         # mobile base angle, lift distance, and arm
@@ -266,16 +261,11 @@ class GripperToGoal:
             # position configuration used to command the
             # robot.
             self.filtered_wrist_position_configuration = (
-                (1.0 - self.wrist_position_filter)
-                * self.filtered_wrist_position_configuration
+                (1.0 - self.wrist_position_filter) * self.filtered_wrist_position_configuration
             ) + (self.wrist_position_filter * new_wrist_position_configuration)
 
-            new_goal_configuration[
-                "joint_lift"
-            ] = self.filtered_wrist_position_configuration[1]
-            new_goal_configuration[
-                "joint_arm_l0"
-            ] = self.filtered_wrist_position_configuration[2]
+            new_goal_configuration["joint_lift"] = self.filtered_wrist_position_configuration[1]
+            new_goal_configuration["joint_arm_l0"] = self.filtered_wrist_position_configuration[2]
 
             if self._use_simple_gripper_rules:
                 self.simple_ik.clip_with_joint_limits(new_goal_configuration)
@@ -286,9 +276,7 @@ class GripperToGoal:
             # INPUT: grip_width between 0.0 and 1.0
 
             if (grip_width is not None) and (grip_width > -1000.0):
-                new_goal_configuration["stretch_gripper"] = self.grip_range * (
-                    grip_width - 0.5
-                )
+                new_goal_configuration["stretch_gripper"] = self.grip_range * (grip_width - 0.5)
 
             ##################################################
             # INPUT: x_axis, y_axis, z_axis
@@ -349,9 +337,7 @@ class GripperToGoal:
             #
             extreme_difference_violated = False
             if self.drop_extreme_wrist_orientation_change:
-                prev_wrist_yaw = self.prev_commanded_wrist_orientation[
-                    "joint_wrist_yaw"
-                ]
+                prev_wrist_yaw = self.prev_commanded_wrist_orientation["joint_wrist_yaw"]
                 if prev_wrist_yaw is not None:
                     diff = abs(wrist_yaw - prev_wrist_yaw)
                     if diff > self.max_allowed_wrist_yaw_change:
@@ -361,9 +347,7 @@ class GripperToGoal:
                             )
                         )
                         extreme_difference_violated = True
-                prev_wrist_roll = self.prev_commanded_wrist_orientation[
-                    "joint_wrist_roll"
-                ]
+                prev_wrist_roll = self.prev_commanded_wrist_orientation["joint_wrist_roll"]
                 if prev_wrist_roll is not None:
                     diff = abs(wrist_roll - prev_wrist_roll)
                     if diff > self.max_allowed_wrist_roll_change:
@@ -387,19 +371,12 @@ class GripperToGoal:
                 # orientation configuration used to command the
                 # robot.
                 self.filtered_wrist_orientation = (
-                    (1.0 - self.wrist_orientation_filter)
-                    * self.filtered_wrist_orientation
+                    (1.0 - self.wrist_orientation_filter) * self.filtered_wrist_orientation
                 ) + (self.wrist_orientation_filter * new_wrist_orientation)
 
-                new_goal_configuration[
-                    "joint_wrist_yaw"
-                ] = self.filtered_wrist_orientation[0]
-                new_goal_configuration[
-                    "joint_wrist_pitch"
-                ] = self.filtered_wrist_orientation[1]
-                new_goal_configuration[
-                    "joint_wrist_roll"
-                ] = self.filtered_wrist_orientation[2]
+                new_goal_configuration["joint_wrist_yaw"] = self.filtered_wrist_orientation[0]
+                new_goal_configuration["joint_wrist_pitch"] = self.filtered_wrist_orientation[1]
+                new_goal_configuration["joint_wrist_roll"] = self.filtered_wrist_orientation[2]
 
                 self.prev_commanded_wrist_orientation = {
                     "joint_wrist_yaw": self.filtered_wrist_orientation[0],
@@ -435,8 +412,7 @@ class GripperToGoal:
 
             # Figure out how much we are allowed to rotate left or right
             new_goal_configuration["joint_mobile_base_rotate_by"] = np.clip(
-                new_goal_configuration["joint_mobile_base_rotation"]
-                - current_mobile_base_angle,
+                new_goal_configuration["joint_mobile_base_rotation"] - current_mobile_base_angle,
                 -self.max_rotation_change,
                 self.max_rotation_change,
             )
@@ -454,18 +430,14 @@ class GripperToGoal:
             if self.robot_allowed_to_move:
                 if nan_in_configuration(new_goal_configuration):
                     print()
-                    print(
-                        "******************************************************************"
-                    )
+                    print("******************************************************************")
                     print(
                         "WARNING: dex_teleop: new_goal_configuration has a nan, so skipping execution on the robot"
                     )
                     print()
                     print("     new_goal_configuration =", new_goal_configuration)
                     print()
-                    print(
-                        "******************************************************************"
-                    )
+                    print("******************************************************************")
                     print()
                 else:
                     self.robot_move.to_configuration(

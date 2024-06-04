@@ -3,17 +3,16 @@ import pprint as pp
 from multiprocessing import shared_memory
 
 import numpy as np
-import stretch_ai.motion.simple_ik as si
-import stretch_ai.teleop.dex_teleop_parameters as dt
-import stretch_ai.teleop.webcam_teleop_interface as wt
+
+import stretch.motion.simple_ik as si
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.webcam_teleop_interface as wt
 
 
 class GoalFromMarkers:
     """Compute a goal based on the locations of detected aruco markers."""
 
-    def __init__(
-        self, teleop_origin, initial_center_wrist_position, slide_lift_range=False
-    ):
+    def __init__(self, teleop_origin, initial_center_wrist_position, slide_lift_range=False):
 
         print("GoalFromMarkers: teleop_origin =", teleop_origin)
         print(
@@ -61,12 +60,8 @@ class GoalFromMarkers:
 
         # These values determine when the lift range should be slid up
         # or down.
-        self.slide_lift_range_down = (
-            self.tongs_min_dist_from_camera + self.sliding_region_height
-        )
-        self.slide_lift_range_up = (
-            self.tongs_max_dist_from_camera - self.sliding_region_height
-        )
+        self.slide_lift_range_down = self.tongs_min_dist_from_camera + self.sliding_region_height
+        self.slide_lift_range_up = self.tongs_max_dist_from_camera - self.sliding_region_height
 
         # The tongs can be moved over a range of distances from the
         # camera to actively control the lift. This is the height of
@@ -87,33 +82,21 @@ class GoalFromMarkers:
         self.min_goal_wrist_position_z = dt.goal_min_position_z
 
         self.max_lift_range_offset = (
-            (self.max_goal_wrist_position_z - self.center_wrist_position[2])
-            + self.teleop_origin[2]
+            (self.max_goal_wrist_position_z - self.center_wrist_position[2]) + self.teleop_origin[2]
         ) - (self.tongs_max_dist_from_camera - self.sliding_region_height)
 
         self.min_lift_range_offset = (
-            (self.min_goal_wrist_position_z - self.center_wrist_position[2])
-            + self.teleop_origin[2]
+            (self.min_goal_wrist_position_z - self.center_wrist_position[2]) + self.teleop_origin[2]
         ) - (self.tongs_min_dist_from_camera + self.sliding_region_height)
 
-        print(
-            "self.min_lift_range_offset = {:.2f} cm".format(
-                self.min_lift_range_offset * 100.0
-            )
-        )
-        print(
-            "self.max_lift_range_offset = {:.2f} cm".format(
-                self.max_lift_range_offset * 100.0
-            )
-        )
+        print("self.min_lift_range_offset = {:.2f} cm".format(self.min_lift_range_offset * 100.0))
+        print("self.max_lift_range_offset = {:.2f} cm".format(self.max_lift_range_offset * 100.0))
 
         # Initialized the offset.
         self.lift_range_offset = 0.0
 
         # Set how fast the lift will be translated when being slid.
-        self.lift_range_offset_change_per_timestep = (
-            dt.lift_range_offset_change_per_timestep
-        )
+        self.lift_range_offset_change_per_timestep = dt.lift_range_offset_change_per_timestep
 
         self.in_sliding_region = False
 
@@ -166,23 +149,15 @@ class GoalFromMarkers:
                             self.in_sliding_region = True
                         if dist_from_camera < self.slide_lift_range_down:
                             self.lift_range_offset = (
-                                self.lift_range_offset
-                                - self.lift_range_offset_change_per_timestep
+                                self.lift_range_offset - self.lift_range_offset_change_per_timestep
                             )
-                            teleop_marker_position_in_camera_frame[
-                                2
-                            ] = self.slide_lift_range_down
-                            teleop_marker_position_in_camera_frame[
-                                2
-                            ] = self.slide_lift_range_down
+                            teleop_marker_position_in_camera_frame[2] = self.slide_lift_range_down
+                            teleop_marker_position_in_camera_frame[2] = self.slide_lift_range_down
                         elif dist_from_camera > self.slide_lift_range_up:
                             self.lift_range_offset = (
-                                self.lift_range_offset
-                                + self.lift_range_offset_change_per_timestep
+                                self.lift_range_offset + self.lift_range_offset_change_per_timestep
                             )
-                            teleop_marker_position_in_camera_frame[
-                                2
-                            ] = self.slide_lift_range_up
+                            teleop_marker_position_in_camera_frame[2] = self.slide_lift_range_up
                         self.lift_range_offset = min(
                             self.max_lift_range_offset, self.lift_range_offset
                         )
@@ -203,9 +178,7 @@ class GoalFromMarkers:
                     goal_wrist_position = (
                         teleop_marker_position_in_camera_frame - self.teleop_origin
                     ) + self.center_wrist_position
-                    goal_wrist_position[2] = (
-                        goal_wrist_position[2] + self.lift_range_offset
-                    )
+                    goal_wrist_position[2] = goal_wrist_position[2] + self.lift_range_offset
 
                     # If the gripper width marker (virtual or real)
                     # has been observed, use it to command the robot's
@@ -215,9 +188,7 @@ class GoalFromMarkers:
                         grip_width = grip_width_marker["info"]["grip_width"]
                         # convert to value between 0.0 and 1.0
                         goal_grip_width = (
-                            np.clip(
-                                grip_width, self.min_finger_width, self.max_finger_width
-                            )
+                            np.clip(grip_width, self.min_finger_width, self.max_finger_width)
                             - self.min_finger_width
                         ) / (self.max_finger_width - self.min_finger_width)
                         # convert to value between -100.0 and 100.0

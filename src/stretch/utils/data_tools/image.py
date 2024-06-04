@@ -44,9 +44,7 @@ def torch_to_bytes(img: np.ndarray) -> bytes:
     return img_to_bytes(img)
 
 
-def png_to_gif(
-    group: h5py.Group, key: str, name: str, save=True, height=None, width=None
-):
+def png_to_gif(group: h5py.Group, key: str, name: str, save=True, height=None, width=None):
     """
     Write key out as a gif
     """
@@ -89,9 +87,7 @@ def schema_to_gifs(filename: str):
         gif_name = group_name + ".gif"
         for key in keys:
             if key in grp.keys():
-                gifs.append(
-                    png_to_gif(grp, key, name="", height=120, width=155, save=False)
-                )
+                gifs.append(png_to_gif(grp, key, name="", height=120, width=155, save=False))
         # TODO logic for concatenating the gifs and saving with group's name
         concatenated_gif = None
         for gif in gifs:

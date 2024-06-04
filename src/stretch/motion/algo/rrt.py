@@ -111,9 +111,7 @@ class RRT(Planner):
         next_state: Optional[np.ndarray] = None,
     ) -> PlanResult:
         """Continue planning for a while. In case you want to try for anytime planning."""
-        assert (
-            self.goal_state is not None
-        ), "no goal provided with a call to plan(start, goal)"
+        assert self.goal_state is not None, "no goal provided with a call to plan(start, goal)"
         assert (
             self.start_time is not None
         ), "does not look like you started planning with plan(start, goal)"

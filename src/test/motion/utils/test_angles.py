@@ -41,23 +41,17 @@ def test3():
 
 def test4():
     print("--- 4 ---")
-    _eval_angle_difference(
-        np.pi, 2 * np.pi - 0.1, expected=(np.pi - 0.1), expected_step=1
-    )
+    _eval_angle_difference(np.pi, 2 * np.pi - 0.1, expected=(np.pi - 0.1), expected_step=1)
 
 
 def test5():
     print("--- 5 ---")
-    _eval_angle_difference(
-        -2 * np.pi, np.pi + 0.1, expected=np.pi - 0.1, expected_step=-1
-    )
+    _eval_angle_difference(-2 * np.pi, np.pi + 0.1, expected=np.pi - 0.1, expected_step=-1)
 
 
 def test6():
     print("--- 6 ---")
-    _eval_angle_difference(
-        -np.pi / 2 + 0.1, np.pi, expected=np.pi / 2 + 0.1, expected_step=-1
-    )
+    _eval_angle_difference(-np.pi / 2 + 0.1, np.pi, expected=np.pi / 2 + 0.1, expected_step=-1)
 
 
 def test7():

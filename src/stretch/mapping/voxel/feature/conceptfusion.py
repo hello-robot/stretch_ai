@@ -140,9 +140,7 @@ class ConceptFusion:
 
     def set_vocabulary(self, class_id_to_class_names: Dict[int, str]):
         self.class_id_to_class_names = class_id_to_class_names
-        self.class_names_to_class_id = {
-            v: k for k, v in class_id_to_class_names.items()
-        }
+        self.class_names_to_class_id = {v: k for k, v in class_id_to_class_names.items()}
 
     def generate_global_features(
         self,
@@ -155,9 +153,7 @@ class ConceptFusion:
             global_feat /= global_feat.norm(dim=-1, keepdim=True)
 
         global_feat = global_feat.half().to(self.device)
-        global_feat = torch.nn.functional.normalize(
-            global_feat, dim=-1
-        )  # --> (1, 1024)
+        global_feat = torch.nn.functional.normalize(global_feat, dim=-1)  # --> (1, 1024)
 
         if self.feat_dim is None:
             self.feat_dim = global_feat.shape[-1]
@@ -223,15 +219,13 @@ class ConceptFusion:
                 + (1 - softmax_scores[maskidx]) * feat_per_roi[maskidx]
             )
             _weighted_feat = torch.nn.functional.normalize(_weighted_feat, dim=-1)
-            outfeat[
-                roi_nonzero_inds[maskidx][:, 0], roi_nonzero_inds[maskidx][:, 1]
-            ] += (_weighted_feat[0].detach().half())
+            outfeat[roi_nonzero_inds[maskidx][:, 0], roi_nonzero_inds[maskidx][:, 1]] += (
+                _weighted_feat[0].detach().half()
+            )
             outfeat[
                 roi_nonzero_inds[maskidx][:, 0], roi_nonzero_inds[maskidx][:, 1]
             ] = torch.nn.functional.normalize(
-                outfeat[
-                    roi_nonzero_inds[maskidx][:, 0], roi_nonzero_inds[maskidx][:, 1]
-                ].float(),
+                outfeat[roi_nonzero_inds[maskidx][:, 0], roi_nonzero_inds[maskidx][:, 1]].float(),
                 dim=-1,
             ).half()
 
@@ -265,9 +259,7 @@ class ConceptFusion:
         similarity = self.cosine_similarity(textfeat, map_features)
 
         # We use relative similarity
-        similarity = (similarity - similarity.min()) / (
-            similarity.max() - similarity.min() + 1e-12
-        )
+        similarity = (similarity - similarity.min()) / (similarity.max() - similarity.min() + 1e-12)
 
         if self.similarity_params.viz_type == "topk":
             # Viz topk points
@@ -304,9 +296,7 @@ class ConceptFusion:
         textfeat = textfeat.unsqueeze(1).repeat(1, pc_feat.shape[0], 1)
         pc_feat_expanded = pc_feat.unsqueeze(0).repeat(textfeat.shape[0], 1, 1)
 
-        similarity = self.cosine_similarity(
-            textfeat, pc_feat_expanded
-        )  # [n_points, n_classes]
+        similarity = self.cosine_similarity(textfeat, pc_feat_expanded)  # [n_points, n_classes]
 
         del pc_feat_expanded
 
@@ -315,8 +305,7 @@ class ConceptFusion:
         instances_dict = {}
         for idx, class_name in enumerate(queries):
             selected_inds = torch.nonzero(
-                (point_class == idx)
-                & (similarity[idx] > self.similarity_params.similarity_thresh)
+                (point_class == idx) & (similarity[idx] > self.similarity_params.similarity_thresh)
             ).squeeze(1)
 
             pc_feat_objects = pc_feat[selected_inds]
@@ -400,16 +389,12 @@ class ConceptFusion:
                 camera_pose.unsqueeze(0),
                 original_intrinsics.inverse()[:3, :3].unsqueeze(0),
             )
-            valid_depth = torch.full_like(
-                depth.squeeze(0), fill_value=True, dtype=torch.bool
-            )
+            valid_depth = torch.full_like(depth.squeeze(0), fill_value=True, dtype=torch.bool)
             if depth is not None:
                 valid_depth = (depth > self.min_depth) & (depth < self.max_depth)
             valid_depth = valid_depth.flatten()
             xyz = xyz[valid_depth]
-            features = outfeat.reshape(-1, outfeat.shape[-1])[valid_depth].to(
-                self.device
-            )
+            features = outfeat.reshape(-1, outfeat.shape[-1])[valid_depth].to(self.device)
             rgb = (
                 torch.tensor(img, device=self.device)
                 .reshape(-1, 3)[valid_depth]
@@ -621,15 +606,10 @@ class ConceptFusion:
         original_image.save(file_path)
 
         # save segmentation masks
-        segmentation_image = torch.zeros(
-            original_image.size[0], original_image.size[0], 3
-        )
+        segmentation_image = torch.zeros(original_image.size[0], original_image.size[0], 3)
         for i, mask in enumerate(masks):
             segmentation_image += (
-                torch.from_numpy(mask["segmentation"])
-                .unsqueeze(-1)
-                .repeat(1, 1, 3)
-                .float()
+                torch.from_numpy(mask["segmentation"]).unsqueeze(-1).repeat(1, 1, 3).float()
                 * torch.tensor(custom_palette[i % 24])
                 * 255.0
             )
@@ -651,7 +631,5 @@ def write_pointcloud(filename, xyz_points, rgb_points=None):
     ), "Input RGB colors should be Nx3 float array and have same size as input XYZ points"
 
     rgb_points = [rgb_points] if rgb_points is not None else []
-    pointcloud = pytorch3d.structures.Pointclouds(
-        points=[xyz_points], features=rgb_points
-    )
+    pointcloud = pytorch3d.structures.Pointclouds(points=[xyz_points], features=rgb_points)
     pytorch3d.io.IO().save_pointcloud(pointcloud)

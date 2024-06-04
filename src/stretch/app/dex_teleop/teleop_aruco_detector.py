@@ -124,14 +124,10 @@ class ArucoMarkerCollection:
         self.aruco_detection_parameters = aruco.DetectorParameters()
         # Apparently available in OpenCV 3.4.1, but not OpenCV 3.2.0.
         # self.aruco_detection_parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
-        self.aruco_detection_parameters.cornerRefinementMethod = (
-            aruco.CORNER_REFINE_APRILTAG
-        )
+        self.aruco_detection_parameters.cornerRefinementMethod = aruco.CORNER_REFINE_APRILTAG
         # self.aruco_detection_parameters.cornerRefinementWinSize = 2
         self.collection = {}
-        self.detector = aruco.ArucoDetector(
-            self.aruco_dict, self.aruco_detection_parameters
-        )
+        self.detector = aruco.ArucoDetector(self.aruco_dict, self.aruco_detection_parameters)
         self.frame_number = 0
 
         # Configuring slightly faster teleop
@@ -171,9 +167,7 @@ class ArucoMarkerCollection:
                 aruco_id = int(aruco_id)
                 marker = self.collection.get(aruco_id, None)
                 if marker is None:
-                    new_marker = ArucoMarker(
-                        aruco_id, self.marker_info, self.show_debug_images
-                    )
+                    new_marker = ArucoMarker(aruco_id, self.marker_info, self.show_debug_images)
                     self.collection[aruco_id] = new_marker
 
                 self.collection[aruco_id].update(
@@ -209,9 +203,7 @@ class ArucoDetector:
         # save rotation for last
         if self.show_debug_images:
             aruco_image = self.aruco_marker_collection.draw_markers(self.rgb_image)
-            display_aruco_image = cv2.rotate(
-                aruco_image, cv2.ROTATE_90_COUNTERCLOCKWISE
-            )
+            display_aruco_image = cv2.rotate(aruco_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
             cv2.imshow("Detected ArUco Markers", display_aruco_image)
             cv2.imshow("Detected ArUco Markers", aruco_image)
             cv2.waitKey(2)

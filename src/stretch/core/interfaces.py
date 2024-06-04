@@ -53,9 +53,7 @@ class ContinuousNavigationAction(Action):
 
     def __init__(self, xyt: np.ndarray):
         if not len(xyt) == 3:
-            raise RuntimeError(
-                "continuous navigation action space has 3 dimentions, x y and theta"
-            )
+            raise RuntimeError("continuous navigation action space has 3 dimentions, x y and theta")
         self.xyt = xyt
 
     def __str__(self):
@@ -69,9 +67,7 @@ class ContinuousFullBodyAction:
     def __init__(self, joints: np.ndarray, xyt: np.ndarray = None):
         """Create full-body continuous action"""
         if xyt is not None and not len(xyt) == 3:
-            raise RuntimeError(
-                "continuous navigation action space has 3 dimentions, x y and theta"
-            )
+            raise RuntimeError("continuous navigation action space has 3 dimentions, x y and theta")
         self.xyt = xyt
         # Joint states in robot action format
         self.joints = joints
@@ -155,9 +151,7 @@ class HybridAction(Action):
             self.action_type = action.action_type
             action = action.action
             # But more likely this was a mistake so let's actually throw an error
-            raise RuntimeError(
-                "Do not pass a HybridAction when creating another HybridAction!"
-            )
+            raise RuntimeError("Do not pass a HybridAction when creating another HybridAction!")
         self.action = action
 
     def is_discrete(self):
@@ -215,9 +209,7 @@ class Observations:
     # Camera
     rgb: np.ndarray  # (camera_height, camera_width, 3) in [0, 255]
     depth: np.ndarray  # (camera_height, camera_width) in meters
-    xyz: Optional[
-        np.ndarray
-    ] = None  # (camera_height, camera_width, 3) in camera coordinates
+    xyz: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in camera coordinates
     semantic: Optional[
         np.array
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]

@@ -247,9 +247,7 @@ def _add_separate_bbox3d_traces(
     n_boxes = len(extrema_coords)
 
     if not use_separate_traces:
-        all_box_wires = get_bbox_wireframe(
-            extrema_coords, add_cross_face_bars=add_cross_face_bars
-        )
+        all_box_wires = get_bbox_wireframe(extrema_coords, add_cross_face_bars=add_cross_face_bars)
         _add_bbox3d_trace(
             fig=fig,
             box_wires=all_box_wires,
@@ -277,18 +275,14 @@ def _add_separate_bbox3d_traces(
         if features.shape[1] == 4:  # rgba
             template = "rgb(%d, %d, %d, %f)"
             rgb = (features[:, :3].clamp(0.0, 1.0) * 255).int()
-            bbox_color = [
-                template % (*rgb_, a_) for rgb_, a_ in zip(rgb, features[:, 3])
-            ]
+            bbox_color = [template % (*rgb_, a_) for rgb_, a_ in zip(rgb, features[:, 3])]
 
         if features.shape[1] == 3:
             template = "rgb(%d, %d, %d)"
             rgb = (features.clamp(0.0, 1.0) * 255).int()
             bbox_color = [template % (r, g, b) for r, g, b in rgb]
 
-    all_box_wires = get_bbox_wireframe(
-        extrema_coords, add_cross_face_bars=add_cross_face_bars
-    )
+    all_box_wires = get_bbox_wireframe(extrema_coords, add_cross_face_bars=add_cross_face_bars)
 
     # row, col = subplot_idx // ncols + 1, subplot_idx % ncols + 1
     for (coords, name, color) in zip(all_box_wires, bbox_names, bbox_color):
@@ -544,9 +538,7 @@ def plot_scene_with_bboxes(
                     pointcloud_marker_size,
                 )
             elif isinstance(struct, CamerasBase):
-                _add_camera_trace(
-                    fig, struct, trace_name, subplot_idx, ncols, camera_scale
-                )
+                _add_camera_trace(fig, struct, trace_name, subplot_idx, ncols, camera_scale)
             elif isinstance(struct, BBoxes3D):
                 _add_separate_bbox3d_traces(
                     fig,
@@ -573,9 +565,7 @@ def plot_scene_with_bboxes(
                 )
             else:
                 raise ValueError(
-                    "struct {} is not a Cameras, Meshes, BBoxes3D, Pointclouds,".format(
-                        struct
-                    )
+                    "struct {} is not a Cameras, Meshes, BBoxes3D, Pointclouds,".format(struct)
                     + "RayBundle or HeterogeneousRayBundle object."
                 )
 
@@ -591,20 +581,12 @@ def plot_scene_with_bboxes(
         # xaxis['range'] = [mins, maxes]
         # yaxis['range'] = [mins, maxes]
         # zaxis['range'] = [mins, maxes]
-        maxlen = max(
-            [abs(axis["range"][1] - axis["range"][0]) for axis in (xaxis, yaxis, zaxis)]
-        )
+        maxlen = max([abs(axis["range"][1] - axis["range"][0]) for axis in (xaxis, yaxis, zaxis)])
         halflen = maxlen / 2.0
         nticks = math.ceil(maxlen / ticklen)
-        xaxis["range"] = [
-            sum(xaxis["range"]) / 2.0 + delta for delta in [-halflen, halflen]
-        ]
-        yaxis["range"] = [
-            sum(yaxis["range"]) / 2.0 + delta for delta in [-halflen, halflen]
-        ]
-        zaxis["range"] = [
-            sum(zaxis["range"]) / 2.0 + delta for delta in [-halflen, halflen]
-        ]
+        xaxis["range"] = [sum(xaxis["range"]) / 2.0 + delta for delta in [-halflen, halflen]]
+        yaxis["range"] = [sum(yaxis["range"]) / 2.0 + delta for delta in [-halflen, halflen]]
+        zaxis["range"] = [sum(zaxis["range"]) / 2.0 + delta for delta in [-halflen, halflen]]
 
         xaxis["nticks"] = nticks
         yaxis["nticks"] = nticks
@@ -710,9 +692,7 @@ def _gen_fig_with_subplots(
     return fig
 
 
-def create_triad_pointclouds(
-    R: Tensor, T: Tensor, n_points: int = 1, scale: float = 0.1
-):
+def create_triad_pointclouds(R: Tensor, T: Tensor, n_points: int = 1, scale: float = 0.1):
     """
     Create a batch of 3D triads (coordinate systems) represented as point clouds.
 
@@ -764,9 +744,7 @@ def create_triad_pointclouds(
     M[:, :3, 3] = T
     M[:, -1, -1] = 1.0
 
-    triad_coords = triad_coords.unsqueeze(0).expand(
-        batch_size, *triad_coords.shape[-2:]
-    )
+    triad_coords = triad_coords.unsqueeze(0).expand(batch_size, *triad_coords.shape[-2:])
     triad_coords = torch.bmm(triad_coords, M.permute([0, 2, 1]))
     triad_coords = triad_coords[..., :3]
     # triad_coords += T.unsqueeze(1)

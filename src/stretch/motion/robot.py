@@ -29,9 +29,7 @@ class Footprint:
         """Get a 3d footprint box for visuals"""
         return np.array([self.length, self.width, 0.2])
 
-    def get_mask(
-        self, resolution: float, device: Optional[torch.device] = None
-    ) -> torch.Tensor:
+    def get_mask(self, resolution: float, device: Optional[torch.device] = None) -> torch.Tensor:
         """Get a single mask for this robot"""
         size = int(
             np.ceil(

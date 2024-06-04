@@ -5,6 +5,7 @@ import logging
 import subprocess
 import time
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import liblzfse
@@ -15,12 +16,19 @@ logger = logging.getLogger(__name__)
 COMPLETION_FILENAME = "rgb_rel_videos_exported.txt"
 IMG_COMPLETION_FILENAME = "completed.txt"
 ABANDONED_FILENAME = "abandoned.txt"
+
 RGB_VIDEO_NAME = "compressed_video.mp4"
 RGB_VIDEO_H264_NAME = "compressed_video_h264.mp4"
-REL_ACTIONS_VIDEO_NAME = "video_rel_actions.avif"
+HEAD_RGB_VIDEO_NAME = "head_compressed_video.mp4"
+HEAD_RGB_VIDEO_H264_NAME = "head_compressed_video_h264.mp4"
+
 DEPTH_FOLDER_NAME = "compressed_depths"
 RGB_FOLDER_NAME = "compressed_images"
+HEAD_DEPTH_FOLDER_NAME = "compressed_head_depths"
+HEAD_RGB_FOLDER_NAME = "compressed_head_images"
+
 COMPLETED_DEPTH_FILENAME = "compressed_np_depth_float32.bin"
+COMPLETED_HEAD_DEPTH_FILENAME = "compressed_np_head_depth_float32.bin"
 
 
 class FileDataRecorder:
@@ -53,17 +61,23 @@ class FileDataRecorder:
         self.reset()
 
     def reset(self):
+        """Clear the data stored in the recorder."""
         self.rgbs = []
         self.depths = []
+        self.head_rgbs = []
+        self.head_depths = []
         self.data_dicts = {}
         self.step = 0
 
-    def add(self, rgb, depth, xyz: np.ndarray, quaternion: np.ndarray, gripper: float):
+    def add(self, ee_rgb: np.ndarray, ee_depth: np.ndarray, xyz: np.ndarray, quaternion: np.ndarray, gripper: float, head_rgb: Optional[np.ndarray] = None,
+            head_depth: Optional[np.ndarray] = None):
         """Add data to the recorder."""
-        rgb = cv2.resize(rgb, (256, 192), interpolation=cv2.INTER_AREA)
-        depth = cv2.resize(depth, (256, 192), interpolation=cv2.INTER_NEAREST)
-        self.rgbs.append(rgb)
-        self.depths.append(depth)
+        ee_rgb = cv2.resize(ee_rgb, (256, 192), interpolation=cv2.INTER_AREA)
+        ee_depth = cv2.resize(ee_depth, (256, 192), interpolation=cv2.INTER_NEAREST)
+        self.rgbs.append(ee_rgb)
+        self.depths.append(ee_depth)
+        self.head_rgbs.append(head_rgb)
+        self.head_depths.append(head_depth)
         self.data_dicts[self.step] = {
             "xyz": xyz.tolist(),
             "quats": quaternion.tolist(),
@@ -76,9 +90,7 @@ class FileDataRecorder:
         """Write out the data to a file."""
 
         # Create the episode directory
-        episode_dir = self.task_dir / datetime.datetime.now().strftime(
-            "%Y-%m-%d--%H-%M-%S"
-        )
+        episode_dir = self.task_dir / datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         episode_dir.mkdir()
 
         # Write the images
@@ -103,19 +115,36 @@ class FileDataRecorder:
 
         self.reset()
 
-    def write_image(self, rgb, depth, episode_dir, i):
+    def write_image(self, rgb, depth, episode_dir, i, head_rgb=None, head_depth=None):
+        """Write out image data from both head and end effector"""
         rgb_dir = episode_dir / RGB_FOLDER_NAME
         rgb_dir.mkdir(exist_ok=True)
         depth_dir = episode_dir / DEPTH_FOLDER_NAME
         depth_dir.mkdir(exist_ok=True)
         cv2.imwrite(str(rgb_dir / f"{i:06}.png"), rgb)
         cv2.imwrite(str(depth_dir / f"{i:06}.png"), depth)
+        
+        if head_rgb is not None:
+            head_rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
+            head_rgb_dir.mkdir(exist_ok=True)
+            cv2.imwrite(str(head_rgb_dir / f"{i:06}.png"), rgb)
+        if head_depth is not None:
+            head_depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
+            head_depth_dir.mkdir(exist_ok=True)
+            cv2.imwrite(str(head_depth_dir / f"{i:06}.png"), depth)
 
-    def process_rgb_to_video(self, episode_dir):
+    def process_rgb_to_video(self, episode_dir, head: bool =False):
         start_time = time.perf_counter()
         # First, find out a sample filename
-        try:
+        if head:
+            rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
+            hevc_video_path = episode_dir / HEAD_RGB_VIDEO_NAME
+            h264_video_path = episode_dir / HEAD_RGB_VIDEO_H264_NAME
+        else:
             rgb_dir = episode_dir / RGB_FOLDER_NAME
+            hevc_video_path = episode_dir / RGB_VIDEO_NAME
+            h264_video_path = episode_dir / RGB_VIDEO_H264_NAME
+        try:
             sample_filename = next(rgb_dir.glob("*.png"))
         except StopIteration:
             sample_filename = None
@@ -133,8 +162,6 @@ class FileDataRecorder:
             return
         # Now, we create the videos using ffmpeg.
         # First, we will create the h264 video.
-        hevc_video_path = episode_dir / RGB_VIDEO_NAME
-        h264_video_path = episode_dir / RGB_VIDEO_H264_NAME
         crfs = [30, 30]
         video_codecs = ["hevc", "h264"]
         for enc_lib, crf, final_video_path in zip(
@@ -165,17 +192,21 @@ class FileDataRecorder:
         end_time = time.perf_counter()
         logger.info(f"Saved RGB video to {episode_dir} in {end_time - start_time}s")
 
-    def process_depth_to_bin(self, episode_dir: Path) -> None:
-        all_depth_data = np.stack(self.depths, axis=0)
+    def process_depth_to_bin(self, episode_dir: Path, head: bool = False) -> None:
+        if head:
+            all_depth_data = np.stack(self.head_depths, axis=0)
+            target_depth_filename = episode_dir / COMPLETED_HEAD_DEPTH_FILENAME
+        else:
+            all_depth_data = np.stack(self.depths, axis=0)
+            target_depth_filename = episode_dir / COMPLETED_DEPTH_FILENAME
         # Now zip and save this depth data.
         depth_array = all_depth_data
         depth_bytes = liblzfse.compress(depth_array.astype(np.float32).tobytes())
-        target_depth_filename = episode_dir / COMPLETED_DEPTH_FILENAME
         target_depth_filename.write_bytes(depth_bytes)
 
         # TODO: remove debug code
         # This should be 192 x 256 x 4 bytes = 196608 bytes per image
-        #buffer = np.frombuffer(
+        # buffer = np.frombuffer(
         #        liblzfse.decompress(target_depth_filename.read_bytes()), dtype=np.float32
         #   )
 
