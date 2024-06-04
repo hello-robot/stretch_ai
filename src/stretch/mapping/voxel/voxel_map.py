@@ -329,7 +329,10 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         obstacles, explored = self.voxel_map.get_2d_map()
         if conservative:
-            obstacles, explored = self._get_conservative_2d_map(obstacles, explored)
+            # Expand obstacles and shrink explored area
+            obstacles, less_explored = self._get_conservative_2d_map(obstacles, explored)
+            # Assign it to a boolean
+            explored = less_explored.bool()
 
         # Radius computed from voxel map measurements
         radius = np.ceil(radius_m / self.voxel_map.grid_resolution)
