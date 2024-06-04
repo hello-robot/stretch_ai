@@ -497,12 +497,14 @@ class PlaceObjectOperation(ManagedOperation):
 
     def run(self) -> None:
         self.intro("Placing the object on the receptacle.")
+        self._successful = False
 
         # Get object xyz coords
         object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0)
 
         # Get max xyz
         max_xyz = self.manager.current_receptacle.point_cloud.max(axis=0)
+        breakpoint()
 
         # Placement is at xy = object_xyz[:2], z = max_xyz[2] + margin
         place_xyz = np.array([object_xyz[0], object_xyz[1], max_xyz[2] + self.place_height_margin])
@@ -518,8 +520,19 @@ class PlaceObjectOperation(ManagedOperation):
         target_joint_state, success, info = self.robot_model.manip_ik(
             (place_xyz, ee_rot), q0=joint_state
         )
-        breakpoint()
+
+        # Move to the target joint state
+        self.robot.arm_to(target_joint_state, blocking=True)
+        time.sleep(3.0)
+
+        # Open the gripper
+        self.robot.open_gripper(blocking=True)
+        time.sleep(2.0)
+
+        # Return arm to initial configuration and switch to nav posture
+        self.robot.move_to_nav_posture()
+        self._successful = True
 
     def was_successful(self):
         self.error("Not implemented.")
-        return True
+        return self._successful
