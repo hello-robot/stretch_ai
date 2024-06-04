@@ -249,7 +249,6 @@ class DexTeleopFollower:
                 t2 - t1,
                 f"{len(compressed_color_image)=}",
             )
-            # breakpoint()
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -284,7 +283,7 @@ class DexTeleopFollower:
             self.send_socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
-            if True or verbose:
+            if verbose:
                 loop_timer.pretty_print()
 
     def start(self):

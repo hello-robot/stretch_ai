@@ -19,6 +19,7 @@ from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
 import stretch.utils.compression as compression
 
+
 use_gripper_center = True
 
 
@@ -195,7 +196,7 @@ class DexTeleopLeader(Evaluator):
         head_depth_image = compression.unzip_depth(message["head_cam/depth_image"], message["head_cam/depth_image/shape"])
         head_depth_camera_info = message["head_cam/depth_camera_info"]
         head_depth_scale = message["head_cam/depth_scale"]
-
+        
         if self.camera_info is None:
             self.set_camera_parameters(depth_camera_info, depth_scale)
 
