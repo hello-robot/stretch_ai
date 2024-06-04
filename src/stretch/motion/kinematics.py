@@ -960,7 +960,7 @@ class HelloStretchKinematics:
         euler = Rotation.from_quat(ee_rot).as_euler("xyz")
         matrix = Rotation.from_quat(ee_rot).as_matrix()
         pose[:3, :3] = matrix
-        pose[:3, 3] = pos
+        pose[:3, 3] = ee_pos
         ee_pose = pose @ STRETCH_GRASP_OFFSET
         target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
         target_ee_pos = ee_pose[:3, 3]
