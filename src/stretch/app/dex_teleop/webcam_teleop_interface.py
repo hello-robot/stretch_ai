@@ -11,9 +11,9 @@ import yaml
 from scipy.spatial.transform import Rotation
 from yaml.loader import SafeLoader
 
-import stretch.teleop.dex_teleop_parameters as dt
-import stretch.teleop.teleop_aruco_detector as ad
-import stretch.teleop.webcam as wc
+import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.teleop_aruco_detector as ad
+import stretch.app.dex_teleop.webcam as wc
 
 
 def pixel_from_3d(xyz, camera_info):
@@ -43,7 +43,7 @@ def pixel_to_3d(xy_pix, z_in, camera_info):
 
 
 class WebcamArucoDetector:
-    def __init__(self, tongs_prefix, visualize_detections=False):
+    def __init__(self, tongs_prefix, visualize_detections=False, show_debug_images: bool = False):
 
         # self.webcam = wc.Webcam(fps=30, image_width=800, image_height=448, use_calibration=True)
         self.webcam = wc.Webcam(fps=30, image_width=1920, image_height=1080, use_calibration=True)
@@ -66,8 +66,9 @@ class WebcamArucoDetector:
                 + ", was not found, so no ArUco markers will be detected."
             )
 
-        self.aruco_detector = ad.ArucoDetector(marker_info=self.marker_info, show_debug_images=True)
-        self.aruco_detector.show_debug_images = True
+        self.aruco_detector = ad.ArucoDetector(
+            marker_info=self.marker_info, show_debug_images=show_debug_images
+        )
         self.tongs_prefix = tongs_prefix
 
         # define marker names
