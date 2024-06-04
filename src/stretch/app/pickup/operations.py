@@ -128,7 +128,8 @@ class SearchForReceptacle(ManagedOperation):
         # If no receptacle, pick a random point nearby and just wander around
         if self.manager.current_receptacle is None:
             # Find a point on the frontier and move there
-            res = self.manager.agent.go_to_frontier(start=start)
+            res = self.manager.agent.plan_to_frontier(start=start)
+            self.robot.execute_trajectory(res.trajectory, final_timeout=30.0)
             # After moving
             self.update()
             return
@@ -214,7 +215,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         print("Nothing found.   Moving to frontier.")
         if self.manager.current_object is None:
             # Find a point on the frontier and move there
-            res = self.agent.go_to_frontier(start=start)
+            res = self.agent.plan_to_frontier(start=start)
 
         # TODO: better behavior
         # If no visitable frontier, pick a random point nearby and just wander around

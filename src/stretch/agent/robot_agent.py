@@ -709,7 +709,7 @@ class RobotAgent:
                 best_score = goal_score
         return best_instance
 
-    def go_to_frontier(
+    def plan_to_frontier(
         self,
         start: np.ndarray,
         rate: int = 10,
@@ -793,7 +793,7 @@ class RobotAgent:
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
-            res = self.go_to_frontier(
+            res = self.plan_to_frontier(
                 start=start, rate=rate, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
             )
 
