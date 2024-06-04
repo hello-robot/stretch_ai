@@ -376,7 +376,12 @@ class RobotAgent:
         try_count = 0
         res = None
         start_is_valid = self.space.is_valid(start, verbose=False)
-        for goal in self.space.sample_near_mask(mask, radius_m=radius_m):
+
+        conservative_sampling = True
+        # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
+        for goal in self.space.sample_near_mask(
+            mask, radius_m=radius_m, conservative=conservative_sampling
+        ):
             goal = goal.cpu().numpy()
             if verbose:
                 print("       Start:", start)

@@ -235,6 +235,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         is_safe_threshold=1.0,
         debug: bool = False,
         verbose: bool = False,
+        obstacles: Optional[torch.Tensor] = None,
+        explored: Optional[torch.Tensor] = None,
     ) -> bool:
         """Check to see if state is valid; i.e. if there's any collisions if mask is at right place"""
         assert len(state) == 3
@@ -256,7 +258,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         y0 = int(grid_xy[1]) - half_dim
         y1 = y0 + dim
 
-        obstacles, explored = self.voxel_map.get_2d_map()
+        if obstacles is None:
+            obstacles, explored = self.voxel_map.get_2d_map()
 
         crop_obs = obstacles[x0:x1, y0:y1]
         crop_exp = explored[x0:x1, y0:y1]
@@ -297,6 +300,17 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         return valid
 
+    def _get_conservative_2d_map(self, obstacles, explored):
+        """Get a conservative 2d map from the voxel map"""
+        # Extract edges from our explored mask
+        obstacles = binary_dilation(
+            obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
+        )[0, 0].bool()
+        less_explored = binary_erosion(
+            explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
+        )[0, 0]
+        return obstacles, less_explored
+
     def sample_near_mask(
         self,
         mask: torch.Tensor,
@@ -305,6 +319,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         verbose: bool = True,
         debug: bool = False,
         look_at_any_point: bool = False,
+        conservative: bool = True,
     ) -> Optional[np.ndarray]:
         """Sample a position near the mask and return.
 
@@ -313,8 +328,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         """
 
         obstacles, explored = self.voxel_map.get_2d_map()
-
-        # Extract edges from our explored mask
+        if conservative:
+            obstacles, explored = self._get_conservative_2d_map(obstacles, explored)
 
         # Radius computed from voxel map measurements
         radius = np.ceil(radius_m / self.voxel_map.grid_resolution)
@@ -377,7 +392,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             # Check to see if this point is valid
             if verbose:
                 print("[VOXEL MAP: sampling]", radius, i, "sampled", xyt)
-            if self.is_valid(xyt, verbose=verbose):
+            if self.is_valid(xyt, verbose=verbose, obstacles=obstacles, explored=explored):
                 yield xyt
 
         # We failed to find anything useful
@@ -422,12 +437,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         traversible = explored & ~obstacles
 
         # Extract edges from our explored mask
-        obstacles = binary_dilation(
-            obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
-        )[0, 0].bool()
-        less_explored = binary_erosion(
-            explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
-        )[0, 0]
+        obstacles, less_explored = self._get_conservative_2d_map(obstacles, explored)
 
         # Get the masks from our 3d map
         edges = get_edges(less_explored)

@@ -557,9 +557,9 @@ class HelloStretchKinematics:
     def update_gripper(self, qi, open=True):
         """update target state for gripper"""
         if open:
-            qi[HelloStretchIdx.GRIPPER] = STRETCH_GRIPPER_OPEN
+            qi[HelloStretchIdx.GRIPPER] = self.GRIPPER_OPEN
         else:
-            qi[HelloStretchIdx.GRIPPER] = STRETCH_GRIPPER_CLOSE
+            qi[HelloStretchIdx.GRIPPER] = self.GRIPPER_CLOSED
         return qi
 
     def interpolate_xy(self, qi, xy0, dist, step=0.1):
