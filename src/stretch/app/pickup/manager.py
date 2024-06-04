@@ -54,6 +54,7 @@ class PickupManager:
             "Search for a box",
             self,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
+            retry_on_failure=True,
         )
 
         # Try to expand the frontier and find an object; or just wander around for a while.

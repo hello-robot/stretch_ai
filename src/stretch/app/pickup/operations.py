@@ -135,7 +135,10 @@ class SearchForReceptacle(ManagedOperation):
 
     def was_successful(self) -> bool:
         res = self.manager.current_receptacle is not None
-        print(f"{self.name}: Successfully found a receptacle!")
+        if res:
+            self.cheer("Successfully found a receptacle!")
+        else:
+            self.error("Failed to find a receptacle.")
         return res
 
 
