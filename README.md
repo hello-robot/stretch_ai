@@ -134,6 +134,11 @@ This will have the robot move around the room, explore, and pickup toys in order
 python -m stretch.app.pickup.run
 ```
 
+You can add the `--reset` flag to make it go back to the start position.
+```
+python -m stretch.app.pickup.run --reset
+```
+
 ### 
 
 ## Development
