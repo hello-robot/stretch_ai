@@ -316,7 +316,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         mask: torch.Tensor,
         radius_m: float = 0.7,
         max_tries: int = 1000,
-        verbose: bool = True,
+        verbose: bool = False,
         debug: bool = False,
         look_at_any_point: bool = False,
         conservative: bool = True,
@@ -351,7 +351,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         # Where can the robot go?
         valid_indices = torch.nonzero(expanded_mask, as_tuple=False)
         if valid_indices.size(0) == 0:
-            print("[VOXEL MAP: sampling] No valid goals near mask!")
+            if verbose:
+                print("[VOXEL MAP: sampling] No valid goals near mask!")
             return None
         if not look_at_any_point:
             mask_indices = torch.nonzero(mask, as_tuple=False)
@@ -368,16 +369,18 @@ class SparseVoxelMapNavigationSpace(XYT):
             # convert back
             point = self.grid.grid_coords_to_xy(point_grid_coords)
             if point is None:
-                print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
+                if verbose:
+                    print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                 continue
             if outside_point is None:
-                print(
-                    "[VOXEL MAP: sampling] ERR finding closest pt:",
-                    point,
-                    point_grid_coords,
-                    "closest =",
-                    outside_point,
-                )
+                if verbose:
+                    print(
+                        "[VOXEL MAP: sampling] ERR finding closest pt:",
+                        point,
+                        point_grid_coords,
+                        "closest =",
+                        outside_point,
+                    )
                 continue
             theta = math.atan2(
                 outside_point[1] - point_grid_coords[0, 1],

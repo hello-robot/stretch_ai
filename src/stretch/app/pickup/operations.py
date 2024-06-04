@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 from scipy.spatial.transform import Rotation
+from termcolor import colored
 
 from stretch.core.task import Operation
 from stretch.motion.kinematics import STRETCH_GRASP_OFFSET, HelloStretchIdx
@@ -21,17 +22,29 @@ class ManagedOperation(Operation):
     def update(self):
         self.agent.update()
 
+    def attempt(self, message: str):
+        print(colored(f"Trying {self.name}:", "blue"), message)
+
+    def intro(self, message: str):
+        print(colored(f"Running {self.name}:", "green"), message)
+
+    def error(self, message: str):
+        print(colored(f"Error in {self.name}: {message}", "red"))
+
+    def cheer(self, message: str):
+        """An upbeat message!"""
+        print(colored(f"!!! {self.name}: {message}", "yellow"))
+
 
 class RotateInPlaceOperation(ManagedOperation):
     """Rotate the robot in place"""
 
     def can_start(self) -> bool:
+        self.attempt(f"rotating for {self.parameters['in_place_rotation_steps']} steps.")
         return True
 
     def run(self) -> None:
-        print(
-            f"Running {self.name}: rotating for {self.parameters['in_place_rotation_steps']} steps."
-        )
+        self.intro("rotating for {self.parameters['in_place_rotation_steps']} steps.")
         self._successful = False
         self.robot.rotate_in_place(
             steps=self.parameters["in_place_rotation_steps"],
@@ -51,15 +64,16 @@ class SearchForReceptacle(ManagedOperation):
     show_instances_detected: bool = False
 
     def can_start(self) -> bool:
+        self.attempt("will start searching for a receptacle on the floor.")
         return True
 
     def run(self) -> None:
         """Search for a receptacle on the floor."""
 
         # Update world map
+        self.intro("Searching for a receptacle on the floor.")
         self.update()
 
-        print("Searching for a receptacle on the floor.")
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
 
         if self.show_map_so_far:
@@ -132,10 +146,11 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     show_instances_detected: bool = True
 
     def can_start(self) -> bool:
+        self.attempt("If receptacle is found, we can start searching for objects.")
         return self.manager.current_receptacle is not None
 
     def run(self) -> None:
-        print("Find a reachable object on the floor.")
+        self.intro("Find a reachable object on the floor.")
         self._successful = False
 
         # Update world map
@@ -229,14 +244,14 @@ class PreGraspObjectOperation(ManagedOperation):
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
         if dist > self.grasp_distance_threshold:
-            print(f"{self.name}: Object is too far away to grasp: {dist}")
+            self.error(f"Object is too far away to grasp: {dist}")
             return False
-        print(f"{self.name}: Object is probably close enough to grasp: {dist}")
+        self.cheer(f"{self.name}: Object is probably close enough to grasp: {dist}")
         return True
 
     def run(self):
 
-        print("Moving to a position to grasp the object.")
+        self.intro("Moving to a position to grasp the object.")
         self.robot.move_to_manip_posture()
 
         # Now we should be able to see the object if we orient gripper properly
@@ -312,24 +327,24 @@ class NavigateToObjectOperation(ManagedOperation):
             )
 
         # Motion plan to the object
-        plan = self.manager.agent.plan_to_instance(self.manager.current_object, start=start)
+        plan = self.manager.agent.plan_to_instance(self.get_target(), start=start)
         if plan.success:
             self.plan = plan
             return True
 
     def run(self):
-        print(f"{self.name}: executing motion plan to the object.")
+        self.intro("executing motion plan to the object.")
         self.robot.move_to_nav_posture()
 
         # Execute the trajectory
         assert (
             self.plan is not None
         ), "Did you make sure that we had a plan? You should call can_start() before run()."
-        self.robot.execute_trajectory(self.plan)
+        self.robot.execute_trajectory(self.plan, final_timeout=30.0)
 
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state
-        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=10.0)
+        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
 
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""
@@ -346,6 +361,7 @@ class GraspObjectOperation(ManagedOperation):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
     def run(self):
+        self.intro("Grasping the object.")
         self._success = False
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
@@ -442,11 +458,64 @@ class GoToNavOperation(ManagedOperation):
     """Put the robot into navigation mode"""
 
     def can_start(self) -> bool:
+        self.attempt("will switch to navigation mode.")
         return True
 
     def run(self) -> None:
-        print("Switching to navigation mode.")
+        self.intro("Switching to navigation mode.")
         self.robot.move_to_nav_posture()
 
     def was_successful(self) -> bool:
         return self.robot.in_navigation_mode()
+
+
+class PlaceObjectOperation(ManagedOperation):
+    """Place an object on top of the target receptacle, by just using the arm for now."""
+
+    place_distance_threshold: float = 0.75
+    place_height_margin: float = 0.1
+
+    def can_start(self) -> bool:
+        self.attempt(
+            "will start placing the object if we have object and receptacle, and are close enough to drop."
+        )
+        if self.manager.current_object is None or self.manager.current_receptacle is None:
+            self.error("Object or receptacle not found.")
+            return False
+        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        start = self.robot.get_base_pose()
+        dist = np.linalg.norm(object_xyz[:2] - start[:2])
+        if dist > self.place_distance_threshold:
+            self.error(f"Object is too far away to grasp: {dist}")
+            return False
+        self.cheer(f"Object is probably close enough to grasp: {dist}")
+        return True
+
+    def run(self) -> None:
+        self.intro("Placing the object on the receptacle.")
+
+        # Get object xyz coords
+        object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0)
+
+        # Get max xyz
+        max_xyz = self.manager.current_receptacle.point_cloud.max(axis=0)
+
+        # Placement is at xy = object_xyz[:2], z = max_xyz[2] + margin
+        place_xyz = np.array([object_xyz[0], object_xyz[1], max_xyz[2] + self.place_height_margin])
+
+        obs = self.robot.get_observation()
+        joint_state = obs.joint
+        model = self.robot.get_robot_model()
+
+        # End effector position and orientation in global coordinates
+        ee_pos, ee_rot = model.manip_fk(joint_state)
+
+        # Compute the joint angles for placement using manip ik
+        target_joint_state, success, info = self.robot_model.manip_ik(
+            (place_xyz, ee_rot), q0=joint_state
+        )
+        breakpoint()
+
+    def was_successful(self):
+        self.error("Not implemented.")
+        return True

@@ -7,6 +7,7 @@ from .operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
+    PlaceObjectOperation,
     PreGraspObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
@@ -93,6 +94,7 @@ class PickupManager:
             on_failure=pregrasp_object,
             on_cannot_start=go_to_object,
         )
+        place_object_on_receptacle = PlaceObjectOperation("place object on receptacle", self)
 
         task = Task()
         task.add_operation(go_to_navigation_mode)
@@ -104,5 +106,18 @@ class PickupManager:
         task.add_operation(pregrasp_object)
         task.add_operation(grasp_object)
         task.add_operation(go_to_receptacle)
+        task.add_operation(place_object_on_receptacle)
+
+        task.connect_on_success(go_to_navigation_mode.name, search_for_receptacle.name)
+        task.connect_on_success(search_for_receptacle.name, search_for_object.name)
+        task.connect_on_success(search_for_object.name, go_to_object.name)
+        task.connect_on_success(go_to_object.name, pregrasp_object.name)
+        task.connect_on_success(pregrasp_object.name, grasp_object.name)
+        task.connect_on_success(grasp_object.name, go_to_receptacle.name)
+        task.connect_on_success(go_to_receptacle.name, place_object_on_receptacle.name)
+        task.connect_on_success(search_for_receptacle.name, search_for_object.name)
+
+        task.connect_on_cannot_start(go_to_object.name, search_for_object.name)
+        # task.connect_on_cannot_start(go_to_receptacle.name, search_for_receptacle.name)
 
         return task

@@ -355,6 +355,7 @@ class HomeRobotZmqClient(RobotClient):
         spin_rate: int = 10,
         verbose: bool = False,
         per_waypoint_timeout: float = 10.0,
+        final_timeout: float = 10.0,
         relative: bool = False,
     ):
         """Execute a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
@@ -377,7 +378,7 @@ class HomeRobotZmqClient(RobotClient):
                 verbose=verbose,
                 timeout=per_waypoint_timeout,
             )
-        self.navigate_to(pt, blocking=True)
+        self.navigate_to(pt, blocking=True, timeout=final_timeout)
 
     def wait_for_waypoint(
         self,
