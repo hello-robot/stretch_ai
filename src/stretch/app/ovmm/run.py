@@ -19,20 +19,16 @@ from PIL import Image
 
 # Mapping and perception
 import stretch.utils.depth as du
-from stretch.agent import get_parameters
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core.robot import RobotClient
+from stretch.core import Parameters, RobotClient, get_parameters
 
-# Import planning tools for exploration
-from stretch.perception.encoders import ClipEncoder
+# TODO: semantic sensor code from HomeRobot
+from stretch.perception import create_semantic_sensor
 
 # Chat and UI tools
 from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.utils.visualization import get_x_and_y_from_path
-
-# TODO: semantic sensor code from HomeRobot
-# from stretch.perception import create_semantic_sensor
 
 
 @click.command()
@@ -68,7 +64,7 @@ from stretch.utils.visualization import get_x_and_y_from_path
     is_flag=True,
     help="write out images of every object we found",
 )
-@click.option("--parameter-file", default="configs/default_planner.yaml")
+@click.option("--parameter-file", default="config/default_planner.yaml")
 def main(
     rate,
     visualize,
@@ -89,22 +85,28 @@ def main(
     vlm_server_addr: str = "127.0.0.1",
     vlm_server_port: str = "50054",
     write_instance_images: bool = False,
-    parameter_file: str = "src/stretch/config/default_planner.yaml",
+    parameter_file: str = "config/default_planner.yaml",
     local: bool = True,
     recv_port: int = 4401,
     send_port: int = 4402,
     robot_ip: str = "192.168.1.15",
     **kwargs,
 ):
+
+    print("- Load parameters")
+    parameters = get_parameters(parameter_file)
+
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         recv_port=recv_port,
         send_port=send_port,
         use_remote_computer=(not local),
+        parameters=parameters,
     )
     # Call demo_main with all the arguments
     demo_main(
         robot,
+        parameters=parameters,
         rate=rate,
         visualize=visualize,
         manual_wait=manual_wait,
@@ -150,7 +152,8 @@ def demo_main(
     vlm_server_addr: str = "127.0.0.1",
     vlm_server_port: str = "50054",
     write_instance_images: bool = False,
-    parameter_file: str = "src/robot_hw_python/configs/default.yaml",
+    parameters: Optional[Parameters] = None,
+    parameter_file: str = "config/default.yaml",
     **kwargs,
 ):
     """
@@ -168,9 +171,10 @@ def demo_main(
     output_pcd_filename = output_filename + "_" + formatted_datetime + ".pcd"
     output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
 
-    print("- Load parameters")
-    parameters = get_parameters(parameter_file)
-    print(parameters)
+    if parameters is None:
+        print("- Load parameters")
+        parameters = get_parameters(parameter_file)
+        print(parameters)
 
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
     print("- Connect to Stretch")
@@ -180,19 +184,17 @@ def demo_main(
     object_to_find, location_to_place = parameters.get_task_goals()
 
     print("- Create semantic sensor based on detic")
-    # _, semantic_sensor = create_semantic_sensor(
-    #    device_id=device_id, verbose=verbose
-    # )
-    semantic_sensor = None
+    _, semantic_sensor = create_semantic_sensor(
+        device_id=device_id,
+        verbose=verbose,
+        category_map_file=parameters["open_vocab_category_map_file"],
+    )
 
     print("- Start robot agent with data collection")
     grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
 
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
-    demo.start(goal=object_to_find, visualize_map_at_start=False)
-
-    print("- Reset robot to [0, 0, 0]")
-    robot.navigate_to([0, 0, 0], blocking=True)
+    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
 
     if object_to_find is not None:
         print(f"\nSearch for {object_to_find} and {location_to_place}")
@@ -273,13 +275,6 @@ def demo_main(
     finally:
         if show_final_map:
             pc_xyz, pc_rgb = demo.voxel_map.show()
-            # TODO: Segfaults here for some reason
-            # obstacles, explored = demo.voxel_map.get_2d_map()
-            # plt.subplot(1, 2, 1)
-            # plt.imshow(obstacles)
-            # plt.subplot(1, 2, 2)
-            # plt.imshow(explored)
-            # plt.show()
         else:
             pc_xyz, pc_rgb = demo.voxel_map.get_xyz_rgb()
 
@@ -287,10 +282,6 @@ def demo_main(
             return
 
         # Create pointcloud and write it out
-        if len(output_pcd_filename) > 0:
-            print(f"Write pcd to {output_pcd_filename}...")
-            pcd = numpy_to_pcd(pc_xyz, pc_rgb / 255)
-            open3d.io.write_point_cloud(output_pcd_filename, pcd)
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
             demo.voxel_map.write_to_pickle(output_pkl_filename)

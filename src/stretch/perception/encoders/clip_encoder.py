@@ -39,3 +39,15 @@ class ClipEncoder(BaseImageTextEncoder):
         with torch.no_grad():
             text_features = self.model.encode_text(text)
         return text_features.float()
+
+
+class NormalizedClipEncoder(ClipEncoder):
+    """Simple wrapper for encoding different things as text. Normalizes the results."""
+
+    def encode_image(self, image: np.ndarray):
+        image_features = super().encode_image(image)
+        return image_features / image_features.norm(dim=-1, keepdim=True)
+
+    def encode_text(self, text: str):
+        text_features = super().encode_text(text)
+        return text_features / text_features.norm(dim=-1, keepdim=True)

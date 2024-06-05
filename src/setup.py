@@ -39,6 +39,8 @@ setuptools.setup(
         "pynput",
         "pyrealsense2",
         "orbslam3",
+        # UI tools
+        "termcolor",
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
