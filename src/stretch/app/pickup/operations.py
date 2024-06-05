@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -465,6 +466,7 @@ class PlaceObjectOperation(ManagedOperation):
 
     place_distance_threshold: float = 0.75
     place_height_margin: float = 0.1
+    show_place_in_voxel_grid: bool = True
 
     def can_start(self) -> bool:
         self.attempt(
@@ -505,7 +507,7 @@ class PlaceObjectOperation(ManagedOperation):
         ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # Switch to place position
-        print("Move to manip posture")
+        print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
 
         # Get object xyz coords
@@ -523,10 +525,17 @@ class PlaceObjectOperation(ManagedOperation):
             [relative_object_xyz[0], relative_object_xyz[1], max_xyz[2] + self.place_height_margin]
         )
 
+        if self.show_place_in_voxel_grid:
+            self.agent.voxel_map.show(
+                orig=place_xyz.cpu().numpy(), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
+
         target_joint_state, success = self._get_place_joint_state(place_xyz, joint_state)
         if not success:
             self.error("Could not place object!")
             return
+
+        breakpoint()
 
         # Move to the target joint state
         self.robot.arm_to(target_joint_state, blocking=True)
