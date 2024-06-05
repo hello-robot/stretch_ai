@@ -131,7 +131,9 @@ class SearchForReceptacle(ManagedOperation):
             # Find a point on the frontier and move there
             res = self.manager.agent.plan_to_frontier(start=start)
             if res.success:
-                self.robot.execute_trajectory(res.trajectory, final_timeout=30.0)
+                self.robot.execute_trajectory(
+                    [node.state for node in res.trajectory], final_timeout=30.0
+                )
             else:
                 self.error("Failed to find a reachable frontier.")
                 raise RuntimeError("Failed to find a reachable frontier.")
@@ -527,7 +529,7 @@ class PlaceObjectOperation(ManagedOperation):
 
         if self.show_place_in_voxel_grid:
             self.agent.voxel_map.show(
-                orig=place_xyz.cpu().numpy(), xyt=xyt, footprint=self.robot_model.get_footprint()
+                orig=place_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
         target_joint_state, success = self._get_place_joint_state(place_xyz, joint_state)
