@@ -62,6 +62,10 @@ class InstanceView:
     pose: Tensor = None
     """ Base pose of the robot when this view was collected"""
 
+    def get_pose(self) -> Tensor:
+        """Returns the position from which we captured this instance view"""
+        return self.pose
+
     @cached_property
     def object_coverage(self):
         return float(self.mask.sum()) / self.mask.size

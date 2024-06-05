@@ -6,6 +6,7 @@ import copy
 import logging
 import math
 import pickle
+import timeit
 from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -20,9 +21,10 @@ from pytorch3d.structures import Pointclouds
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
+from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory, InstanceView
 from stretch.motion import Footprint, PlanResult, RobotModel
-from stretch.perception.encoders import ClipEncoder
+from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import BBoxes3D
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
@@ -58,8 +60,6 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [1024, 1024]
-
 logger = logging.getLogger(__name__)
 
 
@@ -94,7 +94,7 @@ class SparseVoxelMap(object):
         background_instance_label (int): The label for the background instance.
         instance_memory_kwargs (Dict[str, Any]): Additional instance memory configuration.
         voxel_kwargs (Dict[str, Any]): Additional voxel configuration.
-        encoder (Optional[ClipEncoder]): An encoder for feature embeddings (optional).
+        encoder (Optional[BaseImageTextEncoder]): An encoder for feature embeddings (optional).
         map_2d_device (str): The device for 2D mapping.
         use_instance_memory (bool): Whether to create object-centric instance memory.
     """
@@ -125,7 +125,7 @@ class SparseVoxelMap(object):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder: Optional[ClipEncoder] = None,
+        encoder: Optional[BaseImageTextEncoder] = None,
         map_2d_device: str = "cpu",
         use_instance_memory: bool = False,
         use_median_filter: bool = False,
@@ -133,22 +133,43 @@ class SparseVoxelMap(object):
         median_filter_max_error: float = 0.01,
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
+        prune_detected_objects: bool = False,
     ):
         """
         Args:
             resolution(float): in meters, size of a voxel
             feature_dim(int): size of feature embeddings to capture per-voxel point (separate from instance memory)
             use_instance_memory(bool): if we should create object-centric instance memory
+            grid_size(Tuple[int, int]): dimensions of the voxel grid (optional)
+            grid_resolution(float): resolution of the grid in meters, e.g. 0.05 = 5cm (optional)
+            obs_min_height(float): minimum height for observations in meters
+            obs_max_height(float): maximum height for observations in meters
+            obs_min_density(float): minimum density for observations
+            smooth_kernel_size(int): size of the smoothing kernel (in grid cells)
+            add_local_radius_points(bool): whether to add local radius points to the explored map, marking them as safe
+            remove_visited_from_obstacles(bool): subtract out observations potentially of the robot
+            local_radius(float): radius for local points in meters
+            min_depth(float): minimum depth for observations in meters
+            max_depth(float): maximum depth for observations in meters
+            pad_obstacles(int): padding for obstacles in grid cells
+            background_instance_label(int): label for the background instance (e.g. -1)
+            instance_memory_kwargs(Dict[str, Any]): additional instance memory configuration
+            voxel_kwargs(Dict[str, Any]): additional voxel configuration
+            encoder(BaseImageTextEncoder): encoder for feature embeddings, maps image and text to feature space (optional)
+            map_2d_device(str): device for 2D mapping
+            use_median_filter(bool): whether to use a median filter to remove bad depth values when mapping and exploring
+            median_filter_size(int): size of the median filter
+            median_filter_max_error(float): maximum error for the median filter
+            use_derivative_filter(bool): whether to use a derivative filter to remove bad depth values when mapping and exploring
+            derivative_filter_threshold(float): threshold for the derivative filter
+            prune_detected_objects(bool): whether to prune detected objects from the voxel map
         """
         # TODO: We an use fastai.store_attr() to get rid of this boilerplate code
-        self.resolution = resolution
         self.feature_dim = feature_dim
         self.obs_min_height = obs_min_height
         self.obs_max_height = obs_max_height
         self.obs_min_density = obs_min_density
-
-        if use_instance_memory:
-            raise NotImplementedError("no instance memory yet")
+        self.prune_detected_objects = prune_detected_objects
 
         # Smoothing kernel params
         self.smooth_kernel_size = smooth_kernel_size
@@ -186,6 +207,7 @@ class SparseVoxelMap(object):
         self.encoder = encoder
         self.map_2d_device = map_2d_device
 
+        # Create kernel(s) for obstacle dilation over 2d/3d maps
         if self.pad_obstacles > 0:
             self.dilate_obstacles_kernel = torch.nn.Parameter(
                 torch.from_numpy(skimage.morphology.disk(self.pad_obstacles))
@@ -209,17 +231,10 @@ class SparseVoxelMap(object):
             create_disk(self._disk_size, (2 * self._disk_size) + 1)
         ).to(map_2d_device)
 
-        if grid_size is not None:
-            self.grid_size = [grid_size[0], grid_size[1]]
-        else:
-            self.grid_size = DEFAULT_GRID_SIZE
-        # Track the center of the grid - (0, 0) in our coordinate system
-        # We then just need to update everything when we want to track obstacles
-        self.grid_origin = Tensor(self.grid_size + [0], device=map_2d_device) // 2
-        # Used to track the offset from our observations so maps dont use too much space
-
-        # Used for tensorized bounds checks
-        self._grid_size_t = Tensor(self.grid_size, device=map_2d_device)
+        self.grid = GridParams(grid_size=grid_size, resolution=resolution, device=map_2d_device)
+        self.grid_size = self.grid.grid_size
+        self.grid_origin = self.grid.grid_origin
+        self.resolution = self.grid.resolution
 
         # Init variables
         self.reset()
@@ -231,6 +246,7 @@ class SparseVoxelMap(object):
         if self.use_instance_memory:
             self.instances = InstanceMemory(
                 num_envs=1,
+                encoder=self.encoder,
                 **self.instance_memory_kwargs,
             )
         else:
@@ -468,6 +484,8 @@ class SparseVoxelMap(object):
 
         # Add instance views to memory
         if self.use_instance_memory:
+            # Add to instance memory
+            t0 = timeit.default_timer()
             instance = instance_image.clone()
 
             self.instances.process_instances_for_env(
@@ -481,9 +499,14 @@ class SparseVoxelMap(object):
                 background_instance_labels=[self.background_instance_label],
                 valid_points=valid_depth,
                 pose=base_pose,
-                encoder=self.encoder,
             )
+            t1 = timeit.default_timer()
             self.instances.associate_instances_to_memory()
+            t2 = timeit.default_timer()
+            print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
+
+        if self.prune_detected_objects:
+            valid_depth = valid_depth & (instance_image == self.background_instance_label)
 
         # Add to voxel grid
         if feats is not None:
@@ -509,16 +532,8 @@ class SparseVoxelMap(object):
         assert bounds.shape[0] == 3, "bounding boxes in xyz"
         assert bounds.shape[1] == 2, "min and max"
         assert (len(bounds.shape)) == 2, "only one bounding box"
-        mins = torch.floor(self.xy_to_grid_coords(bounds[:2, 0])).long()
-        maxs = torch.ceil(self.xy_to_grid_coords(bounds[:2, 1])).long()
         obstacles, explored = self.get_2d_map()
-        mask = torch.zeros_like(explored)
-        mask[mins[0] : maxs[0] + 1, mins[1] : maxs[1] + 1] = True
-        if debug:
-            import matplotlib.pyplot as plt
-
-            plt.imshow(obstacles.int() + explored.int() + mask.int())
-        return mask
+        return self.grid.mask_from_bounds(obstacles, explored, bounds, debug)
 
     def _update_visited(self, base_pose: Tensor):
         """Update 2d map of where robot has visited"""
@@ -742,14 +757,6 @@ class SparseVoxelMap(object):
         explored_soft += self._visited
         explored = explored_soft > 0
 
-        # Also shrink the explored area to build more confidence
-        # That we will not collide with anything while moving around
-        # if self.dilate_obstacles_kernel is not None:
-        #    explored = binary_erosion(
-        #        explored.float().unsqueeze(0).unsqueeze(0),
-        #        self.dilate_obstacles_kernel,
-        #    )[0, 0].bool()
-
         if self.smooth_kernel_size > 0:
             # Opening and closing operations here on explore
             explored = binary_erosion(
@@ -800,18 +807,6 @@ class SparseVoxelMap(object):
         self._2d_last_updated = self._seq
         return obstacles, explored
 
-    def xy_to_grid_coords(self, xy: torch.Tensor) -> Optional[np.ndarray]:
-        """convert xy point to grid coords"""
-        assert xy.shape[-1] == 2, "coords must be Nx2 or 2d array"
-        # Handle convertion
-        if isinstance(xy, np.ndarray):
-            xy = torch.from_numpy(xy).float()
-        grid_xy = (xy / self.grid_resolution) + self.grid_origin[:2]
-        if torch.any(grid_xy >= self._grid_size_t) or torch.any(grid_xy < torch.zeros(2)):
-            return None
-        else:
-            return grid_xy
-
     def plan_to_grid_coords(self, plan_result: PlanResult) -> Optional[List[torch.Tensor]]:
         """Convert a plan properly into grid coordinates"""
         if not plan_result.success:
@@ -819,19 +814,8 @@ class SparseVoxelMap(object):
         else:
             traj = []
             for node in plan_result.trajectory:
-                traj.append(self.xy_to_grid_coords(node.state[:2]))
+                traj.append(self.grid.xy_to_grid_coords(node.state[:2]))
             return traj
-
-    def grid_coords_to_xy(self, grid_coords: torch.Tensor) -> np.ndarray:
-        """convert grid coordinate point to metric world xy point"""
-        assert grid_coords.shape[-1] == 2, "grid coords must be an Nx2 or 2d array"
-        return (grid_coords - self.grid_origin[:2]) * self.grid_resolution
-
-    def grid_coords_to_xyt(self, grid_coords: np.ndarray) -> np.ndarray:
-        """convert grid coordinate point to metric world xyt point"""
-        res = torch.zeros(3)
-        res[:2] = self.grid_coords_to_xy(grid_coords)
-        return res
 
     def get_kd_tree(self) -> open3d.geometry.KDTreeFlann:
         """Return kdtree for collision checks
@@ -937,7 +921,7 @@ class SparseVoxelMap(object):
         valid_indices = torch.nonzero(mask, as_tuple=False)
         if valid_indices.size(0) > 0:
             random_index = torch.randint(valid_indices.size(0), (1,))
-            return self.grid_coords_to_xy(valid_indices[random_index])
+            return self.grid.grid_coords_to_xy(valid_indices[random_index])
         else:
             return None
 
@@ -947,14 +931,14 @@ class SparseVoxelMap(object):
             raise NotImplementedError("not currently checking against robot base geometry")
         obstacles, explored = self.get_2d_map()
         # Convert xy to grid coords
-        grid_xy = self.xy_to_grid_coords(xyt[:2])
+        grid_xy = self.grid.xy_to_grid_coords(xyt[:2])
         # Check to see if grid coords are explored and obstacle free
         if grid_xy is None:
             # Conversion failed - probably out of bounds
             return False
         obstacles, explored = self.get_2d_map()
         # Convert xy to grid coords
-        grid_xy = self.xy_to_grid_coords(xyt[:2])
+        grid_xy = self.grid.xy_to_grid_coords(xyt[:2])
         # Check to see if grid coords are explored and obstacle free
         if grid_xy is None:
             # Conversion failed - probably out of bounds
@@ -981,7 +965,7 @@ class SparseVoxelMap(object):
         # Traversible indices will be a 2xN array, so we need to transpose it.
         # Set to floor/max obs height and bright red
         if is_map:
-            traversible_pts = self.grid_coords_to_xy(traversible_indices.T)
+            traversible_pts = self.grid.grid_coords_to_xy(traversible_indices.T)
         else:
             traversible_pts = (
                 traversible_indices.T - np.ceil([d / 2 for d in traversible.shape])
@@ -1026,7 +1010,6 @@ class SparseVoxelMap(object):
 
         # Create a combined point cloud
         # Do the other stuff we need to show instances
-        # pc_xyz, pc_rgb, pc_feats = self.get_data()
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
         if orig is None:
@@ -1050,92 +1033,51 @@ class SparseVoxelMap(object):
             )
 
         if instances:
-            for instance_view in self.get_instances():
-                mins, maxs = (
-                    instance_view.bounds[:, 0].cpu().numpy(),
-                    instance_view.bounds[:, 1].cpu().numpy(),
-                )
-                if np.any(maxs - mins < 1e-5):
-                    logger.info(f"Warning: bad box: {mins} {maxs}")
-                    continue
-                width, height, depth = maxs - mins
+            self._get_instances_open3d(geoms)
 
-                # Create a mesh to visualzie where the instances were seen
-                mesh_box = open3d.geometry.TriangleMesh.create_box(
-                    width=width, height=height, depth=depth
-                )
-
-                # Get vertex array from the mesh
-                vertices = np.asarray(mesh_box.vertices)
-
-                # Translate the vertices to the desired position
-                vertices += mins
-                triangles = np.asarray(mesh_box.triangles)
-
-                # Create a wireframe mesh
-                lines = []
-                for tri in triangles:
-                    lines.append([tri[0], tri[1]])
-                    lines.append([tri[1], tri[2]])
-                    lines.append([tri[2], tri[0]])
-
-                # color = [1.0, 0.0, 0.0]  # Red color (R, G, B)
-                color = np.random.random(3)
-                colors = [color for _ in range(len(lines))]
-                wireframe = open3d.geometry.LineSet(
-                    points=open3d.utility.Vector3dVector(vertices),
-                    lines=open3d.utility.Vector2iVector(lines),
-                )
-                # Get the colors and add to wireframe
-                wireframe.colors = open3d.utility.Vector3dVector(colors)
-                geoms.append(wireframe)
         return geoms
 
-    def _get_o3d_robot_footprint_geometry(
-        self,
-        xyt: np.ndarray,
-        dimensions: Optional[np.ndarray] = None,
-        length_offset: float = 0,
-    ):
-        """Get a 3d mesh cube for the footprint of the robot. But this does not work very well for whatever reason."""
-        # Define the dimensions of the cube
-        if dimensions is None:
-            dimensions = np.array([0.2, 0.2, 0.2])  # Cube dimensions (length, width, height)
+    def _get_instances_open3d(self, geoms: List[open3d.geometry.Geometry]) -> None:
+        """Get open3d geometries to append"""
+        for instance_view in self.get_instances():
+            mins, maxs = (
+                instance_view.bounds[:, 0].cpu().numpy(),
+                instance_view.bounds[:, 1].cpu().numpy(),
+            )
+            if np.any(maxs - mins < 1e-5):
+                logger.info(f"Warning: bad box: {mins} {maxs}")
+                continue
+            width, height, depth = maxs - mins
 
-        x, y, theta = xyt
-        # theta = theta - np.pi/2
+            # Create a mesh to visualzie where the instances were seen
+            mesh_box = open3d.geometry.TriangleMesh.create_box(
+                width=width, height=height, depth=depth
+            )
 
-        # Create a custom mesh cube with the specified dimensions
-        mesh_cube = open3d.geometry.TriangleMesh.create_box(
-            width=dimensions[0], height=dimensions[1], depth=dimensions[2]
-        )
+            # Get vertex array from the mesh
+            vertices = np.asarray(mesh_box.vertices)
 
-        # Define the transformation matrix for position and orientation
-        rotation_matrix = np.array(
-            [
-                [math.cos(theta), -math.sin(theta), 0],
-                [math.sin(theta), math.cos(theta), 0],
-                [0, 0, 1],
-            ]
-        )
-        # Calculate the translation offset based on theta
-        length_offset = 0
-        x_offset = length_offset - (dimensions[0] / 2)
-        y_offset = -1 * dimensions[1] / 2
-        dx = (math.cos(theta) * x_offset) + (math.cos(theta - np.pi / 2) * y_offset)
-        dy = (math.sin(theta + np.pi / 2) * y_offset) + (math.sin(theta) * x_offset)
-        translation_vector = np.array([x + dx, y + dy, 0])  # Apply offset based on theta
-        transformation_matrix = np.identity(4)
-        transformation_matrix[:3, :3] = rotation_matrix
-        transformation_matrix[:3, 3] = translation_vector
+            # Translate the vertices to the desired position
+            vertices += mins
+            triangles = np.asarray(mesh_box.triangles)
 
-        # Apply the transformation to the cube
-        mesh_cube.transform(transformation_matrix)
+            # Create a wireframe mesh
+            lines = []
+            for tri in triangles:
+                lines.append([tri[0], tri[1]])
+                lines.append([tri[1], tri[2]])
+                lines.append([tri[2], tri[0]])
 
-        # Set the color of the cube to blue
-        mesh_cube.paint_uniform_color([0.0, 0.0, 1.0])  # Set color to blue
-
-        return mesh_cube
+            # color = [1.0, 0.0, 0.0]  # Red color (R, G, B)
+            color = np.random.random(3)
+            colors = [color for _ in range(len(lines))]
+            wireframe = open3d.geometry.LineSet(
+                points=open3d.utility.Vector3dVector(vertices),
+                lines=open3d.utility.Vector2iVector(lines),
+            )
+            # Get the colors and add to wireframe
+            wireframe.colors = open3d.utility.Vector3dVector(colors)
+            geoms.append(wireframe)
 
     def _show_open3d(
         self,

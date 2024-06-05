@@ -12,8 +12,9 @@ import skimage
 import skimage.morphology
 import torch
 
+from stretch.mapping.grid import GridParams
 from stretch.mapping.voxel import SparseVoxelMap
-from stretch.motion import XYT, RobotModel
+from stretch.motion import XYT, Footprint, RobotModel
 from stretch.utils.geometry import angle_difference, interpolate_angles
 from stretch.utils.morphology import (
     binary_dilation,
@@ -22,6 +23,7 @@ from stretch.utils.morphology import (
     find_closest_point_on_mask,
     get_edges,
 )
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 
 
 class SparseVoxelMapNavigationSpace(XYT):
@@ -34,6 +36,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self,
         voxel_map: SparseVoxelMap,
         robot: RobotModel,
+        grid: Optional[GridParams] = None,
         step_size: float = 0.1,
         rotation_step_size: float = 0.5,
         use_orientation: bool = False,
@@ -48,6 +51,9 @@ class SparseVoxelMapNavigationSpace(XYT):
         self.voxel_map = voxel_map
         self.create_collision_masks(orientation_resolution)
         self.extend_mode = extend_mode
+        if grid is None:
+            grid = self.voxel_map.grid
+        self.grid = grid
 
         # Always use 3d states
         self.use_orientation = use_orientation
@@ -83,7 +89,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self, img: np.ndarray, state: np.ndarray, weight: int = 10
     ) -> np.ndarray:
         """Helper function to draw masks on image"""
-        grid_xy = self.voxel_map.xy_to_grid_coords(state[:2])
+        grid_xy = self.grid.xy_to_grid_coords(state[:2])
         mask = self.get_oriented_mask(state[2])
         x0 = int(np.round(float(grid_xy[0] - mask.shape[0] // 2)))
         x1 = x0 + mask.shape[0]
@@ -229,6 +235,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         is_safe_threshold=1.0,
         debug: bool = False,
         verbose: bool = False,
+        obstacles: Optional[torch.Tensor] = None,
+        explored: Optional[torch.Tensor] = None,
     ) -> bool:
         """Check to see if state is valid; i.e. if there's any collisions if mask is at right place"""
         assert len(state) == 3
@@ -244,13 +252,14 @@ class SparseVoxelMapNavigationSpace(XYT):
         assert mask.shape[0] == mask.shape[1], "square masks only for now"
         dim = mask.shape[0]
         half_dim = dim // 2
-        grid_xy = self.voxel_map.xy_to_grid_coords(state[:2])
+        grid_xy = self.grid.xy_to_grid_coords(state[:2])
         x0 = int(grid_xy[0]) - half_dim
         x1 = x0 + dim
         y0 = int(grid_xy[1]) - half_dim
         y1 = y0 + dim
 
-        obstacles, explored = self.voxel_map.get_2d_map()
+        if obstacles is None:
+            obstacles, explored = self.voxel_map.get_2d_map()
 
         crop_obs = obstacles[x0:x1, y0:y1]
         crop_exp = explored[x0:x1, y0:y1]
@@ -291,14 +300,26 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         return valid
 
+    def _get_conservative_2d_map(self, obstacles, explored):
+        """Get a conservative 2d map from the voxel map"""
+        # Extract edges from our explored mask
+        obstacles = binary_dilation(
+            obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
+        )[0, 0].bool()
+        less_explored = binary_erosion(
+            explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
+        )[0, 0]
+        return obstacles, less_explored
+
     def sample_near_mask(
         self,
         mask: torch.Tensor,
         radius_m: float = 0.7,
         max_tries: int = 1000,
-        verbose: bool = True,
+        verbose: bool = False,
         debug: bool = False,
         look_at_any_point: bool = False,
+        conservative: bool = True,
     ) -> Optional[np.ndarray]:
         """Sample a position near the mask and return.
 
@@ -307,8 +328,11 @@ class SparseVoxelMapNavigationSpace(XYT):
         """
 
         obstacles, explored = self.voxel_map.get_2d_map()
-
-        # Extract edges from our explored mask
+        if conservative:
+            # Expand obstacles and shrink explored area
+            obstacles, less_explored = self._get_conservative_2d_map(obstacles, explored)
+            # Assign it to a boolean
+            explored = less_explored.bool()
 
         # Radius computed from voxel map measurements
         radius = np.ceil(radius_m / self.voxel_map.grid_resolution)
@@ -327,7 +351,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         # Where can the robot go?
         valid_indices = torch.nonzero(expanded_mask, as_tuple=False)
         if valid_indices.size(0) == 0:
-            print("[VOXEL MAP: sampling] No valid goals near mask!")
+            if verbose:
+                print("[VOXEL MAP: sampling] No valid goals near mask!")
             return None
         if not look_at_any_point:
             mask_indices = torch.nonzero(mask, as_tuple=False)
@@ -342,18 +367,20 @@ class SparseVoxelMapNavigationSpace(XYT):
                 outside_point = find_closest_point_on_mask(mask, point_grid_coords.float())
 
             # convert back
-            point = self.voxel_map.grid_coords_to_xy(point_grid_coords)
+            point = self.grid.grid_coords_to_xy(point_grid_coords)
             if point is None:
-                print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
+                if verbose:
+                    print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                 continue
             if outside_point is None:
-                print(
-                    "[VOXEL MAP: sampling] ERR finding closest pt:",
-                    point,
-                    point_grid_coords,
-                    "closest =",
-                    outside_point,
-                )
+                if verbose:
+                    print(
+                        "[VOXEL MAP: sampling] ERR finding closest pt:",
+                        point,
+                        point_grid_coords,
+                        "closest =",
+                        outside_point,
+                    )
                 continue
             theta = math.atan2(
                 outside_point[1] - point_grid_coords[0, 1],
@@ -371,7 +398,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             # Check to see if this point is valid
             if verbose:
                 print("[VOXEL MAP: sampling]", radius, i, "sampled", xyt)
-            if self.is_valid(xyt, verbose=verbose):
+            if self.is_valid(xyt, verbose=verbose, obstacles=obstacles, explored=explored):
                 yield xyt
 
         # We failed to find anything useful
@@ -412,19 +439,16 @@ class SparseVoxelMapNavigationSpace(XYT):
         """Compute frontier regions of the map"""
 
         obstacles, explored = self.voxel_map.get_2d_map()
+        # These are all positions considered valid for moving to and on.
+        traversible = explored & ~obstacles
+
         # Extract edges from our explored mask
-        obstacles = binary_dilation(
-            obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
-        )[0, 0].bool()
-        less_explored = binary_erosion(
-            explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
-        )[0, 0]
+        obstacles, less_explored = self._get_conservative_2d_map(obstacles, explored)
 
         # Get the masks from our 3d map
         edges = get_edges(less_explored)
 
         # Do not explore obstacles any more
-        traversible = explored & ~obstacles
         frontier_edges = edges & ~obstacles
 
         kernel = self._get_kernel(expand_size)
@@ -438,7 +462,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             expanded_frontier = frontier_edges
 
         outside_frontier = expanded_frontier & ~explored
-        frontier = expanded_frontier & ~obstacles & explored
+        frontier = expanded_frontier & traversible
 
         if debug:
             import matplotlib.pyplot as plt
@@ -485,7 +509,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         # from scipy.ndimage.morphology import distance_transform_edt
         m = np.ones_like(traversible)
-        start_x, start_y = self.voxel_map.xy_to_grid_coords(xyt[:2]).int().cpu().numpy()
+        start_x, start_y = self.grid.xy_to_grid_coords(xyt[:2]).int().cpu().numpy()
         if verbose or debug:
             print("--- Coordinates ---")
             print(f"{xyt=}")
@@ -494,10 +518,6 @@ class SparseVoxelMapNavigationSpace(XYT):
         m[start_x, start_y] = 0
         m = np.ma.masked_array(m, ~traversible)
 
-        # import pickle
-        # with open('debug_m.pkl', 'wb') as f:
-        #     pickle.dump(m, f)
-        # print (~traversible)
         if not self.has_zero_contour(m):
             if verbose:
                 print("traversible frontier had zero contour! no where to go.")
@@ -552,7 +572,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 continue
 
             # convert back to real-world coordinates
-            point = self.voxel_map.grid_coords_to_xy(point_grid_coords)
+            point = self.grid.grid_coords_to_xy(point_grid_coords)
             if point is None:
                 print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                 continue
@@ -662,7 +682,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 )
 
                 # convert back
-                point = self.voxel_map.grid_coords_to_xy(point_grid_coords)
+                point = self.grid.grid_coords_to_xy(point_grid_coords)
                 if point is None:
                     print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                     continue
@@ -697,15 +717,61 @@ class SparseVoxelMapNavigationSpace(XYT):
         # We failed to find anything useful
         yield None
 
+    def _get_open3d_geometries(
+        self,
+        instances: bool,
+        orig: Optional[np.ndarray] = None,
+        norm: float = 255.0,
+        xyt: Optional[np.ndarray] = None,
+        footprint: Optional[Footprint] = None,
+        **backend_kwargs,
+    ):
+        """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
+
+        # Create a combined point cloud
+        # Do the other stuff we need to show instances
+        points, _, _, rgb = self.voxel_map.voxel_pcd.get_pointcloud()
+        pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
+        if orig is None:
+            orig = np.zeros(3)
+        geoms = create_visualization_geometries(pcd=pcd, orig=orig)
+
+        # Get the explored/traversible area
+        obstacles, explored = self.voxel_map.get_2d_map()
+        frontier, _, traversible = self.get_frontier()
+        traversible = traversible & ~frontier
+
+        # Visualize traversible area and frontier from the motion planner
+        geoms += self.voxel_map._get_boxes_from_points(traversible, [0, 1, 0])
+        geoms += self.voxel_map._get_boxes_from_points(frontier, [0, 1, 1])
+        geoms += self.voxel_map._get_boxes_from_points(obstacles, [1, 0, 0])
+
+        if xyt is not None and footprint is not None:
+            geoms += self.voxel_map._get_boxes_from_points(
+                footprint.get_rotated_mask(self.voxel_map.grid_resolution, float(xyt[2])),
+                [0, 0, 1],
+                is_map=False,
+                height=0.1,
+                offset=xyt[:2],
+            )
+
+        if instances:
+            geoms.append(self.voxel_map._get_instances_open3d(geoms))
+        return geoms
+
     def show(
         self,
         instances: bool = False,
         orig: Optional[np.ndarray] = None,
         norm: float = 255.0,
+        xyt: Optional[np.ndarray] = None,
+        footprint: Optional[Footprint] = None,
         backend: str = "open3d",
     ):
-        """Tool for debugging map representations that we have created"""
-        geoms = self.voxel_map._get_open3d_geometries(instances, orig, norm)
+        """Tool for debugging map representations that we have created. By default will display"""
+        geoms = self._get_open3d_geometries(
+            instances=instances, orig=orig, norm=norm, xyt=xyt, footprint=footprint
+        )
 
         # lazily import open3d - it's a tough dependency
         import open3d

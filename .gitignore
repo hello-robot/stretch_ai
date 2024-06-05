@@ -118,3 +118,7 @@ ENV/
 
 # Webcam calibration images
 webcam_calibration_images/
+
+# Data files
+*.pkl
+*.pcd

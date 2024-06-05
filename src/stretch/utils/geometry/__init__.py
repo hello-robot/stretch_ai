@@ -5,12 +5,14 @@
 
 from ._base import (
     normalize_ang_error,
+    point_global_to_base,
     posquat2sophus,
     sophus2posquat,
     sophus2xyt,
     xyt2sophus,
     xyt_base_to_global,
     xyt_global_to_base,
+    xyz2sophus,
 )
 from .angles import PI2, angle_difference, interpolate_angles
 from .rotation import get_rotation_from_xyz

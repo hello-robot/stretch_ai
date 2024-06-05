@@ -18,16 +18,18 @@ from atomicwrites import atomic_write
 from loguru import logger
 from PIL import Image
 from torchvision import transforms
-from transformers import Owlv2ForObjectDetection, Owlv2Processor
 
-from stretch.agent import Parameters
+from stretch.core.parameters import Parameters
 from stretch.core.robot import GraspClient, RobotClient
 from stretch.mapping.instance import Instance
+from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import get_encoder
 from stretch.utils.threading import Interval
+
+# from transformers import Owlv2ForObjectDetection, Owlv2Processor
 
 
 class RobotAgent:
@@ -99,13 +101,26 @@ class RobotAgent:
                     "min_pixels_for_instance_view": parameters.get(
                         "min_pixels_for_instance_view", 100
                     ),
-                    "min_instance_thickness": parameters.get("min_instance_thickness", 0.01),
-                    "min_instance_vol": parameters.get("min_instance_vol", 1e-6),
-                    "max_instance_vol": parameters.get("max_instance_vol", 10.0),
-                    "min_instance_height": parameters.get("min_instance_height", 0.1),
-                    "max_instance_height": parameters.get("max_instance_height", 1.8),
-                    "open_vocab_cat_map_file": parameters.get("open_vocab_cat_map_file", None),
+                    "min_instance_thickness": parameters.get(
+                        "instance_memory/min_instance_thickness", 0.01
+                    ),
+                    "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
+                    "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
+                    "min_instance_height": parameters.get(
+                        "instance_memory/min_instance_height", 0.1
+                    ),
+                    "max_instance_height": parameters.get(
+                        "instance_memory/max_instance_height", 1.8
+                    ),
+                    "min_pixels_for_instance_view": parameters.get(
+                        "instance_memory/min_pixels_for_instance_view", 100
+                    ),
+                    "min_percent_for_instance_view": parameters.get(
+                        "instance_memory/min_percent_for_instance_view", 0.2
+                    ),
+                    "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
                 },
+                prune_detected_objects=parameters.get("prune_detected_objects", False),
             )
 
         # Create planning space
@@ -114,15 +129,17 @@ class RobotAgent:
             self.robot.get_robot_model(),
             step_size=parameters["step_size"],
             rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters[
-                "dilate_frontier_size"
-            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
+            dilate_frontier_size=parameters["dilate_frontier_size"],
             dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            grid=self.voxel_map.grid,
         )
 
         # Dictionary storing attempts to visit each object
         self._object_attempts = {}
         self._cached_plans = {}
+
+        # Store the current scene graph computed from detected objects
+        self.scene_graph = None
 
         # Create a simple motion planner
         self.planner = RRTConnect(self.space, self.space.is_valid)
@@ -139,15 +156,6 @@ class RobotAgent:
 
         self.openai_key = None
         self.task = None
-        # disable owlvit for now
-        # self.to_pil = transforms.ToPILImage()
-        # self.processor = Owlv2Processor.from_pretrained(
-        #     "google/owlv2-base-patch16-ensemble"
-        # )
-        # self.model = Owlv2ForObjectDetection.from_pretrained(
-        #     "google/owlv2-base-patch16-ensemble"
-        # )
-        # self.owlv2_threshold = 0.2
 
     def set_openai_key(self, key):
         self.openai_key = key
@@ -186,19 +194,22 @@ class RobotAgent:
         logger.info("Rotate in place")
         if steps <= 0:
             return False
+
         step_size = 2 * np.pi / steps
         i = 0
         while i < steps:
-            self.robot.navigate_to([0, 0, step_size], relative=True, blocking=True)
-            # TODO remove debug code
-            # print(i, self.robot.get_base_pose())
-            self.update()
+            self.robot.navigate_to([0, 0, i * step_size], relative=False, blocking=True)
+
             if self.robot.last_motion_failed():
                 # We have a problem!
-                self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
-                i = 0
+                raise RuntimeError("Robot is stuck!")
+                # continue
             else:
                 i += 1
+
+            # Add an observation after the move
+            print("---- UPDATE ----")
+            self.update()
 
             if visualize:
                 self.voxel_map.show(
@@ -209,88 +220,6 @@ class RobotAgent:
 
         return True
 
-    def get_plan_from_vlm(
-        self,
-        current_pose=None,
-        show_prompts=False,
-        show_plan=False,
-        plan_file="vlm_plan.txt",
-    ):
-        """This is a connection to a remote thing for getting language commands"""
-        from stretch.utils.rpc import get_output_from_world_representation
-
-        if self.parameters["vlm_option"] == "gpt4v":
-            if not self.openai_key:
-                self.openai_key = input(
-                    "You are using GPT4v for planning, please type in your openai key: "
-                )
-            if not self.task or not self.parameters["replanning"]:
-                # gpt4v agent has replanning capability, so we save the task here and plan multiple times
-                self.task = self.get_command()
-            world_representation = self.get_observations(
-                task=self.task, current_pose=current_pose, show_prompts=show_prompts
-            )
-            output = self.get_output_from_gpt4v(world_representation)
-            if show_plan:
-                import re
-
-                import matplotlib.pyplot as plt
-
-                if output == "explore":
-                    print(
-                        ">>>>>> gpt4v cannot find a plan, the robot should explore more >>>>>>>>>"
-                    )
-                elif output == "gpt4v API error":
-                    print(">>>>>> there is something wrong with the gpt4v api >>>>>>>>>")
-                else:
-                    actions = output.split("; ")
-                    for action_id, action in enumerate(actions):
-                        crop_id = int(re.search(r"img_(\d+)", action).group(1))
-                        global_id = world_representation.object_images[crop_id].instance_id
-                        plt.subplot(1, len(actions), action_id + 1)
-                        plt.imshow(
-                            self.voxel_map.get_instances()[global_id].get_best_view().get_image()
-                        )
-                        plt.title(action.split("(")[0] + f" instance {global_id}")
-                        plt.axis("off")
-                    plt.suptitle(self.task)
-                    plt.show()
-        else:
-            assert self.rpc_stub is not None, "must have RPC stub to connect to remote VLM"
-            world_representation = self.get_observations(current_pose=current_pose)
-            # This is not a very stable import
-            # So we guard it under this part where it's necessary
-            output = get_output_from_world_representation(
-                self.rpc_stub, world_representation, self.get_command()
-            )
-        if self.parameters["save_vlm_plan"]:
-            with open(plan_file, "w") as f:
-                f.write(output)
-            print(f"Task plan generated from VLMs has been written to {plan_file}")
-        return output
-
-    def get_observations(self, show_prompts=False, task=None, current_pose=None):
-        from stretch.utils.rpc import get_obj_centric_world_representation
-
-        if self.plan_with_reachable_instances:
-            instances = self.get_all_reachable_instances(current_pose=current_pose)
-        else:
-            instances = self.voxel_map.get_instances()
-
-        scene_graph = None
-        if self.use_scene_graph:
-            scene_graph = self.extract_symbolic_spatial_info(instances)
-
-        world_representation = get_obj_centric_world_representation(
-            instances,
-            self.parameters["vlm_context_length"],
-            self.parameters["sample_strategy"],
-            task=task,
-            text_features=self.encode_text(task),
-            scene_graph=scene_graph,
-        )
-        return world_representation
-
     def save_svm(self, path, filename: Optional[str] = None):
         """Debugging code for saving out an SVM"""
         if filename is None:
@@ -299,134 +228,6 @@ class RobotAgent:
         with open(filename, "wb") as f:
             pickle.dump(self.voxel_map, f)
         print(f"SVM logged to {filename}")
-
-    def template_planning(self, obs, goal):
-        if not obs:
-            return None
-        # TODO: add optional supports for LangSAM, OWLVit etc.
-        return self.planning_with_owlv2(obs, goal)
-
-    def planning_with_owlv2(self, obs, goal):
-        # goal is an OVMM-style query
-        target_obj = goal.split(" ")[1]
-        # start_recep = goal.split(" ")[3]
-        goal_recep = goal.split(" ")[5]
-
-        res = []
-
-        # using owlv2 to make sure the target is detected in the instance image
-        # TODO: add start recep check using coordinates
-        for target in [target_obj, goal_recep]:
-            # TODO: implement this
-            # obs = self.sort_by_clip_similarity(obs, target)
-            img = self.to_pil(obs.object_images[-1].image.permute(2, 0, 1) / 255.0)
-            text = [["a photo of a " + target]]
-            inputs = self.processor(text=text, images=img, return_tensors="pt")
-            outputs = self.model(**inputs)
-            # Target image sizes (height, width) to rescale box predictions [batch_size, 2]
-            target_sizes = torch.Tensor([img.size[::-1]])
-            # Convert outputs (bounding boxes and class logits) to COCO API
-            results = self.processor.post_process_object_detection(
-                outputs=outputs, threshold=0.1, target_sizes=target_sizes
-            )
-            i = 0  # Retrieve predictions for the first image for the corresponding text queries
-            text = text[i]
-            boxes, scores, labels = (
-                results[i]["boxes"],
-                results[i]["scores"],
-                results[i]["labels"],
-            )
-            if len(scores) == 0 or max(scores) < self.owlv2_threshold:
-                print(f"nothing ({target}) detected by owlv2")
-                res.append(None)
-            else:
-                # Print detected objects and rescaled box coordinates
-                for box, score, label in zip(boxes, scores, labels):
-                    box = [round(i, 2) for i in box.tolist()]
-                    print(
-                        f"Detected {text[label]} with confidence {round(score.item(), 3)} at location {box}"
-                    )
-                res.append(obs.object_images[-1].instance_id)
-        if None in res:
-            return "explore"
-        return f"goto(img_{res[0]}); pickup(img_{res[0]}); goto(img_{res[-1]}); placeon(img_{res[0]}, img_{res[-1]})"
-
-    def execute_vlm_plan(self):
-        """Get plan from vlm and execute it"""
-        assert self.rpc_stub is not None, "must have RPC stub to connect to remote VLM"
-        # This is not a very stable import
-        # So we guard it under this part where it's necessary
-        from stretch.utils.rpc import (
-            get_obj_centric_world_representation,
-            get_output_from_world_representation,
-            parse_pick_and_place_plan,
-        )
-
-        instances = self.voxel_map.get_instances()
-        world_representation = get_obj_centric_world_representation(
-            instances, self.parameters["vlm_context_length"]
-        )
-
-        # Xiaohan: comment this for now, and change it to owlv2 plan generation
-        output = get_output_from_world_representation(
-            self.rpc_stub, world_representation, self.get_command()
-        )
-        plan = output.action
-        # TODO: need testing on real robot: command should only be OVMM-style
-        # plan = self.template_planning(world_representation, self.get_command())
-
-        def confirm_plan(p):
-            return True  # might need to merge demo_refactor to find this function
-
-        logger.info(f"Received plan: {plan}")
-        if not confirm_plan(plan):
-            logger.warn("Plan was not confirmed")
-            return
-
-        pick_instance_id, place_instance_id = parse_pick_and_place_plan(world_representation, plan)
-
-        if not pick_instance_id:
-            # Navigating to a cup or bottle
-            for i, each_instance in enumerate(instances):
-                if (
-                    self.vocab.goal_id_to_goal_name[int(each_instance.category_id.item())]
-                    in self.parameters["pick_categories"]
-                ):
-                    pick_instance_id = i
-                    break
-
-        if not place_instance_id:
-            for i, each_instance in enumerate(instances):
-                if (
-                    self.vocab.goal_id_to_goal_name[int(each_instance.category_id.item())]
-                    in self.parameters["place_categories"]
-                ):
-                    place_instance_id = i
-                    break
-
-        if pick_instance_id is None or place_instance_id is None:
-            logger.warn("No instances found - exploring instead")
-
-            self.run_exploration(
-                5,  # TODO: pass rate into parameters
-                False,  # TODO: pass manual_wait into parameters
-                explore_iter=self.parameters["exploration_steps"],
-                task_goal=None,
-                go_home_at_end=False,  # TODO: pass into parameters
-            )
-
-            self.say("Exploring")
-
-            return
-
-        self.say("Navigating to instance ")
-        self.say(f"Instance id: {pick_instance_id}")
-        success = self.navigate_to_an_instance(
-            pick_instance_id,
-            visualize=self.should_visualize(),
-            should_plan=self.parameters["plan_to_instance"],
-        )
-        self.say(f"Success: {success}")
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
@@ -451,7 +252,7 @@ class RobotAgent:
         else:
             return self.ask("please type any task you want the robot to do: ")
 
-    def update(self, visualize_map=False):
+    def update(self, visualize_map: bool = False, debug_instances: bool = False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
         t0 = timeit.default_timer()
@@ -470,10 +271,43 @@ class RobotAgent:
             # Semantic prediction
             obs = self.semantic_sensor.predict(obs)
         self.voxel_map.add_obs(obs)
+
+        if self.use_scene_graph:
+            self._update_scene_graph()
+
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show waht was happening
             self.voxel_map.get_2d_map(debug=True)
+
+        if debug_instances:
+            # We need to load and configure matplotlib here
+            # to make sure that it's set up properly.
+            import matplotlib
+
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            instances = self.voxel_map.get_instances()
+            for instance in instances:
+                best_view = instance.get_best_view()
+                plt.imshow(best_view.get_image())
+                plt.axis("off")
+                plt.show()
+
+    def _update_scene_graph(self):
+        """Update the scene graph with the latest observations."""
+        if self.scene_graph is None:
+            self.scene_graph = SceneGraph(self.parameters, self.voxel_map.get_instances())
+        else:
+            self.scene_graph.update(self.voxel_map.get_instances())
+        # For debugging - TODO delete this code
+        self.scene_graph.get_relationships(debug=False)
+
+    def get_scene_graph(self) -> SceneGraph:
+        """Return scene graph, such as it is."""
+        self._update_scene_graph()
+        return self.scene_graph
 
     def plan_to_instance(
         self,
@@ -542,7 +376,12 @@ class RobotAgent:
         try_count = 0
         res = None
         start_is_valid = self.space.is_valid(start, verbose=False)
-        for goal in self.space.sample_near_mask(mask, radius_m=radius_m):
+
+        conservative_sampling = True
+        # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
+        for goal in self.space.sample_near_mask(
+            mask, radius_m=radius_m, conservative=conservative_sampling
+        ):
             goal = goal.cpu().numpy()
             if verbose:
                 print("       Start:", start)
@@ -670,30 +509,22 @@ class RobotAgent:
 
         # Call the robot's own startup hooks
         started = self.robot.start()
-        if started:
+        if not started:
             # update here
-            self.update()
+            raise RuntimeError("Robot failed to start!")
+
+        # First, open the gripper...
+        self.robot.switch_to_manipulation_mode()
+        self.robot.open_gripper()
 
         # Tuck the arm away
         print("Sending arm to  home...")
-        self.robot.switch_to_manipulation_mode()
-
-        # Add some debugging stuff - show what 3d point clouds look like
-        if visualize_map_at_start:
-            print("- Visualize map at first timestep")
-            self.voxel_map.show(
-                orig=np.zeros(3),
-                xyt=self.robot.get_base_pose(),
-                footprint=self.robot.get_robot_model().get_footprint(),
-            )
-
         self.robot.move_to_nav_posture()
         print("... done.")
 
         # Move the robot into navigation mode
         self.robot.switch_to_navigation_mode()
         print("- Update map after switching to navigation posture")
-        # self.update(visualize_map=visualize_map_at_start)  # Append latest observations
         self.update(visualize_map=False)  # Append latest observations
 
         # Add some debugging stuff - show what 3d point clouds look like
@@ -703,6 +534,7 @@ class RobotAgent:
                 orig=np.zeros(3),
                 xyt=self.robot.get_base_pose(),
                 footprint=self.robot.get_robot_model().get_footprint(),
+                instances=True,
             )
 
         self.print_found_classes(goal)
@@ -741,72 +573,10 @@ class RobotAgent:
                 matching_instances.append((i, instance))
         return self.filter_matches(matching_instances, threshold=threshold)
 
-    def get_ins_center_pos(self, idx):
-        return torch.mean(self.voxel_map.get_instances()[idx].point_cloud, axis=0)
-
-    def near(self, ins_a, ins_b):
-        dist = torch.pairwise_distance(
-            self.get_ins_center_pos(ins_a), self.get_ins_center_pos(ins_b)
-        ).item()
-        if dist < self.parameters["max_near_distance"]:
-            return True
-        return False
-
-    def on(self, ins_a, ins_b):
-        if (
-            self.near(ins_a, ins_b)
-            and self.get_ins_center_pos(ins_a)[2] > self.get_ins_center_pos(ins_b)[2]
-        ):
-            return True
-        return False
-
     def extract_symbolic_spatial_info(self, instances, debug=False):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""
-        relationships = []
-        for idx_a, ins_a in enumerate(instances):
-            for idx_b, ins_b in enumerate(instances):
-                if idx_a == idx_b:
-                    continue
-                # TODO: add "on", "in" ... relationships
-                if (
-                    self.near(ins_a.global_id, ins_b.global_id)
-                    and (ins_b.global_id, ins_a.global_id, "near") not in relationships
-                ):
-                    relationships.append((ins_a.global_id, ins_b.global_id, "near"))
-
-        # show symbolic relationships
-        if debug:
-            for idx_a, idx_b, rel in relationships:
-                import matplotlib.pyplot as plt
-
-                plt.subplot(1, 2, 1)
-                plt.imshow(
-                    (
-                        instances[idx_a].get_best_view().cropped_image
-                        * instances[idx_a].get_best_view().mask
-                        / 255.0
-                    )
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-                plt.title("Instance A is " + rel)
-                plt.axis("off")
-                plt.subplot(1, 2, 2)
-                plt.imshow(
-                    (
-                        instances[idx_b].get_best_view().cropped_image
-                        * instances[idx_b].get_best_view().mask
-                        / 255.0
-                    )
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-                plt.title("Instance B")
-                plt.axis("off")
-                plt.show()
-        return relationships
+        scene_graph = SceneGraph(instances)
+        return scene_graph.get_relationships()
 
     def get_all_reachable_instances(self, current_pose=None) -> List[Tuple[int, Instance]]:
         """get all reachable instances with their ids and cache the motion plans"""
@@ -891,13 +661,11 @@ class RobotAgent:
         return filtered_matches
 
     def go_home(self):
-        """Simple helper function to send the robot home safely after a trial."""
+        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there."""
         print("Go back to (0, 0, 0) to finish...")
         print("- change posture and switch to navigation mode")
         self.current_state = "NAV_TO_HOME"
-        # self.robot.move_to_nav_posture()
-        # self.robot.head.look_close(blocking=False)
-        self.robot.switch_to_navigation_mode()
+        self.robot.move_to_nav_posture()
 
         print("- try to motion plan there")
         start = self.robot.get_base_pose()
@@ -941,6 +709,37 @@ class RobotAgent:
                 best_score = goal_score
         return best_instance
 
+    def plan_to_frontier(
+        self,
+        start: np.ndarray,
+        rate: int = 10,
+        manual_wait: bool = False,
+        random_goals: bool = False,
+        try_to_plan_iter: int = 10,
+    ) -> bool:
+        """Motion plan to a frontier location."""
+        start = self.robot.get_base_pose()
+        start_is_valid = self.space.is_valid(start, verbose=True)
+        # if start is not valid move backwards a bit
+        if not start_is_valid:
+            print("Start not valid. back up a bit.")
+            return False
+
+        # sample a goal
+        if random_goals:
+            goal = next(self.space.sample_random_frontier()).cpu().numpy()
+        else:
+            res = plan_to_frontier(
+                start,
+                self.planner,
+                self.space,
+                self.voxel_map,
+                try_to_plan_iter=try_to_plan_iter,
+                visualize=False,  # visualize,
+                expand_frontier_size=self.default_expand_frontier_size,
+            )
+        return res
+
     def run_exploration(
         self,
         rate: int = 10,
@@ -965,6 +764,13 @@ class RobotAgent:
         if go_to_start_pose:
             print("Go to (0, 0, 0) to start with...")
             self.robot.navigate_to([0, 0, 0])
+            self.update()
+            if visualize:
+                self.voxel_map.show(
+                    orig=np.zeros(3),
+                    xyt=self.robot.get_base_pose(),
+                    footprint=self.robot.get_robot_model().get_footprint(),
+                )
 
         all_starts = []
         all_goals = []
@@ -975,46 +781,21 @@ class RobotAgent:
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
-            self.print_found_classes(task_goal)
             start = self.robot.get_base_pose()
             start_is_valid = self.space.is_valid(start, verbose=True)
             # if start is not valid move backwards a bit
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
-
-                # TODO: debug here -- why start is not valid?
-                # self.update()
-                # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
                 print(f"robot base pose: {self.robot.get_base_pose()}")
-
-                print("--- STARTS ---")
-                for a_start, a_goal in zip(all_starts, all_goals):
-                    print(
-                        "start =",
-                        a_start,
-                        self.space.is_valid(a_start),
-                        "goal =",
-                        a_goal,
-                        self.space.is_valid(a_goal),
-                    )
-
                 self.robot.navigate_to([-0.1, 0, 0], relative=True)
                 continue
 
+            # Now actually plan to the frontier
             print("       Start:", start)
-            # sample a goal
-            if random_goals:
-                goal = next(self.space.sample_random_frontier()).cpu().numpy()
-            else:
-                res = plan_to_frontier(
-                    start,
-                    self.planner,
-                    self.space,
-                    self.voxel_map,
-                    try_to_plan_iter=try_to_plan_iter,
-                    visualize=False,  # visualize,
-                    expand_frontier_size=self.default_expand_frontier_size,
-                )
+            self.print_found_classes(task_goal)
+            res = self.plan_to_frontier(
+                start=start, rate=rate, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
+            )
 
             # if it succeeds, execute a trajectory to this position
             if res.success:
@@ -1039,14 +820,15 @@ class RobotAgent:
                         pos_err_threshold=self.pos_err_threshold,
                         rot_err_threshold=self.rot_err_threshold,
                     )
-            else:
-                if self._retry_on_fail:
-                    print("Failed. Try again!")
-                    continue
-                else:
-                    print("Failed. Quitting!")
-                    break
+                if not res.success:
+                    if self._retry_on_fail:
+                        print("Failed. Try again!")
+                        continue
+                    else:
+                        print("Failed. Quitting!")
+                        break
 
+            # Error handling
             if self.robot.last_motion_failed():
                 print("!!!!!!!!!!!!!!!!!!!!!!")
                 print("ROBOT IS STUCK! Move back!")
