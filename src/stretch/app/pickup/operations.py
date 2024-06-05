@@ -482,6 +482,16 @@ class PlaceObjectOperation(ManagedOperation):
         self.cheer(f"Object is probably close enough to grasp: {dist}")
         return True
 
+    def _get_place_joint_state(self, place_xyz, joint_state: Optional[np.ndarray] = None):
+        if joint_state is None:
+            joint_state = self.robot.get_observation().joint
+
+        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+            place_xyz, ee_rot, q0=joint_state
+        )
+
+        return target_joint_state, success
+
     def run(self) -> None:
         self.intro("Placing the object on the receptacle.")
         self._successful = False
@@ -513,14 +523,10 @@ class PlaceObjectOperation(ManagedOperation):
             [relative_object_xyz[0], relative_object_xyz[1], max_xyz[2] + self.place_height_margin]
         )
 
-        target_joint_state, _, _, success, info = self.robot_model.manip_ik_for_grasp_frame(
-            place_xyz, ee_rot, q0=joint_state
-        )
-
-        # Compute the joint angles for placement using manip ik
-        target_joint_state, success, info = self.robot_model.manip_ik(
-            (place_xyz, ee_rot), q0=joint_state
-        )
+        target_joint_state, success = self._get_place_joint_state(place_xyz, joint_state)
+        if not success:
+            self.error("Could not place object!")
+            return
 
         # Move to the target joint state
         self.robot.arm_to(target_joint_state, blocking=True)
