@@ -286,7 +286,7 @@ class HomeRobotZmqClient(RobotClient):
                     last_ang = ang
                     if verbose:
                         print(
-                            f"Waiting for step={block_id} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
+                            f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
                         )
                         if goal_angle is not None:
                             print(
