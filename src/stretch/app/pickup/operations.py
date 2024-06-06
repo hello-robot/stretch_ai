@@ -347,7 +347,7 @@ class NavigateToObjectOperation(ManagedOperation):
             )
 
         # Motion plan to the object
-        plan = self.manager.agent.plan_to_instance(
+        plan = self.agent.plan_to_instance(
             self.get_target(), start=start, rotation_offset=np.pi / 2
         )
         if plan.success:

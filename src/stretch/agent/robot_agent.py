@@ -317,6 +317,8 @@ class RobotAgent:
         instance_id: int = -1,
         max_tries: int = 10,
         radius_m: float = 0.5,
+        rotation_offset: float = 0.0,
+        use_cache: bool = True,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found.
 
@@ -324,6 +326,7 @@ class RobotAgent:
             instance(Instance): an object in the world
             verbose(bool): extra info is printed
             instance_ind(int): if >= 0 we will try to use this to retrieve stored plans
+            rotation_offset(float): added to rotation of goal to change final relative orientation
         """
 
         res = None
@@ -337,7 +340,7 @@ class RobotAgent:
 
         # plan to the sampled goal
         has_plan = False
-        if instance_id >= 0 and instance_id in self._cached_plans:
+        if use_cache and instance_id >= 0 and instance_id in self._cached_plans:
             res = self._cached_plans[instance_id]
             has_plan = res.success
             if verbose:
@@ -345,7 +348,14 @@ class RobotAgent:
 
         if not has_plan:
             # Call planner
-            res = self.plan_to_bounds(instance.bounds, start, verbose, max_tries, radius_m)
+            res = self.plan_to_bounds(
+                instance.bounds,
+                start,
+                verbose,
+                max_tries,
+                radius_m,
+                rotation_offset=rotation_offset,
+            )
             if instance_id >= 0:
                 self._cached_plans[instance_id] = res
 
@@ -359,6 +369,7 @@ class RobotAgent:
         verbose: bool = False,
         max_tries: int = 10,
         radius_m: float = 0.5,
+        rotation_offset: float = 0.0,
     ) -> PlanResult:
         """Move to be near a bounding box in the world. Goes until a motion plan is found or max_tries is reached.
 
@@ -380,7 +391,10 @@ class RobotAgent:
         conservative_sampling = True
         # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
         for goal in self.space.sample_near_mask(
-            mask, radius_m=radius_m, conservative=conservative_sampling
+            mask,
+            radius_m=radius_m,
+            conservative=conservative_sampling,
+            rotation_offset=rotation_offset,
         ):
             goal = goal.cpu().numpy()
             if verbose:
