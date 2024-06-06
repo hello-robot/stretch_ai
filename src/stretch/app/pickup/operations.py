@@ -549,8 +549,6 @@ class PlaceObjectOperation(ManagedOperation):
             self.error("Could not place object!")
             return
 
-        breakpoint()
-
         # Move to the target joint state
         self.robot.arm_to(target_joint_state, blocking=True)
         time.sleep(5.0)
@@ -570,6 +568,8 @@ class PlaceObjectOperation(ManagedOperation):
         time.sleep(2.0)
         self._successful = True
 
+        self.cheer("We believe we successfully placed the object.")
+
     def was_successful(self):
-        self.error("Not implemented.")
+        self.error("Success detection not implemented.")
         return self._successful

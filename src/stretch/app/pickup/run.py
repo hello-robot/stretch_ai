@@ -74,6 +74,10 @@ def main(
 
     task.execute()
 
+    if reset:
+        # Send the robot home at the end!
+        robot.go_home()
+
     # At the end, disable everything
     robot.stop()
 
