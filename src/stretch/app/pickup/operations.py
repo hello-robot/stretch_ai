@@ -29,6 +29,9 @@ class ManagedOperation(Operation):
     def intro(self, message: str):
         print(colored(f"Running {self.name}:", "green"), message)
 
+    def warn(self, message: str):
+        print(colored(f"Warning in {self.name}: {message}", "orange"))
+
     def error(self, message: str):
         print(colored(f"Error in {self.name}: {message}", "red"))
 
@@ -219,10 +222,16 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                         return
 
         # Check to see if there is a visitable frontier
-        print("Nothing found.   Moving to frontier.")
+        self.warn("Nothing found. Moving to frontier.")
         if self.manager.current_object is None:
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
+            if res.success:
+                self.robot.execute_trajectory(
+                    [node.state for node in res.trajectory], final_timeout=30.0
+                )
+            # Update world model once we get to frontier
+            self.agent.update()
 
         # TODO: better behavior
         # If no visitable frontier, pick a random point nearby and just wander around
@@ -338,7 +347,9 @@ class NavigateToObjectOperation(ManagedOperation):
             )
 
         # Motion plan to the object
-        plan = self.manager.agent.plan_to_instance(self.get_target(), start=start)
+        plan = self.manager.agent.plan_to_instance(
+            self.get_target(), start=start, rotation_offset=np.pi / 2
+        )
         if plan.success:
             self.plan = plan
             return True
@@ -355,6 +366,7 @@ class NavigateToObjectOperation(ManagedOperation):
 
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state
+        # self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
         self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
 
     def was_successful(self):
