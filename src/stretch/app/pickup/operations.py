@@ -98,9 +98,10 @@ class SearchForReceptacle(ManagedOperation):
         # Get the current location of the robot
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
+            self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
@@ -174,9 +175,10 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         # Get the current location of the robot
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
+            self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         if self.show_instances_detected:
             # Show the last instance image
@@ -260,10 +262,10 @@ class PreGraspObjectOperation(ManagedOperation):
 
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            # raise RuntimeError(
-            print(
+            self.error(
                 f"{self.name}: [ERROR]: Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         # Get the center of the object point cloud so that we can look at it
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
@@ -350,9 +352,10 @@ class NavigateToObjectOperation(ManagedOperation):
 
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
+            self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         # Motion plan to the object
         plan = self.agent.plan_to_instance(
