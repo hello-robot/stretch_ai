@@ -321,6 +321,7 @@ class PreGraspObjectOperation(ManagedOperation):
 class NavigateToObjectOperation(ManagedOperation):
 
     plan = None
+    for_manipulation: bool = True
 
     def __init__(self, *args, to_receptacle=False, **kwargs):
         super().__init__(*args, **kwargs)
@@ -348,7 +349,9 @@ class NavigateToObjectOperation(ManagedOperation):
 
         # Motion plan to the object
         plan = self.agent.plan_to_instance(
-            self.get_target(), start=start, rotation_offset=np.pi / 2
+            self.get_target(),
+            start=start,
+            rotation_offset=np.pi / 2 if self.for_manipulation else 0,
         )
         if plan.success:
             self.plan = plan
@@ -367,7 +370,7 @@ class NavigateToObjectOperation(ManagedOperation):
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state
         # self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
-        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
+        self.robot.navigate_to(xyt, blocking=True, timeout=30.0)
 
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""
