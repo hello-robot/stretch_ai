@@ -4,6 +4,7 @@ import json
 import logging
 import subprocess
 import time
+import shutil
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -40,6 +41,7 @@ class FileDataRecorder:
         task: str = "default_task",
         user: str = "default_user",
         env: str = "default_env",
+        save_images: bool = False
     ):
         """Initialize the recorder.
 
@@ -58,6 +60,8 @@ class FileDataRecorder:
             self.task_dir.mkdir(parents=True)
         except FileExistsError:
             pass
+        self.save_images = save_images
+
         self.reset()
 
     def reset(self):
@@ -134,6 +138,9 @@ class FileDataRecorder:
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)
 
+        if not self.save_images:
+            self.cleanup_image_folders(episode_dir)
+
         self.reset()
 
     def write_image(self, rgb, depth, episode_dir, i, head: bool = False):
@@ -150,6 +157,20 @@ class FileDataRecorder:
 
         cv2.imwrite(str(rgb_dir / f"{i:06}.png"), rgb)
         cv2.imwrite(str(depth_dir / f"{i:06}.png"), depth)
+
+    def cleanup_image_folders(self, episode_dir):
+        """Delete image and depth folders when raw images and depths are no longer needed"""
+
+        head_rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
+        head_depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
+        rgb_dir = episode_dir / RGB_FOLDER_NAME
+        depth_dir = episode_dir / DEPTH_FOLDER_NAME
+
+        image_folders = [head_rgb_dir, head_depth_dir, rgb_dir, depth_dir]
+
+        for folder in image_folders:
+            if folder.exists() and folder.is_dir():
+                shutil.rmtree(folder)
 
     def process_rgb_to_video(self, episode_dir, head: bool = False):
         start_time = time.perf_counter()

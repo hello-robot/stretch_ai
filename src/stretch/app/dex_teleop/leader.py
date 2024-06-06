@@ -115,6 +115,7 @@ class DexTeleopLeader(Evaluator):
         force_record: bool = False,
         display_point_cloud: bool = False,
         debug_aruco: bool = False,
+        save_images: bool = False
     ):
         super().__init__()
         self.camera = None
@@ -123,6 +124,7 @@ class DexTeleopLeader(Evaluator):
         manipulate_on_ground = False
         slide_lift_range = False
         self.display_point_cloud = display_point_cloud
+        self.save_images = save_images
 
         self.use_fastest_mode = use_fastest_mode
         self.left_handed = left_handed
@@ -177,7 +179,7 @@ class DexTeleopLeader(Evaluator):
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
-        self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name)
+        self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
         self.prev_goal_dict = None
 
     def apply(self, message, display_received_images: bool = True) -> dict:
@@ -351,6 +353,8 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--replay", action="store_true", help="Replay a recorded session.")
     parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
+    parser.add_argument("-s", "--save-images", action="store_true",
+                        help="Save raw images in addition to videos")
     parser.add_argument(
         "-R",
         "--replay_filename",
@@ -376,6 +380,7 @@ if __name__ == "__main__":
         env_name=args.env_name,
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
+        save_images=args.save_images
     )
     try:
         client.run(evaluator)
