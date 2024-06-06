@@ -384,6 +384,7 @@ class GraspObjectOperation(ManagedOperation):
     """Move the robot to grasp, using the end effector camera."""
 
     use_pitch_from_vertical: bool = True
+    lift_distance: float = 0.2
     _success: bool = False
 
     def can_start(self):
@@ -443,7 +444,7 @@ class GraspObjectOperation(ManagedOperation):
 
         # Lift the arm up a bit
         target_joint_state_lifted = target_joint_state.copy()
-        target_joint_state_lifted[HelloStretchIdx.LIFT] += 0.5
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
         # Move to the target joint state
         print(f"{self.name}: Moving to grasp position.")
@@ -485,6 +486,7 @@ class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
     place_distance_threshold: float = 0.75
+    lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
 
@@ -577,7 +579,7 @@ class PlaceObjectOperation(ManagedOperation):
 
         # Move directly up
         target_joint_state_lifted = target_joint_state.copy()
-        target_joint_state_lifted[HelloStretchIdx.LIFT] += 0.5
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
         self.robot.arm_to(target_joint_state_lifted, blocking=True)
         time.sleep(5.0)
 
