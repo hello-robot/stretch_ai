@@ -17,17 +17,17 @@ COMPLETION_FILENAME = "rgb_rel_videos_exported.txt"
 IMG_COMPLETION_FILENAME = "completed.txt"
 ABANDONED_FILENAME = "abandoned.txt"
 
-RGB_VIDEO_NAME = "compressed_video.mp4"
-RGB_VIDEO_H264_NAME = "compressed_video_h264.mp4"
+RGB_VIDEO_NAME = "gripper_compressed_video.mp4"
+RGB_VIDEO_H264_NAME = "gripper_compressed_video_h264.mp4"
 HEAD_RGB_VIDEO_NAME = "head_compressed_video.mp4"
 HEAD_RGB_VIDEO_H264_NAME = "head_compressed_video_h264.mp4"
 
-DEPTH_FOLDER_NAME = "compressed_depths"
-RGB_FOLDER_NAME = "compressed_images"
+DEPTH_FOLDER_NAME = "compressed_gripper_depths"
+RGB_FOLDER_NAME = "compressed_gripper_images"
 HEAD_DEPTH_FOLDER_NAME = "compressed_head_depths"
 HEAD_RGB_FOLDER_NAME = "compressed_head_images"
 
-COMPLETED_DEPTH_FILENAME = "compressed_np_depth_float32.bin"
+COMPLETED_DEPTH_FILENAME = "compressed_np_gripper_depth_float32.bin"
 COMPLETED_HEAD_DEPTH_FILENAME = "compressed_np_head_depth_float32.bin"
 
 
