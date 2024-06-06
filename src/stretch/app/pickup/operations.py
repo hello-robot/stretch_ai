@@ -156,8 +156,9 @@ class SearchForReceptacle(ManagedOperation):
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = True
-    show_instances_detected: bool = True
+    show_map_so_far: bool = False
+    show_instances_detected: bool = False
+    plan_for_manipulation: bool = True
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
@@ -213,7 +214,11 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.manager.agent.plan_to_instance(instance, start=start)
+                    plan = self.manager.agent.plan_to_instance(
+                        instance,
+                        start=start,
+                        rotation_offset=np.pi / 2 if self.plan_for_manipulation else 0,
+                    )
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
@@ -340,6 +345,7 @@ class NavigateToObjectOperation(ManagedOperation):
         )
         self.plan = None
         if self.get_target() is None:
+            self.error("no target!")
             return False
 
         start = self.robot.get_base_pose()
@@ -356,7 +362,10 @@ class NavigateToObjectOperation(ManagedOperation):
         )
         if plan.success:
             self.plan = plan
+            self.cheer("Found plan to object!")
             return True
+        self.error("Planning failed!")
+        return False
 
     def run(self):
         self.intro("executing motion plan to the object.")

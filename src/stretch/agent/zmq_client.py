@@ -118,7 +118,7 @@ class HomeRobotZmqClient(RobotClient):
         with self._obs_lock:
             t0 = timeit.default_timer()
             while self._obs is None:
-                time.sleep(0.1)
+                time.sleep(0.01)
                 if timeit.default_timer() - t0 > 5.0:
                     logger.error("Timeout waiting for observation")
                     return None
@@ -376,7 +376,7 @@ class HomeRobotZmqClient(RobotClient):
                 pos_err_threshold=pos_err_threshold,
                 rot_err_threshold=rot_err_threshold,
                 rate=spin_rate,
-                verbose=True or verbose,
+                verbose=verbose,
                 timeout=per_waypoint_timeout,
             )
         self.navigate_to(pt, blocking=True, timeout=final_timeout)
@@ -404,7 +404,7 @@ class HomeRobotZmqClient(RobotClient):
         _delay = 1.0 / rate
         xy = xyt[:2]
         if verbose:
-            logger.info(f"Waiting for {xyt}, threshold = {pos_err_threshold}")
+            print(f"Waiting for {xyt}, threshold = {pos_err_threshold}")
         # Save start time for exiting trajectory loop
         t0 = timeit.default_timer()
         while not self._finish:
@@ -417,14 +417,16 @@ class HomeRobotZmqClient(RobotClient):
             # if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
             #     print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
             if verbose:
-                logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
+                # logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
+                print(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
             if pos_err < pos_err_threshold and rot_err < rot_err_threshold:
                 # We reached the goal position
                 return True
             t2 = timeit.default_timer()
             dt = t2 - t1
             if t2 - t0 > timeout:
-                logger.warning("Could not reach goal in time: " + str(xyt))
+                # logger.warning("Could not reach goal in time: " + str(xyt))
+                print("[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: " + str(xyt))
                 breakpoint()
                 return False
             time.sleep(max(0, _delay - (dt)))
