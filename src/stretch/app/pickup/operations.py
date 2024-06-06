@@ -468,7 +468,7 @@ class PlaceObjectOperation(ManagedOperation):
 
     place_distance_threshold: float = 0.75
     place_height_margin: float = 0.1
-    show_place_in_voxel_grid: bool = True
+    show_place_in_voxel_grid: bool = False
 
     def can_start(self) -> bool:
         self.attempt(
@@ -486,12 +486,21 @@ class PlaceObjectOperation(ManagedOperation):
         self.cheer(f"Object is probably close enough to grasp: {dist}")
         return True
 
-    def _get_place_joint_state(self, place_xyz, joint_state: Optional[np.ndarray] = None):
+    def _get_place_joint_state(
+        self, pos: np.ndarray, quat: np.ndarray, joint_state: Optional[np.ndarray] = None
+    ):
+        """Use inverse kinematics to compute joint position for (pos, quat) in base frame.
+
+        Args:
+            pos: 3D position of the target in the base frame
+            quat: 4D quaternion of the target in the base frame
+            joint_state: current joint state of the robot (optional) for inverse kinematics
+        """
         if joint_state is None:
             joint_state = self.robot.get_observation().joint
 
         target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
-            place_xyz, ee_rot, q0=joint_state
+            pos, quat, q0=joint_state
         )
 
         return target_joint_state, success
@@ -532,7 +541,10 @@ class PlaceObjectOperation(ManagedOperation):
                 orig=place_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
-        target_joint_state, success = self._get_place_joint_state(place_xyz, joint_state)
+        target_joint_state, success = self._get_place_joint_state(
+            pos=place_xyz, quat=ee_rot, joint_state=joint_state
+        )
+        print("Move to manip posture")
         if not success:
             self.error("Could not place object!")
             return
