@@ -21,6 +21,7 @@ class ManagedOperation(Operation):
         self.robot_model = self.robot.get_robot_model()
 
     def update(self):
+        print(colored("================ Updating the world model ==================", "blue"))
         self.agent.update()
 
     def attempt(self, message: str):
@@ -76,6 +77,9 @@ class SearchForReceptacle(ManagedOperation):
 
         # Update world map
         self.intro("Searching for a receptacle on the floor.")
+        # Must move to nav before we can do anything
+        self.robot.move_to_nav_posture()
+        # Now update the world
         self.update()
 
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
@@ -170,7 +174,10 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         self._successful = False
 
         # Update world map
-        self.agent.update()
+        # Switch to navigation posture
+        self.robot.move_to_nav_posture()
+        # Do not update until you are in nav posture
+        self.update()
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
@@ -238,7 +245,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                     [node.state for node in res.trajectory], final_timeout=30.0
                 )
             # Update world model once we get to frontier
-            self.agent.update()
+            self.update()
 
         # TODO: better behavior
         # If no visitable frontier, pick a random point nearby and just wander around
