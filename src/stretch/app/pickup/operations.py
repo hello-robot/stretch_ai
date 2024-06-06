@@ -418,6 +418,9 @@ class GraspObjectOperation(ManagedOperation):
         joint_state = obs.joint
         model = self.robot.get_robot_model()
 
+        if joint_state[HelloStretchIdx.GRIPPER] < 0.0:
+            robot.open_gripper(blocking=True)
+
         # Get the current base pose of the robot
         xyt = self.robot.get_base_pose()
 
