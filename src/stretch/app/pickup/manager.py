@@ -95,7 +95,9 @@ class PickupManager:
             on_failure=pregrasp_object,
             on_cannot_start=go_to_object,
         )
-        place_object_on_receptacle = PlaceObjectOperation("place object on receptacle", self)
+        place_object_on_receptacle = PlaceObjectOperation(
+            "place object on receptacle", self, on_cannot_start=go_to_receptacle
+        )
 
         task = Task()
         task.add_operation(go_to_navigation_mode)
