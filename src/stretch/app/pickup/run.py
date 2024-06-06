@@ -76,7 +76,7 @@ def main(
 
     if reset:
         # Send the robot home at the end!
-        agent.go_home()
+        demo.go_home()
 
     # At the end, disable everything
     robot.stop()
