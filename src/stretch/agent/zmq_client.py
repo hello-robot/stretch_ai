@@ -376,7 +376,7 @@ class HomeRobotZmqClient(RobotClient):
                 pos_err_threshold=pos_err_threshold,
                 rot_err_threshold=rot_err_threshold,
                 rate=spin_rate,
-                verbose=verbose,
+                verbose=True or verbose,
                 timeout=per_waypoint_timeout,
             )
         self.navigate_to(pt, blocking=True, timeout=final_timeout)
@@ -425,6 +425,7 @@ class HomeRobotZmqClient(RobotClient):
             dt = t2 - t1
             if t2 - t0 > timeout:
                 logger.warning("Could not reach goal in time: " + str(xyt))
+                breakpoint()
                 return False
             time.sleep(max(0, _delay - (dt)))
         return False

@@ -30,14 +30,14 @@ class ManagedOperation(Operation):
         print(colored(f"Running {self.name}:", "green"), message)
 
     def warn(self, message: str):
-        print(colored(f"Warning in {self.name}: {message}", "orange"))
+        print(colored(f"Warning in {self.name}: {message}", "yellow"))
 
     def error(self, message: str):
         print(colored(f"Error in {self.name}: {message}", "red"))
 
     def cheer(self, message: str):
         """An upbeat message!"""
-        print(colored(f"!!! {self.name}: {message}", "yellow"))
+        print(colored(f"!!! {self.name} !!!: {message}", "green"))
 
 
 class RotateInPlaceOperation(ManagedOperation):
