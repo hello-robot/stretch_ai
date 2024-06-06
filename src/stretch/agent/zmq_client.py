@@ -263,6 +263,7 @@ class HomeRobotZmqClient(RobotClient):
             angle_threshold = self._angle_threshold
         if min_steps_not_moving is None:
             min_steps_not_moving = self._min_steps_not_moving
+        print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         while True:
             with self._obs_lock:
                 if self._obs is not None:
