@@ -18,9 +18,7 @@ COMPLETION_FILENAME = "rgb_rel_videos_exported.txt"
 IMG_COMPLETION_FILENAME = "completed.txt"
 ABANDONED_FILENAME = "abandoned.txt"
 
-RGB_VIDEO_NAME = "gripper_compressed_video.mp4"
 RGB_VIDEO_H264_NAME = "gripper_compressed_video_h264.mp4"
-HEAD_RGB_VIDEO_NAME = "head_compressed_video.mp4"
 HEAD_RGB_VIDEO_H264_NAME = "head_compressed_video_h264.mp4"
 
 DEPTH_FOLDER_NAME = "compressed_gripper_depths"
@@ -177,11 +175,9 @@ class FileDataRecorder:
         # First, find out a sample filename
         if head:
             rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
-            hevc_video_path = episode_dir / HEAD_RGB_VIDEO_NAME
             h264_video_path = episode_dir / HEAD_RGB_VIDEO_H264_NAME
         else:
             rgb_dir = episode_dir / RGB_FOLDER_NAME
-            hevc_video_path = episode_dir / RGB_VIDEO_NAME
             h264_video_path = episode_dir / RGB_VIDEO_H264_NAME
         try:
             sample_filename = next(rgb_dir.glob("*.png"))
@@ -199,12 +195,14 @@ class FileDataRecorder:
         else:
             logging.error(f"Unknown filename format: {sample_filename.stem}")
             return
+
         # Now, we create the videos using ffmpeg.
         # First, we will create the h264 video.
-        crfs = [30, 30]
-        video_codecs = ["hevc", "h264"]
+        # Additional codecs can be output by adding to the list and providing corresponding video paths
+        crfs = [30]
+        video_codecs = ["h264"]
         for enc_lib, crf, final_video_path in zip(
-            video_codecs, crfs, [hevc_video_path, h264_video_path]
+            video_codecs, crfs, [h264_video_path]
         ):
             command = [
                 "ffmpeg",
