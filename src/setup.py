@@ -39,6 +39,9 @@ setuptools.setup(
         "pynput",
         "pyrealsense2",
         "orbslam3",
+        # Compression tools
+        "pyliblzfse",
+        "webp",
         # UI tools
         "termcolor",
         # These are not supported in python 3.12
