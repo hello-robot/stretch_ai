@@ -99,10 +99,11 @@ class PinocchioIKSolver:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
         if isinstance(q_input, dict):
-            for i, (joint_idx, joint_name) in enumerate(
-                zip(self.controlled_joints, self.controlled_joint_names)
-            ):
-                q_out[joint_idx] = q_input[joint_name]
+            for joint_name, value in q_input.items():
+                if joint_name in self.controlled_joints_by_name:
+                    q_out[self.controlled_joints_by_name[joint_name]] = value
+                else:
+                    q_out[self.model.getJointId(joint_name)] = value
         else:
             assert len(self.controlled_joints) == len(
                 q_input
