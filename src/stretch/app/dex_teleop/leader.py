@@ -1,6 +1,9 @@
 import math
 import pprint as pp
 from typing import Optional
+import os
+import urchin as urdf_loader
+import errno
 
 import cv2
 import numpy as np
@@ -18,8 +21,35 @@ from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.geometry import get_rotation_from_xyz
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
+from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
 
 use_gripper_center = True
+
+# Use Simple IK, if False use Pinocchio IK
+use_simple_gripper_rules = False
+
+
+def load_urdf(file_name):
+    if not os.path.isfile(file_name):
+        print()
+        print("*****************************")
+        print(
+            "ERROR: "
+            + file_name
+            + " was not found. Simple IK requires a specialized URDF saved with this file name. prepare_base_rotation_ik_urdf.py can be used to generate this specialized URDF."
+        )
+        print("*****************************")
+        print()
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_name)
+    urdf = urdf_loader.URDF.load(file_name, lazy_load_meshes=True)
+    return urdf
+
+
+def nan_in_configuration(configuration):
+    for k, v in configuration.items():
+        if math.isnan(v) or np.isnan(v):
+            return True
+    return False
 
 
 def process_goal_dict(goal_dict, prev_goal_dict=None) -> dict:
@@ -103,6 +133,29 @@ class DexTeleopLeader(Evaluator):
     look_close_cfg = np.array([0.0, math.radians(-45)])
     look_down_cfg = np.array([0.0, math.radians(-58)])
 
+    # Configuration for IK
+    _use_simple_gripper_rules = not use_gripper_center
+    max_rotation_change = 0.5
+    _ee_link_name = "link_grasp_center"
+    _ik_joints_allowed_to_move = [
+        "joint_arm_l0",
+        "joint_lift",
+        "joint_wrist_yaw",
+        "joint_wrist_pitch",
+        "joint_wrist_roll",
+        "joint_mobile_base_rotation",
+    ]
+
+    def _create_ik_solver(
+        self,
+        urdf_path,
+    ):
+        self.manip_ik_solver = PinocchioIKSolver(
+            urdf_path,
+            self._ee_link_name,
+            self._ik_joints_allowed_to_move,
+        )
+
     def __init__(
         self,
         use_fastest_mode: bool = False,
@@ -149,6 +202,7 @@ class DexTeleopLeader(Evaluator):
 
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)
+        starting_configuration = dt.get_starting_configuration(lift_middle)
 
         if left_handed:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
@@ -163,8 +217,66 @@ class DexTeleopLeader(Evaluator):
                 show_debug_images=debug_aruco,
             )
 
-        # Initialize IK
+        # Get Wrist URDF joint limits
+        rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
+        rotary_urdf = load_urdf(rotary_urdf_file_name)
+        wrist_joints = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
+        self.wrist_joint_limits = {}
+        for joint_name in wrist_joints:
+            joint = rotary_urdf.joint_map.get(joint_name, None)
+            if joint is not None:
+                lower = float(joint.limit.lower)
+                upper = float(joint.limit.upper)
+                self.wrist_joint_limits[joint.name] = (lower, upper)
+
+        rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
+        self._create_ik_solver(rotary_urdf_with_wrist_file_name)
+
+        self.drop_extreme_wrist_orientation_change = True
+
+        # Initialize the filtered wrist orientation that is used to
+        # command the robot. Simple exponential smoothing is used to
+        # filter wrist orientation values coming from the interface
+        # objects.
+        self.filtered_wrist_orientation = np.array([0.0, 0.0, 0.0])
+
+        # Initialize the filtered wrist position that is used to command
+        # the robot. Simple exponential smoothing is used to filter wrist
+        # position values coming from the interface objects.
+        self.filtered_wrist_position_configuration = np.array(
+            [
+                starting_configuration["joint_mobile_base_rotate_by"],
+                starting_configuration["joint_lift"],
+                starting_configuration["joint_arm_l0"],
+            ]
+        )
+
+        self.prev_commanded_wrist_orientation = {
+            "joint_wrist_yaw": None,
+            "joint_wrist_pitch": None,
+            "joint_wrist_roll": None,
+        }
+
+        # This is the weight multiplied by the current wrist angle command when performing exponential smoothing.
+        # 0.5 with 'max' robot speed was too noisy on the wrist
+        self.wrist_orientation_filter = dt.exponential_smoothing_for_orientation
+
+        # This is the weight multiplied by the current wrist position command when performing exponential smoothing.
+        # commands before sending them to the robot
+        self.wrist_position_filter = dt.exponential_smoothing_for_position
+
+        self.print_robot_status_thread_timing = False
+        self.debug_wrist_orientation = False
+
+        self.max_allowed_wrist_yaw_change = dt.max_allowed_wrist_yaw_change
+        self.max_allowed_wrist_roll_change = dt.max_allowed_wrist_roll_change
+
+        # Initialize simple IK
         simple_ik = si.SimpleIK()
+        if self._use_simple_gripper_rules:
+            self.simple_ik = simple_ik
+        else:
+            self.simple_ik = None
 
         # Define the center position for the wrist that corresponds with
         # the teleop origin.
@@ -323,16 +435,226 @@ class DexTeleopLeader(Evaluator):
                 ee_pos=message["robot/ee_position"],
                 ee_rot=message["robot/ee_rotation"],
             )
-
-        # Send goal_dict to robot
-        self.goal_send_socket.send_pyobj(goal_dict)
         self.prev_goal_dict = goal_dict
+        goal_dict["current_state"] = message["robot/config"]
+        goal_configuration = self.get_goal_joint_config(**goal_dict)
+
+        # Send goal joint configuration to robot
+        self.goal_send_socket.send_pyobj(goal_configuration)
 
         if self._need_to_write:
             print("[LEADER] Writing data to disk.")
             self._recorder.write()
             self._need_to_write = False
         return goal_dict
+
+    def get_goal_joint_config(self, grip_width, wrist_position: np.ndarray, gripper_orientation: np.ndarray, current_state, relative=False, **config):
+        # Process goal dict in gripper pose format to full joint configuration format with IK
+        # INPUT: wrist_position
+        if "use_gripper_center" in config and config["use_gripper_center"] != use_gripper_center:
+            raise RuntimeError("leader and follower are not set up to use the same target poses.")
+
+        # Use Simple IK to find configurations for the
+        # mobile base angle, lift distance, and arm
+        # distance to achieve the goal wrist position in
+        # the world frame.
+        if self._use_simple_gripper_rules:
+            new_goal_configuration = self.simple_ik.ik_rotary_base(wrist_position)
+        else:
+            res, success, info = self.manip_ik_solver.compute_ik(
+                wrist_position, gripper_orientation, q_init=current_state
+            )
+            new_goal_configuration = self.manip_ik_solver.q_array_to_dict(res)
+            if not success:
+                print("!!! BAD IK SOLUTION !!!")
+                new_goal_configuration = None
+            pp.pp(new_goal_configuration)
+
+        if new_goal_configuration is None:
+            print(
+                f"WARNING: IK failed to find a valid new_goal_configuration so skipping this iteration by continuing the loop. Input to IK: wrist_position = {wrist_position}, Output from IK: new_goal_configuration = {new_goal_configuration}"
+            )
+        else:
+            new_wrist_position_configuration = np.array(
+                [
+                    new_goal_configuration["joint_mobile_base_rotation"],
+                    new_goal_configuration["joint_lift"],
+                    new_goal_configuration["joint_arm_l0"],
+                ]
+            )
+            # Use exponential smoothing to filter the wrist
+            # position configuration used to command the
+            # robot.
+            self.filtered_wrist_position_configuration = (
+                (1.0 - self.wrist_position_filter) * self.filtered_wrist_position_configuration
+            ) + (self.wrist_position_filter * new_wrist_position_configuration)
+
+            new_goal_configuration["joint_lift"] = self.filtered_wrist_position_configuration[1]
+            new_goal_configuration["joint_arm_l0"] = self.filtered_wrist_position_configuration[2]
+
+            if self._use_simple_gripper_rules:
+                self.simple_ik.clip_with_joint_limits(new_goal_configuration)
+
+            #################################
+
+            #################################
+            # INPUT: grip_width between 0.0 and 1.0
+
+            if (grip_width is not None) and (grip_width > -1000.0):
+                new_goal_configuration["stretch_gripper"] = self.grip_range * (grip_width - 0.5)
+
+            ##################################################
+            # INPUT: x_axis, y_axis, z_axis
+
+            if self._use_simple_gripper_rules:
+                # Use the gripper pose marker's orientation to directly control the robot's wrist yaw, pitch, and roll.
+                r = Rotation.from_quat(gripper_orientation)
+                if relative:
+                    print("!!! relative rotations not yet supported !!!")
+                wrist_yaw, wrist_pitch, wrist_roll = self.get_wrist_position(r)
+            else:
+                wrist_yaw = new_goal_configuration["joint_wrist_yaw"]
+                wrist_pitch = new_goal_configuration["joint_wrist_pitch"]
+                wrist_roll = new_goal_configuration["joint_wrist_roll"]
+
+            if self.debug_wrist_orientation:
+                print("___________")
+                print(
+                    "wrist_yaw, wrist_pitch, wrist_roll = {:.2f}, {:.2f}, {:.2f} deg".format(
+                        (180.0 * (wrist_yaw / np.pi)),
+                        (180.0 * (wrist_pitch / np.pi)),
+                        (180.0 * (wrist_roll / np.pi)),
+                    )
+                )
+
+            limits_violated = False
+            lower_limit, upper_limit = self.wrist_joint_limits["joint_wrist_yaw"]
+            if (wrist_yaw < lower_limit) or (wrist_yaw > upper_limit):
+                limits_violated = True
+            lower_limit, upper_limit = self.wrist_joint_limits["joint_wrist_pitch"]
+            if (wrist_pitch < lower_limit) or (wrist_pitch > upper_limit):
+                limits_violated = True
+            lower_limit, upper_limit = self.wrist_joint_limits["joint_wrist_roll"]
+            if (wrist_roll < lower_limit) or (wrist_roll > upper_limit):
+                limits_violated = True
+
+            ################################################################
+            # DROP GRIPPER ORIENTATION GOALS WITH LARGE JOINT ANGLE CHANGES
+            #
+            # Dropping goals that result in extreme changes in joint
+            # angles over a single time step avoids the nearly 360
+            # degree rotation in an opposite direction of motion that
+            # can occur when a goal jumps across a joint limit for a
+            # joint with a large range of motion like the roll joint.
+            #
+            # This also reduces the potential for unexpected wrist
+            # motions near gimbal lock when the yaw and roll axes are
+            # aligned (i.e., the gripper is pointed down to the
+            # ground). Goals representing slow motions that traverse
+            # near this gimbal lock region can still result in the
+            # gripper approximately going upside down in a manner
+            # similar to a pendulum, but this results in large yaw
+            # joint motions and is prevented at high speeds due to
+            # joint angles that differ significantly between time
+            # steps. Inverting this motion must also be performed at
+            # low speeds or the gripper will become stuck and need to
+            # traverse a trajectory around the gimbal lock region.
+            #
+            extreme_difference_violated = False
+            if self.drop_extreme_wrist_orientation_change:
+                prev_wrist_yaw = self.prev_commanded_wrist_orientation["joint_wrist_yaw"]
+                if prev_wrist_yaw is not None:
+                    diff = abs(wrist_yaw - prev_wrist_yaw)
+                    if diff > self.max_allowed_wrist_yaw_change:
+                        print(
+                            "extreme wrist_yaw change of {:.2f} deg".format(
+                                (180.0 * (diff / np.pi))
+                            )
+                        )
+                        extreme_difference_violated = True
+                prev_wrist_roll = self.prev_commanded_wrist_orientation["joint_wrist_roll"]
+                if prev_wrist_roll is not None:
+                    diff = abs(wrist_roll - prev_wrist_roll)
+                    if diff > self.max_allowed_wrist_roll_change:
+                        print(
+                            "extreme wrist_roll change of {:.2f} deg".format(
+                                (180.0 * (diff / np.pi))
+                            )
+                        )
+                        extreme_difference_violated = True
+            #
+            ################################################################
+
+            if self.debug_wrist_orientation:
+                if limits_violated:
+                    print("The wrist angle limits were violated.")
+
+            if (not extreme_difference_violated) and (not limits_violated):
+                new_wrist_orientation = np.array([wrist_yaw, wrist_pitch, wrist_roll])
+
+                # Use exponential smoothing to filter the wrist
+                # orientation configuration used to command the
+                # robot.
+                self.filtered_wrist_orientation = (
+                    (1.0 - self.wrist_orientation_filter) * self.filtered_wrist_orientation
+                ) + (self.wrist_orientation_filter * new_wrist_orientation)
+
+                new_goal_configuration["joint_wrist_yaw"] = self.filtered_wrist_orientation[0]
+                new_goal_configuration["joint_wrist_pitch"] = self.filtered_wrist_orientation[1]
+                new_goal_configuration["joint_wrist_roll"] = self.filtered_wrist_orientation[2]
+
+                self.prev_commanded_wrist_orientation = {
+                    "joint_wrist_yaw": self.filtered_wrist_orientation[0],
+                    "joint_wrist_pitch": self.filtered_wrist_orientation[1],
+                    "joint_wrist_roll": self.filtered_wrist_orientation[2],
+                }
+
+            # Convert from the absolute goal for the mobile
+            # base to an incremental move to be performed
+            # using rotate_by. This should be performed just
+            # before sending the commands to make sure it's
+            # using the most rececnt mobile base angle
+            # estimate to reduce overshoot and other issues.
+
+            # convert base odometry angle to be in the range -pi to pi
+            # negative is to the robot's right side (counterclockwise)
+            # positive is to the robot's left side (clockwise)
+
+            # TODO
+            # Following line used by simple_IK, but can only be run on stretch due to need for robot status.
+            # base_odom_theta = hm.angle_diff_rad(self.robot.base.status["theta"], 0.0)
+            # current_mobile_base_angle = base_odom_theta
+
+            # Compute base rotation to reach the position determined by the IK solver
+            # Else we will just use the computed value from IK for now to see if that works
+            if self._use_simple_gripper_rules:
+                new_goal_configuration[
+                    "joint_mobile_base_rotation"
+                ] = self.filtered_wrist_position_configuration[0]
+            else:
+                # Clear this, let us rotate freely
+                current_mobile_base_angle = 0
+                # new_goal_configuration[
+                #    "joint_mobile_base_rotation"
+                # ] += self.filtered_wrist_position_configuration[0]
+
+            # Figure out how much we are allowed to rotate left or right
+            new_goal_configuration["joint_mobile_base_rotate_by"] = np.clip(
+                new_goal_configuration["joint_mobile_base_rotation"] - current_mobile_base_angle,
+                -self.max_rotation_change,
+                self.max_rotation_change,
+            )
+            if self.debug_base_rotation:
+                print()
+                print("Debugging base rotation:")
+                print(f"{new_goal_configuration['joint_mobile_base_rotation']=}")
+                print(f"{self.filtered_wrist_position_configuration[0]=}")
+                print(f"{new_goal_configuration['joint_mobile_base_rotate_by']=}")
+            print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
+            # remove virtual joint and approximate motion with rotate_by using joint_mobile_base_rotate_by
+            del new_goal_configuration["joint_mobile_base_rotation"]
+
+        return new_goal_configuration
 
     def __del__(self):
         self.goal_send_socket.close()
