@@ -29,6 +29,7 @@ from stretch.utils.point_cloud import show_point_cloud
 class HomeRobotZmqClient(RobotClient):
 
     update_control_mode_from_full_obs: bool = False
+    num_state_report_steps: int = 10000
 
     def _create_recv_socket(
         self,
@@ -552,13 +553,12 @@ class HomeRobotZmqClient(RobotClient):
 
         while not self._finish:
             output = self.recv_state_socket.recv_pyobj()
-            print("Received state", output)
 
             t1 = timeit.default_timer()
             dt = t1 - t0
             sum_time += dt
             steps += 1
-            if verbose:
+            if verbose or steps % self.num_state_report_steps == 1:
                 print("Control mode:", self._control_mode)
                 print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
