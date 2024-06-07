@@ -29,6 +29,7 @@ from stretch.utils.point_cloud import show_point_cloud
 class HomeRobotZmqClient(RobotClient):
 
     update_control_mode_from_full_obs: bool = False
+    update_base_pose_from_full_obs: bool = True
     num_state_report_steps: int = 10000
 
     def _create_recv_socket(
@@ -141,19 +142,30 @@ class HomeRobotZmqClient(RobotClient):
 
         self._obs_lock = Lock()
         self._act_lock = Lock()
+        self._state_lock = Lock()
+        self._servo_lock = Lock()
 
-    def get_base_pose(self) -> np.ndarray:
+    def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current pose of the base"""
         with self._obs_lock:
             t0 = timeit.default_timer()
-            while self._obs is None:
-                time.sleep(0.01)
-                if timeit.default_timer() - t0 > 5.0:
-                    logger.error("Timeout waiting for observation")
-                    return None
-            gps = self._obs["gps"]
-            compass = self._obs["compass"]
-        return np.concatenate([gps, compass], axis=-1)
+            if self.update_base_pose_from_full_obs:
+                while self._obs is None:
+                    time.sleep(0.01)
+                    if timeit.default_timer() - t0 > timeout:
+                        logger.error("Timeout waiting for observation")
+                        return None
+                gps = self._obs["gps"]
+                compass = self._obs["compass"]
+                xyt = np.concatenate([gps, compass], axis=-1)
+            else:
+                while self._state is None:
+                    time.sleep(1e-4)
+                    if timeit.default_timer() - t0 > timeout:
+                        logger.error("Timeout waiting for state message")
+                        return None
+                xyt = self._state["base_xyt"]
+        return xyt
 
     def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
         """Move the arm to a particular joint configuration.
@@ -362,10 +374,10 @@ class HomeRobotZmqClient(RobotClient):
                 self._iter = self._last_step
 
     def _update_state(self, state):
-        """Update state internally with lock"""
+        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reseverd for higher level control."""
         with self._state_lock:
             self._state = state
-            if not update_control_mode_from_full_obs:
+            if not self.update_control_mode_from_full_obs:
                 self._control_mode = state["control_mode"]
 
     def get_observation(self):
