@@ -88,6 +88,10 @@ class PinocchioIKSolver:
         """returns number of controllable joints under this solver's purview"""
         return len(self.controlled_joints)
 
+    def get_all_joint_names(self) -> List[str]:
+        """Return a list of joints"""
+        return [self.model.names[i + 1] for i in range(self.model.nq)]
+
     def _qmap_control2model(self, q_input: np.ndarray) -> np.ndarray:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
