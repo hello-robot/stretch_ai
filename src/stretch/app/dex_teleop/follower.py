@@ -36,8 +36,7 @@ class DexTeleopFollower:
         exposure: str = "low",
         send_port=5555,
         brighten_image: bool = False,
-        use_remote_computer: bool = True,
-        remote_computer_ip: str: None
+        use_remote_computer: bool = True
     ):
         """
         Args:
@@ -114,9 +113,8 @@ class DexTeleopFollower:
         goal_recv_socket.setsockopt(zmq.SNDHWM, 1)
         goal_recv_socket.setsockopt(zmq.RCVHWM, 1)
         goal_recv_socket.setsockopt(zmq.CONFLATE, 1)
-        goal_recv_address = 'tcp://10.1.10.71:5555'
-        if use_remote_computer and remote_computer_ip is not None:
-            goal_recv_address = "tcp://" + remote_computer_ip + ":5555"
+        # goal_recv_address = 'tcp://10.1.10.71:5555'
+        goal_recv_address = "tcp://192.168.1.169:5555"
         goal_recv_socket.connect(goal_recv_address)
 
         # save the socket
