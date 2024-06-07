@@ -369,7 +369,7 @@ class HomeRobotZmqClient(RobotClient):
                 self._control_mode = state["control_mode"]
 
     def get_observation(self):
-        """Get the current observation"""
+        """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
         with self._obs_lock:
             if self._obs is None:
                 return None
@@ -553,6 +553,7 @@ class HomeRobotZmqClient(RobotClient):
 
         while not self._finish:
             output = self.recv_state_socket.recv_pyobj()
+            self._update_state(output)
 
             t1 = timeit.default_timer()
             dt = t1 - t0
