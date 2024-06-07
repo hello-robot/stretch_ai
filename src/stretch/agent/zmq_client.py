@@ -566,8 +566,10 @@ class HomeRobotZmqClient(RobotClient):
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         self._thread = threading.Thread(target=self.blocking_spin)
+        self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._finish = False
         self._thread.start()
+        self._state_thread.start()
         return True
 
     def __del__(self):
@@ -582,6 +584,8 @@ class HomeRobotZmqClient(RobotClient):
         self.context.term()
         if self._thread is not None:
             self._thread.join()
+        if self._state_thread is not None:
+            self._state_thread.join()
 
 
 @click.command()
