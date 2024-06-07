@@ -44,13 +44,16 @@ class PinocchioIKSolver:
     DT = 1e-1
     DAMP = 1e-12
 
-    def __init__(self, urdf_path: str, ee_link_name: str, controlled_joints: List[str]):
+    def __init__(
+        self, urdf_path: str, ee_link_name: str, controlled_joints: List[str], verbose: bool = False
+    ):
         """
         urdf_path: path to urdf file
         ee_link_name: name of the end-effector link
         controlled_joints: list of joint names to control
         """
-        print(f"{urdf_path=}")
+        if verbose:
+            print(f"{urdf_path=}")
         self.model = pinocchio.buildModelFromUrdf(urdf_path)
         self.data = self.model.createData()
         self.q_neutral = pinocchio.neutral(self.model)
@@ -101,6 +104,9 @@ class PinocchioIKSolver:
             ):
                 q_out[joint_idx] = q_input[joint_name]
         else:
+            assert len(self.controlled_joints) == len(
+                q_input
+            ), "if not specifying by name, must match length"
             for i, joint_idx in enumerate(self.controlled_joints):
                 q_out[joint_idx] = q_input[i]
         return q_out
@@ -116,15 +122,7 @@ class PinocchioIKSolver:
 
     def compute_fk(self, config) -> Tuple[np.ndarray, np.ndarray]:
         """given joint values return end-effector position and quaternion associated with it"""
-
-        # This lets us pass in an interpretable dict, a bit slower
-        if isinstance(config, dict):
-            q_model = np.zeros(len(self.controlled_joints))
-            for i, key in enumerate(self.controlled_joint_names):
-                q_model[i] = config[key]
-        else:
-            q_model = self._qmap_control2model(config)
-
+        q_model = self._qmap_control2model(config)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
         pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
         pos = self.data.oMf[self.ee_frame_idx].translation

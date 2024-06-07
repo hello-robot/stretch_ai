@@ -53,7 +53,7 @@ def test_fk_ik():
 
     # Test Forward Kinematics
     ee_pose = manip_ik_solver.compute_fk(state)
-    print(ee_pose)
+    print(f"{ee_pose=}")
     assert ee_pose is not None, "FK failed"
 
     # Test Inverse Kinematics
