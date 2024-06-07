@@ -35,7 +35,7 @@ class HomeRobotZmqClient(RobotClient):
         message_type: Optional[str] = "observations",
     ):
         # Receive state information
-        recv_socket = context.socket(zmq.SUB)
+        recv_socket = self.context.socket(zmq.SUB)
         recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
         recv_socket.setsockopt(zmq.SNDHWM, 1)
         recv_socket.setsockopt(zmq.RCVHWM, 1)
@@ -43,12 +43,12 @@ class HomeRobotZmqClient(RobotClient):
 
         # Use remote computer or whatever
         if use_remote_computer:
-            recv_address = "tcp://" + robot_ip + ":" + str(self.recv_port)
+            recv_address = "tcp://" + robot_ip + ":" + str(port)
         else:
-            recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
+            recv_address = "tcp://" + "127.0.0.1" + ":" + str(port)
 
-        print(f"Connecting to {self.recv_address} to receive {message_type}...")
-        recv_socket.connect(self.recv_address)
+        print(f"Connecting to {recv_address} to receive {message_type}...")
+        recv_socket.connect(recv_address)
         return recv_socket
 
     def __init__(
@@ -543,6 +543,8 @@ class HomeRobotZmqClient(RobotClient):
     def stop(self):
         self._finish = True
         self.recv_socket.close()
+        self.recv_state_socket.close()
+        self.recv_servo_socket.close()
         self.send_socket.close()
         self.context.term()
         if self._thread is not None:
