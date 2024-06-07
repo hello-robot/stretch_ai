@@ -27,11 +27,37 @@ from stretch.utils.point_cloud import show_point_cloud
 
 
 class HomeRobotZmqClient(RobotClient):
+    def _create_recv_socket(
+        self,
+        port: int,
+        robot_ip: str,
+        use_remote_computer: bool,
+        message_type: Optional[str] = "observations",
+    ):
+        # Receive state information
+        recv_socket = context.socket(zmq.SUB)
+        recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
+        recv_socket.setsockopt(zmq.SNDHWM, 1)
+        recv_socket.setsockopt(zmq.RCVHWM, 1)
+        recv_socket.setsockopt(zmq.CONFLATE, 1)
+
+        # Use remote computer or whatever
+        if use_remote_computer:
+            recv_address = "tcp://" + robot_ip + ":" + str(self.recv_port)
+        else:
+            recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
+
+        print(f"Connecting to {self.recv_address} to receive {message_type}...")
+        recv_socket.connect(self.recv_address)
+        return recv_socket
+
     def __init__(
         self,
         robot_ip: str = "192.168.1.15",
         recv_port: int = 4401,
         send_port: int = 4402,
+        recv_state_port: int = 4403,
+        recv_servo_port: int = 4404,
         parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
@@ -82,12 +108,16 @@ class HomeRobotZmqClient(RobotClient):
         # Create ZMQ sockets
         self.context = zmq.Context()
 
-        # Receive state information
-        self.recv_socket = self.context.socket(zmq.SUB)
-        self.recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
-        self.recv_socket.setsockopt(zmq.SNDHWM, 1)
-        self.recv_socket.setsockopt(zmq.RCVHWM, 1)
-        self.recv_socket.setsockopt(zmq.CONFLATE, 1)
+        print("-------- HOME-ROBOT ROS2 ZMQ CLIENT --------")
+        self.recv_socket = self._create_recv_socket(
+            self.recv_port, robot_ip, use_remote_computer, message_type="observations"
+        )
+        self.recv_state_socket = self._create_recv_socket(
+            recv_state_port, robot_ip, use_remote_computer, message_type="low level state"
+        )
+        self.recv_servo_socket = self._create_recv_socket(
+            recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
+        )
 
         # SEnd actions back to the robot for execution
         self.send_socket = self.context.socket(zmq.PUB)
@@ -97,15 +127,10 @@ class HomeRobotZmqClient(RobotClient):
 
         # Use remote computer or whatever
         if use_remote_computer:
-            self.recv_address = "tcp://" + robot_ip + ":" + str(self.recv_port)
             self.send_address = "tcp://" + robot_ip + ":" + str(self.send_port)
         else:
-            self.recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
             self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
 
-        print("-------- HOME-ROBOT ROS2 ZMQ CLIENT --------")
-        print(f"Connecting to {self.recv_address} to receive observations...")
-        self.recv_socket.connect(self.recv_address)
         print(f"Connecting to {self.send_address} to send action messages...")
         self.send_socket.connect(self.send_address)
         print("...connected.")
