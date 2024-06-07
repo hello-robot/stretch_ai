@@ -27,6 +27,9 @@ from stretch.utils.point_cloud import show_point_cloud
 
 
 class HomeRobotZmqClient(RobotClient):
+
+    update_control_mode_from_full_obs: bool = False
+
     def _create_recv_socket(
         self,
         port: int,
@@ -197,7 +200,9 @@ class HomeRobotZmqClient(RobotClient):
         """Reset everything in the robot's internal state"""
         self._control_mode = None
         self._next_action = dict()
-        self._obs = None
+        self._obs = None  # Full observation includes high res images and camera pose, no EE camera
+        self._state = None  # Low level state includes joint angles and base XYT
+        self._servo = None  # Visual servoing state includes smaller images
         self._thread = None
         self._finish = False
         self._last_step = -1
@@ -349,10 +354,18 @@ class HomeRobotZmqClient(RobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            self._control_mode = obs["control_mode"]
+            if self.update_control_mode_from_full_obs:
+                self._control_mode = obs["control_mode"]
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = self._last_step
+
+    def _update_state(self, state):
+        """Update state internally with lock"""
+        with self._state_lock:
+            self._state = state
+            if not update_control_mode_from_full_obs:
+                self._control_mode = state["control_mode"]
 
     def get_observation(self):
         """Get the current observation"""
@@ -520,6 +533,26 @@ class HomeRobotZmqClient(RobotClient):
             self._update_obs(output)
             # with self._act_lock:
             #    if len(self._next_action) > 0:
+
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            if verbose:
+                print("Control mode:", self._control_mode)
+                print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
+            t0 = timeit.default_timer()
+
+    def blocking_spin_state(self, verbose: bool = False):
+        """Listen for incoming observations and update internal state"""
+
+        sum_time = 0
+        steps = 0
+        t0 = timeit.default_timer()
+
+        while not self._finish:
+            output = self.recv_state_socket.recv_pyobj()
+            print("Received state", output)
 
             t1 = timeit.default_timer()
             dt = t1 - t0
