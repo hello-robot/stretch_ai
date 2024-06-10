@@ -137,6 +137,7 @@ class DexTeleopLeader(Evaluator):
     _use_simple_gripper_rules = not use_gripper_center
     max_rotation_change = 0.5
     _ee_link_name = "link_grasp_center"
+    debug_base_rotation = False
     _ik_joints_allowed_to_move = [
         "joint_arm_l0",
         "joint_lift",
@@ -180,6 +181,7 @@ class DexTeleopLeader(Evaluator):
         self.save_images = save_images
 
         self.use_fastest_mode = use_fastest_mode
+        self.use_fastest_mode = True
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
@@ -256,6 +258,11 @@ class DexTeleopLeader(Evaluator):
             "joint_wrist_pitch": None,
             "joint_wrist_roll": None,
         }
+
+        if self.using_stretch_2:
+            self.grip_range = dt.dex_wrist_grip_range
+        else:
+            self.grip_range = dt.dex_wrist_3_grip_range
 
         # This is the weight multiplied by the current wrist angle command when performing exponential smoothing.
         # 0.5 with 'max' robot speed was too noisy on the wrist
@@ -437,10 +444,13 @@ class DexTeleopLeader(Evaluator):
             )
         self.prev_goal_dict = goal_dict
         goal_dict["current_state"] = message["robot/config"]
-        goal_configuration = self.get_goal_joint_config(**goal_dict)
 
-        # Send goal joint configuration to robot
-        self.goal_send_socket.send_pyobj(goal_configuration)
+        if goal_dict["valid"]:
+            goal_configuration = self.get_goal_joint_config(**goal_dict)
+            # Send goal joint configuration to robot
+            self.goal_send_socket.send_pyobj(goal_configuration)
+        else:
+            self.goal_send_socket.send_pyobj(goal_dict)
 
         if self._need_to_write:
             print("[LEADER] Writing data to disk.")
