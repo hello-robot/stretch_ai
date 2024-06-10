@@ -80,7 +80,8 @@ class FileDataRecorder:
         gripper: float,
         ee_pos: np.ndarray,
         ee_rot: np.ndarray,
-        config: Dict[str, float],
+        observations: Dict[str, float],
+        actions: Dict[str, float],
         head_rgb: Optional[np.ndarray] = None,
         head_depth: Optional[np.ndarray] = None,
     ):
@@ -98,7 +99,8 @@ class FileDataRecorder:
             "step": self.step,
             "ee_pos": ee_pos.tolist(),
             "ee_rot": ee_rot.tolist(),
-            "config": config,
+            "observations": observations,
+            "actions": actions
         }
         self.step += 1
 

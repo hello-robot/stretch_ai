@@ -173,11 +173,13 @@ class GripperToGoal:
     def get_current_config(self):
         state = {
             "joint_mobile_base_rotation": 0.0,
+            "theta_vel": self.robot.status["base"]["theta_vel"],
             "joint_lift": self.robot.status["lift"]["pos"],
             "joint_arm_l0": self.robot.status["arm"]["pos"],
             "joint_wrist_pitch": self.robot.status["end_of_arm"]["wrist_pitch"]["pos"],
             "joint_wrist_yaw": self.robot.status["end_of_arm"]["wrist_yaw"]["pos"],
             "joint_wrist_roll": self.robot.status["end_of_arm"]["wrist_roll"]["pos"],
+            "stretch_gripper": self.robot.status["end_of_arm"]["stretch_gripper"]["pos_pct"]
         }
         return state
 

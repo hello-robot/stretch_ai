@@ -425,32 +425,39 @@ class DexTeleopLeader(Evaluator):
         if xyt is not None:
             goal_dict["move_xyt"] = xyt
 
-        if self._recording:
-            print("[LEADER] goal_dict =")
-            pp.pprint(goal_dict)
-
-        if self._recording and self.prev_goal_dict is not None and goal_dict["valid"]:
-            self._recorder.add(
-                color_image,
-                depth_image,
-                goal_dict["relative_gripper_position"],
-                goal_dict["relative_gripper_orientation"],
-                goal_dict["grip_width"],
-                head_rgb=head_color_image,
-                head_depth=head_depth_image,
-                config=message["robot/config"],
-                ee_pos=message["robot/ee_position"],
-                ee_rot=message["robot/ee_rotation"],
-            )
-        self.prev_goal_dict = goal_dict
         goal_dict["current_state"] = message["robot/config"]
 
         if goal_dict["valid"]:
+            # Process teleop gripper goal to goal joint configurations using IK
             goal_configuration = self.get_goal_joint_config(**goal_dict)
+
+            if self._recording:
+                print("[LEADER] goal_dict =")
+                pp.pprint(goal_configuration)
+
+            # Record episode if enabled
+            if self._recording and self.prev_goal_dict is not None:
+                self._recorder.add(
+                    color_image,
+                    depth_image,
+                    goal_dict["relative_gripper_position"],
+                    goal_dict["relative_gripper_orientation"],
+                    goal_dict["grip_width"],
+                    head_rgb=head_color_image,
+                    head_depth=head_depth_image,
+                    observations=goal_dict["current_state"],
+                    actions=goal_configuration,
+                    ee_pos=message["robot/ee_position"],
+                    ee_rot=message["robot/ee_rotation"],
+                )
+
             # Send goal joint configuration to robot
             self.goal_send_socket.send_pyobj(goal_configuration)
         else:
+            # Send original goal_dict with valid=false
             self.goal_send_socket.send_pyobj(goal_dict)
+
+        self.prev_goal_dict = goal_dict
 
         if self._need_to_write:
             print("[LEADER] Writing data to disk.")
