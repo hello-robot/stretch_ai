@@ -4,9 +4,55 @@ Some demos use [HomeRobot](https://github.com/cpaxton/home-robot) for low-level 
 
 ## Installation
 
-To install HomeRobot, run the following on your Stretch:
+To install HomeRobot, run the following on your Stretch. We will roughly follow the [HomeRobot hardware install instructions](https://github.com/facebookresearch/home-robot/blob/main/docs/install_robot.md).
 
 ```bash
-# Install HomeRobot - TODO this is wrong
-./install_home_robot.sh
+cd $HOME/src  # or path to wherever you keep source
+
+# Clone the HomeRobot fork with ROS2 support
+git clone git@github.com:cpaxton/home-robot.git --branch cpaxton/ros2-migration
+
+# Find the root of the cloned code.
+# You will need to add this to your ~/.bashrc as well
+HOME_ROBOT_ROOT=$(realpath home-robot)
+
+# Install requirements
+cd $HOME_ROBOT_ROOT/src/home_robot
+pip install -r requirements.txt
+pip install -e .
+
+# Combine it with ROS workspace
+# Symlink it into the ament workspace from wherever it is
+ln -s $HOME_ROBOT_ROOT/src/robot_hw_python $HOME/ament_ws/src/robot_hw_python
+
+# And now build the package
+cd $HOME/ament_ws
+colcon build --symlink-install --packages-select=robot_hw_python
 ```
+
+## Running the code
+
+### On Hardware
+
+#### Easy Mode
+
+Everything should just work! Run the launch file with
+```
+ros2 launch robot_hw_python server.launch.py
+```
+
+#### Developer Mode
+
+Launch the ROS2 code and the ZMQ server separate windows.
+```
+ros2 launch robot_hw_python startup_stretch_hector_slam.launch.py
+```
+
+In a separate terminal:
+```
+cd $HOME_ROBOT_ROOT
+python src/robot_hw_python/robot_hw_python/remote/server.py
+```
+
+### On the Desktop
+
