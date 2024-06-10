@@ -28,6 +28,7 @@ ln -s $HOME_ROBOT_ROOT/src/robot_hw_python $HOME/ament_ws/src/robot_hw_python
 # And now build the package
 cd $HOME/ament_ws
 colcon build --symlink-install --packages-select=robot_hw_python
+source $HOME/ament/install/setup.bash
 ```
 
 ### On the desktop 
