@@ -149,7 +149,7 @@ class DexTeleopFollower:
                     self.set_head_config(goal_dict[HEAD_CONFIG])
                 if "stretch_gripper" in goal_dict:
                     # We have received a spatial goal and will do IK to move the robot into position
-                    self.gripper_to_goal.execute_goal(**goal_dict)
+                    self.gripper_to_goal.execute_goal(goal_dict)
             loop_timer.mark_end()
             if print_timing:
                 loop_timer.pretty_print()
