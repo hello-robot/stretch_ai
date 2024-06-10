@@ -11,14 +11,13 @@ import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.goal_from_teleop as gt
 import stretch.app.dex_teleop.webcam_teleop_interface as wt
 import stretch.motion.simple_ik as si
+import stretch.utils.compression as compression
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.geometry import get_rotation_from_xyz
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
-import stretch.utils.compression as compression
-
 
 use_gripper_center = True
 
@@ -185,7 +184,9 @@ class DexTeleopLeader(Evaluator):
         """Take in image data and other data received by the robot and process it appropriately. Will run the aruco marker detection, predict a goal send that goal to the robot, and save everything to disk for learning."""
 
         color_image = compression.from_webp(message["ee_cam/color_image"])
-        depth_image = compression.unzip_depth(message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"])
+        depth_image = compression.unzip_depth(
+            message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
+        )
         depth_camera_info = message["ee_cam/depth_camera_info"]
         depth_scale = message["ee_cam/depth_scale"]
         image_gamma = message["ee_cam/image_gamma"]
@@ -193,10 +194,12 @@ class DexTeleopLeader(Evaluator):
 
         # Get head information from the message as well
         head_color_image = compression.from_webp(message["head_cam/color_image"])
-        head_depth_image = compression.unzip_depth(message["head_cam/depth_image"], message["head_cam/depth_image/shape"])
+        head_depth_image = compression.unzip_depth(
+            message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
+        )
         head_depth_camera_info = message["head_cam/depth_camera_info"]
         head_depth_scale = message["head_cam/depth_scale"]
-        
+
         if self.camera_info is None:
             self.set_camera_parameters(depth_camera_info, depth_scale)
 
@@ -239,7 +242,9 @@ class DexTeleopLeader(Evaluator):
             # Calculate the new height based on the aspect ratio
             new_height = int(width / aspect_ratio)
 
-            head_combined = cv2.resize(head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR)
+            head_combined = cv2.resize(
+                head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR
+            )
 
             # Combine both images from ee and head
             combined = np.vstack((combined, head_combined))
@@ -310,6 +315,11 @@ class DexTeleopLeader(Evaluator):
                 goal_dict["relative_gripper_position"],
                 goal_dict["relative_gripper_orientation"],
                 goal_dict["grip_width"],
+                head_rgb=head_color_image,
+                head_depth=head_depth_image,
+                config=message["robot/config"],
+                ee_pos=message["robot/ee_position"],
+                ee_rot=message["robot/ee_rotation"],
             )
 
         # Send goal_dict to robot

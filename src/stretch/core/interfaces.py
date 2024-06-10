@@ -238,3 +238,6 @@ class Observations:
     # --------------------------------------------------------
 
     task_observations: Optional[Dict[str, Any]] = None
+
+    # Sequence number - which message was this?
+    seq_id: int = -1

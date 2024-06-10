@@ -13,12 +13,17 @@ import zmq
 from loguru import logger
 
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
+from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
-from stretch.motion.kinematics import HelloStretchKinematics
-from stretch.motion.robot import RobotModel
+from stretch.motion import PlanResult, RobotModel
+from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
+
+# TODO: debug code - remove later if necessary
+# import faulthandler
+# faulthandler.enable()
 
 
 class HomeRobotZmqClient(RobotClient):
@@ -27,6 +32,7 @@ class HomeRobotZmqClient(RobotClient):
         robot_ip: str = "192.168.1.15",
         recv_port: int = 4401,
         send_port: int = 4402,
+        parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
         ik_type: str = "pinocchio",
@@ -54,6 +60,15 @@ class HomeRobotZmqClient(RobotClient):
         self.send_port = send_port
         self.reset()
 
+        # Variables we set here should not change
+        self._iter = 0  # Tracks number of actions set, never reset this
+        self._seq_id = 0  # Number of messages we received
+
+        self._parameters = parameters
+        self._moving_threshold = parameters["motion"]["moving_threshold"]
+        self._angle_threshold = parameters["motion"]["angle_threshold"]
+        self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
+
         # Robot model
         self._robot_model = HelloStretchKinematics(
             urdf_path=urdf_path,
@@ -79,7 +94,6 @@ class HomeRobotZmqClient(RobotClient):
         self.send_socket.setsockopt(zmq.SNDHWM, 1)
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
         action_send_address = "tcp://*:" + str(self.send_port)
-        print(f"Publishing actions on {action_send_address}...")
 
         # Use remote computer or whatever
         if use_remote_computer:
@@ -89,6 +103,7 @@ class HomeRobotZmqClient(RobotClient):
             self.recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
             self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
 
+        print("-------- HOME-ROBOT ROS2 ZMQ CLIENT --------")
         print(f"Connecting to {self.recv_address} to receive observations...")
         self.recv_socket.connect(self.recv_address)
         print(f"Connecting to {self.send_address} to send action messages...")
@@ -120,8 +135,18 @@ class HomeRobotZmqClient(RobotClient):
         """
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
+        if len(joint_angles) > 6:
+            print(
+                "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
+            )
+            # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
+            joint_angles = self._robot_model.config_to_manip_command(joint_angles)
+        if len(joint_angles) < 6:
+            raise ValueError(
+                "joint_angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
+            )
         assert (
-            joint_angles.shape[-1] == 6
+            len(joint_angles) == 6
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
         with self._act_lock:
             self._next_action["joint"] = joint_angles
@@ -130,7 +155,9 @@ class HomeRobotZmqClient(RobotClient):
         # Blocking is handled in here
         self.send_action()
 
-    def navigate_to(self, xyt: ContinuousNavigationAction, relative=False, blocking=False):
+    def navigate_to(
+        self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
+    ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
@@ -139,10 +166,7 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["xyt"] = xyt
             self._next_action["nav_relative"] = relative
             self._next_action["nav_blocking"] = blocking
-        self.send_action()
-
-        # Set a sleep based on expected hz at which we receive updates from the robot
-        time.sleep(0.2)
+        self.send_action(timeout=timeout)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -152,13 +176,41 @@ class HomeRobotZmqClient(RobotClient):
         self._thread = None
         self._finish = False
         self._last_step = -1
-        self._iter = 0  # Tracks number of actions set, never reset this
+
+    def open_gripper(self, blocking: bool = True):
+        """Open the gripper based on hard-coded presets."""
+        gripper_target = self._robot_model.GRIPPER_OPEN
+        print("Opening gripper to", gripper_target)
+        self.gripper_to(gripper_target, blocking)
+
+    def close_gripper(self, blocking: bool = True):
+        """Close the gripper based on hard-coded presets."""
+        gripper_target = self._robot_model.GRIPPER_CLOSED
+        print("Closing gripper to", gripper_target)
+        self.gripper_to(gripper_target, blocking)
+
+    def gripper_to(self, target: float, blocking: bool = True):
+        """Send the gripper to a target position."""
+        with self._act_lock:
+            self._next_action["gripper"] = target
+            self._next_action["gripper_blocking"] = blocking
+        self.send_action()
+        if blocking:
+            time.sleep(2.0)
 
     def switch_to_navigation_mode(self):
+        """Velocity control of the robot base."""
         with self._act_lock:
             self._next_action["control_mode"] = "navigation"
         self.send_action()
         self._wait_for_mode("navigation")
+
+    def in_navigation_mode(self) -> bool:
+        """Returns true if we are navigating (robot head forward, velocity control on)"""
+        return self._control_mode == "navigation"
+
+    def in_manipulation_mode(self) -> bool:
+        return self._control_mode == "manipulation"
 
     def switch_to_manipulation_mode(self):
         with self._act_lock:
@@ -178,7 +230,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 10.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
@@ -188,28 +240,38 @@ class HomeRobotZmqClient(RobotClient):
                     break
             time.sleep(0.1)
             t1 = timeit.default_timer()
-            if t1 - t0 > 5.0:
-                raise RuntimeError(f"Timeout waiting for mode {mode}")
+            if t1 - t0 > timeout:
+                raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
 
     def _wait_for_action(
         self,
         block_id: int,
         verbose: bool = True,
-        moving_threshold: float = 1e-4,
-        angle_threshold: float = 1e-4,
-        min_steps_not_moving: int = 1,
+        timeout: float = 10.0,
+        moving_threshold: Optional[float] = None,
+        angle_threshold: Optional[float] = None,
+        min_steps_not_moving: Optional[int] = 1,
+        goal_angle: Optional[float] = None,
     ):
         t0 = timeit.default_timer()
         last_pos = None
         last_ang = None
         not_moving_count = 0
+        if moving_threshold is None:
+            moving_threshold = self._moving_threshold
+        if angle_threshold is None:
+            angle_threshold = self._angle_threshold
+        if min_steps_not_moving is None:
+            min_steps_not_moving = self._min_steps_not_moving
         while True:
             with self._obs_lock:
                 if self._obs is not None:
                     pos = self._obs["gps"]
-                    ang = self._obs["compass"]
+                    ang = self._obs["compass"][0]
                     moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
                     angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+                    if goal_angle is not None:
+                        angle_dist_to_goal = angle_difference(ang, goal_angle)
                     not_moving = (
                         last_pos is not None
                         and moved_dist < moving_threshold
@@ -220,10 +282,15 @@ class HomeRobotZmqClient(RobotClient):
                     else:
                         not_moving_count = 0
                     last_pos = pos
+                    last_ang = ang
                     if verbose:
                         print(
                             f"Waiting for step={block_id} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
                         )
+                        if goal_angle is not None:
+                            print(
+                                f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}"
+                            )
                     if (
                         self._last_step >= block_id
                         and self._obs["at_goal"]
@@ -231,9 +298,9 @@ class HomeRobotZmqClient(RobotClient):
                     ):
                         break
                     self._obs = None
-            time.sleep(0.1)
+            time.sleep(0.01)
             t1 = timeit.default_timer()
-            if t1 - t0 > 15.0:
+            if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
@@ -277,6 +344,7 @@ class HomeRobotZmqClient(RobotClient):
             observation.ee_pose = self._obs.get("ee_pose", None)
             observation.camera_K = self._obs.get("camera_K", None)
             observation.camera_pose = self._obs.get("camera_pose", None)
+            observation.seq_id = self._seq_id
         return observation
 
     def execute_trajectory(
@@ -287,9 +355,14 @@ class HomeRobotZmqClient(RobotClient):
         spin_rate: int = 10,
         verbose: bool = False,
         per_waypoint_timeout: float = 10.0,
+        final_timeout: float = 10.0,
         relative: bool = False,
     ):
         """Execute a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
+
+        if isinstance(trajectory, PlanResult):
+            trajectory = [pt.state for pt in trajectory.trajectory]
+
         for i, pt in enumerate(trajectory):
             assert (
                 len(pt) == 3 or len(pt) == 2
@@ -305,7 +378,7 @@ class HomeRobotZmqClient(RobotClient):
                 verbose=verbose,
                 timeout=per_waypoint_timeout,
             )
-        self.navigate_to(pt, blocking=True)
+        self.navigate_to(pt, blocking=True, timeout=final_timeout)
 
     def wait_for_waypoint(
         self,
@@ -313,7 +386,7 @@ class HomeRobotZmqClient(RobotClient):
         rate: int = 10,
         pos_err_threshold: float = 0.2,
         rot_err_threshold: float = 0.75,
-        verbose: bool = True,
+        verbose: bool = False,
         timeout: float = 10.0,
     ) -> bool:
         """Wait until the robot has reached a configuration... but only roughly. Used for trajectory execution.
@@ -339,6 +412,9 @@ class HomeRobotZmqClient(RobotClient):
             curr = self.get_base_pose()
             pos_err = np.linalg.norm(xy - curr[:2])
             rot_err = np.abs(angle_difference(curr[-1], xyt[2]))
+            # TODO: code for debugging slower rotations
+            # if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
+            #     print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
             if verbose:
                 logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
             if pos_err < pos_err_threshold and rot_err < rot_err_threshold:
@@ -352,7 +428,7 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def send_action(self):
+    def send_action(self, timeout: float = 10.0):
         """Send the next action to the robot"""
         print("-> sending", self._next_action)
         blocking = False
@@ -364,15 +440,22 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["step"] = block_id
             self._iter += 1
             self.send_socket.send_pyobj(self._next_action)
+
+            # For tracking goal
+            if "xyt" in self._next_action:
+                goal_angle = self._next_action["xyt"][2]
+            else:
+                goal_angle = None
+
             # Empty it out for the next one
             self._next_action = dict()
 
         # Make sure we had time to read
         time.sleep(0.2)
         if blocking:
-            # Wait for the command to
-            self._wait_for_action(block_id)
-            time.sleep(5.0)
+            # Wait for the command to finish
+            self._wait_for_action(block_id, goal_angle=goal_angle, verbose=True, timeout=timeout)
+            time.sleep(0.2)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
@@ -388,6 +471,7 @@ class HomeRobotZmqClient(RobotClient):
             if output is None:
                 continue
 
+            self._seq_id += 1
             output["rgb"] = cv2.imdecode(output["rgb"], cv2.IMREAD_COLOR)
             compressed_depth = output["depth"]
             depth = cv2.imdecode(compressed_depth, cv2.IMREAD_UNCHANGED)

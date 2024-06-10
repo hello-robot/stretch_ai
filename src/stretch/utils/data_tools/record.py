@@ -5,7 +5,7 @@ import logging
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import cv2
 import liblzfse
@@ -69,8 +69,19 @@ class FileDataRecorder:
         self.data_dicts = {}
         self.step = 0
 
-    def add(self, ee_rgb: np.ndarray, ee_depth: np.ndarray, xyz: np.ndarray, quaternion: np.ndarray, gripper: float, head_rgb: Optional[np.ndarray] = None,
-            head_depth: Optional[np.ndarray] = None):
+    def add(
+        self,
+        ee_rgb: np.ndarray,
+        ee_depth: np.ndarray,
+        xyz: np.ndarray,
+        quaternion: np.ndarray,
+        gripper: float,
+        ee_pos: np.ndarray,
+        ee_rot: np.ndarray,
+        config: Dict[str, float],
+        head_rgb: Optional[np.ndarray] = None,
+        head_depth: Optional[np.ndarray] = None,
+    ):
         """Add data to the recorder."""
         ee_rgb = cv2.resize(ee_rgb, (256, 192), interpolation=cv2.INTER_AREA)
         ee_depth = cv2.resize(ee_depth, (256, 192), interpolation=cv2.INTER_NEAREST)
@@ -83,6 +94,9 @@ class FileDataRecorder:
             "quats": quaternion.tolist(),
             "gripper": gripper,
             "step": self.step,
+            "ee_pos": ee_pos.tolist(),
+            "ee_rot": ee_rot.tolist(),
+            "config": config,
         }
         self.step += 1
 
@@ -97,9 +111,16 @@ class FileDataRecorder:
         for i, (rgb, depth) in enumerate(zip(self.rgbs, self.depths)):
             self.write_image(rgb, depth, episode_dir, i)
 
+        for i, (rgb, depth) in enumerate(zip(self.head_rgbs, self.head_depths)):
+            if rgb is None or depth is None:
+                continue
+            self.write_image(rgb, depth, episode_dir, i, head=True)
+
         # Run video processing
         self.process_rgb_to_video(episode_dir)
         self.process_depth_to_bin(episode_dir)
+        self.process_rgb_to_video(episode_dir, head=True)
+        self.process_depth_to_bin(episode_dir, head=True)
 
         # Bookkeeping for DobbE
         # Write an empty file
@@ -115,25 +136,22 @@ class FileDataRecorder:
 
         self.reset()
 
-    def write_image(self, rgb, depth, episode_dir, i, head_rgb=None, head_depth=None):
+    def write_image(self, rgb, depth, episode_dir, i, head: bool = False):
         """Write out image data from both head and end effector"""
-        rgb_dir = episode_dir / RGB_FOLDER_NAME
+        if head:
+            rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
+            depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
+        else:
+            rgb_dir = episode_dir / RGB_FOLDER_NAME
+            depth_dir = episode_dir / DEPTH_FOLDER_NAME
+
         rgb_dir.mkdir(exist_ok=True)
-        depth_dir = episode_dir / DEPTH_FOLDER_NAME
         depth_dir.mkdir(exist_ok=True)
+
         cv2.imwrite(str(rgb_dir / f"{i:06}.png"), rgb)
         cv2.imwrite(str(depth_dir / f"{i:06}.png"), depth)
-        
-        if head_rgb is not None:
-            head_rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
-            head_rgb_dir.mkdir(exist_ok=True)
-            cv2.imwrite(str(head_rgb_dir / f"{i:06}.png"), rgb)
-        if head_depth is not None:
-            head_depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
-            head_depth_dir.mkdir(exist_ok=True)
-            cv2.imwrite(str(head_depth_dir / f"{i:06}.png"), depth)
 
-    def process_rgb_to_video(self, episode_dir, head: bool =False):
+    def process_rgb_to_video(self, episode_dir, head: bool = False):
         start_time = time.perf_counter()
         # First, find out a sample filename
         if head:

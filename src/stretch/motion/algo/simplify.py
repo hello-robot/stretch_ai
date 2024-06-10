@@ -172,9 +172,6 @@ class SimplifyXYT(Planner):
                             print("===========")
                         break
 
-                    # if verbose:
-                    #     print("simplified =", [x.state for x in new_nodes])
-                    # breakpoint()
                     prev_node = node
                     prev_theta = cur_theta
 

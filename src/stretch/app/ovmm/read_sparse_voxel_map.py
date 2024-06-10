@@ -9,10 +9,14 @@ import random
 from pathlib import Path
 
 import click
+import matplotlib
+
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from stretch.agent import RobotAgent, get_parameters
+from stretch.agent import RobotAgent
+from stretch.core import get_parameters
 from stretch.mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.mapping.voxel import plan_to_frontier
 from stretch.utils.dummy_stretch_client import DummyStretchClient
@@ -42,7 +46,7 @@ def plan_to_deltas(xyt0, plan):
     "--config-path",
     "-c",
     type=click.Path(),
-    default="configs/default.yaml",
+    default="config/default_planner.yaml",
     help="Path to planner config.",
 )
 @click.option(
@@ -54,8 +58,20 @@ def plan_to_deltas(xyt0, plan):
 )
 @click.option("--show-svm", "-s", type=bool, is_flag=True, default=False)
 @click.option("--pkl-is-svm", "-p", type=bool, is_flag=True, default=False)
-@click.option("--test-planning", type=bool, is_flag=True, default=False)
-@click.option("--test-sampling", type=bool, is_flag=True, default=False)
+@click.option(
+    "--test-planning",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test motion planning to frontier positions. if show-svm is also set, will display location of valid goals we found.",
+)
+@click.option(
+    "--test-sampling",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test sampling instances and trying to plan to them.",
+)
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
 @click.option("--query", "-q", type=str, default="")
@@ -91,7 +107,6 @@ def main(
     if len(config_path) > 0:
         print("- Load parameters")
         parameters = get_parameters(config_path)
-        print(parameters)
         agent = RobotAgent(
             dummy_robot,
             parameters,
@@ -111,6 +126,7 @@ def main(
     # TODO: read this from file or something
     # x0 = np.array([0, 0, 0])
     x0 = np.array([1, 0, 0])
+    x0 = np.array([2.85963704, 0.77726015, 1.95671275])  # stretch_output_2024-05-24_13-28-26.pkl
     # x0 = np.array([2.6091852, 3.2328937, 0.8379814])
     # x0 = np.array([3.1000001, 0.0, 4.2857614])
     # x0 = np.array([0.0, -0.0, 1.5707968])
@@ -126,7 +142,7 @@ def main(
             # x0 = np.array([0, 0, 0])
             footprint = dummy_robot.get_footprint()
             print(f"{x0} valid = {space.is_valid(x0)}")
-            voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
+            space.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
             # TODO: remove debug visualization code
             # x1 = np.array([0, 0, np.pi / 4])
             # print(f"{x1} valid = {space.is_valid(x1)}")
@@ -169,7 +185,9 @@ def main(
                 return
 
             # Get frontier sampler
-            sampler = space.sample_closest_frontier(x0, verbose=False, min_dist=0.1, step_dist=0.1)
+            sampler = space.sample_closest_frontier(
+                x0, verbose=False, min_dist=0.1, step_dist=0.1, debug=True
+            )
             planner = agent.planner
 
             print(f"Closest frontier to {x0}:")
@@ -184,23 +202,20 @@ def main(
 
                 print()
                 print()
-                print("-" * 20)
+                print("-" * 10, "Iteration", i, "-" * 10)
                 res = planner.plan(start, goal.cpu().numpy())
                 print("start =", start)
                 print("goal =", goal.cpu().numpy())
                 print(i, "sampled", goal, "success =", res.success)
                 if res.success:
                     plan_to_deltas(x0, res)
-                # Try to plan
-                # res = plan_to_frontier(
-                #     start,
-                #    planner,
-                #    space,
-                #    voxel_map,
-                #    try_to_plan_iter=try_to_plan_iter,
-                #    visualize=False,
-                # )
-                # print("Planning result:", res)
+                    if show_svm:
+                        voxel_map.show(
+                            instances=show_instances,
+                            orig=start_xyz,
+                            xyt=goal.cpu().numpy(),
+                            footprint=footprint,
+                        )
 
             print("... done sampling frontier points.")
         if test_sampling:

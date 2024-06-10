@@ -126,6 +126,19 @@ Optional open3d visualization of the scene:
 python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
+### Pickup Toys
+
+This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
+
+```bash
+python -m stretch.app.pickup.run
+```
+
+You can add the `--reset` flag to make it go back to the start position.
+```
+python -m stretch.app.pickup.run --reset
+```
+
 ### 
 
 ## Development

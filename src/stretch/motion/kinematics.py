@@ -17,8 +17,8 @@ from stretch.motion.utils.bullet import BulletRobotModel, PybulletIKSolver
 from stretch.utils.pose import to_matrix
 
 # Stretch stuff
-PLANNER_STRETCH_URDF = "configs/urdf/planner_calibrated.urdf"
-MANIP_STRETCH_URDF = "configs/urdf/stretch_manip_mode.urdf"
+PLANNER_STRETCH_URDF = "config/urdf/planner_calibrated.urdf"
+MANIP_STRETCH_URDF = "config/urdf/stretch_manip_mode.urdf"
 
 STRETCH_HOME_Q = np.array(
     [
@@ -163,11 +163,6 @@ STRETCH_GRASP_OFFSET[:3, 3] = np.array([0, 0, -1 * STRETCH_STANDOFF_DISTANCE])
 # Offset from STRETCH_GRASP_FRAME to predicted grasp point
 STRETCH_TO_GRASP = np.eye(4)
 STRETCH_TO_GRASP[:3, 3] = np.array([0, 0, STRETCH_STANDOFF_DISTANCE])
-
-# Other stretch parameters
-STRETCH_GRIPPER_OPEN = 0.22
-STRETCH_GRIPPER_CLOSE = -0.2
-STRETCH_HEAD_CAMERA_ROTATIONS = 3  # number of counterclockwise rotations for the head camera
 
 # For EXTEND_ARM action
 STRETCH_ARM_EXTENSION = 0.8
@@ -370,23 +365,6 @@ class HelloStretchKinematics:
         """return degrees of freedom of the robot"""
         return self.dof
 
-    def set_head_config(self, q):
-        # WARNING: this sets all configs
-        bidxs = [HelloStretchIdx.HEAD_PAN, HelloStretchIdx.HEAD_TILT]
-        bidxs = [self.joint_idx[b] for b in bidxs]
-        if len(q) == self.dof:
-            qidxs = bidxs
-        elif len(q) == 2:
-            qidxs = [0, 1]
-        else:
-            raise RuntimeError("unsupported number of head joints")
-
-        for idx, qidx in zip(bidxs, qidxs):
-            # Idx is the urdf joint index
-            # qidx is the idx in the provided query
-            qq = q[qidx]
-            self.ref.set_joint_position(idx, qq)
-
     def sample_uniform(self, q0=None, pos=None, radius=2.0):
         """Sample random configurations to seed the ik planner"""
         q = (np.random.random(self.dof) * self._rngs) + self._mins
@@ -506,10 +484,6 @@ class HelloStretchKinematics:
         for idx in idxs:
             self.ref.set_joint_position(idx, val)
 
-    def vanish(self):
-        """get rid of the robot"""
-        self.ref.set_pose([0, 0, 1000], [0, 0, 0, 1])
-
     def set_config(self, q):
         assert len(q) == self.dof
         x, y, theta = q[:3]
@@ -526,33 +500,6 @@ class HelloStretchKinematics:
         # Finally set the arm and gripper as groups
         self._set_joint_group(self.arm_idx, q[HelloStretchIdx.ARM] / 4.0)
         self._set_joint_group(self.gripper_idx, q[HelloStretchIdx.GRIPPER])
-
-    def plan_look_at(self, q0, xyz):
-        """assume this is a relative xyz"""
-        dx, dy = xyz[:2] - q0[:2]
-        theta0 = q0[2]
-        thetag = np.arctan2(dy, dx)
-        action = np.zeros(self.dof)
-
-        dist = np.abs(thetag - theta0)
-        # Dumb check to see if we can get the rotation right
-        if dist > np.pi:
-            thetag -= np.pi / 2
-            dist = np.abs(thetag - theta0)
-        # Getting the direction right here
-        dirn = 1.0 if thetag > theta0 else -1.0
-        action[2] = dist * dirn
-
-        look_action = q0.copy()
-        self.update_look_ahead(look_action)
-
-        # Compute the angle
-        head_height = 1.2
-        distance = np.linalg.norm([dx, dy])
-
-        look_action[HelloStretchIdx.HEAD_TILT] = -1 * np.arctan((head_height - xyz[2]) / distance)
-
-        return [action, look_action]
 
     def interpolate(self, q0, qg, step=None, xy_tol=0.05, theta_tol=0.01):
         """interpolate from initial to final configuration. for this robot we break it up into
@@ -591,11 +538,6 @@ class HelloStretchKinematics:
         for qi, ai in self.interpolate_arm(qi, qg, step):
             yield qi, ai
 
-    def get_link_pose(self, link_name, q=None):
-        if q is not None:
-            self.set_config(q)
-        return self.ref.get_link_pose(link_name)
-
     def manip_fk(self, q: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
         """manipulator specific forward kinematics; uses separate URDF than the full-body fk() method"""
         assert q.shape == (self.dof,)
@@ -606,13 +548,6 @@ class HelloStretchKinematics:
         ee_pos, ee_quat = self.manip_ik_solver.compute_fk(q)
         return ee_pos.copy(), ee_quat.copy()
 
-    def fk(self, q=None, as_matrix=False) -> Tuple[np.ndarray, np.ndarray]:
-        """forward kinematics"""
-        pose = self.get_link_pose(self.ee_link_name, q)
-        if as_matrix:
-            return to_matrix(*pose)
-        return pose
-
     def update_head(self, qi: np.ndarray, look_at) -> np.ndarray:
         """move head based on look_at and return the joint-state"""
         qi[HelloStretchIdx.HEAD_PAN] = look_at[0]
@@ -622,9 +557,9 @@ class HelloStretchKinematics:
     def update_gripper(self, qi, open=True):
         """update target state for gripper"""
         if open:
-            qi[HelloStretchIdx.GRIPPER] = STRETCH_GRIPPER_OPEN
+            qi[HelloStretchIdx.GRIPPER] = self.GRIPPER_OPEN
         else:
-            qi[HelloStretchIdx.GRIPPER] = STRETCH_GRIPPER_CLOSE
+            qi[HelloStretchIdx.GRIPPER] = self.GRIPPER_CLOSED
         return qi
 
     def interpolate_xy(self, qi, xy0, dist, step=0.1):
@@ -778,14 +713,12 @@ class HelloStretchKinematics:
 
         if q is not None and success:
             q = self._from_manip_format(q, default_q)
-            self.set_config(q)
+            # self.set_config(q)
 
         return q, success, debug_info
 
     def get_ee_pose(self, q=None):
-        if q is not None:
-            self.set_config(q)
-        return self.ref.get_link_pose(self._grasp_frame)
+        raise NotImplementedError()
 
     def update_look_front(self, q):
         """look in front so we can see the floor"""
@@ -882,6 +815,7 @@ class HelloStretchKinematics:
         q = configuration to test
         ignored = other objects to NOT check against
         """
+        raise NotImplementedError("validate not yet supported")
         self.set_config(q)
         # Check robot height
         if q[HelloStretchIdx.LIFT] >= 1.0:
@@ -1019,6 +953,31 @@ class HelloStretchKinematics:
         pan = hab_positions[8]
         tilt = hab_positions[9]
         return positions, pan, tilt
+
+    def manip_ik_for_grasp_frame(self, ee_pos, ee_rot, q0: Optional[np.ndarray] = None) -> Tuple:
+        # Construct the final end effector pose
+        pose = np.eye(4)
+        euler = Rotation.from_quat(ee_rot).as_euler("xyz")
+        matrix = Rotation.from_quat(ee_rot).as_matrix()
+        pose[:3, :3] = matrix
+        pose[:3, 3] = ee_pos
+        ee_pose = pose @ STRETCH_GRASP_OFFSET
+        target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
+        target_ee_pos = ee_pose[:3, 3]
+        if target_ee_pos[1] > 0:
+            print(
+                f"{self.name}: graspable objects should be in the negative y direction, got this target position: {target_ee_pos}"
+            )
+
+        # TODO: hopefully we do not need this code
+        # Add a little bit more offset here, since we often underestimate how far we need to extend
+        # target_ee_pos[1] -= 0.05
+
+        target_joint_state, success, info = self.manip_ik(
+            (target_ee_pos, target_ee_rot),
+            q0=q0,
+        )
+        return target_joint_state, target_ee_pos, target_ee_rot, success, info
 
 
 if __name__ == "__main__":
