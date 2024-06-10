@@ -260,7 +260,7 @@ class PreGraspObjectOperation(ManagedOperation):
     plan = None
     show_object_in_voxel_grid: bool = False
     use_pitch_from_vertical: bool = True
-    grasp_distance_threshold: float = 0.75
+    grasp_distance_threshold: float = 0.8
 
     def can_start(self):
         self.plan = None
@@ -507,7 +507,7 @@ class GoToNavOperation(ManagedOperation):
 class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
-    place_distance_threshold: float = 0.75
+    place_distance_threshold: float = 0.8
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
