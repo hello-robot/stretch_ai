@@ -12,8 +12,8 @@ class MarkersDatabase:
 
         # Verify protocol
         proto_port = port
-        proto_sock = recv_protocol.initialize(ip_addr, proto_port)
-        recv_protocol.recv_spp(proto_sock)
+        proto_sock, proto_poll = recv_protocol.initialize(ip_addr, proto_port)
+        recv_protocol.recv_spp(proto_sock, proto_poll)
 
         # Connect to aruco database
         info_port = port + 10

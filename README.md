@@ -17,18 +17,18 @@ cd stretchpy/src
 pip3 install .
 ```
 
-On your Stretch, start the server:
-
-```
-python3 -m stretch.serve
-```
-
-On your PC, add the following yaml to `~/.stretch/config.yaml`:
+On your PC, add the following yaml to `~/.stretch/config.yaml` (use `127.0.0.1` if you're developing on the robot only):
 
 ```yaml
 robots:
   - ip_addr: 192.168.1.14 # Substitute with your robot's ip address
     port: 20200
+```
+
+On your Stretch, start the server:
+
+```
+python3 -m stretch.serve
 ```
 
 Then, on your PC, write some code:
