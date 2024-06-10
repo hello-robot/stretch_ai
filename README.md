@@ -63,6 +63,8 @@ Open3D is an optional dependency used by some 3d visualizations. It does not wor
 pip install open3d
 ```
 
+In addition, you'll want to install [HomeRobot](docs/home_robot.md) on your Stretch to provide localization and low-level control. Note that this is differenet from the main [HomeRobot package provided by FAIR](https://github.com/facebookresearch/home-robot), which does not have all of the necessary features and does not currently have ROS2 support. Check the [Stretch HomeRobot docs](docs/home_robot.md) for more information.
+
 ### Verifying Advanced Installation
 
 The most common issue is with `torch_cluster`, or that cuda is set up wrong. Make sure it runs by starting `python` and running:
