@@ -238,7 +238,9 @@ class RobotAgent:
                         plt.show()
                     else:
                         image = Image.fromarray(view.get_image())
-                        image.save(f"{self.path}/viz_data/instance_{i}_is_a_{name}.png")
+                        filename = f"{self.path}/viz_data/instance_{i}_is_a_{name}.png"
+                        print(f"- Saving debug image to {filename}")
+                        image.save(filename)
 
             if visualize:
                 self.voxel_map.show(
