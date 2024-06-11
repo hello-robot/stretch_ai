@@ -232,7 +232,7 @@ class HelloStretchKinematics:
     max_arm_height = 1.2
 
     # For inverse kinematics mode
-    default_ee_link_name = "link_straight_gripper"
+    default_ee_link_name = "link_grasp_center"
 
     default_manip_mode_controlled_joints = [
         "base_x_joint",
@@ -961,7 +961,8 @@ class HelloStretchKinematics:
         matrix = Rotation.from_quat(ee_rot).as_matrix()
         pose[:3, :3] = matrix
         pose[:3, 3] = ee_pos
-        ee_pose = pose @ STRETCH_GRASP_OFFSET
+        # ee_pose = pose @ STRETCH_GRASP_OFFSET
+        ee_pose = pose
         target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
         target_ee_pos = ee_pose[:3, 3]
         if target_ee_pos[1] > 0:

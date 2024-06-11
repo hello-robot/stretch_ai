@@ -351,6 +351,7 @@ class HomeRobotZmqClient(RobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
+        breakpoint()
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""

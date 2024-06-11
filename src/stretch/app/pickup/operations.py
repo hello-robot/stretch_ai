@@ -126,7 +126,7 @@ class SearchForReceptacle(ManagedOperation):
                 plt.show()
 
             # Find a box
-            if "box" in name:
+            if "box" in name or "tray" in name:
                 receptacle_options.append(instance)
 
                 # Check to see if we can motion plan to box or not
