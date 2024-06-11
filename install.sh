@@ -4,7 +4,7 @@
 export PYTORCH_VERSION=2.1.2
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-ENV_NAME=stretchpy-2024-06-11
+ENV_NAME=stretchpy-2024-06-11-v2
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 echo "=============================================="

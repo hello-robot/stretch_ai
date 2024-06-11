@@ -13,7 +13,6 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d
-import rclpy
 import torch
 from PIL import Image
 
