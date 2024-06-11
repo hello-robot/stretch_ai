@@ -40,7 +40,7 @@ class OvmmPerception:
         self.verbose = verbose
         if self._detection_module == "detic":
             # Lazy import
-            from stretch.perception.detection.detic.detic_perception import DeticPerception
+            from stretch.perception.detection.detic import DeticPerception
 
             self._segmentation = DeticPerception(
                 vocabulary="custom",
@@ -51,9 +51,7 @@ class OvmmPerception:
                 **module_kwargs,
             )
         elif self._detection_module == "grounded_sam":
-            from home_robot.perception.detection.grounded_sam.grounded_sam_perception import (
-                GroundedSAMPerception,
-            )
+            from home_robot.perception.detection.grounded_sam import GroundedSAMPerception
 
             self._segmentation = GroundedSAMPerception(
                 custom_vocabulary=".",
@@ -62,7 +60,7 @@ class OvmmPerception:
                 **module_kwargs,
             )
         elif self._detection_module == "mobile_sam":
-            from home_robot.perception.detection.grounded_sam.sam_perception import SAMPerception
+            from home_robot.perception.detection.grounded_sam import SAMPerception
 
             self._segmentation = SAMPerception(
                 custom_vocabulary=".",
@@ -70,7 +68,7 @@ class OvmmPerception:
                 **module_kwargs,
             )
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
 
     @property
     def current_vocabulary_id(self) -> int:
