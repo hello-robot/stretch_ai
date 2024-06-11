@@ -257,6 +257,13 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                 )
             # Update world model once we get to frontier
             self.update()
+        else:
+            if self.show_map_so_far:
+                # This shows us what the robot has found so far
+                xyt = self.robot.get_base_pose()
+                self.agent.voxel_map.show(
+                    orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+                )
 
         # TODO: better behavior
         # If no visitable frontier, pick a random point nearby and just wander around
