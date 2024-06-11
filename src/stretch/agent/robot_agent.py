@@ -45,6 +45,7 @@ class RobotAgent:
         grasp_client: Optional[GraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
+        debug_instances: bool = True,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -55,6 +56,7 @@ class RobotAgent:
         self.robot = robot
         self.rpc_stub = rpc_stub
         self.grasp_client = grasp_client
+        self.debug_instances = debug_instances
 
         self.semantic_sensor = semantic_sensor
         self.normalize_embeddings = True
@@ -211,30 +213,34 @@ class RobotAgent:
             print("---- UPDATE ----")
             self.update()
 
-            # Check to see if we have a receptacle in the map
-            instances = self.voxel_map.instances.get_instances()
-            for i, instance in enumerate(instances):
-                name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
-                print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
-                if True:  # s elf.show_instances_detected:
-                    import matplotlib
+            if self.debug_instances:
+                import matplotlib
 
-                    # TODO: why do we need to configure this every time
-                    matplotlib.use("TkAgg")
-                    import matplotlib.pyplot as plt
+                # TODO: why do we need to configure this every time
+                matplotlib.use("TkAgg")
+                import matplotlib.pyplot as plt
 
-                    view = instance.get_best_view()
-                    plt.imshow(view.get_image())
-                    plt.title(f"Instance {i} with name {name}")
-                    plt.axis("off")
-                    plt.show()
-
-                if visualize:
-                    self.voxel_map.show(
-                        orig=np.zeros(3),
-                        xyt=self.robot.get_base_pose(),
-                        footprint=self.robot.get_robot_model().get_footprint(),
+                # Check to see if we have a receptacle in the map
+                instances = self.voxel_map.instances.get_instances()
+                for i, instance in enumerate(instances):
+                    name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
+                    print(
+                        f" - Found instance {i} with name {name} and global id {instance.global_id}."
                     )
+                    if True:  # s elf.show_instances_detected:
+
+                        view = instance.get_best_view()
+                        plt.imshow(view.get_image())
+                        plt.title(f"Instance {i} with name {name}")
+                        plt.axis("off")
+                        plt.show()
+
+            if visualize:
+                self.voxel_map.show(
+                    orig=np.zeros(3),
+                    xyt=self.robot.get_base_pose(),
+                    footprint=self.robot.get_robot_model().get_footprint(),
+                )
 
         return True
 
