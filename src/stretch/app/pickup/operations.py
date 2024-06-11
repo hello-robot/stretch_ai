@@ -385,7 +385,7 @@ class NavigateToObjectOperation(ManagedOperation):
         assert (
             self.plan is not None
         ), "Did you make sure that we had a plan? You should call can_start() before run()."
-        self.robot.execute_trajectory(self.plan, final_timeout=30.0)
+        self.robot.execute_trajectory(self.plan, final_timeout=45.0)
 
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state
