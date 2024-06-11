@@ -105,6 +105,7 @@
         "toy_pineapple": 102,
         "toy_swing": 103,
         "toy_vehicle": 104,
+        "tray": 105,
         "vase": 106,
         "watch": 107
     },
@@ -129,7 +130,6 @@
         "toilet": 17,
         "trunk": 18,
         "wardrobe": 19,
-        "washer_dryer": 20,
-        "tray": 105
+        "washer_dryer": 20
     }
 }

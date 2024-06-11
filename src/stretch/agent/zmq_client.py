@@ -295,6 +295,7 @@ class HomeRobotZmqClient(RobotClient):
         angle_threshold: Optional[float] = None,
         min_steps_not_moving: Optional[int] = 1,
         goal_angle: Optional[float] = None,
+        goal_angle_threshold: Optional[float] = 0.1,
     ):
         print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
@@ -324,6 +325,9 @@ class HomeRobotZmqClient(RobotClient):
                     angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
                     if goal_angle is not None:
                         angle_dist_to_goal = angle_difference(ang, goal_angle)
+                        at_goal = angle_dist_to_goal < goal_angle_threshold
+                    else:
+                        at_goal = True
                     not_moving = (
                         last_pos is not None
                         and moved_dist < moving_threshold
@@ -346,6 +350,7 @@ class HomeRobotZmqClient(RobotClient):
                     if (
                         self._last_step >= block_id
                         and self._obs["at_goal"]
+                        and at_goal
                         and not_moving_count > min_steps_not_moving
                     ):
                         break
@@ -354,7 +359,6 @@ class HomeRobotZmqClient(RobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
-        breakpoint()
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
