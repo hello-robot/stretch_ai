@@ -65,7 +65,7 @@ class SearchForReceptacle(ManagedOperation):
     """Find a place to put the objects we find on the floor"""
 
     # For debugging
-    show_map_so_far: bool = False
+    show_map_so_far: bool = True
     show_instances_detected: bool = False
 
     def can_start(self) -> bool:
@@ -86,7 +86,10 @@ class SearchForReceptacle(ManagedOperation):
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
-            self.manager.voxel_map.show(orig=np.zeros(3))
+            xyt = self.robot.get_base_pose()
+            self.agent.voxel_map.show(
+                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
 
         if self.show_instances_detected:
             # Show the last instance image
@@ -161,9 +164,10 @@ class SearchForReceptacle(ManagedOperation):
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = False
+    show_map_so_far: bool = True
     show_instances_detected: bool = False
     plan_for_manipulation: bool = True
+    object_class: str = "shoe"
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
@@ -178,6 +182,13 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         self.robot.move_to_nav_posture()
         # Do not update until you are in nav posture
         self.update()
+
+        if self.show_map_so_far:
+            # This shows us what the robot has found so far
+            xyt = self.robot.get_base_pose()
+            self.agent.voxel_map.show(
+                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
@@ -216,7 +227,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                 plt.axis("off")
                 plt.show()
 
-            if "toy" in name:
+            if self.object_class in name:
                 relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
                 if len(relations) > 0:
                     # We found a matching relation!
