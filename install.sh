@@ -80,17 +80,19 @@ esac
 git submodule update --init --recursive
 rm -rf third_party
 mkdir -p third_party
+cd third_party
 # under your working directory
 git clone git@github.com:facebookresearch/detectron2.git
 cd detectron2
 pip install -e .
 
-cd ..
-git clone https://github.com/facebookresearch/Detic.git --recurse-submodules
-cd Detic
+cd ../../src/stretch/perception/detection/detic/Detic
+# Make sure it's up to date
+git submodule update --init --recursive
 pip install -r requirements.txt
 
-cd ../../src/stretch/perception/detection/detic/Detic
+# cd ../../src/stretch/perception/detection/detic/Detic
+# Create folder for checkpoints and download
 mkdir -p models
 echo "Download DETIC checkpoint..."
 wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
