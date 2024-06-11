@@ -162,7 +162,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
     show_map_so_far: bool = False
-    show_instances_detected: bool = True
+    show_instances_detected: bool = False
     plan_for_manipulation: bool = True
 
     def can_start(self) -> bool:

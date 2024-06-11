@@ -46,6 +46,7 @@ class RobotAgent:
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
         debug_instances: bool = True,
+        show_instances_detected: bool = False,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -57,6 +58,7 @@ class RobotAgent:
         self.rpc_stub = rpc_stub
         self.grasp_client = grasp_client
         self.debug_instances = debug_instances
+        self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
         self.normalize_embeddings = True
@@ -214,11 +216,12 @@ class RobotAgent:
             self.update()
 
             if self.debug_instances:
-                import matplotlib
+                if self.show_instances_detected:
+                    import matplotlib
 
-                # TODO: why do we need to configure this every time
-                matplotlib.use("TkAgg")
-                import matplotlib.pyplot as plt
+                    # TODO: why do we need to configure this every time
+                    matplotlib.use("TkAgg")
+                    import matplotlib.pyplot as plt
 
                 # Check to see if we have a receptacle in the map
                 instances = self.voxel_map.instances.get_instances()
@@ -227,13 +230,15 @@ class RobotAgent:
                     print(
                         f" - Found instance {i} with name {name} and global id {instance.global_id}."
                     )
-                    if True:  # s elf.show_instances_detected:
-
-                        view = instance.get_best_view()
+                    view = instance.get_best_view()
+                    if self.show_instances_detected:
                         plt.imshow(view.get_image())
                         plt.title(f"Instance {i} with name {name}")
                         plt.axis("off")
                         plt.show()
+                    else:
+                        image = Image.fromarray(view.get_image())
+                        image.save(f"{self.path}/viz_data/instance_{i}_is_a_{name}.png")
 
             if visualize:
                 self.voxel_map.show(
