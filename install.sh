@@ -4,7 +4,7 @@
 export PYTORCH_VERSION=2.1.2
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-ENV_NAME=stretchpy
+ENV_NAME=stretchpy-2024-06-11
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 echo "=============================================="
@@ -50,6 +50,9 @@ source activate $ENV_NAME
 # Now install pytorch3d a bit faster
 mamba install -c fvcore -c iopath -c conda-forge fvcore iopath -y
 
+echo "Install a version of setuptools for which pytorch3d and clip work."
+pip install setuptools==69.5.1
+
 pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
@@ -58,6 +61,33 @@ pip install -e ./src[dev]
 # TODO: should we remove this?
 # Open3d is an optional dependency - not included in setup.py since not supported on 3.12
 # pip install open3d scikit-fmm
+#
+#echo 
+#
+echo ""
+echo "---------------------------------------------"
+echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
+echo "Will be installed to: $PWD/third_party/Detic"
+echo "The third_party folder will be removed!"
+read -p "Do you want to proceed? (y/n) " yn
+case $yn in
+	y ) echo "Starting installation...";;
+	n ) echo "Exiting...";
+		exit;;
+	* ) echo Invalid response!;
+		exit 1;;
+esac
+rm -rf third_party
+mkdir -p third_party
+# under your working directory
+git clone git@github.com:facebookresearch/detectron2.git
+cd detectron2
+pip install -e .
+
+cd ..
+git clone https://github.com/facebookresearch/Detic.git --recurse-submodules
+cd Detic
+pip install -r requirements.txt
 
 echo "=============================================="
 echo "         INSTALLATION COMPLETE"
