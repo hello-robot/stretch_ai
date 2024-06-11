@@ -247,8 +247,8 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                         break
 
         # Check to see if there is a visitable frontier
-        self.warn("Nothing found. Moving to frontier.")
         if self.manager.current_object is None:
+            self.warn("Nothing found. Moving to frontier.")
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
             if res.success:
@@ -264,7 +264,10 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                 object_xyz = self.manager.current_object.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
                 self.agent.voxel_map.show(
-                    orig=object_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
+                    orig=object_xyz,
+                    xyt=xyt,
+                    footprint=self.robot_model.get_footprint(),
+                    planner_visuals=False,
                 )
 
         # TODO: better behavior
