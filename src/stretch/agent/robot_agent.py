@@ -214,7 +214,7 @@ class RobotAgent:
             # Check to see if we have a receptacle in the map
             instances = self.voxel_map.instances.get_instances()
             for i, instance in enumerate(instances):
-                name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+                name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
                 print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
                 if True:  # s elf.show_instances_detected:
                     import matplotlib
