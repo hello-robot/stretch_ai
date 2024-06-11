@@ -134,11 +134,11 @@ class SearchForReceptacle(ManagedOperation):
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
                     self.manager.current_receptacle = instance
-                    return
+                    break
 
-        print("None found. Moving to frontier.")
         # If no receptacle, pick a random point nearby and just wander around
         if self.manager.current_receptacle is None:
+            print("None found. Try moving to frontier.")
             # Find a point on the frontier and move there
             res = self.manager.agent.plan_to_frontier(start=start)
             if res.success:
@@ -150,7 +150,18 @@ class SearchForReceptacle(ManagedOperation):
                 raise RuntimeError("Failed to find a reachable frontier.")
             # After moving
             self.update()
-            return
+        else:
+            self.cheer(f"Found a receptacle!")
+            if self.show_map_so_far:
+                # This shows us what the robot has found so far
+                object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
+                xyt = self.robot.get_base_pose()
+                self.agent.voxel_map.show(
+                    orig=object_xyz,
+                    xyt=xyt,
+                    footprint=self.robot_model.get_footprint(),
+                    planner_visuals=False,
+                )
 
     def was_successful(self) -> bool:
         res = self.manager.current_receptacle is not None
