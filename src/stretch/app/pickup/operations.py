@@ -140,7 +140,7 @@ class SearchForReceptacle(ManagedOperation):
             res = self.manager.agent.plan_to_frontier(start=start)
             if res.success:
                 self.robot.execute_trajectory(
-                    [node.state for node in res.trajectory], final_timeout=30.0
+                    [node.state for node in res.trajectory], final_timeout=10.0
                 )
             else:
                 self.error("Failed to find a reachable frontier.")
@@ -162,7 +162,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
     show_map_so_far: bool = False
-    show_instances_detected: bool = False
+    show_instances_detected: bool = True
     plan_for_manipulation: bool = True
 
     def can_start(self) -> bool:
@@ -242,7 +242,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
             res = self.agent.plan_to_frontier(start=start)
             if res.success:
                 self.robot.execute_trajectory(
-                    [node.state for node in res.trajectory], final_timeout=30.0
+                    [node.state for node in res.trajectory], final_timeout=10.0
                 )
             # Update world model once we get to frontier
             self.update()
@@ -385,7 +385,7 @@ class NavigateToObjectOperation(ManagedOperation):
         assert (
             self.plan is not None
         ), "Did you make sure that we had a plan? You should call can_start() before run()."
-        self.robot.execute_trajectory(self.plan, final_timeout=45.0)
+        self.robot.execute_trajectory(self.plan, final_timeout=10.0)
 
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state

@@ -296,7 +296,7 @@ class HomeRobotZmqClient(RobotClient):
         min_steps_not_moving: Optional[int] = 1,
         goal_angle: Optional[float] = None,
     ):
-        t0 = timeit.default_timer()
+        print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
         last_ang = None
         not_moving_count = 0
@@ -306,10 +306,15 @@ class HomeRobotZmqClient(RobotClient):
             angle_threshold = self._angle_threshold
         if min_steps_not_moving is None:
             min_steps_not_moving = self._min_steps_not_moving
-        print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
+        t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
                 if self._obs is not None:
+
+                    if not self._obs["at_goal"]:
+                        t0 = timeit.default_timer()
+                        continue
+
                     pos = self._obs["gps"]
                     ang = self._obs["compass"][0]
                     moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
