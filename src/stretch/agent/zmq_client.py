@@ -29,7 +29,7 @@ from stretch.utils.point_cloud import show_point_cloud
 class HomeRobotZmqClient(RobotClient):
 
     update_control_mode_from_full_obs: bool = False
-    update_base_pose_from_full_obs: bool = True
+    update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000
 
     def _create_recv_socket(
@@ -164,7 +164,7 @@ class HomeRobotZmqClient(RobotClient):
                     if timeit.default_timer() - t0 > timeout:
                         logger.error("Timeout waiting for state message")
                         return None
-                xyt = self._state["base_xyt"]
+                xyt = self._state["base_pose"]
         return xyt
 
     def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
@@ -314,9 +314,12 @@ class HomeRobotZmqClient(RobotClient):
                     if not self._obs["at_goal"]:
                         t0 = timeit.default_timer()
                         continue
-
-                    pos = self._obs["gps"]
-                    ang = self._obs["compass"][0]
+                    if self.update_base_pose_from_full_obs:
+                        pos = self._obs["gps"]
+                        ang = self._obs["compass"][0]
+                    else:
+                        pos = self._state["base_pose"][:2]
+                        ang = self._state["base_pose"][2]
                     moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
                     angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
                     if goal_angle is not None:

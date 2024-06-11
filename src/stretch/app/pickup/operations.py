@@ -2,6 +2,7 @@ import time
 from typing import Optional
 
 import numpy as np
+from PIL import Image
 from scipy.spatial.transform import Rotation
 from termcolor import colored
 
@@ -65,7 +66,7 @@ class SearchForReceptacle(ManagedOperation):
     """Find a place to put the objects we find on the floor"""
 
     # For debugging
-    show_map_so_far: bool = False
+    show_map_so_far: bool = True
     show_instances_detected: bool = False
 
     def can_start(self) -> bool:
@@ -152,6 +153,9 @@ class SearchForReceptacle(ManagedOperation):
             self.update()
         else:
             self.cheer(f"Found a receptacle!")
+            view = self.manager.current_receptacle.get_best_view()
+            image = Image.fromarray(view.get_image())
+            image.save("receptacle.png")
             if self.show_map_so_far:
                 # This shows us what the robot has found so far
                 object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
@@ -270,6 +274,9 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
             self.update()
         else:
             self.cheer(f"Found object of {self.object_class}!")
+            view = self.manager.current_object.get_best_view()
+            image = Image.fromarray(view.get_image())
+            image.save("object.png")
             if self.show_map_so_far:
                 # This shows us what the robot has found so far
                 object_xyz = self.manager.current_object.point_cloud.mean(axis=0).cpu().numpy()
