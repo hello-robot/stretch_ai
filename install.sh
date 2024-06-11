@@ -43,6 +43,10 @@ case $yn in
 	* ) echo Invalid response!;
 		exit 1;;
 esac
+
+# Exit immediately if anything fails
+set -e
+
 mamba env remove -n $ENV_NAME -y
 mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y 
 source activate $ENV_NAME
