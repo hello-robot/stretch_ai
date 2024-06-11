@@ -404,10 +404,16 @@ class GraspObjectOperation(ManagedOperation):
 
     use_pitch_from_vertical: bool = True
     lift_distance: float = 0.2
+    servo_to_grasp: bool = False
     _success: bool = False
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
+
+    def visual_servo_to_object(self) -> bool:
+        """Use visual servoing to grasp the object."""
+        raise NotImplementedError("Visual servoing not implemented yet.")
+        return False
 
     def run(self):
         self.intro("Grasping the object.")
@@ -447,42 +453,45 @@ class GraspObjectOperation(ManagedOperation):
         # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
-        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
-            relative_object_xyz, ee_rot, q0=joint_state
-        )
-        if not success:
-            print("Failed to find a valid IK solution.")
-            self._success = False
-            return
-        elif (
-            target_joint_state[HelloStretchIdx.ARM] < 0
-            or target_joint_state[HelloStretchIdx.LIFT] < 0
-        ):
-            print(
-                f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
+        if self.servo_to_grasp:
+            self._success = self.visual_servo_to_object()
+        else:
+            target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+                relative_object_xyz, ee_rot, q0=joint_state
             )
-            self._success = False
-            return
+            if not success:
+                print("Failed to find a valid IK solution.")
+                self._success = False
+                return
+            elif (
+                target_joint_state[HelloStretchIdx.ARM] < 0
+                or target_joint_state[HelloStretchIdx.LIFT] < 0
+            ):
+                print(
+                    f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
+                )
+                self._success = False
+                return
 
-        # Lift the arm up a bit
-        target_joint_state_lifted = target_joint_state.copy()
-        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
+            # Lift the arm up a bit
+            target_joint_state_lifted = target_joint_state.copy()
+            target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
-        # Move to the target joint state
-        print(f"{self.name}: Moving to grasp position.")
-        self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(3.0)
-        print(f"{self.name}: Closing the gripper.")
-        self.robot.close_gripper(blocking=True)
-        time.sleep(2.0)
-        # print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-        # self.robot.arm_to(target_joint_state_lifted, blocking=True)
-        # time.sleep(3.0)
-        print(f"{self.name}: Return arm to initial configuration.")
-        self.robot.arm_to(joint_state, blocking=True)
-        time.sleep(3.0)
-        print(f"{self.name}: Done.")
-        self._success = True
+            # Move to the target joint state
+            print(f"{self.name}: Moving to grasp position.")
+            self.robot.arm_to(target_joint_state, blocking=True)
+            time.sleep(3.0)
+            print(f"{self.name}: Closing the gripper.")
+            self.robot.close_gripper(blocking=True)
+            time.sleep(2.0)
+            # print(f"{self.name}: Lifting the arm up so as not to hit the base.")
+            # self.robot.arm_to(target_joint_state_lifted, blocking=True)
+            # time.sleep(3.0)
+            print(f"{self.name}: Return arm to initial configuration.")
+            self.robot.arm_to(joint_state, blocking=True)
+            time.sleep(3.0)
+            print(f"{self.name}: Done.")
+            self._success = True
 
     def was_successful(self):
         """Return true if successful"""
