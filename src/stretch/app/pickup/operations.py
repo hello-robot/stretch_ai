@@ -244,7 +244,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
                         )
                         self.manager.current_object = instance
-                        return
+                        break
 
         # Check to see if there is a visitable frontier
         self.warn("Nothing found. Moving to frontier.")
