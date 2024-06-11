@@ -77,6 +77,7 @@ case $yn in
 	* ) echo Invalid response!;
 		exit 1;;
 esac
+git submodule update --init --recursive
 rm -rf third_party
 mkdir -p third_party
 # under your working directory
@@ -88,6 +89,11 @@ cd ..
 git clone https://github.com/facebookresearch/Detic.git --recurse-submodules
 cd Detic
 pip install -r requirements.txt
+
+cd ../../src/stretch/perception/detection/detic/Detic
+mkdir -p models
+echo "Download DETIC checkpoint..."
+wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
 echo "=============================================="
 echo "         INSTALLATION COMPLETE"
