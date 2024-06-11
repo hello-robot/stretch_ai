@@ -65,7 +65,7 @@ class SearchForReceptacle(ManagedOperation):
     """Find a place to put the objects we find on the floor"""
 
     # For debugging
-    show_map_so_far: bool = True
+    show_map_so_far: bool = False
     show_instances_detected: bool = False
 
     def can_start(self) -> bool:
