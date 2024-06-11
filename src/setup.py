@@ -40,6 +40,8 @@ setuptools.setup(
         "pynput",
         "pyrealsense2",
         "orbslam3",
+        "urchin",
+        "schema",
         # Compression tools
         "pyliblzfse",
         "webp",
@@ -48,8 +50,6 @@ setuptools.setup(
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
-        "urchin",
-        "schema",
     ],
     extras_require={
         "dev": [
