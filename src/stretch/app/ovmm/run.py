@@ -90,6 +90,7 @@ def main(
     recv_port: int = 4401,
     send_port: int = 4402,
     robot_ip: str = "192.168.1.15",
+    reset: bool = False,
     **kwargs,
 ):
 
