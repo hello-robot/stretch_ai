@@ -40,7 +40,7 @@ class OvmmPerception:
         self.verbose = verbose
         if self._detection_module == "detic":
             # Lazy import
-            from home_robot.perception.detection.detic.detic_perception import DeticPerception
+            from stretch.perception.detection.detic.detic_perception import DeticPerception
 
             self._segmentation = DeticPerception(
                 vocabulary="custom",
