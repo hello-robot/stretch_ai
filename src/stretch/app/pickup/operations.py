@@ -41,6 +41,12 @@ class ManagedOperation(Operation):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))
 
+    def plan_to_instance_for_manipulation(self, instance, start):
+        """Manipulation planning wrapper"""
+        return self.agent.plan_to_instance(
+            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.4
+        )
+
 
 class RotateInPlaceOperation(ManagedOperation):
     """Rotate the robot in place"""
@@ -131,7 +137,7 @@ class SearchForReceptacle(ManagedOperation):
                 receptacle_options.append(instance)
 
                 # Check to see if we can motion plan to box or not
-                plan = self.manager.agent.plan_to_instance(instance, start=start)
+                plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
                     self.manager.current_receptacle = instance
@@ -249,11 +255,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.manager.agent.plan_to_instance(
-                        instance,
-                        start=start,
-                        rotation_offset=np.pi / 2 if self.plan_for_manipulation else 0,
-                    )
+                    plan = self.plan_to_instance_for_manipulation(instance, start=start)
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
@@ -406,11 +408,7 @@ class NavigateToObjectOperation(ManagedOperation):
             breakpoint()
 
         # Motion plan to the object
-        plan = self.agent.plan_to_instance(
-            self.get_target(),
-            start=start,
-            rotation_offset=np.pi / 2 if self.for_manipulation else 0,
-        )
+        plan = self.plan_to_instance_for_manipulation(self.get_target(), start=start)
         if plan.success:
             self.plan = plan
             self.cheer("Found plan to object!")
@@ -557,7 +555,7 @@ class GoToNavOperation(ManagedOperation):
 class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
-    place_distance_threshold: float = 0.7
+    place_distance_threshold: float = 0.75
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
