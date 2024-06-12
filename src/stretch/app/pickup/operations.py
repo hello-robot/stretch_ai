@@ -44,7 +44,7 @@ class ManagedOperation(Operation):
     def plan_to_instance_for_manipulation(self, instance, start):
         """Manipulation planning wrapper"""
         return self.agent.plan_to_instance(
-            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.4
+            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.4, max_tries=100
         )
 
 
@@ -142,6 +142,8 @@ class SearchForReceptacle(ManagedOperation):
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
                     self.manager.current_receptacle = instance
                     break
+                else:
+                    self.warn(f" - Found a receptacle but could not reach it.")
 
         # If no receptacle, pick a random point nearby and just wander around
         if self.manager.current_receptacle is None:
@@ -563,7 +565,7 @@ class PlaceObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
-    place_step_size: float = 0.1
+    place_step_size: float = 0.15
 
     def get_target(self):
         return self.manager.current_receptacle
@@ -591,7 +593,9 @@ class PlaceObjectOperation(ManagedOperation):
         distance = np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy())
         # Take a step towards the center of the object
         dxyz = (center_xyz - point).cpu().numpy()
-        point[:2] = dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
+        point[:2] = point[:2] + (
+            dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
+        )
         print(" - After taking a step towards the center of the object, we are at", point)
         return point
 
@@ -650,7 +654,6 @@ class PlaceObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
         placement_xyz = self.sample_placement_position(xyt)
         print(" - Place object at", placement_xyz)
-        breakpoint()
 
         # Get the center of the object point cloud so that we can place there
         relative_object_xyz = point_global_to_base(placement_xyz, xyt)
