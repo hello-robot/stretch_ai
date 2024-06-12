@@ -966,7 +966,7 @@ class HelloStretchKinematics:
             )
 
         target_joint_state, success, info = self.manip_ik((ee_pos, ee_rot), q0=q0)
-        return target_joint_state, target_ee_pos, target_ee_rot, success, info
+        return target_joint_state, ee_pos, ee_rot, success, info
 
 
 if __name__ == "__main__":
