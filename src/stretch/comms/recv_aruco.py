@@ -1,9 +1,6 @@
 import zmq
 
-from stretch.exceptions.aruco.database import (
-    AddToArucoDatabaseError,
-    DeleteFromArucoDatabaseError,
-)
+from stretch.exceptions.aruco.database import AddToArucoDatabaseError, DeleteFromArucoDatabaseError
 
 
 def initialize(ip_addr, info_port, add_port, delete_port):
@@ -15,6 +12,7 @@ def initialize(ip_addr, info_port, add_port, delete_port):
     delete_sock = ctx.socket(zmq.REQ)
     delete_sock.connect(f"tcp://{ip_addr}:{delete_port}")
     return info_sock, add_sock, delete_sock
+
 
 def recv_marker_info(sock):
     sock.send_string("requesting_marker_info")

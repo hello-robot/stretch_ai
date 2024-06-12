@@ -13,11 +13,11 @@ from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 import torch
-
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine.defaults import DefaultPredictor
 from detectron2.utils.visualizer import ColorMode, Visualizer
+
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
 from stretch.perception.detection.utils import filter_depth, overlay_masks

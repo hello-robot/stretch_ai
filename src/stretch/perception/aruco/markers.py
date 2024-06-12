@@ -26,23 +26,24 @@ class MarkersDatabase:
     def get_markers(self):
         return recv_aruco.recv_marker_info(self.info_sock)
 
-    def add_new_marker(self,
-        marker_id : int,
-        marker_name : str,
-        length_mm : float,
-        link_name : str,
-        use_rgb_only : bool = False
+    def add_new_marker(
+        self,
+        marker_id: int,
+        marker_name: str,
+        length_mm: float,
+        link_name: str,
+        use_rgb_only: bool = False,
     ):
         new_marker = {
             str(int(marker_id)): {
-                'length_mm': float(length_mm),
-                'use_rgb_only': bool(use_rgb_only),
-                'name': str(marker_name),
-                'link': str(link_name),
+                "length_mm": float(length_mm),
+                "use_rgb_only": bool(use_rgb_only),
+                "name": str(marker_name),
+                "link": str(link_name),
             }
         }
         recv_aruco.send_add_request(self.add_sock, new_marker)
 
-    def delete_marker(self, marker_id : int):
+    def delete_marker(self, marker_id: int):
         marker_id = str(int(marker_id))
         recv_aruco.send_delete_request(self.delete_sock, marker_id)

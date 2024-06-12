@@ -26,7 +26,7 @@ def initialize(info_port, add_port, delete_port):
 
 
 def send_marker_info(sock, poll, db):
-    socks = dict(poll.poll(40.0)) # 25hz
+    socks = dict(poll.poll(40.0))  # 25hz
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
@@ -35,7 +35,7 @@ def send_marker_info(sock, poll, db):
 
 
 def add_marker(sock, poll, db):
-    socks = dict(poll.poll(40.0)) # 25hz
+    socks = dict(poll.poll(40.0))  # 25hz
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
@@ -44,7 +44,7 @@ def add_marker(sock, poll, db):
 
 
 def delete_marker(sock, poll, db):
-    socks = dict(poll.poll(40.0)) # 25hz
+    socks = dict(poll.poll(40.0))  # 25hz
     if not (sock in socks and socks[sock] == zmq.POLLIN):
         return
 
