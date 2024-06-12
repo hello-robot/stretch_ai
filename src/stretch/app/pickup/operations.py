@@ -44,7 +44,7 @@ class ManagedOperation(Operation):
     def plan_to_instance_for_manipulation(self, instance, start):
         """Manipulation planning wrapper"""
         return self.agent.plan_to_instance(
-            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.4
+            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.45
         )
 
 
@@ -190,6 +190,10 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     plan_for_manipulation: bool = True
     object_class: str = "shoe"
 
+    def set_target_object_class(self, object_class: str):
+        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
+        self.object_class = object_class
+
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
         return self.manager.current_receptacle is not None
@@ -237,7 +241,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         scene_graph = self.agent.get_scene_graph()
 
         receptacle_options = []
-        print("Check explored instances for reachable receptacles:")
+        print(f"Check explored instances for reachable {self.object_class} instances:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
@@ -265,7 +269,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
 
         # Check to see if there is a visitable frontier
         if self.manager.current_object is None:
-            self.warn("Nothing found. Moving to frontier.")
+            self.warn(f"No {self.object_class} found. Moving to frontier.")
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
             if res.success:
@@ -560,6 +564,9 @@ class PlaceObjectOperation(ManagedOperation):
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
 
+    def get_target(self):
+        return self.manager.current_receptacle
+
     def can_start(self) -> bool:
         self.attempt(
             "will start placing the object if we have object and receptacle, and are close enough to drop."
@@ -567,13 +574,13 @@ class PlaceObjectOperation(ManagedOperation):
         if self.manager.current_object is None or self.manager.current_receptacle is None:
             self.error("Object or receptacle not found.")
             return False
-        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        object_xyz = self.get_target().point_cloud.mean(axis=0)
         start = self.robot.get_base_pose()
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
         if dist > self.place_distance_threshold:
             self.error(f"Object is too far away to grasp: {dist}")
             return False
-        self.cheer(f"Object is probably close enough to grasp: {dist}")
+        self.cheer(f"Object is probably close enough to place upon: {dist}")
         return True
 
     def _get_place_joint_state(
@@ -612,14 +619,14 @@ class PlaceObjectOperation(ManagedOperation):
         self.robot.move_to_manip_posture()
 
         # Get object xyz coords
-        object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0)
+        object_xyz = self.get_target().point_cloud.mean(axis=0)
         xyt = self.robot.get_base_pose()
 
         # Get the center of the object point cloud so that we can place there
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Get max xyz
-        max_xyz = self.manager.current_receptacle.point_cloud.max(axis=0)[0]
+        max_xyz = self.get_target().point_cloud.max(axis=0)[0]
 
         # Placement is at xy = object_xyz[:2], z = max_xyz[2] + margin
         place_xyz = np.array(
