@@ -577,6 +577,7 @@ class PlaceObjectOperation(ManagedOperation):
             raise RuntimeError("no target set")
         target = self.get_target()
         center_xyz = self.get_target_center()
+        print(" - Placing object on receptacle at", center_xyz)
 
         # Get the point cloud of the object and find distances to robot
         distances = (target.point_cloud[:, :2] - xyt[:2]).norm(dim=1)
@@ -584,11 +585,14 @@ class PlaceObjectOperation(ManagedOperation):
         idx = distances.argmin()
         # Get the point
         point = target.point_cloud[idx].cpu().numpy()
+        print(" - Closest point to robot is", point)
+        print(" - Distance to robot is", distances[idx])
         # Compute distance to the center of the object
         distance = np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy())
         # Take a step towards the center of the object
         dxyz = (center_xyz - point).cpu().numpy()
         point[:2] = dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
+        print(" - After taking a step towards the center of the object, we are at", point)
         return point
 
     def can_start(self) -> bool:
@@ -646,6 +650,7 @@ class PlaceObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
         placement_xyz = self.sample_placement_position(xyt)
         print(" - Place object at", placement_xyz)
+        breakpoint()
 
         # Get the center of the object point cloud so that we can place there
         relative_object_xyz = point_global_to_base(placement_xyz, xyt)
