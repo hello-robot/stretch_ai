@@ -559,13 +559,37 @@ class GoToNavOperation(ManagedOperation):
 class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
-    place_distance_threshold: float = 0.75
+    place_distance_threshold: float = 0.8
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
+    place_step_size: float = 0.1
 
     def get_target(self):
         return self.manager.current_receptacle
+
+    def get_target_center(self):
+        return self.get_target().point_cloud.mean(axis=0)
+
+    def sample_placement_position(self, xyt) -> np.ndarray:
+        """Sample a placement position for the object on the receptacle."""
+        if self.get_target() is None:
+            raise RuntimeError("no target set")
+        target = self.get_target()
+        center_xyz = self.get_target_center()
+
+        # Get the point cloud of the object and find distances to robot
+        distances = (target.point_cloud[:, :2] - xyt[:2]).norm(dim=1)
+        # Choose closest point to xyt
+        idx = distances.argmin()
+        # Get the point
+        point = target.point_cloud[idx].cpu().numpy()
+        # Compute distance to the center of the object
+        distance = np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy())
+        # Take a step towards the center of the object
+        dxyz = (center_xyz - point).cpu().numpy()
+        point[:2] = dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
+        return point
 
     def can_start(self) -> bool:
         self.attempt(
@@ -574,7 +598,7 @@ class PlaceObjectOperation(ManagedOperation):
         if self.manager.current_object is None or self.manager.current_receptacle is None:
             self.error("Object or receptacle not found.")
             return False
-        object_xyz = self.get_target().point_cloud.mean(axis=0)
+        object_xyz = self.get_target_center()
         start = self.robot.get_base_pose()
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
         if dist > self.place_distance_threshold:
@@ -619,11 +643,12 @@ class PlaceObjectOperation(ManagedOperation):
         self.robot.move_to_manip_posture()
 
         # Get object xyz coords
-        object_xyz = self.get_target().point_cloud.mean(axis=0)
         xyt = self.robot.get_base_pose()
+        placement_xyz = self.sample_placement_position(xyt)
+        print(" - Place object at", placement_xyz)
 
         # Get the center of the object point cloud so that we can place there
-        relative_object_xyz = point_global_to_base(object_xyz, xyt)
+        relative_object_xyz = point_global_to_base(placement_xyz, xyt)
 
         # Get max xyz
         max_xyz = self.get_target().point_cloud.max(axis=0)[0]
