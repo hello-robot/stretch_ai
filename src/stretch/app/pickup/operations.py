@@ -658,6 +658,7 @@ class PlaceObjectOperation(ManagedOperation):
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
+            ee_pos, ee_rot = model.manip_fk(joint_state)
             # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
