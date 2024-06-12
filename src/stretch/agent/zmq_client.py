@@ -273,7 +273,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 10.0):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 25.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
@@ -452,7 +452,7 @@ class HomeRobotZmqClient(RobotClient):
         pos_err_threshold: float = 0.2,
         rot_err_threshold: float = 0.75,
         verbose: bool = False,
-        timeout: float = 10.0,
+        timeout: float = 20.0,
     ) -> bool:
         """Wait until the robot has reached a configuration... but only roughly. Used for trajectory execution.
 

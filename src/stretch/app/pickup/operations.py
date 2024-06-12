@@ -179,7 +179,7 @@ class SearchForReceptacle(ManagedOperation):
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = True
+    show_map_so_far: bool = False
     show_instances_detected: bool = False
     plan_for_manipulation: bool = True
     object_class: str = "shoe"
@@ -557,7 +557,7 @@ class GoToNavOperation(ManagedOperation):
 class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
-    place_distance_threshold: float = 0.8
+    place_distance_threshold: float = 0.7
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False

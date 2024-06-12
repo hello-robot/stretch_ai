@@ -150,7 +150,7 @@ def map_joint_q_state_to_action_space(q):
 
 
 # This is the gripper, and the distance in the gripper frame to where the fingers will roughly meet
-STRETCH_GRASP_FRAME = "link_straight_gripper"
+STRETCH_GRASP_FRAME = "link_grasp_center"
 STRETCH_CAMERA_FRAME = "camera_color_optical_frame"
 STRETCH_BASE_FRAME = "base_link"
 
@@ -961,7 +961,7 @@ class HelloStretchKinematics:
         matrix = Rotation.from_quat(ee_rot).as_matrix()
         pose[:3, :3] = matrix
         pose[:3, 3] = ee_pos
-        # ee_pose = pose @ STRETCH_GRASP_OFFSET
+        # ee_pose = pose @ STRETCH_GRASP_OFFSET # This was set previously when RE2 URDF was being used
         ee_pose = pose
         target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
         target_ee_pos = ee_pose[:3, 3]
