@@ -566,6 +566,7 @@ class PlaceObjectOperation(ManagedOperation):
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
     place_step_size: float = 0.15
+    use_pitch_from_vertical: bool = True
 
     def get_target(self):
         return self.manager.current_receptacle
@@ -643,9 +644,6 @@ class PlaceObjectOperation(ManagedOperation):
         joint_state = obs.joint
         model = self.robot.get_robot_model()
 
-        # End effector position and orientation in global coordinates
-        ee_pos, ee_rot = model.manip_fk(joint_state)
-
         # Switch to place position
         print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
@@ -657,6 +655,21 @@ class PlaceObjectOperation(ManagedOperation):
 
         # Get the center of the object point cloud so that we can place there
         relative_object_xyz = point_global_to_base(placement_xyz, xyt)
+
+        # Compute the angles necessary
+        if self.use_pitch_from_vertical:
+            # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
+            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
+            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            pitch_from_vertical = np.arctan2(dy, dz)
+            # current_ee_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+        else:
+            pitch_from_vertical = 0.0
+
+        # Joint compute a joitn state goal and associated ee pos/rot
+        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+        self.robot.arm_to(joint_state)
+        ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # Get max xyz
         max_xyz = self.get_target().point_cloud.max(axis=0)[0]
@@ -674,7 +687,7 @@ class PlaceObjectOperation(ManagedOperation):
         target_joint_state, success = self._get_place_joint_state(
             pos=place_xyz, quat=ee_rot, joint_state=joint_state
         )
-        print("Move to manip posture")
+        self.attempt(f"Trying to place the object on the receptacle at {place_xyz}.")
         if not success:
             self.error("Could not place object!")
             return
