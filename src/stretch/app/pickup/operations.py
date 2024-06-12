@@ -41,10 +41,10 @@ class ManagedOperation(Operation):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))
 
-    def plan_to_instance_for_manipulation(self, instance, start):
-        """Manipulation planning wrapper"""
+    def plan_to_instance_for_manipulation(self, instance, start, radius_m: float = 0.45):
+        """Manipulation planning wrapper. Plan to instance with a radius around it, ensuring a base location can be found in explored space."""
         return self.agent.plan_to_instance(
-            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.45, max_tries=100
+            instance, start=start, rotation_offset=np.pi / 2, radius_m=radius_m, max_tries=100
         )
 
 
@@ -261,7 +261,9 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                    plan = self.plan_to_instance_for_manipulation(
+                        instance, start=start, radius_m=0.5
+                    )
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
