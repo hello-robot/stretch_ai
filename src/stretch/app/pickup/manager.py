@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
@@ -18,10 +20,13 @@ from .operations import (
 class PickupManager:
     """Simple robot that will look around and pick up different objects"""
 
-    def __init__(self, agent: RobotAgent) -> None:
+    def __init__(self, agent: RobotAgent, target_object: Optional[str] = None) -> None:
 
         # Agent wraps high level functionality
         self.agent = agent
+
+        # Task information
+        self.target_object = target_object
 
         # Sync these things
         self.robot = agent.robot
@@ -61,6 +66,8 @@ class PickupManager:
         search_for_object = SearchForObjectOnFloorOperation(
             "Search for toys on the floor", self, retry_on_failure=True
         )
+        if self.target_object is not None:
+            search_for_object.target_object = target_object
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(

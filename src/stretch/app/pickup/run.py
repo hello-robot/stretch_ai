@@ -26,6 +26,9 @@ from .manager import PickupManager
 @click.option(
     "--parameter_file", default="config/default_planner.yaml", help="Path to parameter file"
 )
+@click.option(
+    "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
+)
 def main(
     robot_ip: str = "192.168.1.15",
     recv_port: int = 4401,
@@ -36,6 +39,7 @@ def main(
     verbose: bool = False,
     show_intermediate_maps: bool = False,
     reset: bool = False,
+    target_object: str = "shoe",
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -65,7 +69,7 @@ def main(
 
     # After the robot has started...
     try:
-        manager = PickupManager(demo)
+        manager = PickupManager(demo, target_object=target_object)
         task = manager.get_task(add_rotate=False)
     except Exception as e:
         print(f"Error creating task: {e}")
