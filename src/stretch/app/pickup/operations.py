@@ -44,7 +44,7 @@ class ManagedOperation(Operation):
     def plan_to_instance_for_manipulation(self, instance, start):
         """Manipulation planning wrapper"""
         return self.agent.plan_to_instance(
-            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.4, max_tries=100
+            instance, start=start, rotation_offset=np.pi / 2, radius_m=0.45, max_tries=100
         )
 
 
