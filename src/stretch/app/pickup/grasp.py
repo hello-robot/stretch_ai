@@ -10,6 +10,7 @@ from stretch.core.task import Operation, Task
 from stretch.perception import create_semantic_sensor, get_encoder
 
 from .manager import PickupManager
+from .operations import GraspObjectOperation
 
 
 def get_task(robot, demo, target_object):
