@@ -665,6 +665,17 @@ class HomeRobotZmqClient(RobotClient):
         self._thread.start()
         self._state_thread.start()
         self._servo_thread.start()
+
+        t0 = timeit.default_timer()
+        while self._obs is None or self._state is None or self._servo is None:
+            time.sleep(0.1)
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10.0:
+                print(
+                    "Timeout waiting for observations; are you connected to the robot? Check the network."
+                )
+                print("Robot IP:", self.send_address)
+                return False
         return True
 
     def __del__(self):

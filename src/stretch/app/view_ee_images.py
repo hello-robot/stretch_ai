@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import time
+
 import click
 import cv2
 import numpy as np
@@ -58,7 +60,9 @@ def main(
     print("Starting the robot...")
     robot.start()
     robot.move_to_manip_posture()
-    robot.arm_to([0.0, 0.78, 0.05, 0, -np.pi / 4, 0], blocking=True)
+    robot.open_gripper()
+    time.sleep(2)
+    robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
 
     # Initialize variables
     first_time = True
@@ -86,6 +90,8 @@ def main(
             print()
             print("Press 'q' to quit.")
             first_time = False
+
+        # Run segmentation if you want
         if do_semantic_segmentation:
             obs = semantic_sensor.predict(obs)
 
@@ -97,6 +103,10 @@ def main(
         # Convert rgb to bgr
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         cv2.imshow("head camera image", image)
+        servo_head_rgb = cv2.cvtColor(servo["head_cam"]["color_image"], cv2.COLOR_RGB2BGR)
+        cv2.imshow("servo: ee camera image", servo_head_rgb)
+        servo_ee_rgb = cv2.cvtColor(servo["ee_cam"]["color_image"], cv2.COLOR_RGB2BGR)
+        cv2.imshow("servo: head camera image", servo_ee_rgb)
         if do_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)
 
