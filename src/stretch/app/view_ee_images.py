@@ -62,8 +62,9 @@ def main(
         # Get image from robot
         obs = robot.get_observation()
         if obs is None:
+            print("No observation received. Skipping.")
             continue
-        obs = self.semantic_sensor.predict(obs)
+        obs = semantic_sensor.predict(obs)
 
         # This is the head image
         image = obs.rgb
