@@ -569,6 +569,22 @@ class HomeRobotZmqClient(RobotClient):
                 print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
 
+    def blocking_spin_servo(self, verbose: bool = False):
+        """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
+        sum_time = 0
+        steps = 0
+        t0 = timeit.default_timer()
+        while not self._finish:
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            if verbose and steps % self.num_state_report_steps == 1:
+                print(
+                    f"[SERVO] time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
+                )
+            t0 = timeit.default_timer()
+
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 
@@ -584,9 +600,11 @@ class HomeRobotZmqClient(RobotClient):
             dt = t1 - t0
             sum_time += dt
             steps += 1
-            if verbose or steps % self.num_state_report_steps == 1:
-                print("Control mode:", self._control_mode)
-                print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
+            if verbose and steps % self.num_state_report_steps == 1:
+                print("[STATE] Control mode:", self._control_mode)
+                print(
+                    f"[STATE] time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
+                )
             t0 = timeit.default_timer()
 
     def start(self) -> bool:

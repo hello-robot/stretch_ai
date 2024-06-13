@@ -52,9 +52,11 @@ def main(
         category_map_file=parameters["open_vocab_category_map_file"],
     )
 
+    print("Starting the robot...")
     robot.start()
 
     # Loop and read in images
+    print("Reading images...")
     while True:
         # Get image from robot
         obs = robot.get_observation()
