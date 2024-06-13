@@ -12,6 +12,7 @@ import numpy as np
 import zmq
 from loguru import logger
 
+import stretch.utils.compression as compression
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
@@ -273,7 +274,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 25.0):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 5.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
@@ -569,6 +570,53 @@ class HomeRobotZmqClient(RobotClient):
                 print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
 
+    def update_servo(self, message):
+        """Servo messages"""
+        if message is None:
+            return
+
+        color_image = compression.from_webp(message["ee_cam/color_image"])
+        depth_image = compression.unzip_depth(
+            message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
+        )
+        # depth_camera_info = message["ee_cam/depth_camera_info"]
+        # depth_scale = message["ee_cam/depth_scale"]
+        # image_gamma = message["ee_cam/image_gamma"]
+        image_scaling = message["ee_cam/image_scaling"]
+
+        # Get head information from the message as well
+        head_color_image = compression.from_webp(message["head_cam/color_image"])
+        head_depth_image = compression.unzip_depth(
+            message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
+        )
+        # head_depth_camera_info = message["head_cam/depth_camera_info"]
+        head_image_scaling = message["head_cam/image_scaling"]
+        joint = message["robot/config"]
+        # head_depth_scale = message["head_cam/depth_scale"]
+        with self._servo_lock:
+            self._servo = {
+                "ee_cam": {
+                    "color_image": color_image,
+                    "depth_image": depth_image,
+                    # "depth_camera_info": depth_camera_info,
+                    # "depth_scale": depth_scale,
+                    # "image_gamma": image_gamma,
+                    "image_scaling": image_scaling,
+                },
+                "head_cam": {
+                    "color_image": head_color_image,
+                    "depth_image": head_depth_image,
+                    # "depth_camera_info": head_depth_camera_info,
+                    # "depth_scale": head_depth_scale,
+                    "image_scaling": head_image_scaling,
+                },
+            }
+
+    def get_servo_observation(self):
+        """Get the current servo observation"""
+        with self._servo_lock:
+            return self._servo
+
     def blocking_spin_servo(self, verbose: bool = False):
         """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
         sum_time = 0
@@ -577,6 +625,7 @@ class HomeRobotZmqClient(RobotClient):
         while not self._finish:
             t1 = timeit.default_timer()
             dt = t1 - t0
+            self.update_servo(self.recv_servo_socket.recv_pyobj())
             sum_time += dt
             steps += 1
             if verbose and steps % self.num_state_report_steps == 1:

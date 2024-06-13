@@ -70,9 +70,19 @@ def main(
         obs = robot.get_observation()
         if obs is None:
             continue
+        # Low res images used for visual servoing and ML
+        servo = robot.get_servo_observation()
+
+        # First time info
         if first_time:
             print("First observation received. Semantic sensor will be slow the first time.")
-            print("RGB image shape:", repr(obs.rgb.shape))
+            print("Full (slow) observation:")
+            print(" - RGB image shape:", repr(obs.rgb.shape))
+            print("Servo observation:")
+            print(" - ee rgb shape:", repr(servo["ee_cam"]["color_image"].shape))
+            print(" - ee depth shape:", repr(servo["ee_cam"]["depth_image"].shape))
+            print(" - head rgb shape:", repr(servo["head_cam"]["color_image"].shape))
+            print(" - head depth shape:", repr(servo["head_cam"]["depth_image"].shape))
             print()
             print("Press 'q' to quit.")
             first_time = False
