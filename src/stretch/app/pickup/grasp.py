@@ -7,10 +7,26 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
-from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.perception import create_semantic_sensor, get_encoder
 
 from .manager import PickupManager
+
+
+def get_task(robot, demo, target_object):
+    """Create a very simple task just to test visual servoing to grasp."""
+    try:
+        manager = PickupManager(demo, target_object=target_object)
+        task = Task()
+        grasp_object = GraspObjectOperation(
+            "grasp the object",
+            manager,
+        )
+        task.add_operation(grasp_object)
+    except Exception as e:
+        print("Error in creating task: ", e)
+        robot.stop()
+        raise e
+    return task
 
 
 @click.command()
@@ -41,7 +57,6 @@ def main(
     reset: bool = False,
     target_object: str = "shoe",
 ):
-    """Set up the robot, create a task plan, and execute it."""
     # Create robot
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -66,25 +81,7 @@ def main(
     if reset:
         robot.move_to_nav_posture()
         robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
+        robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
+        time.sleep(3.0)
 
-    # After the robot has started...
-    try:
-        manager = PickupManager(demo, target_object=target_object)
-        task = manager.get_task(add_rotate=False)
-    except Exception as e:
-        print(f"Error creating task: {e}")
-        robot.stop()
-        raise e
-
-    task.execute()
-
-    if reset:
-        # Send the robot home at the end!
-        demo.go_home()
-
-    # At the end, disable everything
-    robot.stop()
-
-
-if __name__ == "__main__":
-    main()
+    task = get_task()
