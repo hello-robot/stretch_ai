@@ -171,10 +171,11 @@ class ACTLeader(Evaluator):
                 xyt = np.array([0.0, 0.0, np.pi / 8])
 
         action_dict = {}
+        action = []
         if self._run_policy:
             # Build state observations in correct format
             raw_state = message["robot/config"]
-            state = [
+            state = np.array([
                 raw_state["theta_vel"],
                 raw_state["joint_lift"],
                 raw_state["joint_arm_l0"],
@@ -182,17 +183,33 @@ class ACTLeader(Evaluator):
                 raw_state["joint_wrist_pitch"],
                 raw_state["joint_wrist_yaw"],
                 raw_state["stretch_gripper"]
-            ]
+            ])
+
+            state = torch.from_numpy(state)
+            image = torch.from_numpy(color_image)
+
+            state = state.to(torch.float32)
+            image = image.to(torch.float32) / 255
+            image = image.permute(2, 0, 1)
+
+            state = state.to(self.device, non_blocking=True)
+            image = image.to(self.device, non_blocking=True)
+
+            # Add extra (empty) batch dimension, required to forward the policy
+            state = state.unsqueeze(0)
+            image = image.unsqueeze(0)
 
             # Build observation dict for ACT
-            batch = {}
-            batch["observation.images.head"] = color_image
-            batch["observation.state"] = state
-            batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
-
-            # Send observations to policy
+            observation = {
+                "observation.state": state,
+                "observation.images.head": image,
+            }
+            # Send observation to policy
             with torch.inference_mode():
-                action = self.policy.select_action(batch)
+                raw_action = self.policy.select_action(observation)
+
+            # Get first batch
+            action = raw_action[0].tolist()
 
             action_dict["joint_mobile_base_rotate_by"] = action[0]
             action_dict["joint_lift"] = action[1]
@@ -201,6 +218,7 @@ class ACTLeader(Evaluator):
             action_dict["joint_wrist_pitch"] = action[4]
             action_dict["joint_wrist_yaw"] = action[5]
             action_dict["stretch_gripper"] = action[6]
+            print(action_dict)
 
         # Send action_dict to stretch follower
         self.goal_send_socket.send_pyobj(action_dict)
@@ -217,13 +235,12 @@ class ACTLeader(Evaluator):
                 actions=action_dict,
             )
 
-        self.goal_send_socket.send_pyobj(action_dict)
-
         if self._need_to_write:
             print("[LEADER] Writing data to disk.")
             self._recorder.write()
             self._need_to_write = False
-        return action
+
+        return action_dict
 
     def __del__(self):
         self.goal_send_socket.close()
