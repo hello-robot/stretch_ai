@@ -103,7 +103,7 @@ class PinocchioIKSolver:
                 if joint_name in self.controlled_joints_by_name:
                     q_out[self.controlled_joints_by_name[joint_name]] = value
                 else:
-                    q_out[self.model.getJointId(joint_name)] = value
+                    q_out[self.model.idx_qs[self.model.getJointId(joint_name)]] = value
         else:
             assert len(self.controlled_joints) == len(
                 q_input
