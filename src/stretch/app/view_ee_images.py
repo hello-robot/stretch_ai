@@ -69,12 +69,14 @@ def main(
         # Get image from robot
         obs = robot.get_observation()
         if obs is None:
-            print("No observation received. Skipping.")
             continue
+        if first_time:
+            print("First observation received. Semantic sensor will be slow the first time.")
+            print("RGB image shape:", repr(obs.rgb.shape))
+            print()
+            print("Press 'q' to quit.")
+            first_time = False
         if do_semantic_segmentation:
-            if first_time:
-                print("First observation received. Semantic sensor will be slow the first time.")
-                first_time = False
             obs = semantic_sensor.predict(obs)
 
         # This is the head image
@@ -82,10 +84,18 @@ def main(
         semantic_segmentation = obs.semantic
         # Get semantic segmentation from image
         # Display image and semantic segmentation
-        cv2.imshow("image", image)
+        # Convert rgb to bgr
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        cv2.imshow("head camera image", image)
         if do_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)
-        cv2.waitKey(1)
+
+        # Break if 'q' is pressed
+        res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+        if res == ord("q"):
+            break
+
+    robot.stop()
 
 
 if __name__ == "__main__":
