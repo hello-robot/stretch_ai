@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import time
+
 import click
 import numpy as np
 
