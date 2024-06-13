@@ -54,6 +54,7 @@ def main(
 
     print("Starting the robot...")
     robot.start()
+    robot.move_to_manip_posture()
 
     # Loop and read in images
     print("Reading images...")
