@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import click
+import cv2
 import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
@@ -36,6 +37,7 @@ def main(
     show_intermediate_maps: bool = False,
     reset: bool = False,
     target_object: str = "shoe",
+    do_semantic_segmentation: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -46,15 +48,20 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    _, semantic_sensor = create_semantic_sensor(
-        device_id=device_id,
-        verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
-    )
+    if do_semantic_segmentation:
+        _, semantic_sensor = create_semantic_sensor(
+            device_id=device_id,
+            verbose=verbose,
+            category_map_file=parameters["open_vocab_category_map_file"],
+        )
 
     print("Starting the robot...")
     robot.start()
     robot.move_to_manip_posture()
+    robot.arm_to([0.0, 0.78, 0.05, 0, -np.pi / 4, 0], blocking=True)
+
+    # Initialize variables
+    first_time = True
 
     # Loop and read in images
     print("Reading images...")
@@ -64,7 +71,11 @@ def main(
         if obs is None:
             print("No observation received. Skipping.")
             continue
-        obs = semantic_sensor.predict(obs)
+        if do_semantic_segmentation:
+            if first_time:
+                print("First observation received. Semantic sensor will be slow the first time.")
+                first_time = False
+            obs = semantic_sensor.predict(obs)
 
         # This is the head image
         image = obs.rgb
@@ -72,7 +83,8 @@ def main(
         # Get semantic segmentation from image
         # Display image and semantic segmentation
         cv2.imshow("image", image)
-        cv2.imshow("semantic_segmentation", semantic_segmentation)
+        if do_semantic_segmentation:
+            cv2.imshow("semantic_segmentation", semantic_segmentation)
         cv2.waitKey(1)
 
 
