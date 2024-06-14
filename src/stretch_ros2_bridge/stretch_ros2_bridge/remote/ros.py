@@ -30,7 +30,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from stretch.motion.stretch import STRETCH_HEAD_CAMERA_ROTATIONS, HelloStretchIdx
+from stretch.motion import STRETCH_HEAD_CAMERA_ROTATIONS, HelloStretchIdx
 from stretch.utils.pose import to_matrix
 from stretch_ros2_bridge.constants import (
     CONFIG_TO_ROS,

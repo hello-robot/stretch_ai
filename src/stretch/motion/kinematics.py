@@ -11,7 +11,14 @@ from scipy.spatial.transform.rotation import Rotation
 
 import stretch.utils.bullet as hrb
 from stretch.core.interfaces import ContinuousFullBodyAction
-from stretch.motion.constants import MANIP_STRETCH_URDF, PIN_CONTROLLED_JOINTS, PLANNER_STRETCH_URDF
+from stretch.motion.constants import (
+    MANIP_STRETCH_URDF,
+    PIN_CONTROLLED_JOINTS,
+    PLANNER_STRETCH_URDF,
+    STRETCH_BASE_FRAME,
+    STRETCH_CAMERA_FRAME,
+    STRETCH_GRASP_FRAME,
+)
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint
 from stretch.motion.utils.bullet import BulletRobotModel, PybulletIKSolver
@@ -31,26 +38,6 @@ def map_joint_q_state_to_action_space(q):
             q[10],  # head tilt
         ]
     )
-
-
-# This is the gripper, and the distance in the gripper frame to where the fingers will roughly meet
-STRETCH_GRASP_FRAME = "link_grasp_center"
-STRETCH_CAMERA_FRAME = "camera_color_optical_frame"
-STRETCH_BASE_FRAME = "base_link"
-
-# Offsets required for "link_straight_gripper" grasp frame
-STRETCH_STANDOFF_DISTANCE = 0.235
-STRETCH_STANDOFF_WITH_MARGIN = 0.25
-# Offset from a predicted grasp point to STRETCH_GRASP_FRAME
-STRETCH_GRASP_OFFSET = np.eye(4)
-STRETCH_GRASP_OFFSET[:3, 3] = np.array([0, 0, -1 * STRETCH_STANDOFF_DISTANCE])
-# Offset from STRETCH_GRASP_FRAME to predicted grasp point
-STRETCH_TO_GRASP = np.eye(4)
-STRETCH_TO_GRASP[:3, 3] = np.array([0, 0, STRETCH_STANDOFF_DISTANCE])
-
-# For EXTEND_ARM action
-STRETCH_ARM_EXTENSION = 0.8
-STRETCH_ARM_LIFT = 0.8
 
 
 # Stores joint indices for the Stretch configuration space
