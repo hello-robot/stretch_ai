@@ -23,9 +23,7 @@ from .manager import PickupManager
     is_flag=True,
     help="Set if we are executing on the robot and not on a remote computer",
 )
-@click.option(
-    "--parameter_file", default="config/default_planner.yaml", help="Path to parameter file"
-)
+@click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option(
     "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
 )
