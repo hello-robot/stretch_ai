@@ -24,6 +24,7 @@ class RosCamera(Camera):
         verbose: bool = True,
         rotations: int = 0,
         buffer_size: int = None,
+        image_ext: str = "/image_raw",
     ):
         """
         Args:
@@ -96,7 +97,7 @@ class RosCamera(Camera):
         # Get the
         if verbose:
             print("... this is the", self.name.split("/")[-1], "camera.")
-        self.topic_name = name + "/image_raw"
+        self.topic_name = name + image_ext
         self._sub = self._ros_client.create_subscription(Image, self.topic_name, self._cb, 1)
 
     def cam_info_callback(self, msg):
