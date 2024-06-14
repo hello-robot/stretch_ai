@@ -625,7 +625,8 @@ class HomeRobotZmqClient(RobotClient):
         while not self._finish:
             t1 = timeit.default_timer()
             dt = t1 - t0
-            self.update_servo(self.recv_servo_socket.recv_pyobj())
+            output = self.recv_servo_socket.recv_pyobj()
+            self.update_servo(output)
             sum_time += dt
             steps += 1
             if verbose and steps % self.num_state_report_steps == 1:
