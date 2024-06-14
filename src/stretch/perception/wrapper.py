@@ -12,7 +12,7 @@ from loguru import logger
 
 from stretch.core.interfaces import Observations
 from stretch.perception.constants import RearrangeDETICCategories
-from stretch.utils.config import load_config
+from stretch.utils.config import get_full_config_path, load_config
 
 
 class OvmmPerception:
@@ -167,11 +167,7 @@ def read_category_map_file(
     These mappings are also present in the episodes file but are extracted to use in a stand-alone manner.
     Returns object and receptacle mappings.
     """
-    try:
-        if os.environ["STRETCH_AI_ROOT"]:
-            category_map_file = os.path.join(os.environ["STRETCH_AI_ROOT"], category_map_file)
-    except KeyError:
-        logger.warning("HOME_ROBOT_ROOT environment variable not set when initializing perception!")
+    category_map_file = get_full_config_path(category_map_file)
 
     with open(category_map_file) as f:
         category_map = json.load(f)
@@ -217,7 +213,7 @@ def create_semantic_sensor(
     if config is None:
         config = load_config(visualize=False, config_path=config_path, **kwargs)
     if category_map_file is None:
-        category_map_file = config.ENVIRONMENT.category_map_file
+        category_map_file = get_full_config_path(config.ENVIRONMENT.category_map_file)
 
     if verbose:
         print("- Create and load vocabulary and perception model")
