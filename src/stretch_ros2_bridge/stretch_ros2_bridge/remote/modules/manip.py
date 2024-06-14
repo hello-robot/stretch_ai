@@ -9,8 +9,9 @@ from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
 
 from stretch.core.state import ManipulatorBaseParams
+from stretch.motion.constants import STRETCH_HOME_Q
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
-from stretch.motion.stretch import STRETCH_HOME_Q, HelloStretchIdx
 from stretch.utils.geometry import posquat2sophus, sophus2posquat, xyt2sophus
 
 from .abstract import AbstractControlModule, enforce_enabled
