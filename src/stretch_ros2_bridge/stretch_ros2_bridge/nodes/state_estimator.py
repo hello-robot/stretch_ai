@@ -19,7 +19,7 @@ from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
-from stretch.motion.stretch import STRETCH_BASE_FRAME
+from stretch.motion import STRETCH_BASE_FRAME
 from stretch.utils.pose import to_matrix, transform_to_list
 from stretch_ros2_bridge.ros.utils import matrix_from_pose_msg, matrix_to_pose_msg
 

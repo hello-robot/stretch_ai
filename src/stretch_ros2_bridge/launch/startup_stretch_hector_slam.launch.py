@@ -1,5 +1,6 @@
 import os
 
+import launch
 from ament_index_python import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -92,18 +93,21 @@ def generate_launch_description():
         executable="async_slam_toolbox_node",
         name="slam_toolbox",
         output="screen",
+        on_exit=launch.actions.Shutdown(),
     )
 
     camera_pose_publisher_node = Node(
         package="stretch_ros2_bridge",
         executable="camera_pose_publisher",
         name="camera_pose_publisher",
+        on_exit=launch.actions.Shutdown(),
     )
 
     odometry_publisher_node = Node(
         package="stretch_ros2_bridge",
         executable="odom_tf_publisher",
         name="odom_tf_publisher",
+        on_exit=launch.actions.Shutdown(),
     )
 
     state_estimator_node = Node(
@@ -111,6 +115,7 @@ def generate_launch_description():
         executable="state_estimator",
         name="state_estimator",
         output="screen",
+        on_exit=launch.actions.Shutdown(),
     )
 
     goto_controller_node = Node(
