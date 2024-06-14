@@ -103,6 +103,10 @@ class PinocchioIKSolver:
                 if joint_name in self.controlled_joints_by_name:
                     q_out[self.controlled_joints_by_name[joint_name]] = value
                 else:
+                    jid = self.model.getJointId(joint_name)
+                    if jid >= len(self.model.idx_qs):
+                        logger.error(f"{joint_name=} {jid=} not in model.idx_qs")
+                        raise RuntimeError(f"Tried to set joint not in model.idx_qs: {joint_name=}")
                     q_out[self.model.idx_qs[self.model.getJointId(joint_name)]] = value
         else:
             assert len(self.controlled_joints) == len(
