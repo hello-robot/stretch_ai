@@ -24,6 +24,9 @@ class Config(yacs.config.CfgNode):
         super().__init__(*args, **kwargs, new_allowed=True)
 
 
+CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve())
+
+
 def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
     """Get configuration and ensure consistency between configurations
     inherited from the task and defaults and our code's configuration.
@@ -32,11 +35,7 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         path: path to our code's config
         opts: command line arguments overriding the config
     """
-    try:
-        if os.environ["STRETCHPY_ROOT"]:
-            path = os.path.join(os.environ["STRETCHPY_ROOT"], path)
-    except KeyError:
-        logger.warning("STRETCHPY_ROOT environment variable not set when trying to read configs!")
+    path = os.path.join(CONFIG_ROOT, path)
 
     # Start with our code's config
     config = Config()

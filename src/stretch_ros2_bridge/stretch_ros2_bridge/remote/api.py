@@ -9,8 +9,7 @@ import torch
 
 from stretch.core.interfaces import Observations
 from stretch.core.robot import ControlMode, RobotClient
-from stretch.motion.robot import RobotModel
-from stretch.motion.stretch import (
+from stretch.motion.constants import (
     STRETCH_DEMO_PREGRASP_Q,
     STRETCH_NAVIGATION_Q,
     STRETCH_POSTNAV_Q,
@@ -18,6 +17,7 @@ from stretch.motion.stretch import (
     STRETCH_PREGRASP_Q,
     HelloStretchKinematics,
 )
+from stretch.motion.robot import RobotModel
 from stretch.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
