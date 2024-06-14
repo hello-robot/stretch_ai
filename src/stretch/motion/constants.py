@@ -2,9 +2,11 @@ import math
 
 import numpy as np
 
+from stretch.utils.config import get_full_config_path
+
 # Stretch stuff
-PLANNER_STRETCH_URDF = "config/urdf/planner_calibrated.urdf"
-MANIP_STRETCH_URDF = "config/urdf/stretch_manip_mode.urdf"
+PLANNER_STRETCH_URDF = get_full_config_path("urdf/planner_calibrated.urdf")
+MANIP_STRETCH_URDF = get_full_config_path("urdf/stretch_manip_mode.urdf")
 
 # This is the gripper, and the distance in the gripper frame to where the fingers will roughly meet
 STRETCH_GRASP_FRAME = "link_grasp_center"

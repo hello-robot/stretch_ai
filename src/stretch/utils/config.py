@@ -16,6 +16,9 @@ from loguru import logger
 
 import stretch
 
+CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "config")
+CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
+
 
 class Config(yacs.config.CfgNode):
     """store a yaml config"""
@@ -24,7 +27,9 @@ class Config(yacs.config.CfgNode):
         super().__init__(*args, **kwargs, new_allowed=True)
 
 
-CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve())
+def get_full_config_path(ext: str) -> Path:
+    """Returns full path to a particular file"""
+    return os.path.join(CONFIG_ROOT, ext)
 
 
 def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
@@ -35,7 +40,7 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         path: path to our code's config
         opts: command line arguments overriding the config
     """
-    path = os.path.join(CONFIG_ROOT, path)
+    path = get_full_config_path(path)
 
     # Start with our code's config
     config = Config()
@@ -61,10 +66,6 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
     config_str = json.dumps(config_dict, indent=4)
 
     return config, config_str
-
-
-# New configuration system
-CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
 
 
 def load_config(visualize: bool = False, print_images: bool = True, config_path=None, **kwargs):
