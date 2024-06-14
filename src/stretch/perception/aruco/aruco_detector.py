@@ -101,7 +101,7 @@ class ArucoMarker:
         # return copy of marker_info
         return self.info.copy()
 
-    def get_marker_poly(self):
+    def get_marker_poly(self, corners: np.ndarray = None) -> np.ndarray:
         poly_points = np.array(corners)
         poly_points = np.round(poly_points).astype(np.int32)
         return poly_points
