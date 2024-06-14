@@ -86,8 +86,6 @@ class FileDataRecorder:
         head_depth: Optional[np.ndarray] = None,
     ):
         """Add data to the recorder."""
-        ee_rgb = cv2.resize(ee_rgb, (256, 192), interpolation=cv2.INTER_AREA)
-        ee_depth = cv2.resize(ee_depth, (256, 192), interpolation=cv2.INTER_NEAREST)
         self.rgbs.append(ee_rgb)
         self.depths.append(ee_depth)
         self.head_rgbs.append(head_rgb)
