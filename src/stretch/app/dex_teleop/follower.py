@@ -70,6 +70,7 @@ class DexTeleopFollower:
             self.robot_move.print_settings()
 
             self.robot_move.to_configuration(self.starting_configuration, speed="default")
+            self.robot.pimu.set_fan_on()
             self.robot.push_command()
             self.robot.wait_command()
 
