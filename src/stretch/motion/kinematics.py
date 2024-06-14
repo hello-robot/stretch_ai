@@ -18,6 +18,7 @@ from stretch.motion.constants import (
     STRETCH_BASE_FRAME,
     STRETCH_CAMERA_FRAME,
     STRETCH_GRASP_FRAME,
+    STRETCH_HOME_Q,
 )
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint

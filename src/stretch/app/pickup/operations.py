@@ -7,7 +7,7 @@ from scipy.spatial.transform import Rotation
 from termcolor import colored
 
 from stretch.core.task import Operation
-from stretch.motion.kinematics import STRETCH_GRASP_OFFSET, HelloStretchIdx
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
 
