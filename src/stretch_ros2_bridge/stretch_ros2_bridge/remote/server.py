@@ -11,8 +11,9 @@ import cv2
 import numpy as np
 import rclpy
 import zmq
-from home_robot.core.interfaces import ContinuousNavigationAction
-from robot_hw_python.remote import StretchClient
+
+from stretch.core.interfaces import ContinuousNavigationAction
+from stretch_ros2_bridge.remote import StretchClient
 
 
 class ZmqServer:

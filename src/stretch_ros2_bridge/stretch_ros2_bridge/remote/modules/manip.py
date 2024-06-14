@@ -5,12 +5,13 @@
 from typing import List, Optional
 
 import numpy as np
-from home_robot.core.state import ManipulatorBaseParams
-from home_robot.motion.robot import RobotModel
-from home_robot.motion.stretch import STRETCH_HOME_Q, HelloStretchIdx
-from home_robot.utils.geometry import posquat2sophus, sophus2posquat, xyt2sophus
 from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
+
+from stretch.core.state import ManipulatorBaseParams
+from stretch.motion.robot import RobotModel
+from stretch.motion.stretch import STRETCH_HOME_Q, HelloStretchIdx
+from stretch.utils.geometry import posquat2sophus, sophus2posquat, xyt2sophus
 
 from .abstract import AbstractControlModule, enforce_enabled
 

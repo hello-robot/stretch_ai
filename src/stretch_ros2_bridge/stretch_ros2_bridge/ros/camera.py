@@ -7,10 +7,11 @@ from collections import deque
 
 import numpy as np
 import rclpy
-from home_robot.utils.image import Camera
 from rclpy.time import Time
-from robot_hw_python.ros.msg_numpy import image_to_numpy
 from sensor_msgs.msg import CameraInfo, Image
+
+from stretch.utils.image import Camera
+from stretch_ros2_bridge.ros.msg_numpy import image_to_numpy
 
 
 class RosCamera(Camera):

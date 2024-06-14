@@ -3,7 +3,7 @@ from glob import glob
 
 from setuptools import find_packages, setup
 
-package_name = "robot_hw_python"
+package_name = "stretch_ros2_bridge"
 
 setup(
     name=package_name,
@@ -17,7 +17,7 @@ setup(
             glob(os.path.join("launch", "*launch.[pxy][yma]*")),
         ),
     ],
-    install_requires=["setuptools", "home_robot"],
+    install_requires=["setuptools", "stretch"],
     zip_safe=True,
     maintainer="hello-robot",
     maintainer_email="hello-robot@todo.todo",
@@ -26,12 +26,12 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "camera_pose_publisher = robot_hw_python.nodes.camera_pose_publisher:main",
+            "camera_pose_publisher = stretch_ros2_bridge.nodes.camera_pose_publisher:main",
             "rotate_images = scripts.rotate_images",
-            "state_estimator = robot_hw_python.nodes.state_estimator:main",
-            "goto_controller = robot_hw_python.nodes.goto_controller:main",
-            "odom_tf_publisher = robot_hw_python.nodes.odom_tf_publisher:main",
-            "server = robot_hw_python.remote.server:main",
+            "state_estimator = stretch_ros2_bridge.nodes.state_estimator:main",
+            "goto_controller = stretch_ros2_bridge.nodes.goto_controller:main",
+            "odom_tf_publisher = stretch_ros2_bridge.nodes.odom_tf_publisher:main",
+            "server = stretch_ros2_bridge.remote.server:main",
         ],
     },
 )

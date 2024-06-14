@@ -7,7 +7,8 @@ from enum import Enum
 from typing import Dict, List, Union
 
 import numpy as np
-from home_robot.motion.stretch import HelloStretchIdx
+
+from stretch.motion.kinematics import HelloStretchIdx
 
 ROS_ARM_JOINTS = ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
 ROS_LIFT_JOINT = "joint_lift"

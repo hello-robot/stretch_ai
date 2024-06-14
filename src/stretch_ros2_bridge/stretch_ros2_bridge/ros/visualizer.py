@@ -8,8 +8,9 @@ from typing import List, Optional
 
 import numpy as np
 from rclpy.node import Node
-from robot_hw_python.ros.utils import matrix_to_pose_msg
 from visualization_msgs.msg import Marker, MarkerArray
+
+from stretch_ros2_bridge.ros.utils import matrix_to_pose_msg
 
 
 class Visualizer(Node):

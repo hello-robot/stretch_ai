@@ -6,8 +6,9 @@ from typing import Optional, Tuple
 
 import numpy as np
 import trimesh.transformations as tra
-from home_robot.motion.robot import RobotModel
-from home_robot.motion.stretch import HelloStretchIdx
+
+from stretch.motion.robot import RobotModel
+from stretch.motion.stretch import HelloStretchIdx
 
 from .abstract import AbstractControlModule
 

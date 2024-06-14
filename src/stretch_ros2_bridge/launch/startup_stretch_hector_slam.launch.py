@@ -85,7 +85,7 @@ def generate_launch_description():
     # rviz_launch = IncludeLaunchDescription(
     #     PythonLaunchDescriptionSource(
     #         os.path.join(
-    #             get_package_share_directory("robot_hw_python"),
+    #             get_package_share_directory("stretch_ros2_bridge"),
     #             'launch/visualization.launch.py'
     #         )
     #     )
@@ -100,23 +100,23 @@ def generate_launch_description():
     # )
 
     camera_pose_publisher_node = Node(
-        package="robot_hw_python",
+        package="stretch_ros2_bridge",
         executable="camera_pose_publisher",
         name="camera_pose_publisher",
     )
 
     odometry_publisher_node = Node(
-        package="robot_hw_python",
+        package="stretch_ros2_bridge",
         executable="odom_tf_publisher",
         name="odom_tf_publisher",
     )
 
     state_estimator_node = Node(
-        package="robot_hw_python", executable="state_estimator", name="state_estimator"
+        package="stretch_ros2_bridge", executable="state_estimator", name="state_estimator"
     )
 
     goto_controller_node = Node(
-        package="robot_hw_python", executable="goto_controller", name="goto_controller"
+        package="stretch_ros2_bridge", executable="goto_controller", name="goto_controller"
     )
 
     ld = LaunchDescription(
