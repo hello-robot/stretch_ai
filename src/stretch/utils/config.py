@@ -79,3 +79,11 @@ def load_config(visualize: bool = False, print_images: bool = True, config_path=
         raise RuntimeError("No ground truth semantics in the real world!")
     config.freeze()
     return config
+
+
+def get_control_config(cfg_name):
+    """Simpler version of the config utility for opening config"""
+    with hydra.initialize_config_dir(CONTROL_CONFIG_DIR):
+        cfg = hydra.compose(config_name=cfg_name)
+
+    return cfg

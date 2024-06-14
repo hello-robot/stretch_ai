@@ -119,7 +119,10 @@ def generate_launch_description():
     )
 
     goto_controller_node = Node(
-        package="stretch_ros2_bridge", executable="goto_controller", name="goto_controller"
+        package="stretch_ros2_bridge",
+        executable="goto_controller",
+        name="goto_controller",
+        on_exit=launch.actions.Shutdown(),
     )
 
     ld = LaunchDescription(
