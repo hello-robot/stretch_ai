@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
+import hydra
 import yacs.config
 import yaml
 from loguru import logger
