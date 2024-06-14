@@ -6,19 +6,18 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import torch
-
-from stretch.core.interfaces import Observations
-from stretch.core.robot import ControlMode, RobotClient
-from stretch.motion import RobotModel
-from stretch.motion.constants import (
+from home_robot.core.interfaces import Observations
+from home_robot.core.robot import ControlMode, RobotClient
+from home_robot.motion.robot import RobotModel
+from home_robot.motion.stretch import (
     STRETCH_DEMO_PREGRASP_Q,
     STRETCH_NAVIGATION_Q,
     STRETCH_POSTNAV_Q,
     STRETCH_PREDEMO_Q,
     STRETCH_PREGRASP_Q,
+    HelloStretchKinematics,
 )
-from stretch.motion.kinematics import HelloStretchKinematics
-from stretch.utils.geometry import xyt2sophus
+from home_robot.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
 from .modules.manip import StretchManipulationClient
@@ -39,6 +38,7 @@ class StretchClient(RobotClient):
         grasp_frame: Optional[str] = None,
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
+        d405: bool = True,
     ):
         """Create an interface into ROS execution here. This one needs to connect to:
             - joint_states to read current position
@@ -51,7 +51,7 @@ class StretchClient(RobotClient):
 
         if camera_overrides is None:
             camera_overrides = {}
-        self._ros_client = StretchRosInterface(**camera_overrides)
+        self._ros_client = StretchRosInterface(init_lidar=False, d405=d405, **camera_overrides)
 
         # Robot model
         self._robot_model = HelloStretchKinematics(
@@ -155,6 +155,14 @@ class StretchClient(RobotClient):
     def dpt_cam(self):
         return self._ros_client.dpt_cam
 
+    @property
+    def ee_dpt_cam(self):
+        return self._ros_client.ee_dpt_cam
+
+    @property
+    def ee_rgb_cam(self):
+        return self._ros_client.ee_rgb_cam
+
     def get_joint_state(self):
         return self._ros_client.get_joint_state()
 
@@ -165,20 +173,22 @@ class StretchClient(RobotClient):
     def move_to_manip_posture(self):
         """Move the arm and head into manip mode posture: gripper down, head facing the gripper."""
         self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=False)
-        self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_PREGRASP_Q))
+        self.head.look_at_ee(blocking=True)
+        pos = self.manip._extract_joint_pos(STRETCH_PREGRASP_Q)
+        print("- go to configuration:", pos)
+        self.manip.goto_joint_positions(pos)
         print("- Robot switched to manipulation mode.")
 
     def move_to_demo_pregrasp_posture(self):
         """Move the arm and head into pre-demo posture: gripper straight, arm way down, head facing the gripper."""
         self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=False)
+        self.head.look_at_ee(blocking=True)
         self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_DEMO_PREGRASP_Q))
 
     def move_to_pre_demo_posture(self):
         """Move the arm and head into pre-demo posture: gripper straight, arm way down, head facing the gripper."""
         self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=False)
+        self.head.look_at_ee(blocking=True)
         self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_PREDEMO_Q))
 
     def move_to_nav_posture(self):
@@ -186,7 +196,7 @@ class StretchClient(RobotClient):
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        self.head.look_front(blocking=False)
+        self.head.look_front(blocking=True)
         self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q))
         self.switch_to_navigation_mode()
         print("- Robot switched to navigation mode.")
@@ -218,16 +228,24 @@ class StretchClient(RobotClient):
         return self.nav.navigate_to(xyt, relative=relative, blocking=blocking)
 
     def get_observation(
-        self, rotate_head_pts=False, start_pose: Optional[np.ndarray] = None
+        self,
+        rotate_head_pts=False,
+        start_pose: Optional[np.ndarray] = None,
+        compute_xyz: bool = True,
     ) -> Observations:
         """Get an observation from the current robot.
 
         Parameters:
             rotate_head_pts: this is true to put things into the same format as Habitat; generally we do not want to do this
         """
-        rgb, depth, xyz = self.head.get_images(
-            compute_xyz=True,
-        )
+
+        # Computing XYZ is expensive, we do not always needd to do it
+        if compute_xyz:
+            rgb, depth, xyz = self.head.get_images(compute_xyz=True)
+        else:
+            rgb, depth = self.head.get_images(compute_xyz=False)
+            xyz = None
+
         current_pose = xyt2sophus(self.nav.get_base_pose())
 
         if start_pose is not None:
@@ -246,9 +264,9 @@ class StretchClient(RobotClient):
 
         # Create the observation
         obs = Observations(
-            rgb=rgb.copy(),
-            depth=depth.copy(),
-            xyz=xyz.copy(),
+            rgb=rgb,
+            depth=depth,
+            xyz=xyz,
             gps=gps,
             compass=np.array([theta]),
             camera_pose=self.head.get_pose(rotated=rotate_head_pts),
@@ -256,6 +274,19 @@ class StretchClient(RobotClient):
             joint=joint_positions,
             camera_K=self.get_camera_intrinsics(),
         )
+
+        # Create the observation
+        # obs = Observations(
+        #    rgb=rgb.copy(),
+        #    depth=depth.copy(),
+        #    xyz=xyz.copy(),
+        #    gps=gps,
+        #    compass=np.array([theta]),
+        #    camera_pose=self.head.get_pose(rotated=rotate_head_pts),
+        #    # joint=self.model.config_to_hab(joint_positions),
+        #    joint=joint_positions,
+        #    camera_K=self.get_camera_intrinsics(),
+        # )
         return obs
 
     def get_camera_intrinsics(self) -> torch.Tensor:
@@ -264,7 +295,7 @@ class StretchClient(RobotClient):
 
     def arm_to(self, q: np.ndarray):
         """Send arm commands"""
-        assert q.shape[-1] == 6
+        assert len(q) == 6
         self.manip.goto_joint_positions(joint_positions=q)
 
 
