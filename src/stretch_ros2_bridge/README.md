@@ -17,7 +17,7 @@ pip install -r requirements.txt
 pip install -e .
 
 # Set up the python package for ROS
-ln -s $HOME_ROBOT_ROOT/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
+ln -s $STRETCH_AI_ROOT/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
 
 # Rebuild ROS2 packages to make sure paths are correct
 cd $HOME/ament_ws
@@ -57,12 +57,12 @@ from stretch_ros2_bridge.remote import StretchClient
 r = StretchClient(urdf_path="/path/to/urdf")
 
 # Manipulation
->>> r.switch_to_manipulation_mode()
->>> state = r.manip.get_joint_positions()
->>> state[1] = 0.8 # For lifting
->>> r.manip.goto_joint_positions(state)
+r.switch_to_manipulation_mode()
+state = r.manip.get_joint_positions()
+state[1] = 0.8 # For lifting
+r.manip.goto_joint_positions(state)
 
 # Navigation
->>> r.switch_to_navigation_mode()
->>> r.nav.navigate_to([0.5, 0, 0]) # For Navigation
+r.switch_to_navigation_mode()
+r.nav.navigate_to([0.5, 0, 0]) # For Navigation
 ```
