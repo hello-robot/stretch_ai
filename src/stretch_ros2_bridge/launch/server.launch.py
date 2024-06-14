@@ -14,6 +14,7 @@ def generate_launch_description():
         executable="server",
         name="ros2_zmq_server",
         output="screen",
+        on_exit=launch.actions.Shutdown(),
     )
 
     base_slam_launch = IncludeLaunchDescription(
