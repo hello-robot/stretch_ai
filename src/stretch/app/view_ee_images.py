@@ -59,6 +59,7 @@ def main(
             device_id=device_id,
             verbose=verbose,
             category_map_file=parameters["open_vocab_category_map_file"],
+            confidence_threshold=0.3,
         )
 
     print("Starting the robot...")
@@ -66,10 +67,12 @@ def main(
     robot.move_to_manip_posture()
     robot.open_gripper()
     time.sleep(2)
-    robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
+    # robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
+    robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
 
     # Initialize variables
     first_time = True
+    colors = {}
 
     # Loop and read in images
     print("Reading images...")
@@ -77,6 +80,8 @@ def main(
         # Get image from robot
         obs = robot.get_observation()
         if obs is None:
+            continue
+        if obs.rgb is None:
             continue
         # Low res images used for visual servoing and ML
         servo = robot.get_servo_observation()
@@ -96,14 +101,34 @@ def main(
             first_time = False
 
         # Run segmentation if you want
+        servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
         if run_semantic_segmentation:
             # Run the prediction on end effector camera!
-            servo = semantic_sensor.predict(servo, ee=True)
+            use_ee = True
+            use_full_obs = False
+            if use_full_obs:
+                use_ee = False
+                _obs = obs
+            else:
+                _obs = servo
+            _obs = semantic_sensor.predict(_obs, ee=use_ee)
+            semantic_segmentation = np.zeros(
+                (_obs.semantic.shape[0], _obs.semantic.shape[1], 3)
+            ).astype(np.uint8)
+            for cls in np.unique(_obs.semantic):
+                if cls > 0:
+                    if cls not in colors:
+                        colors[cls] = (np.random.rand(3) * 255).astype(np.uint8)
+                    semantic_segmentation[_obs.semantic == cls] = colors[cls]
+
+            # Compose the two images
+            alpha = 0.5
+            img = _obs.ee_rgb if use_ee else _obs.rgb
+            semantic_segmentation = cv2.addWeighted(img, alpha, semantic_segmentation, 1 - alpha, 0)
 
         # This is the head image
         image = obs.rgb
-        semantic_segmentation = obs.semantic
-        # Get semantic segmentation from image
+
         # Display image and semantic segmentation
         # Convert rgb to bgr
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -111,7 +136,6 @@ def main(
         servo_head_rgb = cv2.cvtColor(servo.rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow("servo: ee camera image", servo_head_rgb)
         servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
-        servo_ee_rgb = adjust_gamma(servo_ee_rgb, gamma)
         cv2.imshow("servo: head camera image", servo_ee_rgb)
         if run_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)

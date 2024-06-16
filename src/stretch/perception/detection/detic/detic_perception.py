@@ -207,12 +207,7 @@ class DeticPerception(PerceptionModule):
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
         pred = self.predictor(image)
-
-        # Process
-        if obs.task_observations is None:
-            task_observations = dict()
-        else:
-            task_observations = obs.task_observations
+        task_observations = dict()
 
         # Add some visualization code for Detic
         if draw_instance_predictions:
