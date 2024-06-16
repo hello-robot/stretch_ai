@@ -43,7 +43,7 @@ def main(
     reset: bool = False,
     target_object: str = "shoe",
     run_semantic_segmentation: bool = False,
-    gamma: float = 1.5,
+    gamma: float = 1.0,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -59,7 +59,7 @@ def main(
             device_id=device_id,
             verbose=verbose,
             category_map_file=parameters["open_vocab_category_map_file"],
-            confidence_threshold=0.3,
+            confidence_threshold=0.0,
         )
 
     print("Starting the robot...")
@@ -104,7 +104,7 @@ def main(
         servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
         if run_semantic_segmentation:
             # Run the prediction on end effector camera!
-            use_ee = True
+            use_ee = False
             use_full_obs = False
             if use_full_obs:
                 use_ee = False
