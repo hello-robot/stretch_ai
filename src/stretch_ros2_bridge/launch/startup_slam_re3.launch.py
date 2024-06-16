@@ -17,7 +17,7 @@ def generate_launch_description():
             )
         )
     )
-    realsense_config = {
+    realsense_d405_config = {
         "align_depth.enable": "True",
         "camera_name": "ee_camera",
         "camera_namespace": "",
@@ -30,12 +30,13 @@ def generate_launch_description():
         # "depth_module.profile": "640x480x15",
         "rgb_camera.profile": "480x270x30",
         "depth_module.profile": "480x270x30",
+        "rgb_camera.enable_auto_exposure": "true",
     }
     realsense_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
         ),
-        launch_arguments=realsense_config.items(),
+        launch_arguments=realsense_d405_config.items(),
     )
     ld = LaunchDescription(
         [
