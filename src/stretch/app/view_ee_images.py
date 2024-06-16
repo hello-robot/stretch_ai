@@ -10,6 +10,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.perception import create_semantic_sensor, get_encoder
+from stretch.utils.image import adjust_gamma
 
 
 @click.command()
@@ -26,6 +27,10 @@ from stretch.perception import create_semantic_sensor, get_encoder
 @click.option(
     "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
 )
+@click.option("--gamma", type=float, default=2.0, help="Gamma correction factor for EE rgb images")
+@click.option(
+    "--run_semantic_segmentation", is_flag=True, help="Run semantic segmentation on EE rgb images"
+)
 def main(
     robot_ip: str = "192.168.1.15",
     recv_port: int = 4401,
@@ -37,7 +42,8 @@ def main(
     show_intermediate_maps: bool = False,
     reset: bool = False,
     target_object: str = "shoe",
-    do_semantic_segmentation: bool = False,
+    run_semantic_segmentation: bool = False,
+    gamma: float = 1.5,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -48,7 +54,7 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    if do_semantic_segmentation:
+    if run_semantic_segmentation:
         _, semantic_sensor = create_semantic_sensor(
             device_id=device_id,
             verbose=verbose,
@@ -90,7 +96,7 @@ def main(
             first_time = False
 
         # Run segmentation if you want
-        if do_semantic_segmentation:
+        if run_semantic_segmentation:
             obs = semantic_sensor.predict(obs)
 
         # This is the head image
@@ -104,8 +110,9 @@ def main(
         servo_head_rgb = cv2.cvtColor(servo["head_cam"]["color_image"], cv2.COLOR_RGB2BGR)
         cv2.imshow("servo: ee camera image", servo_head_rgb)
         servo_ee_rgb = cv2.cvtColor(servo["ee_cam"]["color_image"], cv2.COLOR_RGB2BGR)
+        servo_ee_rgb = adjust_gamma(servo_ee_rgb, gamma)
         cv2.imshow("servo: head camera image", servo_ee_rgb)
-        if do_semantic_segmentation:
+        if run_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)
 
         # Break if 'q' is pressed
