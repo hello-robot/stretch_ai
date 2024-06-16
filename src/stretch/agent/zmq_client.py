@@ -595,8 +595,8 @@ class HomeRobotZmqClient(RobotClient):
         # head_depth_scale = message["head_cam/depth_scale"]
         with self._servo_lock and self._state_lock:
             observation = Observations(
-                gps=self._state["xyt"][:2],
-                compass=self._state["xyt"][2],
+                gps=self._state["base_pose"][:2],
+                compass=self._state["base_pose"][2],
                 rgb=head_color_image,
                 depth=head_depth_image,
                 xyz=None,

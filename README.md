@@ -82,6 +82,10 @@ You should see:
 
 ## Example Apps
 
+### Visualization and Streaming Video
+
+
+
 ### Dex Teleop for Data Collection
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. It has two components:

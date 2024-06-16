@@ -196,7 +196,11 @@ class DeticPerception(PerceptionModule):
              image of shape (H, W, 3)
         """
 
-        if isinstance(rgb, torch.Tensor):
+        if isinstance(rgb, np.ndarray):
+            # This is expected
+            pass
+        elif isinstance(rgb, torch.Tensor):
+            # Turn it into a numpy array
             rgb = rgb.numpy()
         else:
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")

@@ -87,17 +87,18 @@ def main(
             print("Full (slow) observation:")
             print(" - RGB image shape:", repr(obs.rgb.shape))
             print("Servo observation:")
-            print(" - ee rgb shape:", repr(servo["ee_cam"]["color_image"].shape))
-            print(" - ee depth shape:", repr(servo["ee_cam"]["depth_image"].shape))
-            print(" - head rgb shape:", repr(servo["head_cam"]["color_image"].shape))
-            print(" - head depth shape:", repr(servo["head_cam"]["depth_image"].shape))
+            print(" - ee rgb shape:", repr(servo.ee_rgb.shape))
+            print(" - ee depth shape:", repr(servo.ee_depth.shape))
+            print(" - head rgb shape:", repr(servo.rgb.shape))
+            print(" - head depth shape:", repr(servo.depth.shape))
             print()
             print("Press 'q' to quit.")
             first_time = False
 
         # Run segmentation if you want
         if run_semantic_segmentation:
-            obs = semantic_sensor.predict(obs)
+            # Run the prediction on end effector camera!
+            servo = semantic_sensor.predict(servo, ee=True)
 
         # This is the head image
         image = obs.rgb
@@ -107,9 +108,9 @@ def main(
         # Convert rgb to bgr
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         cv2.imshow("head camera image", image)
-        servo_head_rgb = cv2.cvtColor(servo["head_cam"]["color_image"], cv2.COLOR_RGB2BGR)
+        servo_head_rgb = cv2.cvtColor(servo.rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow("servo: ee camera image", servo_head_rgb)
-        servo_ee_rgb = cv2.cvtColor(servo["ee_cam"]["color_image"], cv2.COLOR_RGB2BGR)
+        servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
         servo_ee_rgb = adjust_gamma(servo_ee_rgb, gamma)
         cv2.imshow("servo: head camera image", servo_ee_rgb)
         if run_semantic_segmentation:
