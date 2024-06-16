@@ -178,7 +178,8 @@ class DeticPerception(PerceptionModule):
 
     def predict(
         self,
-        obs: Observations,
+        rgb: np.ndarray,
+        depth: Optional[np.ndarray] = None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = True,
     ) -> Observations:
@@ -195,21 +196,21 @@ class DeticPerception(PerceptionModule):
              image of shape (H, W, 3)
         """
 
-        if isinstance(obs.rgb, torch.Tensor):
-            rgb = obs.rgb.numpy()
-        elif isinstance(obs.rgb, np.ndarray):
-            rgb = obs.rgb
+        if isinstance(rgb, torch.Tensor):
+            rgb = rgb.numpy()
         else:
-            raise ValueError(
-                f"Expected obs.rgb to be a numpy array or torch tensor, got {type(obs.rgb)}"
-            )
+            raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        depth = obs.depth
         height, width, _ = image.shape
         pred = self.predictor(image)
-        if obs.task_observations is None:
-            obs.task_observations = {}
 
+        # Process
+        if obs.task_observations is None:
+            task_observations = dict()
+        else:
+            task_observations = obs.task_observations
+
+        # Add some visualization code for Detic
         if draw_instance_predictions:
             visualizer = Visualizer(
                 image[:, :, ::-1], self.metadata, instance_mode=self.instance_mode
@@ -217,9 +218,9 @@ class DeticPerception(PerceptionModule):
             visualization = visualizer.draw_instance_predictions(
                 predictions=pred["instances"].to(self.cpu_device)
             ).get_image()
-            obs.task_observations["semantic_frame"] = visualization
+            task_observations["semantic_frame"] = visualization
         else:
-            obs.task_observations["semantic_frame"] = None
+            task_observations["semantic_frame"] = None
 
         # Sort instances by mask size
         masks = pred["instances"].pred_masks.cpu().numpy()
@@ -231,15 +232,13 @@ class DeticPerception(PerceptionModule):
 
         semantic_map, instance_map = overlay_masks(masks, class_idcs, (height, width))
 
-        obs.semantic = semantic_map.astype(int)
-        obs.instance = instance_map.astype(int)
-        if obs.task_observations is None:
-            obs.task_observations = dict()
-        obs.task_observations["instance_map"] = instance_map
-        obs.task_observations["instance_classes"] = class_idcs
-        obs.task_observations["instance_scores"] = scores
+        semantic = semantic_map.astype(int)
+        instance = instance_map.astype(int)
+        task_observations["instance_map"] = instance_map
+        task_observations["instance_classes"] = class_idcs
+        task_observations["instance_scores"] = scores
 
-        return obs
+        return semantic, instance, task_observations
 
 
 def setup_cfg(args, verbose: bool = False, confidence_threshold: Optional[float] = None):
