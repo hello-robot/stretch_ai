@@ -469,11 +469,10 @@ class UpdateOperation(ManagedOperation):
         self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
         time.sleep(5.0)
         xyt = self.robot.get_base_pose()
-        xyz = np.zeros(3)
-        xyz[:2] = xyt[:2]
-        self.agent.voxel_map.delete_obstacles(point=xyz, radius=0.2)
         # Now update the world
         self.update()
+        # Delete observations near us, since they contain the arm!!
+        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.8)
 
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
 

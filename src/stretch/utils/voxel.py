@@ -69,22 +69,26 @@ class VoxelizedPointcloud:
 
     def remove(
         self,
-        bounds: Optional[np.ndarray],
+        bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
     ):
         """Deletes points within a certain radius of a point, or optionally within certain bounds."""
-        breakpoint()
         if point is not None and radius is not None:
             # We will do a radius removal
             assert bounds is None, "Cannot do both radius and bounds removal"
             assert len(point) == 3 or len(point) == 2, "Point must be 2 or 3D"
 
-            dists = torch.norm(self._points - torch.tensor(point), dim=1)
+            if len(point) == 2:
+                dists = torch.norm(self._points[:, :2] - torch.tensor(point[:2]), dim=1)
+            else:
+                dists = torch.norm(self._points - torch.tensor(point), dim=1)
             mask = dists > radius
             self._points = self._points[mask]
-            self._features = self._features[mask]
-            self._weights = self._weights[mask]
+            if self._features is not None:
+                self._features = self._features[mask]
+            if self._weights is not None:
+                self._weights = self._weights[mask]
             self._rgb = self._rgb[mask]
 
         elif bounds is not None:
@@ -93,9 +97,13 @@ class VoxelizedPointcloud:
                 self._points < torch.tensor(bounds[3:]), dim=1
             )
             self._points = self._points[mask]
-            self._features = self._features[mask]
-            self._weights = self._weights[mask]
+            if self._features is not None:
+                self._features = self._features[mask]
+            if self._weights is not None:
+                self._weights = self._weights[mask]
             self._rgb = self._rgb[mask]
+            breakpoint()
+            raise NotImplementedError("Bounds removal not yet implemented")
 
     def add(
         self,
