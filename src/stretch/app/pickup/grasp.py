@@ -82,7 +82,9 @@ def main(
     if reset:
         robot.move_to_nav_posture()
         robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
-        robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
+        # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
+        robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
         time.sleep(3.0)
 
     task = get_task()
+    task.run()

@@ -56,13 +56,13 @@ def test_task():
     task.add_operation(add1b)
     task.add_operation(zero, terminal=True)
 
-    task.execute()
+    task.run()
     print("From 0:", data.num)
 
     assert data.num == 6, "From 0, data should get transmuted into 6"
 
     data.num = 1
-    task.execute()
+    task.run()
 
     assert (
         data.num == 8

@@ -151,10 +151,6 @@ class OvmmPerception:
             depth_threshold=depth_threshold,
             draw_instance_predictions=self._use_detic_viz,
         )
-        import numpy as np
-
-        print(np.unique(semantic))
-        print(np.unique(instance))
         obs.semantic = semantic
         obs.instance = instance
         if obs.task_observations is None:

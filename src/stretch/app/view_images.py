@@ -27,7 +27,7 @@ from stretch.utils.image import adjust_gamma
 @click.option(
     "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
 )
-@click.option("--gamma", type=float, default=1.0, help="Gamma correction factor for EE rgb images")
+@click.option("--gamma", type=float, default=1.5, help="Gamma correction factor for EE rgb images")
 @click.option(
     "--run_semantic_segmentation", is_flag=True, help="Run semantic segmentation on EE rgb images"
 )
@@ -58,7 +58,8 @@ def main(
         _, semantic_sensor = create_semantic_sensor(
             device_id=device_id,
             verbose=verbose,
-            category_map_file=parameters["open_vocab_category_map_file"],
+            # category_map_file=parameters["open_vocab_category_map_file"],
+            category_map_file="pickup_cat_map.json",
             confidence_threshold=0.3,
         )
 
@@ -104,7 +105,7 @@ def main(
         servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
         if run_semantic_segmentation:
             # Run the prediction on end effector camera!
-            use_ee = False
+            use_ee = True
             use_full_obs = False
             if use_full_obs:
                 use_ee = False

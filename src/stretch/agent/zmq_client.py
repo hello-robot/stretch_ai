@@ -606,23 +606,6 @@ class HomeRobotZmqClient(RobotClient):
                 joint=joint,
             )
             self._servo = observation
-            # self._servo = {
-            #    "ee_cam": {
-            #        "color_image": color_image,
-            #        "depth_image": depth_image,
-            #        # "depth_camera_info": depth_camera_info,
-            #        # "depth_scale": depth_scale,
-            #        # "image_gamma": image_gamma,
-            #        "image_scaling": image_scaling,
-            #    },
-            #    "head_cam": {
-            #        "color_image": head_color_image,
-            #        "depth_image": head_depth_image,
-            #        # "depth_camera_info": head_depth_camera_info,
-            #        # "depth_scale": head_depth_scale,
-            #        "image_scaling": head_image_scaling,
-            #    },
-            # }
 
     def get_servo_observation(self):
         """Get the current servo observation"""

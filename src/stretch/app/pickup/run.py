@@ -74,7 +74,7 @@ def main(
         robot.stop()
         raise e
 
-    task.execute()
+    task.run()
 
     if reset:
         # Send the robot home at the end!
