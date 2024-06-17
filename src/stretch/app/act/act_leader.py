@@ -17,6 +17,7 @@ from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
 
 from lerobot.common.policies.act.modeling_act import ACTPolicy
+from torchvision.transforms import v2
 
 
 class ACTLeader(Evaluator):
@@ -28,7 +29,7 @@ class ACTLeader(Evaluator):
         task_name: str = "task",
         user_name: str = "default_user",
         env_name: str = "default_env",
-        policy_path: str = "policy\\15-20-31_stretch_act_default\\checkpoints\\010000\\pretrained_model",
+        policy_path: str = "./policy",
         device: str = "cuda",
         force_record: bool = False,
         display_point_cloud: bool = False,
@@ -56,7 +57,9 @@ class ACTLeader(Evaluator):
         self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
         self._run_policy = False
 
-        self.policy = ACTPolicy.from_pretrained(Path(policy_path))
+        # self.policy_path = "./policy/18-25-59_stretch_real_act_stretch_act/checkpoints/046000/pretrained_model"
+        self.policy_path = "./policy/12-26-20-stretch-act-default/checkpoints/019000/pretrained_model"
+        self.policy = ACTPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
         self.policy.eval()
         self.policy.to(self.device)
         self.policy.reset()
@@ -156,6 +159,7 @@ class ACTLeader(Evaluator):
         elif key == ord("p"):
             self._run_policy = not self._run_policy
             if self._run_policy:
+                self.policy.reset()
                 print("[LEADER] Running policy!")
             else:
                 print("[LEADER] Stopping policy!")
@@ -186,23 +190,36 @@ class ACTLeader(Evaluator):
             ])
 
             state = torch.from_numpy(state)
-            image = torch.from_numpy(color_image)
+            gripper_color_image = torch.from_numpy(color_image)
+            head_color_image = torch.from_numpy(head_color_image)
 
             state = state.to(torch.float32)
-            image = image.to(torch.float32) / 255
-            image = image.permute(2, 0, 1)
+            gripper_color_image = gripper_color_image.to(torch.float32) / 255
+            gripper_color_image = gripper_color_image.permute(2, 0, 1)
+
+            head_color_image = head_color_image.to(torch.float32) / 255
+            head_color_image = head_color_image.permute(2, 0, 1)
 
             state = state.to(self.device, non_blocking=True)
-            image = image.to(self.device, non_blocking=True)
+            gripper_color_image = gripper_color_image.to(self.device, non_blocking=True)
+            head_color_image = head_color_image.to(self.device, non_blocking=True)
+
+            transforms = v2.Compose(
+                [v2.CenterCrop(320)]
+            )
+            gripper_color_image = transforms(gripper_color_image)
+            head_color_image = transforms(head_color_image)
 
             # Add extra (empty) batch dimension, required to forward the policy
             state = state.unsqueeze(0)
-            image = image.unsqueeze(0)
+            head_color_image = head_color_image.unsqueeze(0)
+            gripper_color_image = gripper_color_image.unsqueeze(0)
 
             # Build observation dict for ACT
             observation = {
                 "observation.state": state,
-                "observation.images.head": image,
+                "observation.images.head": head_color_image,
+                "observation.images.gripper": gripper_color_image
             }
             # Send observation to policy
             with torch.inference_mode():
@@ -218,7 +235,8 @@ class ACTLeader(Evaluator):
             action_dict["joint_wrist_pitch"] = action[4]
             action_dict["joint_wrist_yaw"] = action[5]
             action_dict["stretch_gripper"] = action[6]
-            print(action_dict)
+
+            action_dict["joint_mobile_base_rotate_by"] = 0.0
 
         # Send action_dict to stretch follower
         self.goal_send_socket.send_pyobj(action_dict)
@@ -266,7 +284,7 @@ if __name__ == "__main__":
     parser.add_argument("--display_point_cloud", action="store_true")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--policy_path", type=str,
-                        default="policy\\15-20-31_stretch_act_default\\checkpoints\\010000\\pretrained_model")
+                        default="./policy")
     args = parser.parse_args()
 
     client = RobotClient(
