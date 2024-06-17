@@ -104,7 +104,7 @@ def main(
         servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
         if run_semantic_segmentation:
             # Run the prediction on end effector camera!
-            use_ee = True
+            use_ee = False
             use_full_obs = False
             if use_full_obs:
                 use_ee = False

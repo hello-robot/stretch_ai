@@ -84,7 +84,17 @@ You should see:
 
 ### Visualization and Streaming Video
 
+Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
 
+```bash
+```
+python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
+```bash
+python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
+```
 
 ### Dex Teleop for Data Collection
 
