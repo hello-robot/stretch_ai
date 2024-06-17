@@ -155,7 +155,7 @@ class HomeRobotZmqClient(RobotClient):
                 if timeit.default_timer() - t0 > timeout:
                     logger.error("Timeout waiting for state message")
                     return None
-            joint_positions = self._state["q"]
+            joint_positions = self._state["joint_positions"]
         return joint_positions
 
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
