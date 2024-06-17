@@ -274,7 +274,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 5.0):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 10.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:

@@ -466,6 +466,12 @@ class UpdateOperation(ManagedOperation):
         self.intro("Updating the world model.")
         self.robot.move_to_manip_posture()
         time.sleep(2.0)
+        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        time.sleep(5.0)
+        xyt = self.robot.get_base_pose()
+        xyz = np.zeros(3)
+        xyz[:2] = xyt[:2]
+        self.agent.voxel_map.delete_obstacles(point=xyz, radius=0.2)
         # Now update the world
         self.update()
 
@@ -558,6 +564,10 @@ class GraspObjectOperation(ManagedOperation):
     def run(self):
         self.intro("Grasping the object.")
         self._success = False
+
+        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        time.sleep(4.0)
+
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
