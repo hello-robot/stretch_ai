@@ -141,14 +141,23 @@ class OvmmPerception:
     def __call__(self, obs: Observations) -> Observations:
         return self.forward(obs)
 
-    def predict(self, obs: Observations, depth_threshold: float = 0.5) -> Observations:
+    def predict(
+        self, obs: Observations, depth_threshold: float = 0.5, ee: bool = False
+    ) -> Observations:
         """Run with no postprocessing. Updates observation to add semantics."""
-        # print(self.current_vocabulary.goal_id_to_goal_name.values())
-        return self._segmentation.predict(
-            obs,
+        semantic, instance, task_observations = self._segmentation.predict(
+            rgb=obs.rgb if not ee else obs.ee_rgb,
+            depth=obs.depth if not ee else obs.ee_depth,
             depth_threshold=depth_threshold,
             draw_instance_predictions=self._use_detic_viz,
         )
+        obs.semantic = semantic
+        obs.instance = instance
+        if obs.task_observations is None:
+            obs.task_observations = task_observations
+        else:
+            obs.task_observations.update(task_observations)
+        return obs
 
     def forward(self, obs: Observations, depth_threshold: float = 0.5) -> Observations:
         """
@@ -205,6 +214,7 @@ def create_semantic_sensor(
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
     config_path="default_perception.yaml",
+    confidence_threshold: float = 0.5,
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
@@ -222,6 +232,7 @@ def create_semantic_sensor(
         gpu_device_id=device_id,
         verbose=verbose,
         module="detic",
+        confidence_threshold=confidence_threshold,
         module_kwargs=module_kwargs,
     )
     obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)

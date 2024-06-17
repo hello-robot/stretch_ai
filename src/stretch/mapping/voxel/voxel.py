@@ -1081,6 +1081,18 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
+    def delete_obstacles(
+        self,
+        bounds: Optional[np.ndarray] = None,
+        point: Optional[np.ndarray] = None,
+        radius: Optional[float] = None,
+    ) -> None:
+        """Delete obstacles from the map"""
+        self.voxel_pcd.remove(bounds, point, radius)
+
+        # Force recompute of 2d map
+        self.get_2d_map()
+
     def _show_open3d(
         self,
         instances: bool,

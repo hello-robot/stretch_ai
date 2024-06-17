@@ -146,11 +146,23 @@ class HomeRobotZmqClient(RobotClient):
         self._state_lock = Lock()
         self._servo_lock = Lock()
 
+    def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint positions"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_positions = self._state["q"]
+        return joint_positions
+
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current pose of the base"""
-        with self._obs_lock:
-            t0 = timeit.default_timer()
-            if self.update_base_pose_from_full_obs:
+        t0 = timeit.default_timer()
+        if self.update_base_pose_from_full_obs:
+            with self._obs_lock:
                 while self._obs is None:
                     time.sleep(0.01)
                     if timeit.default_timer() - t0 > timeout:
@@ -159,7 +171,8 @@ class HomeRobotZmqClient(RobotClient):
                 gps = self._obs["gps"]
                 compass = self._obs["compass"]
                 xyt = np.concatenate([gps, compass], axis=-1)
-            else:
+        else:
+            with self._state_lock:
                 while self._state is None:
                     time.sleep(1e-4)
                     if timeit.default_timer() - t0 > timeout:
@@ -274,7 +287,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 5.0):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 10.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
@@ -572,7 +585,7 @@ class HomeRobotZmqClient(RobotClient):
 
     def update_servo(self, message):
         """Servo messages"""
-        if message is None:
+        if message is None or self._state is None:
             return
 
         color_image = compression.from_webp(message["ee_cam/color_image"])
@@ -593,24 +606,19 @@ class HomeRobotZmqClient(RobotClient):
         head_image_scaling = message["head_cam/image_scaling"]
         joint = message["robot/config"]
         # head_depth_scale = message["head_cam/depth_scale"]
-        with self._servo_lock:
-            self._servo = {
-                "ee_cam": {
-                    "color_image": color_image,
-                    "depth_image": depth_image,
-                    # "depth_camera_info": depth_camera_info,
-                    # "depth_scale": depth_scale,
-                    # "image_gamma": image_gamma,
-                    "image_scaling": image_scaling,
-                },
-                "head_cam": {
-                    "color_image": head_color_image,
-                    "depth_image": head_depth_image,
-                    # "depth_camera_info": head_depth_camera_info,
-                    # "depth_scale": head_depth_scale,
-                    "image_scaling": head_image_scaling,
-                },
-            }
+        with self._servo_lock and self._state_lock:
+            observation = Observations(
+                gps=self._state["base_pose"][:2],
+                compass=self._state["base_pose"][2],
+                rgb=head_color_image,
+                depth=head_depth_image,
+                xyz=None,
+                ee_rgb=color_image,
+                ee_depth=depth_image,
+                ee_xyz=None,
+                joint=joint,
+            )
+            self._servo = observation
 
     def get_servo_observation(self):
         """Get the current servo observation"""
