@@ -420,8 +420,8 @@ class DexTeleopLeader(Evaluator):
         else:
             # Goal dict that is not worth processing
             goal_dict = {"valid": False}
-        if head_cfg is not None:
-            goal_dict["head_config"] = head_cfg
+        # if head_cfg is not None:
+        #     goal_dict["head_config"] = head_cfg
         if xyt is not None:
             goal_dict["move_xyt"] = xyt
 
