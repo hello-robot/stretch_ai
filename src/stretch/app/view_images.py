@@ -58,8 +58,7 @@ def main(
         _, semantic_sensor = create_semantic_sensor(
             device_id=device_id,
             verbose=verbose,
-            # category_map_file=parameters["open_vocab_category_map_file"],
-            category_map_file="pickup_cat_map.json",
+            category_map_file=parameters["open_vocab_category_map_file"],
             confidence_threshold=0.3,
         )
 
