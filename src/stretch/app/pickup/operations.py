@@ -190,7 +190,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     show_map_so_far: bool = False
     show_instances_detected: bool = False
     plan_for_manipulation: bool = True
-    object_class: str = "shoe"
+    object_class: Optional[str] = None
 
     def set_target_object_class(self, object_class: str):
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
@@ -203,6 +203,10 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     def run(self) -> None:
         self.intro("Find a reachable object on the floor.")
         self._successful = False
+
+        # Set the object class if not set
+        if self.object_class is None:
+            self.object_class = self.manager.target_object
 
         # Update world map
         # Switch to navigation posture
@@ -444,6 +448,95 @@ class NavigateToObjectOperation(ManagedOperation):
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""
         return True  # self.robot.in_navigation_mode()
+
+
+class UpdateOperation(ManagedOperation):
+
+    show_instances_detected: bool = True
+    show_map_so_far: bool = True
+
+    def set_target_object_class(self, object_class: str):
+        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
+        self.object_class = object_class
+
+    def can_start(self):
+        return True
+
+    def run(self):
+        self.intro("Updating the world model.")
+        self.robot.move_to_manip_posture()
+        time.sleep(2.0)
+        # Now update the world
+        self.update()
+
+        print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+
+        if self.show_map_so_far:
+            # This shows us what the robot has found so far
+            xyt = self.robot.get_base_pose()
+            self.agent.voxel_map.show(
+                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
+
+        if self.show_instances_detected:
+            # Show the last instance image
+            import matplotlib
+
+            # TODO: why do we need to configure this every time
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.show()
+
+        # Get the current location of the robot
+        start = self.robot.get_base_pose()
+        if not self.navigation_space.is_valid(start):
+            self.error(
+                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+            breakpoint()
+
+        # Check to see if we have a receptacle in the map
+        instances = self.manager.instance_memory.get_instances()
+        receptacle_options = []
+        object_options = []
+        print("Check explored instances for reachable receptacles:")
+        for i, instance in enumerate(instances):
+            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+
+            if self.show_instances_detected:
+                view = instance.get_best_view()
+                plt.imshow(view.get_image())
+                plt.title(f"Instance {i} with name {name}")
+                plt.axis("off")
+                plt.show()
+
+            # Find a box
+            if "box" in name or "tray" in name:
+                receptacle_options.append(instance)
+
+                # Check to see if we can motion plan to box or not
+                plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                if plan.success:
+                    print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
+                    self.manager.current_receptacle = instance
+                else:
+                    self.warn(f" - Found a receptacle but could not reach it.")
+            elif self.manager.target_object in name:
+                object_options.append(instance)
+
+                plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                if plan.success:
+                    print(f" - Found a reachable object at {instance.get_best_view().get_pose()}.")
+                    self.manager.current_object = instance
+                else:
+                    self.warn(f" - Found an object of class {name} but could not reach it.")
+
+    def was_successful(self):
+        """We're just taking an image so this is always going to be a success"""
+        return True
 
 
 class GraspObjectOperation(ManagedOperation):

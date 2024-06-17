@@ -15,8 +15,6 @@ from .manager import PickupManager
 
 @click.command()
 @click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
-@click.option("--recv_port", default=4401, help="Port to receive messages from the robot")
-@click.option("--send_port", default=4402, help="Port to send messages to the robot")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--local",
@@ -29,8 +27,6 @@ from .manager import PickupManager
 )
 def main(
     robot_ip: str = "192.168.1.15",
-    recv_port: int = 4401,
-    send_port: int = 4402,
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     device_id: int = 0,
@@ -44,8 +40,6 @@ def main(
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
-        recv_port=recv_port,
-        send_port=send_port,
         use_remote_computer=(not local),
         parameters=parameters,
     )
