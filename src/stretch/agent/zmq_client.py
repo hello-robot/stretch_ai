@@ -146,11 +146,23 @@ class HomeRobotZmqClient(RobotClient):
         self._state_lock = Lock()
         self._servo_lock = Lock()
 
+    def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint positions"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_positions = self._state["q"]
+        return joint_positions
+
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current pose of the base"""
-        with self._obs_lock:
-            t0 = timeit.default_timer()
-            if self.update_base_pose_from_full_obs:
+        t0 = timeit.default_timer()
+        if self.update_base_pose_from_full_obs:
+            with self._obs_lock:
                 while self._obs is None:
                     time.sleep(0.01)
                     if timeit.default_timer() - t0 > timeout:
@@ -159,7 +171,8 @@ class HomeRobotZmqClient(RobotClient):
                 gps = self._obs["gps"]
                 compass = self._obs["compass"]
                 xyt = np.concatenate([gps, compass], axis=-1)
-            else:
+        else:
+            with self._state_lock:
                 while self._state is None:
                     time.sleep(1e-4)
                     if timeit.default_timer() - t0 > timeout:

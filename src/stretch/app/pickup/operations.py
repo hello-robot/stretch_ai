@@ -480,7 +480,10 @@ class UpdateOperation(ManagedOperation):
             # This shows us what the robot has found so far
             xyt = self.robot.get_base_pose()
             self.agent.voxel_map.show(
-                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+                orig=np.zeros(3),
+                xyt=xyt,
+                footprint=self.robot_model.get_footprint(),
+                planner_visuals=False,
             )
 
         if self.show_instances_detected:
@@ -633,6 +636,19 @@ class GraspObjectOperation(ManagedOperation):
             print(f"{self.name}: Closing the gripper.")
             self.robot.close_gripper(blocking=True)
             time.sleep(2.0)
+
+            # Get arm fk
+            breakpoint()
+            current_joint_state = self.robot.get_joint_state()
+            ee_pos, ee_rot = model.manip_fk(current_joint_state)
+            self.agent.voxel_map.show(
+                orig=ee_pos,
+                xyt=self.robot.get_base_pose(),
+                footprint=self.robot_model.get_footprint(),
+                planner_visuals=False,
+            )
+            breakpoint()
+
             print(f"{self.name}: Lifting the arm up so as not to hit the base.")
             self.robot.arm_to(target_joint_state_lifted, blocking=False)
             time.sleep(2.0)

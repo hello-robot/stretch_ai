@@ -82,6 +82,7 @@ def main(
 
     task = get_task(robot, demo, target_object)
     task.run()
+    robot.open_gripper()
 
 
 if __name__ == "__main__":
