@@ -142,7 +142,7 @@ class OvmmPerception:
         return self.forward(obs)
 
     def predict(
-        self, obs: Observations, depth_threshold: float = 0.5, ee: bool = False
+        self, obs: Observations, depth_threshold: Optional[float] = None, ee: bool = False
     ) -> Observations:
         """Run with no postprocessing. Updates observation to add semantics."""
         semantic, instance, task_observations = self._segmentation.predict(
