@@ -475,6 +475,7 @@ class GripperToGoal:
                 self.robot_move.to_configuration(
                     new_goal_configuration, self.joints_allowed_to_move
                 )
+                self.robot.pimu.set_fan_on()
                 self.robot.push_command()
 
         # Print robot status timing stats, if desired.

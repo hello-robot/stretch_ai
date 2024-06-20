@@ -36,7 +36,8 @@ class DexTeleopFollower:
         exposure: str = "low",
         send_port=5555,
         brighten_image: bool = False,
-        use_remote_computer: bool = True
+        use_remote_computer: bool = True,
+        leader_ip: str = "192.168.1.169",
     ):
         """
         Args:
@@ -111,14 +112,14 @@ class DexTeleopFollower:
             address = "tcp://" + "127.0.0.1" + ":" + str(send_port)
 
         self.send_socket.bind(address)
+        self.leader_ip = leader_ip
 
         goal_recv_socket = self.context.socket(zmq.SUB)
         goal_recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
         goal_recv_socket.setsockopt(zmq.SNDHWM, 1)
         goal_recv_socket.setsockopt(zmq.RCVHWM, 1)
         goal_recv_socket.setsockopt(zmq.CONFLATE, 1)
-        # goal_recv_address = 'tcp://10.1.10.71:5555'
-        goal_recv_address = "tcp://192.168.1.169:5555"
+        goal_recv_address = "tcp://" + self.leader_ip + ":5555"
         goal_recv_socket.connect(goal_recv_address)
 
         # save the socket
@@ -353,6 +354,7 @@ def main(args):
         gamma=args.gamma,
         exposure=args.exposure,
         send_port=args.send_port,
+        leader_ip=args.leader_ip,
     )
     follower.spin()
 

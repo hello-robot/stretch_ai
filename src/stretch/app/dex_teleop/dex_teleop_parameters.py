@@ -72,6 +72,13 @@ def get_arg_parser():
         default=0.5,
         help="Set the scaling factor for the images.",
     )
+    parser.add_argument(
+        "--leader-ip",
+        action="store",
+        type=str,
+        default="192.168.1.169",
+        help="Set the IP of dex teleop leader when running with remote computer",
+    )
 
     return parser
 

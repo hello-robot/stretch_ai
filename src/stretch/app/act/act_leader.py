@@ -17,6 +17,7 @@ from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
 
 from lerobot.common.policies.act.modeling_act import ACTPolicy
+from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from torchvision.transforms import v2
 
 
@@ -33,7 +34,7 @@ class ACTLeader(Evaluator):
         device: str = "cuda",
         force_record: bool = False,
         display_point_cloud: bool = False,
-        save_images: bool = False
+        save_images: bool = False,
     ):
         super().__init__()
         self.camera = None
@@ -57,9 +58,8 @@ class ACTLeader(Evaluator):
         self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
         self._run_policy = False
 
-        # self.policy_path = "./policy/18-25-59_stretch_real_act_stretch_act/checkpoints/046000/pretrained_model"
-        self.policy_path = "./policy/12-26-20-stretch-act-default/checkpoints/019000/pretrained_model"
         self.policy = ACTPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
+        # self.policy = DiffusionPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
         self.policy.eval()
         self.policy.to(self.device)
         self.policy.reset()
@@ -116,23 +116,25 @@ class ACTLeader(Evaluator):
             head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
             head_combined = np.hstack((head_color_image / 255, head_depth_image_x3 / 4))
 
-            # Get the current height and width
-            (height, width) = combined.shape[:2]
-            (head_height, head_width) = head_combined.shape[:2]
+            # # Get the current height and width
+            # (height, width) = combined.shape[:2]
+            # (head_height, head_width) = head_combined.shape[:2]
 
-            # Calculate the aspect ratio
-            aspect_ratio = float(head_width) / float(head_height)
+            # # Calculate the aspect ratio
+            # aspect_ratio = float(head_width) / float(head_height)
 
-            # Calculate the new height based on the aspect ratio
-            new_height = int(width / aspect_ratio)
+            # # Calculate the new height based on the aspect ratio
+            # new_height = int(width / aspect_ratio)
 
-            head_combined = cv2.resize(
-                head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR
-            )
+            # head_combined = cv2.resize(
+            #     head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR
+            # )
 
-            # Combine both images from ee and head
-            combined = np.vstack((combined, head_combined))
-            cv2.imshow("Observed RGB/Depth Image", combined)
+            # # Combine both images from ee and head
+            # combined = np.vstack((combined, head_combined))
+            # cv2.imshow("Observed RGB/Depth Image", combined)
+            cv2.imshow("gripper", color_image / 255)
+            cv2.imshow("head", head_color_image / 255)
 
         # Wait for spacebar to be pressed and start/stop recording
         # Spacebar is 32
@@ -161,8 +163,24 @@ class ACTLeader(Evaluator):
             if self._run_policy:
                 self.policy.reset()
                 print("[LEADER] Running policy!")
+                self._recording = True
             else:
+                self._recording = False
+                self._need_to_write = True
                 print("[LEADER] Stopping policy!")
+        elif key == ord("r"):
+            action_dict = {
+                "joint_mobile_base_rotate_by": 0.0,
+                "joint_lift": 0.9,
+                "joint_arm_l0": 0.02,
+                "joint_wrist_roll": 0.00,
+                "joint_wrist_pitch": -0.80,
+                "joint_wrist_yaw": 0.00,
+                "stretch_gripper": 200.0,
+            }
+            self.goal_send_socket.send_pyobj(action_dict)
+            return action_dict
+
         if not self._recording:
             # Process WASD keys for motion
             if key == ord("w"):
@@ -179,47 +197,48 @@ class ACTLeader(Evaluator):
         if self._run_policy:
             # Build state observations in correct format
             raw_state = message["robot/config"]
-            state = np.array([
-                raw_state["theta_vel"],
-                raw_state["joint_lift"],
-                raw_state["joint_arm_l0"],
-                raw_state["joint_wrist_roll"],
-                raw_state["joint_wrist_pitch"],
-                raw_state["joint_wrist_yaw"],
-                raw_state["stretch_gripper"]
-            ])
+            state = np.array(
+                [
+                    raw_state["theta_vel"],
+                    raw_state["joint_lift"],
+                    raw_state["joint_arm_l0"],
+                    raw_state["joint_wrist_roll"],
+                    raw_state["joint_wrist_pitch"],
+                    raw_state["joint_wrist_yaw"],
+                    raw_state["stretch_gripper"],
+                ]
+            )
 
             state = torch.from_numpy(state)
-            gripper_color_image = torch.from_numpy(color_image)
-            head_color_image = torch.from_numpy(head_color_image)
+
+            gripper_color_image_obs = torch.from_numpy(color_image)
+            head_color_image_obs = torch.from_numpy(head_color_image)
 
             state = state.to(torch.float32)
-            gripper_color_image = gripper_color_image.to(torch.float32) / 255
-            gripper_color_image = gripper_color_image.permute(2, 0, 1)
+            gripper_color_image_obs = gripper_color_image_obs.to(torch.float32) / 255
+            gripper_color_image_obs = gripper_color_image_obs.permute(2, 0, 1)
 
-            head_color_image = head_color_image.to(torch.float32) / 255
-            head_color_image = head_color_image.permute(2, 0, 1)
+            head_color_image_obs = head_color_image_obs.to(torch.float32) / 255
+            head_color_image_obs = head_color_image_obs.permute(2, 0, 1)
 
             state = state.to(self.device, non_blocking=True)
-            gripper_color_image = gripper_color_image.to(self.device, non_blocking=True)
-            head_color_image = head_color_image.to(self.device, non_blocking=True)
+            gripper_color_image_obs = gripper_color_image_obs.to(self.device, non_blocking=True)
+            head_color_image_obs = head_color_image_obs.to(self.device, non_blocking=True)
 
-            transforms = v2.Compose(
-                [v2.CenterCrop(320)]
-            )
-            gripper_color_image = transforms(gripper_color_image)
-            head_color_image = transforms(head_color_image)
+            transforms = v2.Compose([v2.CenterCrop(320)])
+            gripper_color_image_obs = transforms(gripper_color_image_obs)
+            head_color_image_obs = transforms(head_color_image_obs)
 
             # Add extra (empty) batch dimension, required to forward the policy
             state = state.unsqueeze(0)
-            head_color_image = head_color_image.unsqueeze(0)
-            gripper_color_image = gripper_color_image.unsqueeze(0)
+            head_color_image_obs = head_color_image_obs.unsqueeze(0)
+            gripper_color_image_obs = gripper_color_image_obs.unsqueeze(0)
 
             # Build observation dict for ACT
             observation = {
                 "observation.state": state,
-                "observation.images.head": head_color_image,
-                "observation.images.gripper": gripper_color_image
+                "observation.images.gripper": gripper_color_image_obs,
+                "observation.images.head": head_color_image_obs,
             }
             # Send observation to policy
             with torch.inference_mode():
@@ -247,10 +266,17 @@ class ACTLeader(Evaluator):
 
             # Record episode if enabled
             self._recorder.add(
-                color_image,
-                depth_image,
-                observations=state,
+                ee_rgb=color_image,
+                ee_depth=depth_image,
+                xyz=np.array([0]),
+                quaternion=np.array([0]),
+                gripper=0,
+                ee_pos=np.array([0]),
+                ee_rot=np.array([0]),
+                observations=raw_state,
                 actions=action_dict,
+                head_rgb=head_color_image,
+                head_depth=head_depth_image,
             )
 
         if self._need_to_write:
@@ -279,12 +305,12 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--replay", action="store_true", help="Replay a recorded session.")
     parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
-    parser.add_argument("-s", "--save-images", action="store_true",
-                        help="Save raw images in addition to videos")
+    parser.add_argument(
+        "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
+    )
     parser.add_argument("--display_point_cloud", action="store_true")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--policy_path", type=str,
-                        default="./policy")
+    parser.add_argument("--policy_path", type=str, default="./policy")
     args = parser.parse_args()
 
     client = RobotClient(
