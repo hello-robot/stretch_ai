@@ -94,5 +94,5 @@ def from_jpg(compressed_image):
     return cv2.imdecode(compressed_image, cv2.IMREAD_COLOR)
 
 
-def from_jp2(image):
+def from_jp2(compressed_image):
     return cv2.imdecode(compressed_image, cv2.IMREAD_UNCHANGED)

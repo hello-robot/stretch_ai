@@ -122,7 +122,9 @@ def main(
             # Compose the two images
             alpha = 0.5
             img = _obs.ee_rgb if use_ee else _obs.rgb
-            semantic_segmentation = cv2.addWeighted(img, alpha, semantic_segmentation, 1 - alpha, 0)
+            semantic_segmentation = cv2.addWeighted(
+                img.copy(), alpha, semantic_segmentation, 1 - alpha, 0
+            )
 
         # This is the head image
         image = obs.rgb
