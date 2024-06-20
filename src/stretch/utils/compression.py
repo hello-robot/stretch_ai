@@ -2,6 +2,7 @@ import io
 import pickle
 from typing import Optional, Tuple
 
+import cv2
 import liblzfse
 import numpy as np
 import webp
@@ -77,3 +78,21 @@ def from_webp(webp_data) -> np.ndarray:
     # Convert the PIL Image to a NumPy array
     arr = np.array(img)
     return arr
+
+
+def to_jp2(image: np.ndarray, quality: int = 800):
+    """Depth is better encoded as jp2"""
+    return cv2.imencode(".jp2", image, [cv2.IMWRITE_JPEG2000_COMPRESSION_X1000, quality])
+
+
+def to_jpg(image: np.ndarray, quality: int = 90):
+    """Encode as jpeg"""
+    return cv2.imencode(".jpg", rgb, [cv2.IMWRITE_JPEG_QUALITY, quality])
+
+
+def from_jpg(compressed_image):
+    return cv2.imdecode(compressed_image, cv2.IMREAD_COLOR)
+
+
+def from_jp2(image):
+    return cv2.imdecode(compressed_image, cv2.IMREAD_UNCHANGED)

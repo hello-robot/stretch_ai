@@ -554,9 +554,9 @@ class HomeRobotZmqClient(RobotClient):
                 continue
 
             self._seq_id += 1
-            output["rgb"] = cv2.imdecode(output["rgb"], cv2.IMREAD_COLOR)
+            output["rgb"] = compression.from_jpg(output["rgb"])
             compressed_depth = output["depth"]
-            depth = cv2.imdecode(compressed_depth, cv2.IMREAD_UNCHANGED)
+            depth = compression.from_jp2(compressed_depth)
             output["depth"] = depth / 1000.0
 
             if camera is None:
@@ -588,20 +588,21 @@ class HomeRobotZmqClient(RobotClient):
         if message is None or self._state is None:
             return
 
-        color_image = compression.from_webp(message["ee_cam/color_image"])
-        depth_image = compression.unzip_depth(
-            message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
-        )
-        # depth_camera_info = message["ee_cam/depth_camera_info"]
-        # depth_scale = message["ee_cam/depth_scale"]
-        # image_gamma = message["ee_cam/image_gamma"]
+        # color_image = compression.from_webp(message["ee_cam/color_image"])
+        color_image = compression.from_jpg(message["ee_cam/color_image"])
+        # depth_image = compression.unzip_depth(
+        #    message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
+        # )
+        depth_image = compression.from_jp2(message["ee_cam/depth_image"])
         image_scaling = message["ee_cam/image_scaling"]
 
         # Get head information from the message as well
-        head_color_image = compression.from_webp(message["head_cam/color_image"])
-        head_depth_image = compression.unzip_depth(
-            message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
-        )
+        # head_color_image = compression.from_webp(message["head_cam/color_image"])
+        head_color_image = compression.from_jpg(message["head_cam/color_image"])
+        # head_depth_image = compression.unzip_depth(
+        #    message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
+        # )
+        head_depth_image = compression.from_jp2(message["head_cam/depth_image"])
         # head_depth_camera_info = message["head_cam/depth_camera_info"]
         head_image_scaling = message["head_cam/image_scaling"]
         joint = message["robot/config"]

@@ -47,7 +47,7 @@ class ZmqServer:
         use_remote_computer: bool = True,
         verbose: bool = False,
         image_scaling: float = 0.25,
-        ee_image_scaling: float = 1.0,  # 0.6,
+        ee_image_scaling: float = 0.5,  # 0.6,
     ):
         self.verbose = verbose
         self.client = StretchClient(d405=True)
@@ -114,8 +114,8 @@ class ZmqServer:
             depth = (depth * 1000).astype(np.uint16)
 
             # Make both into jpegs
-            _, rgb = cv2.imencode(".jpg", rgb, [cv2.IMWRITE_JPEG_QUALITY, 90])
-            _, depth = cv2.imencode(".jp2", depth, [cv2.IMWRITE_JPEG2000_COMPRESSION_X1000, 800])
+            _, rgb = compression.to_jpg(rgb)
+            _, depth = compression.to_jp2(depth)
 
             # Get the other fields from an observation
             # rgb = compression.to_webp(rgb)
@@ -300,16 +300,17 @@ class ZmqServer:
             ee_color_image, ee_depth_image = self._rescale_color_and_depth(
                 ee_color_image, ee_depth_image, self.ee_image_scaling
             )
+            ee_depth_image = adjust_gamma(ee_depth_image, 1.5)
             # depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
 
             if self.debug_compression:
                 ct0 = timeit.default_timer()
-            compressed_ee_depth_image = compression.zip_depth(ee_depth_image)
-            compressed_head_depth_image = compression.zip_depth(head_depth_image)
+            compressed_ee_depth_image = compression.to_jp2(ee_depth_image)
+            compressed_head_depth_image = compression.to_jp2(head_depth_image)
             if self.debug_compression:
                 ct1 = timeit.default_timer()
-            compressed_ee_color_image = compression.to_webp(ee_color_image)
-            compressed_head_color_image = compression.to_webp(head_color_image)
+            compressed_ee_color_image = compression.to_jpg(ee_color_image)
+            compressed_head_color_image = compression.to_jpg(head_color_image)
             # compressed_head_color_image = compressed_ee_color_image
             if self.debug_compression:
                 # TODO: remove debug code
