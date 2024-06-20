@@ -301,7 +301,7 @@ class ZmqServer:
             ee_color_image, ee_depth_image = self._rescale_color_and_depth(
                 ee_color_image, ee_depth_image, self.ee_image_scaling
             )
-            ee_depth_image = adjust_gamma(ee_depth_image, 1.5)
+            ee_color_image = adjust_gamma(ee_color_image, 1.5)
             # depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
 
             if self.debug_compression:
@@ -312,8 +312,7 @@ class ZmqServer:
                 ct1 = timeit.default_timer()
             compressed_ee_color_image = compression.to_jpg(ee_color_image)
             compressed_head_color_image = compression.to_jpg(head_color_image)
-            # compressed_head_color_image = compressed_ee_color_image
-            if self.debug_compression:
+            if self.debug_compression or True:
                 # TODO: remove debug code
                 # print(f"{ee_color_image.shape=}")
                 # print(f"{ee_depth_image.shape=}")
@@ -331,15 +330,15 @@ class ZmqServer:
                 "ee_cam/color_camera_K": self.client.ee_rgb_cam.get_K(),
                 "ee_cam/depth_camera_K": self.client.ee_dpt_cam.get_K(),
                 "ee_cam/color_image": compressed_ee_color_image,
-                "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image": compressed_ee_depth_image,
+                "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
                 "head_cam/color_camera_K": self.client.rgb_cam.get_K(),
                 "head_cam/depth_camera_K": self.client.dpt_cam.get_K(),
                 "head_cam/color_image": compressed_head_color_image,
-                "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image": compressed_head_depth_image,
+                "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image/shape": head_depth_image.shape,
                 "head_cam/image_scaling": self.image_scaling,
                 "robot/config": obs.joint,
