@@ -87,7 +87,7 @@ def to_jp2(image: np.ndarray, quality: int = 800):
 
 def to_jpg(image: np.ndarray, quality: int = 90):
     """Encode as jpeg"""
-    return cv2.imencode(".jpg", rgb, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, quality])
 
 
 def from_jpg(compressed_image):

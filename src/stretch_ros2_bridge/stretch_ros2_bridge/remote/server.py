@@ -13,6 +13,7 @@ import rclpy
 import zmq
 
 import stretch.utils.compression as compression
+from stretch.utils.image import adjust_gamma
 from stretch_ros2_bridge.remote import StretchClient
 
 
