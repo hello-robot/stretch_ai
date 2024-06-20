@@ -115,8 +115,8 @@ class ZmqServer:
             depth = (depth * 1000).astype(np.uint16)
 
             # Make both into jpegs
-            _, rgb = compression.to_jpg(rgb)
-            _, depth = compression.to_jp2(depth)
+            rgb = compression.to_jpg(rgb)
+            depth = compression.to_jp2(depth)
 
             # Get the other fields from an observation
             # rgb = compression.to_webp(rgb)
@@ -301,7 +301,7 @@ class ZmqServer:
             ee_color_image, ee_depth_image = self._rescale_color_and_depth(
                 ee_color_image, ee_depth_image, self.ee_image_scaling
             )
-            ee_color_image = adjust_gamma(ee_color_image, 1.5)
+            ee_color_image = adjust_gamma(ee_color_image, 2.5)
             # depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
 
             if self.debug_compression:
@@ -312,7 +312,7 @@ class ZmqServer:
                 ct1 = timeit.default_timer()
             compressed_ee_color_image = compression.to_jpg(ee_color_image)
             compressed_head_color_image = compression.to_jpg(head_color_image)
-            if self.debug_compression or True:
+            if self.debug_compression:
                 # TODO: remove debug code
                 # print(f"{ee_color_image.shape=}")
                 # print(f"{ee_depth_image.shape=}")
