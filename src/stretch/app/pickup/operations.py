@@ -72,7 +72,7 @@ class SearchForReceptacle(ManagedOperation):
     """Find a place to put the objects we find on the floor"""
 
     # For debugging
-    show_map_so_far: bool = True
+    show_map_so_far: bool = False
     show_instances_detected: bool = False
 
     def can_start(self) -> bool:
@@ -187,7 +187,7 @@ class SearchForReceptacle(ManagedOperation):
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = False
+    show_map_so_far: bool = True
     show_instances_detected: bool = False
     plan_for_manipulation: bool = True
     object_class: Optional[str] = None
@@ -472,7 +472,7 @@ class UpdateOperation(ManagedOperation):
         # Now update the world
         self.update()
         # Delete observations near us, since they contain the arm!!
-        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.8)
+        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
 
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
 
@@ -483,7 +483,7 @@ class UpdateOperation(ManagedOperation):
                 orig=np.zeros(3),
                 xyt=xyt,
                 footprint=self.robot_model.get_footprint(),
-                planner_visuals=False,
+                planner_visuals=True,
             )
 
         if self.show_instances_detected:
@@ -499,13 +499,6 @@ class UpdateOperation(ManagedOperation):
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
-        if not self.navigation_space.is_valid(start):
-            self.error(
-                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
-            )
-            breakpoint()
-
-        # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
         receptacle_options = []
         object_options = []
@@ -544,7 +537,7 @@ class UpdateOperation(ManagedOperation):
 
     def was_successful(self):
         """We're just taking an image so this is always going to be a success"""
-        return True
+        return self.manager.current_object is not None
 
 
 class GraspObjectOperation(ManagedOperation):
@@ -567,8 +560,8 @@ class GraspObjectOperation(ManagedOperation):
         self.intro("Grasping the object.")
         self._success = False
 
-        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
-        time.sleep(4.0)
+        # self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        # time.sleep(4.0)
 
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
@@ -611,6 +604,7 @@ class GraspObjectOperation(ManagedOperation):
             target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
                 relative_object_xyz, ee_rot, q0=joint_state
             )
+            target_joint_state[HelloStretchIdx.BASE_X] -= 0.04
             if not success:
                 print("Failed to find a valid IK solution.")
                 self._success = False
@@ -636,19 +630,6 @@ class GraspObjectOperation(ManagedOperation):
             print(f"{self.name}: Closing the gripper.")
             self.robot.close_gripper(blocking=True)
             time.sleep(2.0)
-
-            # Get arm fk
-            breakpoint()
-            current_joint_state = self.robot.get_joint_state()
-            ee_pos, ee_rot = model.manip_fk(current_joint_state)
-            self.agent.voxel_map.show(
-                orig=ee_pos,
-                xyt=self.robot.get_base_pose(),
-                footprint=self.robot_model.get_footprint(),
-                planner_visuals=False,
-            )
-            breakpoint()
-
             print(f"{self.name}: Lifting the arm up so as not to hit the base.")
             self.robot.arm_to(target_joint_state_lifted, blocking=False)
             time.sleep(2.0)

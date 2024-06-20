@@ -20,7 +20,7 @@ def get_task(robot, demo, target_object):
     try:
         manager = PickupManager(demo, target_object=target_object)
         task = Task()
-        update = UpdateOperation("update", manager)
+        update = UpdateOperation("update", manager, retry_on_failure=True)
         grasp_object = GraspObjectOperation(
             "grasp the object",
             manager,
