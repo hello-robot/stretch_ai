@@ -41,6 +41,8 @@ setuptools.setup(
         "orbslam3",
         "urchin",
         "schema",
+        # Configuraiton tools
+        "hydra-core",
         # Compression tools
         "pyliblzfse",
         "webp",

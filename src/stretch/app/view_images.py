@@ -25,10 +25,11 @@ from stretch.utils.image import adjust_gamma
 @click.option(
     "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
 )
-@click.option("--gamma", type=float, default=1.5, help="Gamma correction factor for EE rgb images")
+@click.option("--gamma", type=float, default=1.0, help="Gamma correction factor for EE rgb images")
 @click.option(
     "--run_semantic_segmentation", is_flag=True, help="Run semantic segmentation on EE rgb images"
 )
+@click.option("--segment_ee", is_flag=True, help="Run semantic segmentation on EE rgb images")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -40,6 +41,7 @@ def main(
     target_object: str = "shoe",
     run_semantic_segmentation: bool = False,
     gamma: float = 1.0,
+    segment_ee: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -48,6 +50,8 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
+    if segment_ee:
+        run_semantic_segmentation = True
     if run_semantic_segmentation:
         _, semantic_sensor = create_semantic_sensor(
             device_id=device_id,
@@ -98,7 +102,7 @@ def main(
         servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
         if run_semantic_segmentation:
             # Run the prediction on end effector camera!
-            use_ee = False
+            use_ee = segment_ee
             use_full_obs = False
             if use_full_obs:
                 use_ee = False
@@ -128,9 +132,9 @@ def main(
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         cv2.imshow("head camera image", image)
         servo_head_rgb = cv2.cvtColor(servo.rgb, cv2.COLOR_RGB2BGR)
-        cv2.imshow("servo: ee camera image", servo_head_rgb)
+        cv2.imshow("servo: head camera image", servo_head_rgb)
         servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
-        cv2.imshow("servo: head camera image", servo_ee_rgb)
+        cv2.imshow("servo: ee camera image", servo_ee_rgb)
         if run_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)
 
