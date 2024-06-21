@@ -577,14 +577,16 @@ class GraspObjectOperation(ManagedOperation):
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
-    def visual_servo_to_object(self, instance: Instance) -> bool:
+    def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
         """Use visual servoing to grasp the object."""
 
         self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
         if self.show_servo_gui:
             self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
 
-        while True:
+        t0 = timeit.default_timer()
+        success = False
+        while timeit.default_timer() - t0 < max_duration:
             # Get servo observation
             servo = self.robot.get_servo_observation()
 
