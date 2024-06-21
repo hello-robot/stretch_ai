@@ -125,8 +125,19 @@ class PinocchioIKSolver:
 
         return q_out
 
-    def compute_fk(self, config, link_name: str = None) -> Tuple[np.ndarray, np.ndarray]:
-        """Given joint values, return end-effector position and quaternion associated with it."""
+    def compute_fk(
+        self, config: np.ndarray, link_name: str = None
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Given joint values, return end-effector position and quaternion associated with it.
+
+        Args:
+            config: joint values
+            link_name: name of the link to compute FK for; if None, uses the end-effector link
+
+        Returns:
+            pos: end-effector position (x, y, z)
+            quat: end-effector quaternion (w, x, y, z)
+        """
         if link_name is None:
             frame_idx = self.ee_frame_idx
         else:
