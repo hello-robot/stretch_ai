@@ -179,7 +179,7 @@ class GripperToGoal:
             "joint_wrist_pitch": self.robot.status["end_of_arm"]["wrist_pitch"]["pos"],
             "joint_wrist_yaw": self.robot.status["end_of_arm"]["wrist_yaw"]["pos"],
             "joint_wrist_roll": self.robot.status["end_of_arm"]["wrist_roll"]["pos"],
-            "stretch_gripper": self.robot.status["end_of_arm"]["stretch_gripper"]["pos_pct"]
+            "stretch_gripper": self.robot.status["end_of_arm"]["stretch_gripper"]["pos_pct"],
         }
         return state
 

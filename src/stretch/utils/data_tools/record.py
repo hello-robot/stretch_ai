@@ -2,9 +2,9 @@ import datetime
 import glob
 import json
 import logging
+import shutil
 import subprocess
 import time
-import shutil
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -39,7 +39,7 @@ class FileDataRecorder:
         task: str = "default_task",
         user: str = "default_user",
         env: str = "default_env",
-        save_images: bool = False
+        save_images: bool = False,
     ):
         """Initialize the recorder.
 
@@ -98,7 +98,7 @@ class FileDataRecorder:
             "ee_pos": ee_pos.tolist(),
             "ee_rot": ee_rot.tolist(),
             "observations": observations,
-            "actions": actions
+            "actions": actions,
         }
         self.step += 1
 
@@ -201,9 +201,7 @@ class FileDataRecorder:
         # Additional codecs can be output by adding to the list and providing corresponding video paths
         crfs = [30]
         video_codecs = ["h264"]
-        for enc_lib, crf, final_video_path in zip(
-            video_codecs, crfs, [h264_video_path]
-        ):
+        for enc_lib, crf, final_video_path in zip(video_codecs, crfs, [h264_video_path]):
             command = [
                 "ffmpeg",
                 "-y",

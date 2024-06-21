@@ -36,7 +36,7 @@ class DexTeleopFollower:
         exposure: str = "low",
         send_port=5555,
         brighten_image: bool = False,
-        use_remote_computer: bool = True
+        use_remote_computer: bool = True,
     ):
         """
         Args:

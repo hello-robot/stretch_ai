@@ -1,12 +1,12 @@
+import errno
 import math
+import os
 import pprint as pp
 from typing import Optional
-import os
-import urchin as urdf_loader
-import errno
 
 import cv2
 import numpy as np
+import urchin as urdf_loader
 import zmq
 from scipy.spatial.transform import Rotation
 
@@ -17,11 +17,11 @@ import stretch.motion.simple_ik as si
 import stretch.utils.compression as compression
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
+from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.geometry import get_rotation_from_xyz
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
-from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
 
 use_gripper_center = True
 
@@ -169,7 +169,7 @@ class DexTeleopLeader(Evaluator):
         force_record: bool = False,
         display_point_cloud: bool = False,
         debug_aruco: bool = False,
-        save_images: bool = False
+        save_images: bool = False,
     ):
         super().__init__()
         self.camera = None
@@ -465,7 +465,15 @@ class DexTeleopLeader(Evaluator):
             self._need_to_write = False
         return goal_dict
 
-    def get_goal_joint_config(self, grip_width, wrist_position: np.ndarray, gripper_orientation: np.ndarray, current_state, relative=False, **config):
+    def get_goal_joint_config(
+        self,
+        grip_width,
+        wrist_position: np.ndarray,
+        gripper_orientation: np.ndarray,
+        current_state,
+        relative=False,
+        **config,
+    ):
         # Process goal dict in gripper pose format to full joint configuration format with IK
         # INPUT: wrist_position
         if "use_gripper_center" in config and config["use_gripper_center"] != use_gripper_center:
@@ -692,8 +700,9 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--replay", action="store_true", help="Replay a recorded session.")
     parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
-    parser.add_argument("-s", "--save-images", action="store_true",
-                        help="Save raw images in addition to videos")
+    parser.add_argument(
+        "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
+    )
     parser.add_argument(
         "-R",
         "--replay_filename",
@@ -719,7 +728,7 @@ if __name__ == "__main__":
         env_name=args.env_name,
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
-        save_images=args.save_images
+        save_images=args.save_images,
     )
     try:
         client.run(evaluator)

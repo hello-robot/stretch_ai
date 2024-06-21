@@ -1,13 +1,16 @@
 import math
-import pprint as pp
-from typing import Optional
 import os
+import pprint as pp
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
 import torch
 import zmq
+from lerobot.common.policies.act.modeling_act import ACTPolicy
+from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
+from torchvision.transforms import v2
 
 import stretch.utils.compression as compression
 from stretch.core import Evaluator
@@ -15,10 +18,6 @@ from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
-
-from lerobot.common.policies.act.modeling_act import ACTPolicy
-from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
-from torchvision.transforms import v2
 
 
 class ACTLeader(Evaluator):
@@ -330,7 +329,7 @@ if __name__ == "__main__":
         device=args.device,
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
-        save_images=args.save_images
+        save_images=args.save_images,
     )
     try:
         client.run(evaluator)
