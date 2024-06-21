@@ -22,9 +22,16 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
+# Install mamba
+RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+ENV MAMBA_ROOT_PREFIX=/opt/micromamba
+ENV PATH="/opt/micromamba/bin:$PATH"
+RUN micromamba shell init --shell=bash --prefix=$MAMBA_ROOT_PREFIX
+
+# Run our installation script
 COPY install.sh .
 RUN chmod +x install.sh
-RUN ./install.sh
+RUN ./install.sh -y
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .

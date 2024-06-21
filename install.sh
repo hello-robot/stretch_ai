@@ -35,14 +35,20 @@ echo "Currently:"
 echo " - CUDA_HOME=$CUDA_HOME"
 echo " - python=`which python`"
 echo "---------------------------------------------"
-read -p "Does all this look correct? (y/n) " yn
-case $yn in
-	y ) echo "Starting installation...";;
-	n ) echo "Exiting...";
-		exit;;
-	* ) echo Invalid response!;
-		exit 1;;
-esac
+
+# if -y flag was passed in, do not bother asking
+if [ "$1" == "-y" ]; then
+	yn="y"
+else
+	read -p "Does all this look correct? (y/n) " yn
+	case $yn in
+		y ) echo "Starting installation...";;
+		n ) echo "Exiting...";
+			exit;;
+		* ) echo Invalid response!;
+			exit 1;;
+	esac
+fi
 mamba env remove -n $ENV_NAME -y
 mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y 
 source activate $ENV_NAME
