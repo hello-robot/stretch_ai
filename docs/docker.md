@@ -40,5 +40,5 @@ newgrp docker
 To build the Docker image, clone this repository and run the following command in the root directory of the repository:
 
 ```bash
-docker build -t stretch:latest .
+docker build -t stretch-ai_cuda-11.8:latest .
 ```
