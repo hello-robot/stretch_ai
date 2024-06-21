@@ -29,7 +29,7 @@ RUN bash Miniforge3-$(uname)-$(uname -m).sh -b
 ENV PATH /root/miniforge3/bin:$PATH
 
 # Run our installation script
-COPY src .
+COPY ./src ./src
 COPY install.sh .
 RUN chmod +x install.sh
 RUN ./install.sh -y
