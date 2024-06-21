@@ -23,10 +23,8 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Install mamba
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-ENV MAMBA_ROOT_PREFIX=/opt/micromamba
-ENV PATH="/opt/micromamba/bin:$PATH"
-RUN micromamba shell init --shell=bash --prefix=$MAMBA_ROOT_PREFIX
+RUN wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+RUN bash Miniforge3-Linux-x86_64.sh -b
 
 # Run our installation script
 COPY install.sh .
