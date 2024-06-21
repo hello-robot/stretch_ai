@@ -125,11 +125,15 @@ class PinocchioIKSolver:
 
         return q_out
 
-    def compute_fk(self, config) -> Tuple[np.ndarray, np.ndarray]:
-        """given joint values return end-effector position and quaternion associated with it"""
+    def compute_fk(self, config, link_name: str = None) -> Tuple[np.ndarray, np.ndarray]:
+        """Given joint values, return end-effector position and quaternion associated with it."""
+        if link_name is None:
+            frame_idx = self.ee_frame_idx
+        else:
+            frame_idx = [f.name for f in self.model.frames].index(link_name)
         q_model = self._qmap_control2model(config)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
-        pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx)
         pos = self.data.oMf[self.ee_frame_idx].translation
         quat = R.from_matrix(self.data.oMf[self.ee_frame_idx].rotation).as_quat()
 
