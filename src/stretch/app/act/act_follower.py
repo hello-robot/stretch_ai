@@ -37,6 +37,7 @@ class DexTeleopFollower:
         send_port=5555,
         brighten_image: bool = False,
         use_remote_computer: bool = True,
+        leader_ip: str = "192.168.1.169",
     ):
         """
         Args:
@@ -79,6 +80,9 @@ class DexTeleopFollower:
             print("Stretch body is ready.")
             ##########################################################
 
+        # Look at ee with head
+        self.set_head_config(np.array([-np.pi / 2, -np.pi / 4]))
+
         # Initialize IK
         self.simple_ik = si.SimpleIK()
 
@@ -108,14 +112,14 @@ class DexTeleopFollower:
             address = "tcp://" + "127.0.0.1" + ":" + str(send_port)
 
         self.send_socket.bind(address)
+        self.leader_ip = leader_ip
 
         goal_recv_socket = self.context.socket(zmq.SUB)
         goal_recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
         goal_recv_socket.setsockopt(zmq.SNDHWM, 1)
         goal_recv_socket.setsockopt(zmq.RCVHWM, 1)
         goal_recv_socket.setsockopt(zmq.CONFLATE, 1)
-        # goal_recv_address = 'tcp://10.1.10.71:5555'
-        goal_recv_address = "tcp://192.168.1.169:5555"
+        goal_recv_address = "tcp://" + self.leader_ip + ":5555"
         goal_recv_socket.connect(goal_recv_address)
 
         # save the socket
@@ -250,6 +254,7 @@ class DexTeleopFollower:
                 t2 - t1,
                 f"{len(compressed_color_image)=}",
             )
+            # breakpoint()
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -264,6 +269,8 @@ class DexTeleopFollower:
                 "ee_cam/color_image/shape": color_image.shape,
                 "ee_cam/depth_image": compressed_depth_image,
                 "ee_cam/depth_image/shape": depth_image.shape,
+                # "ee_cam/color_image": color_image,
+                # "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,
@@ -347,6 +354,7 @@ def main(args):
         gamma=args.gamma,
         exposure=args.exposure,
         send_port=args.send_port,
+        leader_ip=args.leader_ip,
     )
     follower.spin()
 
