@@ -25,6 +25,7 @@ def get_task(robot, demo, target_object):
             "grasp the object",
             manager,
         )
+        grasp_object.show_object_to_grasp = True
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -83,6 +84,7 @@ def main(
     task = get_task(robot, demo, target_object)
     task.run()
     robot.open_gripper()
+    robot.stop()
 
 
 if __name__ == "__main__":

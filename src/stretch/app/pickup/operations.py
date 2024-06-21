@@ -452,8 +452,8 @@ class NavigateToObjectOperation(ManagedOperation):
 
 class UpdateOperation(ManagedOperation):
 
-    show_instances_detected: bool = True
-    show_map_so_far: bool = True
+    show_instances_detected: bool = False
+    show_map_so_far: bool = False
 
     def set_target_object_class(self, object_class: str):
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
@@ -466,7 +466,7 @@ class UpdateOperation(ManagedOperation):
         self.intro("Updating the world model.")
         self.robot.move_to_manip_posture()
         time.sleep(2.0)
-        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        self.robot.arm_to([0.0, 0.4, 0.05, np.pi / 2, -np.pi / 4, 0], blocking=True)
         time.sleep(5.0)
         xyt = self.robot.get_base_pose()
         # Now update the world
@@ -502,6 +502,7 @@ class UpdateOperation(ManagedOperation):
         instances = self.manager.instance_memory.get_instances()
         receptacle_options = []
         object_options = []
+        dist_to_object = float("inf")
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
@@ -527,11 +528,18 @@ class UpdateOperation(ManagedOperation):
                     self.warn(f" - Found a receptacle but could not reach it.")
             elif self.manager.target_object in name:
                 object_options.append(instance)
-
+                dist = np.linalg.norm(
+                    instance.point_cloud.mean(axis=0).cpu().numpy()[:2] - start[:2]
+                )
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable object at {instance.get_best_view().get_pose()}.")
-                    self.manager.current_object = instance
+                    if dist < dist_to_object:
+                        print(
+                            f" - This object is closer than the previous one: {dist} < {dist_to_object}."
+                        )
+                        self.manager.current_object = instance
+                        dist_to_object = dist
                 else:
                     self.warn(f" - Found an object of class {name} but could not reach it.")
 
@@ -547,6 +555,7 @@ class GraspObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     servo_to_grasp: bool = False
     _success: bool = False
+    show_object_to_grasp: bool = False
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
@@ -559,6 +568,12 @@ class GraspObjectOperation(ManagedOperation):
     def run(self):
         self.intro("Grasping the object.")
         self._success = False
+        if self.show_object_to_grasp:
+            view = instance.get_best_view()
+            plt.imshow(view.get_image())
+            plt.title(f"Instance {i} with name {name}")
+            plt.axis("off")
+            plt.show()
 
         # self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
         # time.sleep(4.0)
