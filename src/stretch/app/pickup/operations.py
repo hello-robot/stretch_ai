@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation
 from termcolor import colored
 
 from stretch.core.task import Operation
+from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
@@ -46,6 +47,21 @@ class ManagedOperation(Operation):
         return self.agent.plan_to_instance(
             instance, start=start, rotation_offset=np.pi / 2, radius_m=radius_m, max_tries=100
         )
+
+    def show_instance(self, instance: Instance, title: Optional[str] = None):
+        """Show the instance in the voxel grid."""
+        import matplotlib
+
+        matplotlib.use("TkAgg")
+
+        import matplotlib.pyplot as plt
+
+        view = instance.get_best_view()
+        plt.imshow(view.get_image())
+        if title is not None:
+            plt.title(title)
+        plt.axis("off")
+        plt.show()
 
 
 class RotateInPlaceOperation(ManagedOperation):
@@ -126,11 +142,7 @@ class SearchForReceptacle(ManagedOperation):
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
             if self.show_instances_detected:
-                view = instance.get_best_view()
-                plt.imshow(view.get_image())
-                plt.title(f"Instance {i} with name {name}")
-                plt.axis("off")
-                plt.show()
+                self.show_instance(instance, f"Instance {i} with name {name}")
 
             # Find a box
             if "box" in name or "tray" in name:
@@ -252,11 +264,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
             if self.show_instances_detected:
-                view = instance.get_best_view()
-                plt.imshow(view.get_image())
-                plt.title(f"Instance {i} with name {name}")
-                plt.axis("off")
-                plt.show()
+                self.show_instance(instance, f"Instance {i} with name {name}")
 
             if self.object_class in name:
                 relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
@@ -466,7 +474,7 @@ class UpdateOperation(ManagedOperation):
         self.intro("Updating the world model.")
         self.robot.move_to_manip_posture()
         time.sleep(2.0)
-        self.robot.arm_to([0.0, 0.4, 0.05, np.pi / 2, -np.pi / 4, 0], blocking=True)
+        self.robot.arm_to([0.0, 0.4, 0.05, np.pi, -np.pi / 4, 0], blocking=True)
         time.sleep(5.0)
         xyt = self.robot.get_base_pose()
         # Now update the world
@@ -474,7 +482,9 @@ class UpdateOperation(ManagedOperation):
         # Delete observations near us, since they contain the arm!!
         self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
 
+        # Notify and move the arm back to normal. Showing the map is optional.
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
@@ -497,23 +507,23 @@ class UpdateOperation(ManagedOperation):
             plt.imshow(self.manager.voxel_map.observations[0].instance)
             plt.show()
 
+        # Describe the scene the robot is operating in
+        scene_graph = self.agent.get_scene_graph()
+
         # Get the current location of the robot
         start = self.robot.get_base_pose()
         instances = self.manager.instance_memory.get_instances()
         receptacle_options = []
         object_options = []
         dist_to_object = float("inf")
+
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
             if self.show_instances_detected:
-                view = instance.get_best_view()
-                plt.imshow(view.get_image())
-                plt.title(f"Instance {i} with name {name}")
-                plt.axis("off")
-                plt.show()
+                self.show_instance(instance)
 
             # Find a box
             if "box" in name or "tray" in name:
@@ -527,6 +537,11 @@ class UpdateOperation(ManagedOperation):
                 else:
                     self.warn(f" - Found a receptacle but could not reach it.")
             elif self.manager.target_object in name:
+                relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
+                if len(relations) == 0:
+                    # This may or may not be what we want, but it certainly is not on the floor
+                    continue
+
                 object_options.append(instance)
                 dist = np.linalg.norm(
                     instance.point_cloud.mean(axis=0).cpu().numpy()[:2] - start[:2]
@@ -569,14 +584,7 @@ class GraspObjectOperation(ManagedOperation):
         self.intro("Grasping the object.")
         self._success = False
         if self.show_object_to_grasp:
-            view = self.manager.current_object.get_best_view()
-            plt.imshow(view.get_image())
-            plt.title(f"Instance {i} with name {name}")
-            plt.axis("off")
-            plt.show()
-
-        # self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
-        # time.sleep(4.0)
+            self.show_instance(self.manager.current_object)
 
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
