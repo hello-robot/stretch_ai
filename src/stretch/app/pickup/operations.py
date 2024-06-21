@@ -575,6 +575,9 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
 
+    # Visual servoing config
+    min_points_to_approach: int = 100
+
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
@@ -594,10 +597,22 @@ class GraspObjectOperation(ManagedOperation):
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
 
+            # Find the best masks
+            class_mask = servo.semantic == instance.get_category_id()
+            instance_mask = servo.instance
+            biggest_mask = None
+            biggest_mask_pts = float("-inf")
+            for iid in np.unique(instance_mask):
+                mask = np.bitwise_and(instance_mask == iid, class_mask)
+                num_pts = sum(mask.flatten())
+                if num_pts > biggest_mask_pts:
+                    biggest_mask = mask
+                    biggest_mask_pts = num_pts
+
+            # Optionally display which object we are servoing to
             if self.show_servo_gui:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
-                mask = servo.semantic == instance.get_category_id()
-                mask = mask.astype(np.uint8) * 255
+                mask = biggest_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
                 servo_ee_rgb = cv2.addWeighted(servo_ee_rgb, 0.5, mask, 0.5, 0, servo_ee_rgb)
@@ -607,7 +622,15 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
-        return False
+            # Optionally show depth and xyz
+            rgb, depth = servo.ee_rgb, servo.ee_depth
+            xyz = self.agent.depth_sensor.get_xyz(depth)
+
+            if sum(mask.flatten()) > self.min_points_to_approach:
+                # Move towards the points
+                pass
+
+        return success
 
     def run(self):
         self.intro("Grasping the object.")
