@@ -624,7 +624,9 @@ class GraspObjectOperation(ManagedOperation):
 
             # Optionally show depth and xyz
             rgb, depth = servo.ee_rgb, servo.ee_depth
-            xyz = self.agent.depth_sensor.get_xyz(depth)
+
+            # Depth should be metric depth from camera
+            print("TODO: compute motion based on these points")
 
             if sum(mask.flatten()) > self.min_points_to_approach:
                 # Move towards the points
