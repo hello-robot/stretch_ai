@@ -585,10 +585,10 @@ class GraspObjectOperation(ManagedOperation):
 
         while True:
             # Get servo observation
-            servo = robot.get_servo_observation()
+            servo = self.robot.get_servo_observation()
 
             # Run semantic segmentation on it
-            servo = semantic_sensor.predict(servo, ee=True)
+            servo = self.agent.semantic_sensor.predict(servo, ee=True)
 
             if self.show_servo_gui:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
