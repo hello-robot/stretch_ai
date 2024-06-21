@@ -72,6 +72,13 @@ def get_arg_parser():
         default=0.5,
         help="Set the scaling factor for the images.",
     )
+    parser.add_argument(
+        "--leader-ip",
+        action="store",
+        type=str,
+        default="192.168.1.169",
+        help="Set the IP of dex teleop leader when running with remote computer",
+    )
 
     return parser
 
@@ -187,9 +194,15 @@ robot_allowed_to_move = True
 # the lift range are outside of this range.
 
 # Minimum distance from the tongs to the camera in meters
-min_dist_from_camera_to_tongs = 0.6  # 0.5
+# min_dist_from_camera_to_tongs = 0.6  # 0.5
 # Maximum distance from the tongs to the camera in meters
-max_dist_from_camera_to_tongs = 1.0  # 1.0
+# max_dist_from_camera_to_tongs = 1.0  # 1.0
+
+# Custom range for ACT demonstrations
+# Minimum distance from the tongs to the camera in meters
+min_dist_from_camera_to_tongs = 0.6
+# Maximum distance from the tongs to the camera in meters
+max_dist_from_camera_to_tongs = 1.2
 
 # Maximum height range of tongs
 max_tongs_height_range = max_dist_from_camera_to_tongs - min_dist_from_camera_to_tongs
