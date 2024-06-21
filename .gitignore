@@ -125,3 +125,6 @@ webcam_calibration_images/
 
 # Policy weights and configs
 policy/
+
+# Data collection folder
+data/
