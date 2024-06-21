@@ -152,3 +152,8 @@ pre-commit install
 ```
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
+
+
+### Docker
+
+Docker build and other instructions are located in the [docker guide](docs/docker.md).
