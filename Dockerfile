@@ -31,6 +31,7 @@ ENV PATH /root/miniforge3/bin:$PATH
 # Run our installation script
 COPY ./src ./src
 COPY install.sh .
+COPY Readme.md .
 RUN chmod +x install.sh
 RUN ./install.sh -y
 
