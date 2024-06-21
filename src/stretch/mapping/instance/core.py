@@ -126,6 +126,14 @@ class Instance:
     """Confidence score of bbox detection"""
     score_aggregation_method: str = "max"
 
+    def get_category_id(self) -> int:
+        """Get the category id of the instance, making sure it's actually an int."""
+        if isinstance(self.category_id, torch.Tensor):
+            return int(self.category_id.item())
+        elif self.category_id is None:
+            return None
+        return int(self.category_id)
+
     def get_image_embedding(self, aggregation_method="max", normalize: bool = True):
         """Get the combined image embedding across all views"""
         view_embeddings = [view.embedding for view in self.instance_views]

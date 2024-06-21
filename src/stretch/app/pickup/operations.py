@@ -1,6 +1,7 @@
 import time
 from typing import Optional
 
+import cv2
 import numpy as np
 from PIL import Image
 from scipy.spatial.transform import Rotation
@@ -592,7 +593,7 @@ class GraspObjectOperation(ManagedOperation):
 
             if self.show_servo_gui:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
-                mask = servo.semantic == instance.category_id
+                mask = servo.semantic == instance.get_category_id()
                 mask = mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
