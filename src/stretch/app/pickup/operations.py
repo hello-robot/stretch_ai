@@ -569,7 +569,7 @@ class GraspObjectOperation(ManagedOperation):
         self.intro("Grasping the object.")
         self._success = False
         if self.show_object_to_grasp:
-            view = instance.get_best_view()
+            view = self.manager.current_object.get_best_view()
             plt.imshow(view.get_image())
             plt.title(f"Instance {i} with name {name}")
             plt.axis("off")
