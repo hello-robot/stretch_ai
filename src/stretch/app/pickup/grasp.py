@@ -26,6 +26,7 @@ def get_task(robot, demo, target_object):
             manager,
         )
         grasp_object.show_object_to_grasp = True
+        grasp_object.servo_to_grasp = True
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:

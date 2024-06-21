@@ -571,13 +571,38 @@ class GraspObjectOperation(ManagedOperation):
     servo_to_grasp: bool = False
     _success: bool = False
     show_object_to_grasp: bool = False
+    show_servo_gui: bool = True
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
-    def visual_servo_to_object(self) -> bool:
+    def visual_servo_to_object(self, instance: Instance) -> bool:
         """Use visual servoing to grasp the object."""
-        raise NotImplementedError("Visual servoing not implemented yet.")
+
+        self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
+        if self.show_servo_gui:
+            self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
+
+        while True:
+            # Get servo observation
+            servo = robot.get_servo_observation()
+
+            # Run semantic segmentation on it
+            servo = semantic_sensor.predict(servo, ee=True)
+
+            if self.show_servo_gui:
+                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+                mask = servo.semantic == instance.category_id
+                mask = mask.astype(np.uint8) * 255
+                mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+                mask[:, :, 0] = 0
+                servo_ee_rgb = cv2.addWeighted(servo_ee_rgb, 0.5, mask, 0.5, 0, servo_ee_rgb)
+                cv2.imshow("servo_ee_rgb", servo_ee_rgb)
+                cv2.waitKey(1)
+                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                if res == ord("q"):
+                    break
+
         return False
 
     def run(self):
@@ -622,7 +647,7 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(joint_state, blocking=True)
 
         if self.servo_to_grasp:
-            self._success = self.visual_servo_to_object()
+            self._success = self.visual_servo_to_object(self.manager.current_object)
         else:
             target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
                 relative_object_xyz, ee_rot, q0=joint_state
