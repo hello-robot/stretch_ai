@@ -23,8 +23,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Install mamba
-RUN wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
-RUN bash Miniforge3-Linux-x86_64.sh -b
+RUN curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+RUN bash Miniforge3-$(uname)-$(uname -m).sh -b
+# Add mamba to the path
+ENV PATH /root/miniforge3/bin:$PATH
 
 # Run our installation script
 COPY install.sh .
