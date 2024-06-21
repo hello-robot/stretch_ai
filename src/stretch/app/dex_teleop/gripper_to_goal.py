@@ -173,11 +173,13 @@ class GripperToGoal:
     def get_current_config(self):
         state = {
             "joint_mobile_base_rotation": 0.0,
+            "theta_vel": self.robot.status["base"]["theta_vel"],
             "joint_lift": self.robot.status["lift"]["pos"],
             "joint_arm_l0": self.robot.status["arm"]["pos"],
             "joint_wrist_pitch": self.robot.status["end_of_arm"]["wrist_pitch"]["pos"],
             "joint_wrist_yaw": self.robot.status["end_of_arm"]["wrist_yaw"]["pos"],
             "joint_wrist_roll": self.robot.status["end_of_arm"]["wrist_roll"]["pos"],
+            "stretch_gripper": self.robot.status["end_of_arm"]["stretch_gripper"]["pos_pct"],
         }
         return state
 
@@ -455,7 +457,36 @@ class GripperToGoal:
                 print()
                 self.robot.sys_thread.stats.pretty_print()
 
-            #####################################################
+    def execute_goal(self, new_goal_configuration):
+        # If motion allowed, command the robot to move to the target configuration
+        if self.robot_allowed_to_move:
+            if nan_in_configuration(new_goal_configuration):
+                print()
+                print("******************************************************************")
+                print(
+                    "WARNING: dex_teleop: new_goal_configuration has a nan, so skipping execution on the robot"
+                )
+                print()
+                print("     new_goal_configuration =", new_goal_configuration)
+                print()
+                print("******************************************************************")
+                print()
+            else:
+                self.robot_move.to_configuration(
+                    new_goal_configuration, self.joints_allowed_to_move
+                )
+                self.robot.pimu.set_fan_on()
+                self.robot.push_command()
+
+        # Print robot status timing stats, if desired.
+        if self.print_robot_status_thread_timing:
+            self.robot.non_dxl_thread.stats.pretty_print()
+            print()
+            self.robot.dxl_end_of_arm_thread.stats.pretty_print()
+            print()
+            self.robot.dxl_head_thread.stats.pretty_print()
+            print()
+            self.robot.sys_thread.stats.pretty_print()
 
 
 if __name__ == "__main__":

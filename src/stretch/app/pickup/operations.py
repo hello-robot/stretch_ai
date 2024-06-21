@@ -1,11 +1,13 @@
 import time
+from typing import Optional
 
 import numpy as np
+from PIL import Image
 from scipy.spatial.transform import Rotation
 from termcolor import colored
 
 from stretch.core.task import Operation
-from stretch.motion.kinematics import STRETCH_GRASP_OFFSET, HelloStretchIdx
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
 
@@ -20,6 +22,7 @@ class ManagedOperation(Operation):
         self.robot_model = self.robot.get_robot_model()
 
     def update(self):
+        print(colored("================ Updating the world model ==================", "blue"))
         self.agent.update()
 
     def attempt(self, message: str):
@@ -28,12 +31,21 @@ class ManagedOperation(Operation):
     def intro(self, message: str):
         print(colored(f"Running {self.name}:", "green"), message)
 
+    def warn(self, message: str):
+        print(colored(f"Warning in {self.name}: {message}", "yellow"))
+
     def error(self, message: str):
         print(colored(f"Error in {self.name}: {message}", "red"))
 
     def cheer(self, message: str):
         """An upbeat message!"""
-        print(colored(f"!!! {self.name}: {message}", "yellow"))
+        print(colored(f"!!! {self.name} !!!: {message}", "green"))
+
+    def plan_to_instance_for_manipulation(self, instance, start, radius_m: float = 0.45):
+        """Manipulation planning wrapper. Plan to instance with a radius around it, ensuring a base location can be found in explored space."""
+        return self.agent.plan_to_instance(
+            instance, start=start, rotation_offset=np.pi / 2, radius_m=radius_m, max_tries=100
+        )
 
 
 class RotateInPlaceOperation(ManagedOperation):
@@ -72,13 +84,19 @@ class SearchForReceptacle(ManagedOperation):
 
         # Update world map
         self.intro("Searching for a receptacle on the floor.")
+        # Must move to nav before we can do anything
+        self.robot.move_to_nav_posture()
+        # Now update the world
         self.update()
 
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
-            self.manager.voxel_map.show(orig=np.zeros(3))
+            xyt = self.robot.get_base_pose()
+            self.agent.voxel_map.show(
+                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
 
         if self.show_instances_detected:
             # Show the last instance image
@@ -94,9 +112,10 @@ class SearchForReceptacle(ManagedOperation):
         # Get the current location of the robot
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
+            self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
@@ -114,29 +133,47 @@ class SearchForReceptacle(ManagedOperation):
                 plt.show()
 
             # Find a box
-            if "box" in name:
+            if "box" in name or "tray" in name:
                 receptacle_options.append(instance)
 
                 # Check to see if we can motion plan to box or not
-                plan = self.manager.agent.plan_to_instance(instance, start=start)
+                plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
                     self.manager.current_receptacle = instance
-                    return
+                    break
+                else:
+                    self.warn(f" - Found a receptacle but could not reach it.")
 
-        print("None found. Moving to frontier.")
         # If no receptacle, pick a random point nearby and just wander around
         if self.manager.current_receptacle is None:
+            print("None found. Try moving to frontier.")
             # Find a point on the frontier and move there
             res = self.manager.agent.plan_to_frontier(start=start)
             if res.success:
-                self.robot.execute_trajectory(res.trajectory, final_timeout=30.0)
+                self.robot.execute_trajectory(
+                    [node.state for node in res.trajectory], final_timeout=10.0
+                )
             else:
                 self.error("Failed to find a reachable frontier.")
                 raise RuntimeError("Failed to find a reachable frontier.")
             # After moving
             self.update()
-            return
+        else:
+            self.cheer(f"Found a receptacle!")
+            view = self.manager.current_receptacle.get_best_view()
+            image = Image.fromarray(view.get_image())
+            image.save("receptacle.png")
+            if self.show_map_so_far:
+                # This shows us what the robot has found so far
+                object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
+                xyt = self.robot.get_base_pose()
+                self.agent.voxel_map.show(
+                    orig=object_xyz,
+                    xyt=xyt,
+                    footprint=self.robot_model.get_footprint(),
+                    planner_visuals=False,
+                )
 
     def was_successful(self) -> bool:
         res = self.manager.current_receptacle is not None
@@ -151,7 +188,13 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
     show_map_so_far: bool = True
-    show_instances_detected: bool = True
+    show_instances_detected: bool = False
+    plan_for_manipulation: bool = True
+    object_class: Optional[str] = None
+
+    def set_target_object_class(self, object_class: str):
+        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
+        self.object_class = object_class
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
@@ -161,15 +204,30 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         self.intro("Find a reachable object on the floor.")
         self._successful = False
 
+        # Set the object class if not set
+        if self.object_class is None:
+            self.object_class = self.manager.target_object
+
         # Update world map
-        self.agent.update()
+        # Switch to navigation posture
+        self.robot.move_to_nav_posture()
+        # Do not update until you are in nav posture
+        self.update()
+
+        if self.show_map_so_far:
+            # This shows us what the robot has found so far
+            xyt = self.robot.get_base_pose()
+            self.agent.voxel_map.show(
+                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
+            self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         if self.show_instances_detected:
             # Show the last instance image
@@ -189,7 +247,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         scene_graph = self.agent.get_scene_graph()
 
         receptacle_options = []
-        print("Check explored instances for reachable receptacles:")
+        print(f"Check explored instances for reachable {self.object_class} instances:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
@@ -200,26 +258,49 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                 plt.axis("off")
                 plt.show()
 
-            if "toy" in name:
+            if self.object_class in name:
                 relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
                 if len(relations) > 0:
                     # We found a matching relation!
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.manager.agent.plan_to_instance(instance, start=start)
+                    plan = self.plan_to_instance_for_manipulation(
+                        instance, start=start, radius_m=0.5
+                    )
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
                         )
                         self.manager.current_object = instance
-                        return
+                        break
 
         # Check to see if there is a visitable frontier
-        print("Nothing found.   Moving to frontier.")
         if self.manager.current_object is None:
+            self.warn(f"No {self.object_class} found. Moving to frontier.")
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
+            if res.success:
+                self.robot.execute_trajectory(
+                    [node.state for node in res.trajectory], final_timeout=10.0
+                )
+            # Update world model once we get to frontier
+            self.update()
+        else:
+            self.cheer(f"Found object of {self.object_class}!")
+            view = self.manager.current_object.get_best_view()
+            image = Image.fromarray(view.get_image())
+            image.save("object.png")
+            if self.show_map_so_far:
+                # This shows us what the robot has found so far
+                object_xyz = self.manager.current_object.point_cloud.mean(axis=0).cpu().numpy()
+                xyt = self.robot.get_base_pose()
+                self.agent.voxel_map.show(
+                    orig=object_xyz,
+                    xyt=xyt,
+                    footprint=self.robot_model.get_footprint(),
+                    planner_visuals=False,
+                )
 
         # TODO: better behavior
         # If no visitable frontier, pick a random point nearby and just wander around
@@ -234,7 +315,7 @@ class PreGraspObjectOperation(ManagedOperation):
     plan = None
     show_object_in_voxel_grid: bool = False
     use_pitch_from_vertical: bool = True
-    grasp_distance_threshold: float = 0.75
+    grasp_distance_threshold: float = 0.8
 
     def can_start(self):
         self.plan = None
@@ -243,10 +324,10 @@ class PreGraspObjectOperation(ManagedOperation):
 
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            # raise RuntimeError(
-            print(
+            self.error(
                 f"{self.name}: [ERROR]: Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         # Get the center of the object point cloud so that we can look at it
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
@@ -309,6 +390,8 @@ class PreGraspObjectOperation(ManagedOperation):
 class NavigateToObjectOperation(ManagedOperation):
 
     plan = None
+    for_manipulation: bool = True
+    be_precise: bool = False
 
     def __init__(self, *args, to_receptacle=False, **kwargs):
         super().__init__(*args, **kwargs)
@@ -326,19 +409,24 @@ class NavigateToObjectOperation(ManagedOperation):
         )
         self.plan = None
         if self.get_target() is None:
+            self.error("no target!")
             return False
 
         start = self.robot.get_base_pose()
         if not self.navigation_space.is_valid(start):
-            raise RuntimeError(
+            self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
+            breakpoint()
 
         # Motion plan to the object
-        plan = self.manager.agent.plan_to_instance(self.get_target(), start=start)
+        plan = self.plan_to_instance_for_manipulation(self.get_target(), start=start)
         if plan.success:
             self.plan = plan
+            self.cheer("Found plan to object!")
             return True
+        self.error("Planning failed!")
+        return False
 
     def run(self):
         self.intro("executing motion plan to the object.")
@@ -348,34 +436,141 @@ class NavigateToObjectOperation(ManagedOperation):
         assert (
             self.plan is not None
         ), "Did you make sure that we had a plan? You should call can_start() before run()."
-        self.robot.execute_trajectory(self.plan, final_timeout=30.0)
+        self.robot.execute_trajectory(self.plan, final_timeout=10.0)
 
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state
-        self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
+        # self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
+        if self.be_precise:
+            self.warn("Moving again to make sure we're close enough to the goal.")
+            self.robot.navigate_to(xyt, blocking=True, timeout=30.0)
 
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""
         return True  # self.robot.in_navigation_mode()
 
 
+class UpdateOperation(ManagedOperation):
+
+    show_instances_detected: bool = True
+    show_map_so_far: bool = True
+
+    def set_target_object_class(self, object_class: str):
+        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
+        self.object_class = object_class
+
+    def can_start(self):
+        return True
+
+    def run(self):
+        self.intro("Updating the world model.")
+        self.robot.move_to_manip_posture()
+        time.sleep(2.0)
+        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        time.sleep(5.0)
+        xyt = self.robot.get_base_pose()
+        # Now update the world
+        self.update()
+        # Delete observations near us, since they contain the arm!!
+        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
+
+        print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+
+        if self.show_map_so_far:
+            # This shows us what the robot has found so far
+            xyt = self.robot.get_base_pose()
+            self.agent.voxel_map.show(
+                orig=np.zeros(3),
+                xyt=xyt,
+                footprint=self.robot_model.get_footprint(),
+                planner_visuals=True,
+            )
+
+        if self.show_instances_detected:
+            # Show the last instance image
+            import matplotlib
+
+            # TODO: why do we need to configure this every time
+            matplotlib.use("TkAgg")
+            import matplotlib.pyplot as plt
+
+            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.show()
+
+        # Get the current location of the robot
+        start = self.robot.get_base_pose()
+        instances = self.manager.instance_memory.get_instances()
+        receptacle_options = []
+        object_options = []
+        print("Check explored instances for reachable receptacles:")
+        for i, instance in enumerate(instances):
+            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+
+            if self.show_instances_detected:
+                view = instance.get_best_view()
+                plt.imshow(view.get_image())
+                plt.title(f"Instance {i} with name {name}")
+                plt.axis("off")
+                plt.show()
+
+            # Find a box
+            if "box" in name or "tray" in name:
+                receptacle_options.append(instance)
+
+                # Check to see if we can motion plan to box or not
+                plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                if plan.success:
+                    print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
+                    self.manager.current_receptacle = instance
+                else:
+                    self.warn(f" - Found a receptacle but could not reach it.")
+            elif self.manager.target_object in name:
+                object_options.append(instance)
+
+                plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                if plan.success:
+                    print(f" - Found a reachable object at {instance.get_best_view().get_pose()}.")
+                    self.manager.current_object = instance
+                else:
+                    self.warn(f" - Found an object of class {name} but could not reach it.")
+
+    def was_successful(self):
+        """We're just taking an image so this is always going to be a success"""
+        return self.manager.current_object is not None
+
+
 class GraspObjectOperation(ManagedOperation):
     """Move the robot to grasp, using the end effector camera."""
 
     use_pitch_from_vertical: bool = True
+    lift_distance: float = 0.2
+    servo_to_grasp: bool = False
     _success: bool = False
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
+    def visual_servo_to_object(self) -> bool:
+        """Use visual servoing to grasp the object."""
+        raise NotImplementedError("Visual servoing not implemented yet.")
+        return False
+
     def run(self):
         self.intro("Grasping the object.")
         self._success = False
+
+        # self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        # time.sleep(4.0)
+
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
         joint_state = obs.joint
         model = self.robot.get_robot_model()
+
+        if joint_state[HelloStretchIdx.GRIPPER] < 0.0:
+            self.robot.open_gripper(blocking=True)
 
         # Get the current base pose of the robot
         xyt = self.robot.get_base_pose()
@@ -403,42 +598,46 @@ class GraspObjectOperation(ManagedOperation):
         # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
-        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
-            relative_object_xyz, ee_rot, q0=joint_state
-        )
-        if not success:
-            print("Failed to find a valid IK solution.")
-            self._success = False
-            return
-        elif (
-            target_joint_state[HelloStretchIdx.ARM] < 0
-            or target_joint_state[HelloStretchIdx.LIFT] < 0
-        ):
-            print(
-                f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
+        if self.servo_to_grasp:
+            self._success = self.visual_servo_to_object()
+        else:
+            target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+                relative_object_xyz, ee_rot, q0=joint_state
             )
-            self._success = False
-            return
+            target_joint_state[HelloStretchIdx.BASE_X] -= 0.04
+            if not success:
+                print("Failed to find a valid IK solution.")
+                self._success = False
+                return
+            elif (
+                target_joint_state[HelloStretchIdx.ARM] < 0
+                or target_joint_state[HelloStretchIdx.LIFT] < 0
+            ):
+                print(
+                    f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
+                )
+                self._success = False
+                return
 
-        # Lift the arm up a bit
-        target_joint_state_lifted = target_joint_state.copy()
-        target_joint_state_lifted[HelloStretchIdx.LIFT] += 0.5
+            # Lift the arm up a bit
+            target_joint_state_lifted = target_joint_state.copy()
+            target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
-        # Move to the target joint state
-        print(f"{self.name}: Moving to grasp position.")
-        self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(3.0)
-        print(f"{self.name}: Closing the gripper.")
-        self.robot.close_gripper(blocking=True)
-        time.sleep(2.0)
-        print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-        self.robot.arm_to(target_joint_state_lifted, blocking=True)
-        time.sleep(3.0)
-        print(f"{self.name}: Return arm to initial configuration.")
-        self.robot.arm_to(joint_state, blocking=True)
-        time.sleep(3.0)
-        print(f"{self.name}: Done.")
-        self._success = True
+            # Move to the target joint state
+            print(f"{self.name}: Moving to grasp position.")
+            self.robot.arm_to(target_joint_state, blocking=True)
+            time.sleep(3.0)
+            print(f"{self.name}: Closing the gripper.")
+            self.robot.close_gripper(blocking=True)
+            time.sleep(2.0)
+            print(f"{self.name}: Lifting the arm up so as not to hit the base.")
+            self.robot.arm_to(target_joint_state_lifted, blocking=False)
+            time.sleep(2.0)
+            print(f"{self.name}: Return arm to initial configuration.")
+            self.robot.arm_to(joint_state, blocking=True)
+            time.sleep(3.0)
+            print(f"{self.name}: Done.")
+            self._success = True
 
     def was_successful(self):
         """Return true if successful"""
@@ -463,8 +662,44 @@ class GoToNavOperation(ManagedOperation):
 class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
-    place_distance_threshold: float = 0.75
+    place_distance_threshold: float = 0.8
+    lift_distance: float = 0.2
     place_height_margin: float = 0.1
+    show_place_in_voxel_grid: bool = False
+    place_step_size: float = 0.15
+    use_pitch_from_vertical: bool = True
+
+    def get_target(self):
+        return self.manager.current_receptacle
+
+    def get_target_center(self):
+        return self.get_target().point_cloud.mean(axis=0)
+
+    def sample_placement_position(self, xyt) -> np.ndarray:
+        """Sample a placement position for the object on the receptacle."""
+        if self.get_target() is None:
+            raise RuntimeError("no target set")
+        target = self.get_target()
+        center_xyz = self.get_target_center()
+        print(" - Placing object on receptacle at", center_xyz)
+
+        # Get the point cloud of the object and find distances to robot
+        distances = (target.point_cloud[:, :2] - xyt[:2]).norm(dim=1)
+        # Choose closest point to xyt
+        idx = distances.argmin()
+        # Get the point
+        point = target.point_cloud[idx].cpu().numpy()
+        print(" - Closest point to robot is", point)
+        print(" - Distance to robot is", distances[idx])
+        # Compute distance to the center of the object
+        distance = np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy())
+        # Take a step towards the center of the object
+        dxyz = (center_xyz - point).cpu().numpy()
+        point[:2] = point[:2] + (
+            dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
+        )
+        print(" - After taking a step towards the center of the object, we are at", point)
+        return point
 
     def can_start(self) -> bool:
         self.attempt(
@@ -473,14 +708,33 @@ class PlaceObjectOperation(ManagedOperation):
         if self.manager.current_object is None or self.manager.current_receptacle is None:
             self.error("Object or receptacle not found.")
             return False
-        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        object_xyz = self.get_target_center()
         start = self.robot.get_base_pose()
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
         if dist > self.place_distance_threshold:
             self.error(f"Object is too far away to grasp: {dist}")
             return False
-        self.cheer(f"Object is probably close enough to grasp: {dist}")
+        self.cheer(f"Object is probably close enough to place upon: {dist}")
         return True
+
+    def _get_place_joint_state(
+        self, pos: np.ndarray, quat: np.ndarray, joint_state: Optional[np.ndarray] = None
+    ):
+        """Use inverse kinematics to compute joint position for (pos, quat) in base frame.
+
+        Args:
+            pos: 3D position of the target in the base frame
+            quat: 4D quaternion of the target in the base frame
+            joint_state: current joint state of the robot (optional) for inverse kinematics
+        """
+        if joint_state is None:
+            joint_state = self.robot.get_observation().joint
+
+        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+            pos, quat, q0=joint_state
+        )
+
+        return target_joint_state, success
 
     def run(self) -> None:
         self.intro("Placing the object on the receptacle.")
@@ -491,36 +745,54 @@ class PlaceObjectOperation(ManagedOperation):
         joint_state = obs.joint
         model = self.robot.get_robot_model()
 
-        # End effector position and orientation in global coordinates
-        ee_pos, ee_rot = model.manip_fk(joint_state)
-
         # Switch to place position
-        print("Move to manip posture")
+        print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
 
         # Get object xyz coords
-        object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0)
         xyt = self.robot.get_base_pose()
+        placement_xyz = self.sample_placement_position(xyt)
+        print(" - Place object at", placement_xyz)
 
         # Get the center of the object point cloud so that we can place there
-        relative_object_xyz = point_global_to_base(object_xyz, xyt)
+        relative_object_xyz = point_global_to_base(placement_xyz, xyt)
+
+        # Compute the angles necessary
+        if self.use_pitch_from_vertical:
+            ee_pos, ee_rot = model.manip_fk(joint_state)
+            # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
+            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
+            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            pitch_from_vertical = np.arctan2(dy, dz)
+            # current_ee_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+        else:
+            pitch_from_vertical = 0.0
+
+        # Joint compute a joitn state goal and associated ee pos/rot
+        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+        self.robot.arm_to(joint_state)
+        ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # Get max xyz
-        max_xyz = self.manager.current_receptacle.point_cloud.max(axis=0)[0]
+        max_xyz = self.get_target().point_cloud.max(axis=0)[0]
 
         # Placement is at xy = object_xyz[:2], z = max_xyz[2] + margin
         place_xyz = np.array(
             [relative_object_xyz[0], relative_object_xyz[1], max_xyz[2] + self.place_height_margin]
         )
 
-        target_joint_state, _, _, success, info = self.robot_model.manip_ik_for_grasp_frame(
-            place_xyz, ee_rot, q0=joint_state
-        )
+        if self.show_place_in_voxel_grid:
+            self.agent.voxel_map.show(
+                orig=place_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
+            )
 
-        # Compute the joint angles for placement using manip ik
-        target_joint_state, success, info = self.robot_model.manip_ik(
-            (place_xyz, ee_rot), q0=joint_state
+        target_joint_state, success = self._get_place_joint_state(
+            pos=place_xyz, quat=ee_rot, joint_state=joint_state
         )
+        self.attempt(f"Trying to place the object on the receptacle at {place_xyz}.")
+        if not success:
+            self.error("Could not place object!")
+            return
 
         # Move to the target joint state
         self.robot.arm_to(target_joint_state, blocking=True)
@@ -532,7 +804,7 @@ class PlaceObjectOperation(ManagedOperation):
 
         # Move directly up
         target_joint_state_lifted = target_joint_state.copy()
-        target_joint_state_lifted[HelloStretchIdx.LIFT] += 0.5
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
         self.robot.arm_to(target_joint_state_lifted, blocking=True)
         time.sleep(5.0)
 
@@ -541,6 +813,8 @@ class PlaceObjectOperation(ManagedOperation):
         time.sleep(2.0)
         self._successful = True
 
+        self.cheer("We believe we successfully placed the object.")
+
     def was_successful(self):
-        self.error("Not implemented.")
+        self.error("Success detection not implemented.")
         return self._successful

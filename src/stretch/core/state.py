@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 
-import sophus as sp
+import sophuspy as sp
 
 
 @dataclass

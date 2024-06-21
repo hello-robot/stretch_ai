@@ -56,6 +56,24 @@ def serve_realsense(camarr_port, camb64_port, exposure: str = "low", sensor_type
         seer.send_imagery_as_base64_str(camb64_sock, msg)
 
 
+def serve_aruco(info_port, add_port, delete_port):
+    import stretch.comms.send_aruco as sa
+
+    (
+        info_sock,
+        info_poll,
+        add_sock,
+        add_poll,
+        delete_sock,
+        delete_poll,
+        marker_db,
+    ) = sa.initialize(info_port, add_port, delete_port)
+    while True:
+        sa.send_marker_info(info_sock, info_poll, marker_db)
+        sa.add_marker(add_sock, add_poll, marker_db)
+        sa.delete_marker(delete_sock, delete_poll, marker_db)
+
+
 class StretchServer:
     def _add_body_process(self, function, port: int) -> int:
         """Add a basic comms process, and let us know which port we are on next."""
@@ -92,6 +110,24 @@ class StretchServer:
         self._processes.append(process)
         return port
 
+    def _add_aruco_process(self, function, port: int) -> int:
+        port += 1
+        info_port = port
+        port += 1
+        add_port = port
+        port += 1
+        delete_port = port
+        process = multiprocessing.Process(
+            target=function,
+            args=(
+                info_port,
+                add_port,
+                delete_port,
+            ),
+        )
+        self._processes.append(process)
+        return port
+
     def __init__(
         self,
         port_offset: Optional[int] = None,
@@ -123,6 +159,7 @@ class StretchServer:
             return serve_realsense(port1, port2, exposure=head_exposure, sensor_type="d435i")
 
         port = self._add_cam_process(serve_head_realsense, port)
+        port = self._add_aruco_process(serve_aruco, port)
         print("Server is done adding procs.")
 
     def spin(self):

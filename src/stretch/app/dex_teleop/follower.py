@@ -70,6 +70,7 @@ class DexTeleopFollower:
             self.robot_move.print_settings()
 
             self.robot_move.to_configuration(self.starting_configuration, speed="default")
+            self.robot.pimu.set_fan_on()
             self.robot.push_command()
             self.robot.wait_command()
 
@@ -114,7 +115,7 @@ class DexTeleopFollower:
         goal_recv_socket.setsockopt(zmq.RCVHWM, 1)
         goal_recv_socket.setsockopt(zmq.CONFLATE, 1)
         # goal_recv_address = 'tcp://10.1.10.71:5555'
-        goal_recv_address = "tcp://192.168.1.10:5555"
+        goal_recv_address = "tcp://192.168.1.169:5555"
         goal_recv_socket.connect(goal_recv_address)
 
         # save the socket
@@ -147,9 +148,9 @@ class DexTeleopFollower:
                     pp.pprint(goal_dict)
                 if HEAD_CONFIG in goal_dict:
                     self.set_head_config(goal_dict[HEAD_CONFIG])
-                if EE_POS in goal_dict:
+                if "stretch_gripper" in goal_dict:
                     # We have received a spatial goal and will do IK to move the robot into position
-                    self.gripper_to_goal.update_goal(**goal_dict)
+                    self.gripper_to_goal.execute_goal(goal_dict)
             loop_timer.mark_end()
             if print_timing:
                 loop_timer.pretty_print()
@@ -249,7 +250,6 @@ class DexTeleopFollower:
                 t2 - t1,
                 f"{len(compressed_color_image)=}",
             )
-            # breakpoint()
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -264,8 +264,6 @@ class DexTeleopFollower:
                 "ee_cam/color_image/shape": color_image.shape,
                 "ee_cam/depth_image": compressed_depth_image,
                 "ee_cam/depth_image/shape": depth_image.shape,
-                # "ee_cam/color_image": color_image,
-                # "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,

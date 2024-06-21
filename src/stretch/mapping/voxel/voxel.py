@@ -1004,6 +1004,7 @@ class SparseVoxelMap(object):
         norm: float = 255.0,
         xyt: Optional[np.ndarray] = None,
         footprint: Optional[Footprint] = None,
+        add_planner_visuals: bool = True,
         **backend_kwargs,
     ):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
@@ -1020,17 +1021,18 @@ class SparseVoxelMap(object):
         obstacles, explored = self.get_2d_map()
         traversible = explored & ~obstacles
 
-        geoms += self._get_boxes_from_points(traversible, [0, 1, 0])
-        geoms += self._get_boxes_from_points(obstacles, [1, 0, 0])
+        if add_planner_visuals:
+            geoms += self._get_boxes_from_points(traversible, [0, 1, 0])
+            geoms += self._get_boxes_from_points(obstacles, [1, 0, 0])
 
-        if xyt is not None and footprint is not None:
-            geoms += self._get_boxes_from_points(
-                footprint.get_rotated_mask(self.grid_resolution, float(xyt[2])),
-                [0, 0, 1],
-                is_map=False,
-                height=0.1,
-                offset=xyt[:2],
-            )
+            if xyt is not None and footprint is not None:
+                geoms += self._get_boxes_from_points(
+                    footprint.get_rotated_mask(self.grid_resolution, float(xyt[2])),
+                    [0, 0, 1],
+                    is_map=False,
+                    height=0.1,
+                    offset=xyt[:2],
+                )
 
         if instances:
             self._get_instances_open3d(geoms)
@@ -1079,6 +1081,18 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
+    def delete_obstacles(
+        self,
+        bounds: Optional[np.ndarray] = None,
+        point: Optional[np.ndarray] = None,
+        radius: Optional[float] = None,
+    ) -> None:
+        """Delete obstacles from the map"""
+        self.voxel_pcd.remove(bounds, point, radius)
+
+        # Force recompute of 2d map
+        self.get_2d_map()
+
     def _show_open3d(
         self,
         instances: bool,
@@ -1086,12 +1100,15 @@ class SparseVoxelMap(object):
         norm: float = 255.0,
         xyt: Optional[np.ndarray] = None,
         footprint: Optional[Footprint] = None,
+        planner_visuals: bool = True,
         **backend_kwargs,
     ):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
 
         # get geometries so we can use them
-        geoms = self._get_open3d_geometries(instances, orig, norm, xyt=xyt, footprint=footprint)
+        geoms = self._get_open3d_geometries(
+            instances, orig, norm, xyt=xyt, footprint=footprint, add_planner_visuals=planner_visuals
+        )
 
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)

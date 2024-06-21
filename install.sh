@@ -4,7 +4,7 @@
 export PYTORCH_VERSION=2.1.2
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-ENV_NAME=stretchpy
+ENV_NAME=stretchpy-2024-06-11-v2
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 echo "=============================================="
@@ -49,12 +49,19 @@ else
 			exit 1;;
 	esac
 fi
+
+# Exit immediately if anything fails
+set -e
+
 mamba env remove -n $ENV_NAME -y
 mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y 
 source activate $ENV_NAME
 
 # Now install pytorch3d a bit faster
 mamba install -c fvcore -c iopath -c conda-forge fvcore iopath -y
+
+echo "Install a version of setuptools for which pytorch3d and clip work."
+pip install setuptools==69.5.1
 
 pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
@@ -64,6 +71,41 @@ pip install -e ./src[dev]
 # TODO: should we remove this?
 # Open3d is an optional dependency - not included in setup.py since not supported on 3.12
 # pip install open3d scikit-fmm
+#
+#echo 
+#
+echo ""
+echo "---------------------------------------------"
+echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
+echo "Will be installed to: $PWD/third_party/Detic"
+echo "The third_party folder will be removed!"
+read -p "Do you want to proceed? (y/n) " yn
+case $yn in
+	y ) echo "Starting installation...";;
+	n ) echo "Exiting...";
+		exit;;
+	* ) echo Invalid response!;
+		exit 1;;
+esac
+git submodule update --init --recursive
+rm -rf third_party
+mkdir -p third_party
+cd third_party
+# under your working directory
+git clone git@github.com:facebookresearch/detectron2.git
+cd detectron2
+pip install -e .
+
+cd ../../src/stretch/perception/detection/detic/Detic
+# Make sure it's up to date
+git submodule update --init --recursive
+pip install -r requirements.txt
+
+# cd ../../src/stretch/perception/detection/detic/Detic
+# Create folder for checkpoints and download
+mkdir -p models
+echo "Download DETIC checkpoint..."
+wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
 echo "=============================================="
 echo "         INSTALLATION COMPLETE"

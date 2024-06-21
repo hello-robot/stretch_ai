@@ -15,35 +15,31 @@ from .manager import PickupManager
 
 @click.command()
 @click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
-@click.option("--recv_port", default=4401, help="Port to receive messages from the robot")
-@click.option("--send_port", default=4402, help="Port to send messages to the robot")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--local",
     is_flag=True,
     help="Set if we are executing on the robot and not on a remote computer",
 )
+@click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option(
-    "--parameter_file", default="config/default_planner.yaml", help="Path to parameter file"
+    "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
 )
 def main(
     robot_ip: str = "192.168.1.15",
-    recv_port: int = 4401,
-    send_port: int = 4402,
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     device_id: int = 0,
     verbose: bool = False,
     show_intermediate_maps: bool = False,
     reset: bool = False,
+    target_object: str = "shoe",
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
-        recv_port=recv_port,
-        send_port=send_port,
         use_remote_computer=(not local),
         parameters=parameters,
     )
@@ -65,14 +61,18 @@ def main(
 
     # After the robot has started...
     try:
-        manager = PickupManager(demo)
+        manager = PickupManager(demo, target_object=target_object)
         task = manager.get_task(add_rotate=False)
     except Exception as e:
         print(f"Error creating task: {e}")
         robot.stop()
-        return
+        raise e
 
-    task.execute()
+    task.run()
+
+    if reset:
+        # Send the robot home at the end!
+        demo.go_home()
 
     # At the end, disable everything
     robot.stop()
