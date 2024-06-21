@@ -837,6 +837,12 @@ class HelloStretchKinematics:
                 f"{self.name}: graspable objects should be above the ground, got this target position: {ee_pos}"
             )
 
+        if len(q0) != self._manip_dof:
+            assert (
+                len(q0) == self.dof
+            ), f"Joint states size must be either full = {self.dof} or manipulator = {self._manip_dof} dof"
+            q0 = self._to_manip_format(q0)
+
         target_joint_state, success, info = self.manip_ik((ee_pos, ee_rot), q0=q0)
         return target_joint_state, ee_pos, ee_rot, success, info
 
