@@ -141,7 +141,11 @@ class PinocchioIKSolver:
         if link_name is None:
             frame_idx = self.ee_frame_idx
         else:
-            frame_idx = [f.name for f in self.model.frames].index(link_name)
+            try:
+                frame_idx = [f.name for f in self.model.frames].index(link_name)
+            except ValueError:
+                logger.error(f"Unknown link_name {link_name}. Defaulting to end-effector")
+                frame_idx = self.ee_frame_idx
         q_model = self._qmap_control2model(config)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
         pinocchio.updateFramePlacement(self.model, self.data, frame_idx)
