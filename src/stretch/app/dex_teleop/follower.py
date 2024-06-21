@@ -250,7 +250,6 @@ class DexTeleopFollower:
                 t2 - t1,
                 f"{len(compressed_color_image)=}",
             )
-            # breakpoint()
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
@@ -265,8 +264,6 @@ class DexTeleopFollower:
                 "ee_cam/color_image/shape": color_image.shape,
                 "ee_cam/depth_image": compressed_depth_image,
                 "ee_cam/depth_image/shape": depth_image.shape,
-                # "ee_cam/color_image": color_image,
-                # "ee_cam/depth_image": depth_image,
                 "ee_cam/depth_scale": depth_scale,
                 "ee_cam/image_gamma": self.gamma,
                 "ee_cam/image_scaling": self.scaling,
