@@ -1,4 +1,5 @@
 import time
+import timeit
 from typing import Optional
 
 import cv2
