@@ -30,6 +30,11 @@ sudo usermod -aG docker $USER
 sudo systemctl restart docker
 ```
 
+If necessary, you can apply new group changes to current session:
+```
+newgrp docker
+```
+
 ## Building the Docker Image
 
 To build the Docker image, clone this repository and run the following command in the root directory of the repository:
