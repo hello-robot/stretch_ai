@@ -9,11 +9,15 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
+import hydra
 import yacs.config
 import yaml
 from loguru import logger
 
 import stretch
+
+CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "config")
+CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
 
 
 class Config(yacs.config.CfgNode):
@@ -21,6 +25,11 @@ class Config(yacs.config.CfgNode):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, new_allowed=True)
+
+
+def get_full_config_path(ext: str) -> Path:
+    """Returns full path to a particular file"""
+    return os.path.join(CONFIG_ROOT, ext)
 
 
 def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
@@ -31,11 +40,7 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         path: path to our code's config
         opts: command line arguments overriding the config
     """
-    try:
-        if os.environ["STRETCHPY_ROOT"]:
-            path = os.path.join(os.environ["STRETCHPY_ROOT"], path)
-    except KeyError:
-        logger.warning("STRETCHPY_ROOT environment variable not set when trying to read configs!")
+    path = get_full_config_path(path)
 
     # Start with our code's config
     config = Config()
@@ -63,10 +68,6 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
     return config, config_str
 
 
-# New configuration system
-CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
-
-
 def load_config(visualize: bool = False, print_images: bool = True, config_path=None, **kwargs):
     """Load config path for real world experiments and use proper presets. This is based on the version from HomeRobot, and is designed therefore to work with Habitat."""
     config, config_str = get_config(config_path)
@@ -79,3 +80,11 @@ def load_config(visualize: bool = False, print_images: bool = True, config_path=
         raise RuntimeError("No ground truth semantics in the real world!")
     config.freeze()
     return config
+
+
+def get_control_config(cfg_name):
+    """Simpler version of the config utility for opening config"""
+    with hydra.initialize_config_dir(CONTROL_CONFIG_DIR):
+        cfg = hydra.compose(config_name=cfg_name)
+
+    return cfg

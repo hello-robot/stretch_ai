@@ -9,8 +9,8 @@ from typing import Optional, Tuple
 import numpy as np
 from omegaconf import DictConfig
 
-from stretch.motion.utils.config import get_control_config
 from stretch.motion.utils.geometry import normalize_ang_error
+from stretch.utils.config import get_control_config
 
 from .feedback.velocity_controllers import DDVelocityControlNoplan
 

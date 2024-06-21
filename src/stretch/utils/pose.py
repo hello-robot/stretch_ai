@@ -3,9 +3,9 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import numpy as np
-import quaternion
 import torch
 import trimesh.transformations as tra
+from scipy.spatial.transform import Rotation
 
 # Code adapted from the rotation continuity repo (https://github.com/papagina/RotationContinuity)
 
@@ -112,11 +112,12 @@ def get_l2_distance(x1, x2, y1, y2):
 def get_pose(position, rotation):
     x = -position[2]
     y = -position[0]
-    axis = quaternion.as_euler_angles(rotation)[0]
+    euler_angles = Rotation.from_quaternion(rotation).as_euler()
+    axis = euler_angles[0]
     if (axis % (2 * np.pi)) < 0.1 or (axis % (2 * np.pi)) > 2 * np.pi - 0.1:
-        o = quaternion.as_euler_angles(rotation)[1]
+        o = euler_angles[1]
     else:
-        o = 2 * np.pi - quaternion.as_euler_angles(rotation)[1]
+        o = 2 * np.pi - euler_angles[1]
     if o > np.pi:
         o -= 2 * np.pi
     return x, y, o

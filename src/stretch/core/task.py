@@ -119,7 +119,7 @@ class Task:
         on_success = self._operations[on_success_name]
         operation.on_success = on_success
 
-    def execute(self):
+    def run(self):
         """Start the task. This is a blocking loop which will continue until there are no operations left to execute."""
         self.current_operation = self.initial_operation
         if self.current_operation is None:

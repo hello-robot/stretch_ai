@@ -2,7 +2,7 @@
 # Encoder is used to compute per-object embeddings.
 encoder: "normalized_clip"
 encoder_args: "ViT-B/32"
-open_vocab_category_map_file: config/example_cat_map.json
+open_vocab_category_map_file: example_cat_map.json
 
 # Sparse Voxel Map parameters
 voxel_size: 0.05
@@ -41,7 +41,7 @@ motion:
   min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
 
 # Exploration
-in_place_rotation_steps: 0
+in_place_rotation_steps: 8
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
@@ -49,7 +49,7 @@ instance_memory:
   min_instance_thickness: 0.01
   min_instance_vol: 1e-6
   max_instance_vol: 10.0
-  min_instance_height: 0.05
+  min_instance_height: 0.01
   max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.2

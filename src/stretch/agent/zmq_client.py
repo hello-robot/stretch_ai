@@ -12,6 +12,7 @@ import numpy as np
 import zmq
 from loguru import logger
 
+import stretch.utils.compression as compression
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
@@ -27,11 +28,42 @@ from stretch.utils.point_cloud import show_point_cloud
 
 
 class HomeRobotZmqClient(RobotClient):
+
+    update_control_mode_from_full_obs: bool = False
+    update_base_pose_from_full_obs: bool = False
+    num_state_report_steps: int = 10000
+
+    def _create_recv_socket(
+        self,
+        port: int,
+        robot_ip: str,
+        use_remote_computer: bool,
+        message_type: Optional[str] = "observations",
+    ):
+        # Receive state information
+        recv_socket = self.context.socket(zmq.SUB)
+        recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
+        recv_socket.setsockopt(zmq.SNDHWM, 1)
+        recv_socket.setsockopt(zmq.RCVHWM, 1)
+        recv_socket.setsockopt(zmq.CONFLATE, 1)
+
+        # Use remote computer or whatever
+        if use_remote_computer:
+            recv_address = "tcp://" + robot_ip + ":" + str(port)
+        else:
+            recv_address = "tcp://" + "127.0.0.1" + ":" + str(port)
+
+        print(f"Connecting to {recv_address} to receive {message_type}...")
+        recv_socket.connect(recv_address)
+        return recv_socket
+
     def __init__(
         self,
         robot_ip: str = "192.168.1.15",
         recv_port: int = 4401,
         send_port: int = 4402,
+        recv_state_port: int = 4403,
+        recv_servo_port: int = 4404,
         parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
@@ -82,12 +114,16 @@ class HomeRobotZmqClient(RobotClient):
         # Create ZMQ sockets
         self.context = zmq.Context()
 
-        # Receive state information
-        self.recv_socket = self.context.socket(zmq.SUB)
-        self.recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
-        self.recv_socket.setsockopt(zmq.SNDHWM, 1)
-        self.recv_socket.setsockopt(zmq.RCVHWM, 1)
-        self.recv_socket.setsockopt(zmq.CONFLATE, 1)
+        print("-------- HOME-ROBOT ROS2 ZMQ CLIENT --------")
+        self.recv_socket = self._create_recv_socket(
+            self.recv_port, robot_ip, use_remote_computer, message_type="observations"
+        )
+        self.recv_state_socket = self._create_recv_socket(
+            recv_state_port, robot_ip, use_remote_computer, message_type="low level state"
+        )
+        self.recv_servo_socket = self._create_recv_socket(
+            recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
+        )
 
         # SEnd actions back to the robot for execution
         self.send_socket = self.context.socket(zmq.PUB)
@@ -97,34 +133,53 @@ class HomeRobotZmqClient(RobotClient):
 
         # Use remote computer or whatever
         if use_remote_computer:
-            self.recv_address = "tcp://" + robot_ip + ":" + str(self.recv_port)
             self.send_address = "tcp://" + robot_ip + ":" + str(self.send_port)
         else:
-            self.recv_address = "tcp://" + "127.0.0.1" + ":" + str(self.recv_port)
             self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
 
-        print("-------- HOME-ROBOT ROS2 ZMQ CLIENT --------")
-        print(f"Connecting to {self.recv_address} to receive observations...")
-        self.recv_socket.connect(self.recv_address)
         print(f"Connecting to {self.send_address} to send action messages...")
         self.send_socket.connect(self.send_address)
         print("...connected.")
 
         self._obs_lock = Lock()
         self._act_lock = Lock()
+        self._state_lock = Lock()
+        self._servo_lock = Lock()
 
-    def get_base_pose(self) -> np.ndarray:
-        """Get the current pose of the base"""
-        with self._obs_lock:
-            t0 = timeit.default_timer()
-            while self._obs is None:
-                time.sleep(0.1)
-                if timeit.default_timer() - t0 > 5.0:
-                    logger.error("Timeout waiting for observation")
+    def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint positions"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
                     return None
-            gps = self._obs["gps"]
-            compass = self._obs["compass"]
-        return np.concatenate([gps, compass], axis=-1)
+            joint_positions = self._state["joint_positions"]
+        return joint_positions
+
+    def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current pose of the base"""
+        t0 = timeit.default_timer()
+        if self.update_base_pose_from_full_obs:
+            with self._obs_lock:
+                while self._obs is None:
+                    time.sleep(0.01)
+                    if timeit.default_timer() - t0 > timeout:
+                        logger.error("Timeout waiting for observation")
+                        return None
+                gps = self._obs["gps"]
+                compass = self._obs["compass"]
+                xyt = np.concatenate([gps, compass], axis=-1)
+        else:
+            with self._state_lock:
+                while self._state is None:
+                    time.sleep(1e-4)
+                    if timeit.default_timer() - t0 > timeout:
+                        logger.error("Timeout waiting for state message")
+                        return None
+                xyt = self._state["base_pose"]
+        return xyt
 
     def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
         """Move the arm to a particular joint configuration.
@@ -172,7 +227,9 @@ class HomeRobotZmqClient(RobotClient):
         """Reset everything in the robot's internal state"""
         self._control_mode = None
         self._next_action = dict()
-        self._obs = None
+        self._obs = None  # Full observation includes high res images and camera pose, no EE camera
+        self._state = None  # Low level state includes joint angles and base XYT
+        self._servo = None  # Visual servoing state includes smaller images
         self._thread = None
         self._finish = False
         self._last_step = -1
@@ -252,8 +309,9 @@ class HomeRobotZmqClient(RobotClient):
         angle_threshold: Optional[float] = None,
         min_steps_not_moving: Optional[int] = 1,
         goal_angle: Optional[float] = None,
+        goal_angle_threshold: Optional[float] = 0.1,
     ):
-        t0 = timeit.default_timer()
+        print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
         last_ang = None
         not_moving_count = 0
@@ -263,15 +321,27 @@ class HomeRobotZmqClient(RobotClient):
             angle_threshold = self._angle_threshold
         if min_steps_not_moving is None:
             min_steps_not_moving = self._min_steps_not_moving
+        t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
                 if self._obs is not None:
-                    pos = self._obs["gps"]
-                    ang = self._obs["compass"][0]
+
+                    if not self._obs["at_goal"]:
+                        t0 = timeit.default_timer()
+                        continue
+                    if self.update_base_pose_from_full_obs:
+                        pos = self._obs["gps"]
+                        ang = self._obs["compass"][0]
+                    else:
+                        pos = self._state["base_pose"][:2]
+                        ang = self._state["base_pose"][2]
                     moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
                     angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
                     if goal_angle is not None:
                         angle_dist_to_goal = angle_difference(ang, goal_angle)
+                        at_goal = angle_dist_to_goal < goal_angle_threshold
+                    else:
+                        at_goal = True
                     not_moving = (
                         last_pos is not None
                         and moved_dist < moving_threshold
@@ -285,7 +355,7 @@ class HomeRobotZmqClient(RobotClient):
                     last_ang = ang
                     if verbose:
                         print(
-                            f"Waiting for step={block_id} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
+                            f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
                         )
                         if goal_angle is not None:
                             print(
@@ -294,6 +364,7 @@ class HomeRobotZmqClient(RobotClient):
                     if (
                         self._last_step >= block_id
                         and self._obs["at_goal"]
+                        and at_goal
                         and not_moving_count > min_steps_not_moving
                     ):
                         break
@@ -323,13 +394,21 @@ class HomeRobotZmqClient(RobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            self._control_mode = obs["control_mode"]
+            if self.update_control_mode_from_full_obs:
+                self._control_mode = obs["control_mode"]
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = self._last_step
 
+    def _update_state(self, state):
+        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reseverd for higher level control."""
+        with self._state_lock:
+            self._state = state
+            if not self.update_control_mode_from_full_obs:
+                self._control_mode = state["control_mode"]
+
     def get_observation(self):
-        """Get the current observation"""
+        """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
         with self._obs_lock:
             if self._obs is None:
                 return None
@@ -387,7 +466,7 @@ class HomeRobotZmqClient(RobotClient):
         pos_err_threshold: float = 0.2,
         rot_err_threshold: float = 0.75,
         verbose: bool = False,
-        timeout: float = 10.0,
+        timeout: float = 20.0,
     ) -> bool:
         """Wait until the robot has reached a configuration... but only roughly. Used for trajectory execution.
 
@@ -403,7 +482,7 @@ class HomeRobotZmqClient(RobotClient):
         _delay = 1.0 / rate
         xy = xyt[:2]
         if verbose:
-            logger.info(f"Waiting for {xyt}, threshold = {pos_err_threshold}")
+            print(f"Waiting for {xyt}, threshold = {pos_err_threshold}")
         # Save start time for exiting trajectory loop
         t0 = timeit.default_timer()
         while not self._finish:
@@ -416,14 +495,17 @@ class HomeRobotZmqClient(RobotClient):
             # if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
             #     print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
             if verbose:
-                logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
+                # logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
+                print(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
             if pos_err < pos_err_threshold and rot_err < rot_err_threshold:
                 # We reached the goal position
                 return True
             t2 = timeit.default_timer()
             dt = t2 - t1
             if t2 - t0 > timeout:
-                logger.warning("Could not reach goal in time: " + str(xyt))
+                # logger.warning("Could not reach goal in time: " + str(xyt))
+                print("[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: " + str(xyt))
+                breakpoint()
                 return False
             time.sleep(max(0, _delay - (dt)))
         return False
@@ -472,9 +554,9 @@ class HomeRobotZmqClient(RobotClient):
                 continue
 
             self._seq_id += 1
-            output["rgb"] = cv2.imdecode(output["rgb"], cv2.IMREAD_COLOR)
+            output["rgb"] = compression.from_jpg(output["rgb"])
             compressed_depth = output["depth"]
-            depth = cv2.imdecode(compressed_depth, cv2.IMREAD_UNCHANGED)
+            depth = compression.from_jp2(compressed_depth)
             output["depth"] = depth / 1000.0
 
             if camera is None:
@@ -501,11 +583,109 @@ class HomeRobotZmqClient(RobotClient):
                 print(f"time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}")
             t0 = timeit.default_timer()
 
+    def update_servo(self, message):
+        """Servo messages"""
+        if message is None or self._state is None:
+            return
+
+        # color_image = compression.from_webp(message["ee_cam/color_image"])
+        color_image = compression.from_jpg(message["ee_cam/color_image"])
+        # depth_image = compression.unzip_depth(
+        #    message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
+        # )
+        depth_image = compression.from_jp2(message["ee_cam/depth_image"])
+        image_scaling = message["ee_cam/image_scaling"]
+
+        # Get head information from the message as well
+        # head_color_image = compression.from_webp(message["head_cam/color_image"])
+        head_color_image = compression.from_jpg(message["head_cam/color_image"])
+        # head_depth_image = compression.unzip_depth(
+        #    message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
+        # )
+        head_depth_image = compression.from_jp2(message["head_cam/depth_image"])
+        # head_depth_camera_info = message["head_cam/depth_camera_info"]
+        head_image_scaling = message["head_cam/image_scaling"]
+        joint = message["robot/config"]
+        # head_depth_scale = message["head_cam/depth_scale"]
+        with self._servo_lock and self._state_lock:
+            observation = Observations(
+                gps=self._state["base_pose"][:2],
+                compass=self._state["base_pose"][2],
+                rgb=head_color_image,
+                depth=head_depth_image,
+                xyz=None,
+                ee_rgb=color_image,
+                ee_depth=depth_image,
+                ee_xyz=None,
+                joint=joint,
+            )
+            self._servo = observation
+
+    def get_servo_observation(self):
+        """Get the current servo observation"""
+        with self._servo_lock:
+            return self._servo
+
+    def blocking_spin_servo(self, verbose: bool = False):
+        """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
+        sum_time = 0
+        steps = 0
+        t0 = timeit.default_timer()
+        while not self._finish:
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            output = self.recv_servo_socket.recv_pyobj()
+            self.update_servo(output)
+            sum_time += dt
+            steps += 1
+            if verbose and steps % self.num_state_report_steps == 1:
+                print(
+                    f"[SERVO] time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
+                )
+            t0 = timeit.default_timer()
+
+    def blocking_spin_state(self, verbose: bool = False):
+        """Listen for incoming observations and update internal state"""
+
+        sum_time = 0
+        steps = 0
+        t0 = timeit.default_timer()
+
+        while not self._finish:
+            output = self.recv_state_socket.recv_pyobj()
+            self._update_state(output)
+
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            if verbose and steps % self.num_state_report_steps == 1:
+                print("[STATE] Control mode:", self._control_mode)
+                print(
+                    f"[STATE] time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
+                )
+            t0 = timeit.default_timer()
+
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         self._thread = threading.Thread(target=self.blocking_spin)
+        self._state_thread = threading.Thread(target=self.blocking_spin_state)
+        self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
         self._finish = False
         self._thread.start()
+        self._state_thread.start()
+        self._servo_thread.start()
+
+        t0 = timeit.default_timer()
+        while self._obs is None or self._state is None or self._servo is None:
+            time.sleep(0.1)
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10.0:
+                print(
+                    "Timeout waiting for observations; are you connected to the robot? Check the network."
+                )
+                print("Robot IP:", self.send_address)
+                return False
         return True
 
     def __del__(self):
@@ -513,11 +693,19 @@ class HomeRobotZmqClient(RobotClient):
 
     def stop(self):
         self._finish = True
-        self.recv_socket.close()
-        self.send_socket.close()
-        self.context.term()
         if self._thread is not None:
             self._thread.join()
+        if self._state_thread is not None:
+            self._state_thread.join()
+        if self._servo_thread is not None:
+            self._servo_thread.join()
+
+        # Close the sockets and context
+        self.recv_socket.close()
+        self.recv_state_socket.close()
+        self.recv_servo_socket.close()
+        self.send_socket.close()
+        self.context.term()
 
 
 @click.command()
