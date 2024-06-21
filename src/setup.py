@@ -39,6 +39,10 @@ setuptools.setup(
         "pynput",
         "pyrealsense2",
         "orbslam3",
+        "urchin",
+        "schema",
+        # Configuraiton tools
+        "hydra-core",
         # Compression tools
         "pyliblzfse",
         "webp",

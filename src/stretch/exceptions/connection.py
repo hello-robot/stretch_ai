@@ -9,3 +9,7 @@ class MismatchedProtocolException(StretchException):
 
 class NotConnectedException(StretchException):
     """StretchPy client is not connected to the robot"""
+
+
+class ServerNotFoundException(StretchException):
+    """Unable to connect to a Stretch server"""

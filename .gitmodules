@@ -1,0 +1,3 @@
+[submodule "src/stretch/perception/detection/detic/Detic"]
+	path = src/stretch/perception/detection/detic/Detic
+	url = https://github.com/facebookresearch/Detic.git

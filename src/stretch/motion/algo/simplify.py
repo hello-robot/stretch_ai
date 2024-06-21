@@ -22,7 +22,8 @@ class SimplifyXYT(Planner):
     dist_tol = 1e-8
 
     # Debug info
-    verbose = False
+    verbose: bool = False
+    remove_in_place_rotations: bool = True
 
     def __init__(
         self,
@@ -175,8 +176,24 @@ class SimplifyXYT(Planner):
                     prev_node = node
                     prev_theta = cur_theta
 
+            if self.remove_in_place_rotations:
+                new_nodes_cleaned = []
+                for i, node in enumerate(new_nodes):
+                    if i == 0 or i == len(new_nodes) - 1:
+                        new_nodes_cleaned.append(node)
+                    else:
+                        xy = node.state[:2]
+                        if np.allclose(xy, new_nodes[i - 1].state[:2], atol=1e-6) and np.allclose(
+                            xy, new_nodes[i + 1].state[:2], atol=1e-6
+                        ):
+                            continue
+                        new_nodes_cleaned.append(node)
+
+                # Overwrite these
+                new_nodes = new_nodes_cleaned
+
             # Check to make sure things are spaced out enough
-            if self._verify(new_nodes):
+            if self._verify(new_nodes_cleaned):
                 print("!!!! DONE")
                 break
             else:

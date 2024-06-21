@@ -12,7 +12,7 @@ from loguru import logger
 
 from stretch.core.interfaces import Observations
 from stretch.perception.constants import RearrangeDETICCategories
-from stretch.utils.config import load_config
+from stretch.utils.config import get_full_config_path, load_config
 
 
 class OvmmPerception:
@@ -40,7 +40,7 @@ class OvmmPerception:
         self.verbose = verbose
         if self._detection_module == "detic":
             # Lazy import
-            from home_robot.perception.detection.detic.detic_perception import DeticPerception
+            from stretch.perception.detection.detic import DeticPerception
 
             self._segmentation = DeticPerception(
                 vocabulary="custom",
@@ -51,9 +51,7 @@ class OvmmPerception:
                 **module_kwargs,
             )
         elif self._detection_module == "grounded_sam":
-            from home_robot.perception.detection.grounded_sam.grounded_sam_perception import (
-                GroundedSAMPerception,
-            )
+            from home_robot.perception.detection.grounded_sam import GroundedSAMPerception
 
             self._segmentation = GroundedSAMPerception(
                 custom_vocabulary=".",
@@ -62,7 +60,7 @@ class OvmmPerception:
                 **module_kwargs,
             )
         elif self._detection_module == "mobile_sam":
-            from home_robot.perception.detection.grounded_sam.sam_perception import SAMPerception
+            from home_robot.perception.detection.grounded_sam import SAMPerception
 
             self._segmentation = SAMPerception(
                 custom_vocabulary=".",
@@ -70,7 +68,7 @@ class OvmmPerception:
                 **module_kwargs,
             )
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
 
     @property
     def current_vocabulary_id(self) -> int:
@@ -143,14 +141,23 @@ class OvmmPerception:
     def __call__(self, obs: Observations) -> Observations:
         return self.forward(obs)
 
-    def predict(self, obs: Observations, depth_threshold: float = 0.5) -> Observations:
+    def predict(
+        self, obs: Observations, depth_threshold: Optional[float] = None, ee: bool = False
+    ) -> Observations:
         """Run with no postprocessing. Updates observation to add semantics."""
-        # print(self.current_vocabulary.goal_id_to_goal_name.values())
-        return self._segmentation.predict(
-            obs,
+        semantic, instance, task_observations = self._segmentation.predict(
+            rgb=obs.rgb if not ee else obs.ee_rgb,
+            depth=obs.depth if not ee else obs.ee_depth,
             depth_threshold=depth_threshold,
             draw_instance_predictions=self._use_detic_viz,
         )
+        obs.semantic = semantic
+        obs.instance = instance
+        if obs.task_observations is None:
+            obs.task_observations = task_observations
+        else:
+            obs.task_observations.update(task_observations)
+        return obs
 
     def forward(self, obs: Observations, depth_threshold: float = 0.5) -> Observations:
         """
@@ -169,11 +176,7 @@ def read_category_map_file(
     These mappings are also present in the episodes file but are extracted to use in a stand-alone manner.
     Returns object and receptacle mappings.
     """
-    try:
-        if os.environ["STRETCH_AI_ROOT"]:
-            category_map_file = os.path.join(os.environ["STRETCH_AI_ROOT"], category_map_file)
-    except KeyError:
-        logger.warning("HOME_ROBOT_ROOT environment variable not set when initializing perception!")
+    category_map_file = get_full_config_path(category_map_file)
 
     with open(category_map_file) as f:
         category_map = json.load(f)
@@ -210,7 +213,8 @@ def create_semantic_sensor(
     device_id: int = 0,
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
-    config_path="config/perception.yaml",
+    config_path="default_perception.yaml",
+    confidence_threshold: float = 0.5,
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
@@ -219,7 +223,7 @@ def create_semantic_sensor(
     if config is None:
         config = load_config(visualize=False, config_path=config_path, **kwargs)
     if category_map_file is None:
-        category_map_file = config.ENVIRONMENT.category_map_file
+        category_map_file = get_full_config_path(config.ENVIRONMENT.category_map_file)
 
     if verbose:
         print("- Create and load vocabulary and perception model")
@@ -228,6 +232,7 @@ def create_semantic_sensor(
         gpu_device_id=device_id,
         verbose=verbose,
         module="detic",
+        confidence_threshold=confidence_threshold,
         module_kwargs=module_kwargs,
     )
     obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)

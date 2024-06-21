@@ -38,8 +38,8 @@ class StretchClient:
         """Connects client to robot"""
         # Verify protocol
         proto_port = self.port
-        proto_sock = recv_protocol.initialize(self.ip_addr, proto_port)
-        recv_protocol.recv_spp(proto_sock)
+        proto_sock, proto_poll = recv_protocol.initialize(self.ip_addr, proto_port)
+        recv_protocol.recv_spp(proto_sock, proto_poll)
 
         # Connect to body
         status_port = self.port + 1
