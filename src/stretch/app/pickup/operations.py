@@ -464,8 +464,8 @@ class NavigateToObjectOperation(ManagedOperation):
 
 class UpdateOperation(ManagedOperation):
 
-    show_instances_detected: bool = True
-    show_map_so_far: bool = True
+    show_instances_detected: bool = False
+    show_map_so_far: bool = False
     clear_voxel_map: bool = False
 
     def set_target_object_class(self, object_class: str):
