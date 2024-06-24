@@ -464,8 +464,9 @@ class NavigateToObjectOperation(ManagedOperation):
 
 class UpdateOperation(ManagedOperation):
 
-    show_instances_detected: bool = False
-    show_map_so_far: bool = False
+    show_instances_detected: bool = True
+    show_map_so_far: bool = True
+    clear_voxel_map: bool = True
 
     def set_target_object_class(self, object_class: str):
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
@@ -476,10 +477,14 @@ class UpdateOperation(ManagedOperation):
 
     def run(self):
         self.intro("Updating the world model.")
-        self.robot.move_to_manip_posture()
-        time.sleep(2.0)
+        if self.clear_voxel_map:
+            self.agent.reset()
+        if not self.robot.in_manipulation_mode():
+            self.warn("Robot is not in manipulation mode. Moving to manip posture.")
+            self.robot.move_to_manip_posture()
+            time.sleep(5.0)
         self.robot.arm_to([0.0, 0.4, 0.05, np.pi, -np.pi / 4, 0], blocking=True)
-        time.sleep(5.0)
+        time.sleep(8.0)
         xyt = self.robot.get_base_pose()
         # Now update the world
         self.update()

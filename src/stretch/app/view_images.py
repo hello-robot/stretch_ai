@@ -83,6 +83,12 @@ def main(
             continue
         # Low res images used for visual servoing and ML
         servo = robot.get_servo_observation()
+        if servo is None:
+            print("No servo observation. Skipping.")
+            continue
+        if servo.ee_rgb is None:
+            print("No end effector image. Skipping.")
+            continue
 
         # First time info
         if first_time:
