@@ -6,18 +6,19 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import torch
-from home_robot.core.interfaces import Observations
-from home_robot.core.robot import ControlMode, RobotClient
-from home_robot.motion.robot import RobotModel
-from home_robot.motion.stretch import (
+
+from stretch.core.interfaces import Observations
+from stretch.core.robot import ControlMode, RobotClient
+from stretch.motion import RobotModel
+from stretch.motion.constants import (
     STRETCH_DEMO_PREGRASP_Q,
     STRETCH_NAVIGATION_Q,
     STRETCH_POSTNAV_Q,
     STRETCH_PREDEMO_Q,
     STRETCH_PREGRASP_Q,
-    HelloStretchKinematics,
 )
-from home_robot.utils.geometry import xyt2sophus
+from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
+from stretch.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
 from .modules.manip import StretchManipulationClient
