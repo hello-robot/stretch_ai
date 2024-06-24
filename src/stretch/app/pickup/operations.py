@@ -15,6 +15,8 @@ from stretch.utils.geometry import point_global_to_base
 
 
 class ManagedOperation(Operation):
+    """Placeholder node for an example in a task plan. Contains some functions to make it easier to print out different messages with color for interpretability, and also provides some utilities for making the robot do different tasks."""
+
     def __init__(self, name, manager, **kwargs):
         super().__init__(name, **kwargs)
         self.manager = manager
