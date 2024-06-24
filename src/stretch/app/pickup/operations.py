@@ -583,11 +583,12 @@ class GraspObjectOperation(ManagedOperation):
     show_servo_gui: bool = True
 
     # Thresholds for centering on object
-    align_x_threshold: int = 10
-    align_y_threshold: int = 10
+    align_x_threshold: int = 15
+    align_y_threshold: int = 15
 
     # Visual servoing config
     min_points_to_approach: int = 100
+    lift_arm_ratio: float = 0.1
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
@@ -600,6 +601,7 @@ class GraspObjectOperation(ManagedOperation):
             self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
 
         t0 = timeit.default_timer()
+        aligned_once = False
         success = False
         while timeit.default_timer() - t0 < max_duration:
             # Get servo observation
@@ -646,13 +648,25 @@ class GraspObjectOperation(ManagedOperation):
             mask_center = mask_pts.mean(axis=0)
             center_x, center_y = biggest_mask.shape[1] / 2, biggest_mask.shape[0] / 2
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
-            print(dx, dy)
+
+            # Now compute what to do
+            base_x = joint_state[HelloStretchIdx.BASE_X]
+            wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+            arm = joint_state[HelloStretchIdx.ARM]
+            lift = joint_state[HelloStretchIdx.LIFT]
+            print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
             if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
-                continue
+                # If we are aligned, step the whole thing closer by some amount
+                # This is based on the pitch - basically
+                aligned_once = True
+                arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
+                lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
+                print("- arm", arm, "lift", lift)
+                print("- arm_component", arm_component, "lift_component", lift_component)
+                arm += arm_component
+                lift += lift_component
+                print("- arm", arm, "lift", lift)
             else:
-                base_x = joint_state[HelloStretchIdx.BASE_X]
-                wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
-                print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
                 if dx > self.align_x_threshold:
                     # Move in x - this means translate the base
                     base_x += -0.05
@@ -663,7 +677,7 @@ class GraspObjectOperation(ManagedOperation):
                     wrist_pitch += -0.05
                 elif dy < -1 * self.align_y_threshold:
                     wrist_pitch += 0.05
-                self.robot.arm_to([base_x, 0.4, 0.05, 0, wrist_pitch, 0], blocking=True)
+            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
             # time.sleep(0.05)
             # breakpoint()
 
