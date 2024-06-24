@@ -640,8 +640,9 @@ class GraspObjectOperation(ManagedOperation):
 
             if biggest_mask is not None and biggest_mask_pts > self.min_points_to_approach:
                 object_depth = servo.ee_depth[biggest_mask]
-                median_object_depth = np.median(servo.ee_depth[biggest_mask])
+                median_object_depth = np.median(servo.ee_depth[biggest_mask]) / 1000
             else:
+                print("detected classes:", np.unique(servo.semantic))
                 continue
 
             # Compute the center of the mask in image coords
@@ -663,17 +664,18 @@ class GraspObjectOperation(ManagedOperation):
                 biggest_mask.shape[0] * biggest_mask.shape[1]
             )
             print(f"Percentage of image with object is {percentage_of_image}.")
-            if median_object_depth < self.median_distance_when_grasping:
-                print("Grasping object!")
-                self.robot.close_gripper(blocking=True)
-                time.sleep(2.0)
-                lifted_joint_state = joint_state.copy()
-                lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
-                self.robot.arm_to(lifted_joint_state, blocking=True)
-                time.sleep(2.0)
-                success = True
-                break
             if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
+                # First, check to see if we are close enough to grasp
+                if median_object_depth < self.median_distance_when_grasping:
+                    print("Grasping object!")
+                    self.robot.close_gripper(blocking=True)
+                    time.sleep(2.0)
+                    lifted_joint_state = joint_state.copy()
+                    lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
+                    self.robot.arm_to(lifted_joint_state, blocking=True)
+                    time.sleep(2.0)
+                    success = True
+                    break
                 # If we are aligned, step the whole thing closer by some amount
                 # This is based on the pitch - basically
                 aligned_once = True
