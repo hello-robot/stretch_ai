@@ -67,6 +67,7 @@ def main(
         device_id=device_id,
         verbose=verbose,
         category_map_file=parameters["open_vocab_category_map_file"],
+        confidence_threshold=0.3,
     )
 
     # Start moving the robot around

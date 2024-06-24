@@ -589,6 +589,8 @@ class GraspObjectOperation(ManagedOperation):
     # Visual servoing config
     min_points_to_approach: int = 100
     lift_arm_ratio: float = 0.1
+    median_distance_when_grasping = 0.2
+    percentage_of_image_when_grasping = 0.2
 
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
@@ -654,7 +656,23 @@ class GraspObjectOperation(ManagedOperation):
             wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
             arm = joint_state[HelloStretchIdx.ARM]
             lift = joint_state[HelloStretchIdx.LIFT]
+            print("----- STEP VISUAL SERVOING -----")
             print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
+            print(f"Median distance to object is {median_object_depth}.")
+            percentage_of_image = mask_pts.shape[0] / (
+                biggest_mask.shape[0] * biggest_mask.shape[1]
+            )
+            print(f"Percentage of image with object is {percentage_of_image}.")
+            if median_object_depth < self.median_distance_when_grasping:
+                print("Grasping object!")
+                self.robot.close_gripper(blocking=True)
+                time.sleep(2.0)
+                lifted_joint_state = joint_state.copy()
+                lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
+                self.robot.arm_to(lifted_joint_state, blocking=True)
+                time.sleep(2.0)
+                success = True
+                break
             if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
                 # If we are aligned, step the whole thing closer by some amount
                 # This is based on the pitch - basically
