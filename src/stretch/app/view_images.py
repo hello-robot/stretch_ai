@@ -104,9 +104,6 @@ def main(
             print("Press 'q' to quit.")
             first_time = False
 
-        print(np.unique(servo.ee_depth))
-        print(np.unique(servo.depth))
-
         # Run segmentation if you want
         servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
         if run_semantic_segmentation:
