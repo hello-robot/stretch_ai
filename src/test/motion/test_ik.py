@@ -184,7 +184,7 @@ def test_ik_joints():
     ]
 
     # Run the tests
-    for test in test_states:
+    for i, test in enumerate(test_states):
         state = test["state"]
         expected_pos = np.array(test["expected_pos"])
         expected_quat = np.array(test["expected_quat"])
@@ -195,6 +195,7 @@ def test_ik_joints():
         pos_diff = np.linalg.norm(expected_pos - pos)
         quat_diff = np.linalg.norm(expected_quat - quat)
 
+        print(f"Forward Kinematics Test {i} for {link=}:")
         print(f"Position difference: {pos_diff}")
         print(f"Quaternion difference: {quat_diff}")
         print()
