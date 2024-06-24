@@ -1,4 +1,4 @@
-# StretchPy
+# Stretch AI
 
 [![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
@@ -8,46 +8,19 @@
 
 Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
 
-## Quickstart
+## Installation
 
-This package is not yet available on PyPi. Clone this repo on your Stretch and PC, and install it locally using pip:
-
-```
-cd stretchpy/src
-pip3 install .
+On both your PC and your robot, clone and install the package:
+```bash
 ```
 
-On your Stretch, start the server:
-
-```
-python3 -m stretch.serve
-```
-
-On your PC, add the following yaml to `~/.stretch/config.yaml`:
-
-```yaml
-robots:
-  - ip_addr: 192.168.1.14 # Substitute with your robot's ip address
-    port: 20200
+On Stretch, symlink the stretch_ros2_bridge directory to your ament workspace and build:
+```bash
+ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
+colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
-Then, on your PC, write some code:
-
-```python
-import stretch
-stretch.connect()
-
-stretch.move_by(joint_arm=0.1)
-
-for img in stretch.stream_nav_camera():
-    cv2.imshow('Nav Camera', img)
-    cv2.waitKey(1)
-```
-
-Check out the docs on:
- - [Getting status](./docs/status.md)
-
-## Advanced Installation
+### Advanced Installation (PC Only)
 
 If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
 ```
