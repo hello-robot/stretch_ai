@@ -63,17 +63,6 @@ mamba install -c fvcore -c iopath -c conda-forge fvcore iopath -y
 echo "Install a version of setuptools for which pytorch3d and clip work."
 pip install setuptools==69.5.1
 
-pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
-pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
-pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
-pip install torch_geometric
-pip install -e ./src[dev]
-# TODO: should we remove this?
-# Open3d is an optional dependency - not included in setup.py since not supported on 3.12
-# pip install open3d scikit-fmm
-#
-#echo 
-#
 echo ""
 echo "---------------------------------------------"
 echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
@@ -112,6 +101,22 @@ pip install -r requirements.txt
 mkdir -p models
 echo "Download DETIC checkpoint..."
 wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+
+echo ""
+echo "---------------------------------------------"
+echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
+echo "Will be installed via pip into env: $ENV_NAME"
+pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
+pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
+pip install torch_geometric
+pip install -e ./src[dev]
+# TODO: should we remove this?
+# Open3d is an optional dependency - not included in setup.py since not supported on 3.12
+# pip install open3d scikit-fmm
+#
+#echo 
+#
 
 echo "=============================================="
 echo "         INSTALLATION COMPLETE"
