@@ -125,13 +125,32 @@ class PinocchioIKSolver:
 
         return q_out
 
-    def compute_fk(self, config) -> Tuple[np.ndarray, np.ndarray]:
-        """given joint values return end-effector position and quaternion associated with it"""
+    def compute_fk(
+        self, config: np.ndarray, link_name: str = None
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Given joint values, return end-effector position and quaternion associated with it.
+
+        Args:
+            config: joint values
+            link_name: name of the link to compute FK for; if None, uses the end-effector link
+
+        Returns:
+            pos: end-effector position (x, y, z)
+            quat: end-effector quaternion (w, x, y, z)
+        """
+        if link_name is None:
+            frame_idx = self.ee_frame_idx
+        else:
+            try:
+                frame_idx = [f.name for f in self.model.frames].index(link_name)
+            except ValueError:
+                logger.error(f"Unknown link_name {link_name}. Defaulting to end-effector")
+                frame_idx = self.ee_frame_idx
         q_model = self._qmap_control2model(config)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
-        pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
-        pos = self.data.oMf[self.ee_frame_idx].translation
-        quat = R.from_matrix(self.data.oMf[self.ee_frame_idx].rotation).as_quat()
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx)
+        pos = self.data.oMf[frame_idx].translation
+        quat = R.from_matrix(self.data.oMf[frame_idx].rotation).as_quat()
 
         return pos.copy(), quat.copy()
 
