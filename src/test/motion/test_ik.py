@@ -90,7 +90,7 @@ def test_fk_ik():
     assert hz > 100, "IK solver too slow"
 
 
-def test_ik_joints():
+def test_fk_various_links():
     """From Amal:
     here are some FKs that I know are correct. (By "know are correct," I mean I use them in click-to-pregrasp and they work, and that I've roughly measured the distances and they align with what I'd expect)
     base_link --> link_lift:
@@ -253,6 +253,6 @@ def test_ik_restricted():
 
 
 if __name__ == "__main__":
-    test_ik_joints()
-    # test_fk_ik()
-    # test_ik_restricted()
+    test_fk_ik()
+    test_ik_restricted()
+    test_fk_various_links()
