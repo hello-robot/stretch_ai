@@ -306,6 +306,11 @@ class ZmqServer:
 
             if self.debug_compression:
                 ct0 = timeit.default_timer()
+            # Conversion
+            ee_depth_image = (ee_depth_image * 1000).astype(np.uint16)
+            head_depth_image = (head_depth_image * 1000).astype(np.uint16)
+
+            # Compress the images
             compressed_ee_depth_image = compression.to_jp2(ee_depth_image)
             compressed_head_depth_image = compression.to_jp2(head_depth_image)
             if self.debug_compression:
