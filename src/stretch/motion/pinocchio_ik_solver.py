@@ -149,7 +149,7 @@ class PinocchioIKSolver:
         q_model = self._qmap_control2model(config)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
         pinocchio.updateFramePlacement(self.model, self.data, frame_idx)
-        pos = self.data.oMf[self.ee_frame_idx].translation
+        pos = self.data.oMf[frame_idx].translation
         quat = R.from_matrix(self.data.oMf[self.ee_frame_idx].rotation).as_quat()
 
         return pos.copy(), quat.copy()
