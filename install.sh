@@ -78,24 +78,30 @@ echo ""
 echo "---------------------------------------------"
 echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
 echo "Will be installed to: $PWD/third_party/Detic"
-echo "The third_party folder will be removed!"
-read -p "Do you want to proceed? (y/n) " yn
-case $yn in
-	y ) echo "Starting installation...";;
-	n ) echo "Exiting...";
-		exit;;
-	* ) echo Invalid response!;
-		exit 1;;
-esac
+# echo "The third_party folder will be removed!"
+if [ "$1" == "-y" ]; then
+	yn="y"
+else
+	read -p "Do you want to proceed? (y/n) " yn
+	case $yn in
+		y ) echo "Starting installation...";;
+		n ) echo "Exiting...";
+			exit;;
+		* ) echo Invalid response!;
+			exit 1;;
+	esac
+fi
+echo "Install detectron2 for perception (required by Detic)"
 git submodule update --init --recursive
-rm -rf third_party
-mkdir -p third_party
-cd third_party
+#rm -rf third_party
+#mkdir -p third_party
+#cd third_party
 # under your working directory
-git clone git@github.com:facebookresearch/detectron2.git
-cd detectron2
+#git clone git@github.com:facebookresearch/detectron2.git
+cd third_party/detectron2
 pip install -e .
 
+echo "Install Detic for perception"
 cd ../../src/stretch/perception/detection/detic/Detic
 # Make sure it's up to date
 git submodule update --init --recursive
