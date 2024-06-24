@@ -582,6 +582,10 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
 
+    # Thresholds for centering on object
+    align_x_threshold: int = 10
+    align_y_threshold: int = 10
+
     # Visual servoing config
     min_points_to_approach: int = 100
 
@@ -600,6 +604,7 @@ class GraspObjectOperation(ManagedOperation):
         while timeit.default_timer() - t0 < max_duration:
             # Get servo observation
             servo = self.robot.get_servo_observation()
+            joint_state = servo.joint
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
@@ -629,11 +634,44 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
+            if biggest_mask is not None and biggest_mask_pts > self.min_points_to_approach:
+                object_depth = servo.ee_depth[biggest_mask]
+                median_object_depth = np.median(servo.ee_depth[biggest_mask])
+            else:
+                continue
+
+            # Compute the center of the mask in image coords
+            mask = biggest_mask
+            mask_pts = np.argwhere(mask)
+            mask_center = mask_pts.mean(axis=0)
+            center_x, center_y = biggest_mask.shape[1] / 2, biggest_mask.shape[0] / 2
+            dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
+            print(dx, dy)
+            if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
+                continue
+            else:
+                base_x = joint_state[HelloStretchIdx.BASE_X]
+                wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+                print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
+                if dx > self.align_x_threshold:
+                    # Move in x - this means translate the base
+                    base_x += -0.05
+                elif dx < -1 * self.align_x_threshold:
+                    base_x += 0.05
+                if dy > self.align_y_threshold:
+                    # Move in y - this means translate the base
+                    wrist_pitch += -0.05
+                elif dy < -1 * self.align_y_threshold:
+                    wrist_pitch += 0.05
+                self.robot.arm_to([base_x, 0.4, 0.05, 0, wrist_pitch, 0], blocking=True)
+            # time.sleep(0.05)
+            # breakpoint()
+
             # Optionally show depth and xyz
             rgb, depth = servo.ee_rgb, servo.ee_depth
 
             # Depth should be metric depth from camera
-            print("TODO: compute motion based on these points")
+            # print("TODO: compute motion based on these points")
 
             if sum(mask.flatten()) > self.min_points_to_approach:
                 # Move towards the points
