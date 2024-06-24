@@ -1,4 +1,4 @@
-# StretchPy
+# Stretch AI
 
 [![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
@@ -9,13 +9,6 @@
 Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
 
 ## Quickstart
-
-This package is not yet available on PyPi. Clone this repo on your Stretch and PC, and install it locally using pip:
-
-```
-cd stretchpy/src
-pip3 install .
-```
 
 On your PC, add the following yaml to `~/.stretch/config.yaml` (use `127.0.0.1` if you're developing on the robot only):
 
@@ -47,7 +40,25 @@ for img in stretch.stream_nav_camera():
 Check out the docs on:
  - [Getting status](./docs/status.md)
 
-## Advanced Installation
+
+
+## Installation
+
+On both your PC and your robot, clone and install the package:
+```basha
+git clone git@github.com:hello-robot/stretch_ai.git --recursive 
+```
+
+On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
+```bash
+cd stretch_ai
+ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
+colcon build --symlink-install --packages-select stretch_ros2_bridge
+```
+
+More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
+
+### Advanced Installation (PC Only)
 
 If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
 ```
@@ -87,7 +98,6 @@ You should see:
 Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
 
 ```bash
-```
 python -m stretch.app.view_images --robot_ip $ROBOT_IP
 ```
 
