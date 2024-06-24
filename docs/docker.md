@@ -45,20 +45,20 @@ docker build -t stretch-ai_cuda-11.8:latest .
 
 ### Placeholder: Building and Pushing to Dockerhub
 
-This will use my account as an example (username: `cpaxton`). Login with:
+This will use the Hello Robot account as an example (username: `hellorobotinc`). Login with:
 ```
-docker login -u cpaxton
+docker login -u hellorobotinc
 ```
 and enter a password (or create an [access token](https://hub.docker.com/settings/security)).
 
 Then, build the image with:
 
 ```bash
-docker build -t cpaxton/stretch-ai_cuda-11.8:latest .
-docker push cpaxton/stretch-ai_cuda-11.8:latest
+docker build -t hellorobotinc/stretch-ai_cuda-11.8:latest .
+docker push hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
 
 You can pull withL
 ```bash
-docker pull cpaxton/stretch-ai_cuda-11.8:latest
+docker pull hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
