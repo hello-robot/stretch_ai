@@ -172,4 +172,9 @@ Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for m
 
 ### Docker
 
-Docker build and other instructions are located in the [docker guide](docs/docker.md).
+Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you  can run the docker build process with:
+```
+docker build -t stretch-ai_cuda-11.8:latest .
+```
+
+See the [docker guide](docs/docker.md) for more information and troubleshooting advice.
