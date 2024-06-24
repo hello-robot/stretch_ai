@@ -105,6 +105,7 @@ class SparseVoxelMap(object):
         log_dir_overwrite_ok=True,
         mask_cropped_instances="False",
     )
+    debug_valid_depth: bool = False
 
     def __init__(
         self,
@@ -481,6 +482,21 @@ class SparseVoxelMap(object):
                 valid_depth = (
                     valid_depth & (median_filter_error < self.median_filter_max_error).bool()
                 )
+
+            if self.debug_valid_depth:
+                # This is a block of debug code for displaying valid depths, in case for some reason valid regions and objects are being rejected out of hand for no good reason.
+                print("valid_depth", valid_depth.sum(), valid_depth.shape)
+                import matplotlib
+
+                matplotlib.use("TkAgg")
+                import matplotlib.pyplot as plt
+
+                plt.subplot(121)
+                plt.imshow(valid_depth.cpu().numpy())
+                valid_depth_mask = valid_depth[:, :, None].repeat([1, 1, 3])
+                plt.subplot(122)
+                plt.imshow(valid_depth_mask.cpu().numpy() * rgb.cpu().numpy().astype(np.uint8))
+                plt.show()
 
         # Add instance views to memory
         if self.use_instance_memory:

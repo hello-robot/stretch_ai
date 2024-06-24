@@ -643,6 +643,7 @@ class InstanceMemory:
 
             # skip background
             if instance_id in background_instance_labels:
+                # print("Skipping background instance: ", instance_id, "in", background_instance_labels)
                 continue
             # get instance mask
             instance_mask = instance_seg == instance_id
@@ -736,6 +737,14 @@ class InstanceMemory:
             percent_points = n_mask / (instance_mask.shape[0] * instance_mask.shape[1])
 
             # Create InstanceView if the view is large enough
+            # print(f"n_mask: {n_mask}/{self.min_pixels_for_instance_view}, n_points: {n_points}>1, percent_points: {percent_points}>{self.min_percent_for_instance_view}")
+            # import matplotlib
+            # matplotlib.use("TkAgg")
+            # import matplotlib.pyplot as plt
+            # plt.imshow(cropped_image / 255)
+            # plt.show()
+
+            added = False
             if (
                 n_mask >= self.min_pixels_for_instance_view
                 and n_points > 1
@@ -790,13 +799,17 @@ class InstanceMemory:
                     )
                     # append instance view to list of instance views
                     self.unprocessed_views[env_id][instance_id.item()] = instance_view
+                    added = True
             else:
                 logger.info(
                     f"Skipping a small instance with {n_mask} pixels",
                 )
 
             t1 = timeit.default_timer()
-            print(f"Instance {instance_id} took {t1-t0} seconds")
+            if added:
+                print(f"Added Instance {instance_id} took {t1-t0} seconds")
+            else:
+                print(f"Skipped Instance {instance_id} took {t1-t0} seconds")
 
         # This timestep should be passable (e.g. for Spot we have a Datetime object)
         self.timesteps[env_id] += 1

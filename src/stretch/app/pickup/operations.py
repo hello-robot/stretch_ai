@@ -466,7 +466,7 @@ class UpdateOperation(ManagedOperation):
 
     show_instances_detected: bool = True
     show_map_so_far: bool = True
-    clear_voxel_map: bool = True
+    clear_voxel_map: bool = False
 
     def set_target_object_class(self, object_class: str):
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
@@ -513,7 +513,7 @@ class UpdateOperation(ManagedOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.imshow(self.manager.voxel_map.observations[-1].instance)
             plt.show()
 
         # Describe the scene the robot is operating in
