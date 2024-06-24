@@ -164,11 +164,13 @@ class StretchClient(RobotClient):
         return self._ros_client.ee_rgb_cam
 
     def get_joint_state(self):
+        """Get joint states from the robot. If in manipulation mode, use the base_x position from start of manipulation mode as the joint state for base_x."""
         q, dq, eff = self._ros_client.get_joint_state()
         # If we are in manipulation mode...
         if self._base_control_mode == ControlMode.MANIPULATION:
             # ...we need to get the joint positions from the manipulator
             q[HelloStretchIdx.BASE_X] = self.manip.base_x
+        return q, dq, eff
 
     def get_frame_pose(self, frame, base_frame=None, lookup_time=None):
         """look up a particular frame in base coords"""
