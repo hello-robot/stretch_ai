@@ -639,7 +639,7 @@ class GraspObjectOperation(ManagedOperation):
                 target_mask = mask
                 target_mask_pts = num_pts
 
-        if overlap_pts > self.min_points_to_approach:
+        if maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
         else:
             return target_mask
