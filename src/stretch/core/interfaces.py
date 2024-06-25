@@ -215,6 +215,15 @@ class Observations:
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
     camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
+    # End effector camera
+    ee_rgb: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in [0, 255]
+    ee_depth: Optional[np.ndarray] = None  # (camera_height, camera_width) in meters
+    ee_xyz: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in camera coordinates
+    ee_semantic: Optional[
+        np.array
+    ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
+    ee_camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
+
     # Instance IDs per observation frame
     # Size: (camera_height, camera_width)
     # Range: 0 to max int

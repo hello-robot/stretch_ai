@@ -1,0 +1,30 @@
+{
+    "obj_category_to_obj_category_id": {
+        "box": 0,
+        "toy":1,
+        "plushie": 2
+    },
+    "recep_category_to_recep_category_id": {
+        "bathtub": 0,
+        "bed": 1,
+        "bench": 2,
+        "cabinet": 3,
+        "chair": 4,
+        "chest_of_drawers": 5,
+        "couch": 6,
+        "counter": 7,
+        "filing_cabinet": 8,
+        "hamper": 9,
+        "serving_cart": 10,
+        "shelves": 11,
+        "shoe_rack": 12,
+        "sink": 13,
+        "stand": 14,
+        "stool": 15,
+        "table": 16,
+        "toilet": 17,
+        "trunk": 18,
+        "wardrobe": 19,
+        "washer_dryer": 20
+    }
+}

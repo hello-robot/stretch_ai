@@ -17,18 +17,18 @@ cd stretchpy/src
 pip3 install .
 ```
 
-On your Stretch, start the server:
-
-```
-python3 -m stretch.serve
-```
-
-On your PC, add the following yaml to `~/.stretch/config.yaml`:
+On your PC, add the following yaml to `~/.stretch/config.yaml` (use `127.0.0.1` if you're developing on the robot only):
 
 ```yaml
 robots:
   - ip_addr: 192.168.1.14 # Substitute with your robot's ip address
     port: 20200
+```
+
+On your Stretch, start the server:
+
+```
+python3 -m stretch.serve
 ```
 
 Then, on your PC, write some code:
@@ -63,6 +63,8 @@ Open3D is an optional dependency used by some 3d visualizations. It does not wor
 pip install open3d
 ```
 
+In addition, you'll want to install [HomeRobot](docs/home_robot.md) on your Stretch to provide localization and low-level control. Note that this is differenet from the main [HomeRobot package provided by FAIR](https://github.com/facebookresearch/home-robot), which does not have all of the necessary features and does not currently have ROS2 support. Check the [Stretch HomeRobot docs](docs/home_robot.md) for more information.
+
 ### Verifying Advanced Installation
 
 The most common issue is with `torch_cluster`, or that cuda is set up wrong. Make sure it runs by starting `python` and running:
@@ -79,6 +81,20 @@ You should see:
   - No errors for `torch.rand(3, 3).to("cuda")`
 
 ## Example Apps
+
+### Visualization and Streaming Video
+
+Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
+
+```bash
+```
+python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
+```bash
+python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
+```
 
 ### Dex Teleop for Data Collection
 
@@ -152,3 +168,13 @@ pre-commit install
 ```
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
+
+
+### Docker
+
+Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you  can run the docker build process with:
+```
+docker build -t stretch-ai_cuda-11.8:latest .
+```
+
+See the [docker guide](docs/docker.md) for more information and troubleshooting advice.

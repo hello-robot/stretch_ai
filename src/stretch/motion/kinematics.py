@@ -11,127 +11,19 @@ from scipy.spatial.transform.rotation import Rotation
 
 import stretch.utils.bullet as hrb
 from stretch.core.interfaces import ContinuousFullBodyAction
+from stretch.motion.constants import (
+    MANIP_STRETCH_URDF,
+    PIN_CONTROLLED_JOINTS,
+    PLANNER_STRETCH_URDF,
+    STRETCH_BASE_FRAME,
+    STRETCH_CAMERA_FRAME,
+    STRETCH_GRASP_FRAME,
+    STRETCH_HOME_Q,
+)
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint
 from stretch.motion.utils.bullet import BulletRobotModel, PybulletIKSolver
 from stretch.utils.pose import to_matrix
-
-# Stretch stuff
-PLANNER_STRETCH_URDF = "config/urdf/planner_calibrated.urdf"
-MANIP_STRETCH_URDF = "config/urdf/stretch_manip_mode.urdf"
-
-STRETCH_HOME_Q = np.array(
-    [
-        0,  # x
-        0,  # y
-        0,  # theta
-        0.2,  # lift
-        0.057,  # arm
-        0.0,  # gripper rpy
-        0.0,
-        0.0,
-        3.0,  # wrist,
-        0.0,
-        0.0,
-    ]
-)
-
-# look down in navigation mode for doing manipulation post-navigation
-STRETCH_POSTNAV_Q = np.array(
-    [
-        0,  # x
-        0,  # y
-        0,  # theta
-        0.78,  # lift
-        0.01,  # arm
-        0.0,  # gripper rpy
-        0.0,  # wrist roll
-        -1.5,  # wrist pitch
-        0.0,  # wrist yaw
-        0.0,
-        math.radians(-45),
-    ]
-)
-
-# Gripper pointed down, for a top-down grasp
-STRETCH_PREGRASP_Q = np.array(
-    [
-        0,  # x
-        0,  # y
-        0,  # theta
-        0.78,  # lift
-        0.01,  # arm
-        0.0,  # gripper rpy
-        0.0,  # wrist roll
-        -1.5,  # wrist pitch
-        0.0,  # wrist yaw
-        -np.pi / 2,  # head pan, camera to face the arm
-        -np.pi / 4,
-    ]
-)
-
-# Gripper pointed down, for a top-down grasp
-STRETCH_DEMO_PREGRASP_Q = np.array(
-    [
-        0,  # x
-        0,  # y
-        0,  # theta
-        0.4,  # lift
-        0.01,  # arm
-        0.0,  # gripper rpy
-        0.0,  # wrist roll
-        -1.5,  # wrist pitch
-        0.0,  # wrist yaw
-        -np.pi / 2,  # head pan, camera to face the arm
-        -np.pi / 4,
-    ]
-)
-
-# Gripper straight out, lowered arm for clear vision
-STRETCH_PREDEMO_Q = np.array(
-    [
-        0,  # x
-        0,  # y
-        0,  # theta
-        0.4,  # lift
-        0.01,  # arm
-        0.0,  # gripper rpy
-        0.0,  # wrist roll
-        0.0,  # wrist pitch
-        0.0,  # wrist yaw
-        -np.pi / 2,  # head pan, camera to face the arm
-        -np.pi / 4,
-    ]
-)
-# Navigation should not be fully folded up against the arm - in case its holding something
-STRETCH_NAVIGATION_Q = np.array(
-    [
-        0,  # x
-        0,  # y
-        0,  # theta
-        0.78,  # lift
-        0.01,  # arm
-        0.0,  # gripper rpy
-        0.0,  # wrist roll
-        -1.5,  # wrist pitch
-        0.0,  # wrist yaw
-        0.0,
-        math.radians(-30),
-    ]
-)
-
-
-PIN_CONTROLLED_JOINTS = [
-    "base_x_joint",
-    "joint_lift",
-    "joint_arm_l0",
-    "joint_arm_l1",
-    "joint_arm_l2",
-    "joint_arm_l3",
-    "joint_wrist_yaw",
-    "joint_wrist_pitch",
-    "joint_wrist_roll",
-]
 
 
 # used for mapping joint states in STRETCH_*_Q to match the sim/real joint action space
@@ -147,26 +39,6 @@ def map_joint_q_state_to_action_space(q):
             q[10],  # head tilt
         ]
     )
-
-
-# This is the gripper, and the distance in the gripper frame to where the fingers will roughly meet
-STRETCH_GRASP_FRAME = "link_straight_gripper"
-STRETCH_CAMERA_FRAME = "camera_color_optical_frame"
-STRETCH_BASE_FRAME = "base_link"
-
-# Offsets required for "link_straight_gripper" grasp frame
-STRETCH_STANDOFF_DISTANCE = 0.235
-STRETCH_STANDOFF_WITH_MARGIN = 0.25
-# Offset from a predicted grasp point to STRETCH_GRASP_FRAME
-STRETCH_GRASP_OFFSET = np.eye(4)
-STRETCH_GRASP_OFFSET[:3, 3] = np.array([0, 0, -1 * STRETCH_STANDOFF_DISTANCE])
-# Offset from STRETCH_GRASP_FRAME to predicted grasp point
-STRETCH_TO_GRASP = np.eye(4)
-STRETCH_TO_GRASP[:3, 3] = np.array([0, 0, STRETCH_STANDOFF_DISTANCE])
-
-# For EXTEND_ARM action
-STRETCH_ARM_EXTENSION = 0.8
-STRETCH_ARM_LIFT = 0.8
 
 
 # Stores joint indices for the Stretch configuration space
@@ -232,7 +104,7 @@ class HelloStretchKinematics:
     max_arm_height = 1.2
 
     # For inverse kinematics mode
-    default_ee_link_name = "link_straight_gripper"
+    default_ee_link_name = "link_grasp_center"
 
     default_manip_mode_controlled_joints = [
         "base_x_joint",
@@ -956,28 +828,17 @@ class HelloStretchKinematics:
 
     def manip_ik_for_grasp_frame(self, ee_pos, ee_rot, q0: Optional[np.ndarray] = None) -> Tuple:
         # Construct the final end effector pose
-        pose = np.eye(4)
-        euler = Rotation.from_quat(ee_rot).as_euler("xyz")
-        matrix = Rotation.from_quat(ee_rot).as_matrix()
-        pose[:3, :3] = matrix
-        pose[:3, 3] = ee_pos
-        ee_pose = pose @ STRETCH_GRASP_OFFSET
-        target_ee_rot = Rotation.from_matrix(ee_pose[:3, :3]).as_quat()
-        target_ee_pos = ee_pose[:3, 3]
-        if target_ee_pos[1] > 0:
-            print(
-                f"{self.name}: graspable objects should be in the negative y direction, got this target position: {target_ee_pos}"
+        if ee_pos[1] > 0:
+            raise RuntimeError(
+                f"{self.name}: graspable objects should be in the negative y direction, got this target position: {ee_pos}"
+            )
+        elif ee_pos[2] < 0:
+            raise RuntimeError(
+                f"{self.name}: graspable objects should be above the ground, got this target position: {ee_pos}"
             )
 
-        # TODO: hopefully we do not need this code
-        # Add a little bit more offset here, since we often underestimate how far we need to extend
-        # target_ee_pos[1] -= 0.05
-
-        target_joint_state, success, info = self.manip_ik(
-            (target_ee_pos, target_ee_rot),
-            q0=q0,
-        )
-        return target_joint_state, target_ee_pos, target_ee_rot, success, info
+        target_joint_state, success, info = self.manip_ik((ee_pos, ee_rot), q0=q0)
+        return target_joint_state, ee_pos, ee_rot, success, info
 
 
 if __name__ == "__main__":

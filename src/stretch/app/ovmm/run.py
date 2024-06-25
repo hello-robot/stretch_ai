@@ -13,7 +13,6 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d
-import rclpy
 import torch
 from PIL import Image
 
@@ -65,6 +64,7 @@ from stretch.utils.visualization import get_x_and_y_from_path
     help="write out images of every object we found",
 )
 @click.option("--parameter-file", default="config/default_planner.yaml")
+@click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 def main(
     rate,
     visualize,
@@ -90,6 +90,7 @@ def main(
     recv_port: int = 4401,
     send_port: int = 4402,
     robot_ip: str = "192.168.1.15",
+    reset: bool = False,
     **kwargs,
 ):
 
@@ -127,6 +128,7 @@ def main(
         vlm_server_port=vlm_server_port,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
+        reset=reset,
         **kwargs,
     )
 
@@ -154,6 +156,7 @@ def demo_main(
     write_instance_images: bool = False,
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
+    reset: bool = False,
     **kwargs,
 ):
     """
@@ -195,6 +198,9 @@ def demo_main(
 
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
+    if reset:
+        robot.move_to_nav_posture()
+        robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
 
     if object_to_find is not None:
         print(f"\nSearch for {object_to_find} and {location_to_place}")

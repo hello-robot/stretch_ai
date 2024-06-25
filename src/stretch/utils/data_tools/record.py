@@ -2,6 +2,7 @@ import datetime
 import glob
 import json
 import logging
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -17,17 +18,15 @@ COMPLETION_FILENAME = "rgb_rel_videos_exported.txt"
 IMG_COMPLETION_FILENAME = "completed.txt"
 ABANDONED_FILENAME = "abandoned.txt"
 
-RGB_VIDEO_NAME = "compressed_video.mp4"
-RGB_VIDEO_H264_NAME = "compressed_video_h264.mp4"
-HEAD_RGB_VIDEO_NAME = "head_compressed_video.mp4"
+RGB_VIDEO_H264_NAME = "gripper_compressed_video_h264.mp4"
 HEAD_RGB_VIDEO_H264_NAME = "head_compressed_video_h264.mp4"
 
-DEPTH_FOLDER_NAME = "compressed_depths"
-RGB_FOLDER_NAME = "compressed_images"
+DEPTH_FOLDER_NAME = "compressed_gripper_depths"
+RGB_FOLDER_NAME = "compressed_gripper_images"
 HEAD_DEPTH_FOLDER_NAME = "compressed_head_depths"
 HEAD_RGB_FOLDER_NAME = "compressed_head_images"
 
-COMPLETED_DEPTH_FILENAME = "compressed_np_depth_float32.bin"
+COMPLETED_DEPTH_FILENAME = "compressed_np_gripper_depth_float32.bin"
 COMPLETED_HEAD_DEPTH_FILENAME = "compressed_np_head_depth_float32.bin"
 
 
@@ -40,6 +39,7 @@ class FileDataRecorder:
         task: str = "default_task",
         user: str = "default_user",
         env: str = "default_env",
+        save_images: bool = False,
     ):
         """Initialize the recorder.
 
@@ -58,6 +58,8 @@ class FileDataRecorder:
             self.task_dir.mkdir(parents=True)
         except FileExistsError:
             pass
+        self.save_images = save_images
+
         self.reset()
 
     def reset(self):
@@ -78,13 +80,12 @@ class FileDataRecorder:
         gripper: float,
         ee_pos: np.ndarray,
         ee_rot: np.ndarray,
-        config: Dict[str, float],
+        observations: Dict[str, float],
+        actions: Dict[str, float],
         head_rgb: Optional[np.ndarray] = None,
         head_depth: Optional[np.ndarray] = None,
     ):
         """Add data to the recorder."""
-        ee_rgb = cv2.resize(ee_rgb, (256, 192), interpolation=cv2.INTER_AREA)
-        ee_depth = cv2.resize(ee_depth, (256, 192), interpolation=cv2.INTER_NEAREST)
         self.rgbs.append(ee_rgb)
         self.depths.append(ee_depth)
         self.head_rgbs.append(head_rgb)
@@ -96,7 +97,8 @@ class FileDataRecorder:
             "step": self.step,
             "ee_pos": ee_pos.tolist(),
             "ee_rot": ee_rot.tolist(),
-            "config": config,
+            "observations": observations,
+            "actions": actions,
         }
         self.step += 1
 
@@ -134,6 +136,9 @@ class FileDataRecorder:
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)
 
+        if not self.save_images:
+            self.cleanup_image_folders(episode_dir)
+
         self.reset()
 
     def write_image(self, rgb, depth, episode_dir, i, head: bool = False):
@@ -151,16 +156,28 @@ class FileDataRecorder:
         cv2.imwrite(str(rgb_dir / f"{i:06}.png"), rgb)
         cv2.imwrite(str(depth_dir / f"{i:06}.png"), depth)
 
+    def cleanup_image_folders(self, episode_dir):
+        """Delete image and depth folders when raw images and depths are no longer needed"""
+
+        head_rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
+        head_depth_dir = episode_dir / HEAD_DEPTH_FOLDER_NAME
+        rgb_dir = episode_dir / RGB_FOLDER_NAME
+        depth_dir = episode_dir / DEPTH_FOLDER_NAME
+
+        image_folders = [head_rgb_dir, head_depth_dir, rgb_dir, depth_dir]
+
+        for folder in image_folders:
+            if folder.exists() and folder.is_dir():
+                shutil.rmtree(folder)
+
     def process_rgb_to_video(self, episode_dir, head: bool = False):
         start_time = time.perf_counter()
         # First, find out a sample filename
         if head:
             rgb_dir = episode_dir / HEAD_RGB_FOLDER_NAME
-            hevc_video_path = episode_dir / HEAD_RGB_VIDEO_NAME
             h264_video_path = episode_dir / HEAD_RGB_VIDEO_H264_NAME
         else:
             rgb_dir = episode_dir / RGB_FOLDER_NAME
-            hevc_video_path = episode_dir / RGB_VIDEO_NAME
             h264_video_path = episode_dir / RGB_VIDEO_H264_NAME
         try:
             sample_filename = next(rgb_dir.glob("*.png"))
@@ -178,18 +195,18 @@ class FileDataRecorder:
         else:
             logging.error(f"Unknown filename format: {sample_filename.stem}")
             return
+
         # Now, we create the videos using ffmpeg.
         # First, we will create the h264 video.
-        crfs = [30, 30]
-        video_codecs = ["hevc", "h264"]
-        for enc_lib, crf, final_video_path in zip(
-            video_codecs, crfs, [hevc_video_path, h264_video_path]
-        ):
+        # Additional codecs can be output by adding to the list and providing corresponding video paths
+        crfs = [30]
+        video_codecs = ["h264"]
+        for enc_lib, crf, final_video_path in zip(video_codecs, crfs, [h264_video_path]):
             command = [
                 "ffmpeg",
                 "-y",
                 "-framerate",
-                "30",
+                "15",
                 "-i",
                 str(rgb_dir / "{}").format(filename_format),
                 "-c:v",
