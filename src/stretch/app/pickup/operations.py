@@ -8,6 +8,7 @@ from PIL import Image
 from scipy.spatial.transform import Rotation
 from termcolor import colored
 
+from stretch.core.interfaces import Observations
 from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
@@ -595,6 +596,41 @@ class GraspObjectOperation(ManagedOperation):
     def can_start(self):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
+    def get_target_mask(
+        self, servo: Observations, instance: Instance, prev_mask: Optional[np.ndarray] = None
+    ) -> np.ndarray:
+        """Get target mask to move to."""
+        # Find the best masks
+        class_mask = servo.semantic == instance.get_category_id()
+        instance_mask = servo.instance
+        target_mask = None
+        target_mask_pts = float("-inf")
+        maximum_overlap_mask = None
+        maximum_overlap_pts = float("-inf")
+        for iid in np.unique(instance_mask):
+
+            mask = np.bitwise_and(instance_mask == iid, class_mask)
+            num_pts = sum(mask.flatten())
+            if num_pts > target_mask_pts:
+                target_mask = mask
+                target_mask_pts = num_pts
+
+            # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
+            # This is in case we are losing track of particular objects and getting classes mixed up
+            if prev_mask is not None:
+                mask = np.bitwise_and(instance_mask == iid, prev_mask)
+                num_pts = sum(mask.flatten())
+                if num_pts > maximum_overlap_pts:
+                    maximum_overlap_mask = mask
+                    maximum_overlap_pts = num_pts
+
+        if maximum_overlap_mask is not None and maximum_overlap_pts > self.min_points_to_approach:
+            return maximum_overlap_mask
+        else:
+            return target_mask
+
+        return target_mask
+
     def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
         """Use visual servoing to grasp the object."""
 
@@ -604,6 +640,7 @@ class GraspObjectOperation(ManagedOperation):
 
         t0 = timeit.default_timer()
         aligned_once = False
+        prev_target_mask = None
         success = False
         while timeit.default_timer() - t0 < max_duration:
             # Get servo observation
@@ -612,23 +649,13 @@ class GraspObjectOperation(ManagedOperation):
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
-
-            # Find the best masks
-            class_mask = servo.semantic == instance.get_category_id()
-            instance_mask = servo.instance
-            biggest_mask = None
-            biggest_mask_pts = float("-inf")
-            for iid in np.unique(instance_mask):
-                mask = np.bitwise_and(instance_mask == iid, class_mask)
-                num_pts = sum(mask.flatten())
-                if num_pts > biggest_mask_pts:
-                    biggest_mask = mask
-                    biggest_mask_pts = num_pts
+            target_mask = self.get_target_mask(servo, instance, prev_mask=prev_target_mask)
+            target_mask_pts = sum(target_mask.flatten())
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
-                mask = biggest_mask.astype(np.uint8) * 255
+                mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
                 servo_ee_rgb = cv2.addWeighted(servo_ee_rgb, 0.5, mask, 0.5, 0, servo_ee_rgb)
@@ -638,19 +665,22 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
-            if biggest_mask is not None and biggest_mask_pts > self.min_points_to_approach:
-                object_depth = servo.ee_depth[biggest_mask]
-                median_object_depth = np.median(servo.ee_depth[biggest_mask]) / 1000
+            if target_mask is not None and target_mask_pts > self.min_points_to_approach:
+                object_depth = servo.ee_depth[target_mask]
+                median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
                 print("detected classes:", np.unique(servo.semantic))
                 continue
 
             # Compute the center of the mask in image coords
-            mask = biggest_mask
+            mask = target_mask
             mask_pts = np.argwhere(mask)
             mask_center = mask_pts.mean(axis=0)
-            center_x, center_y = biggest_mask.shape[1] / 2, biggest_mask.shape[0] / 2
+            center_x, center_y = target_mask.shape[1] / 2, target_mask.shape[0] / 2
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
+
+            # Since we were able to detect it, copy over the target mask
+            prev_target_mask = target_mask
 
             # Now compute what to do
             base_x = joint_state[HelloStretchIdx.BASE_X]
@@ -660,9 +690,7 @@ class GraspObjectOperation(ManagedOperation):
             print("----- STEP VISUAL SERVOING -----")
             print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
             print(f"Median distance to object is {median_object_depth}.")
-            percentage_of_image = mask_pts.shape[0] / (
-                biggest_mask.shape[0] * biggest_mask.shape[1]
-            )
+            percentage_of_image = mask_pts.shape[0] / (target_mask.shape[0] * target_mask.shape[1])
             print(f"Percentage of image with object is {percentage_of_image}.")
             if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
                 # First, check to see if we are close enough to grasp
