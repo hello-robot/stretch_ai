@@ -589,18 +589,28 @@ class GraspObjectOperation(ManagedOperation):
 
     # Visual servoing config
     min_points_to_approach: int = 100
-    min_overlapping_points: int = 100
     lift_arm_ratio: float = 0.1
-    median_distance_when_grasping = 0.2
-    percentage_of_image_when_grasping = 0.2
+    median_distance_when_grasping: float = 0.2
+    percentage_of_image_when_grasping: float = 0.2
+    overlap_percentage: float = 0.9
 
     def can_start(self):
+        """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
     def get_target_mask(
         self, servo: Observations, instance: Instance, prev_mask: Optional[np.ndarray] = None
-    ) -> np.ndarray:
-        """Get target mask to move to."""
+    ) -> Optional[np.ndarray]:
+        """Get target mask to move to. If we do not provide the mask from the previous step, we will simply find the mask with the most points of the correct class. Otherwise, we will try to find the mask that most overlaps with the previous mask. There are two options here: one where we simply find the mask with the most points, and another where we try to find the mask that most overlaps with the previous mask. This is in case we are losing track of particular objects and getting classes mixed up.
+
+        Args:
+            servo (Observations): Servo observation
+            instance (Instance): Instance we are trying to grasp
+            prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
+
+        Returns:
+            Optional[np.ndarray]: Target mask to move to
+        """
         # Find the best masks
         class_mask = servo.semantic == instance.get_category_id()
         instance_mask = servo.instance
@@ -615,18 +625,26 @@ class GraspObjectOperation(ManagedOperation):
             if prev_mask is not None:
                 mask = np.bitwise_and(instance_mask == iid, prev_mask)
                 num_pts = sum(mask.flatten())
-                if num_pts > self.min_overlapping_points:
-                    valid_overlap = True
+
+                # Find the % of previous points in the current mask
+                overlap_pts = sum(np.bitwise_and(mask.flatten(), prev_mask.flatten()))
+                overlap_percentage = overlap_pts / sum(prev_mask.flatten())
+                valid_overlap = overlap_percentage > self.overlap_percentage
+
                 if num_pts > maximum_overlap_pts:
-                    maximum_overlap_mask = mask
                     maximum_overlap_pts = num_pts
+                    if valid_overlap:
+                        maximum_overlap_mask = instance_mask == iid
+                    else:
+                        maximum_overlap_mask = mask
             else:
                 # nothing to track
                 valid_overlap = True
 
+            # Simply find the mask with the most points
             mask = np.bitwise_and(instance_mask == iid, class_mask)
             num_pts = sum(mask.flatten())
-            if valid_overlap and num_pts > target_mask_pts:
+            if num_pts > target_mask_pts:
                 target_mask = mask
                 target_mask_pts = num_pts
 
@@ -634,8 +652,6 @@ class GraspObjectOperation(ManagedOperation):
             return maximum_overlap_mask
         else:
             return target_mask
-
-        return target_mask
 
     def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
         """Use visual servoing to grasp the object."""
