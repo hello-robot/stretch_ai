@@ -589,6 +589,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Visual servoing config
     min_points_to_approach: int = 100
+    min_overlapping_points: int = 100
     lift_arm_ratio: float = 0.1
     median_distance_when_grasping = 0.2
     percentage_of_image_when_grasping = 0.2
@@ -609,20 +610,25 @@ class GraspObjectOperation(ManagedOperation):
         maximum_overlap_pts = float("-inf")
         for iid in np.unique(instance_mask):
 
-            mask = np.bitwise_and(instance_mask == iid, class_mask)
-            num_pts = sum(mask.flatten())
-            if num_pts > target_mask_pts:
-                target_mask = mask
-                target_mask_pts = num_pts
-
             # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
             # This is in case we are losing track of particular objects and getting classes mixed up
             if prev_mask is not None:
                 mask = np.bitwise_and(instance_mask == iid, prev_mask)
                 num_pts = sum(mask.flatten())
+                if num_pts > self.min_overlapping_points:
+                    valid_overlap = True
                 if num_pts > maximum_overlap_pts:
                     maximum_overlap_mask = mask
                     maximum_overlap_pts = num_pts
+            else:
+                # nothing to track
+                valid_overlap = True
+
+            mask = np.bitwise_and(instance_mask == iid, class_mask)
+            num_pts = sum(mask.flatten())
+            if valid_overlap and num_pts > target_mask_pts:
+                target_mask = mask
+                target_mask_pts = num_pts
 
         if maximum_overlap_mask is not None and maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
