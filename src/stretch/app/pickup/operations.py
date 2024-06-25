@@ -589,10 +589,11 @@ class GraspObjectOperation(ManagedOperation):
 
     # Visual servoing config
     min_points_to_approach: int = 100
-    lift_arm_ratio: float = 0.1
-    median_distance_when_grasping: float = 0.2
+    lift_arm_ratio: float = 0.05
+    base_x_step: float = 0.05
+    wrist_pitch_step: float = 0.025
+    median_distance_when_grasping: float = 0.15
     percentage_of_image_when_grasping: float = 0.2
-    overlap_percentage: float = 0.9
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
@@ -619,27 +620,17 @@ class GraspObjectOperation(ManagedOperation):
         maximum_overlap_mask = None
         maximum_overlap_pts = float("-inf")
         for iid in np.unique(instance_mask):
-
+            current_instance_mask = instance_mask == iid
             # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
             # This is in case we are losing track of particular objects and getting classes mixed up
             if prev_mask is not None:
-                mask = np.bitwise_and(instance_mask == iid, prev_mask)
+                # Find the mask with the most points
+                mask = np.bitwise_and(current_instance_mask, prev_mask)
                 num_pts = sum(mask.flatten())
-
-                # Find the % of previous points in the current mask
-                overlap_pts = sum(np.bitwise_and(mask.flatten(), prev_mask.flatten()))
-                overlap_percentage = overlap_pts / sum(prev_mask.flatten())
-                valid_overlap = overlap_percentage > self.overlap_percentage
 
                 if num_pts > maximum_overlap_pts:
                     maximum_overlap_pts = num_pts
-                    if valid_overlap:
-                        maximum_overlap_mask = instance_mask == iid
-                    else:
-                        maximum_overlap_mask = mask
-            else:
-                # nothing to track
-                valid_overlap = True
+                    maximum_overlap_mask = mask
 
             # Simply find the mask with the most points
             mask = np.bitwise_and(instance_mask == iid, class_mask)
@@ -648,7 +639,7 @@ class GraspObjectOperation(ManagedOperation):
                 target_mask = mask
                 target_mask_pts = num_pts
 
-        if maximum_overlap_mask is not None and maximum_overlap_pts > self.min_points_to_approach:
+        if overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
         else:
             return target_mask
@@ -739,14 +730,18 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 if dx > self.align_x_threshold:
                     # Move in x - this means translate the base
-                    base_x += -0.05
+                    base_x += -self.base_x_step
                 elif dx < -1 * self.align_x_threshold:
-                    base_x += 0.05
+                    base_x += self.base_x_step
                 if dy > self.align_y_threshold:
                     # Move in y - this means translate the base
-                    wrist_pitch += -0.05
+                    wrist_pitch += -self.wrist_pitch_step
                 elif dy < -1 * self.align_y_threshold:
-                    wrist_pitch += 0.05
+                    wrist_pitch += self.wrist_pitch_step
+
+                # Force to reacquire the target mask if we moved the camera too much
+                prev_target_mask = None
+
             self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
             # time.sleep(0.05)
             # breakpoint()
