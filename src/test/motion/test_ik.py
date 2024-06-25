@@ -49,7 +49,12 @@ state_translation = {
 }
 
 
-def test_fk_ik(urdf_file, true_joint_names, initial_joint_state):
+def test_fk_ik():
+    _test_fk_ik("stretch_base_rotation_ik.urdf", true_all_joints_revolute, state_revolute)
+    _test_fk_ik("stretch_base_translation_ik.urdf", true_all_joints_translation, state_translation)
+
+
+def _test_fk_ik(urdf_file, true_joint_names, initial_joint_state):
     # Create IK Solver
     try:
         urdf_path = os.path.join(os.path.dirname(__file__), urdf_file)
@@ -279,7 +284,6 @@ def test_ik_restricted():
 
 
 if __name__ == "__main__":
-    test_fk_ik("stretch_base_rotation_ik.urdf", true_all_joints_revolute, state_revolute)
-    test_fk_ik("stretch_base_translation_ik.urdf", true_all_joints_translation, state_translation)
+    test_fk_ik()
     test_ik_restricted()
     test_fk_various_links()
