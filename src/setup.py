@@ -18,6 +18,9 @@ setuptools.setup(
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
     install_requires=[
+        # Stretch hardware code
+        "hello-robot-stretch-body",
+        # Machine learning code
         "torch",
         "torchvision",
         "pyyaml",

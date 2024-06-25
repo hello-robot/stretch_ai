@@ -71,6 +71,11 @@ cd src
 pytest
 ```
 
+Run mypy to check for type errors:
+```bash
+python -m mypy --exclude src/stretch/perception/detection/detic/Detic/ --explicit-package-bases --exclude third_party --namespace-packages --disable-error-code=import-untyped .
+```
+
 
 ### File Structure
 
