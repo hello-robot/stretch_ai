@@ -58,7 +58,7 @@ docker build -t hellorobotinc/stretch-ai_cuda-11.8:latest .
 docker push hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
 
-You can pull withL
+You can pull with:
 ```bash
 docker pull hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
