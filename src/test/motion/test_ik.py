@@ -31,22 +31,23 @@ true_all_joints_translation: List[str] = [
 ]
 
 state_revolute = {
-        "joint_mobile_base_rotation": 0.0,
-        "joint_lift": 0.5,
-        "joint_arm_l0": 0.5,
-        "joint_wrist_pitch": 0,
-        "joint_wrist_yaw": 0,
-        "joint_wrist_roll": 0,
-    }
+    "joint_mobile_base_rotation": 0.0,
+    "joint_lift": 0.5,
+    "joint_arm_l0": 0.5,
+    "joint_wrist_pitch": 0,
+    "joint_wrist_yaw": 0,
+    "joint_wrist_roll": 0,
+}
 
 state_translation = {
-        "joint_mobile_base_translation": 0.0,
-        "joint_lift": 0.5,
-        "joint_arm_l0": 0.5,
-        "joint_wrist_pitch": 0,
-        "joint_wrist_yaw": 0,
-        "joint_wrist_roll": 0,
-    }
+    "joint_mobile_base_translation": 0.0,
+    "joint_lift": 0.5,
+    "joint_arm_l0": 0.5,
+    "joint_wrist_pitch": 0,
+    "joint_wrist_yaw": 0,
+    "joint_wrist_roll": 0,
+}
+
 
 def test_fk_ik(urdf_file, true_joint_names, initial_joint_state):
     # Create IK Solver
@@ -113,6 +114,7 @@ def test_fk_ik(urdf_file, true_joint_names, initial_joint_state):
     hz = 1 / (dt_sum / 1000)
     print("Average rate =", hz)
     assert hz > 100, "IK solver too slow"
+
 
 def test_fk_various_links():
     """From Amal:
@@ -226,6 +228,7 @@ def test_fk_various_links():
 
         assert pos_diff < EPS_IK_CORRECT, "Position difference too large"
         assert quat_diff < EPS_IK_CORRECT, "Quaternion difference too large"
+
 
 def test_ik_restricted():
     # Create IK Solver
