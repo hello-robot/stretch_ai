@@ -17,6 +17,7 @@ import stretch.app.dex_teleop.robot_move as rm
 import stretch.motion.simple_ik as si
 import stretch.utils.compression as compression
 import stretch.utils.loop_stats as lt
+from stretch.core.comms import CommsNode
 from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
 from stretch.utils.image import adjust_gamma, autoAdjustments_with_convertScaleAbs
@@ -25,7 +26,7 @@ HEAD_CONFIG = "head_config"
 EE_POS = "wrist_position"
 
 
-class DexTeleopFollower:
+class DexTeleopFollower(CommsNode):
 
     # Debugging options
     print_time_debugging: bool = True
@@ -48,6 +49,7 @@ class DexTeleopFollower:
         Args:
           use_remote_computer(bool): is this process running on a different machine from the leader (default = True)
         """
+        super(DexTeleopFollower, self).__init__()
         self.robot_speed = robot_speed
         self.robot_allowed_to_move = robot_allowed_to_move
         self.using_stretch_2 = using_stretch_2
@@ -106,30 +108,12 @@ class DexTeleopFollower:
         # the teleop origin.
         self.center_wrist_position = self.simple_ik.fk_rotary_base(self.center_configuration)
 
-        # Create a socket for sending information
-        self.context = zmq.Context()
-        self.send_socket = self.context.socket(zmq.PUB)
-        self.send_socket.setsockopt(zmq.SNDHWM, 1)
-        self.send_socket.setsockopt(zmq.RCVHWM, 1)
+        # Set up socket to receive goals
+        self.send_socket = self._make_pub_socket(send_port, use_remote_computer)
+        self.goal_recv_socket, self.goal_recv_address = self._make_sub_socket(
+            recv_port, use_remote_computer
+        )
 
-        if use_remote_computer:
-            address = "tcp://*:" + str(send_port)
-        else:
-            address = "tcp://" + "127.0.0.1" + ":" + str(send_port)
-
-        self.send_socket.bind(address)
-
-        goal_recv_socket = self.context.socket(zmq.SUB)
-        goal_recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
-        goal_recv_socket.setsockopt(zmq.SNDHWM, 1)
-        goal_recv_socket.setsockopt(zmq.RCVHWM, 1)
-        goal_recv_socket.setsockopt(zmq.CONFLATE, 1)
-        # goal_recv_address = 'tcp://10.1.10.71:5555'
-        goal_recv_address = "tcp://192.168.1.169:5555"
-        goal_recv_socket.connect(goal_recv_address)
-
-        # save the socket
-        self.goal_recv_socket = goal_recv_socket
         self._done = False
 
         self.send_port = send_port
