@@ -35,10 +35,10 @@ class CommsNode:
     def _get_ip_address(self, port: int, use_remote_computer: bool = True) -> str:
         """Helper function to get IP addresses"""
         if use_remote_computer:
-            recv_address = "tcp://*:" + str(recv_port)
+            recv_address = "tcp://*:" + str(port)
         else:
             desktop_ip = "127.0.0.1"
-            recv_address = f"tcp://{desktop_ip}:" + str(recv_port)
+            recv_address = f"tcp://{desktop_ip}:" + str(port)
         return recv_address
 
     def _make_sub_socket(
