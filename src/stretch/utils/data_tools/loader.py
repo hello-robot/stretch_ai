@@ -113,7 +113,7 @@ class DatasetBase(torch.utils.data.Dataset):
         self.h5s = {}
         lens = []
         for filename in files:
-            # Check each file to see how many entires it has
+            # Check each file to see how many entries it has
             with h5py.File(filename, "r") as h5:
                 for key, h5_trial in h5.items():
                     if not self.trial_list or (self.trial_list and key in self.trial_list):

@@ -38,7 +38,7 @@ USAGE:\n
 class rand_policy:
     def __init__(self, env, seed):
         self.env = env
-        self.env.action_space.np_random.seed(seed)  # requires exlicit seeding
+        self.env.action_space.np_random.seed(seed)  # requires explicit seeding
 
     def get_action(self, obs):
         # return self.env.np_random.uniform(high=self.env.action_space.high, low=self.env.action_space.low)
@@ -124,7 +124,7 @@ def main(
     # resolve policy and outputs
     if policy_path is not None:
         pi = pickle.load(open(policy_path, "rb"))
-        if output_dir == "./":  # overide the default
+        if output_dir == "./":  # override the default
             output_dir, pol_name = os.path.split(policy_path)
             if output_name is None:
                 output_name = os.path.splitext(pol_name)[0]

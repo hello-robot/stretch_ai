@@ -451,7 +451,7 @@ def plot_scene_with_bboxes(
     The above example will render one subplot with the mesh object
     and two cameras.
 
-    RayBundle visualization is also supproted:
+    RayBundle visualization is also supported:
     ..code-block::python
         cameras = PerspectiveCameras(...)
         ray_bundle = RayBundle(origins=..., lengths=..., directions=..., xys=...)

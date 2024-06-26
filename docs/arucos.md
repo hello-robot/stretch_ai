@@ -30,8 +30,8 @@ print(db.get_markers())
 
 Estimating the marker's pose requires the marker ID and marker size (in millimeters), which is why each marker dictionary consists of:
 
- - The key is the marker ID
- - *length_mm* is the length of the marker in millimeters
- - *link* is the name of the URDF link that associates with this marker, if any
- - *name* is the name of the marker (e.g. 'docking station')
- - *use_rgb_only* is a flag that determines whether pose estimation of the marker considers depth data
+- The key is the marker ID
+- *length_mm* is the length of the marker in millimeters
+- *link* is the name of the URDF link that associates with this marker, if any
+- *name* is the name of the marker (e.g. 'docking station')
+- *use_rgb_only* is a flag that determines whether pose estimation of the marker considers depth data

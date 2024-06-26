@@ -23,6 +23,7 @@ setuptools.setup(
         "pyyaml",
         "pyzmq",
         "numpy",
+        "numba",
         "opencv-python",
         "scipy",
         "matplotlib",
@@ -42,7 +43,7 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
-        # Configuraiton tools
+        # Configuration tools
         "hydra-core",
         # Compression tools
         "pyliblzfse",

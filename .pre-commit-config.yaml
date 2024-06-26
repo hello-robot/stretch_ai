@@ -34,3 +34,26 @@ repos:
     rev: 0.6.1
     hooks:
       - id: nbstripout
+
+  # Beautysh formats Bash scripts 
+  - repo: https://github.com/lovesegfault/beautysh 
+    rev: v6.2.1 
+    hooks: 
+      - id: beautysh 
+
+  # Mdformat formats Markdown files 
+  - repo: https://github.com/executablebooks/mdformat 
+    rev: 0.7.16 
+    hooks: 
+      - id: mdformat 
+
+  # Codespell checks the code for common misspellings 
+  - repo: https://github.com/codespell-project/codespell 
+    rev: v2.2.4 
+    hooks: 
+      - id: codespell 
+        exclude: > 
+          (?x)^( 
+            | .*\.svg 
+            | .*\.tsv
+          )$ 

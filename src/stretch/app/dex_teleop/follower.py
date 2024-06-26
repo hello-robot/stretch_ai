@@ -4,6 +4,7 @@ import argparse
 import pprint as pp
 import threading
 import time
+import timeit
 
 import cv2
 import numpy as np
@@ -16,6 +17,7 @@ import stretch.app.dex_teleop.robot_move as rm
 import stretch.motion.simple_ik as si
 import stretch.utils.compression as compression
 import stretch.utils.loop_stats as lt
+from stretch.core.comms import CommsNode
 from stretch.drivers.d405 import D405
 from stretch.drivers.d435 import D435i
 from stretch.utils.image import adjust_gamma, autoAdjustments_with_convertScaleAbs
@@ -24,7 +26,11 @@ HEAD_CONFIG = "head_config"
 EE_POS = "wrist_position"
 
 
-class DexTeleopFollower:
+class DexTeleopFollower(CommsNode):
+
+    # Debugging options
+    print_time_debugging: bool = True
+
     def __init__(
         self,
         robot_speed: str = "slow",
@@ -35,13 +41,16 @@ class DexTeleopFollower:
         gamma: float = 2.0,
         exposure: str = "low",
         send_port=5555,
+        recv_port=5556,
         brighten_image: bool = False,
         use_remote_computer: bool = True,
+        look_at_ee: bool = True,
     ):
         """
         Args:
           use_remote_computer(bool): is this process running on a different machine from the leader (default = True)
         """
+        super(DexTeleopFollower, self).__init__()
         self.robot_speed = robot_speed
         self.robot_allowed_to_move = robot_allowed_to_move
         self.using_stretch_2 = using_stretch_2
@@ -79,6 +88,10 @@ class DexTeleopFollower:
             print("Stretch body is ready.")
             ##########################################################
 
+        if look_at_ee:
+            # Look at ee with head
+            self.set_head_config(np.array([-np.pi / 2, -np.pi / 4]))
+
         # Initialize IK
         self.simple_ik = si.SimpleIK()
 
@@ -96,30 +109,12 @@ class DexTeleopFollower:
         # the teleop origin.
         self.center_wrist_position = self.simple_ik.fk_rotary_base(self.center_configuration)
 
-        # Create a socket for sending information
-        self.context = zmq.Context()
-        self.send_socket = self.context.socket(zmq.PUB)
-        self.send_socket.setsockopt(zmq.SNDHWM, 1)
-        self.send_socket.setsockopt(zmq.RCVHWM, 1)
+        # Set up socket to receive goals
+        self.send_socket = self._make_pub_socket(send_port, use_remote_computer)
+        self.goal_recv_socket, self.goal_recv_address = self._make_sub_socket(
+            recv_port, use_remote_computer
+        )
 
-        if use_remote_computer:
-            address = "tcp://*:" + str(send_port)
-        else:
-            address = "tcp://" + "127.0.0.1" + ":" + str(send_port)
-
-        self.send_socket.bind(address)
-
-        goal_recv_socket = self.context.socket(zmq.SUB)
-        goal_recv_socket.setsockopt(zmq.SUBSCRIBE, b"")
-        goal_recv_socket.setsockopt(zmq.SNDHWM, 1)
-        goal_recv_socket.setsockopt(zmq.RCVHWM, 1)
-        goal_recv_socket.setsockopt(zmq.CONFLATE, 1)
-        # goal_recv_address = 'tcp://10.1.10.71:5555'
-        goal_recv_address = "tcp://192.168.1.169:5555"
-        goal_recv_socket.connect(goal_recv_address)
-
-        # save the socket
-        self.goal_recv_socket = goal_recv_socket
         self._done = False
 
         self.send_port = send_port
@@ -233,8 +228,6 @@ class DexTeleopFollower:
             depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
             head_depth_image, head_color_image = self._get_images(from_head=True, verbose=verbose)
 
-            import timeit
-
             t0 = timeit.default_timer()
             compressed_depth_image = compression.zip_depth(depth_image)
             compressed_head_depth_image = compression.zip_depth(head_depth_image)
@@ -244,16 +237,18 @@ class DexTeleopFollower:
             compressed_head_color_image = compression.to_webp(head_color_image)
             # color_image2 = compression.from_webp(compressed_color_image)
             t2 = timeit.default_timer()
-            print(
-                t1 - t0,
-                f"{len(compressed_depth_image)=}",
-                t2 - t1,
-                f"{len(compressed_color_image)=}",
-            )
+            if self.print_time_debugging:
+                print(
+                    t1 - t0,
+                    f"{len(compressed_depth_image)=}",
+                    t2 - t1,
+                    f"{len(compressed_color_image)=}",
+                )
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
 
+            # Compute the end effector position and orientation using forward kinematics
             config = self.gripper_to_goal.get_current_config()
             ee_pos, ee_rot = self.gripper_to_goal.get_current_ee_pose()
 
@@ -281,6 +276,7 @@ class DexTeleopFollower:
                 "robot/ee_rotation": ee_rot,
             }
 
+            print(" - send")
             self.send_socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
@@ -347,6 +343,8 @@ def main(args):
         gamma=args.gamma,
         exposure=args.exposure,
         send_port=args.send_port,
+        recv_port=args.recv_port,
+        look_at_ee=False,
     )
     follower.spin()
 

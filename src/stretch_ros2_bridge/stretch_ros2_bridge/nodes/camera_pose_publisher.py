@@ -15,7 +15,7 @@ from stretch_ros2_bridge.ros.utils import matrix_to_pose_msg
 
 
 class CameraPosePublisher(Node):
-    """Node that publishes camera pose tranform [map -> camer_frame]"""
+    """Node that publishes camera pose transform [map -> camer_frame]"""
 
     def __init__(self, topic_name: str = "camera_pose"):
         super().__init__("camera_pose_publisher")
@@ -49,7 +49,7 @@ class CameraPosePublisher(Node):
             self._pub.publish(msg)
             self._seq += 1
         except TransformException as ex:
-            self.get_logger().info(f"Could not tranform the camera pose {ex}")
+            self.get_logger().info(f"Could not transform the camera pose {ex}")
 
 
 def main():

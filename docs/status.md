@@ -14,11 +14,11 @@ If you were to print out `status`, you'd see a large Python dictionary. In this 
 
 The top level keys of `status` will be:
 
- - other
- - mobile_base
- - joint_arm
- - joint_lift
- - a whole bunch more joints...
+- other
+- mobile_base
+- joint_arm
+- joint_lift
+- a whole bunch more joints...
 
 To see what joints are on the robot, check out the [Stretch Hardware Overview](https://docs.hello-robot.com/0.3/getting_started/stretch_hardware_overview/).
 
@@ -28,8 +28,8 @@ Each joint on the robot "wakes up" (i.e. is powered on) not knowing how far open
 
 But, we can't provide joint status until the robot is homed. Therefore, if the robot isn't homed, you'll only see the following top level keys:
 
- - other
- - mobile_base - the mobile base never needs homing
+- other
+- mobile_base - the mobile base never needs homing
 
 ## Other section
 
@@ -43,13 +43,13 @@ print(status['other'])
 
 The "other" section of the status dictionary includes the following keys:
 
- - **timestamp**: when the status was collected
- - **voltage**: the battery voltage of the robot (< 10.5V is low battery)
- - **current**: the battery current of the robot
- - **is_charge_port_detecting_plug**: whether the mechanical switch within the charge port detects that a charger plug is plugged in
- - **is_charging**: whether the robot is actually receiving charge. Combined with is_charge_port_detecting_plug, you can warn users that they've plugged in a faulty or turned-off charger when a plug is detected but no charge is being received.
- - **is_runstopped**: whether the robot is in a "run-stop", which is a safety mode where all joints are frozen and backdrive-able. There's a big easy-to-press run-stop button on Stretch so users may stop the robot's motion easily.
- - **is_homed**: whether or not the robot is homed
+- **timestamp**: when the status was collected
+- **voltage**: the battery voltage of the robot (\< 10.5V is low battery)
+- **current**: the battery current of the robot
+- **is_charge_port_detecting_plug**: whether the mechanical switch within the charge port detects that a charger plug is plugged in
+- **is_charging**: whether the robot is actually receiving charge. Combined with is_charge_port_detecting_plug, you can warn users that they've plugged in a faulty or turned-off charger when a plug is detected but no charge is being received.
+- **is_runstopped**: whether the robot is in a "run-stop", which is a safety mode where all joints are frozen and backdrive-able. There's a big easy-to-press run-stop button on Stretch so users may stop the robot's motion easily.
+- **is_homed**: whether or not the robot is homed
 
 ## Mobile base section
 
@@ -62,9 +62,9 @@ print(status['mobile_base'])
 
 The keys are:
 
- - **translational_velocity**: the forward/backwards velocity of the robot, as tracked by wheel odometry
- - **rotational_velocity**: the in-place rotation velocity of the robot, as tracked by wheel odometry
- - **is_tracking**: whether the mobile base is tracking a user command
+- **translational_velocity**: the forward/backwards velocity of the robot, as tracked by wheel odometry
+- **rotational_velocity**: the in-place rotation velocity of the robot, as tracked by wheel odometry
+- **is_tracking**: whether the mobile base is tracking a user command
 
 ## Joint sections
 
@@ -78,13 +78,13 @@ print(status['joint_arm'])
 
 The keys for each joint are the same. They are:
 
- - **position**: the joint position, in meters for prismatic joints, in radians for revolute joints
- - **velocity**: the joint velocity, in m/s or rad/s
- - **effort**: the joint effort being applied, in percentage from 0%-100% for positive effort, or -100%-0% for negative effort
- - **num_contacts**: the arm/lift joints are capable of detecting contact, and will report the number of contacts detected
- - **is_tracking**: whether the joint in tracking a user command
- - **upper_limit**: the upper limit of the joint range, in meters or radians
- - **lower_limit**: the lower limit of the joint range, in meters or radians. See the [Stretch's Joint Limits](https://docs.hello-robot.com/0.3/python/moving/#querying-stretchs-joint-limits) guide to see the joints ranges visually.
+- **position**: the joint position, in meters for prismatic joints, in radians for revolute joints
+- **velocity**: the joint velocity, in m/s or rad/s
+- **effort**: the joint effort being applied, in percentage from 0%-100% for positive effort, or -100%-0% for negative effort
+- **num_contacts**: the arm/lift joints are capable of detecting contact, and will report the number of contacts detected
+- **is_tracking**: whether the joint in tracking a user command
+- **upper_limit**: the upper limit of the joint range, in meters or radians
+- **lower_limit**: the lower limit of the joint range, in meters or radians. See the [Stretch's Joint Limits](https://docs.hello-robot.com/0.3/python/moving/#querying-stretchs-joint-limits) guide to see the joints ranges visually.
 
 ```python
 print(status['joint_wrist_yaw']['position'])
