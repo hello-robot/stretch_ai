@@ -248,12 +248,10 @@ class DexTeleopFollower(CommsNode):
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
 
-            print("g2g")
+            # Compute the end effector position and orientation using forward kinematics
             config = self.gripper_to_goal.get_current_config()
-            print("cur ee")
             ee_pos, ee_rot = self.gripper_to_goal.get_current_ee_pose()
 
-            print("get outpit")
             d405_output = {
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,

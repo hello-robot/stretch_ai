@@ -132,7 +132,7 @@ class PinocchioIKSolver:
         return q_out
 
     def compute_fk(
-        self, config: np.ndarray, link_name: str = None, ignore_missing_joints: bool = True
+        self, config: np.ndarray, link_name: str = None, ignore_missing_joints: bool = False
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Given joint values, return end-effector position and quaternion associated with it.
 
@@ -167,6 +167,7 @@ class PinocchioIKSolver:
         max_iterations=100,
         num_attempts: int = 1,
         verbose: bool = False,
+        ignore_missing_joints: bool = False,
     ) -> Tuple[np.ndarray, bool, dict]:
         """given end-effector position and quaternion, return joint values.
 
@@ -185,7 +186,7 @@ class PinocchioIKSolver:
                     "Sampling multiple initial configs not yet supported by Pinocchio solver."
                 )
         else:
-            q = self._qmap_control2model(q_init)
+            q = self._qmap_control2model(q_init, ignore_missing_joints=ignore_missing_joints)
             # Override the number of attempts
             num_attempts = 1
 

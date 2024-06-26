@@ -474,7 +474,10 @@ class DexTeleopLeader(Evaluator):
             new_goal_configuration = self.simple_ik.ik_rotary_base(wrist_position)
         else:
             res, success, info = self.manip_ik_solver.compute_ik(
-                wrist_position, gripper_orientation, q_init=current_state
+                wrist_position,
+                gripper_orientation,
+                q_init=current_state,
+                ignore_missing_joints=True,
             )
             new_goal_configuration = self.manip_ik_solver.q_array_to_dict(res)
             if not success:
