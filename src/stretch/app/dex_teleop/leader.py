@@ -170,8 +170,8 @@ class DexTeleopLeader(Evaluator):
         display_point_cloud: bool = False,
         debug_aruco: bool = False,
         save_images: bool = False,
-        recv_port: int = 5555,
-        send_port: int = 5556,
+        recv_port: int = 4405,
+        send_port: int = 4406,
     ):
         super().__init__()
         self.camera = None
@@ -187,7 +187,7 @@ class DexTeleopLeader(Evaluator):
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
-        self.goal_send_socket, _ = self._make_pub_socket(5556)
+        self.goal_send_socket = self._make_pub_socket(send_port, use_remote_computer=True)
 
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)
