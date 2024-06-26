@@ -11,7 +11,7 @@ import stretch_body.robot as rb
 import zmq
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
-from stretch.app.dex_telep.follower import DexTeleopFollower
+from stretch.app.dex_teleop.follower import DexTeleopFollower
 
 
 def main(args):
