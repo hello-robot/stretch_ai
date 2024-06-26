@@ -182,7 +182,7 @@ class NavStateEstimator(Node):
                 self._slam_pose_sp = sp.SE3(matrix)
 
         except TransformException as ex:
-            self.get_logger().info(f"Could not tranform the base pose {ex}")
+            self.get_logger().info(f"Could not transform the base pose {ex}")
 
     def create_pubs_and_subs(self):
         # Create publishers and subscribers

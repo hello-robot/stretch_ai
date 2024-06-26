@@ -68,7 +68,7 @@ class Parameters(object):
 
     @property
     def guarantee_instance_is_reachable(self) -> bool:
-        """Should we use planning to check if we can get to things? Defautls to False"""
+        """Should we use planning to check if we can get to things? Defaults to False."""
         if "guarantee_instance_is_reachable" in self.data:
             return self.data["guarantee_instance_is_reachable"]
         else:

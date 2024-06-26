@@ -664,7 +664,7 @@ class HelloStretchKinematics:
 
     def extend_arm_to(self, q, arm):
         """
-        Extend the arm by a certain amound
+        Extend the arm by a certain amount.
         Move the base as well to compensate.
 
         This is purely a helper function to make sure that we can find poses at which we can

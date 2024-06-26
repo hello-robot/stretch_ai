@@ -42,7 +42,7 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
-        # Configuraiton tools
+        # Configuration tools
         "hydra-core",
         # Compression tools
         "pyliblzfse",
