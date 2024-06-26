@@ -191,7 +191,6 @@ class DexTeleopLeader(Evaluator):
         self.goal_send_socket = self._make_pub_socket(
             send_port, robot_ip=robot_ip, use_remote_computer=True
         )
-        input("---")
 
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)

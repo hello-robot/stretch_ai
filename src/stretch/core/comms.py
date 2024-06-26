@@ -71,7 +71,7 @@ class ClientCommsNode(CommsNode):
         socket = self._new_pub_socket()
         addr = self._get_ip_address(send_port, robot_ip, use_remote_computer)
         print(f"Publishing on {addr}...")
-        socket.bind(addr)
+        socket.connect(addr)
         return socket
 
     def _make_sub_socket(
@@ -80,5 +80,5 @@ class ClientCommsNode(CommsNode):
         recv_socket = self._new_sub_socket()
         addr = self._get_ip_address(recv_port, robot_ip, use_remote_computer)
         print(f"Listening on {addr}...")
-        recv_socket.bind(addr)
+        recv_socket.connect(addr)
         return recv_socket, addr
