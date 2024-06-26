@@ -38,23 +38,23 @@ echo "---------------------------------------------"
 
 # if -y flag was passed in, do not bother asking
 if [ "$1" == "-y" ]; then
-	yn="y"
+    yn="y"
 else
-	read -p "Does all this look correct? (y/n) " yn
-	case $yn in
-		y ) echo "Starting installation...";;
-		n ) echo "Exiting...";
-			exit;;
-		* ) echo Invalid response!;
-			exit 1;;
-	esac
+    read -p "Does all this look correct? (y/n) " yn
+    case $yn in
+        y ) echo "Starting installation..." ;;
+        n ) echo "Exiting...";
+            exit ;;
+        * ) echo Invalid response!;
+            exit 1 ;;
+    esac
 fi
 
 # Exit immediately if anything fails
 set -e
 
 mamba env remove -n $ENV_NAME -y
-mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y 
+mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
 source activate $ENV_NAME
 
 # Now install pytorch3d a bit faster
@@ -79,16 +79,16 @@ echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
 echo "Will be installed to: $PWD/third_party/Detic"
 # echo "The third_party folder will be removed!"
 if [ "$1" == "-y" ]; then
-	yn="y"
+    yn="y"
 else
-	read -p "Do you want to proceed? (y/n) " yn
-	case $yn in
-		y ) echo "Starting installation...";;
-		n ) echo "Exiting...";
-			exit;;
-		* ) echo Invalid response!;
-			exit 1;;
-	esac
+    read -p "Do you want to proceed? (y/n) " yn
+    case $yn in
+        y ) echo "Starting installation..." ;;
+        n ) echo "Exiting...";
+            exit ;;
+        * ) echo Invalid response!;
+            exit 1 ;;
+    esac
 fi
 echo "Install detectron2 for perception (required by Detic)"
 git submodule update --init --recursive

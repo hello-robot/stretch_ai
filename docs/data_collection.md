@@ -41,7 +41,7 @@
    python3 -m stretch.app.act.act_follower --leader-ip <local-ip-of-pc>
    ```
 
-2. Launch dex teleop leader on PC
+1. Launch dex teleop leader on PC
 
    ```bash
    # Launch this command from the directory where URDFs are stored
@@ -50,14 +50,16 @@
    python3 -m stretch.app.dex_teleop.leader -i <ip-of-robot> --env-name <name-of-task> -s
    ```
 
-3. Record episodes
+1. Record episodes
+
    - Press `spacebar` to start recording a demonstration, press `spacebar` again to end demonstration
    - Demonstrations will be stored in stretch_ai/data/default_task/default_user/`name-of-task`
 
 ## Format data and push to huggingface repo
 
 1. [Authenticate with huggingface-cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
-2. Process and push demonstration folder to huggingface repo
+
+1. Process and push demonstration folder to huggingface repo
 
    ```bash
    # --raw-dir:  where the episodes for this task are stored

@@ -54,5 +54,6 @@ repos:
       - id: codespell 
         exclude: > 
           (?x)^( 
-              .*\.svg 
+            | .*\.svg 
+            | .*\.tsv
           )$ 
