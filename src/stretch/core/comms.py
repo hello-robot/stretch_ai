@@ -1,4 +1,7 @@
+from typing import Tuple
+
 import zmq
+from zmq import Socket
 
 
 class CommsNode:
@@ -7,7 +10,7 @@ class CommsNode:
     def __init__(self):
         self.context = zmq.Context()
 
-    def _make_pub_socket(self, send_port, use_remote_computer: bool = True):
+    def _make_pub_socket(self, send_port: int, use_remote_computer: bool = True) -> Socket:
         socket = self.context.socket(zmq.PUB)
         socket.setsockopt(zmq.SNDHWM, 1)
         socket.setsockopt(zmq.RCVHWM, 1)
@@ -22,7 +25,9 @@ class CommsNode:
         socket.bind(send_address)
         return socket
 
-    def _make_sub_socket(self, recv_port, use_remote_computer: bool = True):
+    def _make_sub_socket(
+        self, recv_port: int, use_remote_computer: bool = True
+    ) -> Tuple[Socket, str]:
 
         # Set up the receiver/subscriber using ZMQ
         recv_socket = self.context.socket(zmq.SUB)
