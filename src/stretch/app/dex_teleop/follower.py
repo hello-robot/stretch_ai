@@ -26,6 +26,10 @@ EE_POS = "wrist_position"
 
 
 class DexTeleopFollower:
+
+    # Debugging options
+    print_time_debugging: bool = True
+
     def __init__(
         self,
         robot_speed: str = "slow",
