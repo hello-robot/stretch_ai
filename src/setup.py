@@ -23,6 +23,7 @@ setuptools.setup(
         "pyyaml",
         "pyzmq",
         "numpy",
+        "numba",
         "opencv-python",
         "scipy",
         "matplotlib",
