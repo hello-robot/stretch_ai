@@ -8,11 +8,6 @@
 
   - Advanced installation is only needed if you also want to train/evaluate policies with GPU, pure data collection should be fine with [normal installation](data_collection.md#on-robot)
 
-  ```bash
-  # After stretch_ai is installed
-  git switch feature/act
-  ```
-
 - [Prepare URDFs and camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
 - Install our fork of lerobot
@@ -33,8 +28,6 @@
     git clone git@github.com:hello-robot/stretch_ai.git
     cd stretch_ai/src
     pip3 install -e .
-
-    git switch feature/act
   ```
 
 - [Prepare URDFs for dex teleop](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs)

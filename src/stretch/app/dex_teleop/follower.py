@@ -37,6 +37,7 @@ class DexTeleopFollower:
         send_port=5555,
         brighten_image: bool = False,
         use_remote_computer: bool = True,
+        look_at_ee: bool = True,
     ):
         """
         Args:
@@ -78,6 +79,10 @@ class DexTeleopFollower:
             self.robot.base.reset_odometry()
             print("Stretch body is ready.")
             ##########################################################
+
+        if look_at_ee:
+            # Look at ee with head
+            self.set_head_config(np.array([-np.pi / 2, -np.pi / 4]))
 
         # Initialize IK
         self.simple_ik = si.SimpleIK()
@@ -347,6 +352,7 @@ def main(args):
         gamma=args.gamma,
         exposure=args.exposure,
         send_port=args.send_port,
+        look_at_ee=False,
     )
     follower.spin()
 
