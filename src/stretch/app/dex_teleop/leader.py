@@ -170,6 +170,7 @@ class DexTeleopLeader(Evaluator):
         display_point_cloud: bool = False,
         debug_aruco: bool = False,
         save_images: bool = False,
+        robot_ip: Optional[str] = None,
         recv_port: int = 4405,
         send_port: int = 4406,
     ):
@@ -187,7 +188,10 @@ class DexTeleopLeader(Evaluator):
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
-        self.goal_send_socket = self._make_pub_socket(send_port, use_remote_computer=True)
+        self.goal_send_socket = self._make_pub_socket(
+            send_port, robot_ip=robot_ip, use_remote_computer=True
+        )
+        input("---")
 
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)
@@ -693,6 +697,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
     )
+    parser.add_argument("-P", "--send_port", type=int, default=4406, help="Port to send goals to.")
     parser.add_argument(
         "-R",
         "--replay_filename",
@@ -719,6 +724,8 @@ if __name__ == "__main__":
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
         save_images=args.save_images,
+        send_port=args.send_port,
+        robot_ip=args.robot_ip,
     )
     try:
         client.run(evaluator)

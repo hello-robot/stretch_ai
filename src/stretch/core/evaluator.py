@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 
-from .comms import CommsNode
+from .comms import ClientCommsNode
 
 
-class Evaluator(CommsNode):
+class Evaluator(ClientCommsNode):
     """A basic class holding some overridable logic for evaluating input on sensors."""
 
     def __init__(self):
