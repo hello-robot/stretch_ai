@@ -4,7 +4,7 @@
 
 ### On PC:
 
-- Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10, then switch to `feature/act` branch
+- Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10
 
   - Advanced installation is only needed if you also want to train/evaluate policies with GPU, pure data collection should be fine with [normal installation](data_collection.md#on-robot)
 
@@ -22,7 +22,7 @@
 
 ### On Robot:
 
-- Install normal installation of stretch_ai, then switch to `feature/act` branch
+- Install normal installation of stretch_ai
 
   ```bash
     git clone git@github.com:hello-robot/stretch_ai.git
@@ -38,7 +38,7 @@
 
    ```bash
    # Launch this command from the directory where URDFs are stored
-   python3 -m stretch.app.act.act_follower --leader-ip <local-ip-of-pc>
+   python3 -m stretch.app.act.act_follower
    ```
 
 1. Launch dex teleop leader on PC
@@ -74,4 +74,14 @@
    --video 0 \
    --fps 15 \
    --repo-id hellorobotinc/<your-dataset-name>
+   ```
+
+1. Visualizing dataset with Rerun.io
+
+   ```bash
+   # Specify root if you wish to use local copy of the dataset, else dataset will be pulled from web
+   python .\lerobot\scripts\visualize_dataset.py \
+   --repo-id hellorobotinc/<your-dataset-name> \
+   --episode-index <episode-idx> \
+   --root ../data/default_task/default_user
    ```
