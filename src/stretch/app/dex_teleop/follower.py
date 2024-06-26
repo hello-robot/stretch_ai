@@ -4,6 +4,7 @@ import argparse
 import pprint as pp
 import threading
 import time
+import timeit
 
 import cv2
 import numpy as np
@@ -238,8 +239,6 @@ class DexTeleopFollower:
             depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
             head_depth_image, head_color_image = self._get_images(from_head=True, verbose=verbose)
 
-            import timeit
-
             t0 = timeit.default_timer()
             compressed_depth_image = compression.zip_depth(depth_image)
             compressed_head_depth_image = compression.zip_depth(head_depth_image)
@@ -249,19 +248,23 @@ class DexTeleopFollower:
             compressed_head_color_image = compression.to_webp(head_color_image)
             # color_image2 = compression.from_webp(compressed_color_image)
             t2 = timeit.default_timer()
-            print(
-                t1 - t0,
-                f"{len(compressed_depth_image)=}",
-                t2 - t1,
-                f"{len(compressed_color_image)=}",
-            )
+            if self.print_time_debugging:
+                print(
+                    t1 - t0,
+                    f"{len(compressed_depth_image)=}",
+                    t2 - t1,
+                    f"{len(compressed_color_image)=}",
+                )
 
             if self.brighten_image:
                 color_image = autoAdjustments_with_convertScaleAbs(color_image)
 
+            print("g2g")
             config = self.gripper_to_goal.get_current_config()
+            print("cur ee")
             ee_pos, ee_rot = self.gripper_to_goal.get_current_ee_pose()
 
+            print("get outpit")
             d405_output = {
                 "ee_cam/color_camera_info": color_camera_info,
                 "ee_cam/depth_camera_info": depth_camera_info,
@@ -286,6 +289,7 @@ class DexTeleopFollower:
                 "robot/ee_rotation": ee_rot,
             }
 
+            print(" - send")
             self.send_socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
