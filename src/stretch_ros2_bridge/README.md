@@ -27,14 +27,16 @@ colcon build
 ### Running
 
 In one terminal build stretch_ros2_bridge package after any changes has been made:
+
 ```
 cd ~/ament_ws
 colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
+
 Using the `--symlink-install` flag means that you only need to run this once if you make any edits.
 
-
 Then, in another terminal run the launch file
+
 ```
 cd ~/ament_ws
 sudo ./install/setup.bash
@@ -50,6 +52,7 @@ ros2 launch stretch_ros2_bridge start_server.py
 ```
 
 In another terminal open python shell and run following commands to operate the robot using stretch_user_client node
+
 ```
 import rclpy
 rclpy.init()

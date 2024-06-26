@@ -170,6 +170,9 @@ class DexTeleopLeader(Evaluator):
         display_point_cloud: bool = False,
         debug_aruco: bool = False,
         save_images: bool = False,
+        robot_ip: Optional[str] = None,
+        recv_port: int = 4405,
+        send_port: int = 4406,
     ):
         super().__init__()
         self.camera = None
@@ -185,22 +188,9 @@ class DexTeleopLeader(Evaluator):
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
-        goal_send_context = zmq.Context()
-        goal_send_socket = goal_send_context.socket(zmq.PUB)
-        goal_send_address = "tcp://*:5555"
-        goal_send_socket.setsockopt(zmq.SNDHWM, 1)
-        goal_send_socket.setsockopt(zmq.RCVHWM, 1)
-        goal_send_socket.bind(goal_send_address)
-        self.goal_send_socket = goal_send_socket
-
-        if self.use_fastest_mode:
-            if self.using_stretch_2:
-                robot_speed = "fastest_stretch_2"
-            else:
-                robot_speed = "fastest_stretch_3"
-        else:
-            robot_speed = "slow"
-        print("running with robot_speed =", robot_speed)
+        self.goal_send_socket = self._make_pub_socket(
+            send_port, robot_ip=robot_ip, use_remote_computer=True
+        )
 
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)
@@ -487,7 +477,10 @@ class DexTeleopLeader(Evaluator):
             new_goal_configuration = self.simple_ik.ik_rotary_base(wrist_position)
         else:
             res, success, info = self.manip_ik_solver.compute_ik(
-                wrist_position, gripper_orientation, q_init=current_state
+                wrist_position,
+                gripper_orientation,
+                q_init=current_state,
+                ignore_missing_joints=True,
             )
             new_goal_configuration = self.manip_ik_solver.q_array_to_dict(res)
             if not success:
@@ -703,6 +696,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
     )
+    parser.add_argument("-P", "--send_port", type=int, default=4406, help="Port to send goals to.")
     parser.add_argument(
         "-R",
         "--replay_filename",
@@ -729,6 +723,8 @@ if __name__ == "__main__":
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
         save_images=args.save_images,
+        send_port=args.send_port,
+        robot_ip=args.robot_ip,
     )
     try:
         client.run(evaluator)

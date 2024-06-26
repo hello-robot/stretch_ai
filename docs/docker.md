@@ -11,6 +11,7 @@ In particular, this docker image is designed to use the correct CUDA version for
 ## Installing Docker
 
 To install Docker, follow the instructions on the [Docker website](https://docs.docker.com/get-docker/). Test by running:
+
 ```
 docker run hello-world
 ```
@@ -31,6 +32,7 @@ sudo systemctl restart docker
 ```
 
 If necessary, you can apply new group changes to current session:
+
 ```
 newgrp docker
 ```
@@ -46,9 +48,11 @@ docker build -t stretch-ai_cuda-11.8:latest .
 ### Placeholder: Building and Pushing to Dockerhub
 
 This will use the Hello Robot account as an example (username: `hellorobotinc`). Login with:
+
 ```
 docker login -u hellorobotinc
 ```
+
 and enter a password (or create an [access token](https://hub.docker.com/settings/security)).
 
 Then, build the image with:
@@ -59,6 +63,7 @@ docker push hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
 
 You can pull with:
+
 ```bash
 docker pull hellorobotinc/stretch-ai_cuda-11.8:latest
 ```

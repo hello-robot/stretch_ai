@@ -43,6 +43,7 @@ class RobotClient:
         else:
             d405_address = "tcp://" + "127.0.0.1" + ":" + str(d405_port)
 
+        print(f"[REMOTE CLIENT] Listening on {d405_address}...")
         d405_socket.connect(d405_address)
 
         self.d405_socket = d405_socket

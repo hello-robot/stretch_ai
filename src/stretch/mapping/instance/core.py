@@ -52,7 +52,7 @@ class InstanceView:
     point_cloud: Tensor = None
     """point_cloud: 3d locations of world points corresponding to instance view pixels"""
     point_cloud_rgb: Tensor = None
-    """point_cloud_rgb: rgb colors corrsponding to point_cloud"""
+    """point_cloud_rgb: rgb colors corresponding to point_cloud"""
     point_cloud_features: Tensor = None
     """point_cloud_features: features corresponding to point_clouds"""
     cam_to_world: Tensor = None

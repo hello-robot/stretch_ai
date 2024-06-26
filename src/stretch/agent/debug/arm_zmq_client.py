@@ -41,7 +41,7 @@ class TestArmZmqClient(HomeRobotZmqClient):
                 t1 = timeit.default_timer()
                 step = (t1 - start_t) % 10
                 if step % rate < 1:
-                    # send a commend
+                    # send a command
                     if step > rate:
                         # B POSITION
                         q = [0, 0.5, 0.0, 0, 0, 0]

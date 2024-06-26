@@ -51,6 +51,13 @@ def get_arg_parser():
         help="Set the port used for sending d405 images.",
     )
     parser.add_argument(
+        "-r",
+        "--recv-port",
+        type=int,
+        default=4406,
+        help="Set the port used for receiving actions.",
+    )
+    parser.add_argument(
         "--gamma",
         action="store",
         type=float,

@@ -484,15 +484,15 @@ def adjust_gamma(image: np.ndarray, gamma: float = 1.0):
 def autoAdjustments_with_convertScaleAbs(img):
     # Initial code copied from
     # https://answers.opencv.org/question/75510/how-to-make-auto-adjustmentsbrightness-and-contrast-for-image-android-opencv-image-correction/
-    alow = img.min()
+    a_low = img.min()
     # ahigh = img.max()
-    ahigh = np.percentile(img, 90)
-    amax = 255
-    amin = 0
+    a_high = np.percentile(img, 90)
+    a_max = 255
+    a_min = 0
 
     # calculate alpha, beta
-    alpha = (amax - amin) / (ahigh - alow)
-    beta = amin - alow * alpha
+    alpha = (a_max - a_min) / (a_high - a_low)
+    beta = a_min - a_low * alpha
     # perform the operation g(x,y)= α * f(x,y)+ β
     new_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
 

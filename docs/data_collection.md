@@ -4,14 +4,9 @@
 
 ### On PC:
 
-- Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10, then switch to `feature/act` branch
+- Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10
 
   - Advanced installation is only needed if you also want to train/evaluate policies with GPU, pure data collection should be fine with [normal installation](data_collection.md#on-robot)
-
-  ```bash
-  # After stretch_ai is installed
-  git switch feature/act
-  ```
 
 - [Prepare URDFs and camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
@@ -27,14 +22,12 @@
 
 ### On Robot:
 
-- Install normal installation of stretch_ai, then switch to `feature/act` branch
+- Install normal installation of stretch_ai
 
   ```bash
     git clone git@github.com:hello-robot/stretch_ai.git
     cd stretch_ai/src
     pip3 install -e .
-
-    git switch feature/act
   ```
 
 - [Prepare URDFs for dex teleop](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs)
@@ -45,10 +38,10 @@
 
    ```bash
    # Launch this command from the directory where URDFs are stored
-   python3 -m stretch.app.act.act_follower --leader-ip <local-ip-of-pc>
+   python3 -m stretch.app.act.act_follower
    ```
 
-2. Launch dex teleop leader on PC
+1. Launch dex teleop leader on PC
 
    ```bash
    # Launch this command from the directory where URDFs are stored
@@ -57,14 +50,16 @@
    python3 -m stretch.app.dex_teleop.leader -i <ip-of-robot> --env-name <name-of-task> -s
    ```
 
-3. Record episodes
+1. Record episodes
+
    - Press `spacebar` to start recording a demonstration, press `spacebar` again to end demonstration
    - Demonstrations will be stored in stretch_ai/data/default_task/default_user/`name-of-task`
 
 ## Format data and push to huggingface repo
 
 1. [Authenticate with huggingface-cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
-2. Process and push demonstration folder to huggingface repo
+
+1. Process and push demonstration folder to huggingface repo
 
    ```bash
    # --raw-dir:  where the episodes for this task are stored
@@ -79,4 +74,14 @@
    --video 0 \
    --fps 15 \
    --repo-id hellorobotinc/<your-dataset-name>
+   ```
+
+1. Visualizing dataset with Rerun.io
+
+   ```bash
+   # Specify root if you wish to use local copy of the dataset, else dataset will be pulled from web
+   python .\lerobot\scripts\visualize_dataset.py \
+   --repo-id hellorobotinc/<your-dataset-name> \
+   --episode-index <episode-idx> \
+   --root ../data/default_task/default_user
    ```
