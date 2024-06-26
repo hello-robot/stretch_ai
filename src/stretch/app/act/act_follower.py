@@ -47,6 +47,7 @@ def main(args):
         gamma=args.gamma,
         exposure=args.exposure,
         send_port=args.send_port,
+        recv_port=args.recv_port,
         look_at_ee=True,
     )
     follower.spin()

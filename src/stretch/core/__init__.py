@@ -7,6 +7,9 @@
 from .abstract_agent import Agent
 from .abstract_env import Env
 from .abstract_perception import PerceptionModule
+
+# Communication utilities
+from .comms import CommsNode
 from .evaluator import Evaluator
 from .interfaces import Action, Observations
 

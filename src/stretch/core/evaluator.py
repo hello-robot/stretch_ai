@@ -1,11 +1,14 @@
 import cv2
 import numpy as np
 
+from .comms import CommsNode
 
-class Evaluator:
+
+class Evaluator(CommsNode):
     """A basic class holding some overridable logic for evaluating input on sensors."""
 
     def __init__(self):
+        super(Evaluator, self).__init__()
         self.camera_info = None
         self.depth_scale = None
         self._done = False

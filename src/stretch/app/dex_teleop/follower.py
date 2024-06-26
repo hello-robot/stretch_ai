@@ -41,6 +41,7 @@ class DexTeleopFollower(CommsNode):
         gamma: float = 2.0,
         exposure: str = "low",
         send_port=5555,
+        recv_port=5556,
         brighten_image: bool = False,
         use_remote_computer: bool = True,
         look_at_ee: bool = True,
@@ -344,6 +345,7 @@ def main(args):
         gamma=args.gamma,
         exposure=args.exposure,
         send_port=args.send_port,
+        recv_port=args.recv_port,
         look_at_ee=False,
     )
     follower.spin()
