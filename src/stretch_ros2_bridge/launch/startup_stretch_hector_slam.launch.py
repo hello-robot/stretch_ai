@@ -43,7 +43,7 @@ def generate_launch_description():
         "decimation_filter.enable": "True",
         "spatial_filter.enable": "True",
         "temporal_filter.enable": "True",
-        "disparity_filter.enable": "True",
+        "disparity_filter.enable": "False",
         "device_type": "d435i",
         "rgb_camera.profile": "1280x720x15",
         "depth_module.profile": "848x480x15",
