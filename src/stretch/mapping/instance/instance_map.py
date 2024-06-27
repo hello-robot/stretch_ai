@@ -268,7 +268,7 @@ class InstanceMemory:
 
         Args:
             env_id (int): The environment ID.
-            category_id: (Optional[Sequence[int]]): The category of instances to retreive. If None, all instances
+            category_id: (Optional[Sequence[int]]): The category of instances to retrieve. If None, all instances
                                                     for the given environment will be returned. Defaults to None.
 
         Returns:
@@ -1008,7 +1008,7 @@ def box3d_sub_box_suppression(bounds: Tensor, confidence_score: Tensor, iou_thre
     volume = box3d_volume_from_bounds(bounds)
     intersection_over_volume = intersection / volume.unsqueeze(0)
     # There is a subtle possible bug here if we want to combine bboxes instead of just suppress
-    # I.e. if box 1 contains most of box 8, but doensn't contain box1
+    # I.e. if box 1 contains most of box 8, but doesn't contain box1
     # and box 8 contains box 1
     # and box 1 is larger than box 8 larger than box 1
     # Then box 8 gets assigned to 1 and box 1 makes it through

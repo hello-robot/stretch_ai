@@ -6,22 +6,22 @@ This is a modified version of [stretch dex teleop](https://github.com/hello-robo
 
 Follow the [Stretch dex teleop](https://github.com/hello-robot/stretch_dex_teleop) instructions to calibrate your camera and make sure things are working.
 
-Webcam should be plugged into your workstation or laptop (``leader pc'')
-
+Webcam should be plugged into your workstation or laptop (\`\`leader pc'')
 
 ## Running
-
 
 ### On the Robot
 
 These steps replace the usual server *for now*.
 
 Start the image server:
+
 ```
 python -m stretch.app.dex_teleop.send_d405_images -r
 ```
 
 Start the follower:
+
 ```
 python -m stretch.app.dex_teleop.follower
 ```
@@ -36,8 +36,8 @@ python -m stretch.app.dex_teleop.leader
 
 A window should appear, showing the view from the end effector camera. This should be roughly real time; if not, improve your network connection somehow. Press space to start and stop recording demonstrations.
 
-
 When collecting data, you should set task, user, and environment, instead of just using the default for all of the above. For example:
+
 ```bash
 python -m stretch.app.dex_teleop.leader --task grasp_cup --user Chris --env ChrisKitchen1
 ```
@@ -50,5 +50,5 @@ The robot will start as soon as the Dex Teleop tool is visible! However, it will
 
 #### Keyboard Controls
 
-  - Press `space`: start/stop recording a demonstration. It will be written to a file based on the provided task, user, and environment, with a subfolder based on the date and time.
-  - Press `esc`: quit the program.
+- Press `space`: start/stop recording a demonstration. It will be written to a file based on the provided task, user, and environment, with a subfolder based on the date and time.
+- Press `esc`: quit the program.

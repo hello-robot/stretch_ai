@@ -170,7 +170,7 @@ class GotoVelocityControllerNode(Node):
         self.vel_command_pub.publish(cmd)
 
     def control_loop_callback(self):
-        """Actual contoller timer callback"""
+        """Actual controller timer callback"""
 
         if self.active and self.xyt_goal is not None:
             # Compute control

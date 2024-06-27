@@ -69,7 +69,7 @@ def exposure_argument_is_valid(value):
 def check_exposure_value(value):
     if not exposure_argument_is_valid(value):
         raise ValueError(
-            f"The provided exposure setting, {value}, is not a valide keyword, {exposure_keywords}, or is outside of the allowed numeric range, {exposure_range}."
+            f"The provided exposure setting, {value}, is not a valid keyword, {exposure_keywords}, or is outside of the allowed numeric range, {exposure_range}."
         )
 
 

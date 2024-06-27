@@ -269,7 +269,7 @@ class StretchRosInterface(Node):
     #         raise RuntimeError("Stretch is not homed!")
 
     def _create_services(self):
-        """Create services to activate/deactive robot modes"""
+        """Create services to activate/deactivate robot modes"""
         self.nav_mode_service = self.create_client(Trigger, "switch_to_navigation_mode")
         self.pos_mode_service = self.create_client(Trigger, "switch_to_position_mode")
 

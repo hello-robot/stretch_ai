@@ -31,7 +31,7 @@ class RosCamera(Camera):
             name: Image topic name
             verbose: Whether or not to print out camera info
             rotations: Number of counterclockwise rotations for the output image array
-            buffer_size: Size of buffer for intialization and filtering
+            buffer_size: Size of buffer for initialization and filtering
         """
 
         self._ros_client = ros_client

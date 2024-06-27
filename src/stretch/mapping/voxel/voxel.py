@@ -855,7 +855,7 @@ class SparseVoxelMap(object):
         elif backend == "pytorch3d":
             return self._show_pytorch3d(instances, **backend_kwargs)
         else:
-            raise NotImplementedError(f"Uknown backend {backend}, must be 'open3d' or 'pytorch3d")
+            raise NotImplementedError(f"Unknown backend {backend}, must be 'open3d' or 'pytorch3d")
 
     def get_xyz_rgb(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return xyz and rgb of the current map"""

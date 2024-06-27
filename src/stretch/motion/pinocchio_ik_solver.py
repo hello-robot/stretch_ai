@@ -24,17 +24,17 @@ CEM_NUM_SAMPLES = 50
 CEM_NUM_TOP = 10
 
 
-def level_filter(level):
+def level_filter(levels):
     """Filter log messages by level"""
 
     def is_level(record):
-        return record["level"].name == level
+        return record["level"].name in levels
 
     return is_level
 
 
 logger.remove(0)
-logger.add(sys.stderr, filter=level_filter(level="WARNING"))
+logger.add(sys.stderr, filter=level_filter(levels=["WARNING", "ERROR"]))
 
 
 class PinocchioIKSolver:
@@ -95,7 +95,9 @@ class PinocchioIKSolver:
         """Return a list of joints"""
         return [self.model.names[i + 1] for i in range(self.model.nq)]
 
-    def _qmap_control2model(self, q_input: np.ndarray) -> np.ndarray:
+    def _qmap_control2model(
+        self, q_input: np.ndarray, ignore_missing_joints: bool = False
+    ) -> np.ndarray:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
         if isinstance(q_input, dict):
@@ -105,9 +107,13 @@ class PinocchioIKSolver:
                 else:
                     jid = self.model.getJointId(joint_name)
                     if jid >= len(self.model.idx_qs):
-                        logger.error(f"{joint_name=} {jid=} not in model.idx_qs")
-                        raise RuntimeError(f"Tried to set joint not in model.idx_qs: {joint_name=}")
-                    q_out[self.model.idx_qs[self.model.getJointId(joint_name)]] = value
+                        if not ignore_missing_joints:
+                            logger.error(f"ERROR: {joint_name=} {jid=} not in model.idx_qs")
+                            raise RuntimeError(
+                                f"Tried to set joint not in model.idx_qs: {joint_name=}"
+                            )
+                    else:
+                        q_out[self.model.idx_qs[self.model.getJointId(joint_name)]] = value
         else:
             assert len(self.controlled_joints) == len(
                 q_input
@@ -125,14 +131,32 @@ class PinocchioIKSolver:
 
         return q_out
 
-    def compute_fk(self, config) -> Tuple[np.ndarray, np.ndarray]:
-        """given joint values return end-effector position and quaternion associated with it"""
-        q_model = self._qmap_control2model(config)
-        pinocchio.forwardKinematics(self.model, self.data, q_model)
-        pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
-        pos = self.data.oMf[self.ee_frame_idx].translation
-        quat = R.from_matrix(self.data.oMf[self.ee_frame_idx].rotation).as_quat()
+    def compute_fk(
+        self, config: np.ndarray, link_name: str = None, ignore_missing_joints: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Given joint values, return end-effector position and quaternion associated with it.
 
+        Args:
+            config: joint values
+            link_name: name of the link to compute FK for; if None, uses the end-effector link
+
+        Returns:
+            pos: end-effector position (x, y, z)
+            quat: end-effector quaternion (w, x, y, z)
+        """
+        if link_name is None:
+            frame_idx = self.ee_frame_idx
+        else:
+            try:
+                frame_idx = [f.name for f in self.model.frames].index(link_name)
+            except ValueError:
+                logger.error(f"Unknown link_name {link_name}. Defaulting to end-effector")
+                frame_idx = self.ee_frame_idx
+        q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
+        pinocchio.forwardKinematics(self.model, self.data, q_model)
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx)
+        pos = self.data.oMf[frame_idx].translation
+        quat = R.from_matrix(self.data.oMf[frame_idx].rotation).as_quat()
         return pos.copy(), quat.copy()
 
     def compute_ik(
@@ -143,6 +167,7 @@ class PinocchioIKSolver:
         max_iterations=100,
         num_attempts: int = 1,
         verbose: bool = False,
+        ignore_missing_joints: bool = False,
     ) -> Tuple[np.ndarray, bool, dict]:
         """given end-effector position and quaternion, return joint values.
 
@@ -161,7 +186,7 @@ class PinocchioIKSolver:
                     "Sampling multiple initial configs not yet supported by Pinocchio solver."
                 )
         else:
-            q = self._qmap_control2model(q_init)
+            q = self._qmap_control2model(q_init, ignore_missing_joints=ignore_missing_joints)
             # Override the number of attempts
             num_attempts = 1
 

@@ -53,7 +53,7 @@ class ContinuousNavigationAction(Action):
 
     def __init__(self, xyt: np.ndarray):
         if not len(xyt) == 3:
-            raise RuntimeError("continuous navigation action space has 3 dimentions, x y and theta")
+            raise RuntimeError("continuous navigation action space has 3 dimensions, x y and theta")
         self.xyt = xyt
 
     def __str__(self):
@@ -67,7 +67,7 @@ class ContinuousFullBodyAction:
     def __init__(self, joints: np.ndarray, xyt: np.ndarray = None):
         """Create full-body continuous action"""
         if xyt is not None and not len(xyt) == 3:
-            raise RuntimeError("continuous navigation action space has 3 dimentions, x y and theta")
+            raise RuntimeError("continuous navigation action space has 3 dimensions, x y and theta")
         self.xyt = xyt
         # Joint states in robot action format
         self.joints = joints
@@ -93,7 +93,7 @@ class ContinuousEndEffectorAction:
             and not (pos.shape[1] + ori.shape[1] + g.shape[1]) == 8
         ):
             raise RuntimeError(
-                "continuous end-effector action space has 8 dimentions: pos=3, ori=4, gripper=1"
+                "continuous end-effector action space has 8 dimensions: pos=3, ori=4, gripper=1"
             )
         self.pos = pos
         self.ori = ori
