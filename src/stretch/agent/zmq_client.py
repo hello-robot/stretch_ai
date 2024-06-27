@@ -129,7 +129,6 @@ class HomeRobotZmqClient(RobotClient):
         self.send_socket = self.context.socket(zmq.PUB)
         self.send_socket.setsockopt(zmq.SNDHWM, 1)
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
-        action_send_address = "tcp://*:" + str(self.send_port)
 
         # Use remote computer or whatever
         if use_remote_computer:
@@ -401,7 +400,7 @@ class HomeRobotZmqClient(RobotClient):
                 self._iter = self._last_step
 
     def _update_state(self, state):
-        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reseverd for higher level control."""
+        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control."""
         with self._state_lock:
             self._state = state
             if not self.update_control_mode_from_full_obs:

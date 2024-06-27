@@ -281,7 +281,7 @@ class StretchManipulationClient(AbstractControlModule):
             quat: Desired orientation in quaternion (xyzw)
             relative: Whether specified pose is relative to current pose
             world_frame: Infer poses in world frame instead of base frame
-            blocking: Whether command blocks until completetion
+            blocking: Whether command blocks until completion
             initial_cfg: Preferred (initial) joint state configuration
         """
         full_body_cfg = self.solve_ik(pos, quat, relative, world_frame, initial_cfg, debug)

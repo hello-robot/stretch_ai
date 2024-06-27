@@ -308,7 +308,7 @@ class RobotAgent:
 
         # Add observation - helper function will unpack it
         if visualize_map:
-            # Now draw 2d maps to show waht was happening
+            # Now draw 2d maps to show what was happening
             self.voxel_map.get_2d_map(debug=True)
 
         if debug_instances:
@@ -948,7 +948,7 @@ class RobotAgent:
         self.voxel_map.reset()
 
     def save_instance_images(self, root: str = "."):
-        """Save out instance images from the voxel map that we hav ecollected while exploring."""
+        """Save out instance images from the voxel map that we have collected while exploring."""
 
         if isinstance(root, str):
             root = Path(root)

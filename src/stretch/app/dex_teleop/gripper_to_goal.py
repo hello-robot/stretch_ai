@@ -172,8 +172,7 @@ class GripperToGoal:
 
     def get_current_config(self):
         state = {
-            "joint_mobile_base_rotation": 0.0,
-            "theta_vel": self.robot.status["base"]["theta_vel"],
+            "joint_mobile_base_rotation": self.robot.status["base"]["theta"],
             "joint_lift": self.robot.status["lift"]["pos"],
             "joint_arm_l0": self.robot.status["arm"]["pos"],
             "joint_wrist_pitch": self.robot.status["end_of_arm"]["wrist_pitch"]["pos"],
@@ -185,7 +184,7 @@ class GripperToGoal:
 
     def get_current_ee_pose(self):
         state = self.get_current_config()
-        return self.manip_ik_solver.compute_fk(state)
+        return self.manip_ik_solver.compute_fk(state, ignore_missing_joints=True)
 
     def __del__(self):
         if self.robot is not None:

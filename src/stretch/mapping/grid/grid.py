@@ -35,7 +35,7 @@ class GridParams:
     def xy_to_grid_coords(self, xy: torch.Tensor) -> Optional[np.ndarray]:
         """convert xy point to grid coords"""
         assert xy.shape[-1] == 2, "coords must be Nx2 or 2d array"
-        # Handle convertion
+        # Handle conversion between world (X, Y) and grid coordinates
         if isinstance(xy, np.ndarray):
             xy = torch.from_numpy(xy).float()
         grid_xy = (xy / self.resolution) + self.grid_origin[:2]
