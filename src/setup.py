@@ -46,6 +46,7 @@ setuptools.setup(
         # Configuration tools and neural networks
         "hydra-core",
         "timm",
+        "huggingface_hub[cli]",
         # Compression tools
         "pyliblzfse",
         "webp",
