@@ -36,6 +36,9 @@ class ACTLeader(Evaluator):
         force_record: bool = False,
         display_point_cloud: bool = False,
         save_images: bool = False,
+        robot_ip: Optional[str] = None,
+        recv_port: int = 4405,
+        send_port: int = 4406,
     ):
         super().__init__()
         self.camera = None
@@ -45,13 +48,9 @@ class ACTLeader(Evaluator):
         self.device = device
         self.policy_path = policy_path
 
-        goal_send_context = zmq.Context()
-        goal_send_socket = goal_send_context.socket(zmq.PUB)
-        goal_send_address = "tcp://*:5555"
-        goal_send_socket.setsockopt(zmq.SNDHWM, 1)
-        goal_send_socket.setsockopt(zmq.RCVHWM, 1)
-        goal_send_socket.bind(goal_send_address)
-        self.goal_send_socket = goal_send_socket
+        self.goal_send_socket = self._make_pub_socket(
+            send_port, robot_ip=robot_ip, use_remote_computer=True
+        )
 
         self._force = force_record
         self._recording = False or self._force
@@ -308,6 +307,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--display_point_cloud", action="store_true")
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("-P", "--send_port", type=int, default=4406, help="Port to send goals to.")
     parser.add_argument(
         "--policy_path", type=str, required=True, help="Path to folder storing model weights"
     )
@@ -323,6 +323,7 @@ if __name__ == "__main__":
 
     # Create dex teleop leader - this will detect markers and send off goal dicts to the robot.
     evaluator = ACTLeader(
+        robot_ip=args.robot_ip,
         data_dir=args.data_dir,
         user_name=args.user_name,
         task_name=args.task_name,
@@ -333,6 +334,7 @@ if __name__ == "__main__":
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
         save_images=args.save_images,
+        send_port=args.send_port,
     )
     try:
         client.run(evaluator)
