@@ -10,14 +10,16 @@ echo "Ensure stretch_urdf is up-to-date before running this script."
 echo "---------------------------------------------"
 read -p "Does all this look correct? (y/n) " yn
 case $yn in
-	y ) echo "Starting installation...";;
-	n ) echo "Exiting...";
-		exit;;
-	* ) echo Invalid response!;
-		exit 1;;
+    y ) echo "Starting installation..." ;;
+    n ) echo "Exiting...";
+        exit ;;
+    * ) echo Invalid response!;
+        exit 1 ;;
 esac
 set -e
 pip install --upgrade hello-robot-stretch-body hello-robot-stretch-urdf
+pip install numpy<2.0.0 --upgrade
+pip install trimesh --upgrade
 
 echo "---------------------------------------------"
 echo "Running stretch_urdf commands."
