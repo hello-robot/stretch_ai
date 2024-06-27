@@ -134,34 +134,36 @@ python -m stretch.app.dex_teleop.leader
 
 [Read the Dex Teleop documentation](docs/dex_teleop.md) for more details.
 
-### OVMM Exploration
+### Automatic 3d Mapping
 
 ```bash
-python -m stretch.app.ovmm.run
+python -m stretch.app.mapping
 ```
 
 You can show visualizations with:
 
 ```bash
-python -m stretch.app.ovmm.run --show-intermediate-maps --show-final-map
+python -m stretch.app.mapping --show-intermediate-maps --show-final-map
 ```
 
 The flag `--show-intermediate-maps` shows the 3d map after each large motion (waypoint reached), and `--show-final-map` shows the final map after exploration is done.
 
 It will record a PCD/PKL file which can be interpreted with the `read_sparse_voxel_map` script; see below.
 
+Another useful flag when testing is the `--reset` flag, which will reset the robot to the starting position of (0, 0, 0). This is done blindly before any execution or mapping, so be careful!
+
 ### Voxel Map Visualization
 
 You can test the voxel code on a captured pickle file:
 
 ```bash
-python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
 ```
 
 Optional open3d visualization of the scene:
 
 ```bash
-python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
 ### Pickup Toys
