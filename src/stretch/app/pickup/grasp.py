@@ -25,6 +25,8 @@ def get_task(robot, demo, target_object):
             "grasp the object",
             manager,
         )
+        grasp_object.show_object_to_grasp = True
+        grasp_object.servo_to_grasp = True
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -65,6 +67,7 @@ def main(
         device_id=device_id,
         verbose=verbose,
         category_map_file=parameters["open_vocab_category_map_file"],
+        confidence_threshold=0.3,
     )
 
     # Start moving the robot around
@@ -83,6 +86,7 @@ def main(
     task = get_task(robot, demo, target_object)
     task.run()
     robot.open_gripper()
+    robot.stop()
 
 
 if __name__ == "__main__":
