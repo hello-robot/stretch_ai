@@ -14,6 +14,7 @@ from yaml.loader import SafeLoader
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.teleop_aruco_detector as ad
 import stretch.app.dex_teleop.webcam as wc
+from stretch.utils.config import get_full_config_path
 
 
 def pixel_from_3d(xyz, camera_info):
@@ -53,8 +54,8 @@ class WebcamArucoDetector:
         self.visualize_detections = visualize_detections
 
         self.marker_info = {}
-        aruco_marker_info_file_name = (
-            "./config/app/dex_teleop/teleop_aruco_marker_info_" + dt.tongs_to_use + ".yaml"
+        aruco_marker_info_file_name = get_full_config_path(
+            "app/dex_teleop/teleop_aruco_marker_info_" + dt.tongs_to_use + ".yaml"
         )
         with open(aruco_marker_info_file_name) as f:
             self.marker_info = yaml.load(f, Loader=SafeLoader)

@@ -5,7 +5,6 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-
 Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
 
 ## Quickstart
@@ -45,20 +44,23 @@ for img in stretch.stream_nav_camera():
 ```
 
 Check out the docs on:
- - [Getting status](./docs/status.md)
+
+- [Getting status](./docs/status.md)
 
 ## Advanced Installation
 
 If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
+
 ```
 ./install.sh
 ```
 
 Caution, it may take a while! Several libraries are built from source to avoid potential compatibility issues.
 
-You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferrably 11.8.
+You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8.
 
 Open3D is an optional dependency used by some 3d visualizations. It does not work in Python 3.12, as of April 2024. Install it with:
+
 ```
 pip install open3d
 ```
@@ -68,6 +70,7 @@ In addition, you'll want to install [HomeRobot](docs/home_robot.md) on your Stre
 ### Verifying Advanced Installation
 
 The most common issue is with `torch_cluster`, or that cuda is set up wrong. Make sure it runs by starting `python` and running:
+
 ```python
 import torch_cluster
 import torch
@@ -76,9 +79,10 @@ torch.rand(3, 3).to("cuda")
 ```
 
 You should see:
-  - `torch_cluster` imports successfully
-  - `True` for `torch.cuda.is_available()`
-  - No errors for `torch.rand(3, 3).to("cuda")`
+
+- `torch_cluster` imports successfully
+- `True` for `torch.cuda.is_available()`
+- No errors for `torch.rand(3, 3).to("cuda")`
 
 ## Example Apps
 
@@ -88,21 +92,25 @@ Visualize output from the caneras and other sensors on the robot. This will open
 
 ```bash
 ```
+
 python -m stretch.app.view_images --robot_ip $ROBOT_IP
-```
+
+````
 
 You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
-```
+````
 
 ### Dex Teleop for Data Collection
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. It has two components:
-  - `follower` runs on the robot, publishes video and state information, and receives goals from a large remote server
-  - `leader` runs on a GPU enabled desktop or laptop, where you can run a larger neural network.
+
+- `follower` runs on the robot, publishes video and state information, and receives goals from a large remote server
+- `leader` runs on a GPU enabled desktop or laptop, where you can run a larger neural network.
 
 To start it, on the robot, run:
+
 ```bash
 python -m stretch.app.dex_teleop.follower
 # You can run it in fast mode once you are comfortable with execution
@@ -110,6 +118,7 @@ python -m stretch.app.dex_teleop.follower --fast
 ```
 
 On a remote, GPU-enabled laptop or workstation connected to the [dex telop setup](https://github.com/hello-robot/stretch_dex_teleop):
+
 ```bash
 python -m stretch.app.dex_teleop.leader
 ```
@@ -123,9 +132,11 @@ python -m stretch.app.ovmm.run
 ```
 
 You can show visualizations with:
+
 ```bash
 python -m stretch.app.ovmm.run --show-intermediate-maps --show-final-map
 ```
+
 The flag `--show-intermediate-maps` shows the 3d map after each large motion (waypoint reached), and `--show-final-map` shows the final map after exploration is done.
 
 It will record a PCD/PKL file which can be interpreted with the `read_sparse_voxel_map` script; see below.
@@ -133,11 +144,13 @@ It will record a PCD/PKL file which can be interpreted with the `read_sparse_vox
 ### Voxel Map Visualization
 
 You can test the voxel code on a captured pickle file:
+
 ```bash
 python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
 ```
 
 Optional open3d visualization of the scene:
+
 ```bash
 python -m stretch.app.ovmm.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
@@ -151,6 +164,7 @@ python -m stretch.app.pickup.run
 ```
 
 You can add the `--reset` flag to make it go back to the start position.
+
 ```
 python -m stretch.app.pickup.run --reset
 ```
@@ -172,3 +186,13 @@ Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for m
 ### Updating Code on the Robot
 
 See the [update guide](docs/update.md) for more information. There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually, including code from this repository.
+
+### Docker
+
+Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you  can run the docker build process with:
+
+```
+docker build -t stretch-ai_cuda-11.8:latest .
+```
+
+See the [docker guide](docs/docker.md) for more information and troubleshooting advice.

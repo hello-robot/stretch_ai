@@ -587,7 +587,7 @@ def clip_matrix(left, right, bottom, top, near, far, perspective=False):
     orthographic canonical view volume (a box).
 
     Homogeneous coordinates transformed by the perspective clip matrix
-    need to be dehomogenized (devided by w coordinate).
+    need to be dehomogenized (divided by w coordinate).
 
     >>> frustrum = numpy.random.rand(6)
     >>> frustrum[1] += frustrum[0]

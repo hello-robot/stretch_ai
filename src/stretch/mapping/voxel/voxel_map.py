@@ -108,7 +108,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self._orientation_resolution = 64
         self._oriented_masks = []
 
-        # NOTE: this is just debug code - lets you see waht the masks look like
+        # NOTE: this is just debug code - lets you see what the masks look like
         assert not show_all or orientation_resolution == 64
 
         for i in range(orientation_resolution):
