@@ -40,16 +40,16 @@ Check out the docs on:
 
 - [Getting status](./docs/status.md)
 
-
-
 ## Installation
 
 On both your PC and your robot, clone and install the package:
+
 ```basha
 git clone git@github.com:hello-robot/stretch_ai.git --recursive 
 ```
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
+
 ```bash
 cd stretch_ai
 ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
@@ -103,12 +103,13 @@ Visualize output from the caneras and other sensors on the robot. This will open
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP
-````
+```
 
 You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
+
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
-````
+```
 
 ### Dex Teleop for Data Collection
 
