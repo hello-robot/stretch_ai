@@ -13,6 +13,7 @@ from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from torchvision.transforms import v2
 
 import stretch.utils.compression as compression
+from stretch.app.act.policy_utils import load_policy
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
@@ -29,7 +30,8 @@ class ACTLeader(Evaluator):
         task_name: str = "task",
         user_name: str = "default_user",
         env_name: str = "default_env",
-        policy_path: str = "./policy",
+        policy_path: str = None,
+        policy_name: str = None,
         device: str = "cuda",
         force_record: bool = False,
         display_point_cloud: bool = False,
@@ -57,10 +59,7 @@ class ACTLeader(Evaluator):
         self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
         self._run_policy = False
 
-        self.policy = ACTPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
-        # self.policy = DiffusionPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
-        self.policy.eval()
-        self.policy.to(self.device)
+        self.policy = load_policy(policy_name, policy_path, device)
         self.policy.reset()
 
     def apply(self, message, display_received_images: bool = True) -> dict:
@@ -309,7 +308,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("--display_point_cloud", action="store_true")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--policy_path", type=str, default="./policy")
+    parser.add_argument(
+        "--policy_path", type=str, required=True, help="Path to folder storing model weights"
+    )
+    parser.add_argument("--policy_name", type=str, required=True)
     args = parser.parse_args()
 
     client = RobotClient(
@@ -326,6 +328,7 @@ if __name__ == "__main__":
         task_name=args.task_name,
         env_name=args.env_name,
         policy_path=args.policy_path,
+        policy_name=args.policy_name,
         device=args.device,
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
