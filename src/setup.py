@@ -43,8 +43,9 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
-        # Configuration tools
+        # Configuration tools and neural networks
         "hydra-core",
+        "timm",
         # Compression tools
         "pyliblzfse",
         "webp",
