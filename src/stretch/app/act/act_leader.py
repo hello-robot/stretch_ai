@@ -107,23 +107,14 @@ class ACTLeader(Evaluator):
         gripper_depth_image = clip_and_normalize_depth(gripper_depth_image, "gripper")
         head_depth_image = clip_and_normalize_depth(head_depth_image, "head")
 
+        # Stack depth to match RGB
         gripper_depth_image = np.stack((gripper_depth_image,) * 3, axis=-1)
         head_depth_image = np.stack((head_depth_image,) * 3, axis=-1)
+
         if display_received_images:
 
-            # gripper_depth_image_obs = np.expand_dims(gripper_depth_image, axis=0)
-            # head_depth_image_obs = np.expand_dims(head_depth_image, axis=0)
-
-            # gripper_depth_image_obs = clip_and_normalize_depth(gripper_depth_image_obs, "gripper")
-            # head_depth_image_obs = clip_and_normalize_depth(head_depth_image_obs, "head")
-
-            # gripper_depth_image_obs = np.squeeze(gripper_depth_image_obs, axis=0)
-            # head_depth_image_obs = np.squeeze(head_depth_image_obs, axis=0)
-
-            gripper_combined = np.hstack((gripper_depth_image, gripper_color_image))
-            head_combined = np.hstack((head_depth_image, head_color_image))
-            # cv2.imshow("gripper_depth", gripper_depth_image_obs / 255)
-            # cv2.imshow("head_depth", head_depth_image_obs / 255)
+            gripper_combined = np.hstack((gripper_depth_image / 255, gripper_color_image / 255))
+            head_combined = np.hstack((head_depth_image / 255, head_color_image / 255))
             cv2.imshow("gripper", gripper_combined)
             cv2.imshow("head", head_combined)
 
@@ -188,64 +179,6 @@ class ACTLeader(Evaluator):
                 self.device,
             )
 
-            # gripper_color_image_obs = torch.from_numpy(gripper_color_image)
-            # head_color_image_obs = torch.from_numpy(head_color_image)
-            # gripper_depth_image_obs = torch.from_numpy(gripper_depth_image)
-            # head_depth_image_obs = torch.from_numpy(head_depth_image)
-
-            # gripper_depth_image_obs = gripper_depth_image_obs.to(torch.float32) / 255
-            # gripper_depth_image_obs = gripper_depth_image_obs.permute(2, 0, 1)
-
-            # head_depth_image_obs = head_depth_image_obs.to(torch.float32) / 255
-            # head_depth_image_obs = head_depth_image_obs.permute(2, 0, 1)
-
-            # gripper_color_image_obs = gripper_color_image_obs.to(torch.float32) / 255
-            # gripper_color_image_obs = gripper_color_image_obs.permute(2, 0, 1)
-
-            # head_color_image_obs = head_color_image_obs.to(torch.float32) / 255
-            # head_color_image_obs = head_color_image_obs.permute(2, 0, 1)
-
-            # state = state.to(self.device, non_blocking=True)
-            # gripper_color_image_obs = gripper_color_image_obs.to(self.device, non_blocking=True)
-            # head_color_image_obs = head_color_image_obs.to(self.device, non_blocking=True)
-            # gripper_depth_image_obs = gripper_depth_image_obs.to(self.device, non_blocking=True)
-            # head_depth_image_obs = head_depth_image_obs.to(self.device, non_blocking=True)
-
-            # transforms = v2.Compose([v2.CenterCrop(320)])
-            # gripper_color_image_obs = transforms(gripper_color_image_obs)
-            # head_color_image_obs = transforms(head_color_image_obs)
-            # gripper_depth_image_obs = transforms(gripper_depth_image_obs)
-            # head_depth_image_obs = transforms(head_depth_image_obs)
-
-            # # Add extra (empty) batch dimension, required to forward the policy
-            # state = state.unsqueeze(0)
-            # head_color_image_obs = head_color_image_obs.unsqueeze(0)
-            # gripper_color_image_obs = gripper_color_image_obs.unsqueeze(0)
-            # gripper_depth_image_obs = gripper_depth_image_obs.unsqueeze(0)
-            # head_depth_image_obs = head_depth_image_obs.unsqueeze(0)
-
-            # Build observation dict for ACT
-            # observation = {
-            #     "observation.state": state,
-            #     "observation.images.gripper": gripper_color_image_obs,
-            #     "observation.images.head": head_color_image_obs,
-            # }
-
-            # observations = {
-            #     "observation.state": state,
-            #     "observation.images.gripper": gripper_color_image_obs,
-            #     "observation.images.head": head_color_image_obs,
-            #     "observation.images.gripper_depth": gripper_depth_image_obs,
-            #     "observation.images.head_depth": head_depth_image_obs,
-            # }
-
-            # observations = {
-            #     k: v.to(self.device, non_blocking=True) for k, v in observations.items()
-            # }
-
-            for x in observations:
-                print(observations[x].shape)
-                print(type(observations[x]))
             # Send observation to policy
             with torch.inference_mode():
                 raw_action = self.policy.select_action(observations)
