@@ -668,7 +668,8 @@ class DexTeleopLeader(Evaluator):
                 print(f"{new_goal_configuration['joint_mobile_base_rotation']=}")
                 print(f"{self.filtered_wrist_position_configuration[0]=}")
                 print(f"{new_goal_configuration['joint_mobile_base_rotate_by']=}")
-            print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
+                print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
+
             # remove virtual joint and approximate motion with rotate_by using joint_mobile_base_rotate_by
             del new_goal_configuration["joint_mobile_base_rotation"]
 
