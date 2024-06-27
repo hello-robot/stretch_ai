@@ -178,8 +178,6 @@ You can add the `--reset` flag to make it go back to the start position.
 python -m stretch.app.pickup.run --reset
 ```
 
-### 
-
 ## Development
 
 Clone this repo on your Stretch and PC, and install it locally using pip with the "editable" flag:
