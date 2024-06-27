@@ -190,6 +190,10 @@ pre-commit install
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
+### Updating Code on the Robot
+
+See the [update guide](docs/update.md) for more information. There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually, including code from this repository.
+
 ### Docker
 
 Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you  can run the docker build process with:
