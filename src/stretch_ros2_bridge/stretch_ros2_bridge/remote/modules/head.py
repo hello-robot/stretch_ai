@@ -35,7 +35,10 @@ class StretchHeadClient(AbstractControlModule):
 
     def get_pose(self, rotated=True):
         """get matrix version of the camera pose"""
-        mat = self._ros_client.se3_camera_pose.matrix()
+        pose = self._ros_client.se3_camera_pose
+        if pose is None:
+            return pose
+        mat = pose.matrix()
         if rotated:
             # If we are using the rotated versions of the images
             return mat @ tra.euler_matrix(0, np.pi / 2, 0)

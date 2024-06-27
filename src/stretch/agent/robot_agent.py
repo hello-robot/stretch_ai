@@ -936,6 +936,17 @@ class RobotAgent:
                 print("WARNING: planning to home failed!")
         return matches
 
+    def reset(self, verbose: bool = True):
+        """Reset the robot's spatial memory. This deletes the instance memory and spatial map, and clears all observations.
+
+        Args:
+            verbose(bool): print out a message to the user making sure this does not go unnoticed. Defaults to True."""
+        if verbose:
+            print(
+                "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
+            )
+        self.voxel_map.reset()
+
     def save_instance_images(self, root: str = "."):
         """Save out instance images from the voxel map that we have collected while exploring."""
 

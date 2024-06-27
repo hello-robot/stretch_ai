@@ -1,17 +1,23 @@
 import time
+import timeit
 from typing import Optional
 
+import cv2
 import numpy as np
 from PIL import Image
 from scipy.spatial.transform import Rotation
 from termcolor import colored
 
+from stretch.core.interfaces import Observations
 from stretch.core.task import Operation
+from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
 
 class ManagedOperation(Operation):
+    """Placeholder node for an example in a task plan. Contains some functions to make it easier to print out different messages with color for interpretability, and also provides some utilities for making the robot do different tasks."""
+
     def __init__(self, name, manager, **kwargs):
         super().__init__(name, **kwargs)
         self.manager = manager
@@ -46,6 +52,21 @@ class ManagedOperation(Operation):
         return self.agent.plan_to_instance(
             instance, start=start, rotation_offset=np.pi / 2, radius_m=radius_m, max_tries=100
         )
+
+    def show_instance(self, instance: Instance, title: Optional[str] = None):
+        """Show the instance in the voxel grid."""
+        import matplotlib
+
+        matplotlib.use("TkAgg")
+
+        import matplotlib.pyplot as plt
+
+        view = instance.get_best_view()
+        plt.imshow(view.get_image())
+        if title is not None:
+            plt.title(title)
+        plt.axis("off")
+        plt.show()
 
 
 class RotateInPlaceOperation(ManagedOperation):
@@ -126,11 +147,7 @@ class SearchForReceptacle(ManagedOperation):
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
             if self.show_instances_detected:
-                view = instance.get_best_view()
-                plt.imshow(view.get_image())
-                plt.title(f"Instance {i} with name {name}")
-                plt.axis("off")
-                plt.show()
+                self.show_instance(instance, f"Instance {i} with name {name}")
 
             # Find a box
             if "box" in name or "tray" in name:
@@ -252,11 +269,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
             if self.show_instances_detected:
-                view = instance.get_best_view()
-                plt.imshow(view.get_image())
-                plt.title(f"Instance {i} with name {name}")
-                plt.axis("off")
-                plt.show()
+                self.show_instance(instance, f"Instance {i} with name {name}")
 
             if self.object_class in name:
                 relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
@@ -452,8 +465,9 @@ class NavigateToObjectOperation(ManagedOperation):
 
 class UpdateOperation(ManagedOperation):
 
-    show_instances_detected: bool = True
-    show_map_so_far: bool = True
+    show_instances_detected: bool = False
+    show_map_so_far: bool = False
+    clear_voxel_map: bool = False
 
     def set_target_object_class(self, object_class: str):
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
@@ -464,17 +478,23 @@ class UpdateOperation(ManagedOperation):
 
     def run(self):
         self.intro("Updating the world model.")
-        self.robot.move_to_manip_posture()
-        time.sleep(2.0)
-        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
-        time.sleep(5.0)
+        if self.clear_voxel_map:
+            self.agent.reset()
+        if not self.robot.in_manipulation_mode():
+            self.warn("Robot is not in manipulation mode. Moving to manip posture.")
+            self.robot.move_to_manip_posture()
+            time.sleep(5.0)
+        self.robot.arm_to([0.0, 0.4, 0.05, np.pi, -np.pi / 4, 0], blocking=True)
+        time.sleep(8.0)
         xyt = self.robot.get_base_pose()
         # Now update the world
         self.update()
         # Delete observations near us, since they contain the arm!!
         self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
 
+        # Notify and move the arm back to normal. Showing the map is optional.
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
@@ -494,25 +514,26 @@ class UpdateOperation(ManagedOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.imshow(self.manager.voxel_map.observations[-1].instance)
             plt.show()
+
+        # Describe the scene the robot is operating in
+        scene_graph = self.agent.get_scene_graph()
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
         instances = self.manager.instance_memory.get_instances()
         receptacle_options = []
         object_options = []
+        dist_to_object = float("inf")
+
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
             if self.show_instances_detected:
-                view = instance.get_best_view()
-                plt.imshow(view.get_image())
-                plt.title(f"Instance {i} with name {name}")
-                plt.axis("off")
-                plt.show()
+                self.show_instance(instance)
 
             # Find a box
             if "box" in name or "tray" in name:
@@ -526,12 +547,24 @@ class UpdateOperation(ManagedOperation):
                 else:
                     self.warn(f" - Found a receptacle but could not reach it.")
             elif self.manager.target_object in name:
-                object_options.append(instance)
+                relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
+                if len(relations) == 0:
+                    # This may or may not be what we want, but it certainly is not on the floor
+                    continue
 
+                object_options.append(instance)
+                dist = np.linalg.norm(
+                    instance.point_cloud.mean(axis=0).cpu().numpy()[:2] - start[:2]
+                )
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable object at {instance.get_best_view().get_pose()}.")
-                    self.manager.current_object = instance
+                    if dist < dist_to_object:
+                        print(
+                            f" - This object is closer than the previous one: {dist} < {dist_to_object}."
+                        )
+                        self.manager.current_object = instance
+                        dist_to_object = dist
                 else:
                     self.warn(f" - Found an object of class {name} but could not reach it.")
 
@@ -547,21 +580,189 @@ class GraspObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     servo_to_grasp: bool = False
     _success: bool = False
+    show_object_to_grasp: bool = False
+    show_servo_gui: bool = True
+
+    # Thresholds for centering on object
+    align_x_threshold: int = 15
+    align_y_threshold: int = 15
+
+    # Visual servoing config
+    min_points_to_approach: int = 100
+    lift_arm_ratio: float = 0.05
+    base_x_step: float = 0.03
+    wrist_pitch_step: float = 0.025
+    median_distance_when_grasping: float = 0.15
+    percentage_of_image_when_grasping: float = 0.2
 
     def can_start(self):
+        """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
-    def visual_servo_to_object(self) -> bool:
+    def get_target_mask(
+        self, servo: Observations, instance: Instance, prev_mask: Optional[np.ndarray] = None
+    ) -> Optional[np.ndarray]:
+        """Get target mask to move to. If we do not provide the mask from the previous step, we will simply find the mask with the most points of the correct class. Otherwise, we will try to find the mask that most overlaps with the previous mask. There are two options here: one where we simply find the mask with the most points, and another where we try to find the mask that most overlaps with the previous mask. This is in case we are losing track of particular objects and getting classes mixed up.
+
+        Args:
+            servo (Observations): Servo observation
+            instance (Instance): Instance we are trying to grasp
+            prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
+
+        Returns:
+            Optional[np.ndarray]: Target mask to move to
+        """
+        # Find the best masks
+        class_mask = servo.semantic == instance.get_category_id()
+        instance_mask = servo.instance
+        target_mask = None
+        target_mask_pts = float("-inf")
+        maximum_overlap_mask = None
+        maximum_overlap_pts = float("-inf")
+        for iid in np.unique(instance_mask):
+            current_instance_mask = instance_mask == iid
+            # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
+            # This is in case we are losing track of particular objects and getting classes mixed up
+            if prev_mask is not None:
+                # Find the mask with the most points
+                mask = np.bitwise_and(current_instance_mask, prev_mask)
+                num_pts = sum(mask.flatten())
+
+                if num_pts > maximum_overlap_pts:
+                    maximum_overlap_pts = num_pts
+                    maximum_overlap_mask = mask
+
+            # Simply find the mask with the most points
+            mask = np.bitwise_and(instance_mask == iid, class_mask)
+            num_pts = sum(mask.flatten())
+            if num_pts > target_mask_pts:
+                target_mask = mask
+                target_mask_pts = num_pts
+
+        if maximum_overlap_pts > self.min_points_to_approach:
+            return maximum_overlap_mask
+        else:
+            return target_mask
+
+    def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
         """Use visual servoing to grasp the object."""
-        raise NotImplementedError("Visual servoing not implemented yet.")
-        return False
+
+        self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
+        if self.show_servo_gui:
+            self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
+
+        t0 = timeit.default_timer()
+        aligned_once = False
+        prev_target_mask = None
+        success = False
+        while timeit.default_timer() - t0 < max_duration:
+            # Get servo observation
+            servo = self.robot.get_servo_observation()
+            joint_state = servo.joint
+
+            # Run semantic segmentation on it
+            servo = self.agent.semantic_sensor.predict(servo, ee=True)
+            target_mask = self.get_target_mask(servo, instance, prev_mask=prev_target_mask)
+            target_mask_pts = sum(target_mask.flatten())
+
+            # Optionally display which object we are servoing to
+            if self.show_servo_gui:
+                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+                mask = target_mask.astype(np.uint8) * 255
+                mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+                mask[:, :, 0] = 0
+                servo_ee_rgb = cv2.addWeighted(servo_ee_rgb, 0.5, mask, 0.5, 0, servo_ee_rgb)
+                cv2.imshow("servo_ee_rgb", servo_ee_rgb)
+                cv2.waitKey(1)
+                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                if res == ord("q"):
+                    break
+
+            if target_mask is not None and target_mask_pts > self.min_points_to_approach:
+                object_depth = servo.ee_depth[target_mask]
+                median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
+            else:
+                print("detected classes:", np.unique(servo.semantic))
+                continue
+
+            # Compute the center of the mask in image coords
+            mask = target_mask
+            mask_pts = np.argwhere(mask)
+            mask_center = mask_pts.mean(axis=0)
+            center_x, center_y = target_mask.shape[1] / 2, target_mask.shape[0] / 2
+            dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
+
+            # Since we were able to detect it, copy over the target mask
+            prev_target_mask = target_mask
+
+            # Now compute what to do
+            base_x = joint_state[HelloStretchIdx.BASE_X]
+            wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+            arm = joint_state[HelloStretchIdx.ARM]
+            lift = joint_state[HelloStretchIdx.LIFT]
+            print("----- STEP VISUAL SERVOING -----")
+            print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
+            print(f"Median distance to object is {median_object_depth}.")
+            percentage_of_image = mask_pts.shape[0] / (target_mask.shape[0] * target_mask.shape[1])
+            print(f"Percentage of image with object is {percentage_of_image}.")
+            if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
+                # First, check to see if we are close enough to grasp
+                if median_object_depth < self.median_distance_when_grasping:
+                    print("Grasping object!")
+                    self.robot.close_gripper(blocking=True)
+                    time.sleep(2.0)
+                    lifted_joint_state = joint_state.copy()
+                    lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
+                    self.robot.arm_to(lifted_joint_state, blocking=True)
+                    time.sleep(2.0)
+                    success = True
+                    break
+                # If we are aligned, step the whole thing closer by some amount
+                # This is based on the pitch - basically
+                aligned_once = True
+                arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
+                lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
+                print("- arm", arm, "lift", lift)
+                print("- arm_component", arm_component, "lift_component", lift_component)
+                arm += arm_component
+                lift += lift_component
+                print("- arm", arm, "lift", lift)
+            else:
+                if dx > self.align_x_threshold:
+                    # Move in x - this means translate the base
+                    base_x += -self.base_x_step
+                elif dx < -1 * self.align_x_threshold:
+                    base_x += self.base_x_step
+                if dy > self.align_y_threshold:
+                    # Move in y - this means translate the base
+                    wrist_pitch += -self.wrist_pitch_step
+                elif dy < -1 * self.align_y_threshold:
+                    wrist_pitch += self.wrist_pitch_step
+
+                # Force to reacquire the target mask if we moved the camera too much
+                prev_target_mask = None
+
+            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
+            # time.sleep(0.05)
+            # breakpoint()
+
+            # Optionally show depth and xyz
+            rgb, depth = servo.ee_rgb, servo.ee_depth
+
+            # Depth should be metric depth from camera
+            # print("TODO: compute motion based on these points")
+
+            if sum(mask.flatten()) > self.min_points_to_approach:
+                # Move towards the points
+                pass
+
+        return success
 
     def run(self):
         self.intro("Grasping the object.")
         self._success = False
-
-        # self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
-        # time.sleep(4.0)
+        if self.show_object_to_grasp:
+            self.show_instance(self.manager.current_object)
 
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
@@ -599,7 +800,7 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(joint_state, blocking=True)
 
         if self.servo_to_grasp:
-            self._success = self.visual_servo_to_object()
+            self._success = self.visual_servo_to_object(self.manager.current_object)
         else:
             target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
                 relative_object_xyz, ee_rot, q0=joint_state

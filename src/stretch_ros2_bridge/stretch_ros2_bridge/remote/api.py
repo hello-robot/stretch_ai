@@ -6,18 +6,19 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import torch
-from home_robot.core.interfaces import Observations
-from home_robot.core.robot import ControlMode, RobotClient
-from home_robot.motion.robot import RobotModel
-from home_robot.motion.stretch import (
+
+from stretch.core.interfaces import Observations
+from stretch.core.robot import ControlMode, RobotClient
+from stretch.motion import RobotModel
+from stretch.motion.constants import (
     STRETCH_DEMO_PREGRASP_Q,
     STRETCH_NAVIGATION_Q,
     STRETCH_POSTNAV_Q,
     STRETCH_PREDEMO_Q,
     STRETCH_PREGRASP_Q,
-    HelloStretchKinematics,
 )
-from home_robot.utils.geometry import xyt2sophus
+from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
+from stretch.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
 from .modules.manip import StretchManipulationClient
@@ -164,7 +165,13 @@ class StretchClient(RobotClient):
         return self._ros_client.ee_rgb_cam
 
     def get_joint_state(self):
-        return self._ros_client.get_joint_state()
+        """Get joint states from the robot. If in manipulation mode, use the base_x position from start of manipulation mode as the joint state for base_x."""
+        q, dq, eff = self._ros_client.get_joint_state()
+        # If we are in manipulation mode...
+        if self._base_control_mode == ControlMode.MANIPULATION:
+            # ...we need to get the joint positions from the manipulator
+            q[HelloStretchIdx.BASE_X] = self.manip.base_x
+        return q, dq, eff
 
     def get_frame_pose(self, frame, base_frame=None, lookup_time=None):
         """look up a particular frame in base coords"""
