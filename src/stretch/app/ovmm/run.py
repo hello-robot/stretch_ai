@@ -63,7 +63,7 @@ from stretch.utils.visualization import get_x_and_y_from_path
     is_flag=True,
     help="write out images of every object we found",
 )
-@click.option("--parameter-file", default="config/default_planner.yaml")
+@click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 def main(
     rate,
