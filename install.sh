@@ -95,10 +95,17 @@ fi
 set -e
 
 $MAMBA env remove -n $ENV_NAME -y
-$MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pyg torchvision python=$PYTHON_VERSION -y
-source activate $ENV_NAME
+# If using cpu only, create a separate environment
+if [ "$CPU_ONLY" == "true" ]; then
+    $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
+else
+    # Else, install the cuda version
+    $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
+fi
 
+source activate $ENV_NAME
 exit 0
+
 
 # Now install pytorch3d a bit faster
 $MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
