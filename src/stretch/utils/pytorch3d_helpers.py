@@ -113,11 +113,10 @@ class _box3d_overlap(Function):
     def intersect_volume(box1: torch.Tensor, box2: torch.Tensor) -> torch.Tensor:
         """
         Computes the volume of intersection between two 3D boxes.
+        https://math.stackexchange.com/questions/99565/simplest-way-to-calculate-the-intersect-area-of-two-rectangles
         """
-        min_corner = torch.max(box1.min(dim=0)[0], box2.min(dim=0)[0])
-        max_corner = torch.min(box1.max(dim=0)[0], box2.max(dim=0)[0])
-        inter_dim = (max_corner - min_corner).clamp(min=0)
-        return torch.prod(inter_dim)
+
+        raise NotImplementedError
     
     @staticmethod
     def iou_box3d(boxes1, boxes2):
