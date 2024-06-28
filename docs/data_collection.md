@@ -43,11 +43,13 @@
 
 1. Launch dex teleop leader on PC
 
+   Currently supported teleop modes include: `standard`, `rotary_base`, `stationary_base`
+
    ```bash
    # Launch this command from the directory where URDFs are stored
    # The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
 
-   python3 -m stretch.app.dex_teleop.leader -i <ip-of-robot> --env-name <name-of-task> -s
+   python3 -m stretch.app.dex_teleop.leader -i <ip-of-robot> --env-name <name-of-task> --teleop-mode <teleop-mode> -s
    ```
 
 1. Record episodes
@@ -85,3 +87,56 @@
    --episode-index <episode-idx> \
    --root ../data/default_task/default_user
    ```
+
+## Train a policy
+
+`policy=stretch_diffusion` tells the script to use the configs found in ./lerobot/configs/policy/stretch_diffusion.yaml
+
+`env=stretch_real` indicates that we are using the stretch in a real world env, using configs in ./lerobot/configs/env/stretch_real.yaml
+
+Training configs defined in the policy yaml file can be overridden.
+If the config looks like below:
+
+```yaml
+training:
+  learning_rate: 0.001
+```
+
+At runtime we can override this by adding the snippet below. For more details see [Hydra docs](https://hydra.cc/docs/intro/) and [LeRobot](https://github.com/huggingface/lerobot?tab=readme-ov-file#train-your-own-policy).
+
+```bash
+training.learning_rate=0.00001
+```
+
+Sample training command:
+
+```bash
+python3 lerobot/scripts/train.py \
+policy=stretch_diffusion \
+env=stretch_real \
+wandb.enable=true \
+training.batch_size=64 \
+training.num_workers=16
+```
+
+## Evaluating a policy
+
+### On Robot:
+
+```bash
+python3 -m stretch.app.act.act_follower
+```
+
+### On PC:
+
+Available policies: `diffusion`,`act`
+
+Available teleop modes: `standard`,`rotary_base`,`stationary_base`
+
+```bash
+python3 -m stretch.app.act.act_leader \
+-i <robot-ip> \
+--policy_name <name-of-policy> \
+--policy_path <path-to-weights-folder> \
+--teleop-mode <teleop-mode>
+```
