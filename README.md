@@ -192,6 +192,22 @@ pre-commit install
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
+### Code Overview
+
+The code is organized as follows. Inside the core package `src/stretch`:
+
+- `motion` contains motion planning tools
+- `mapping` is broken up into tools for voxel (3d / ok-robot style), instance mapping
+- `core` is basic tools and interfaces
+- `app` contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
+- `agent` is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms. In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
+
+The `stretch_ros2_bridge` package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
+
+### Updating Code on the Robot
+
+See the [update guide](docs/update.md) for more information. There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually, including code from this repository.
+
 ### Docker
 
 Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you  can run the docker build process with:
