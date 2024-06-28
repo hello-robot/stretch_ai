@@ -159,7 +159,6 @@ class DexTeleopLeader(Evaluator):
 
     def __init__(
         self,
-        use_fastest_mode: bool = False,
         left_handed: bool = False,
         using_stretch2: bool = False,
         data_dir: str = "./data",
@@ -185,8 +184,6 @@ class DexTeleopLeader(Evaluator):
         self.save_images = save_images
         self.teleop_mode = teleop_mode
 
-        self.use_fastest_mode = use_fastest_mode
-        self.use_fastest_mode = True
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
