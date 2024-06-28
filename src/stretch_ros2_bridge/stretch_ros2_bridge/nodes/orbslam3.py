@@ -35,6 +35,18 @@ class OrbSlam3(Node):
         with open(CONFIG_FILE, 'r') as file:
             self.config = yaml.safe_load(file)
 
+        # Check if ORBvocab.txt exists
+        if not os.path.exists(self.VOCABULARY_FILE):
+            # Check if ORBvoc.txt.tar.gz exists
+            VOCABULARY_TAR_FILE = os.path.join(DIRNAME, 'config', 'ORBvoc.txt.tar.gz')
+
+            if not os.path.exists(VOCABULARY_TAR_FILE):
+                self.get_logger().error(f"ORB vocabulary file {self.VOCABULARY_FILE} not found")
+                sys.exit(1)
+            
+            self.get_logger().info(f"Extracting {VOCABULARY_TAR_FILE} to {self.VOCABULARY_FILE}")
+            os.system(f"tar -xvf {VOCABULARY_TAR_FILE} -C {DIRNAME}/config")
+
         self.slam = None
 
         self.tf_broadcaster = TransformBroadcaster(self)
