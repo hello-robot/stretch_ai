@@ -129,9 +129,13 @@ python3 -m stretch.app.act.act_follower
 
 ### On PC:
 
-Available policies: `diffusion`,`act`
+Specify the policy of the weights provided:
 
-Available teleop modes: `standard`,`rotary_base`,`stationary_base`
+- Available policies: `diffusion`,`act`
+
+Specify the teleop mode according to the teleop mode used to train the policy
+
+- Available teleop modes: `standard`,`rotary_base`,`stationary_base`,`base_x`,`old_stationary_base`
 
 ```bash
 python3 -m stretch.app.act.act_leader \
