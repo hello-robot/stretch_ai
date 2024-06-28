@@ -323,7 +323,9 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         # If no visitable frontier, pick a random point nearby and just wander around
 
     def was_successful(self) -> bool:
-        return self.manager.current_object is not None
+        return self.manager.current_object is not None and not self.manager.is_instance_unreachable(
+            self.manager.current_object
+        )
 
 
 class PreGraspObjectOperation(ManagedOperation):
@@ -335,8 +337,12 @@ class PreGraspObjectOperation(ManagedOperation):
     grasp_distance_threshold: float = 0.8
 
     def can_start(self):
+        """Can only move to an object if it's been picked out and is reachable."""
+
         self.plan = None
         if self.manager.current_object is None:
+            return False
+        elif self.manager.is_instance_unreachable(self.manager.current_object):
             return False
 
         start = self.robot.get_base_pose()
