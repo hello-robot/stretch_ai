@@ -117,11 +117,12 @@ echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
 # If not using cpu only, install the following
-echo "Installing pytorch3d from source"
-pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_geometric
+
+echo "Installing pytorch3d from source"
+pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 
 pip install -e ./src[dev]
 
@@ -142,27 +143,28 @@ else
             exit 1 ;;
     esac
 fi
-echo "Install detectron2 for perception (required by Detic)"
-git submodule update --init --recursive
-#rm -rf third_party
-#mkdir -p third_party
-#cd third_party
-# under your working directory
-#git clone git@github.com:facebookresearch/detectron2.git
-cd third_party/detectron2
-pip install -e .
 
-echo "Install Detic for perception"
-cd ../../src/stretch/perception/detection/detic/Detic
-# Make sure it's up to date
-git submodule update --init --recursive
-pip install -r requirements.txt
+# If not cpu only, then we can use perception
+if [ "$CPU_ONLY" == "true" ]; then
+    echo "Skipping perception installation for CPU only"
+else
+    echo "Install detectron2 for perception (required by Detic)"
+    git submodule update --init --recursive
+    cd third_party/detectron2
+    pip install -e .
 
-# cd ../../src/stretch/perception/detection/detic/Detic
-# Create folder for checkpoints and download
-mkdir -p models
-echo "Download DETIC checkpoint..."
-wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+    echo "Install Detic for perception"
+    cd ../../src/stretch/perception/detection/detic/Detic
+    # Make sure it's up to date
+    git submodule update --init --recursive
+    pip install -r requirements.txt
+
+    # cd ../../src/stretch/perception/detection/detic/Detic
+    # Create folder for checkpoints and download
+    mkdir -p models
+    echo "Download DETIC checkpoint..."
+    wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+fi
 
 echo ""
 echo "=============================================="
