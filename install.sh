@@ -8,6 +8,7 @@ CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 CPU_ONLY="false"
+INSTALL_PYTORCH3D="false"
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
 # One more: --conda for conda
@@ -25,6 +26,10 @@ do
             ;;
         --conda)
             MAMBA=conda
+            shift
+            ;;
+        --pytorch3d)
+            INSTALL_PYTORCH3D="true"
             shift
             ;;
         *)
@@ -121,8 +126,11 @@ pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_V
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_geometric
 
-echo "Installing pytorch3d from source"
-pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+# This is no longer necessary but might be useful for some checks
+if [ "$INSTALL_PYTORCH3D" == "true" ]; then
+    echo "Installing pytorch3d from source"
+    pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+fi
 
 pip install -e ./src[dev]
 
