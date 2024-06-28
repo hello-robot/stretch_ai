@@ -40,6 +40,7 @@ class ACTLeader(Evaluator):
         robot_ip: Optional[str] = None,
         recv_port: int = 4405,
         send_port: int = 4406,
+        teleop_mode: str = None,
     ):
         super().__init__()
         self.camera = None
@@ -48,15 +49,29 @@ class ACTLeader(Evaluator):
         self.save_images = save_images
         self.device = device
         self.policy_path = policy_path
+        self.teleop_mode = teleop_mode
 
         self.goal_send_socket = self._make_pub_socket(
             send_port, robot_ip=robot_ip, use_remote_computer=True
         )
 
+        # Save metadata to pass to recorder
+        self.metadata = {
+            "recording_type": "Policy evaluation",
+            "user_name": user_name,
+            "task_name": task_name,
+            "env_name": env_name,
+            "policy_name": policy_name,
+            "policy_path": policy_path,
+            "teleop_mode": self.teleop_mode,
+        }
+
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
-        self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
+        self._recorder = FileDataRecorder(
+            data_dir, task_name, user_name, env_name, save_images, self.metadata
+        )
         self._run_policy = False
 
         self.policy = load_policy(policy_name, policy_path, device)
@@ -175,7 +190,7 @@ class ACTLeader(Evaluator):
                 gripper_depth_image,
                 head_color_image,
                 head_depth_image,
-                "old_stationary_base",
+                self.teleop_mode,
                 self.device,
             )
 
@@ -254,6 +269,7 @@ if __name__ == "__main__":
         "--policy_path", type=str, required=True, help="Path to folder storing model weights"
     )
     parser.add_argument("--policy_name", type=str, required=True)
+    parser.add_argument("--teleop-mode", type=str, default="standard")
     args = parser.parse_args()
 
     client = RobotClient(
@@ -277,6 +293,7 @@ if __name__ == "__main__":
         display_point_cloud=args.display_point_cloud,
         save_images=args.save_images,
         send_port=args.send_port,
+        teleop_mode=args.teleop_mode,
     )
     try:
         client.run(evaluator)
