@@ -6,13 +6,11 @@ import click
 import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.pickup import GraspObjectOperation, PickupManager, UpdateOperation
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
 from stretch.perception import create_semantic_sensor, get_encoder
-
-from .manager import PickupManager
-from .operations import GraspObjectOperation, UpdateOperation
 
 
 def get_task(robot, demo, target_object):
