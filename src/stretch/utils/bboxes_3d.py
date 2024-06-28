@@ -43,8 +43,9 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from stretch.utils.pytorch3d_helpers import make_device, box3d_overlap
-import stretch.utils.pytorch3d_utils as struct_utils
+import stretch.utils.pytorch3d as struct_utils
+from stretch.utils.pytorch3d import box3d_overlap, make_device
+
 
 # main
 class BBoxes3D:

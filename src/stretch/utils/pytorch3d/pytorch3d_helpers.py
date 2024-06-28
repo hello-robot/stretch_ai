@@ -2,14 +2,13 @@
 # All rights reserved.
 #
 # This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+# LICENSE file in this directory.
 
 from typing import Tuple
 
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
-
 
 ######################################################
 # ops.iou_box3d
@@ -118,15 +117,19 @@ class _box3d_overlap(Function):
 
         box1_size = [[torch.min(box1[:, i]), torch.max(box1[:, i])] for i in range(3)]
         box2_size = [[torch.min(box2[:, i]), torch.max(box2[:, i])] for i in range(3)]
-        overlap = [torch.min(box1_size[i][1], box2_size[i][1]) - torch.max(box1_size[i][0], box2_size[i][0]) for i in range(3)]
-        overlap = torch.tensor(overlap).clamp(min=0.)
+        overlap = [
+            torch.min(box1_size[i][1], box2_size[i][1])
+            - torch.max(box1_size[i][0], box2_size[i][0])
+            for i in range(3)
+        ]
+        overlap = torch.tensor(overlap).clamp(min=0.0)
 
         voi = torch.prod(overlap)
         return voi
-    
+
     @staticmethod
     def iou_box3d(boxes1, boxes2):
-        eps = 1.e-4
+        eps = 1.0e-4
 
         N = boxes1.shape[0]
         M = boxes2.shape[0]
@@ -151,7 +154,7 @@ class _box3d_overlap(Function):
     @staticmethod
     def forward(ctx, boxes1, boxes2):
         """
-        Arguments defintions the same as in the box3d_overlap function
+        Arguments definitions the same as in the box3d_overlap function
         """
         vol, iou = _box3d_overlap.iou_box3d(boxes1, boxes2)
         return vol, iou
@@ -218,9 +221,11 @@ def box3d_overlap(
 
     return vol, iou
 
+
 ######################################################
 # common.datatypes
 ######################################################
+
 
 def make_device(device) -> torch.device:
     """

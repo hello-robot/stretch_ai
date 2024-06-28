@@ -2,7 +2,7 @@
 # All rights reserved.
 #
 # This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+# LICENSE file in this directory.
 
 from typing import List, Sequence, Tuple, Union
 
@@ -15,6 +15,7 @@ import torch
 """
 Util functions for points/verts/faces/volumes.
 """
+
 
 def list_to_padded(
     x: Union[List[torch.Tensor], Tuple[torch.Tensor]],
@@ -53,18 +54,13 @@ def list_to_padded(
     element_ndim = max(y.ndim for y in x)
 
     # replace empty 1D tensors with empty tensors with a correct number of dimensions
-    x = [
-        (y.new_zeros([0] * element_ndim) if (y.ndim == 1 and y.nelement() == 0) else y)
-        for y in x
-    ]
+    x = [(y.new_zeros([0] * element_ndim) if (y.ndim == 1 and y.nelement() == 0) else y) for y in x]
 
     if any(y.ndim != x[0].ndim for y in x):
         raise ValueError("All items have to have the same number of dimensions!")
 
     if pad_size is None:
-        pad_dims = [
-            max(y.shape[dim] for y in x if len(y) > 0) for dim in range(x[0].ndim)
-        ]
+        pad_dims = [max(y.shape[dim] for y in x if len(y) > 0) for dim in range(x[0].ndim)]
     else:
         if any(len(pad_size) != y.ndim for y in x):
             raise ValueError("Pad size must contain target size for all dimensions.")
@@ -77,6 +73,7 @@ def list_to_padded(
             slices = (i, *(slice(0, y.shape[dim]) for dim in range(y.ndim)))
             x_padded[slices] = y
     return x_padded
+
 
 def padded_to_list(
     x: torch.Tensor,
@@ -114,6 +111,7 @@ def padded_to_list(
             x_list[i] = x_list[i][slices]
     return x_list
 
+
 def list_to_packed(x: List[torch.Tensor]):
     r"""
     Transforms a list of N tensors each of shape (Mi, K, ...) into a single
@@ -141,9 +139,7 @@ def list_to_packed(x: List[torch.Tensor]):
     num_items = torch.tensor(sizes, dtype=torch.int64, device=device)
     item_packed_first_idx = torch.zeros_like(num_items)
     item_packed_first_idx[1:] = torch.cumsum(num_items[:-1], dim=0)
-    item_packed_to_list_idx = torch.arange(
-        sizes_total, dtype=torch.int64, device=device
-    )
+    item_packed_to_list_idx = torch.arange(sizes_total, dtype=torch.int64, device=device)
     item_packed_to_list_idx = (
         torch.bucketize(item_packed_to_list_idx, item_packed_first_idx, right=True) - 1
     )
