@@ -286,6 +286,7 @@ class DexTeleopLeader(Evaluator):
 
         # Save metadata to pass to recorder
         self.metadata = {
+            "recording_type": "Dex Teleop",
             "user_name": user_name,
             "task_name": task_name,
             "env_name": env_name,
