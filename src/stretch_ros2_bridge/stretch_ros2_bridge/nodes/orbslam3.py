@@ -2,7 +2,6 @@
 
 import math
 import os
-import pathlib
 import sys
 from tempfile import NamedTemporaryFile
 import time
@@ -27,11 +26,9 @@ class OrbSlam3(Node):
     def __init__(self):
         super().__init__('stretch_orbslam3')
 
-        file_path = os.__file__
-        DIRNAME = pathlib.Path(__file__).parent.resolve()
-        PARENT_DIR = os.path.dirname(os.path.dirname(DIRNAME))
-        CONFIG_FILE = os.path.join(PARENT_DIR, 'config', 'orbslam_d435i.yaml')
-        self.VOCABULARY_FILE = os.path.join(PARENT_DIR, 'config', 'ORBvoc.txt')
+        DIRNAME = get_package_share_directory('stretch_ros2_bridge')
+        CONFIG_FILE = os.path.join(DIRNAME, 'config', 'orbslam_d435i.yaml')
+        self.VOCABULARY_FILE = os.path.join(DIRNAME, 'config', 'ORBvoc.txt')
 
         # Load YAML configuration
         self.config = None
@@ -49,50 +46,65 @@ class OrbSlam3(Node):
         self.timestamp = None
 
         self.image_sub = self.create_subscription(Image,
-                                                  "/camera/camera/color/image_raw",
+                                                  "/camera/color/image_raw",
                                                   self.rgb_callback,
                                                   1)
         self.depth_sub = self.create_subscription(Image,
-                                                  "/camera/camera/aligned_depth_to_color/image_raw",
+                                                  "/camera/aligned_depth_to_color/image_raw",
                                                   self.depth_callback,
                                                   1)
         self.accel_sub = self.create_subscription(Imu,
-                                                  "/camera/camera/accel/sample",
+                                                  "/camera/accel/sample",
                                                   qos_profile=rclpy.qos.qos_profile_sensor_data,
                                                   callback=self.accel_callback)
         self.gyro_sub = self.create_subscription(Imu,
-                                                 "/camera/camera/gyro/sample",
+                                                 "/camera/gyro/sample",
                                                  qos_profile=rclpy.qos.qos_profile_sensor_data,
                                                  callback=self.gyro_callback)
         
         self.camera_info_sub = self.create_subscription(CameraInfo,
-                                                        "/camera/camera/color/camera_info",
+                                                        "/camera/color/camera_info",
                                                         self.camera_info_callback,
                                                         1)
 
     def camera_info_callback(self, msg):
         if self.slam is None:
-            fx = msg.K[0]
-            fy = msg.K[4]
-            cx = msg.K[2]
-            cy = msg.K[5]
+            fx = msg.k[0]
+            fy = msg.k[4]
+            cx = msg.k[2]
+            cy = msg.k[5]
+
+            self.get_logger().info(f"Camera intrinsics: fx={fx}, fy={fy}, cx={cx}, cy={cy}")
 
             # Modify camera intrinsics in config 
-            self.config['Camera.fx'] = fx
-            self.config['Camera.fy'] = fy
-            self.config['Camera.cx'] = cx
-            self.config['Camera.cy'] = cy
+            self.config['Camera1.fx'] = float(fx)
+            self.config['Camera1.fy'] = float(fy)
+            self.config['Camera1.cx'] = float(cx)
+            self.config['Camera1.cy'] = float(cy)
 
-            height = msg.height
-            width = msg.width
+            height = int(msg.height)
+            width = int(msg.width)
 
             # Modify image resolution in config
             self.config['Camera.height'] = height
             self.config['Camera.width'] = width
 
+            self.config['Camera.type'] = "PinHole"
+
             # Save to a NamedTemporaryFile
             file = NamedTemporaryFile(mode='w', delete=False)
             yaml.dump(self.config, file)
+
+            # Add %YAML:1.0 to the beginning of the file
+            content = None
+            with open(file.name, 'r') as f:
+                content = f.read()
+            with open(file.name, 'w') as f:
+                f.write("%YAML:1.0\n" + content)
+
+            file.close()
+
+            self.get_logger().info(f"Using {self.VOCABULARY_FILE} and {file.name} for ORB-SLAM3 initialization")
 
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
             self.slam.set_use_viewer(True)
