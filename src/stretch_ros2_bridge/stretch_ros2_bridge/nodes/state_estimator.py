@@ -192,7 +192,7 @@ class NavStateEstimator(Node):
         self._world_frame_id = "map"
         # TODO: if we need to debug this vs. the scan matcher
         # self._base_frame_id = "base_link_estimator"
-        self._base_frame_id = "base_link"
+        self._base_frame_id = "base_link_estimator"
         self._tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         self.tf_buffer = Buffer()
