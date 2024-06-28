@@ -41,8 +41,8 @@ def test_box3d_overlap():
     # box: n (#) x 8 (corners) x 3 (XYZ)
     boxes1, boxes2 = _make_boxes(N, M)
     vol, iou = box3d_overlap(boxes1, boxes2)
-    print(boxes1)
-    print(boxes2)
+    # print(boxes1)
+    # print(boxes2)
     print("VoI:", vol)
     print("IoU:", iou)
 
