@@ -4,9 +4,47 @@
 export PYTORCH_VERSION=2.1.2
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-ENV_NAME=stretch_ai
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
+
+CPU_ONLY="false"
+MAMBA=mamba
+# Two cases: -y for yes, --cpu for cpu only
+# One more: --conda for conda
+for arg in "$@"
+do
+    case $arg in
+        -y|--yes)
+            yn="y"
+            SKIP_ASKING="true"
+            shift
+            ;;
+        --cpu)
+            CPU_ONLY="true"
+            shift
+            ;;
+        --conda)
+            MAMBA=conda
+            shift
+            ;;
+        *)
+            shift
+            # unknown option
+            ;;
+    esac
+done
+
+# If cpu only, set the cuda version to cpu
+if [ "$CPU_ONLY" == "true" ]; then
+    export CUDA_VERSION=cpu
+    export CUDA_VERSION_NODOT=cpu
+    export CUDA_HOME=""
+    ENV_NAME=stretch_ai_cpu
+else
+    export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
+    ENV_NAME=stretch_ai
+fi
+
 echo "=============================================="
 echo "         INSTALLING STRETCH AI TOOLS"
 echo "=============================================="
@@ -16,6 +54,7 @@ echo "PyTorch Version: $PYTORCH_VERSION"
 echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
 echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
+echo "Using tool: $MAMBA"
 echo "---------------------------------------------"
 echo "Notes:"
 echo " - This script will remove the existing environment if it exists."
@@ -34,10 +73,12 @@ echo "---------------------------------------------"
 echo "Currently:"
 echo " - CUDA_HOME=$CUDA_HOME"
 echo " - python=`which python`"
-echo "---------------------------------------------"
+
+
 
 # if -y flag was passed in, do not bother asking
-if [ "$1" == "-y" ]; then
+#
+if [ "$SKIP_ASKING" == "true" ]; then
     yn="y"
 else
     read -p "Does all this look correct? (y/n) " yn
@@ -53,12 +94,14 @@ fi
 # Exit immediately if anything fails
 set -e
 
-mamba env remove -n $ENV_NAME -y
-mamba create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
+$MAMBA env remove -n $ENV_NAME -y
+$MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pyg torchvision python=$PYTHON_VERSION -y
 source activate $ENV_NAME
 
+exit 0
+
 # Now install pytorch3d a bit faster
-mamba install -c fvcore -c iopath -c conda-forge fvcore iopath -y
+$MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
 
 echo "Install a version of setuptools for which pytorch3d and clip work."
 pip install setuptools==69.5.1
