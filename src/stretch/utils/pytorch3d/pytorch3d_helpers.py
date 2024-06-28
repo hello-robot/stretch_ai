@@ -129,7 +129,7 @@ class _box3d_overlap(Function):
 
     @staticmethod
     def iou_box3d(boxes1, boxes2):
-        eps = 1.0e-4
+        eps = 1.0e-8
 
         N = boxes1.shape[0]
         M = boxes2.shape[0]
@@ -149,8 +149,7 @@ class _box3d_overlap(Function):
 
         # Compute IoU
         iou = inter_volumes / vol
-
-        return vol, iou
+        return inter_volumes, iou
 
     @staticmethod
     def forward(ctx, boxes1, boxes2):
