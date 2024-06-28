@@ -118,8 +118,8 @@ class _box3d_overlap(Function):
         box1_size = [[torch.min(box1[:, i]), torch.max(box1[:, i])] for i in range(3)]
         box2_size = [[torch.min(box2[:, i]), torch.max(box2[:, i])] for i in range(3)]
         overlap = [
-            torch.min(box1_size[i][1], box2_size[i][1])
-            - torch.max(box1_size[i][0], box2_size[i][0])
+            torch.min(torch.tensor([box1_size[i][1], box2_size[i][1]]))
+            - torch.max(torch.tensor([box1_size[i][0], box2_size[i][0]]))
             for i in range(3)
         ]
         overlap = torch.tensor(overlap).clamp(min=0.0)
@@ -129,7 +129,7 @@ class _box3d_overlap(Function):
 
     @staticmethod
     def iou_box3d(boxes1, boxes2):
-        eps = 1.0e-4
+        eps = 1.0e-8
 
         N = boxes1.shape[0]
         M = boxes2.shape[0]
@@ -148,8 +148,7 @@ class _box3d_overlap(Function):
 
         # Compute IoU
         iou = inter_volumes / vol
-
-        return vol, iou
+        return inter_volumes, iou
 
     @staticmethod
     def forward(ctx, boxes1, boxes2):
