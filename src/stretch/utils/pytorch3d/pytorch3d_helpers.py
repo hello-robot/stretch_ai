@@ -144,7 +144,8 @@ class _box3d_overlap(Function):
                 inter_volumes[i, j] = _box3d_overlap.intersect_volume(boxes1[i], boxes2[j])
 
         # Compute the union volumes
-        vol = vol1[:, None] + vol2[None, :] - inter_volumes + eps
+        vol = vol1[:, None] + vol2[None, :]
+        vol = vol - inter_volumes + eps
 
         # Compute IoU
         iou = inter_volumes / vol
