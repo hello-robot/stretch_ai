@@ -57,9 +57,9 @@ class PickupManager:
 
     def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
         """Mark an instance as unreachable."""
-        if isinstance(instance_id, Instance):
+        if isinstance(instance, Instance):
             instance_id = instance.id
-        elif isinstance(instance_id, int):
+        elif isinstance(instance, int):
             instance_id = instance
         else:
             raise ValueError("Instance must be an Instance object or an int")
@@ -67,9 +67,9 @@ class PickupManager:
 
     def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
         """Check if an instance is unreachable."""
-        if isinstance(instance_id, Instance):
+        if isinstance(instance, Instance):
             instance_id = instance.id
-        elif isinstance(instance_id, int):
+        elif isinstance(instance, int):
             instance_id = instance
         else:
             raise ValueError("Instance must be an Instance object or an int")

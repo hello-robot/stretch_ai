@@ -272,6 +272,11 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+
+            if self.manager.is_instance_unreachable(instance):
+                print(" - Instance is unreachable.")
+                continue
+
             if self.show_instances_detected:
                 self.show_instance(instance, f"Instance {i} with name {name}")
 
@@ -448,6 +453,8 @@ class NavigateToObjectOperation(ManagedOperation):
             self.plan = plan
             self.cheer("Found plan to object!")
             return True
+        else:
+            self.manager.set_instance_as_unreachable(self.get_target())
         self.error("Planning failed!")
         return False
 
