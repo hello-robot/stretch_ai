@@ -69,3 +69,13 @@ r.manip.goto_joint_positions(state)
 r.switch_to_navigation_mode()
 r.nav.navigate_to([0.5, 0, 0]) # For Navigation
 ```
+
+### Running with ORB_SLAM3
+
+To use ORB_SLAM3 instead of Hector SLAM, simply run:
+
+```
+cd ~/ament_ws
+sudo ./install/setup.bash
+ros2 launch stretch_ros2_bridge startup_stretch_orbslam.launch.py
+```
