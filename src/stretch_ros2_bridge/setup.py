@@ -16,6 +16,10 @@ setup(
             os.path.join("share", package_name, "launch"),
             glob(os.path.join("launch", "*launch.[pxy][yma]*")),
         ),
+        (
+            os.path.join("share", package_name, "config"),
+            glob(os.path.join("config", "*")),
+        ),
     ],
     install_requires=["setuptools", "stretch"],
     zip_safe=True,
@@ -31,6 +35,7 @@ setup(
             "state_estimator = stretch_ros2_bridge.nodes.state_estimator:main",
             "goto_controller = stretch_ros2_bridge.nodes.goto_controller:main",
             "odom_tf_publisher = stretch_ros2_bridge.nodes.odom_tf_publisher:main",
+            "orbslam3 = stretch_ros2_bridge.nodes.orbslam3:main",
             "server = stretch_ros2_bridge.remote.server:main",
         ],
     },
