@@ -284,10 +284,21 @@ class DexTeleopLeader(Evaluator):
             slide_lift_range=slide_lift_range,
         )
 
+        # Save metadata to pass to recorder
+        self.metadata = {
+            "user_name": user_name,
+            "task_name": task_name,
+            "env_name": env_name,
+            "left_handed": left_handed,
+            "teleop_mode": teleop_mode,
+        }
+
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
-        self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
+        self._recorder = FileDataRecorder(
+            data_dir, task_name, user_name, env_name, save_images, self.metadata
+        )
         self.prev_goal_dict = None
 
     def apply(self, message, display_received_images: bool = True) -> dict:
