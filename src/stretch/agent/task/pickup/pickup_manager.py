@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Operation, Task
+from stretch.mapping.instance import Instance
 
 from .operations import (
     GoToNavOperation,
@@ -47,6 +48,32 @@ class PickupManager:
 
         self.current_object = None
         self.current_receptacle = None
+        self.reset_object_plans()
+
+    def reset_object_plans(self):
+        """Clear stored object planning information."""
+        self.plans = {}
+        self.unreachable_instances = set()
+
+    def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
+        """Mark an instance as unreachable."""
+        if isinstance(instance_id, Instance):
+            instance_id = instance.id
+        elif isinstance(instance_id, int):
+            instance_id = instance
+        else:
+            raise ValueError("Instance must be an Instance object or an int")
+        self.unreachable_instances.add(instance_id)
+
+    def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
+        """Check if an instance is unreachable."""
+        if isinstance(instance_id, Instance):
+            instance_id = instance.id
+        elif isinstance(instance_id, int):
+            instance_id = instance
+        else:
+            raise ValueError("Instance must be an Instance object or an int")
+        return instance_id in self.unreachable_instances
 
     def get_task(self, add_rotate: bool = False) -> Task:
         """Create a task plan with loopbacks and recovery from failure"""
