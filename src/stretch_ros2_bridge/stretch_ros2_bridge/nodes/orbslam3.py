@@ -145,6 +145,7 @@ class OrbSlam3(Node):
             Twc = np.linalg.inv(Tcw)
             pose = transformation_matrix_to_pose(Twc)
             self.publish_tf(pose)
+            rclpy.spin_once(self, timeout_sec=0.1)
 
     def publish_tf(self, pose):
         x = pose.get_x()
