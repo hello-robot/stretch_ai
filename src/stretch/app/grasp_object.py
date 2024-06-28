@@ -18,9 +18,9 @@ def get_task(robot, demo, target_object):
     try:
         manager = PickupManager(demo, target_object=target_object)
         task = Task()
-        update = UpdateOperation("update", manager, retry_on_failure=True)
+        update = UpdateOperation("update_scene", manager, retry_on_failure=True)
         grasp_object = GraspObjectOperation(
-            "grasp the object",
+            "grasp_the_object",
             manager,
         )
         grasp_object.show_object_to_grasp = True
