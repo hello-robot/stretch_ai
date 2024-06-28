@@ -131,3 +131,7 @@ policy/
 
 # Data collection folder
 data/
+log/
+
+# install folder
+install/
