@@ -104,8 +104,6 @@ else
 fi
 
 source activate $ENV_NAME
-exit 0
-
 
 # Now install pytorch3d a bit faster
 $MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
@@ -117,10 +115,14 @@ echo ""
 echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
+
+# If not using cpu only, install the following
+echo "Installing pytorch3d from source"
 pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_geometric
+
 pip install -e ./src[dev]
 
 echo ""
