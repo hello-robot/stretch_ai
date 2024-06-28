@@ -434,6 +434,10 @@ class DexTeleopLeader(Evaluator):
             # Process teleop gripper goal to goal joint configurations using IK
             goal_configuration = self.get_goal_joint_config(**goal_dict)
 
+            # TODO temporary implementation of teleop mode action filtering
+            if self.teleop_mode == "stationary_base":
+                goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+
             if self._recording:
                 print("[LEADER] goal_dict =")
                 pp.pprint(goal_configuration)
