@@ -200,7 +200,10 @@ The code is organized as follows. Inside the core package `src/stretch`:
 - `mapping` is broken up into tools for voxel (3d / ok-robot style), instance mapping
 - `core` is basic tools and interfaces
 - `app` contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
-- `agent` is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms. In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
+- `agent` is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
+  - In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
+  - `agent/robot_agent.py` is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
+  - `agent/task/*` contains task-specific code, such as for the `pickup` task. This is divided between "Managers" like [pickup_manager.py](src/stretch/agent/task/pickup_manager.py) which are composed of "Operations" like those in [operations.py](src/stretch/agent/task/operations.py). Each operation is a composable state machine node with pre- and post-conditions.
 
 The `stretch_ros2_bridge` package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
 
