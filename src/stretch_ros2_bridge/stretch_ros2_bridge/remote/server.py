@@ -341,11 +341,18 @@ class ZmqServer(CommsNode):
 
     def start(self):
         """Starts both threads spinning separately for efficiency."""
+        print("==========================================")
+        print("Starting up threads:")
+        print(" - Starting send thread")
         self._send_thread = threading.Thread(target=self.spin_send)
+        print(" - Starting recv thread")
         self._recv_thread = threading.Thread(target=self.spin_recv)
+        print(" - Sending state information")
         self._send_state_thread = threading.Thread(target=self.spin_send_state)
+        print(" - Sending servo information")
         self._send_servo_thread = threading.Thread(target=self.spin_send_servo)
         self._done = False
+        print("Running all...")
         self._send_thread.start()
         self._recv_thread.start()
         self._send_state_thread.start()
