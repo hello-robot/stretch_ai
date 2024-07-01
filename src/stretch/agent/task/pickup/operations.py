@@ -612,6 +612,10 @@ class GraspObjectOperation(ManagedOperation):
     median_distance_when_grasping: float = 0.175
     percentage_of_image_when_grasping: float = 0.2
 
+    # Timing issues
+    expected_network_delay = 0.75
+    open_loop: bool = True
+
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
@@ -678,8 +682,7 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(2.0)
 
         # Get a joint state for the object
-        servo = self.robot.get_servo_observation()
-        joint_state = servo.joint
+        joint_state = self.robot.get_joint_state()
 
         # Lifted joint state
         lifted_joint_state = joint_state.copy()
@@ -700,11 +703,8 @@ class GraspObjectOperation(ManagedOperation):
         prev_target_mask = None
         success = False
 
-        # Get servo observation
-        servo = self.robot.get_servo_observation()
-        joint_state = servo.joint
-
-        # Now compute what to do
+        # Get joint state observation
+        joint_state = self.robot.get_joint_state()
         base_x = joint_state[HelloStretchIdx.BASE_X]
         wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
         arm = joint_state[HelloStretchIdx.ARM]
@@ -712,8 +712,16 @@ class GraspObjectOperation(ManagedOperation):
 
         while timeit.default_timer() - t0 < max_duration:
 
-            # Get new observation for visual servoing
+            # Get servo observation
             servo = self.robot.get_servo_observation()
+            joint_state = self.robot.get_joint_state()
+
+            if not self.open_loop:
+                # Now compute what to do
+                base_x = joint_state[HelloStretchIdx.BASE_X]
+                wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+                arm = joint_state[HelloStretchIdx.ARM]
+                lift = joint_state[HelloStretchIdx.LIFT]
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
@@ -733,15 +741,16 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
+            center_depth = (
+                servo.ee_depth[servo.ee_depth.shape[0] // 2, servo.ee_depth.shape[1] // 2] / 1000
+            )
             if target_mask is not None and target_mask_pts > self.min_points_to_approach:
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
-                center_depth = (
-                    servo.ee_depth[servo.ee_depth.shape[0] // 2, servo.ee_depth.shape[1] // 2]
-                    / 1000
-                )
             else:
                 print("detected classes:", np.unique(servo.semantic))
+                if center_depth < self.median_distance_when_grasping:
+                    success = self._grasp()
                 continue
 
             # Compute the center of the mask in image coords
@@ -822,7 +831,7 @@ class GraspObjectOperation(ManagedOperation):
             joint_state[HelloStretchIdx.ARM] = arm
             joint_state[HelloStretchIdx.WRIST_PITCH] = wrist_pitch
 
-            time.sleep(0.1)
+            time.sleep(self.expected_network_delay)
 
             # Optionally show depth and xyz
             rgb, depth = servo.ee_rgb, servo.ee_depth
