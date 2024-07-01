@@ -310,6 +310,7 @@ class HomeRobotZmqClient(RobotClient):
         min_steps_not_moving: Optional[int] = 1,
         goal_angle: Optional[float] = None,
         goal_angle_threshold: Optional[float] = 0.1,
+        resend_action: Optional[dict] = None,
     ):
         print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
@@ -369,6 +370,9 @@ class HomeRobotZmqClient(RobotClient):
                     ):
                         break
                     self._obs = None
+            if resend_action is not None:
+                # Resend the action
+                self.send_socket.send_pyobj(resend_action)
             time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
@@ -529,14 +533,21 @@ class HomeRobotZmqClient(RobotClient):
                 goal_angle = None
 
             # Empty it out for the next one
+            current_action = self._next_action
             self._next_action = dict()
 
         # Make sure we had time to read
-        time.sleep(0.2)
+        time.sleep(0.1)
         if blocking:
             # Wait for the command to finish
-            self._wait_for_action(block_id, goal_angle=goal_angle, verbose=True, timeout=timeout)
-            time.sleep(0.2)
+            self._wait_for_action(
+                block_id,
+                goal_angle=goal_angle,
+                verbose=True,
+                timeout=timeout,
+                resend_action=current_action,
+            )
+            time.sleep(0.1)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
