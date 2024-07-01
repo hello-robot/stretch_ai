@@ -159,7 +159,6 @@ class DexTeleopLeader(Evaluator):
 
     def __init__(
         self,
-        use_fastest_mode: bool = False,
         left_handed: bool = False,
         using_stretch2: bool = False,
         data_dir: str = "./data",
@@ -173,6 +172,7 @@ class DexTeleopLeader(Evaluator):
         robot_ip: Optional[str] = None,
         recv_port: int = 4405,
         send_port: int = 4406,
+        teleop_mode: str = None,
     ):
         super().__init__()
         self.camera = None
@@ -182,9 +182,8 @@ class DexTeleopLeader(Evaluator):
         slide_lift_range = False
         self.display_point_cloud = display_point_cloud
         self.save_images = save_images
+        self.teleop_mode = teleop_mode
 
-        self.use_fastest_mode = use_fastest_mode
-        self.use_fastest_mode = True
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
@@ -285,10 +284,22 @@ class DexTeleopLeader(Evaluator):
             slide_lift_range=slide_lift_range,
         )
 
+        # Save metadata to pass to recorder
+        self.metadata = {
+            "recording_type": "Dex Teleop",
+            "user_name": user_name,
+            "task_name": task_name,
+            "env_name": env_name,
+            "left_handed": left_handed,
+            "teleop_mode": teleop_mode,
+        }
+
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
-        self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
+        self._recorder = FileDataRecorder(
+            data_dir, task_name, user_name, env_name, save_images, self.metadata
+        )
         self.prev_goal_dict = None
 
     def apply(self, message, display_received_images: bool = True) -> dict:
@@ -415,11 +426,17 @@ class DexTeleopLeader(Evaluator):
         if xyt is not None:
             goal_dict["move_xyt"] = xyt
 
-        goal_dict["current_state"] = message["robot/config"]
+        # Process incoming state based on teleop mode
+        raw_state_received = message["robot/config"]
+        goal_dict["current_state"] = dt.format_state(raw_state_received, self.teleop_mode)
 
         if goal_dict["valid"]:
             # Process teleop gripper goal to goal joint configurations using IK
             goal_configuration = self.get_goal_joint_config(**goal_dict)
+
+            # TODO temporary implementation of teleop mode action filtering
+            if self.teleop_mode == "stationary_base":
+                goal_configuration["joint_mobile_base_rotate_by"] = 0.0
 
             if self._recording:
                 print("[LEADER] goal_dict =")
@@ -705,6 +722,7 @@ if __name__ == "__main__":
         help="The filename of the recorded session to replay, if set..",
     )
     parser.add_argument("--display_point_cloud", action="store_true")
+    parser.add_argument("--teleop-mode", type=str, default="stationary_base")
     args = parser.parse_args()
 
     client = RobotClient(
@@ -725,6 +743,7 @@ if __name__ == "__main__":
         save_images=args.save_images,
         send_port=args.send_port,
         robot_ip=args.robot_ip,
+        teleop_mode=args.teleop_mode,
     )
     try:
         client.run(evaluator)

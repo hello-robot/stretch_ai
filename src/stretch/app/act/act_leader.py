@@ -8,11 +8,13 @@ import cv2
 import numpy as np
 import torch
 import zmq
+from lerobot.common.datasets.push_dataset_to_hub.dobbe_format import clip_and_normalize_depth
 from lerobot.common.policies.act.modeling_act import ACTPolicy
 from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from torchvision.transforms import v2
 
 import stretch.utils.compression as compression
+from stretch.app.act.policy_utils import load_policy, prepare_action_dict, prepare_observations
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
@@ -29,11 +31,16 @@ class ACTLeader(Evaluator):
         task_name: str = "task",
         user_name: str = "default_user",
         env_name: str = "default_env",
-        policy_path: str = "./policy",
+        policy_path: str = None,
+        policy_name: str = None,
         device: str = "cuda",
         force_record: bool = False,
         display_point_cloud: bool = False,
         save_images: bool = False,
+        robot_ip: Optional[str] = None,
+        recv_port: int = 4405,
+        send_port: int = 4406,
+        teleop_mode: str = None,
     ):
         super().__init__()
         self.camera = None
@@ -42,32 +49,39 @@ class ACTLeader(Evaluator):
         self.save_images = save_images
         self.device = device
         self.policy_path = policy_path
+        self.teleop_mode = teleop_mode
 
-        goal_send_context = zmq.Context()
-        goal_send_socket = goal_send_context.socket(zmq.PUB)
-        goal_send_address = "tcp://*:5555"
-        goal_send_socket.setsockopt(zmq.SNDHWM, 1)
-        goal_send_socket.setsockopt(zmq.RCVHWM, 1)
-        goal_send_socket.bind(goal_send_address)
-        self.goal_send_socket = goal_send_socket
+        self.goal_send_socket = self._make_pub_socket(
+            send_port, robot_ip=robot_ip, use_remote_computer=True
+        )
+
+        # Save metadata to pass to recorder
+        self.metadata = {
+            "recording_type": "Policy evaluation",
+            "user_name": user_name,
+            "task_name": task_name,
+            "env_name": env_name,
+            "policy_name": policy_name,
+            "policy_path": policy_path,
+            "teleop_mode": self.teleop_mode,
+        }
 
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
-        self._recorder = FileDataRecorder(data_dir, task_name, user_name, env_name, save_images)
+        self._recorder = FileDataRecorder(
+            data_dir, task_name, user_name, env_name, save_images, self.metadata
+        )
         self._run_policy = False
 
-        self.policy = ACTPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
-        # self.policy = DiffusionPolicy.from_pretrained(Path(self.policy_path), local_files_only=True)
-        self.policy.eval()
-        self.policy.to(self.device)
+        self.policy = load_policy(policy_name, policy_path, device)
         self.policy.reset()
 
     def apply(self, message, display_received_images: bool = True) -> dict:
         """Take in image data and other data received by the robot and process it appropriately. Will parse the new observations, predict future actions and send the next action to the robot, and save everything to disk."""
 
-        color_image = compression.from_webp(message["ee_cam/color_image"])
-        depth_image = compression.unzip_depth(
+        gripper_color_image = compression.from_webp(message["ee_cam/color_image"])
+        gripper_depth_image = compression.unzip_depth(
             message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
         )
         depth_camera_info = message["ee_cam/depth_camera_info"]
@@ -92,48 +106,32 @@ class ACTLeader(Evaluator):
         if self.camera is None:
             self.camera = Camera.from_K(
                 self.camera_info["camera_matrix"],
-                width=color_image.shape[1],
-                height=color_image.shape[0],
+                width=gripper_color_image.shape[1],
+                height=gripper_color_image.shape[0],
             )
 
+        # Rotate head camera images
+        head_depth_image = cv2.rotate(head_depth_image, cv2.ROTATE_90_CLOCKWISE)
+        head_color_image = cv2.rotate(head_color_image, cv2.ROTATE_90_CLOCKWISE)
+
         # Convert depth to meters
-        depth_image = depth_image.astype(np.float32) * self.depth_scale
+        gripper_depth_image = gripper_depth_image.astype(np.float32) * self.depth_scale
         head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
-        if self.display_point_cloud:
-            print("depth scale", self.depth_scale)
-            xyz = self.camera.depth_to_xyz(depth_image)
-            show_point_cloud(xyz, color_image / 255, orig=np.zeros(3))
+
+        # Clip and normalize depth
+        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image, "gripper")
+        head_depth_image = clip_and_normalize_depth(head_depth_image, "head")
+
+        # Stack depth to match RGB
+        gripper_depth_image = np.stack((gripper_depth_image,) * 3, axis=-1)
+        head_depth_image = np.stack((head_depth_image,) * 3, axis=-1)
 
         if display_received_images:
-            # change depth to be h x w x 3
-            depth_image_x3 = np.stack((depth_image,) * 3, axis=-1)
-            combined = np.hstack((color_image / 255, depth_image_x3 / 4))
 
-            # Head images
-            head_depth_image = cv2.rotate(head_depth_image, cv2.ROTATE_90_CLOCKWISE)
-            head_color_image = cv2.rotate(head_color_image, cv2.ROTATE_90_CLOCKWISE)
-            head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
-            head_combined = np.hstack((head_color_image / 255, head_depth_image_x3 / 4))
-
-            # # Get the current height and width
-            # (height, width) = combined.shape[:2]
-            # (head_height, head_width) = head_combined.shape[:2]
-
-            # # Calculate the aspect ratio
-            # aspect_ratio = float(head_width) / float(head_height)
-
-            # # Calculate the new height based on the aspect ratio
-            # new_height = int(width / aspect_ratio)
-
-            # head_combined = cv2.resize(
-            #     head_combined, (width, new_height), interpolation=cv2.INTER_LINEAR
-            # )
-
-            # # Combine both images from ee and head
-            # combined = np.vstack((combined, head_combined))
-            # cv2.imshow("Observed RGB/Depth Image", combined)
-            cv2.imshow("gripper", color_image / 255)
-            cv2.imshow("head", head_color_image / 255)
+            gripper_combined = np.hstack((gripper_depth_image / 255, gripper_color_image / 255))
+            head_combined = np.hstack((head_depth_image / 255, head_color_image / 255))
+            cv2.imshow("gripper", gripper_combined)
+            cv2.imshow("head", head_combined)
 
         # Wait for spacebar to be pressed and start/stop recording
         # Spacebar is 32
@@ -180,68 +178,25 @@ class ACTLeader(Evaluator):
             self.goal_send_socket.send_pyobj(action_dict)
             return action_dict
 
-        if not self._recording:
-            # Process WASD keys for motion
-            if key == ord("w"):
-                xyt = np.array([0.2, 0.0, 0.0])
-            elif key == ord("a"):
-                xyt = np.array([0.0, 0.0, -np.pi / 8])
-            elif key == ord("s"):
-                xyt = np.array([-0.2, 0.0, 0.0])
-            elif key == ord("d"):
-                xyt = np.array([0.0, 0.0, np.pi / 8])
-
         action_dict = {}
         action = []
         if self._run_policy:
             # Build state observations in correct format
             raw_state = message["robot/config"]
-            state = np.array(
-                [
-                    raw_state["theta_vel"],
-                    raw_state["joint_lift"],
-                    raw_state["joint_arm_l0"],
-                    raw_state["joint_wrist_roll"],
-                    raw_state["joint_wrist_pitch"],
-                    raw_state["joint_wrist_yaw"],
-                    raw_state["stretch_gripper"],
-                ]
+
+            observations = prepare_observations(
+                raw_state,
+                gripper_color_image,
+                gripper_depth_image,
+                head_color_image,
+                head_depth_image,
+                self.teleop_mode,
+                self.device,
             )
 
-            state = torch.from_numpy(state)
-
-            gripper_color_image_obs = torch.from_numpy(color_image)
-            head_color_image_obs = torch.from_numpy(head_color_image)
-
-            state = state.to(torch.float32)
-            gripper_color_image_obs = gripper_color_image_obs.to(torch.float32) / 255
-            gripper_color_image_obs = gripper_color_image_obs.permute(2, 0, 1)
-
-            head_color_image_obs = head_color_image_obs.to(torch.float32) / 255
-            head_color_image_obs = head_color_image_obs.permute(2, 0, 1)
-
-            state = state.to(self.device, non_blocking=True)
-            gripper_color_image_obs = gripper_color_image_obs.to(self.device, non_blocking=True)
-            head_color_image_obs = head_color_image_obs.to(self.device, non_blocking=True)
-
-            transforms = v2.Compose([v2.CenterCrop(320)])
-            gripper_color_image_obs = transforms(gripper_color_image_obs)
-            head_color_image_obs = transforms(head_color_image_obs)
-
-            # Add extra (empty) batch dimension, required to forward the policy
-            state = state.unsqueeze(0)
-            head_color_image_obs = head_color_image_obs.unsqueeze(0)
-            gripper_color_image_obs = gripper_color_image_obs.unsqueeze(0)
-
-            # Build observation dict for ACT
-            observation = {
-                "observation.state": state,
-                "observation.images.gripper": gripper_color_image_obs,
-                "observation.images.head": head_color_image_obs,
-            }
             # Send observation to policy
             with torch.inference_mode():
-                raw_action = self.policy.select_action(observation)
+                raw_action = self.policy.select_action(observations)
 
             # Get first batch
             action = raw_action[0].tolist()
@@ -265,8 +220,8 @@ class ACTLeader(Evaluator):
 
             # Record episode if enabled
             self._recorder.add(
-                ee_rgb=color_image,
-                ee_depth=depth_image,
+                ee_rgb=gripper_color_image,
+                ee_depth=gripper_depth_image,
                 xyz=np.array([0]),
                 quaternion=np.array([0]),
                 gripper=0,
@@ -309,7 +264,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--display_point_cloud", action="store_true")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--policy_path", type=str, default="./policy")
+    parser.add_argument("-P", "--send_port", type=int, default=4406, help="Port to send goals to.")
+    parser.add_argument(
+        "--policy_path", type=str, required=True, help="Path to folder storing model weights"
+    )
+    parser.add_argument("--policy_name", type=str, required=True)
+    parser.add_argument("--teleop-mode", type=str, default="standard")
     args = parser.parse_args()
 
     client = RobotClient(
@@ -321,15 +281,19 @@ if __name__ == "__main__":
 
     # Create dex teleop leader - this will detect markers and send off goal dicts to the robot.
     evaluator = ACTLeader(
+        robot_ip=args.robot_ip,
         data_dir=args.data_dir,
         user_name=args.user_name,
         task_name=args.task_name,
         env_name=args.env_name,
         policy_path=args.policy_path,
+        policy_name=args.policy_name,
         device=args.device,
         force_record=args.force,
         display_point_cloud=args.display_point_cloud,
         save_images=args.save_images,
+        send_port=args.send_port,
+        teleop_mode=args.teleop_mode,
     )
     try:
         client.run(evaluator)

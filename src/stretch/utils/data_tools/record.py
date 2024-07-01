@@ -40,6 +40,7 @@ class FileDataRecorder:
         user: str = "default_user",
         env: str = "default_env",
         save_images: bool = False,
+        metadata: dict = None,
     ):
         """Initialize the recorder.
 
@@ -59,6 +60,8 @@ class FileDataRecorder:
         except FileExistsError:
             pass
         self.save_images = save_images
+
+        self.metadata = metadata
 
         self.reset()
 
@@ -105,8 +108,10 @@ class FileDataRecorder:
     def write(self):
         """Write out the data to a file."""
 
+        now = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+
         # Create the episode directory
-        episode_dir = self.task_dir / datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+        episode_dir = self.task_dir / now
         episode_dir.mkdir()
 
         # Write the images
@@ -135,6 +140,14 @@ class FileDataRecorder:
 
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)
+
+        # Add episode info to metadata
+        self.metadata["date"] = now
+        self.metadata["num_frames"] = len(self.rgbs)
+
+        # Write metadata json file
+        with open(str(episode_dir / "configs.json"), "w") as fp:
+            json.dump(self.metadata, fp)
 
         if not self.save_images:
             self.cleanup_image_folders(episode_dir)
