@@ -614,7 +614,7 @@ class GraspObjectOperation(ManagedOperation):
     percentage_of_image_when_grasping: float = 0.2
 
     # Timing issues
-    expected_network_delay = 0.1
+    expected_network_delay = 0.2
     open_loop: bool = False
 
     def can_start(self):

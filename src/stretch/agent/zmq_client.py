@@ -214,7 +214,7 @@ class HomeRobotZmqClient(RobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
-                joint_state = self.robot.get_joint_state()
+                joint_state = self.get_joint_state()
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
@@ -240,6 +240,10 @@ class HomeRobotZmqClient(RobotClient):
                 ):
                     return True
                 time.sleep(0.01)
+
+                # Resend the action
+                self._next_action["joint"] = joint_angles
+                self.send_action()
 
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
