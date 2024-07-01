@@ -45,7 +45,19 @@ To build the Docker image, clone this repository and run the following command i
 docker build -t stretch-ai_cuda-11.8:latest .
 ```
 
-### Placeholder: Building and Pushing to Dockerhub
+### Use The Docker Build Script
+
+There is a [docker build script](scripts/build-docker.sh) that can be used to build the Docker image. This script will build the Docker image with the correct CUDA version and tag it with the correct name. To use the script, run:
+
+```bash
+./scripts/build-docker.sh
+```
+
+from the root directory of the repository.
+
+For more details on the build script, see the [Docker Build Script](scripts/build-docker.md) documentation. You can also continue on into the next section.
+
+### Building and Pushing to Dockerhub
 
 This will use the Hello Robot account as an example (username: `hellorobotinc`). Login with:
 
