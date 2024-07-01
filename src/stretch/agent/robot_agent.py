@@ -201,13 +201,13 @@ class RobotAgent:
 
         step_size = 2 * np.pi / steps
         i = 0
+        print("==== ROTATE IN PLACE ====")
         while i < steps:
             self.robot.navigate_to([0, 0, i * step_size], relative=False, blocking=True)
 
             if self.robot.last_motion_failed():
                 # We have a problem!
                 raise RuntimeError("Robot is stuck!")
-                # continue
             else:
                 i += 1
 
@@ -225,20 +225,20 @@ class RobotAgent:
 
                 # Check to see if we have a receptacle in the map
                 instances = self.voxel_map.instances.get_instances()
-                for i, instance in enumerate(instances):
+                for ins, instance in enumerate(instances):
                     name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
                     print(
-                        f" - Found instance {i} with name {name} and global id {instance.global_id}."
+                        f" - Found instance {ins} with name {name} and global id {instance.global_id}."
                     )
                     view = instance.get_best_view()
                     if self.show_instances_detected:
                         plt.imshow(view.get_image())
-                        plt.title(f"Instance {i} with name {name}")
+                        plt.title(f"Instance {ins} with name {name}")
                         plt.axis("off")
                         plt.show()
                     else:
                         image = Image.fromarray(view.get_image())
-                        filename = f"{self.path}/viz_data/instance_{i}_is_a_{name}.png"
+                        filename = f"{self.path}/viz_data/instance_{ins}_is_a_{name}.png"
                         print(f"- Saving debug image to {filename}")
                         image.save(filename)
 

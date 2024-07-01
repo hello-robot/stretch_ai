@@ -10,9 +10,10 @@
 
 - [Prepare URDFs and camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
-- Install our fork of lerobot
+- Install our fork of lerobot in a new conda environment:
 
   ```bash
+  conda create -y -n lerobot python=3.10 && conda activate lerobot
   git clone git@github.com:hello-yiche/lerobot.git
   cd lerobot
   git switch stretch-act

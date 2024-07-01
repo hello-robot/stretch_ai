@@ -10,9 +10,10 @@ import click
 import cv2
 import numpy as np
 import zmq
-from loguru import logger
+from termcolor import colored
 
 import stretch.utils.compression as compression
+import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import RobotClient
@@ -286,7 +287,7 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
         self._wait_for_mode("manipulation")
 
-    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 10.0):
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
         while True:
             with self._obs_lock:
@@ -494,17 +495,16 @@ class HomeRobotZmqClient(RobotClient):
             # if pos_err < pos_err_threshold and rot_err > rot_err_threshold:
             #     print(f"{curr[-1]}, {xyt[2]}, {rot_err}")
             if verbose:
-                # logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
-                print(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
+                logger.info(f"- {curr=} target {xyt=} {pos_err=} {rot_err=}")
             if pos_err < pos_err_threshold and rot_err < rot_err_threshold:
                 # We reached the goal position
                 return True
             t2 = timeit.default_timer()
             dt = t2 - t1
             if t2 - t0 > timeout:
-                # logger.warning("Could not reach goal in time: " + str(xyt))
-                print("[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: " + str(xyt))
-                breakpoint()
+                logger.warning(
+                    "[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: " + str(xyt)
+                )
                 return False
             time.sleep(max(0, _delay - (dt)))
         return False
@@ -680,10 +680,16 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(0.1)
             t1 = timeit.default_timer()
             if t1 - t0 > 10.0:
-                print(
-                    "Timeout waiting for observations; are you connected to the robot? Check the network."
+                logger.error(
+                    colored(
+                        "Timeout waiting for observations; are you connected to the robot? Check the network.",
+                        "red",
+                    )
                 )
-                print("Robot IP:", self.send_address)
+                logger.info(
+                    "Try making sure that the server on the robot is publishing, and that you can ping the robot IP address."
+                )
+                logger.info("Robot IP:", self.send_address)
                 return False
         return True
 
