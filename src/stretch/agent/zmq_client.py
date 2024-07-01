@@ -323,6 +323,7 @@ class HomeRobotZmqClient(RobotClient):
         if min_steps_not_moving is None:
             min_steps_not_moving = self._min_steps_not_moving
         t0 = timeit.default_timer()
+        close_to_goal = False
         while True:
             with self._obs_lock:
                 if self._obs is not None:
@@ -354,6 +355,7 @@ class HomeRobotZmqClient(RobotClient):
                         not_moving_count = 0
                     last_pos = pos
                     last_ang = ang
+                    close_to_goal = at_goal or self._obs["at_goal"]
                     if verbose:
                         print(
                             f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
@@ -370,7 +372,7 @@ class HomeRobotZmqClient(RobotClient):
                     ):
                         break
                     self._obs = None
-            if resend_action is not None:
+            if resend_action is not None and not close_to_goal:
                 # Resend the action
                 self.send_socket.send_pyobj(resend_action)
             time.sleep(0.01)
