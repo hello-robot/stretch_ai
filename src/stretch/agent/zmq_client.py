@@ -181,7 +181,9 @@ class HomeRobotZmqClient(RobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
-    def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
+    def arm_to(
+        self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0
+    ) -> bool:
         """Move the arm to a particular joint configuration.
 
         Args:
@@ -209,6 +211,42 @@ class HomeRobotZmqClient(RobotClient):
 
         # Blocking is handled in here
         self.send_action()
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.robot.get_joint_state()
+                if joint_state is None:
+                    time.sleep(0.01)
+                    continue
+                arm_diff = np.abs(joint_state[HelloStretchIdx.ARM] - joint_angles[2])
+                lift_diff = np.abs(joint_state[HelloStretchIdx.LIFT] - joint_angles[1])
+                base_x_diff = np.abs(joint_state[HelloStretchIdx.BASE_X] - joint_angles[0])
+                wrist_roll_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_ROLL], joint_angles[3])
+                )
+                wrist_pitch_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_PITCH], joint_angles[4])
+                )
+                wrist_yaw_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
+                )
+                if (
+                    (arm_diff < 0.05)
+                    and (lift_diff < 0.05)
+                    and (base_x_diff < 0.05)
+                    and (wrist_roll_diff < 0.05)
+                    and (wrist_pitch_diff < 0.05)
+                    and (wrist_yaw_diff < 0.05)
+                ):
+                    return True
+                time.sleep(0.01)
+
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("[ZMQ CLIENT] Timeout waiting for arm to move")
+                    break
+            return False
+        return True
 
     def navigate_to(
         self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0

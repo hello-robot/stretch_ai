@@ -598,7 +598,7 @@ class GraspObjectOperation(ManagedOperation):
     servo_to_grasp: bool = False
     _success: bool = False
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = True
+    show_servo_gui: bool = False
 
     # Thresholds for centering on object
     align_x_threshold: int = 15
@@ -614,7 +614,7 @@ class GraspObjectOperation(ManagedOperation):
     percentage_of_image_when_grasping: float = 0.2
 
     # Timing issues
-    expected_network_delay = 0.8
+    expected_network_delay = 0.1
     open_loop: bool = False
 
     def can_start(self):
@@ -704,13 +704,6 @@ class GraspObjectOperation(ManagedOperation):
         prev_target_mask = None
         success = False
 
-        # Get joint state observation
-        joint_state = self.robot.get_joint_state()
-        base_x = joint_state[HelloStretchIdx.BASE_X]
-        wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
-        arm = joint_state[HelloStretchIdx.ARM]
-        lift = joint_state[HelloStretchIdx.LIFT]
-
         while timeit.default_timer() - t0 < max_duration:
 
             # Get servo observation
@@ -777,8 +770,6 @@ class GraspObjectOperation(ManagedOperation):
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
             print("Center in mask?", center_in_mask)
-            percentage_of_image = mask_pts.shape[0] / (target_mask.shape[0] * target_mask.shape[1])
-            print(f"Percentage of image with object is {percentage_of_image}.")
             if center_in_mask and (
                 center_depth < self.median_distance_when_grasping
                 or median_object_depth < self.median_distance_when_grasping
@@ -826,23 +817,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # breakpoint()
             self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
-
-            joint_state[HelloStretchIdx.BASE_X] = base_x
-            joint_state[HelloStretchIdx.LIFT] = lift
-            joint_state[HelloStretchIdx.ARM] = arm
-            joint_state[HelloStretchIdx.WRIST_PITCH] = wrist_pitch
-
             time.sleep(self.expected_network_delay)
-
-            # Optionally show depth and xyz
-            rgb, depth = servo.ee_rgb, servo.ee_depth
-
-            # Depth should be metric depth from camera
-            # print("TODO: compute motion based on these points")
-
-            if sum(mask.flatten()) > self.min_points_to_approach:
-                # Move towards the points
-                pass
 
         return success
 
