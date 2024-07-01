@@ -757,6 +757,7 @@ class GraspObjectOperation(ManagedOperation):
             # Since we were able to detect it, copy over the target mask
             prev_target_mask = target_mask
 
+            print()
             print("----- STEP VISUAL SERVOING -----")
             print("cur x =", base_x)
             print(" lift =", lift)
@@ -785,10 +786,8 @@ class GraspObjectOperation(ManagedOperation):
                 aligned_once = True
                 arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
                 lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
-                print(f"- arm = {arm}+{arm_component}, lift = {lift}+{lift_component}")
                 arm += arm_component
                 lift += lift_component
-                print("- arm", arm, "lift", lift)
             else:
                 # Add these to do some really hacky proportionate control
                 px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
@@ -806,9 +805,6 @@ class GraspObjectOperation(ManagedOperation):
                     wrist_pitch += -self.wrist_pitch_step * py
                 elif dy < -1 * self.align_y_threshold:
                     wrist_pitch += self.wrist_pitch_step * py
-
-                print(f"- base_x = {base_x}")
-                print(f"- wrist_pitch = {wrist_pitch}")
 
                 # Force to reacquire the target mask if we moved the camera too much
                 prev_target_mask = None
