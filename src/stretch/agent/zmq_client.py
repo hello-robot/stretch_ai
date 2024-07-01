@@ -241,9 +241,10 @@ class HomeRobotZmqClient(RobotClient):
                     return True
                 time.sleep(0.01)
 
+                # TODO: Is this necessary? If not, we should just delete this commented-out code block.
                 # Resend the action
-                self._next_action["joint"] = joint_angles
-                self.send_action()
+                # self._next_action["joint"] = joint_angles
+                # self.send_action()
 
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:

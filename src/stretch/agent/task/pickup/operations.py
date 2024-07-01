@@ -795,7 +795,8 @@ class GraspObjectOperation(ManagedOperation):
                 py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
 
                 # Move the base and modify the wrist pitch
-                print(f"dx={dx}, dy={dy}, px={px}, py={py}")
+                # TODO: remove debug code
+                # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
                 if dx > self.align_x_threshold:
                     # Move in x - this means translate the base
                     base_x += -self.base_x_step * px
