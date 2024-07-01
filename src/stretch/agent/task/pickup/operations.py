@@ -614,7 +614,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Timing issues
     expected_network_delay = 0.75
-    open_loop: bool = True
+    open_loop: bool = False
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
