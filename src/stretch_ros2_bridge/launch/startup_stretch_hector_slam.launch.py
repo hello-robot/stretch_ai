@@ -26,17 +26,6 @@ def generate_launch_description():
             )
         )
     )
-
-    # offline_mapping_launch = IncludeLaunchDescription(
-    #    PythonLaunchDescriptionSource(
-    #        # [get_package_share_directory("slam_toolbox"), "/launch/offline_launch.py"]
-    #        [
-    #            get_package_share_directory("slam_toolbox"),
-    #            "/launch/online_async_launch.py",
-    #        ]
-    #    )
-    # )
-
     slam_params_file = LaunchConfiguration("slam_params_file")
 
     declare_slam_params_file_cmd = DeclareLaunchArgument(
@@ -69,11 +58,11 @@ def generate_launch_description():
     ld = LaunchDescription(
         [
             base_nodes,
-            declare_use_sim_time_argument,
             declare_slam_params_file_cmd,
             state_estimator_node,
         ]
     )
+    ld.add_action(declare_use_sim_time_argument)
     ld.add_action(start_async_slam_toolbox_node)
 
     return ld

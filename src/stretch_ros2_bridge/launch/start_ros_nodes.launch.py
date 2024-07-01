@@ -108,3 +108,4 @@ def generate_launch_description():
             odometry_publisher_node,
         ]
     )
+    return ld
