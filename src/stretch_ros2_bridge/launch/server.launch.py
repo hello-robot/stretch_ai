@@ -22,7 +22,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory("stretch_ros2_bridge"),
-                "launch/startup_slam_re3.launch.py",
+                "launch/startup_stetch_hector_slam.launch.py",
             )
         )
     )
