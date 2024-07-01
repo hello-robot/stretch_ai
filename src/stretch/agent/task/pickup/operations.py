@@ -606,7 +606,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Visual servoing config
     min_points_to_approach: int = 100
-    lift_arm_ratio: float = 0.75
+    lift_arm_ratio: float = 0.15
     base_x_step: float = 0.03
     wrist_pitch_step: float = 0.025
     median_distance_when_grasping: float = 0.175
@@ -680,10 +680,21 @@ class GraspObjectOperation(ManagedOperation):
         aligned_once = False
         prev_target_mask = None
         success = False
+
+        # Get servo observation
+        servo = self.robot.get_servo_observation()
+        joint_state = servo.joint
+
+        # Now compute what to do
+        base_x = joint_state[HelloStretchIdx.BASE_X]
+        wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+        arm = joint_state[HelloStretchIdx.ARM]
+        lift = joint_state[HelloStretchIdx.LIFT]
+
         while timeit.default_timer() - t0 < max_duration:
-            # Get servo observation
+
+            # Get new observation for visual servoing
             servo = self.robot.get_servo_observation()
-            joint_state = servo.joint
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
@@ -704,7 +715,6 @@ class GraspObjectOperation(ManagedOperation):
                     break
 
             if target_mask is not None and target_mask_pts > self.min_points_to_approach:
-                breakpoint()
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
                 center_depth = (
@@ -725,12 +735,11 @@ class GraspObjectOperation(ManagedOperation):
             # Since we were able to detect it, copy over the target mask
             prev_target_mask = target_mask
 
-            # Now compute what to do
-            base_x = joint_state[HelloStretchIdx.BASE_X]
-            wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
-            arm = joint_state[HelloStretchIdx.ARM]
-            lift = joint_state[HelloStretchIdx.LIFT]
             print("----- STEP VISUAL SERVOING -----")
+            print("cur x =", base_x)
+            print(" lift =", lift)
+            print("  arm =", arm)
+            print("pitch =", wrist_pitch)
             print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
@@ -738,7 +747,7 @@ class GraspObjectOperation(ManagedOperation):
             print(f"Percentage of image with object is {percentage_of_image}.")
             if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
                 # First, check to see if we are close enough to grasp
-                if center_object_depth < self.median_distance_when_grasping:
+                if center_depth < self.median_distance_when_grasping:
                     print("Grasping object!")
                     self.robot.close_gripper(blocking=True)
                     time.sleep(2.0)
@@ -758,8 +767,11 @@ class GraspObjectOperation(ManagedOperation):
                 lift += lift_component
                 print("- arm", arm, "lift", lift)
             else:
-                px = min(0.1, 2 * dx / target_mask.shape[1])
-                py = min(0.1, 2 * dy / target_mask.shape[0])
+                # Add these to do some really hacky proportionate control
+                px = max(0.05, np.abs(2 * dx / target_mask.shape[1]))
+                py = max(0.05, np.abs(2 * dy / target_mask.shape[0]))
+
+                # Move the base and modify the wrist pitch
                 print(f"dx={dx}, dy={dy}, px={px}, py={py}")
                 if dx > self.align_x_threshold:
                     # Move in x - this means translate the base
@@ -772,10 +784,25 @@ class GraspObjectOperation(ManagedOperation):
                 elif dy < -1 * self.align_y_threshold:
                     wrist_pitch += self.wrist_pitch_step * py
 
+                print(f"- base_x = {base_x}")
+                print(f"- wrist_pitch = {wrist_pitch}")
+
                 # Force to reacquire the target mask if we moved the camera too much
                 prev_target_mask = None
 
+            print("tgt x =", base_x)
+            print(" lift =", lift)
+            print("  arm =", arm)
+            print("pitch =", wrist_pitch)
+
+            # breakpoint()
             self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
+
+            joint_state[HelloStretchIdx.BASE_X] = base_x
+            joint_state[HelloStretchIdx.LIFT] = lift
+            joint_state[HelloStretchIdx.ARM] = arm
+            joint_state[HelloStretchIdx.WRIST_PITCH] = wrist_pitch
+
             time.sleep(0.1)
 
             # Optionally show depth and xyz
