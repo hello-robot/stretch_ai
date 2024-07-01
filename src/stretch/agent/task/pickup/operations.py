@@ -601,8 +601,8 @@ class GraspObjectOperation(ManagedOperation):
     show_servo_gui: bool = True
 
     # Thresholds for centering on object
-    align_x_threshold: int = 10
-    align_y_threshold: int = 5
+    align_x_threshold: int = 15
+    align_y_threshold: int = 10
 
     # Visual servoing config
     min_points_to_approach: int = 100
