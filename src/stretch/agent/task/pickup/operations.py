@@ -602,7 +602,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     align_x_threshold: int = 10
-    align_y_threshold: int = 10
+    align_y_threshold: int = 5
 
     # Visual servoing config
     min_points_to_approach: int = 100
@@ -676,6 +676,12 @@ class GraspObjectOperation(ManagedOperation):
         self.cheer("Grasping object!")
         self.robot.close_gripper(blocking=True)
         time.sleep(2.0)
+
+        # Get a joint state for the object
+        servo = self.robot.get_servo_observation()
+        joint_state = servo.joint
+
+        # Lifted joint state
         lifted_joint_state = joint_state.copy()
         lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
         self.robot.arm_to(lifted_joint_state, blocking=True)
@@ -759,9 +765,14 @@ class GraspObjectOperation(ManagedOperation):
             print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
+            print("Center in mask?", center_in_mask)
             percentage_of_image = mask_pts.shape[0] / (target_mask.shape[0] * target_mask.shape[1])
             print(f"Percentage of image with object is {percentage_of_image}.")
-            if center_in_mask and center_depth < self.median_distance_when_grasping:
+            if center_in_mask and (
+                center_depth < self.median_distance_when_grasping
+                or median_object_depth < self.median_distance_when_grasping
+            ):
+                "If there's any chance the object is close enough, we should just try to grasp it." ""
                 success = self._grasp()
                 break
             elif np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
