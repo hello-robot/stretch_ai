@@ -27,6 +27,7 @@ from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace,
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import get_encoder
+from stretch.utils.geometry import angle_difference
 from stretch.utils.threading import Interval
 
 # from transformers import Owlv2ForObjectDetection, Owlv2Processor
