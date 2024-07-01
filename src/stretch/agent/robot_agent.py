@@ -27,6 +27,7 @@ from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace,
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import get_encoder
+from stretch.utils.geometry import angle_difference
 from stretch.utils.threading import Interval
 
 # from transformers import Owlv2ForObjectDetection, Owlv2Processor
@@ -935,6 +936,34 @@ class RobotAgent:
             else:
                 print("WARNING: planning to home failed!")
         return matches
+
+    def move_closed_loop(self, goal: np.ndarray, max_time: float = 10.0) -> bool:
+        """Helper function which will move while also checking which position the robot reached.
+
+        Args:
+            goal(np.ndarray): the goal position
+            max_time(float): the maximum time to wait for the robot to reach the goal
+
+        Returns:
+            bool: true if the robot reached the goal, false otherwise
+        """
+        t0 = timeit.default_timer()
+        self.robot.move_to_nav_posture()
+        while True:
+            self.robot.navigate_to(goal, blocking=False, timeout=30.0)
+            if self.robot.last_motion_failed():
+                return False
+            position = self.robot.get_base_pose()
+            if (
+                np.linalg.norm(position[:2] - goal[:2]) < 0.1
+                and angle_difference(position[2], goal[2]) < 0.1
+                and self.robot.at_goal()
+            ):
+                return True
+            t1 = timeit.default_timer()
+            if t1 - t0 > max_time:
+                return False
+            time.sleep(0.1)
 
     def reset(self, verbose: bool = True):
         """Reset the robot's spatial memory. This deletes the instance memory and spatial map, and clears all observations.

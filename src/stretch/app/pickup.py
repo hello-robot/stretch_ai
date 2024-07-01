@@ -55,8 +55,7 @@ def main(
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
-        robot.move_to_nav_posture()
-        robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
+        demo.move_closed_loop([0, 0, 0], max_time=60.0)
 
     # After the robot has started...
     try:
