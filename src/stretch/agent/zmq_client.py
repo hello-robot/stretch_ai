@@ -181,7 +181,9 @@ class HomeRobotZmqClient(RobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
-    def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
+    def arm_to(
+        self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0
+    ) -> bool:
         """Move the arm to a particular joint configuration.
 
         Args:
@@ -209,6 +211,46 @@ class HomeRobotZmqClient(RobotClient):
 
         # Blocking is handled in here
         self.send_action()
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    time.sleep(0.01)
+                    continue
+                arm_diff = np.abs(joint_state[HelloStretchIdx.ARM] - joint_angles[2])
+                lift_diff = np.abs(joint_state[HelloStretchIdx.LIFT] - joint_angles[1])
+                base_x_diff = np.abs(joint_state[HelloStretchIdx.BASE_X] - joint_angles[0])
+                wrist_roll_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_ROLL], joint_angles[3])
+                )
+                wrist_pitch_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_PITCH], joint_angles[4])
+                )
+                wrist_yaw_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
+                )
+                if (
+                    (arm_diff < 0.05)
+                    and (lift_diff < 0.05)
+                    and (base_x_diff < 0.05)
+                    and (wrist_roll_diff < 0.05)
+                    and (wrist_pitch_diff < 0.05)
+                    and (wrist_yaw_diff < 0.05)
+                ):
+                    return True
+                time.sleep(0.01)
+
+                # Resend the action
+                self._next_action["joint"] = joint_angles
+                self.send_action()
+
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("[ZMQ CLIENT] Timeout waiting for arm to move")
+                    break
+            return False
+        return True
 
     def navigate_to(
         self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
@@ -234,17 +276,49 @@ class HomeRobotZmqClient(RobotClient):
         self._finish = False
         self._last_step = -1
 
-    def open_gripper(self, blocking: bool = True):
+    def open_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Open the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_OPEN
         print("Opening gripper to", gripper_target)
-        self.gripper_to(gripper_target, blocking)
+        self.gripper_to(gripper_target, blocking=False)
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    continue
+                elif joint_state[HelloStretchIdx.GRIPPER] > gripper_target - 0.1:
+                    return True
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("Timeout waiting for gripper to close")
+                    break
+                self.gripper_to(gripper_target, blocking=False)
+                time.sleep(0.01)
+            return False
+        return True
 
-    def close_gripper(self, blocking: bool = True):
+    def close_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Close the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_CLOSED
         print("Closing gripper to", gripper_target)
-        self.gripper_to(gripper_target, blocking)
+        self.gripper_to(gripper_target, blocking=False)
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    continue
+                elif joint_state[HelloStretchIdx.GRIPPER] < gripper_target + 0.1:
+                    return True
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("Timeout waiting for gripper to close")
+                    break
+                self.gripper_to(gripper_target, blocking=False)
+                time.sleep(0.01)
+            return False
+        return True
 
     def gripper_to(self, target: float, blocking: bool = True):
         """Send the gripper to a target position."""
