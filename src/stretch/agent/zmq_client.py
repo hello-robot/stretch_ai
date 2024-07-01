@@ -547,9 +547,16 @@ class HomeRobotZmqClient(RobotClient):
                 goal_angle=goal_angle,
                 verbose=True,
                 timeout=timeout,
-                resend_action=current_action,
+                # resend_action=current_action,
             )
             time.sleep(0.1)
+
+    def at_goal(self) -> bool:
+        """Check if the robot is at the goal"""
+        with self._obs_lock:
+            if self._obs is None:
+                return False
+            return self._obs["at_goal"]
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
