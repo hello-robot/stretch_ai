@@ -588,24 +588,19 @@ class HomeRobotZmqClient(RobotClient):
             return
 
         # color_image = compression.from_webp(message["ee_cam/color_image"])
+        print(message["ee_cam/color_image"])
+        print(type(message["ee_cam/color_image"]))
         color_image = compression.from_jpg(message["ee_cam/color_image"])
-        # depth_image = compression.unzip_depth(
-        #    message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
-        # )
+        print("worked")
         depth_image = compression.from_jp2(message["ee_cam/depth_image"])
+        print("worked")
         image_scaling = message["ee_cam/image_scaling"]
 
         # Get head information from the message as well
-        # head_color_image = compression.from_webp(message["head_cam/color_image"])
         head_color_image = compression.from_jpg(message["head_cam/color_image"])
-        # head_depth_image = compression.unzip_depth(
-        #    message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
-        # )
         head_depth_image = compression.from_jp2(message["head_cam/depth_image"])
-        # head_depth_camera_info = message["head_cam/depth_camera_info"]
         head_image_scaling = message["head_cam/image_scaling"]
         joint = message["robot/config"]
-        # head_depth_scale = message["head_cam/depth_scale"]
         with self._servo_lock and self._state_lock:
             observation = Observations(
                 gps=self._state["base_pose"][:2],
