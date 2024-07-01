@@ -666,8 +666,21 @@ class GraspObjectOperation(ManagedOperation):
 
         if maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
-        else:
+        elif target_mask is not None:
             return target_mask
+        else:
+            return prev_mask
+
+    def _grasp(self) -> bool:
+        """Helper function to close gripper around object."""
+        self.cheer("Grasping object!")
+        self.robot.close_gripper(blocking=True)
+        time.sleep(2.0)
+        lifted_joint_state = joint_state.copy()
+        lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
+        self.robot.arm_to(lifted_joint_state, blocking=True)
+        time.sleep(2.0)
+        return True
 
     def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
         """Use visual servoing to grasp the object."""
@@ -732,6 +745,9 @@ class GraspObjectOperation(ManagedOperation):
             center_x, center_y = target_mask.shape[1] / 2, target_mask.shape[0] / 2
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
 
+            # Is the center of the image part of the target mask or not?
+            center_in_mask = target_mask[int(center_y), int(center_x)] > 0
+
             # Since we were able to detect it, copy over the target mask
             prev_target_mask = target_mask
 
@@ -745,17 +761,13 @@ class GraspObjectOperation(ManagedOperation):
             print(f"Center distance to object is {center_depth}.")
             percentage_of_image = mask_pts.shape[0] / (target_mask.shape[0] * target_mask.shape[1])
             print(f"Percentage of image with object is {percentage_of_image}.")
-            if np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
+            if center_in_mask and center_depth < self.median_distance_when_grasping:
+                success = self._grasp()
+                break
+            elif np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
-                    print("Grasping object!")
-                    self.robot.close_gripper(blocking=True)
-                    time.sleep(2.0)
-                    lifted_joint_state = joint_state.copy()
-                    lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
-                    self.robot.arm_to(lifted_joint_state, blocking=True)
-                    time.sleep(2.0)
-                    success = True
+                    success = self._grasp()
                     break
                 # If we are aligned, step the whole thing closer by some amount
                 # This is based on the pitch - basically
@@ -768,8 +780,8 @@ class GraspObjectOperation(ManagedOperation):
                 print("- arm", arm, "lift", lift)
             else:
                 # Add these to do some really hacky proportionate control
-                px = max(0.05, np.abs(2 * dx / target_mask.shape[1]))
-                py = max(0.05, np.abs(2 * dy / target_mask.shape[0]))
+                px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
+                py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
 
                 # Move the base and modify the wrist pitch
                 print(f"dx={dx}, dy={dy}, px={px}, py={py}")
