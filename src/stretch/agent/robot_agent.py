@@ -950,9 +950,9 @@ class RobotAgent:
         self.robot.move_to_nav_posture()
         while True:
             self.robot.navigate_to(goal, blocking=False, timeout=30.0)
-            if self.last_motion_failed():
+            if self.robot.last_motion_failed():
                 return False
-            position = self.get_base_pose()
+            position = self.robot.get_base_pose()
             if (
                 np.linalg.norm(position[:2] - goal[:2]) < 0.1
                 and angle_difference(position[2], goal[2]) < 0.1
@@ -962,6 +962,7 @@ class RobotAgent:
             t1 = timeit.default_timer()
             if t1 - t0 > max_time:
                 return False
+            time.sleep(0.1)
 
     def reset(self, verbose: bool = True):
         """Reset the robot's spatial memory. This deletes the instance memory and spatial map, and clears all observations.
