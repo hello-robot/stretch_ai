@@ -251,6 +251,7 @@ class HomeRobotZmqClient(RobotClient):
                 if t1 - t0 > timeout:
                     print("Timeout waiting for gripper to close")
                     break
+                self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
             return False
         return True
@@ -272,6 +273,7 @@ class HomeRobotZmqClient(RobotClient):
                 if t1 - t0 > timeout:
                     print("Timeout waiting for gripper to close")
                     break
+                self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
             return False
         return True
