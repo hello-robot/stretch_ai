@@ -19,6 +19,7 @@ from stretch.core import Parameters, get_parameters
 )
 @click.option("--open", is_flag=True, help="Open the gripper")
 @click.option("--close", is_flag=True, help="Close the gripper")
+@click.option("--blocking", is_flag=True, help="Block until the gripper is done")
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -26,6 +27,7 @@ def main(
     parameter_file: str = "config/default_planner.yaml",
     open: bool = False,
     close: bool = False,
+    blocking: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -37,9 +39,9 @@ def main(
     print("Starting")
     robot.start()
     if open:
-        robot.open_gripper()
+        robot.open_gripper(blocking=blocking)
     if close:
-        robot.close_gripper()
+        robot.close_gripper(blocking=blocking)
     print("Done.")
     robot.stop()
 

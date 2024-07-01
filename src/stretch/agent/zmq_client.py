@@ -234,17 +234,47 @@ class HomeRobotZmqClient(RobotClient):
         self._finish = False
         self._last_step = -1
 
-    def open_gripper(self, blocking: bool = True):
+    def open_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Open the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_OPEN
         print("Opening gripper to", gripper_target)
-        self.gripper_to(gripper_target, blocking)
+        self.gripper_to(gripper_target, blocking=False)
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    continue
+                elif joint_state[HelloStretchIdx.GRIPPER] > gripper_target - 0.1:
+                    return True
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("Timeout waiting for gripper to close")
+                    break
+                time.sleep(0.01)
+            return False
+        return True
 
-    def close_gripper(self, blocking: bool = True):
+    def close_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Close the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_CLOSED
         print("Closing gripper to", gripper_target)
-        self.gripper_to(gripper_target, blocking)
+        self.gripper_to(gripper_target, blocking=False)
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    continue
+                elif joint_state[HelloStretchIdx.GRIPPER] < gripper_target + 0.1:
+                    return True
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("Timeout waiting for gripper to close")
+                    break
+                time.sleep(0.01)
+            return False
+        return True
 
     def gripper_to(self, target: float, blocking: bool = True):
         """Send the gripper to a target position."""
