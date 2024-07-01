@@ -607,13 +607,14 @@ class GraspObjectOperation(ManagedOperation):
     # Visual servoing config
     min_points_to_approach: int = 100
     lift_arm_ratio: float = 0.1
-    base_x_step: float = 0.03
-    wrist_pitch_step: float = 0.025
+    # base_x_step: float = 0.03
+    base_x_step: float = 0.12
+    wrist_pitch_step: float = 0.1
     median_distance_when_grasping: float = 0.175
     percentage_of_image_when_grasping: float = 0.2
 
     # Timing issues
-    expected_network_delay = 0.75
+    expected_network_delay = 0.8
     open_loop: bool = False
 
     def can_start(self):
