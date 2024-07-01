@@ -89,6 +89,9 @@ def main(
         if servo.ee_rgb is None:
             print("No end effector image. Skipping.")
             continue
+        if servo.ee_depth is None:
+            print("No end effector depth. Skipping.")
+            continue
 
         # First time info
         if first_time:
