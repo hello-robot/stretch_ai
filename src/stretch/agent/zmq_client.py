@@ -211,6 +211,8 @@ class HomeRobotZmqClient(RobotClient):
 
         # Blocking is handled in here
         self.send_action()
+
+        # Handle blocking
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
@@ -239,6 +241,10 @@ class HomeRobotZmqClient(RobotClient):
                     and (wrist_yaw_diff < 0.05)
                 ):
                     return True
+                else:
+                    print(
+                        f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
+                    )
                 time.sleep(0.01)
 
                 # TODO: Is this necessary? If not, we should just delete this commented-out code block.
