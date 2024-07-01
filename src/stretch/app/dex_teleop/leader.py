@@ -478,7 +478,8 @@ class DexTeleopLeader(Evaluator):
         wrist_position: np.ndarray,
         gripper_orientation: np.ndarray,
         current_state,
-        relative=False,
+        relative: bool = False,
+        verbose: bool = False,
         **config,
     ):
         # Process goal dict in gripper pose format to full joint configuration format with IK
@@ -503,7 +504,8 @@ class DexTeleopLeader(Evaluator):
             if not success:
                 print("!!! BAD IK SOLUTION !!!")
                 new_goal_configuration = None
-            pp.pp(new_goal_configuration)
+            if verbose:
+                pp.pp(new_goal_configuration)
 
         if new_goal_configuration is None:
             print(
@@ -685,7 +687,8 @@ class DexTeleopLeader(Evaluator):
                 print(f"{new_goal_configuration['joint_mobile_base_rotation']=}")
                 print(f"{self.filtered_wrist_position_configuration[0]=}")
                 print(f"{new_goal_configuration['joint_mobile_base_rotate_by']=}")
-            print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
+                print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
+
             # remove virtual joint and approximate motion with rotate_by using joint_mobile_base_rotate_by
             del new_goal_configuration["joint_mobile_base_rotation"]
 

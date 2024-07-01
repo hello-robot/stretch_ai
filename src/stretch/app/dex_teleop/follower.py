@@ -29,7 +29,7 @@ EE_POS = "wrist_position"
 class DexTeleopFollower(CommsNode):
 
     # Debugging options
-    print_time_debugging: bool = True
+    print_time_debugging: bool = False
 
     def __init__(
         self,
@@ -276,11 +276,10 @@ class DexTeleopFollower(CommsNode):
                 "robot/ee_rotation": ee_rot,
             }
 
-            print(" - send")
             self.send_socket.send_pyobj(d405_output)
 
             loop_timer.mark_end()
-            if True or verbose:
+            if verbose:
                 loop_timer.pretty_print()
 
     def start(self):

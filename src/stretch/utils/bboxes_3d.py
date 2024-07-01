@@ -41,12 +41,13 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
-from pytorch3d.common.datatypes import Device, make_device
-from pytorch3d.ops import box3d_overlap
-from pytorch3d.structures import utils as struct_utils
 from torch import Tensor
 
+import stretch.utils.pytorch3d as struct_utils
+from stretch.utils.pytorch3d import box3d_overlap, make_device
 
+
+# main
 class BBoxes3D:
     _INTERNAL_TENSORS = [
         "_bounds_packed",  # bounds

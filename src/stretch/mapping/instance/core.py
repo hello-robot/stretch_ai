@@ -126,6 +126,11 @@ class Instance:
     """Confidence score of bbox detection"""
     score_aggregation_method: str = "max"
 
+    @property
+    def id(self) -> int:
+        """Convenience function to get the unique global id of the instance"""
+        return self.global_id
+
     def get_category_id(self) -> int:
         """Get the category id of the instance, making sure it's actually an int."""
         if isinstance(self.category_id, torch.Tensor):

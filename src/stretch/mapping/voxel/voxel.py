@@ -16,16 +16,13 @@ import open3d as open3d
 import scipy
 import skimage
 import torch
-import trimesh
-from pytorch3d.structures import Pointclouds
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
 from stretch.mapping.grid import GridParams
-from stretch.mapping.instance import Instance, InstanceMemory, InstanceView
+from stretch.mapping.instance import Instance, InstanceMemory
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
-from stretch.utils.bboxes_3d import BBoxes3D
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import (
@@ -863,69 +860,7 @@ class SparseVoxelMap(object):
         return points, rgb
 
     def _show_pytorch3d(self, instances: bool = True, mock_plot: bool = False, **plot_scene_kwargs):
-        from pytorch3d.vis.plotly_vis import AxisArgs, plot_scene
-
-        from stretch.utils.bboxes_3d_plotly import plot_scene_with_bboxes
-        from stretch.utils.plotly_vis.camera import add_camera_poses, colormap_to_rgb_strings
-
-        points, rgb = self.get_xyz_rgb()
-
-        # TODO: Xiaohan--need to normalize for older versions of pytorch3d. remove before merge
-        rgb = rgb / 128.0
-
-        traces = {}
-
-        # Show points
-        ptc = None
-        if points is None and mock_plot:
-            ptc = Pointclouds(points=[torch.zeros((2, 3))], features=[torch.zeros((2, 3))])
-        elif points is not None:
-            ptc = Pointclouds(points=[points], features=[rgb])
-        if ptc is not None:
-            traces["Points"] = ptc
-
-        # Show instances
-        if instances:
-            if len(self.get_instances()) > 0:
-                bounds, names = zip(*[(v.bounds, v.category_id) for v in self.get_instances()])
-                detected_boxes = BBoxes3D(
-                    bounds=[torch.stack(bounds, dim=0)],
-                    # At some point we can color the boxes according to class, but that's not implemented yet
-                    # features = [categorcolors],
-                    names=[torch.stack(names, dim=0).unsqueeze(-1)],
-                )
-            else:
-                detected_boxes = BBoxes3D(
-                    bounds=[torch.zeros((2, 3, 2))],
-                    # At some point we can color the boxes according to class, but that's not implemented yet
-                    # features = [categorcolors],
-                    names=[torch.zeros((2, 1), dtype=torch.long)],
-                )
-            traces["IB"] = detected_boxes
-
-        # Show cameras
-        # "Fused boxes": global_boxes,
-        # "cameras": cameras,
-
-        _default_plot_args = dict(
-            xaxis={"backgroundcolor": "rgb(230, 200, 200)"},
-            yaxis={"backgroundcolor": "rgb(200, 230, 200)"},
-            zaxis={"backgroundcolor": "rgb(200, 200, 230)"},
-            axis_args=AxisArgs(showgrid=True),
-            pointcloud_marker_size=3,
-            pointcloud_max_points=800_000,
-            boxes_plot_together=True,
-            boxes_wireframe_width=3,
-            aspectmode="cube",
-        )
-        fig = plot_scene_with_bboxes(
-            plots={"Global scene": traces},
-            **update(_default_plot_args, plot_scene_kwargs),
-        )
-        # Show cameras
-        poses = [obs.camera_pose for obs in self.observations]
-        add_camera_poses(fig, poses)
-        return fig
+        print("SparseVoxelMap::_show_pytorch_3d: Warning! pytorch3d support deprecated!")
 
     def sample_explored(self) -> Optional[np.ndarray]:
         """Return obstacle-free xy point in explored space"""

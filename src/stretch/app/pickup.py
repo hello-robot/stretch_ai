@@ -1,39 +1,15 @@
 #!/usr/bin/env python3
 
-import time
-
 import click
 import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.perception import create_semantic_sensor, get_encoder
-
-from .manager import PickupManager
-from .operations import GraspObjectOperation, UpdateOperation
-
-
-def get_task(robot, demo, target_object):
-    """Create a very simple task just to test visual servoing to grasp."""
-    try:
-        manager = PickupManager(demo, target_object=target_object)
-        task = Task()
-        update = UpdateOperation("update", manager, retry_on_failure=True)
-        grasp_object = GraspObjectOperation(
-            "grasp the object",
-            manager,
-        )
-        grasp_object.show_object_to_grasp = True
-        grasp_object.servo_to_grasp = True
-        task.add_operation(update)
-        task.add_operation(grasp_object)
-    except Exception as e:
-        print("Error in creating task: ", e)
-        robot.stop()
-        raise e
-    return task
 
 
 @click.command()
@@ -45,7 +21,9 @@ def get_task(robot, demo, target_object):
     help="Set if we are executing on the robot and not on a remote computer",
 )
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
-@click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
+@click.option(
+    "--target_object", type=str, default="shoe", help="Type of object to pick up and move"
+)
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -54,8 +32,9 @@ def main(
     verbose: bool = False,
     show_intermediate_maps: bool = False,
     reset: bool = False,
-    target_object: str = "toy",
+    target_object: str = "shoe",
 ):
+    """Set up the robot, create a task plan, and execute it."""
     # Create robot
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -67,7 +46,6 @@ def main(
         device_id=device_id,
         verbose=verbose,
         category_map_file=parameters["open_vocab_category_map_file"],
-        confidence_threshold=0.3,
     )
 
     # Start moving the robot around
@@ -79,13 +57,23 @@ def main(
     if reset:
         robot.move_to_nav_posture()
         robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
-        # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
-        robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
-        time.sleep(3.0)
 
-    task = get_task(robot, demo, target_object)
+    # After the robot has started...
+    try:
+        manager = PickupManager(demo, target_object=target_object)
+        task = manager.get_task(add_rotate=False)
+    except Exception as e:
+        print(f"Error creating task: {e}")
+        robot.stop()
+        raise e
+
     task.run()
-    robot.open_gripper()
+
+    if reset:
+        # Send the robot home at the end!
+        demo.go_home()
+
+    # At the end, disable everything
     robot.stop()
 
 
