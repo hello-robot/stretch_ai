@@ -10,6 +10,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.perception import create_semantic_sensor, get_encoder
+from stretch.utils.gripper import GripperArucoDetector
 from stretch.utils.image import adjust_gamma
 
 

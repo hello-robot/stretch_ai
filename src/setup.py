@@ -22,7 +22,7 @@ setuptools.setup(
         "torchvision",
         "pyyaml",
         "pyzmq",
-        "numpy",
+        "numpy<2",
         "numba",
         "opencv-python",
         "scipy",
