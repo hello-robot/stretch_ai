@@ -2,7 +2,7 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Optional
+from typing import Optional, Union
 
 import clip
 import numpy as np
@@ -22,7 +22,7 @@ class ClipEncoder(BaseImageTextEncoder):
         self.version = version
         self.model, self.preprocess = clip.load(self.version, device=self.device)
 
-    def encode_image(self, image: np.ndarray):
+    def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
         """Encode this input image to a CLIP vector"""
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy() * 255
@@ -33,7 +33,7 @@ class ClipEncoder(BaseImageTextEncoder):
             image_features = self.model.encode_image(processed_image)
         return image_features.float()
 
-    def encode_text(self, text: str):
+    def encode_text(self, text: str) -> torch.Tensor:
         """Return clip vector for text"""
         text = clip.tokenize([text]).to(self.device)
         with torch.no_grad():
@@ -44,10 +44,12 @@ class ClipEncoder(BaseImageTextEncoder):
 class NormalizedClipEncoder(ClipEncoder):
     """Simple wrapper for encoding different things as text. Normalizes the results."""
 
-    def encode_image(self, image: np.ndarray):
+    def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
+        """Encode this input image to a CLIP vector"""
         image_features = super().encode_image(image)
         return image_features / image_features.norm(dim=-1, keepdim=True)
 
-    def encode_text(self, text: str):
+    def encode_text(self, text: str) -> torch.Tensor:
+        """Return clip vector for text"""
         text_features = super().encode_text(text)
         return text_features / text_features.norm(dim=-1, keepdim=True)

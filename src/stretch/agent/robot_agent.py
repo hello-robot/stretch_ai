@@ -9,7 +9,7 @@ import pickle
 import time
 import timeit
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import clip
 import numpy as np
@@ -26,7 +26,7 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
-from stretch.perception.encoders import get_encoder
+from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.utils.geometry import angle_difference
 from stretch.utils.threading import Interval
 
@@ -161,6 +161,18 @@ class RobotAgent:
 
         self.openai_key = None
         self.task = None
+
+    def get_encoder(self) -> BaseImageTextEncoder:
+        """Return the encoder in use by this model"""
+        return self.encoder
+
+    def encode_text(self, text: str) -> torch.Tensor:
+        """Encode text using the encoder"""
+        return self.encoder.encode_text(text)
+
+    def encode_image(self, image: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        """Encode image using the encoder"""
+        return self.encoder.encode_image(image)
 
     def set_openai_key(self, key):
         self.openai_key = key
