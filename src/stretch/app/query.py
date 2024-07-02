@@ -34,12 +34,6 @@ from stretch.perception import create_semantic_sensor
 @click.option("--spin", default=False, is_flag=True)
 @click.option("--reset", is_flag=True)
 @click.option(
-    "--input-path",
-    type=click.Path(),
-    default="output.pkl",
-    help="Input path with default value 'output.npy'",
-)
-@click.option(
     "--write-instance-images",
     default=False,
     is_flag=True,
@@ -58,7 +52,8 @@ def main(
     reset: bool = False,
     explore_iter: int = 0,
     output_filename: str = "stretch_output",
-    **kwargs,
+    spin: bool = False,
+    write_instance_images: bool = False,
 ):
 
     print("- Load parameters")
@@ -84,8 +79,15 @@ def main(
     if reset:
         demo.move_closed_loop([0, 0, 0], max_time=60.0)
 
+    if spin:
+        demo.rotate_in_place(8)
+
     if explore_iter > 0:
         raise NotImplementedError("Exploration not implemented yet")
+
+    # Debugging: write out images of instances that you saw
+    if write_instance_images:
+        demo.save_instance_images(".")
 
     # At the end...
     robot.stop()

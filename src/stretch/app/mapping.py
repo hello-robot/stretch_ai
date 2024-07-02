@@ -42,12 +42,6 @@ from stretch.perception import create_semantic_sensor
 @click.option("--force-explore", default=False, is_flag=True)
 @click.option("--no-manip", default=False, is_flag=True)
 @click.option(
-    "--input-path",
-    type=click.Path(),
-    default="output.pkl",
-    help="Input path with default value 'output.npy'",
-)
-@click.option(
     "--write-instance-images",
     default=False,
     is_flag=True,

@@ -202,9 +202,10 @@ class RobotAgent:
 
         step_size = 2 * np.pi / steps
         i = 0
-        print("==== ROTATE IN PLACE ====")
+        x, y, _ = self.robot.get_base_pose()
+        print(f"==== ROTATE IN PLACE at {x}, {y} ====")
         while i < steps:
-            self.robot.navigate_to([0, 0, i * step_size], relative=False, blocking=True)
+            self.robot.navigate_to([x, y, i * step_size], relative=False, blocking=True)
 
             if self.robot.last_motion_failed():
                 # We have a problem!
