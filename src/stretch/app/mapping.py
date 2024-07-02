@@ -21,13 +21,7 @@ import stretch.utils.depth as du
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, RobotClient, get_parameters
-
-# TODO: semantic sensor code from HomeRobot
 from stretch.perception import create_semantic_sensor
-
-# Chat and UI tools
-from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
-from stretch.utils.visualization import get_x_and_y_from_path
 
 
 @click.command()
@@ -43,7 +37,6 @@ from stretch.utils.visualization import get_x_and_y_from_path
 @click.option("--show-final-map", default=False, is_flag=True)
 @click.option("--show-paths", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
-@click.option("--test-grasping", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
 @click.option("--navigate-home", default=False, is_flag=True)
 @click.option("--force-explore", default=False, is_flag=True)
@@ -54,9 +47,6 @@ from stretch.utils.visualization import get_x_and_y_from_path
     default="output.pkl",
     help="Input path with default value 'output.npy'",
 )
-@click.option("--use-vlm", default=False, is_flag=True, help="use remote vlm to plan")
-@click.option("--vlm-server-addr", default="127.0.0.1")
-@click.option("--vlm-server-port", default="50054")
 @click.option(
     "--write-instance-images",
     default=False,
@@ -77,13 +67,9 @@ def main(
     show_final_map: bool = False,
     show_paths: bool = False,
     random_goals: bool = True,
-    test_grasping: bool = False,
     force_explore: bool = False,
     no_manip: bool = False,
     explore_iter: int = 10,
-    use_vlm: bool = False,
-    vlm_server_addr: str = "127.0.0.1",
-    vlm_server_port: str = "50054",
     write_instance_images: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     local: bool = True,
@@ -119,13 +105,9 @@ def main(
         show_final_map=show_final_map,
         show_paths=show_paths,
         random_goals=random_goals,
-        test_grasping=test_grasping,
         force_explore=force_explore,
         no_manip=no_manip,
         explore_iter=explore_iter,
-        use_vlm=use_vlm,
-        vlm_server_addr=vlm_server_addr,
-        vlm_server_port=vlm_server_port,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
         reset=reset,
@@ -146,13 +128,9 @@ def demo_main(
     show_final_map: bool = False,
     show_paths: bool = False,
     random_goals: bool = True,
-    test_grasping: bool = False,
     force_explore: bool = False,
     no_manip: bool = False,
     explore_iter: int = 10,
-    use_vlm: bool = False,
-    vlm_server_addr: str = "127.0.0.1",
-    vlm_server_port: str = "50054",
     write_instance_images: bool = False,
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
@@ -171,7 +149,6 @@ def demo_main(
 
     current_datetime = datetime.datetime.now()
     formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
-    output_pcd_filename = output_filename + "_" + formatted_datetime + ".pcd"
     output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
 
     if parameters is None:
@@ -232,50 +209,6 @@ def demo_main(
         matches = demo.get_found_instances_by_class(object_to_find)
         print("-> Found", len(matches), f"instances of class {object_to_find}.")
 
-        if use_vlm:
-            print("!!!!!!!!!!!!!!!!!!!!!")
-            print("Query the VLM.")
-            print(f"VLM's response: {demo.get_plan_from_vlm()}")
-            input("# TODO: execute the above plan (seems like we are not doing it right now)")
-
-        if len(matches) == 0:
-            print("No matching objects. We're done here.")
-        else:
-            # Look at all of our instances - choose and move to one
-            print(f"- Move to any instance of {object_to_find}")
-            smtai = demo.move_to_any_instance(matches)
-            if not smtai:
-                print("Moving to instance failed!")
-            else:
-                print(f"- Grasp {object_to_find} using FUNMAP")
-                res = demo.grasp(object_goal=object_to_find)
-                print(f"- Grasp result: {res}")
-
-                matches = demo.get_found_instances_by_class(location_to_place)
-                if len(matches) == 0:
-                    print(f"!!! No location {location_to_place} found. Exploring !!!")
-                    demo.run_exploration(
-                        rate,
-                        manual_wait,
-                        explore_iter=explore_iter,
-                        task_goal=location_to_place,
-                        go_home_at_end=navigate_home,
-                    )
-
-                print(f"- Move to any instance of {location_to_place}")
-                smtai2 = demo.move_to_any_instance(matches)
-                if not smtai2:
-                    print(f"Going to instance of {location_to_place} failed!")
-                else:
-                    print(f"- Placing on {location_to_place} using FUNMAP")
-                    if not no_manip:
-                        # run_grasping(
-                        #    robot,
-                        #    semantic_sensor,
-                        #    to_grasp=None,
-                        #    to_place=location_to_place,
-                        # )
-                        pass
     except Exception as e:
         raise (e)
     finally:
