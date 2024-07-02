@@ -63,6 +63,11 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
+    _, semantic_sensor = create_semantic_sensor(
+        device_id=device_id,
+        verbose=verbose,
+        category_map_file=parameters["open_vocab_category_map_file"],
+    )
 
     if len(input_file) == 0 or input_file is None:
         current_datetime = datetime.datetime.now()
@@ -75,11 +80,6 @@ def main(
             send_port=send_port,
             use_remote_computer=(not local),
             parameters=parameters,
-        )
-        _, semantic_sensor = create_semantic_sensor(
-            device_id=device_id,
-            verbose=verbose,
-            category_map_file=parameters["open_vocab_category_map_file"],
         )
         agent = RobotAgent(robot, parameters, semantic_sensor)
 
@@ -101,12 +101,12 @@ def main(
         robot.stop()
     else:
         dummy_robot = DummyStretchClient()
-        agent = RobotAgent(dummy_robot, parameters, None)
+        agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
         agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:
-        agent.save_instance_images(".")
+        agent.save_instance_images(".", verbose=True)
 
 
 if __name__ == "__main__":

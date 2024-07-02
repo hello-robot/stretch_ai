@@ -981,7 +981,7 @@ class RobotAgent:
             )
         self.voxel_map.reset()
 
-    def save_instance_images(self, root: str = "."):
+    def save_instance_images(self, root: str = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""
 
         if isinstance(root, str):
@@ -992,4 +992,6 @@ class RobotAgent:
             for j, view in enumerate(instance.instance_views):
                 image = Image.fromarray(view.cropped_image.byte().cpu().numpy())
                 filename = f"instance{i}_view{j}.png"
+                if verbose:
+                    print(f"Saving instance image {i} view {j} to {root / filename}")
                 image.save(root / filename)
