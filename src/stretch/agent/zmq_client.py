@@ -73,6 +73,7 @@ class HomeRobotZmqClient(RobotClient):
         grasp_frame: Optional[str] = None,
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
+        start_immediately: bool = True,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -96,6 +97,7 @@ class HomeRobotZmqClient(RobotClient):
         # Variables we set here should not change
         self._iter = 0  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
+        self._started = False
 
         self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
@@ -145,6 +147,9 @@ class HomeRobotZmqClient(RobotClient):
         self._act_lock = Lock()
         self._state_lock = Lock()
         self._servo_lock = Lock()
+
+        if start_immediately:
+            self.start()
 
     def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current joint positions"""
@@ -759,6 +764,9 @@ class HomeRobotZmqClient(RobotClient):
 
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
+        if self._started:
+            return True
+
         self._thread = threading.Thread(target=self.blocking_spin)
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
@@ -783,6 +791,7 @@ class HomeRobotZmqClient(RobotClient):
                 )
                 logger.info("Robot IP:", self.send_address)
                 return False
+        self._started = True
         return True
 
     def __del__(self):
