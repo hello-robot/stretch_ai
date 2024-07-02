@@ -32,6 +32,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--output-filename", default="stretch_output", type=str)
 @click.option("--explore-iter", default=0)
 @click.option("--spin", default=False, is_flag=True)
+@click.option("--reset", is_flag=True)
 @click.option(
     "--input-path",
     type=click.Path(),
@@ -56,11 +57,13 @@ def main(
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
     explore_iter: int = 0,
+    output_filename: str = "stretch_output",
     **kwargs,
 ):
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
+    current_datetime = datetime.datetime.now()
     formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
     output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
 
@@ -71,6 +74,15 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
+    _, semantic_sensor = create_semantic_sensor(
+        device_id=device_id,
+        verbose=verbose,
+        category_map_file=parameters["open_vocab_category_map_file"],
+    )
+    demo = RobotAgent(robot, parameters, semantic_sensor)
+
+    if reset:
+        demo.move_closed_loop([0, 0, 0], max_time=60.0)
 
     if explore_iter > 0:
         raise NotImplementedError("Exploration not implemented yet")
