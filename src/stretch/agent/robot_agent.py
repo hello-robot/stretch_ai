@@ -180,6 +180,46 @@ class RobotAgent:
     def set_task(self, task):
         self.task = task
 
+    def get_instance_from_text(
+        self,
+        text_query: str,
+        aggregation_method: str = "mean",
+        normalize: bool = False,
+        verbose: bool = True,
+    ) -> Optional[Instance]:
+        """Get the instance that best matches the text query.
+
+        Args:
+            text_query(str): the text query
+            aggregation_method(str): how to aggregate the embeddings. Should be one of (max, mean).
+            normalize(bool): whether to normalize the embeddings
+            verbose(bool): whether to print debug info
+
+        Returns:
+            activation(float): the cosine similarity between the text query and the instance embedding
+            instance(Instance): the instance that best matches the text query
+        """
+        if self.semantic_sensor is None:
+            return None
+        instances = self.voxel_map.instances.get_instances()
+        assert aggregation_method in [
+            "max",
+            "mean",
+        ], f"Invalid aggregation method {aggregation_method}"
+        activations = []
+        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
+        for ins, instance in enumerate(instances):
+            emb = instance.get_image_embedding(
+                aggregation_method=aggregation_method, normalize=normalize
+            )
+            activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
+            activations.append(activation.item())
+            if verbose:
+                print(f" - Instance {ins} has activation {activation.item()}")
+        idx = np.argmax(activations)
+        best_instance = instances[idx]
+        return activations[idx], best_instance
+
     def get_navigation_space(self) -> ConfigurationSpace:
         """Returns reference to the navigation space."""
         return self.space

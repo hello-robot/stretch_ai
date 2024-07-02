@@ -8,6 +8,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import cv2
 import numpy as np
 import torch
 from torch import Tensor
@@ -176,6 +177,13 @@ class Instance:
         else:
             raise NotImplementedError(f"metric {metric} not supported")
         return best_view
+
+    def show_best_view(self, metric: str = "area") -> None:
+        """Show the best view of the instance"""
+        best_view = self.get_best_view(metric=metric)
+        image = best_view.get_image()
+        cv2.imshow("Best view", image)
+        cv2.waitKey(0)
 
     def add_instance_view(self, instance_view: InstanceView):
         if len(self.instance_views) == 0:

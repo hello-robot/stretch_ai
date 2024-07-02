@@ -44,6 +44,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option("--frame", default=-1, help="Final frame to read from input file")
+@click.option("--text", default="", help="Text to encode")
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -59,6 +60,7 @@ def main(
     write_instance_images: bool = False,
     input_file: str = "",
     frame: int = -1,
+    text: str = "",
 ):
 
     print("- Load parameters")
@@ -103,6 +105,16 @@ def main(
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
         agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
+
+    if len(text) == 0:
+        # Read text from command line
+        text = input("Enter text to encode: ")
+
+    # Get the best instance using agent's API
+    instance = agent.get_instance_from_text(text)
+
+    # Show the best view of the detected instance
+    instance.show_best_view()
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:
