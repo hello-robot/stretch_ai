@@ -12,9 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import click
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d
-import torch
-from PIL import Image
 
 # Mapping and perception
 import stretch.utils.depth as du

@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import datetime
+import pickle
 import sys
 import time
 import timeit
@@ -12,9 +13,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import click
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d
-import torch
-from PIL import Image
 
 # Mapping and perception
 import stretch.utils.depth as du
@@ -101,14 +99,12 @@ def main(
         robot.stop()
     else:
         dummy_robot = DummyStretchClient()
-        with input_path.open("rb") as f:
+        with Path(input_file).open("rb") as f:
             loaded_voxel_map = pickle.load(f)
         agent = RobotAgent(
             dummy_robot,
             parameters,
             None,
-            rpc_stub=None,
-            grasp_client=None,
             voxel_map=loaded_voxel_map,
         )
 
