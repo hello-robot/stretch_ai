@@ -19,6 +19,13 @@ RUN apt-get update && apt-get install -y \
     python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install opencv dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6\
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 
@@ -33,12 +40,17 @@ COPY . .
 RUN chmod +x install.sh
 RUN ./install.sh -y
 
+
 # Copy requirements file (if you have one)
 # COPY requirements.txt .
 
 # Install Python packages (uncomment and modify as needed)
 # RUN pip install --no-cache-dir -r requirements.txt
 
+# Activate conda environment
+RUN echo "mamba activate stretch_ai" > ~/.bashrc
+ENV PATH /root/miniforge3/envs/stretch_ai
+
 # Set the entrypoint
-CMD ["/bin/bash"]
+# CMD ["/bin/bash"]
 
