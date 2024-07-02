@@ -139,7 +139,8 @@ echo "---------------------------------------------"
 echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
 echo "Will be installed to: $PWD/third_party/Detic"
 # echo "The third_party folder will be removed!"
-if [ "$1" == "-y" ]; then
+if [ "$SKIP_ASKING" == "true" ]; then
+    echo "Proceeding with installation because you passed in the -y flag."
     yn="y"
 else
     read -p "Do you want to proceed? (y/n) " yn
