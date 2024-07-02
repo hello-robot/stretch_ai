@@ -1,6 +1,6 @@
 import time
 import timeit
-from typing import Optional
+from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -13,6 +13,7 @@ from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
+from stretch.utils.gripper import GripperArucoDetector
 
 
 class ManagedOperation(Operation):
@@ -501,8 +502,7 @@ class UpdateOperation(ManagedOperation):
             self.warn("Robot is not in manipulation mode. Moving to manip posture.")
             self.robot.move_to_manip_posture()
             time.sleep(5.0)
-        self.robot.arm_to([0.0, 0.4, 0.05, np.pi, -np.pi / 4, 0], blocking=True)
-        time.sleep(8.0)
+        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
         xyt = self.robot.get_base_pose()
         # Now update the world
         self.update()
@@ -597,17 +597,22 @@ class GraspObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     servo_to_grasp: bool = False
     _success: bool = False
+
+    # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = False
+    show_servo_gui: bool = True
+    show_center_gui: bool = False
 
     # Thresholds for centering on object
     align_x_threshold: int = 15
     align_y_threshold: int = 10
 
     # Visual servoing config
+    track_image_center: bool = False
+    gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
+    detected_center_offset_y: int = -20
     lift_arm_ratio: float = 0.1
-    # base_x_step: float = 0.03
     base_x_step: float = 0.12
     wrist_pitch_step: float = 0.1
     median_distance_when_grasping: float = 0.175
@@ -622,7 +627,11 @@ class GraspObjectOperation(ManagedOperation):
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
     def get_target_mask(
-        self, servo: Observations, instance: Instance, prev_mask: Optional[np.ndarray] = None
+        self,
+        servo: Observations,
+        instance: Instance,
+        center: Tuple[int, int],
+        prev_mask: Optional[np.ndarray] = None,
     ) -> Optional[np.ndarray]:
         """Get target mask to move to. If we do not provide the mask from the previous step, we will simply find the mask with the most points of the correct class. Otherwise, we will try to find the mask that most overlaps with the previous mask. There are two options here: one where we simply find the mask with the most points, and another where we try to find the mask that most overlaps with the previous mask. This is in case we are losing track of particular objects and getting classes mixed up.
 
@@ -641,12 +650,12 @@ class GraspObjectOperation(ManagedOperation):
         target_mask_pts = float("-inf")
         maximum_overlap_mask = None
         maximum_overlap_pts = float("-inf")
-        H, W = class_mask.shape
+        center_x, center_y = center
         for iid in np.unique(instance_mask):
             current_instance_mask = instance_mask == iid
 
             # If we are centered on the mask and it's the right class, just go for it
-            if class_mask[H // 2, W // 2] > 0 and current_instance_mask[H // 2, W // 2] > 0:
+            if class_mask[center_y, center_x] > 0 and current_instance_mask[center_y, center_x] > 0:
                 # This is the correct one - it's centered and the right class. Just go there.
                 print("!!! CENTERED ON THE RIGHT OBJECT !!!")
                 return current_instance_mask
@@ -704,6 +713,11 @@ class GraspObjectOperation(ManagedOperation):
         prev_target_mask = None
         success = False
 
+        # Track the fingertips using aruco markers
+        if self.gripper_aruco_detector is None:
+            self.gripper_aruco_detector = GripperArucoDetector()
+
+        # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
             # Get servo observation
@@ -717,10 +731,31 @@ class GraspObjectOperation(ManagedOperation):
                 arm = joint_state[HelloStretchIdx.ARM]
                 lift = joint_state[HelloStretchIdx.LIFT]
 
+            # Compute the center of the image that we will be tracking
+            if self.track_image_center:
+                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
+            else:
+                center = self.gripper_aruco_detector.detect_center(servo.ee_rgb)
+                if center is not None:
+                    center_y, center_x = np.round(center).astype(int)
+                    center_y += self.detected_center_offset_y
+                else:
+                    center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
+
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
-            target_mask = self.get_target_mask(servo, instance, prev_mask=prev_target_mask)
+            target_mask = self.get_target_mask(
+                servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
+            )
             target_mask_pts = sum(target_mask.flatten())
+
+            # Get depth
+            center_depth = servo.ee_depth[center_y, center_x] / 1000
+
+            # Compute the center of the mask in image coords
+            mask = target_mask
+            mask_pts = np.argwhere(mask)
+            mask_center = mask_pts.mean(axis=0)
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
@@ -729,15 +764,20 @@ class GraspObjectOperation(ManagedOperation):
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
                 servo_ee_rgb = cv2.addWeighted(servo_ee_rgb, 0.5, mask, 0.5, 0, servo_ee_rgb)
+                # Draw the center of the image
+                servo_ee_rgb = cv2.circle(servo_ee_rgb, (center_x, center_y), 5, (255, 0, 0), -1)
+                # Draw the center of the mask
+                servo_ee_rgb = cv2.circle(
+                    servo_ee_rgb, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
+                )
                 cv2.imshow("servo_ee_rgb", servo_ee_rgb)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
                 if res == ord("q"):
                     break
 
-            center_depth = (
-                servo.ee_depth[servo.ee_depth.shape[0] // 2, servo.ee_depth.shape[1] // 2] / 1000
-            )
+            # If we have a target mask, compute the median depth of the object
+            # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None and target_mask_pts > self.min_points_to_approach:
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
@@ -747,11 +787,6 @@ class GraspObjectOperation(ManagedOperation):
                     success = self._grasp()
                 continue
 
-            # Compute the center of the mask in image coords
-            mask = target_mask
-            mask_pts = np.argwhere(mask)
-            mask_center = mask_pts.mean(axis=0)
-            center_x, center_y = target_mask.shape[1] / 2, target_mask.shape[0] / 2
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
 
             # Is the center of the image part of the target mask or not?

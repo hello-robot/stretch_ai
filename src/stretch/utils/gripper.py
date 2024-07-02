@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -64,3 +64,18 @@ class GripperArucoDetector:
         corners, ids = self.detect_aruco_markers(image)
         centers = np.array([np.mean(c, axis=1) for c in corners])
         return centers, ids
+
+    def detect_center(self, image: np.ndarray) -> Optional[np.ndarray]:
+        """Get the center of the first detected AR marker in an image.
+
+        Args:
+            image: The image to detect the marker in.
+
+        Returns:
+            center: 2D array, The center point between the two finger AR markers.
+        """
+        centers, _ = self.detect_aruco_centers(image)
+        if len(centers) < 2:
+            return None
+        center = (centers[0] + centers[1]) / 2
+        return center[0]
