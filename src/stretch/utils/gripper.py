@@ -50,3 +50,17 @@ class GripperArucoDetector:
         corners, ids = self.detect_aruco_markers(image)
         image = cv2.aruco.drawDetectedMarkers(image, corners, ids)
         return corners, ids, image
+
+    def detect_aruco_centers(self, image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Detect AR markers in an image and return their centers.
+
+        Args:
+            image: The image to detect markers in.
+
+        Returns:
+            A tuple of two numpy arrays. The first array contains the centers of the detected markers, and the second
+            array contains the IDs of the detected markers.
+        """
+        corners, ids = self.detect_aruco_markers(image)
+        centers = np.array([np.mean(c, axis=1) for c in corners])
+        return centers, ids

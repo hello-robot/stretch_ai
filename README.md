@@ -111,6 +111,12 @@ You can also visualize it with semantic segmentation (defaults to [Detic](https:
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
 ```
 
+You can visualize gripper Aruco markers as well; the aruco markers can be used to determine the finger locations in the image.
+
+```bash
+python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
+```
+
 ### Dex Teleop for Data Collection
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. It has two components:
