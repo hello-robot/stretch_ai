@@ -40,6 +40,23 @@ Check out the docs on:
 
 - [Getting status](./docs/status.md)
 
+## Apps
+
+First try these:
+
+- [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
+- [Gripper](#gripper-tool) - Open and close the gripper.
+
+Advanced:
+
+- [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
+- [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
+- [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
+
+Finally:
+
+- [Dex Teleop](#dex-teleop-for-data-collection) - Teleoperate the robot to collect demonstration data.
+
 ## Installation
 
 On both your PC and your robot, clone and install the package:
@@ -115,6 +132,15 @@ You can visualize gripper Aruco markers as well; the aruco markers can be used t
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
+```
+
+### Gripper Tool
+
+Open and close the gripper:
+
+```
+python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
+python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
 ```
 
 ### Dex Teleop for Data Collection
