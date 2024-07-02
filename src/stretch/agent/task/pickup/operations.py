@@ -600,8 +600,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = True
-    show_center_gui: bool = False
+    show_servo_gui: bool = False
 
     # Thresholds for centering on object
     align_x_threshold: int = 15
