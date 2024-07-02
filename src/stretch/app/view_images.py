@@ -31,6 +31,7 @@ from stretch.utils.image import adjust_gamma
     "--run_semantic_segmentation", is_flag=True, help="Run semantic segmentation on EE rgb images"
 )
 @click.option("--segment_ee", is_flag=True, help="Run semantic segmentation on EE rgb images")
+@click.option("--aruco", is_flag=True, help="Run aruco detection on EE rgb images")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -43,6 +44,7 @@ def main(
     run_semantic_segmentation: bool = False,
     gamma: float = 1.0,
     segment_ee: bool = False,
+    aruco: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -60,6 +62,10 @@ def main(
             category_map_file=parameters["open_vocab_category_map_file"],
             confidence_threshold=0.3,
         )
+    if aruco:
+        aruco_detector = GripperArucoDetector()
+    else:
+        aruco_detector = None
 
     print("Starting the robot...")
     robot.start()
@@ -155,7 +161,13 @@ def main(
         servo_head_rgb = cv2.cvtColor(servo.rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow("servo: head camera image", servo_head_rgb)
         servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+
+        if aruco_detector is not None:
+            servo_corners, servo_ids, servo_ee_rgb = aruco_detector.detect_and_draw_aruco_markers(
+                servo_ee_rgb
+            )
         cv2.imshow("servo: ee camera image", servo_ee_rgb)
+
         cv2.imshow("servo: ee depth image", viz_ee_depth)
         cv2.imshow("servo: head depth image", viz_depth)
         if run_semantic_segmentation:

@@ -1,4 +1,7 @@
+from typing import Tuple
+
 import cv2
+import numpy as np
 
 
 def get_gripper_aruco_detector() -> cv2.aruco.ArucoDetector:
