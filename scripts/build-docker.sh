@@ -18,7 +18,7 @@ do
 done
 if [ "$SKIP_ASKING" == "false" ]; then
     read -p "Verify that this is correct. Proceed? (y/n) " yn
-    if [ "$answer" != "${answer#[Yy]}" ] ;then
+    if [ "$answer" == "${answer#[Yy]}" ] ;then
         echo "Building docker image..."
     else
         echo "Exiting..."
