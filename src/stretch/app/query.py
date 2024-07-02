@@ -108,13 +108,21 @@ def main(
 
     if len(text) == 0:
         # Read text from command line
-        text = input("Enter text to encode: ")
+        text = input("Enter text to encode, empty to quit: ")
+        while len(text) > 0:
+            # Get the best instance using agent's API
+            print("Best image for:", text)
+            _, instance = agent.get_instance_from_text(text)
 
-    # Get the best instance using agent's API
-    instance = agent.get_instance_from_text(text)
+            # Show the best view of the detected instance
+            instance.show_best_view(title=text)
+            text = input("Enter text to encode, empty to quit: ")
+    else:
+        # Get the best instance using agent's API
+        _, instance = agent.get_instance_from_text(text)
 
-    # Show the best view of the detected instance
-    instance.show_best_view()
+        # Show the best view of the detected instance
+        instance.show_best_view()
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:

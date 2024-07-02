@@ -178,12 +178,15 @@ class Instance:
             raise NotImplementedError(f"metric {metric} not supported")
         return best_view
 
-    def show_best_view(self, metric: str = "area") -> None:
+    def show_best_view(self, metric: str = "area", title: Optional[str] = None) -> None:
         """Show the best view of the instance"""
         best_view = self.get_best_view(metric=metric)
         image = best_view.get_image()
-        cv2.imshow("Best view", image)
+        # Convert from RGB to BGR
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        cv2.imshow(title, image)
         cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     def add_instance_view(self, instance_view: InstanceView):
         if len(self.instance_views) == 0:
