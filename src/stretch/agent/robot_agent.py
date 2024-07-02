@@ -191,8 +191,12 @@ class RobotAgent:
             return False
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
-    def rotate_in_place(self, steps: int = 12, visualize: bool = True) -> bool:
+    def rotate_in_place(self, steps: int = 12, visualize: bool = False) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
+
+        Args:
+            steps(int): number of steps to rotate (each step is 360 degrees / steps). Default is 12.
+            visualize(bool): show the map as we rotate. Default is False.
 
         Returns:
             executed(bool): false if we did not actually do any rotations"""
