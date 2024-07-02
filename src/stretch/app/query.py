@@ -43,6 +43,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 )
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
+@click.option("--frame", default=-1, help="Final frame to read from input file")
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -57,6 +58,7 @@ def main(
     spin: bool = False,
     write_instance_images: bool = False,
     input_file: str = "",
+    frame: int = -1,
 ):
 
     print("- Load parameters")
@@ -79,13 +81,13 @@ def main(
             verbose=verbose,
             category_map_file=parameters["open_vocab_category_map_file"],
         )
-        demo = RobotAgent(robot, parameters, semantic_sensor)
+        agent = RobotAgent(robot, parameters, semantic_sensor)
 
         if reset:
-            demo.move_closed_loop([0, 0, 0], max_time=60.0)
+            agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
         if spin:
-            demo.rotate_in_place(steps=8, visualize=False)
+            agent.rotate_in_place(steps=8, visualize=False)
 
         if explore_iter > 0:
             raise NotImplementedError("Exploration not implemented yet")
@@ -93,24 +95,18 @@ def main(
         # Save out file
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
-            demo.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.voxel_map.write_to_pickle(output_pkl_filename)
 
         # At the end...
         robot.stop()
     else:
         dummy_robot = DummyStretchClient()
-        with Path(input_file).open("rb") as f:
-            loaded_voxel_map = pickle.load(f)
-        agent = RobotAgent(
-            dummy_robot,
-            parameters,
-            None,
-            voxel_map=loaded_voxel_map,
-        )
+        agent = RobotAgent(dummy_robot, parameters, None)
+        agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:
-        demo.save_instance_images(".")
+        agent.save_instance_images(".")
 
 
 if __name__ == "__main__":
