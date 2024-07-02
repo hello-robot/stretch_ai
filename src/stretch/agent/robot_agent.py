@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import clip
 import numpy as np
 import torch
-from atomicwrites import atomic_write
 from loguru import logger
 from PIL import Image
 from torchvision import transforms
