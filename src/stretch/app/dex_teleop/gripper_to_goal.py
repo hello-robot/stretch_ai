@@ -105,7 +105,7 @@ class GripperToGoal:
             "joint_wrist_pitch",
             "joint_wrist_roll",
             # "joint_mobile_base_rotation",
-            "joint_mobile_base_translate_by",
+            "joint_mobile_base_translation",
         ]
 
         # Get Wrist URDF joint limits
