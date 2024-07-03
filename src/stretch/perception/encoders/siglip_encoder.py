@@ -15,8 +15,8 @@ class SiglipEncoder(BaseImageTextEncoder):
         self.device = device
         # self.processor = AutoProcessor.from_pretrained("salesforce/siglip-visual-encoder")
         # self.model = AutoModel.from_pretrained("salesforce/siglip-visual-encoder").to(self.device)
-        self.model = AutoModel.from_pretrained("google/siglip-base-patch16-224")
         self.processor = AutoProcessor.from_pretrained("google/siglip-base-patch16-224")
+        self.model = AutoModel.from_pretrained("google/siglip-base-patch16-224").to(self.device)
 
     def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
         """Encode this input image to a CLIP vector"""
@@ -27,7 +27,7 @@ class SiglipEncoder(BaseImageTextEncoder):
         inputs = self.processor(images=pil_image, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
-            image_features = self.model(**inputs).last_hidden_state
+            image_features = self.model.get_image_features(**inputs)
         breakpoint()
         return image_features.float()
 
@@ -36,6 +36,6 @@ class SiglipEncoder(BaseImageTextEncoder):
         inputs = self.processor(text, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
-            text_features = self.model(**inputs).last_hidden_state
+            text_features = self.model.get_text_features(**inputs)
         breakpoint()
         return text_features.float()
