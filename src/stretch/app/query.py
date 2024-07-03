@@ -83,13 +83,18 @@ def main(
             use_remote_computer=(not local),
             parameters=parameters,
         )
+        robot.move_to_nav_posture()
         agent = RobotAgent(robot, parameters, semantic_sensor)
 
         if reset:
             agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
         if spin:
+            # Rotate and capture many frames
             agent.rotate_in_place(steps=8, visualize=False)
+        else:
+            # Just capture a single frame
+            agent.update()
 
         if explore_iter > 0:
             raise NotImplementedError("Exploration not implemented yet")
