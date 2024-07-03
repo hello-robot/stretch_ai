@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=0.0.2
+VERSION=0.0.3
 echo "Building docker image with tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
 SKIP_ASKING="false"
 for arg in "$@"
