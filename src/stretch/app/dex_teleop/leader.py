@@ -431,7 +431,6 @@ class DexTeleopLeader(Evaluator):
 
         # Set up commands to be sent to the robot
         goal_dict = self.goal_from_markers.get_goal_dict(markers)
-        print("GFM:", goal_dict)
 
         if goal_dict is not None:
             # Convert goal dict into a quaternion
@@ -708,15 +707,13 @@ class DexTeleopLeader(Evaluator):
             #     -self.max_rotation_change,
             #     self.max_rotation_change,
             # )
-            new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
-            print("TRANSLATION:", new_goal_configuration["joint_mobile_base_translation"])
-            self.current_base_x = current_state["base_x"]
-            new_goal_configuration["joint_mobile_base_translate_by"] = (
-                new_goal_configuration["joint_mobile_base_translation"] - self.current_base_x
-            )
-            print("TRANSLATION:", new_goal_configuration["joint_mobile_base_translation"])
-            print("CURRENT_BASE_X:", self.current_base_x)
-            print("TRANSLATE BY:", new_goal_configuration["joint_mobile_base_translate_by"])
+            if self.teleop_mode == "base_x":
+                new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+
+                self.current_base_x = current_state["base_x"]
+                new_goal_configuration["joint_mobile_base_translate_by"] = (
+                    new_goal_configuration["joint_mobile_base_translation"] - self.current_base_x
+                )
 
             if self.debug_base_rotation:
                 print()
