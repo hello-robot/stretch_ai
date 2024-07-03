@@ -154,7 +154,7 @@ def demo_main(
         parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = parameters.get_task_goals()
 
-    if self.write_instance_images:
+    if write_instance_images:
         print("- Create semantic sensor based on detic")
         _, semantic_sensor = create_semantic_sensor(
             device_id=device_id,
