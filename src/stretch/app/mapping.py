@@ -154,12 +154,15 @@ def demo_main(
         parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = parameters.get_task_goals()
 
-    print("- Create semantic sensor based on detic")
-    _, semantic_sensor = create_semantic_sensor(
-        device_id=device_id,
-        verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
-    )
+    if self.write_instance_images:
+        print("- Create semantic sensor based on detic")
+        _, semantic_sensor = create_semantic_sensor(
+            device_id=device_id,
+            verbose=verbose,
+            category_map_file=parameters["open_vocab_category_map_file"],
+        )
+    else:
+        semantic_sensor = None
 
     print("- Start robot agent with data collection")
     grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
