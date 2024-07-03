@@ -96,6 +96,7 @@ class GripperToGoal:
             "joint_wrist_pitch",
             "joint_wrist_roll",
             "joint_mobile_base_rotate_by",
+            "joint_mobile_base_translate_by",
         ]
         self._ik_joints_allowed_to_move = [
             "joint_arm_l0",
@@ -104,6 +105,7 @@ class GripperToGoal:
             "joint_wrist_pitch",
             "joint_wrist_roll",
             "joint_mobile_base_rotation",
+            "joint_mobile_base_translate_by",
         ]
 
         # Get Wrist URDF joint limits
