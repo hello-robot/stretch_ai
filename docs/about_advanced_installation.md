@@ -37,6 +37,8 @@ If instead you get an error, run the following to check your CUDA version:
 nvcc --version
 ```
 
+Note: if `nvcc --version` fails, try `/usr/local/cuda/bin/nvcc --version` instead.
+
 Make sure you have CUDA installed on your computer, preferably 11.8. It's possible to install multiple versions of CUDA on your computer, so make sure you have the correct version installed. You do not need to and should not install new versions of your NVIDIA drivers, but you may want to [install CUDA 11.8](https://developer.nvidia.com/cuda-11.8-download-archive) if you don't have it already, following the instructions in [Installing CUDA 11.8](#installing-cuda-11.8).
 
 ## Installing CUDA 11.8
