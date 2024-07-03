@@ -9,6 +9,8 @@ from .base_encoder import BaseImageTextEncoder
 
 
 class SiglipEncoder(BaseImageTextEncoder):
+    """Image/text feature encoder using SIGLip model"""
+
     def __init__(self, device: Optional[str] = None, **kwargs) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -18,7 +20,7 @@ class SiglipEncoder(BaseImageTextEncoder):
         self.model = AutoModel.from_pretrained("google/siglip-base-patch16-224").to(self.device)
 
     def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
-        """Encode this input image to a CLIP vector"""
+        """Encode this input image to a feature vector"""
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy()
         image = image.astype(np.uint8)
@@ -30,7 +32,7 @@ class SiglipEncoder(BaseImageTextEncoder):
         return image_features.float()
 
     def encode_text(self, text: str) -> torch.Tensor:
-        """Return clip vector for text"""
+        """Return feature vector for text"""
         # inputs = self.processor(text, return_tensors="pt")
         inputs = self.tokenizer([text], padding="max_length", return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
