@@ -1,7 +1,9 @@
 # Encoder setup
 # Encoder is used to compute per-object embeddings.
-encoder: "normalized_clip"
-encoder_args: "ViT-B/32"
+# encoder: "normalized_clip"
+# encoder_args:
+#  version: "ViT-B/32"
+encoder: "siglip"
 open_vocab_category_map_file: example_cat_map.json
 
 # Sparse Voxel Map parameters

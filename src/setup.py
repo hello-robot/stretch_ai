@@ -43,6 +43,8 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
+        # For siglip encoder
+        "sentencepiece",
         # Configuration tools and neural networks
         "hydra-core",
         "timm",

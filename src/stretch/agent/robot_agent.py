@@ -30,8 +30,6 @@ from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.utils.geometry import angle_difference
 from stretch.utils.threading import Interval
 
-# from transformers import Owlv2ForObjectDetection, Owlv2Processor
-
 
 class RobotAgent:
     """Basic demo code. Collects everything that we need to make this work."""
@@ -66,7 +64,7 @@ class RobotAgent:
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
-        self.encoder = get_encoder(parameters["encoder"], parameters["encoder_args"])
+        self.encoder = get_encoder(parameters["encoder"], parameters.get("encoder_args", {}))
         self.obs_count = 0
         self.obs_history = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
