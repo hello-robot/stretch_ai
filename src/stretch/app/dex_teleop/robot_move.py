@@ -144,7 +144,7 @@ class RobotMove:
 
                 move_to_functions = {
                     "joint_mobile_base_translate_by": partial(
-                        robot.base.translate_by, v_r=base_trans_v, a_r=base_trans_a
+                        robot.base.translate_by, v_m=base_trans_v, a_m=base_trans_a
                     ),
                     "joint_mobile_base_rotate_by": partial(
                         robot.base.rotate_by, v_r=base_rot_v, a_r=base_rot_a
