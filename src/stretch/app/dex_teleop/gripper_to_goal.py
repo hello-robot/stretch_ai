@@ -95,7 +95,7 @@ class GripperToGoal:
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_mobile_base_rotate_by",
+            # "joint_mobile_base_rotate_by",
             "joint_mobile_base_translate_by",
         ]
         self._ik_joints_allowed_to_move = [
@@ -104,7 +104,7 @@ class GripperToGoal:
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_mobile_base_rotation",
+            # "joint_mobile_base_rotation",
             "joint_mobile_base_translate_by",
         ]
 
