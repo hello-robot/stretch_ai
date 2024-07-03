@@ -50,4 +50,13 @@ sudo sh cuda_11.8.0_520.61.05_linux.run
 
 ![CUDA Installation](images/cuda_install.png)
 
-Follow the prompts to install CUDA 11.8. When you get to the prompt to install the NVIDIA driver, select "No" to avoid installing a new driver. Also make sure you deselect the prompt for
+Follow the prompts to install CUDA 11.8. When you get to the prompt to install the NVIDIA driver, select "No" to avoid installing a new driver. Also make sure you deselect the prompt for setting the system CUDA version!
+
+Before running the install script, set the `$CUDA_HOME` environment variable to point to the new CUDA installation. For example, on Ubuntu 22.04:
+
+```bash
+export CUDA_HOME=/usr/local/cuda-11.8
+./install.sh
+```
+
+THis should help avoid issues.
