@@ -28,7 +28,6 @@ class SiglipEncoder(BaseImageTextEncoder):
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             image_features = self.model.get_image_features(**inputs)
-        breakpoint()
         return image_features.float()
 
     def encode_text(self, text: str) -> torch.Tensor:
@@ -37,5 +36,4 @@ class SiglipEncoder(BaseImageTextEncoder):
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             text_features = self.model.get_text_features(**inputs)
-        breakpoint()
         return text_features.float()
