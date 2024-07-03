@@ -68,32 +68,7 @@ If you want to install AI code using pytorch, run the following on your GPU-enab
 
 Caution, it may take a while! Several libraries are built from source to avoid potential compatibility issues.
 
-You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8.
-
-Open3D is an optional dependency used by some 3d visualizations. It does not work in Python 3.12, as of April 2024. Install it with:
-
-```
-pip install open3d
-```
-
-In addition, you'll want to install [HomeRobot](docs/home_robot.md) on your Stretch to provide localization and low-level control. Note that this is differenet from the main [HomeRobot package provided by FAIR](https://github.com/facebookresearch/home-robot), which does not have all of the necessary features and does not currently have ROS2 support. Check the [Stretch HomeRobot docs](docs/home_robot.md) for more information.
-
-### Verifying Advanced Installation
-
-The most common issue is with `torch_cluster`, or that cuda is set up wrong. Make sure it runs by starting `python` and running:
-
-```python
-import torch_cluster
-import torch
-torch.cuda.is_available()
-torch.rand(3, 3).to("cuda")
-```
-
-You should see:
-
-- `torch_cluster` imports successfully
-- `True` for `torch.cuda.is_available()`
-- No errors for `torch.rand(3, 3).to("cuda")`
+You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8. For issues, see [docs/about_advanced_installation.md](docs/about_advanced_installation.md).
 
 ## Example Apps
 
