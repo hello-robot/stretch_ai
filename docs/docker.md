@@ -89,27 +89,52 @@ To run the docker image, we need to:
 1. Start the container again and reconnect to the container shell
 1. Activate the conda environment
 
+### 1. Run a container and attach to the shell
+
+The network=host argument makes the container to use your LAN, so it can see your robot
+
 ```bash
-# 1. Run a container and attach to the shell
 docker run \
     -it \
     --gpus all \
     --network host \
-    stretch-ai_cuda-11.8:latest
+    hellorobotinc/stretch-ai_cuda-11.8:latest
+```
 
-# 2. Initialize conda and exit the container
+### 2. Initialize conda and exit the container
+
+```bash
 conda init # inside the container
 exit
+```
 
-# 3. Start the container again and reconnect to the container shell
+### 3. Start the container again and reconnect to the container shell
 
-docker ps -a # get container ID or name of the container just launched
+```bash
+docker ps -a # get container ID or name of the container just launched, but is now exited
 docker start <container-id> # or <container-name>
 docker attach <container-id>
+```
 
-# 4. Activate the conda environment
+### 4. Activate the conda environment
+
+```bash
 conda activate stretch_ai
 ```
+
+### 5. Verify container functionality
+
+```bash
+# Torch can use GPU
+python3
+import torch
+torch.cuda.is_available() # should return True
+
+# Run view-images demo (make sure server is running on robot)
+python3 -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+### Tips for Windows 11
 
 If you happen to be running on Windows 11 with WSL2, running the container with the following command will allow you to have GUI forwarded properly. ([source](https://stackoverflow.com/questions/73092750/how-to-show-gui-apps-from-docker-desktop-container-on-windows-11))
 
