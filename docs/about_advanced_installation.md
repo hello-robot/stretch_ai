@@ -2,7 +2,7 @@
 
 The following instructions are for installing the AI code on your GPU-enabled workstation. This is not necessary for running the robot, but is required for running AI models on your PC.
 
-1. Run the following on your GPU-enabled workstation:
+First, [make sure you have CUDA 11.8 installed](#installing-cuda-11.8). We install a specific version of CUDA to make turnkey installation easier, and because various dependencies are compiled against specific CUDA versions. Then you can run the following on your GPU-enabled workstation:
 
 ```bash
 ./install.sh
