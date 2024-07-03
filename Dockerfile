@@ -47,10 +47,6 @@ RUN ./install.sh -y
 # Install Python packages (uncomment and modify as needed)
 # RUN pip install --no-cache-dir -r requirements.txt
 
-# Activate conda environment
-RUN echo "mamba activate stretch_ai" > ~/.bashrc
-ENV PATH /root/miniforge3/envs/stretch_ai
-
 # Set the entrypoint
-# CMD ["/bin/bash"]
+CMD ["/bin/bash"]
 
