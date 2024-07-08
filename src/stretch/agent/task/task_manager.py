@@ -1,9 +1,8 @@
 import abc
 from typing import Optional, Union
 
+from stretch.agent.robot_agent import RobotAgent
 from stretch.mapping.instance import Instance
-
-from .robot_agent import RobotAgent
 
 
 class TaskManager(abc.ABC):
@@ -36,7 +35,6 @@ class TaskManager(abc.ABC):
             instance_id = instance
         else:
             raise ValueError("Instance must be an Instance object or an int")
-        print(instance_id, self.unreachable_instances)
         return instance_id in self.unreachable_instances
 
     @abc.abstractmethod

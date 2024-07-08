@@ -164,6 +164,9 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         if self.object_class is None:
             self.object_class = self.manager.target_object
 
+        # Clear the current object
+        self.manager.current_object = None
+
         # Update world map
         # Switch to navigation posture
         self.robot.move_to_nav_posture()
