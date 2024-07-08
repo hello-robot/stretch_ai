@@ -3,6 +3,7 @@ from typing import Optional, Union
 import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task_manager import TaskManager
 from stretch.core.task import Operation, Task
 from stretch.mapping.instance import Instance
 
@@ -18,7 +19,7 @@ from .operations import (
 )
 
 
-class PickupManager:
+class PickupManager(TaskManager):
     """Simple robot that will look around and pick up different objects"""
 
     def __init__(
