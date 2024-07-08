@@ -73,6 +73,7 @@ class PickupManager:
             instance_id = instance
         else:
             raise ValueError("Instance must be an Instance object or an int")
+        print(instance_id, self.unreachable_instances)
         return instance_id in self.unreachable_instances
 
     def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
