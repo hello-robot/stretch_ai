@@ -75,8 +75,30 @@ class PickupManager:
             raise ValueError("Instance must be an Instance object or an int")
         return instance_id in self.unreachable_instances
 
-    def get_task(self, add_rotate: bool = False) -> Task:
+    def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
         """Create a task plan with loopbacks and recovery from failure"""
+
+        if mode == "one_shot":
+            return self.get_one_shot_task(add_rotate=add_rotate)
+        elif mode == "all":
+            if not add_rotate:
+                logger.warning(
+                    "When performing pickup task in 'all' mode, we must add a rotate operation to explore the robot's area to identify multiple object instances."
+                )
+            return self.get_all_task(add_rotate=True)
+
+    def get_all_task(self, add_rotate: bool = False) -> Task:
+        """Create a task plan that will pick up all objects in the environment. It starts by exploring the robot's immediate area, then will move around picking up all available objects.
+
+        Args:
+            add_rotate (bool, optional): Whether to add a rotate operation to explore the robot's area. Defaults to False.
+
+        Returns:
+            Task: Executable task plan for the robot to pick up all objects in the environment.
+        """
+
+    def get_one_shot_task(self, add_rotate: bool = False) -> Task:
+        """Create a task plan that will pick up a single object in the environment. It will explore until it finds a single object, and will then pick it up and place it in a receptacle."""
 
         # Put the robot into navigation mode
         go_to_navigation_mode = GoToNavOperation("go to navigation mode", self)
