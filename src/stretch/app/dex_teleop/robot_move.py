@@ -67,6 +67,7 @@ class RobotMove:
                 elif speed == "fastest_stretch_3":
                     # 'joint_lift': (None, {'v_m': 0.13, 'a_m': 1.0}),
                     custom_parameters = {
+                        "joint_mobile_base_translate_by": (None, {"v_r": 0.3, "a_r": 0.5}),
                         "joint_mobile_base_rotate_by": (None, {"v_r": 0.3, "a_r": 0.5}),
                         "joint_lift": (None, {"v_m": 0.2, "a_m": 1.0}),
                         "joint_arm_l0": (None, {"v_m": 0.18, "a_m": 1.0}),
@@ -77,6 +78,7 @@ class RobotMove:
                     }
 
                 joint_functions = {
+                    "joint_mobile_base_translate_by": robot.base.translate_by,
                     "joint_mobile_base_rotate_by": robot.base.rotate_by,
                     "joint_lift": robot.lift.move_to,
                     "joint_arm_l0": robot.arm.move_to,
