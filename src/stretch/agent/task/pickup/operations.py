@@ -600,7 +600,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = False
+    show_servo_gui: bool = True
 
     # Thresholds for centering on object
     align_x_threshold: int = 15
@@ -610,7 +610,7 @@ class GraspObjectOperation(ManagedOperation):
     track_image_center: bool = False
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
-    detected_center_offset_y: int = -20
+    detected_center_offset_y: int = -40
     lift_arm_ratio: float = 0.1
     base_x_step: float = 0.12
     wrist_pitch_step: float = 0.1
