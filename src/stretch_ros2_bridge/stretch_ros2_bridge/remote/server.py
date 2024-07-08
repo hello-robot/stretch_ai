@@ -135,6 +135,7 @@ class ZmqServer(CommsNode):
                 "joint_velocities": dq,
                 "joint_efforts": eff,
                 "control_mode": self.get_control_mode(),
+                "at_goal": self.client.at_goal(),
             }
             self.send_state_socket.send_pyobj(message)
 

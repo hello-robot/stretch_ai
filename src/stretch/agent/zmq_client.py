@@ -419,52 +419,48 @@ class HomeRobotZmqClient(RobotClient):
         close_to_goal = False
         while True:
             with self._obs_lock:
-                if self._obs is not None:
+                if self._obs is None:
+                    continue
+            xyt = self.get_base_pose()
+            pos = xyt[:2]
+            ang = xyt[2]
 
-                    if not self._obs["at_goal"]:
-                        t0 = timeit.default_timer()
-                        continue
-                    if self.update_base_pose_from_full_obs:
-                        pos = self._obs["gps"]
-                        ang = self._obs["compass"][0]
-                    else:
-                        pos = self._state["base_pose"][:2]
-                        ang = self._state["base_pose"][2]
-                    moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-                    angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
-                    if goal_angle is not None:
-                        angle_dist_to_goal = angle_difference(ang, goal_angle)
-                        at_goal = angle_dist_to_goal < goal_angle_threshold
-                    else:
-                        at_goal = True
-                    not_moving = (
-                        last_pos is not None
-                        and moved_dist < moving_threshold
-                        and angle_dist < angle_threshold
+            if not self.at_goal():
+                t0 = timeit.default_timer()
+                continue
+
+                moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
+                angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+                if goal_angle is not None:
+                    angle_dist_to_goal = angle_difference(ang, goal_angle)
+                    at_goal = angle_dist_to_goal < goal_angle_threshold
+                else:
+                    at_goal = True
+                not_moving = (
+                    last_pos is not None
+                    and moved_dist < moving_threshold
+                    and angle_dist < angle_threshold
+                )
+                if not_moving:
+                    not_moving_count += 1
+                else:
+                    not_moving_count = 0
+                last_pos = pos
+                last_ang = ang
+                close_to_goal = at_goal
+                if verbose:
+                    print(
+                        f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
                     )
-                    if not_moving:
-                        not_moving_count += 1
-                    else:
-                        not_moving_count = 0
-                    last_pos = pos
-                    last_ang = ang
-                    close_to_goal = at_goal  # or self._obs["at_goal"]
-                    if verbose:
-                        print(
-                            f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
-                        )
-                        if goal_angle is not None:
-                            print(
-                                f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}"
-                            )
-                    if (
-                        self._last_step >= block_id
-                        and self._obs["at_goal"]
-                        and at_goal
-                        and not_moving_count > min_steps_not_moving
-                    ):
-                        break
-                    self._obs = None
+                    if goal_angle is not None:
+                        print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
+                if (
+                    self._last_step >= block_id
+                    and self._obs["at_goal"]
+                    and at_goal
+                    and not_moving_count > min_steps_not_moving
+                ):
+                    break
             if resend_action is not None and not close_to_goal:
                 # Resend the action
                 self.send_socket.send_pyobj(resend_action)
@@ -499,12 +495,28 @@ class HomeRobotZmqClient(RobotClient):
             if self._iter <= 0:
                 self._iter = self._last_step
 
-    def _update_state(self, state):
-        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control."""
+    def _update_state(self, state: dict) -> None:
+        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
+
+        Args:
+            state (dict): state message from the robot
+        """
         with self._state_lock:
             self._state = state
             if not self.update_control_mode_from_full_obs:
                 self._control_mode = state["control_mode"]
+                self._at_goal = state["at_goal"]
+
+    def at_goal(self) -> bool:
+        """Check if the robot is at the goal.
+
+        Returns:
+            at_goal (bool): whether the robot is at the goal
+        """
+        with self._state_lock:
+            if self._state is None:
+                return False
+            return self._state["at_goal"]
 
     def get_observation(self):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
@@ -643,13 +655,6 @@ class HomeRobotZmqClient(RobotClient):
                 # resend_action=current_action,
             )
             time.sleep(0.1)
-
-    def at_goal(self) -> bool:
-        """Check if the robot is at the goal"""
-        with self._obs_lock:
-            if self._obs is None:
-                return False
-            return self._obs["at_goal"]
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
