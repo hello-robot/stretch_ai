@@ -138,14 +138,6 @@ class DexTeleopLeader(Evaluator):
     max_rotation_change = 0.5
     _ee_link_name = "link_grasp_center"
     debug_base_rotation = False
-    _ik_joints_allowed_to_move = [
-        "joint_arm_l0",
-        "joint_lift",
-        "joint_wrist_yaw",
-        "joint_wrist_pitch",
-        "joint_wrist_roll",
-        "joint_mobile_base_rotation",
-    ]
 
     def _create_ik_solver(
         self,
@@ -187,9 +179,30 @@ class DexTeleopLeader(Evaluator):
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
+        self.current_base_x = 0.0
+
         self.goal_send_socket = self._make_pub_socket(
             send_port, robot_ip=robot_ip, use_remote_computer=True
         )
+
+        if self.teleop_mode == "base_x":
+            self._ik_joints_allowed_to_move = [
+                "joint_arm_l0",
+                "joint_lift",
+                "joint_wrist_yaw",
+                "joint_wrist_pitch",
+                "joint_wrist_roll",
+                "joint_mobile_base_translation",
+            ]
+        else:
+            self._ik_joints_allowed_to_move = [
+                "joint_arm_l0",
+                "joint_lift",
+                "joint_wrist_yaw",
+                "joint_wrist_pitch",
+                "joint_wrist_roll",
+                "joint_mobile_base_rotation",
+            ]
 
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)
@@ -209,19 +222,23 @@ class DexTeleopLeader(Evaluator):
             )
 
         # Get Wrist URDF joint limits
-        rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
-        rotary_urdf = load_urdf(rotary_urdf_file_name)
+        # rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
+        # rotary_urdf = load_urdf(rotary_urdf_file_name)
+        translation_urdf_file_name = "./stretch_base_translation_ik_with_fixed_wrist.urdf"
+        translation_urdf = load_urdf(translation_urdf_file_name)
         wrist_joints = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
         self.wrist_joint_limits = {}
         for joint_name in wrist_joints:
-            joint = rotary_urdf.joint_map.get(joint_name, None)
+            joint = translation_urdf.joint_map.get(joint_name, None)
             if joint is not None:
                 lower = float(joint.limit.lower)
                 upper = float(joint.limit.upper)
                 self.wrist_joint_limits[joint.name] = (lower, upper)
 
-        rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
-        self._create_ik_solver(rotary_urdf_with_wrist_file_name)
+        # rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
+        translation_urdf_with_wrist_file_name = "./stretch_base_translation_ik.urdf"
+        print(self._ik_joints_allowed_to_move)
+        self._create_ik_solver(translation_urdf_with_wrist_file_name)
 
         self.drop_extreme_wrist_orientation_change = True
 
@@ -512,13 +529,22 @@ class DexTeleopLeader(Evaluator):
                 f"WARNING: IK failed to find a valid new_goal_configuration so skipping this iteration by continuing the loop. Input to IK: wrist_position = {wrist_position}, Output from IK: new_goal_configuration = {new_goal_configuration}"
             )
         else:
-            new_wrist_position_configuration = np.array(
-                [
-                    new_goal_configuration["joint_mobile_base_rotation"],
-                    new_goal_configuration["joint_lift"],
-                    new_goal_configuration["joint_arm_l0"],
-                ]
-            )
+            if self.teleop_mode == "base_x":
+                new_wrist_position_configuration = np.array(
+                    [
+                        new_goal_configuration["joint_mobile_base_translation"],
+                        new_goal_configuration["joint_lift"],
+                        new_goal_configuration["joint_arm_l0"],
+                    ]
+                )
+            else:
+                new_wrist_position_configuration = np.array(
+                    [
+                        new_goal_configuration["joint_mobile_base_rotation"],
+                        new_goal_configuration["joint_lift"],
+                        new_goal_configuration["joint_arm_l0"],
+                    ]
+                )
             # Use exponential smoothing to filter the wrist
             # position configuration used to command the
             # robot.
@@ -676,11 +702,19 @@ class DexTeleopLeader(Evaluator):
                 # ] += self.filtered_wrist_position_configuration[0]
 
             # Figure out how much we are allowed to rotate left or right
-            new_goal_configuration["joint_mobile_base_rotate_by"] = np.clip(
-                new_goal_configuration["joint_mobile_base_rotation"] - current_mobile_base_angle,
-                -self.max_rotation_change,
-                self.max_rotation_change,
-            )
+            # new_goal_configuration["joint_mobile_base_rotate_by"] = np.clip(
+            #     new_goal_configuration["joint_mobile_base_rotation"] - current_mobile_base_angle,
+            #     -self.max_rotation_change,
+            #     self.max_rotation_change,
+            # )
+            if self.teleop_mode == "base_x":
+                new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+
+                self.current_base_x = current_state["base_x"]
+                new_goal_configuration["joint_mobile_base_translate_by"] = (
+                    new_goal_configuration["joint_mobile_base_translation"] - self.current_base_x
+                )
+
             if self.debug_base_rotation:
                 print()
                 print("Debugging base rotation:")
@@ -690,7 +724,7 @@ class DexTeleopLeader(Evaluator):
                 print("ROTATE BY:", new_goal_configuration["joint_mobile_base_rotate_by"])
 
             # remove virtual joint and approximate motion with rotate_by using joint_mobile_base_rotate_by
-            del new_goal_configuration["joint_mobile_base_rotation"]
+            # del new_goal_configuration["joint_mobile_base_rotation"]
 
         return new_goal_configuration
 
