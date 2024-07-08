@@ -187,13 +187,19 @@ class HomeRobotZmqClient(RobotClient):
         return xyt
 
     def arm_to(
-        self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0
+        self,
+        joint_angles: np.ndarray,
+        blocking: bool = False,
+        timeout: float = 10.0,
+        verbose: bool = False,
     ) -> bool:
         """Move the arm to a particular joint configuration.
 
         Args:
             joint_angles: 6 or Nx6 array of the joint angles to move to
             blocking: Whether to block until the motion is complete
+            timeout: How long to wait for the motion to complete
+            verbose: Whether to print out debug information
         """
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
@@ -247,9 +253,10 @@ class HomeRobotZmqClient(RobotClient):
                 ):
                     return True
                 else:
-                    print(
-                        f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
-                    )
+                    if verbose:
+                        print(
+                            f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
+                        )
                 time.sleep(0.01)
 
                 # TODO: Is this necessary? If not, we should just delete this commented-out code block.

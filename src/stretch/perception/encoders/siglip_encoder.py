@@ -9,7 +9,14 @@ from .base_encoder import BaseImageTextEncoder
 
 
 class SiglipEncoder(BaseImageTextEncoder):
-    """Image/text feature encoder using SIGLip model"""
+    """Image/text feature encoder using SIGLip model.
+
+    Referencing the following paper: https://arxiv.org/abs/2303.15343
+
+    From the HuggingFace implementation here: https://huggingface.co/docs/transformers/v4.42.0/en/model_doc/siglip
+
+    Generally, these features are much better than OpenAI CLIP for open-vocabulary object detection.
+    """
 
     def __init__(self, device: Optional[str] = None, **kwargs) -> None:
         if device is None:
