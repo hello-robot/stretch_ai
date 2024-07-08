@@ -45,7 +45,19 @@ To build the Docker image, clone this repository and run the following command i
 docker build -t stretch-ai_cuda-11.8:latest .
 ```
 
-### Placeholder: Building and Pushing to Dockerhub
+### Use The Docker Build Script
+
+There is a [docker build script](scripts/build-docker.sh) that can be used to build the Docker image. This script will build the Docker image with the correct CUDA version and tag it with the correct name. To use the script, run:
+
+```bash
+./scripts/build-docker.sh
+```
+
+from the root directory of the repository.
+
+For more details on the build script, see the [Docker Build Script](scripts/build-docker.md) documentation. You can also continue on into the next section.
+
+### Building and Pushing to Dockerhub
 
 This will use the Hello Robot account as an example (username: `hellorobotinc`). Login with:
 
@@ -66,4 +78,74 @@ You can pull with:
 
 ```bash
 docker pull hellorobotinc/stretch-ai_cuda-11.8:latest
+```
+
+## Running the Docker Image
+
+To run the docker image, we need to:
+
+1. Run a container and attach to the shell
+1. Initialize conda and exit the container
+1. Start the container again and reconnect to the container shell
+1. Activate the conda environment
+
+### 1. Run a container and attach to the shell
+
+The network=host argument makes the container to use your LAN, so it can see your robot
+
+```bash
+docker run \
+    -it \
+    --gpus all \
+    --network host \
+    hellorobotinc/stretch-ai_cuda-11.8:latest
+```
+
+### 2. Initialize conda and exit the container
+
+```bash
+conda init # inside the container
+exit
+```
+
+### 3. Start the container again and reconnect to the container shell
+
+```bash
+docker ps -a # get container ID or name of the container just launched, but is now exited
+docker start <container-id> # or <container-name>
+docker attach <container-id>
+```
+
+### 4. Activate the conda environment
+
+```bash
+conda activate stretch_ai
+```
+
+### 5. Verify container functionality
+
+```bash
+# Torch can use GPU
+python3
+import torch
+torch.cuda.is_available() # should return True
+
+# Run view-images demo (make sure server is running on robot)
+python3 -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+### Tips for Windows 11
+
+If you happen to be running on Windows 11 with WSL2, running the container with the following command will allow you to have GUI forwarded properly. ([source](https://stackoverflow.com/questions/73092750/how-to-show-gui-apps-from-docker-desktop-container-on-windows-11))
+
+```bash
+docker run -it -v /run/desktop/mnt/host/wslg/.X11-unix:/tmp/.X11-unix `
+    -v /run/desktop/mnt/host/wslg:/mnt/wslg `
+    -e DISPLAY=:0 `
+    -e WAYLAND_DISPLAY=wayland-0 `
+    -e XDG_RUNTIME_DIR=/mnt/wslg/runtime-dir `
+    -e PULSE_SERVER=/mnt/wslg/PulseServer `
+    --gpus all `
+    --network host `
+    stretch-ai_cuda-11.8:latest
 ```

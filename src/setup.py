@@ -31,7 +31,6 @@ setuptools.setup(
         "openai-clip",
         "yacs",
         "loguru",
-        "atomicwrites",
         "transformers",
         "scikit-image",
         "pybullet",
@@ -39,7 +38,6 @@ setuptools.setup(
         "pin",  # Pinocchio IK solver
         "pynput",
         "pyrealsense2",
-        "orbslam3",
         "urchin",
         "pyusb",
         "schema",

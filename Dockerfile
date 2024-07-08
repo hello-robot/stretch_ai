@@ -19,6 +19,13 @@ RUN apt-get update && apt-get install -y \
     python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install opencv dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6\
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 
@@ -32,6 +39,7 @@ ENV PATH /root/miniforge3/bin:$PATH
 COPY . .
 RUN chmod +x install.sh
 RUN ./install.sh -y
+
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .
