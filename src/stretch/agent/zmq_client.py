@@ -404,7 +404,20 @@ class HomeRobotZmqClient(RobotClient):
         goal_angle: Optional[float] = None,
         goal_angle_threshold: Optional[float] = 0.1,
         resend_action: Optional[dict] = None,
-    ):
+    ) -> None:
+        """Wait for the navigation action to finish.
+
+        Args:
+            block_id(int): The unique, tracked integer id of the action to wait for
+            verbose(bool): Whether to print out debug information
+            timeout(float): How long to wait for the action to finish
+            moving_threshold(float): How far the robot must move to be considered moving
+            angle_threshold(float): How far the robot must rotate to be considered moving
+            min_steps_not_moving(int): How many steps the robot must not move for to be considered stopped
+            goal_angle(float): The goal angle to reach
+            goal_angle_threshold(float): The threshold for the goal angle
+            resend_action(dict): The action to resend if the robot is not moving. If none, do not resend.
+        """
         print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
         last_ang = None
@@ -429,41 +442,40 @@ class HomeRobotZmqClient(RobotClient):
                 t0 = timeit.default_timer()
                 continue
 
-                moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-                angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
-                if goal_angle is not None:
-                    angle_dist_to_goal = angle_difference(ang, goal_angle)
-                    at_goal = angle_dist_to_goal < goal_angle_threshold
-                else:
-                    at_goal = True
-                not_moving = (
-                    last_pos is not None
-                    and moved_dist < moving_threshold
-                    and angle_dist < angle_threshold
+            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
+            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+            if goal_angle is not None:
+                angle_dist_to_goal = angle_difference(ang, goal_angle)
+                at_goal = angle_dist_to_goal < goal_angle_threshold
+            else:
+                at_goal = True
+            not_moving = (
+                last_pos is not None
+                and moved_dist < moving_threshold
+                and angle_dist < angle_threshold
+            )
+            if not_moving:
+                not_moving_count += 1
+            else:
+                not_moving_count = 0
+            last_pos = pos
+            last_ang = ang
+            close_to_goal = at_goal
+            if verbose:
+                print(
+                    f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
                 )
-                if not_moving:
-                    not_moving_count += 1
-                else:
-                    not_moving_count = 0
-                last_pos = pos
-                last_ang = ang
-                close_to_goal = at_goal
-                if verbose:
-                    print(
-                        f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
-                    )
-                    if goal_angle is not None:
-                        print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
-                if (
-                    self._last_step >= block_id
-                    and self._obs["at_goal"]
-                    and at_goal
-                    and not_moving_count > min_steps_not_moving
-                ):
-                    break
+                if goal_angle is not None:
+                    print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
+            if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
+                break
+
+            # Resend the action if we are not moving for some reason and it's been provided
             if resend_action is not None and not close_to_goal:
                 # Resend the action
                 self.send_socket.send_pyobj(resend_action)
+
+            # Minor delay at the end - give it time to get new messages
             time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
