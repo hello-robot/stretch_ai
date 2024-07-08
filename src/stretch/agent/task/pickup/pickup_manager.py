@@ -51,32 +51,6 @@ class PickupManager(TaskManager):
         self.current_receptacle = None
         self.reset_object_plans()
 
-    def reset_object_plans(self):
-        """Clear stored object planning information."""
-        self.plans = {}
-        self.unreachable_instances = set()
-
-    def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
-        """Mark an instance as unreachable."""
-        if isinstance(instance, Instance):
-            instance_id = instance.id
-        elif isinstance(instance, int):
-            instance_id = instance
-        else:
-            raise ValueError("Instance must be an Instance object or an int")
-        self.unreachable_instances.add(instance_id)
-
-    def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
-        """Check if an instance is unreachable."""
-        if isinstance(instance, Instance):
-            instance_id = instance.id
-        elif isinstance(instance, int):
-            instance_id = instance
-        else:
-            raise ValueError("Instance must be an Instance object or an int")
-        print(instance_id, self.unreachable_instances)
-        return instance_id in self.unreachable_instances
-
     def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
         """Create a task plan with loopbacks and recovery from failure"""
 

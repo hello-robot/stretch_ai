@@ -11,6 +11,7 @@ class TaskManager(abc.ABC):
 
     def __init__(self, agent: RobotAgent):
         self.agent = agent
+        self.reset_object_plans()
 
     def reset_object_plans(self):
         """Clear stored object planning information."""
