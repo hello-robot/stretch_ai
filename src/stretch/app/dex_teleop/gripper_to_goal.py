@@ -95,7 +95,8 @@ class GripperToGoal:
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_mobile_base_rotate_by",
+            # "joint_mobile_base_rotate_by",
+            "joint_mobile_base_translate_by",
         ]
         self._ik_joints_allowed_to_move = [
             "joint_arm_l0",
@@ -103,23 +104,28 @@ class GripperToGoal:
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_mobile_base_rotation",
+            # "joint_mobile_base_rotation",
+            "joint_mobile_base_translation",
         ]
 
         # Get Wrist URDF joint limits
-        rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
-        rotary_urdf = load_urdf(rotary_urdf_file_name)
+        # rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
+        # rotary_urdf = load_urdf(rotary_urdf_file_name)
+        translation_urdf_file_name = "./stretch_base_translation_ik_with_fixed_wrist.urdf"
+        translation_urdf = load_urdf(translation_urdf_file_name)
         wrist_joints = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
         self.wrist_joint_limits = {}
         for joint_name in wrist_joints:
-            joint = rotary_urdf.joint_map.get(joint_name, None)
+            joint = translation_urdf.joint_map.get(joint_name, None)
             if joint is not None:
                 lower = float(joint.limit.lower)
                 upper = float(joint.limit.upper)
                 self.wrist_joint_limits[joint.name] = (lower, upper)
 
-        rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
-        self._create_ik_solver(rotary_urdf_with_wrist_file_name)
+        # rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
+        translation_urdf_with_wrist_file_name = "./stretch_base_translation_ik.urdf"
+        print(self._ik_joints_allowed_to_move)
+        self._create_ik_solver(translation_urdf_with_wrist_file_name)
 
         self.robot_allowed_to_move = robot_allowed_to_move
         self.drop_extreme_wrist_orientation_change = True

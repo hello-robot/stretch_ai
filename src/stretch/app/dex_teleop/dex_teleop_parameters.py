@@ -274,6 +274,7 @@ def get_starting_configuration(lift_middle):
         "joint_wrist_yaw": 0.9 * np.pi,
         "joint_wrist_pitch": 0.0,
         "joint_wrist_roll": 0.0,
+        "stretch_gripper": 200.0,
     }
     return starting_configuration
 
