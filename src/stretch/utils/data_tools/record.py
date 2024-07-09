@@ -11,6 +11,7 @@ from typing import Dict, Optional
 import cv2
 import liblzfse
 import numpy as np
+from tqdm import tqdm
 
 import stretch.utils.git_tools as git_tools
 
