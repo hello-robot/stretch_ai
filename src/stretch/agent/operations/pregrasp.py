@@ -1,6 +1,7 @@
 import numpy as np
 
 from stretch.agent.base import ManagedOperation
+from stretch.utils.geometry import point_global_to_base
 
 
 class PreGraspObjectOperation(ManagedOperation):
