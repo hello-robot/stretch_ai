@@ -12,7 +12,7 @@ import cv2
 import liblzfse
 import numpy as np
 
-import stretch.utils.git as git_tools
+import stretch.utils.git_tools as git_tools
 
 logger = logging.getLogger(__name__)
 

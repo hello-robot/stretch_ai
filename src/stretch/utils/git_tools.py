@@ -42,3 +42,10 @@ def get_git_commit_message() -> Optional[str]:
     if repo is None:
         return None
     return repo.head.commit.message
+
+
+if __name__ == "___main__":
+    print(get_git_repo())
+    print(get_git_branch())
+    print(get_git_commit())
+    print(get_git_commit_message())
