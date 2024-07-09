@@ -80,8 +80,5 @@ class PreGraspObjectOperation(ManagedOperation):
         # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
-        # It does not take long to execute these commands
-        time.sleep(2.0)
-
     def was_successful(self):
         return self.robot.in_manipulation_mode()
