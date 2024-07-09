@@ -770,7 +770,13 @@ if __name__ == "__main__":
         help="The filename of the recorded session to replay, if set..",
     )
     parser.add_argument("--display_point_cloud", action="store_true")
-    parser.add_argument("--teleop-mode", type=str, default="stationary_base")
+    parser.add_argument(
+        "--teleop-mode",
+        "--teleop_mode",
+        type=str,
+        default="base_x",
+        choices=["stationary_base", "base_x"],
+    )
     args = parser.parse_args()
 
     client = RobotClient(
