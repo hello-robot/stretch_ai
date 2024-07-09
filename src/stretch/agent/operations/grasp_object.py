@@ -1,31 +1,3 @@
-# Description: This file contains the GraspObjectOperation class, which is responsible for moving the robot to grasp an object using the end effector camera. The class uses visual
-# servoing to grasp the object. The class inherits from ManagedOperation and contains the following attributes:
-# use_pitch_from_vertical: A boolean attribute that determines whether to use the pitch from the vertical.
-# lift_distance: A float attribute that specifies the distance to lift the arm.
-# servo_to_grasp: A boolean attribute that determines whether to use servoing to grasp the object.
-# _success: A boolean attribute that indicates whether the operation was successful.
-# show_object_to_grasp: A boolean attribute that determines whether to show the object to grasp.
-# show_servo_gui: A boolean attribute that determines whether to show the servo GUI.
-# align_x_threshold: An integer attribute that specifies the threshold for centering on the object in the x-direction.
-# align_y_threshold: An integer attribute that specifies the threshold for centering on the object in the y-direction.
-# track_image_center: A boolean attribute that determines whether to track the center of the image.
-# gripper_aruco_detector: A GripperArucoDetector attribute that detects the fingertips using aruco markers.
-# min_points_to_approach: An integer attribute that specifies the minimum number of points to approach the object.
-# detected_center_offset_y: An integer attribute that specifies the offset for the detected center in the y-direction.
-# lift_arm_ratio: A float attribute that specifies the ratio for lifting the arm.
-# base_x_step: A float attribute that specifies the step size for moving the base in the x-direction.
-# wrist_pitch_step: A float attribute that specifies the step size for moving the wrist pitch.
-# median_distance_when_grasping: A float attribute that specifies the median distance when grasping the object.
-# percentage_of_image_when_grasping: A float attribute that specifies the percentage of the image when grasping the object.
-# expected_network_delay: A float attribute that specifies the expected network delay.
-# open_loop: A boolean attribute that determines whether to use open loop control.
-# The class also contains the following methods:
-# can_start: A method that checks if the robot is ready to begin manipulation.
-# get_target_mask: A method that gets the target mask to move to.
-# _grasp: A helper function to close the gripper around the object.
-# visual_servo_to_object: A method that uses visual servoing to grasp the object.
-# run: A method that runs the operation.
-# was_successful: A method that returns true if the operation was successful.
 import time
 import timeit
 from typing import Optional, Tuple
@@ -35,7 +7,7 @@ import numpy as np
 from PIL import Image
 from scipy.spatial.transform import Rotation
 
-from stretch.agent.managed_operation import ManagedOperation
+from stretch.agent.base import ManagedOperation
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx

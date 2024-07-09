@@ -4,8 +4,8 @@ from typing import Optional
 
 import numpy as np
 
-from stretch.agent.operations import ManagedOperation
-from stretch.agent.robot_agent import HelloStretchIdx
+from stretch.agent.base import ManagedOperation
+from stretch.motion import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
 

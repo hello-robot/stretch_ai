@@ -1,6 +1,6 @@
 import numpy as np
 
-from stretch.agent.operations import ManagedOperation
+from stretch.agent.base import ManagedOperation
 
 
 class NavigateToObjectOperation(ManagedOperation):
