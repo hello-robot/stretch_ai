@@ -11,6 +11,9 @@ from typing import Dict, Optional
 import cv2
 import liblzfse
 import numpy as np
+from tqdm import tqdm
+
+import stretch.utils.git_tools as git_tools
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +108,7 @@ class FileDataRecorder:
         }
         self.step += 1
 
-    def write(self):
+    def write(self, success: Optional[bool] = None):
         """Write out the data to a file."""
 
         now = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
@@ -115,19 +118,25 @@ class FileDataRecorder:
         episode_dir.mkdir()
 
         # Write the images
-        for i, (rgb, depth) in enumerate(zip(self.rgbs, self.depths)):
+        print("Write end effector camera feed...")
+        for i, (rgb, depth) in tqdm(enumerate(zip(self.rgbs, self.depths)), ncols=80):
             self.write_image(rgb, depth, episode_dir, i)
 
-        for i, (rgb, depth) in enumerate(zip(self.head_rgbs, self.head_depths)):
+        print("Write head camera feed...")
+        for i, (rgb, depth) in tqdm(enumerate(zip(self.head_rgbs, self.head_depths)), ncols=80):
             if rgb is None or depth is None:
                 continue
             self.write_image(rgb, depth, episode_dir, i, head=True)
 
         # Run video processing
+        print("Processing end effector camera feed...")
         self.process_rgb_to_video(episode_dir)
         self.process_depth_to_bin(episode_dir)
+        print("Processing head camera feed...")
         self.process_rgb_to_video(episode_dir, head=True)
         self.process_depth_to_bin(episode_dir, head=True)
+
+        print("Writing metadata...")
 
         # Bookkeeping for DobbE
         # Write an empty file
@@ -138,12 +147,27 @@ class FileDataRecorder:
             # Write the string to the file
             file.write("Completed")
 
+        # We only write success if it is explicitly provided
+        if success is not None:
+            # Write success or failure
+            with open(str(episode_dir / "success.txt"), "w") as file:
+                # Write the string to the file
+                if success:
+                    file.write("Success")
+                else:
+                    file.write("Failure")
+
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)
 
         # Add episode info to metadata
         self.metadata["date"] = now
         self.metadata["num_frames"] = len(self.rgbs)
+
+        # Collect git information if it exists
+        self.metadata["git_branch"] = git_tools.get_git_branch()
+        self.metadata["git_commit"] = git_tools.get_git_commit()
+        self.metadata["git_commit_message"] = git_tools.get_git_commit_message()
 
         # Write metadata json file
         with open(str(episode_dir / "configs.json"), "w") as fp:
@@ -152,7 +176,9 @@ class FileDataRecorder:
         if not self.save_images:
             self.cleanup_image_folders(episode_dir)
 
+        # Reset the recorder
         self.reset()
+        print("Done!")
 
     def write_image(self, rgb, depth, episode_dir, i, head: bool = False):
         """Write out image data from both head and end effector"""
@@ -257,31 +283,3 @@ class FileDataRecorder:
         # buffer = np.frombuffer(
         #        liblzfse.decompress(target_depth_filename.read_bytes()), dtype=np.float32
         #   )
-
-
-class FileDataReader:
-    """A class for reading in data from files for use in learning from demonstration."""
-
-    def __init__(
-        self,
-        datadir: str = "./data",
-        task: str = "default_task",
-        user: str = "default_user",
-        env: str = "default_env",
-    ):
-        """Initialize the reader.
-
-        Args:
-            datadir: The directory to save the data in.
-            task: The name of the task.
-            user: The name of the user.
-            env: The name of the environment.
-        """
-        if isinstance(datadir, Path):
-            self.datadir = datadir
-        else:
-            self.datadir = Path(datadir)
-        self.task_dir = self.datadir / task / user / env
-
-        # Get all subdirectories of task_dir
-        self.episode_dirs = sorted(self.task_dir.glob("*"))
