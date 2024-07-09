@@ -3,6 +3,7 @@ from typing import Optional, Union
 import numpy as np
 
 import stretch.utils.logger as logger
+from stretch.agent.base import TaskManager
 from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
@@ -14,7 +15,6 @@ from stretch.agent.operations import (
     SearchForReceptacleOperation,
 )
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.task_manager import TaskManager
 from stretch.core.task import Task
 from stretch.mapping.instance import Instance
 
