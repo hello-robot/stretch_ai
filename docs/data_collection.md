@@ -44,10 +44,10 @@ python -m stretch.app.dex_teleop.follower
 On the PC run:
 
 ```bash
-python -m stretch.app.dex_teleop.leader -i $ROBOT_IP --teleop-mode base_x -s --env-name default
+python -m stretch.app.dex_teleop.leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --env-name default
 ```
 
-You can now record demonstrations by pressing `spacebar` to start and stop recording. See [Recording demonstrations with Dex Teleop](data_collection.md#recording-demonstrations-with-dex-teleop) for more details.
+You can now record demonstrations by pressing `spacebar` to start and stop recording. See [Recording demonstrations with Dex Teleop](data_collection.md#recording-demonstrations-with-dex-teleop) for more details. After a trial is over, press y/n to record if it was successful.
 
 ## Recording demonstrations with Dex Teleop
 

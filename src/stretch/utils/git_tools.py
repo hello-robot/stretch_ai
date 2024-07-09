@@ -27,25 +27,25 @@ def get_git_branch() -> Optional[str]:
     repo = get_git_repo()
     if repo is None:
         return None
-    return repo.active_branch
+    return str(repo.active_branch)
 
 
 def get_git_commit() -> Optional[str]:
     repo = get_git_repo()
     if repo is None:
         return None
-    return repo.head.commit.hexsha
+    return str(repo.head.commit.hexsha)
 
 
 def get_git_commit_message() -> Optional[str]:
     repo = get_git_repo()
     if repo is None:
         return None
-    return repo.head.commit.message
+    return str(repo.head.commit.message)
 
 
-if __name__ == "___main__":
-    print(get_git_repo())
-    print(get_git_branch())
-    print(get_git_commit())
-    print(get_git_commit_message())
+if __name__ == "__main__":
+    print("Repo:", get_git_repo())
+    print("Branch:", get_git_branch())
+    print("Commit:", get_git_commit())
+    print("Message:", get_git_commit_message())

@@ -107,7 +107,7 @@ class FileDataRecorder:
         }
         self.step += 1
 
-    def write(self):
+    def write(self, success: Optional[bool] = None):
         """Write out the data to a file."""
 
         now = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
@@ -139,6 +139,16 @@ class FileDataRecorder:
         with open(str(episode_dir / "completed.txt"), "w") as file:
             # Write the string to the file
             file.write("Completed")
+
+        # We only write success if it is explicitly provided
+        if success is not None:
+            # Write success or failure
+            with open(str(episode_dir / "success.txt"), "w") as file:
+                # Write the string to the file
+                if success:
+                    file.write("Success")
+                else:
+                    file.write("Failure")
 
         with open(episode_dir / "labels.json", "w") as f:
             json.dump(self.data_dicts, f)
@@ -264,31 +274,3 @@ class FileDataRecorder:
         # buffer = np.frombuffer(
         #        liblzfse.decompress(target_depth_filename.read_bytes()), dtype=np.float32
         #   )
-
-
-class FileDataReader:
-    """A class for reading in data from files for use in learning from demonstration."""
-
-    def __init__(
-        self,
-        datadir: str = "./data",
-        task: str = "default_task",
-        user: str = "default_user",
-        env: str = "default_env",
-    ):
-        """Initialize the reader.
-
-        Args:
-            datadir: The directory to save the data in.
-            task: The name of the task.
-            user: The name of the user.
-            env: The name of the environment.
-        """
-        if isinstance(datadir, Path):
-            self.datadir = datadir
-        else:
-            self.datadir = Path(datadir)
-        self.task_dir = self.datadir / task / user / env
-
-        # Get all subdirectories of task_dir
-        self.episode_dirs = sorted(self.task_dir.glob("*"))
