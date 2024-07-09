@@ -119,11 +119,11 @@ class FileDataRecorder:
 
         # Write the images
         print("Write end effector camera feed...")
-        for i, (rgb, depth) in tqdm(enumerate(zip(self.rgbs, self.depths)), ncols=50):
+        for i, (rgb, depth) in tqdm(enumerate(zip(self.rgbs, self.depths)), ncols=80):
             self.write_image(rgb, depth, episode_dir, i)
 
         print("Write head camera feed...")
-        for i, (rgb, depth) in tqdm(enumerate(zip(self.head_rgbs, self.head_depths)), ncols=50):
+        for i, (rgb, depth) in tqdm(enumerate(zip(self.head_rgbs, self.head_depths)), ncols=80):
             if rgb is None or depth is None:
                 continue
             self.write_image(rgb, depth, episode_dir, i, head=True)

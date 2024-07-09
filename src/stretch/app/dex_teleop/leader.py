@@ -796,6 +796,7 @@ if __name__ == "__main__":
         choices=["stationary_base", "base_x"],
     )
     parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
+    parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     args = parser.parse_args()
 
     client = RobotClient(
@@ -818,6 +819,7 @@ if __name__ == "__main__":
         robot_ip=args.robot_ip,
         teleop_mode=args.teleop_mode,
         record_success=args.record_success,
+        debug_aruco=args.show_aruco,
     )
     try:
         client.run(evaluator)
