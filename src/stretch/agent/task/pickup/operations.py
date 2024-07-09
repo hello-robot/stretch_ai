@@ -701,6 +701,10 @@ class GraspObjectOperation(ManagedOperation):
             mask_pts = np.argwhere(mask)
             mask_center = mask_pts.mean(axis=0)
 
+            if np.isnan(mask_center).any():
+                self.error("Mask center is NaN. This is a problem. Mask was: {mask_pts}")
+                continue
+
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
