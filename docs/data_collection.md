@@ -44,7 +44,7 @@
 
 1. Launch dex teleop leader on PC
 
-   Currently supported teleop modes include: `standard`, `rotary_base`, `stationary_base`
+   Currently supported teleop modes include: `base_x`, `rotary_base`, and `stationary_base`.
 
    ```bash
    # Launch this command from the directory where URDFs are stored
@@ -52,6 +52,12 @@
 
    python3 -m stretch.app.dex_teleop.leader -i <ip-of-robot> --env-name <name-of-task> --teleop-mode <teleop-mode> -s
    ```
+
+For example
+
+```bash
+python3 -m stretch.app.dex_teleop.leader -i $ROBOT_IP --env-name default_task --teleop-mode base_x -s
+```
 
 1. Record episodes
 
