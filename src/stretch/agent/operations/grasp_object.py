@@ -179,12 +179,12 @@ class GraspObjectOperation(ManagedOperation):
             center_depth = servo.ee_depth[center_y, center_x] / 1000
 
             # Compute the center of the mask in image coords
-            mask = target_mask
-            mask_pts = np.argwhere(mask)
+            mask_pts = np.argwhere(target_mask)
             mask_center = mask_pts.mean(axis=0)
 
             if np.isnan(mask_center).any():
                 self.error(f"Mask center is NaN. This is a problem. Points in mask: {mask_pts}")
+                breakpoint()
                 continue
 
             # Optionally display which object we are servoing to
