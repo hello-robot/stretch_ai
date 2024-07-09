@@ -3,12 +3,7 @@ from typing import Optional, Union
 import numpy as np
 
 import stretch.utils.logger as logger
-from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.task_manager import TaskManager
-from stretch.core.task import Operation, Task
-from stretch.mapping.instance import Instance
-
-from .operations import (
+from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
@@ -18,6 +13,10 @@ from .operations import (
     SearchForObjectOnFloorOperation,
     SearchForReceptacle,
 )
+from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.task_manager import TaskManager
+from stretch.core.task import Operation, Task
+from stretch.mapping.instance import Instance
 
 
 class PickupManager(TaskManager):
