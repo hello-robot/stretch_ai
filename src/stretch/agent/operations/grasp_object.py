@@ -113,7 +113,7 @@ class GraspObjectOperation(ManagedOperation):
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
         self.robot.close_gripper(blocking=True)
-        time.sleep(2.0)
+        time.sleep(0.5)
 
         # Get a joint state for the object
         joint_state = self.robot.get_joint_state()
@@ -122,7 +122,6 @@ class GraspObjectOperation(ManagedOperation):
         lifted_joint_state = joint_state.copy()
         lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
         self.robot.arm_to(lifted_joint_state, blocking=True)
-        time.sleep(2.0)
         return True
 
     def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
@@ -172,6 +171,9 @@ class GraspObjectOperation(ManagedOperation):
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
             target_mask_pts = sum(target_mask.flatten())
+            if len(target_mask.flatten()) == 0:
+                self.error("No target mask found.")
+                continue
 
             # Get depth
             center_depth = servo.ee_depth[center_y, center_x] / 1000
@@ -182,7 +184,7 @@ class GraspObjectOperation(ManagedOperation):
             mask_center = mask_pts.mean(axis=0)
 
             if np.isnan(mask_center).any():
-                self.error("Mask center is NaN. This is a problem. Points in mask:", mask_pts)
+                self.error(f"Mask center is NaN. This is a problem. Points in mask: {mask_pts}")
                 continue
 
             # Optionally display which object we are servoing to
