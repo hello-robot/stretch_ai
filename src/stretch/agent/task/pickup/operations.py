@@ -702,7 +702,7 @@ class GraspObjectOperation(ManagedOperation):
             mask_center = mask_pts.mean(axis=0)
 
             if np.isnan(mask_center).any():
-                self.error("Mask center is NaN. This is a problem. Mask was: {mask_pts}")
+                self.error("Mask center is NaN. This is a problem. Points in mask:", mask_pts)
                 continue
 
             # Optionally display which object we are servoing to

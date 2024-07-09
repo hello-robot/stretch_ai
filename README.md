@@ -118,6 +118,13 @@ python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
 python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
 ```
 
+Alternately:
+
+```
+python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
+python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
+```
+
 ### Dex Teleop for Data Collection
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. It has two components:
