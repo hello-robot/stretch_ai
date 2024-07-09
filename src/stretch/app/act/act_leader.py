@@ -119,12 +119,8 @@ class ACTLeader(Evaluator):
         head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
 
         # Clip and normalize depth
-        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image, "gripper")
-        head_depth_image = clip_and_normalize_depth(head_depth_image, "head")
-
-        # Stack depth to match RGB
-        gripper_depth_image = np.stack((gripper_depth_image,) * 3, axis=-1)
-        head_depth_image = np.stack((head_depth_image,) * 3, axis=-1)
+        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image)
+        head_depth_image = clip_and_normalize_depth(head_depth_image)
 
         if display_received_images:
 
