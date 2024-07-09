@@ -1,4 +1,4 @@
-from stretch.agent.managed_operation import ManagedOperation
+from stretch.agent.base import ManagedOperation
 
 
 class RotateInPlaceOperation(ManagedOperation):
