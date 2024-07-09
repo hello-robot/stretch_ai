@@ -117,19 +117,25 @@ class FileDataRecorder:
         episode_dir.mkdir()
 
         # Write the images
-        for i, (rgb, depth) in enumerate(zip(self.rgbs, self.depths)):
+        print("Write end effector camera feed...")
+        for i, (rgb, depth) in tqdm(enumerate(zip(self.rgbs, self.depths)), ncols=50):
             self.write_image(rgb, depth, episode_dir, i)
 
-        for i, (rgb, depth) in enumerate(zip(self.head_rgbs, self.head_depths)):
+        print("Write head camera feed...")
+        for i, (rgb, depth) in tqdm(enumerate(zip(self.head_rgbs, self.head_depths)), ncols=50):
             if rgb is None or depth is None:
                 continue
             self.write_image(rgb, depth, episode_dir, i, head=True)
 
         # Run video processing
+        print("Processing end effector camera feed...")
         self.process_rgb_to_video(episode_dir)
         self.process_depth_to_bin(episode_dir)
+        print("Processing head camera feed...")
         self.process_rgb_to_video(episode_dir, head=True)
         self.process_depth_to_bin(episode_dir, head=True)
+
+        print("Writing metadata...")
 
         # Bookkeeping for DobbE
         # Write an empty file
@@ -169,7 +175,9 @@ class FileDataRecorder:
         if not self.save_images:
             self.cleanup_image_folders(episode_dir)
 
+        # Reset the recorder
         self.reset()
+        print("Done!")
 
     def write_image(self, rgb, depth, episode_dir, i, head: bool = False):
         """Write out image data from both head and end effector"""
