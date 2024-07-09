@@ -1,6 +1,7 @@
 from typing import Optional
 
 import numpy as np
+from PIL import Image
 
 from stretch.agent.base import ManagedOperation
 
