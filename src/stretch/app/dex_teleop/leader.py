@@ -212,6 +212,10 @@ class DexTeleopLeader(Evaluator):
         center_configuration = dt.get_center_configuration(lift_middle)
         starting_configuration = dt.get_starting_configuration(lift_middle)
 
+        if debug_aruco:
+            logger.warning(
+                "Debugging aruco markers. This displays an OpenCV UI which may make it difficult to enter commands. Do not use this option when doing data collection."
+            )
         if left_handed:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
                 tongs_prefix="left",
