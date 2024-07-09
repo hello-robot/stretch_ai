@@ -86,7 +86,7 @@ class PickupManager(TaskManager):
             )
 
         # Look for the target receptacle
-        search_for_receptacle = SearchForReceptacle(
+        search_for_receptacle = SearchForReceptacleOperation(
             "search_for_box",
             self,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
