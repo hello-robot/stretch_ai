@@ -170,22 +170,20 @@ class GraspObjectOperation(ManagedOperation):
             target_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
-            target_mask_pts = sum(target_mask.flatten())
-            if len(target_mask.flatten()) == 0:
-                self.error("No target mask found.")
-                continue
 
             # Get depth
             center_depth = servo.ee_depth[center_y, center_x] / 1000
 
             # Compute the center of the mask in image coords
-            mask_pts = np.argwhere(target_mask)
-            mask_center = mask_pts.mean(axis=0)
-
-            if np.isnan(mask_center).any():
-                self.error(f"Mask center is NaN. This is a problem. Points in mask: {mask_pts}")
-                breakpoint()
-                continue
+            num_target_mask_pts = sum(target_mask.flatten())
+            if num_target_mask_pts == 0:
+                self.error(
+                    "No target mask points found. Going to move forward and assume we're aligned."
+                )
+                mask_center = np.array([center_y, center_x])
+            else:
+                mask_pts = np.argwhere(target_mask)
+                mask_center = mask_pts.mean(axis=0)
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
@@ -208,7 +206,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # If we have a target mask, compute the median depth of the object
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
-            if target_mask is not None and target_mask_pts > self.min_points_to_approach:
+            if target_mask is not None and num_target_mask_pts > self.min_points_to_approach:
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:

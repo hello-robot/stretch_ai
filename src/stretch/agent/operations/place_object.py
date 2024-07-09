@@ -146,21 +146,19 @@ class PlaceObjectOperation(ManagedOperation):
 
         # Move to the target joint state
         self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(5.0)
+        time.sleep(0.5)
 
         # Open the gripper
         self.robot.open_gripper(blocking=True)
-        time.sleep(2.0)
+        time.sleep(0.5)
 
         # Move directly up
         target_joint_state_lifted = target_joint_state.copy()
         target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
         self.robot.arm_to(target_joint_state_lifted, blocking=True)
-        time.sleep(5.0)
 
         # Return arm to initial configuration and switch to nav posture
         self.robot.move_to_nav_posture()
-        time.sleep(2.0)
         self._successful = True
 
         self.cheer("We believe we successfully placed the object.")
