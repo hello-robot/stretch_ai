@@ -96,7 +96,6 @@ class DexTeleopFollower(CommsNode):
         self.simple_ik = si.SimpleIK()
 
         self.gripper_to_goal = gg.GripperToGoal(
-            robot_speed=robot_speed,
             robot=self.robot,
             robot_move=self.robot_move,
             simple_ik=self.simple_ik,

@@ -41,6 +41,8 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
+        # For git tools
+        "gitpython",
         # Configuration tools and neural networks
         "hydra-core",
         "timm",
