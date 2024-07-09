@@ -201,14 +201,17 @@ class ACTLeader(Evaluator):
             # Get first batch
             action = raw_action[0].tolist()
 
-            action_dict["joint_mobile_base_rotate_by"] = action[0]
-            action_dict["joint_lift"] = action[1]
-            action_dict["joint_arm_l0"] = action[2]
-            action_dict["joint_wrist_roll"] = action[3]
-            action_dict["joint_wrist_pitch"] = action[4]
-            action_dict["joint_wrist_yaw"] = action[5]
-            action_dict["stretch_gripper"] = action[6]
+            action_dict["joint_mobile_base_translation"] = action[0]
+            action_dict["joint_mobile_base_translate_by"] = action[1]
+            action_dict["joint_mobile_base_rotate_by"] = action[2]
+            action_dict["joint_lift"] = action[3]
+            action_dict["joint_arm_l0"] = action[4]
+            action_dict["joint_wrist_roll"] = action[5]
+            action_dict["joint_wrist_pitch"] = action[6]
+            action_dict["joint_wrist_yaw"] = action[7]
+            action_dict["stretch_gripper"] = action[8]
 
+            # TODO Temporary solution
             action_dict["joint_mobile_base_rotate_by"] = 0.0
 
         # Send action_dict to stretch follower
