@@ -110,11 +110,15 @@ class SearchForReceptacle(ManagedOperation):
                 self.robot.execute_trajectory(
                     [node.state for node in res.trajectory], final_timeout=10.0
                 )
+                # After moving
+                self.update()
+
+                # If we moved to the frontier, then and only then can we clean up the object plans.
+                self.warn("Resetting object plans.")
+                self.manager.reset_object_plans()
             else:
                 self.error("Failed to find a reachable frontier.")
                 raise RuntimeError("Failed to find a reachable frontier.")
-            # After moving
-            self.update()
         else:
             self.cheer(f"Found a receptacle!")
             view = self.manager.current_receptacle.get_best_view()
@@ -246,6 +250,10 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
                 )
             # Update world model once we get to frontier
             self.update()
+
+            # If we moved to the frontier, then and only then can we clean up the object plans.
+            self.warn("Resetting object plans.")
+            self.manager.reset_object_plans()
         else:
             self.cheer(f"Found object of {self.object_class}!")
             view = self.manager.current_object.get_best_view()

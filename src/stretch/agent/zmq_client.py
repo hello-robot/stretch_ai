@@ -396,7 +396,7 @@ class HomeRobotZmqClient(RobotClient):
     def _wait_for_action(
         self,
         block_id: int,
-        verbose: bool = True,
+        verbose: bool = False,
         timeout: float = 10.0,
         moving_threshold: Optional[float] = None,
         angle_threshold: Optional[float] = None,
