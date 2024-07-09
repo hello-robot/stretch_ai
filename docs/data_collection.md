@@ -33,6 +33,22 @@
 
 - [Prepare URDFs for dex teleop](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs)
 
+## Quickstart: Record Some Data
+
+On the robot run:
+
+```
+python -m stretch.app.dex_teleop.follower
+```
+
+On the PC run:
+
+```bash
+python -m stretch.app.dex_teleop.leader -i $ROBOT_IP --teleop-mode base_x -s --env-name default
+```
+
+You can now record demonstrations by pressing `spacebar` to start and stop recording. See [Recording demonstrations with Dex Teleop](data_collection.md#recording-demonstrations-with-dex-teleop) for more details.
+
 ## Recording demonstrations with Dex Teleop
 
 1. Launch dex teleop follower on robot
