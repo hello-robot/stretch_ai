@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 import numpy as np
 
+import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.task_manager import TaskManager
 from stretch.core.task import Operation, Task
