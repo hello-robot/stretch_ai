@@ -179,6 +179,7 @@ class DexTeleopLeader(Evaluator):
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
+        self.base_x_origin = None
         self.current_base_x = 0.0
 
         self.goal_send_socket = self._make_pub_socket(
@@ -401,6 +402,8 @@ class DexTeleopLeader(Evaluator):
             self._recording = not self._recording
             self.prev_goal_dict = None
             if self._recording:
+                # Reset base_x_origin
+                self.base_x_origin = None
                 print("[LEADER] Recording started.")
             else:
                 print("[LEADER] Recording stopped.")
@@ -710,7 +713,12 @@ class DexTeleopLeader(Evaluator):
             if self.teleop_mode == "base_x":
                 new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
 
-                self.current_base_x = current_state["base_x"]
+                # Base_x_origin is reset to base_x coordinate at start of demonstration
+                if self.base_x_origin is None:
+                    self.base_x_origin = current_state["base_x"]
+
+                self.current_base_x = current_state["base_x"] - self.base_x_origin
+
                 new_goal_configuration["joint_mobile_base_translate_by"] = (
                     new_goal_configuration["joint_mobile_base_translation"] - self.current_base_x
                 )
