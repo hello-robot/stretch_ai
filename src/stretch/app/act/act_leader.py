@@ -119,12 +119,8 @@ class ACTLeader(Evaluator):
         head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
 
         # Clip and normalize depth
-        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image, "gripper")
-        head_depth_image = clip_and_normalize_depth(head_depth_image, "head")
-
-        # Stack depth to match RGB
-        gripper_depth_image = np.stack((gripper_depth_image,) * 3, axis=-1)
-        head_depth_image = np.stack((head_depth_image,) * 3, axis=-1)
+        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image)
+        head_depth_image = clip_and_normalize_depth(head_depth_image)
 
         if display_received_images:
 
@@ -201,14 +197,17 @@ class ACTLeader(Evaluator):
             # Get first batch
             action = raw_action[0].tolist()
 
-            action_dict["joint_mobile_base_rotate_by"] = action[0]
-            action_dict["joint_lift"] = action[1]
-            action_dict["joint_arm_l0"] = action[2]
-            action_dict["joint_wrist_roll"] = action[3]
-            action_dict["joint_wrist_pitch"] = action[4]
-            action_dict["joint_wrist_yaw"] = action[5]
-            action_dict["stretch_gripper"] = action[6]
+            action_dict["joint_mobile_base_translation"] = action[0]
+            action_dict["joint_mobile_base_translate_by"] = action[1]
+            action_dict["joint_mobile_base_rotate_by"] = action[2]
+            action_dict["joint_lift"] = action[3]
+            action_dict["joint_arm_l0"] = action[4]
+            action_dict["joint_wrist_roll"] = action[5]
+            action_dict["joint_wrist_pitch"] = action[6]
+            action_dict["joint_wrist_yaw"] = action[7]
+            action_dict["stretch_gripper"] = action[8]
 
+            # TODO Temporary solution
             action_dict["joint_mobile_base_rotate_by"] = 0.0
 
         # Send action_dict to stretch follower
