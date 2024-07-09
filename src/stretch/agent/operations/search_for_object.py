@@ -49,7 +49,6 @@ class SearchForReceptacleOperation(ManagedOperation):
 
         # Check to see if we have a receptacle in the map
         instances = self.manager.instance_memory.get_instances()
-        receptacle_options = []
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
@@ -60,8 +59,6 @@ class SearchForReceptacleOperation(ManagedOperation):
 
             # Find a box
             if "box" in name or "tray" in name:
-                receptacle_options.append(instance)
-
                 # Check to see if we can motion plan to box or not
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
