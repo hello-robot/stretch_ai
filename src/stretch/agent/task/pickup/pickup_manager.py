@@ -11,11 +11,11 @@ from stretch.agent.operations import (
     PreGraspObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
-    SearchForReceptacle,
+    SearchForReceptacleOperation,
 )
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.task_manager import TaskManager
-from stretch.core.task import Operation, Task
+from stretch.core.task import Task
 from stretch.mapping.instance import Instance
 
 
