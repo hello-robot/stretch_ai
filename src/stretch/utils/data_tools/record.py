@@ -12,6 +12,8 @@ import cv2
 import liblzfse
 import numpy as np
 
+import stretch.utils.git as git_tools
+
 logger = logging.getLogger(__name__)
 
 COMPLETION_FILENAME = "rgb_rel_videos_exported.txt"
@@ -144,6 +146,11 @@ class FileDataRecorder:
         # Add episode info to metadata
         self.metadata["date"] = now
         self.metadata["num_frames"] = len(self.rgbs)
+
+        # Collect git information if it exists
+        self.metadata["git_branch"] = git_tools.get_git_branch()
+        self.metadata["git_commit"] = git_tools.get_git_commit()
+        self.metadata["git_commit_message"] = git_tools.get_git_commit_message()
 
         # Write metadata json file
         with open(str(episode_dir / "configs.json"), "w") as fp:
