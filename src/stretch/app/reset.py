@@ -25,6 +25,7 @@ def main(
     demo = RobotAgent(robot, parameters, None)
     demo.start(visualize_map_at_start=False)
     demo.move_closed_loop([0, 0, 0], max_time=60.0)
+    robot.stop()
 
 
 if __name__ == "__main__":

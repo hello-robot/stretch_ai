@@ -739,6 +739,10 @@ class HomeRobotZmqClient(RobotClient):
                 ee_xyz=None,
                 joint=joint,
             )
+            observation.camera_K = message["head_cam/depth_camera_K"]
+            observation.ee_camera_K = message["ee_cam/depth_camera_K"]
+            observation.camera_pose = message["head_cam/pose"]
+            observation.ee_camera_pose = message["ee_cam/pose"]
             self._servo = observation
 
     def get_servo_observation(self):

@@ -50,6 +50,22 @@ class GraspObjectOperation(ManagedOperation):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
+    def get_class_mask(self, servo: Observations) -> np.ndarray:
+        """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
+
+        Args:
+            servo (Observations): Servo observation
+
+        Returns:
+            np.ndarray: Mask for the class of the object we are trying to grasp
+        """
+        mask = np.zeros_like(servo.semantic).astype(bool)
+        for iid in np.unique(servo.semantic):
+            name = self.manager.semantic_sensor.get_class_name_for_id(iid)
+            if name is not None and self.manager.target_object in name:
+                mask = np.bitwise_or(mask, servo.semantic == iid)
+        return mask
+
     def get_target_mask(
         self,
         servo: Observations,
@@ -68,8 +84,11 @@ class GraspObjectOperation(ManagedOperation):
             Optional[np.ndarray]: Target mask to move to
         """
         # Find the best masks
-        class_mask = servo.semantic == instance.get_category_id()
+        class_mask = self.get_class_mask(servo)
         instance_mask = servo.instance
+        if servo.ee_xyz is None:
+            servo.compute_ee_xyz()
+
         target_mask = None
         target_mask_pts = float("-inf")
         maximum_overlap_mask = None
@@ -89,6 +108,7 @@ class GraspObjectOperation(ManagedOperation):
             if prev_mask is not None:
                 # Find the mask with the most points
                 mask = np.bitwise_and(current_instance_mask, prev_mask)
+                mask = np.bitwise_and(mask, class_mask)
                 num_pts = sum(mask.flatten())
 
                 if num_pts > maximum_overlap_pts:
@@ -96,7 +116,7 @@ class GraspObjectOperation(ManagedOperation):
                     maximum_overlap_mask = mask
 
             # Simply find the mask with the most points
-            mask = np.bitwise_and(instance_mask == iid, class_mask)
+            mask = np.bitwise_and(current_instance_mask, class_mask)
             num_pts = sum(mask.flatten())
             if num_pts > target_mask_pts:
                 target_mask = mask
@@ -104,7 +124,7 @@ class GraspObjectOperation(ManagedOperation):
 
         if maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
-        elif target_mask is not None:
+        if target_mask is not None:
             return target_mask
         else:
             return prev_mask
@@ -141,12 +161,17 @@ class GraspObjectOperation(ManagedOperation):
         if self.gripper_aruco_detector is None:
             self.gripper_aruco_detector = GripperArucoDetector()
 
+        # Track the last object location and the number of times we've failed to grasp
+        current_xyz = None
+        failed_counter = 0
+
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
             # Get servo observation
             servo = self.robot.get_servo_observation()
             joint_state = self.robot.get_joint_state()
+            world_xyz = servo.get_ee_xyz_in_world_frame()
 
             if not self.open_loop:
                 # Now compute what to do
@@ -178,15 +203,28 @@ class GraspObjectOperation(ManagedOperation):
             # Compute the center of the mask in image coords
             num_target_mask_pts = sum(target_mask.flatten())
             if num_target_mask_pts == 0:
-                self.error(
-                    "No target mask points found. Going to move forward and assume we're aligned."
-                )
-                mask_center = np.array([center_y, center_x])
+                # mask_center = np.array([center_y, center_x])
                 if not aligned_once:
+                    self.error(
+                        "Lost track before even seeing object with EE camera. Just try open loop."
+                    )
                     return False
+                elif failed_counter < 5:
+                    failed_counter += 1
+                    continue
+                else:
+                    # If we are aligned, but we lost the object, just try to grasp it
+                    self.error(f"Lost track. Trying to grasp at {current_xyz}.")
+                    return self.grasp_open_loop(current_xyz)
             else:
+                failed_counter = 0
                 mask_pts = np.argwhere(target_mask)
                 mask_center = mask_pts.mean(axis=0)
+                assert (
+                    world_xyz.shape[0] == servo.semantic.shape[0]
+                    and world_xyz.shape[1] == servo.semantic.shape[1]
+                ), "World xyz shape does not match semantic shape."
+                current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
@@ -213,7 +251,7 @@ class GraspObjectOperation(ManagedOperation):
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
-                print("detected classes:", np.unique(servo.semantic))
+                print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
                     success = self._grasp()
                 continue
@@ -299,7 +337,7 @@ class GraspObjectOperation(ManagedOperation):
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
-        joint_state = obs.joint
+        joint_state = self.robot.get_joint_state()
         model = self.robot.get_robot_model()
 
         if joint_state[HelloStretchIdx.GRIPPER] < 0.0:
@@ -336,44 +374,53 @@ class GraspObjectOperation(ManagedOperation):
             self._success = self.visual_servo_to_object(self.manager.current_object)
 
         if not self._success:
-            # If we failed, or if we are not servoing, then just move to the object
-            target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
-                relative_object_xyz, ee_rot, q0=joint_state
+            self.grasp_open_loop(object_xyz)
+
+    def grasp_open_loop(self, object_xyz: np.ndarray):
+        """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper."""
+
+        relative_object_xyz = point_global_to_base(object_xyz, xyt)
+        joint_state = self.robot.get_joint_state()
+        xyt = self.robot.get_base_pose()
+
+        # If we failed, or if we are not servoing, then just move to the object
+        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+            relative_object_xyz, ee_rot, q0=joint_state
+        )
+        target_joint_state[HelloStretchIdx.BASE_X] -= 0.04
+        if not success:
+            print("Failed to find a valid IK solution.")
+            self._success = False
+            return
+        elif (
+            target_joint_state[HelloStretchIdx.ARM] < 0
+            or target_joint_state[HelloStretchIdx.LIFT] < 0
+        ):
+            print(
+                f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
             )
-            target_joint_state[HelloStretchIdx.BASE_X] -= 0.04
-            if not success:
-                print("Failed to find a valid IK solution.")
-                self._success = False
-                return
-            elif (
-                target_joint_state[HelloStretchIdx.ARM] < 0
-                or target_joint_state[HelloStretchIdx.LIFT] < 0
-            ):
-                print(
-                    f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
-                )
-                self._success = False
-                return
+            self._success = False
+            return
 
-            # Lift the arm up a bit
-            target_joint_state_lifted = target_joint_state.copy()
-            target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
+        # Lift the arm up a bit
+        target_joint_state_lifted = target_joint_state.copy()
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
-            # Move to the target joint state
-            print(f"{self.name}: Moving to grasp position.")
-            self.robot.arm_to(target_joint_state, blocking=True)
-            time.sleep(3.0)
-            print(f"{self.name}: Closing the gripper.")
-            self.robot.close_gripper(blocking=True)
-            time.sleep(2.0)
-            print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-            self.robot.arm_to(target_joint_state_lifted, blocking=False)
-            time.sleep(2.0)
-            print(f"{self.name}: Return arm to initial configuration.")
-            self.robot.arm_to(joint_state, blocking=True)
-            time.sleep(3.0)
-            print(f"{self.name}: Done.")
-            self._success = True
+        # Move to the target joint state
+        print(f"{self.name}: Moving to grasp position.")
+        self.robot.arm_to(target_joint_state, blocking=True)
+        time.sleep(3.0)
+        print(f"{self.name}: Closing the gripper.")
+        self.robot.close_gripper(blocking=True)
+        time.sleep(2.0)
+        print(f"{self.name}: Lifting the arm up so as not to hit the base.")
+        self.robot.arm_to(target_joint_state_lifted, blocking=False)
+        time.sleep(2.0)
+        print(f"{self.name}: Return arm to initial configuration.")
+        self.robot.arm_to(joint_state, blocking=True)
+        time.sleep(3.0)
+        print(f"{self.name}: Done.")
+        self._success = True
 
     def was_successful(self):
         """Return true if successful"""
