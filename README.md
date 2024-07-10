@@ -7,43 +7,17 @@
 
 Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
 
-## Quickstart
-
-On your PC, add the following yaml to `~/.stretch/config.yaml` (use `127.0.0.1` if you're developing on the robot only):
-
-```yaml
-robots:
-  - ip_addr: 192.168.1.14 # Substitute with your robot's ip address
-    port: 20200
-```
-
-On your Stretch, start the server:
-
-```
-python3 -m stretch.serve
-```
-
-Then, on your PC, write some code:
-
-```python
-import stretch
-stretch.connect()
-
-stretch.move_by(joint_arm=0.1)
-
-for img in stretch.stream_nav_camera():
-    cv2.imshow('Nav Camera', img)
-    cv2.waitKey(1)
-```
-
-Check out the docs on:
-
-- [Getting status](./docs/status.md)
-
 ## Apps
 
-First try these:
+After [installation](#installation), on the robot, run the server:
 
+```bash
+ros2 launch stretch_ros2_bridge server.launch.py
+```
+
+Then, first try these:
+
+- [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Gripper](#gripper-tool) - Open and close the gripper.
 
@@ -87,7 +61,25 @@ Caution, it may take a while! Several libraries are built from source to avoid p
 
 You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8. For issues, see [docs/about_advanced_installation.md](docs/about_advanced_installation.md).
 
-## Example Apps
+## Stretch AI Apps
+
+Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
+
+Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
+
+### Print Joint States
+
+To make sure the robot is  connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
+
+```bash
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
+
+You can also print out just one specific joint. For example, to just get arm extension in a loop, run:
+
+```
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP --joint arm
+```
 
 ### Visualization and Streaming Video
 
@@ -180,7 +172,7 @@ Optional open3d visualization of the scene:
 python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
-### Pickup Toys
+### Pickup Objects
 
 This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
 
