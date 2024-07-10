@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 
-import time
-
 import click
-import cv2
-import numpy as np
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters

@@ -55,6 +55,27 @@ class HelloStretchIdx:
     HEAD_PAN = 9
     HEAD_TILT = 10
 
+    name_to_idx = {
+        "base_x": BASE_X,
+        "base_y": BASE_Y,
+        "base_theta": BASE_THETA,
+        "lift": LIFT,
+        "arm": ARM,
+        "gripper_finger_right": GRIPPER,
+        "wrist_roll": WRIST_ROLL,
+        "wrist_pitch": WRIST_PITCH,
+        "wrist_yaw": WRIST_YAW,
+        "head_pan": HEAD_PAN,
+        "head_tilt": HEAD_TILT,
+    }
+
+    @classmethod
+    def get_idx(cls, name: str) -> int:
+        if name in cls.name_to_idx:
+            return cls.name_to_idx[name]
+        else:
+            raise ValueError(f"Unknown joint name: {name}")
+
 
 class HelloStretchKinematics:
     """Define motion planning structure for the robot. Exposes kinematics."""

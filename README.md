@@ -7,43 +7,17 @@
 
 Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
 
-## Quickstart
-
-On your PC, add the following yaml to `~/.stretch/config.yaml` (use `127.0.0.1` if you're developing on the robot only):
-
-```yaml
-robots:
-  - ip_addr: 192.168.1.14 # Substitute with your robot's ip address
-    port: 20200
-```
-
-On your Stretch, start the server:
-
-```
-python3 -m stretch.serve
-```
-
-Then, on your PC, write some code:
-
-```python
-import stretch
-stretch.connect()
-
-stretch.move_by(joint_arm=0.1)
-
-for img in stretch.stream_nav_camera():
-    cv2.imshow('Nav Camera', img)
-    cv2.waitKey(1)
-```
-
-Check out the docs on:
-
-- [Getting status](./docs/status.md)
-
 ## Apps
 
-First try these:
+After [installation](#installation), on the robot, run the server:
 
+```bash
+ros2 launch stretch_ros2_bridge server.launch.py
+```
+
+Then, first try these:
+
+- [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Gripper](#gripper-tool) - Open and close the gripper.
 
@@ -87,7 +61,25 @@ Caution, it may take a while! Several libraries are built from source to avoid p
 
 You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8. For issues, see [docs/about_advanced_installation.md](docs/about_advanced_installation.md).
 
-## Example Apps
+## Stretch AI Apps
+
+Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
+
+Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
+
+### Print Joint States
+
+To make sure the robot is  connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
+
+```bash
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
+
+You can also print out just one specific joint. For example, to just get arm extension in a loop, run:
+
+```
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP --joint arm
+```
 
 ### Visualization and Streaming Video
 
@@ -116,6 +108,13 @@ Open and close the gripper:
 ```
 python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
 python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
+```
+
+Alternately:
+
+```
+python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
+python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
 ```
 
 ### Dex Teleop for Data Collection
@@ -173,7 +172,7 @@ Optional open3d visualization of the scene:
 python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
-### Pickup Toys
+### Pickup Objects
 
 This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
 
@@ -203,16 +202,18 @@ Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for m
 
 The code is organized as follows. Inside the core package `src/stretch`:
 
-- `motion` contains motion planning tools
-- `mapping` is broken up into tools for voxel (3d / ok-robot style), instance mapping
-- `core` is basic tools and interfaces
-- `app` contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
-- `agent` is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
+- [core](src/stretch/core) is basic tools and interfaces
+- [app](src/stretch/app)  contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
+- [motion](src/stretch/motion) contains motion planning tools, including [algorithms](src/stretch/motion/algo) like RRT.
+- [mapping](src/stretch/mapping) is broken up into tools for voxel (3d / ok-robot style), instance mapping
+- [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
   - In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
-  - `agent/robot_agent.py` is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
-  - `agent/task/*` contains task-specific code, such as for the `pickup` task. This is divided between "Managers" like [pickup_manager.py](src/stretch/agent/task/pickup_manager.py) which are composed of "Operations" like those in [operations.py](src/stretch/agent/task/operations.py). Each operation is a composable state machine node with pre- and post-conditions.
+  - [agent/robot_agent.py](src/stretch/agent/robot_agent.py) is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
+  - [agent/base](src/stretch/agent/base) contains base classes for creating tasks, such as the [TaskManager](src/stretch/agent/base/task_manager.py) class and the [ManagedOperation](src/stretch/agent/base/managed_operation.py) class.
+  - [agent/task](src/stretch/agent/task) contains task-specific code, such as for the `pickup` task. This is divided between "Managers" like [pickup_manager.py](src/stretch/agent/task/pickup_manager.py) which are composed of "Operations." Each operation is a composable state machine node with pre- and post-conditions.
+  - [agent/operations](src/stretch/agent/operations) contains the individual operations, such as `move_to_pose.py` which moves the robot to a given pose.
 
-The `stretch_ros2_bridge` package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
+The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
 
 ### Updating Code on the Robot
 

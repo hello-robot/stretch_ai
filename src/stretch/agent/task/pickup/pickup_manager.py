@@ -2,12 +2,9 @@ from typing import Optional, Union
 
 import numpy as np
 
-from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.task_manager import TaskManager
-from stretch.core.task import Operation, Task
-from stretch.mapping.instance import Instance
-
-from .operations import (
+import stretch.utils.logger as logger
+from stretch.agent.base import TaskManager
+from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
@@ -15,8 +12,11 @@ from .operations import (
     PreGraspObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
-    SearchForReceptacle,
+    SearchForReceptacleOperation,
 )
+from stretch.agent.robot_agent import RobotAgent
+from stretch.core.task import Task
+from stretch.mapping.instance import Instance
 
 
 class PickupManager(TaskManager):
@@ -86,7 +86,7 @@ class PickupManager(TaskManager):
             )
 
         # Look for the target receptacle
-        search_for_receptacle = SearchForReceptacle(
+        search_for_receptacle = SearchForReceptacleOperation(
             "search_for_box",
             self,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,

@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 
-import time
-
 import click
-import cv2
-import numpy as np
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import Parameters, get_parameters
-from stretch.motion import HelloStretchIdx
+from stretch.core import get_parameters
 
 
 @click.command()
@@ -19,12 +14,13 @@ from stretch.motion import HelloStretchIdx
     help="Set if we are executing on the robot and not on a remote computer",
 )
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
-@click.option("-j", "--joint", default="", help="Joint to print")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
-    joint: str = "",
+    open: bool = False,
+    close: bool = False,
+    blocking: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -34,21 +30,7 @@ def main(
         parameters=parameters,
     )
     robot.start()
-    try:
-        while True:
-            joint_state = robot.get_joint_state()
-            if joint_state is None:
-                continue
-            if len(joint) > 0:
-                print(f"{joint}: {joint_state[HelloStretchIdx.get_idx(joint.lower())]}")
-            else:
-                print(
-                    f"Arm: {joint_state[HelloStretchIdx.ARM]}, Lift: {joint_state[HelloStretchIdx.LIFT]}, Gripper: {joint_state[HelloStretchIdx.GRIPPER]}"
-                )
-            time.sleep(0.01)
-
-    except KeyboardInterrupt:
-        pass
+    robot.open_gripper(blocking=True)
     robot.stop()
 
 
