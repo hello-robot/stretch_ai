@@ -19,10 +19,12 @@ from stretch.motion import HelloStretchIdx
     help="Set if we are executing on the robot and not on a remote computer",
 )
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
+@click.option("-j", "--joint", default="", help="Joint to print")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
+    joint: str = "",
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -37,9 +39,12 @@ def main(
             joint_state = robot.get_joint_state()
             if joint_state is None:
                 continue
-            print(
-                f"Arm: {joint_state[HelloStretchIdx.ARM]}, Lift: {joint_state[HelloStretchIdx.LIFT]}, Gripper: {joint_state[HelloStretchIdx.GRIPPER]}"
-            )
+            if len(joint) > 0:
+                print(f"{joint}: {joint_state[HelloStretchIdx.get_idx(joint.lower())]}")
+            else:
+                print(
+                    f"Arm: {joint_state[HelloStretchIdx.ARM]}, Lift: {joint_state[HelloStretchIdx.LIFT]}, Gripper: {joint_state[HelloStretchIdx.GRIPPER]}"
+                )
             time.sleep(0.01)
 
     except KeyboardInterrupt:

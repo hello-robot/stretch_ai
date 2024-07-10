@@ -135,6 +135,7 @@ class GraspObjectOperation(ManagedOperation):
         aligned_once = False
         prev_target_mask = None
         success = False
+        prev_lift = float("Inf")
 
         # Track the fingertips using aruco markers
         if self.gripper_aruco_detector is None:
@@ -181,6 +182,8 @@ class GraspObjectOperation(ManagedOperation):
                     "No target mask points found. Going to move forward and assume we're aligned."
                 )
                 mask_center = np.array([center_y, center_x])
+                if not aligned_once:
+                    return False
             else:
                 mask_pts = np.argwhere(target_mask)
                 mask_center = mask_pts.mean(axis=0)
@@ -240,7 +243,8 @@ class GraspObjectOperation(ManagedOperation):
                 "If there's any chance the object is close enough, we should just try to grasp it." ""
                 success = self._grasp()
                 break
-            elif np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold:
+            aligned = np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
+            if aligned:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
                     success = self._grasp()
@@ -275,12 +279,13 @@ class GraspObjectOperation(ManagedOperation):
                 prev_target_mask = None
 
             print("tgt x =", base_x)
-            print(" lift =", lift)
+            print(" lift =", min(lift, prev_lift))
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
 
             # breakpoint()
             self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
+            prev_lift = lift
             time.sleep(self.expected_network_delay)
 
         return success
@@ -327,8 +332,11 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(joint_state, blocking=True)
 
         if self.servo_to_grasp:
+            # If we try to servo, then do this
             self._success = self.visual_servo_to_object(self.manager.current_object)
-        else:
+
+        if not self._success:
+            # If we failed, or if we are not servoing, then just move to the object
             target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
                 relative_object_xyz, ee_rot, q0=joint_state
             )
