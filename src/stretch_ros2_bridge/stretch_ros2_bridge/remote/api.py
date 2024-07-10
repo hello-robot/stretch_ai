@@ -29,6 +29,9 @@ from .ros import StretchRosInterface
 class StretchClient(RobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
+    camera_frame = "camera_color_optical_frame"
+    ee_camera_frame = "gripper_camera_color_optical_frame"
+
     def __init__(
         self,
         init_node: bool = True,
@@ -147,6 +150,10 @@ class StretchClient(RobotClient):
     @property
     def camera_pose(self):
         return self.head.get_pose_in_base_coords(rotated=False)
+
+    @property
+    def ee_camera_pose(self):
+        return self._ros_client.get_frame_pose(self.ee_camera_frame)
 
     @property
     def rgb_cam(self):

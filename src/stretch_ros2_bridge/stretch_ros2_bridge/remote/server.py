@@ -290,11 +290,6 @@ class ZmqServer(CommsNode):
             compressed_ee_color_image = compression.to_jpg(ee_color_image)
             compressed_head_color_image = compression.to_jpg(head_color_image)
             if self.debug_compression:
-                # TODO: remove debug code
-                # print(f"{ee_color_image.shape=}")
-                # print(f"{ee_depth_image.shape=}")
-                # print(f"{head_color_image.shape=}")
-                # print(f"{head_depth_image.shape=}")
                 ct2 = timeit.default_timer()
                 print(
                     ct1 - ct0,
@@ -311,6 +306,7 @@ class ZmqServer(CommsNode):
                 "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
+                "ee_cam/pose": self.client.ee_camera_pose,
                 "head_cam/color_camera_K": self.client.rgb_cam.get_K(),
                 "head_cam/depth_camera_K": self.client.dpt_cam.get_K(),
                 "head_cam/color_image": compressed_head_color_image,
@@ -318,9 +314,8 @@ class ZmqServer(CommsNode):
                 "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image/shape": head_depth_image.shape,
                 "head_cam/image_scaling": self.image_scaling,
+                "head_cam/pose": self.client.camera_pose,
                 "robot/config": obs.joint,
-                # "robot/ee_position": ee_pos,
-                # "robot/ee_rotation": ee_rot,
             }
 
             self.send_servo_socket.send_pyobj(d405_output)
