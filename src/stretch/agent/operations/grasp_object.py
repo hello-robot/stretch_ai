@@ -379,9 +379,9 @@ class GraspObjectOperation(ManagedOperation):
     def grasp_open_loop(self, object_xyz: np.ndarray):
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper."""
 
+        xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
         joint_state = self.robot.get_joint_state()
-        xyt = self.robot.get_base_pose()
 
         # If we failed, or if we are not servoing, then just move to the object
         target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
