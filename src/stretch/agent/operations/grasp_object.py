@@ -62,7 +62,7 @@ class GraspObjectOperation(ManagedOperation):
         mask = np.zeros_like(servo.semantic).astype(bool)
         for iid in np.unique(servo.semantic):
             name = self.manager.semantic_sensor.get_class_name_for_id(iid)
-            if name in self.manager.semantic_sensor.get_class_name_for_id:
+            if self.manager.target_object in name:
                 mask = np.bitwise_or(mask, servo.semantic == iid)
         return mask
 
