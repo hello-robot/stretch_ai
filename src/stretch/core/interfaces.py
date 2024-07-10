@@ -215,6 +215,9 @@ class Observations:
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
     camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
+    # Pose of the camera in world coordinates
+    camera_pose: Optional[np.array] = None
+
     # End effector camera
     ee_rgb: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in [0, 255]
     ee_depth: Optional[np.ndarray] = None  # (camera_height, camera_width) in meters
@@ -224,6 +227,9 @@ class Observations:
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
     ee_camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
+    # Pose of the end effector camera in world coordinates
+    ee_camera_pose: Optional[np.array] = None
+
     # Instance IDs per observation frame
     # Size: (camera_height, camera_width)
     # Range: 0 to max int
@@ -231,10 +237,6 @@ class Observations:
 
     # Optional third-person view from simulation
     third_person_image: Optional[np.array] = None
-
-    # Pose of the camera in world coordinates
-    camera_pose: Optional[np.array] = None
-    camera_K: Optional[np.array] = None
 
     # Proprioreception
     joint: Optional[np.array] = None  # joint positions of the robot
