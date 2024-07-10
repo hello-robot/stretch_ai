@@ -50,6 +50,22 @@ class GraspObjectOperation(ManagedOperation):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         return self.manager.current_object is not None and self.robot.in_manipulation_mode()
 
+    def get_class_mask(self, servo: Observations) -> np.ndarray:
+        """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
+
+        Args:
+            servo (Observations): Servo observation
+
+        Returns:
+            np.ndarray: Mask for the class of the object we are trying to grasp
+        """
+        mask = np.zeros_like(servo.semantic).astype(bool)
+        for iid in np.unique(servo.semantic):
+            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            if name in self.manager.semantic_sensor.get_class_name_for_id:
+                mask = np.bitwise_or(mask, servo.semantic == iid)
+        return mask
+
     def get_target_mask(
         self,
         servo: Observations,
@@ -68,7 +84,7 @@ class GraspObjectOperation(ManagedOperation):
             Optional[np.ndarray]: Target mask to move to
         """
         # Find the best masks
-        class_mask = servo.semantic == instance.get_category_id()
+        class_mask = self.get_class_mask(servo)
         instance_mask = servo.instance
         target_mask = None
         target_mask_pts = float("-inf")
@@ -89,6 +105,7 @@ class GraspObjectOperation(ManagedOperation):
             if prev_mask is not None:
                 # Find the mask with the most points
                 mask = np.bitwise_and(current_instance_mask, prev_mask)
+                mask = np.bitwise_and(mask, class_mask)
                 num_pts = sum(mask.flatten())
 
                 if num_pts > maximum_overlap_pts:
@@ -96,7 +113,7 @@ class GraspObjectOperation(ManagedOperation):
                     maximum_overlap_mask = mask
 
             # Simply find the mask with the most points
-            mask = np.bitwise_and(instance_mask == iid, class_mask)
+            mask = np.bitwise_and(current_instance_mask, class_mask)
             num_pts = sum(mask.flatten())
             if num_pts > target_mask_pts:
                 target_mask = mask
@@ -104,7 +121,7 @@ class GraspObjectOperation(ManagedOperation):
 
         if maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
-        elif target_mask is not None:
+        if target_mask is not None:
             return target_mask
         else:
             return prev_mask
