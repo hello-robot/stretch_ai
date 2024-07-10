@@ -49,8 +49,8 @@ from stretch_ros2_bridge.ros.visualizer import Visualizer
 DEFAULT_COLOR_TOPIC = "/camera/color"
 DEFAULT_DEPTH_TOPIC = "/camera/aligned_depth_to_color"
 DEFAULT_LIDAR_TOPIC = "/scan"
-DEFAULT_EE_COLOR_TOPIC = "/ee_camera/color"
-DEFAULT_EE_DEPTH_TOPIC = "/ee_camera/aligned_depth_to_color"
+DEFAULT_EE_COLOR_TOPIC = "/gripper_camera/color"
+DEFAULT_EE_DEPTH_TOPIC = "/gripper_camera/aligned_depth_to_color"
 
 
 class StretchRosInterface(Node):
