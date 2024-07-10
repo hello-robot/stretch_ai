@@ -110,9 +110,11 @@ class OvmmPerception:
             return None
         return self._current_vocabulary.goal_id_to_goal_name[oid]
 
-    def get_class_id_for_name(self, name: str) -> int:
+    def get_class_id_for_name(self, name: str) -> Optional[int]:
         """return the id associated with a class"""
-        return self._current_vocabulary.goal_name_to_goal_id[name]
+        if name in self._current_vocabulary.goal_name_to_goal_id:
+            return self._current_vocabulary.goal_name_to_goal_id[name]
+        return None
 
     def _process_obs(self, obs: Observations):
         """
