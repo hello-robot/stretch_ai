@@ -42,7 +42,7 @@ def generate_launch_description():
 
     realsense_d405_config = {
         "align_depth.enable": "true",
-        "camera_name": "ee_camera",
+        "camera_name": "gripper_camera",
         "camera_namespace": "",
         # "decimation_filter.enable": "True",
         # "spatial_filter.enable": "True",
@@ -93,7 +93,7 @@ def generate_launch_description():
     lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory("stretch_core"), "launch/rplidar.launch.py")
-        )
+        ),
     )
 
     ld = LaunchDescription(
@@ -103,7 +103,6 @@ def generate_launch_description():
             realsense_d405_launch,
             lidar_launch,
             camera_pose_publisher_node,
-            # state_estimator_node,
             goto_controller_node,
             odometry_publisher_node,
         ]
