@@ -62,7 +62,7 @@ class GraspObjectOperation(ManagedOperation):
         mask = np.zeros_like(servo.semantic).astype(bool)
         for iid in np.unique(servo.semantic):
             name = self.manager.semantic_sensor.get_class_name_for_id(iid)
-            if self.manager.target_object in name:
+            if name is not None and self.manager.target_object in name:
                 mask = np.bitwise_or(mask, servo.semantic == iid)
         return mask
 
@@ -92,7 +92,8 @@ class GraspObjectOperation(ManagedOperation):
         # TODO delete
         from stretch.utils.point_cloud import show_point_cloud
 
-        show_point_cloud(servo.ee_xyz, servo.ee_rgb, orig=np.zeros(3))
+        if servo.ee_xyz is not None:
+            show_point_cloud(servo.ee_xyz, servo.ee_rgb, orig=np.zeros(3))
         # TODO delete
 
         target_mask = None
