@@ -89,13 +89,6 @@ class GraspObjectOperation(ManagedOperation):
         if servo.ee_xyz is None:
             servo.compute_ee_xyz()
 
-        # TODO delete
-        from stretch.utils.point_cloud import show_point_cloud
-
-        if servo.ee_xyz is not None:
-            show_point_cloud(servo.ee_xyz, servo.ee_rgb, orig=np.zeros(3))
-        # TODO delete
-
         target_mask = None
         target_mask_pts = float("-inf")
         maximum_overlap_mask = None
@@ -168,11 +161,14 @@ class GraspObjectOperation(ManagedOperation):
         if self.gripper_aruco_detector is None:
             self.gripper_aruco_detector = GripperArucoDetector()
 
+        current_xyz = None
+
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
             # Get servo observation
             servo = self.robot.get_servo_observation()
+            world_xyz = servo.get_xyz_in_world_frame()
             joint_state = self.robot.get_joint_state()
 
             if not self.open_loop:
@@ -205,15 +201,21 @@ class GraspObjectOperation(ManagedOperation):
             # Compute the center of the mask in image coords
             num_target_mask_pts = sum(target_mask.flatten())
             if num_target_mask_pts == 0:
-                self.error(
-                    "No target mask points found. Going to move forward and assume we're aligned."
-                )
-                mask_center = np.array([center_y, center_x])
+                # mask_center = np.array([center_y, center_x])
                 if not aligned_once:
+                    self.error(
+                        "Lost track before even seeing object with EE camera. Just try open loop."
+                    )
                     return False
+                else:
+                    # If we are aligned, but we lost the object, just try to grasp it
+                    self.error(f"Lost track. Trying to grasp at {current_xyz}.")
+                    self.grasp_open_loop(current_xyz)
+                    continue
             else:
                 mask_pts = np.argwhere(target_mask)
                 mask_center = mask_pts.mean(axis=0)
+                current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
@@ -326,7 +328,7 @@ class GraspObjectOperation(ManagedOperation):
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
-        joint_state = obs.joint
+        joint_state = self.robot.get_joint_state()
         model = self.robot.get_robot_model()
 
         if joint_state[HelloStretchIdx.GRIPPER] < 0.0:
@@ -363,44 +365,52 @@ class GraspObjectOperation(ManagedOperation):
             self._success = self.visual_servo_to_object(self.manager.current_object)
 
         if not self._success:
-            # If we failed, or if we are not servoing, then just move to the object
-            target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
-                relative_object_xyz, ee_rot, q0=joint_state
+            self.grasp_open_loop(object_xyz)
+
+    def grasp_open_loop(self, object_xyz: np.ndarray):
+        """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper."""
+
+        relative_object_xyz = point_global_to_base(object_xyz, xyt)
+        joint_state = self.robot.get_joint_state()
+
+        # If we failed, or if we are not servoing, then just move to the object
+        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+            relative_object_xyz, ee_rot, q0=joint_state
+        )
+        target_joint_state[HelloStretchIdx.BASE_X] -= 0.04
+        if not success:
+            print("Failed to find a valid IK solution.")
+            self._success = False
+            return
+        elif (
+            target_joint_state[HelloStretchIdx.ARM] < 0
+            or target_joint_state[HelloStretchIdx.LIFT] < 0
+        ):
+            print(
+                f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
             )
-            target_joint_state[HelloStretchIdx.BASE_X] -= 0.04
-            if not success:
-                print("Failed to find a valid IK solution.")
-                self._success = False
-                return
-            elif (
-                target_joint_state[HelloStretchIdx.ARM] < 0
-                or target_joint_state[HelloStretchIdx.LIFT] < 0
-            ):
-                print(
-                    f"{self.name}: Target joint state is invalid: {target_joint_state}. Positions for arm and lift must be positive."
-                )
-                self._success = False
-                return
+            self._success = False
+            return
 
-            # Lift the arm up a bit
-            target_joint_state_lifted = target_joint_state.copy()
-            target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
+        # Lift the arm up a bit
+        target_joint_state_lifted = target_joint_state.copy()
+        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
-            # Move to the target joint state
-            print(f"{self.name}: Moving to grasp position.")
-            self.robot.arm_to(target_joint_state, blocking=True)
-            time.sleep(3.0)
-            print(f"{self.name}: Closing the gripper.")
-            self.robot.close_gripper(blocking=True)
-            time.sleep(2.0)
-            print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-            self.robot.arm_to(target_joint_state_lifted, blocking=False)
-            time.sleep(2.0)
-            print(f"{self.name}: Return arm to initial configuration.")
-            self.robot.arm_to(joint_state, blocking=True)
-            time.sleep(3.0)
-            print(f"{self.name}: Done.")
-            self._success = True
+        # Move to the target joint state
+        print(f"{self.name}: Moving to grasp position.")
+        self.robot.arm_to(target_joint_state, blocking=True)
+        time.sleep(3.0)
+        print(f"{self.name}: Closing the gripper.")
+        self.robot.close_gripper(blocking=True)
+        time.sleep(2.0)
+        print(f"{self.name}: Lifting the arm up so as not to hit the base.")
+        self.robot.arm_to(target_joint_state_lifted, blocking=False)
+        time.sleep(2.0)
+        print(f"{self.name}: Return arm to initial configuration.")
+        self.robot.arm_to(joint_state, blocking=True)
+        time.sleep(3.0)
+        print(f"{self.name}: Done.")
+        self._success = True
 
     def was_successful(self):
         """Return true if successful"""
