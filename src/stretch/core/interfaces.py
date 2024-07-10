@@ -278,3 +278,22 @@ class Observations:
         x = (x - cx) * depth / fx
         y = (y - cy) * depth / fy
         return np.stack([x, y, depth], axis=-1)
+
+    def get_ee_xyz_in_world_frame(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+        """Get the end effector xyz in world frame."""
+        if self.ee_xyz is None:
+            self.compute_ee_xyz(scaling=scaling)
+        if self.ee_xyz is not None and self.ee_camera_pose is not None:
+            return self.transform_points(self.ee_xyz, self.ee_camera_pose)
+        return None
+
+    def get_xyz_in_world_frame(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+        """Get the xyz in world frame."""
+        if self.xyz is None:
+            self.compute_xyz(scaling=scaling)
+        if self.xyz is not None and self.camera_pose is not None:
+            return self.transform_points(self.xyz, self.camera_pose)
+
+    def transform_points(self, points: np.ndarray, pose: np.ndarray):
+        """Transform points to world frame."""
+        return np.dot(points, pose[:3, :3].T) + pose[:3, 3]

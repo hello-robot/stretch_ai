@@ -41,12 +41,8 @@ def main(
         obs = robot.get_observation()
 
         if servo is not None:
-            head_xyz = trimesh.transform_points(
-                servo.compute_xyz(1e-3).reshape(-1, 3), servo.camera_pose
-            )
-            ee_xyz = trimesh.transform_points(
-                servo.compute_ee_xyz(1e-3).reshape(-1, 3), servo.ee_camera_pose
-            )
+            head_xyz = servo.get_xyz_in_world_frame(scaling=1e-3).reshape(-1, 3)
+            ee_xyz = servo.get_ee_xyz_in_world_frame(scaling=1e-3).reshape(-1, 3)
 
             xyz = np.concatenate([head_xyz, ee_xyz], axis=0)
             rgb = (
@@ -54,8 +50,7 @@ def main(
                 / 255
             )
             show_point_cloud(xyz, rgb, orig=np.zeros(3))
-
-            breakpoint()
+            break
 
         time.sleep(0.01)
 
