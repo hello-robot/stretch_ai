@@ -170,8 +170,8 @@ class GraspObjectOperation(ManagedOperation):
 
             # Get servo observation
             servo = self.robot.get_servo_observation()
-            world_xyz = servo.get_xyz_in_world_frame()
             joint_state = self.robot.get_joint_state()
+            world_xyz = servo.get_ee_xyz_in_world_frame()
 
             if not self.open_loop:
                 # Now compute what to do
@@ -220,6 +220,10 @@ class GraspObjectOperation(ManagedOperation):
                 failed_counter = 0
                 mask_pts = np.argwhere(target_mask)
                 mask_center = mask_pts.mean(axis=0)
+                assert (
+                    world_xyz.shape[0] == servo.semantic.shape[0]
+                    and world_xyz.shape[1] == servo.semantic.shape[1]
+                ), "World xyz shape does not match semantic shape."
                 current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
 
             # Optionally display which object we are servoing to
@@ -247,7 +251,7 @@ class GraspObjectOperation(ManagedOperation):
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
-                print("detected classes:", np.unique(servo.semantic))
+                print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
                     success = self._grasp()
                 continue
@@ -377,6 +381,7 @@ class GraspObjectOperation(ManagedOperation):
 
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
         joint_state = self.robot.get_joint_state()
+        xyt = self.robot.get_base_pose()
 
         # If we failed, or if we are not servoing, then just move to the object
         target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
