@@ -7,10 +7,7 @@ from typing import Optional
 import cv2
 import numpy as np
 import torch
-import zmq
 from lerobot.common.datasets.push_dataset_to_hub.dobbe_format import clip_and_normalize_depth
-from lerobot.common.policies.act.modeling_act import ACTPolicy
-from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from torchvision.transforms import v2
 
 import stretch.utils.compression as compression
@@ -19,7 +16,6 @@ from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.image import Camera
-from stretch.utils.point_cloud import show_point_cloud
 
 
 class ACTLeader(Evaluator):
@@ -50,6 +46,9 @@ class ACTLeader(Evaluator):
         self.device = device
         self.policy_path = policy_path
         self.teleop_mode = teleop_mode
+
+        self.base_x_origin = None
+        self.current_base_x = 0.0
 
         self.goal_send_socket = self._make_pub_socket(
             send_port, robot_ip=robot_ip, use_remote_computer=True
@@ -137,6 +136,8 @@ class ACTLeader(Evaluator):
             self._recording = not self._recording
             self.prev_goal_dict = None
             if self._recording:
+                # Reset base_x_origin
+                self.base_x_origin = None
                 print("[LEADER] Recording started.")
             else:
                 print("[LEADER] Recording stopped.")
@@ -180,6 +181,16 @@ class ACTLeader(Evaluator):
             # Build state observations in correct format
             raw_state = message["robot/config"]
 
+            if self.teleop_mode == "base_x":
+                if self.base_x_origin is None:
+                    self.base_x_origin = raw_state["base_x"]
+
+                # Calculate relative base_x
+                self.current_base_x = raw_state["base_x"] - self.base_x_origin
+
+                # Replace raw base_x with relative base_x
+                raw_state["base_x"] = self.current_base_x
+
             observations = prepare_observations(
                 raw_state,
                 gripper_color_image,
@@ -198,7 +209,9 @@ class ACTLeader(Evaluator):
             action = raw_action[0].tolist()
 
             action_dict["joint_mobile_base_translation"] = action[0]
-            action_dict["joint_mobile_base_translate_by"] = action[1]
+            # Translate by is difference between predicted base_x and current base_x
+            action_dict["joint_mobile_base_translate_by"] = action[0] - self.current_base_x
+            # action_dict["joint_mobile_base_translate_by"] = action[1]
             action_dict["joint_mobile_base_rotate_by"] = action[2]
             action_dict["joint_lift"] = action[3]
             action_dict["joint_arm_l0"] = action[4]

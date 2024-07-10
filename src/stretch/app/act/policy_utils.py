@@ -2,11 +2,12 @@ import numpy as np
 import torch
 from lerobot.common.policies.act.modeling_act import ACTPolicy
 from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
+from lerobot.common.policies.diffusion_depth.modeling_diffusion import DiffusionPolicy as DPdepth
 from torchvision.transforms import v2
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
 
-SUPPORTED_POLICIES = ["act", "diffusion"]
+SUPPORTED_POLICIES = ["act", "diffusion", "diffusion_depth"]
 
 
 def load_policy(
@@ -18,6 +19,8 @@ def load_policy(
         policy = ACTPolicy.from_pretrained(policy_path)
     elif policy_name == "diffusion":
         policy = DiffusionPolicy.from_pretrained(policy_path)
+    elif policy_name == "diffusion_depth":
+        policy = DPdepth.from_pretrained(policy_path)
     else:
         raise NotImplementedError(
             f"{policy_name} is not a supported policy. Supported policies: {SUPPORTED_POLICIES}"
