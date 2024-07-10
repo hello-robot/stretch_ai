@@ -296,19 +296,6 @@ class StretchClient(RobotClient):
             joint=joint_positions,
             camera_K=self.get_camera_intrinsics(),
         )
-
-        # Create the observation
-        # obs = Observations(
-        #    rgb=rgb.copy(),
-        #    depth=depth.copy(),
-        #    xyz=xyz.copy(),
-        #    gps=gps,
-        #    compass=np.array([theta]),
-        #    camera_pose=self.head.get_pose(rotated=rotate_head_pts),
-        #    # joint=self.model.config_to_hab(joint_positions),
-        #    joint=joint_positions,
-        #    camera_K=self.get_camera_intrinsics(),
-        # )
         return obs
 
     def get_camera_intrinsics(self) -> torch.Tensor:

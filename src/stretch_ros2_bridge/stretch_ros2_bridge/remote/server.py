@@ -14,7 +14,7 @@ import zmq
 
 import stretch.utils.compression as compression
 from stretch.core.comms import CommsNode
-from stretch.utils.image import adjust_gamma
+from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
 
 
@@ -299,22 +299,30 @@ class ZmqServer(CommsNode):
                 )
 
             d405_output = {
-                "ee_cam/color_camera_K": self.client.ee_rgb_cam.get_K(),
-                "ee_cam/depth_camera_K": self.client.ee_dpt_cam.get_K(),
+                "ee_cam/color_camera_K": scale_camera_matrix(
+                    self.client.ee_rgb_cam.get_K(), self.ee_image_scaling
+                ),
+                "ee_cam/depth_camera_K": scale_camera_matrix(
+                    self.client.ee_dpt_cam.get_K(), self.ee_image_scaling
+                ),
                 "ee_cam/color_image": compressed_ee_color_image,
                 "ee_cam/depth_image": compressed_ee_depth_image,
                 "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
                 "ee_cam/pose": self.client.ee_camera_pose,
-                "head_cam/color_camera_K": self.client.rgb_cam.get_K(),
-                "head_cam/depth_camera_K": self.client.dpt_cam.get_K(),
+                "head_cam/color_camera_K": scale_camera_matrix(
+                    self.client.rgb_cam.get_K(), self.image_scaling
+                ),
+                "head_cam/depth_camera_K": scale_camera_matrix(
+                    self.client.dpt_cam.get_K(), self.image_scaling
+                ),
                 "head_cam/color_image": compressed_head_color_image,
                 "head_cam/depth_image": compressed_head_depth_image,
                 "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image/shape": head_depth_image.shape,
                 "head_cam/image_scaling": self.image_scaling,
-                "head_cam/pose": self.client.camera_pose,
+                "head_cam/pose": self.client.head.get_pose(rotated=False),
                 "robot/config": obs.joint,
             }
 
