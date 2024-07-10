@@ -250,3 +250,27 @@ class Observations:
 
     # Sequence number - which message was this?
     seq_id: int = -1
+
+    def compute_xyz(self) -> None:
+        """Compute xyz from depth and camera intrinsics."""
+        if self.depth is not None and self.camera_K is not None:
+            self.xyz = self.depth_to_xyz(self.depth, self.camera_K)
+
+    def compute_ee_xyz(self) -> None:
+        """Compute xyz from depth and camera intrinsics."""
+        if self.ee_depth is not None and self.ee_camera_K is not None:
+            self.ee_xyz = self.depth_to_xyz(self.ee_depth, self.ee_camera_K)
+
+    def depth_to_xyz(self, depth, camera_K) -> np.ndarray:
+        """Convert depth image to xyz point cloud."""
+        # Get the camera intrinsics
+        fx, fy, cx, cy = camera_K[0, 0], camera_K[1, 1], camera_K[0, 2], camera_K[1, 2]
+        # Get the image size
+        h, w = depth.shape
+        # Create the grid
+        x = np.tile(np.arange(w), (h, 1))
+        y = np.tile(np.arange(h).reshape(-1, 1), (1, w))
+        # Compute the xyz
+        x = (x - cx) * depth / fx
+        y = (y - cy) * depth / fy
+        return np.stack([x, y, depth], axis=-1)

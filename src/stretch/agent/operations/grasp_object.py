@@ -61,7 +61,7 @@ class GraspObjectOperation(ManagedOperation):
         """
         mask = np.zeros_like(servo.semantic).astype(bool)
         for iid in np.unique(servo.semantic):
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            name = self.manager.semantic_sensor.get_class_name_for_id(iid)
             if name in self.manager.semantic_sensor.get_class_name_for_id:
                 mask = np.bitwise_or(mask, servo.semantic == iid)
         return mask
@@ -86,6 +86,11 @@ class GraspObjectOperation(ManagedOperation):
         # Find the best masks
         class_mask = self.get_class_mask(servo)
         instance_mask = servo.instance
+        if servo.ee_xyz is None:
+            servo.compute_ee_xyz()
+        from stretch.utils.visualization import show_point_cloud
+
+        show_point_cloud(servo.ee_xyz, servo.ee_rgb, orig=np.zeros(3))
         target_mask = None
         target_mask_pts = float("-inf")
         maximum_overlap_mask = None
