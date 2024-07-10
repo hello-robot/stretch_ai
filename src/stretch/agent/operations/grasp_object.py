@@ -88,9 +88,13 @@ class GraspObjectOperation(ManagedOperation):
         instance_mask = servo.instance
         if servo.ee_xyz is None:
             servo.compute_ee_xyz()
-        from stretch.utils.visualization import show_point_cloud
+
+        # TODO delete
+        from stretch.utils.point_cloud import show_point_cloud
 
         show_point_cloud(servo.ee_xyz, servo.ee_rgb, orig=np.zeros(3))
+        # TODO delete
+
         target_mask = None
         target_mask_pts = float("-inf")
         maximum_overlap_mask = None

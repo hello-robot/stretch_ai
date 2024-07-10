@@ -102,10 +102,12 @@ class OvmmPerception:
         self._current_vocabulary = vocabulary
         self._current_vocabulary_id = vocabulary_id
 
-    def get_class_name_for_id(self, oid: int) -> str:
+    def get_class_name_for_id(self, oid: int) -> Optional[str]:
         """return name of a class from a detection"""
         if isinstance(oid, torch.Tensor):
             oid = int(oid.item())
+        if oid not in self._current_vocabulary.goal_id_to_goal_name:
+            return None
         return self._current_vocabulary.goal_id_to_goal_name[oid]
 
     def get_class_id_for_name(self, name: str) -> int:
