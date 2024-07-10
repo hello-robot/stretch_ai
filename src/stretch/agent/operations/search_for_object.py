@@ -250,8 +250,11 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = True
+    # Debugging visualization
+    show_map_so_far: bool = False
     show_instances_detected: bool = False
+
+    # Important parameters
     plan_for_manipulation: bool = True
     object_class: Optional[str] = None
 

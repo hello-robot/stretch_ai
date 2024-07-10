@@ -347,26 +347,20 @@ class GraspObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
 
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
-        ee_pos, ee_rot = model.manip_fk(joint_state)
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
-            # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
+            ee_pos, ee_rot = model.manip_fk(joint_state)
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
             pitch_from_vertical = np.arctan2(dy, dz)
-            # current_ee_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
         else:
             pitch_from_vertical = 0.0
 
-        # Joint state goal
+        # Compute final pregrasp joint state goal and send the robot there
         joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
-
-        # Strip out fields from the full robot state to only get the 6dof manipulator state
-        # TODO: we should probably handle this in the zmq wrapper.
-        # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
         if self.servo_to_grasp:
@@ -376,12 +370,23 @@ class GraspObjectOperation(ManagedOperation):
         if not self._success:
             self.grasp_open_loop(object_xyz)
 
-    def grasp_open_loop(self, object_xyz: np.ndarray):
-        """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper."""
+    def grasp_open_loop(self, object_xyz: np.ndarray) -> bool:
+        """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
 
+        Args:
+            object_xyz (np.ndarray): Location to grasp
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+
+        model = self.robot.get_robot_model()
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
         joint_state = self.robot.get_joint_state()
+
+        # We assume the current end-effector orientation is the correct one, going into this
+        ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # If we failed, or if we are not servoing, then just move to the object
         target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
@@ -409,16 +414,14 @@ class GraspObjectOperation(ManagedOperation):
         # Move to the target joint state
         print(f"{self.name}: Moving to grasp position.")
         self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(3.0)
+        time.sleep(0.5)
         print(f"{self.name}: Closing the gripper.")
         self.robot.close_gripper(blocking=True)
-        time.sleep(2.0)
+        time.sleep(0.5)
         print(f"{self.name}: Lifting the arm up so as not to hit the base.")
         self.robot.arm_to(target_joint_state_lifted, blocking=False)
-        time.sleep(2.0)
         print(f"{self.name}: Return arm to initial configuration.")
         self.robot.arm_to(joint_state, blocking=True)
-        time.sleep(3.0)
         print(f"{self.name}: Done.")
         self._success = True
 
