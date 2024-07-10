@@ -12,6 +12,7 @@ from stretch.core import get_parameters
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 def main(
     robot_ip: str = "192.168.1.15",
+    local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
 ):
     """Set up the robot and send it to home (0, 0, 0)."""
@@ -21,7 +22,7 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    demo = RobotAgent(robot, parameters, None)
     demo.start(visualize_map_at_start=False)
     demo.move_closed_loop([0, 0, 0], max_time=60.0)
 
