@@ -161,7 +161,9 @@ class GraspObjectOperation(ManagedOperation):
         if self.gripper_aruco_detector is None:
             self.gripper_aruco_detector = GripperArucoDetector()
 
+        # Track the last object location and the number of times we've failed to grasp
         current_xyz = None
+        failed_counter = 0
 
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
@@ -207,12 +209,15 @@ class GraspObjectOperation(ManagedOperation):
                         "Lost track before even seeing object with EE camera. Just try open loop."
                     )
                     return False
+                elif failed_counter < 5:
+                    failed_counter += 1
+                    continue
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
-                    self.grasp_open_loop(current_xyz)
-                    continue
+                    return self.grasp_open_loop(current_xyz)
             else:
+                failed_counter = 0
                 mask_pts = np.argwhere(target_mask)
                 mask_center = mask_pts.mean(axis=0)
                 current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
