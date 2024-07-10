@@ -498,3 +498,29 @@ def autoAdjustments_with_convertScaleAbs(img):
 
     # return [new_img, alpha, beta]
     return new_img
+
+
+def scale_camera_matrix(K: np.ndarray, scale_factor: float) -> np.ndarray:
+    """
+    Modify the camera matrix K when shrinking an image by a scale factor.
+
+    Parameters:
+    K (numpy.ndarray): 3x3 camera intrinsic matrix
+    scale_factor (float): Scale factor for image shrinking (0 < scale_factor <= 1)
+
+    Returns:
+    numpy.ndarray: Modified 3x3 camera matrix
+    """
+    if not 0 < scale_factor <= 1:
+        raise ValueError("Scale factor must be between 0 and 1")
+
+    # Create a copy of K to avoid modifying the original matrix
+    K_scaled = K.copy()
+
+    # Scale the focal length (fx, fy) and principal point (cx, cy)
+    K_scaled[0, 0] *= scale_factor  # fx
+    K_scaled[1, 1] *= scale_factor  # fy
+    K_scaled[0, 2] *= scale_factor  # cx
+    K_scaled[1, 2] *= scale_factor  # cy
+
+    return K_scaled

@@ -29,6 +29,9 @@ from .ros import StretchRosInterface
 class StretchClient(RobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
+    camera_frame = "camera_color_optical_frame"
+    ee_camera_frame = "gripper_camera_color_optical_frame"
+
     def __init__(
         self,
         init_node: bool = True,
@@ -147,6 +150,10 @@ class StretchClient(RobotClient):
     @property
     def camera_pose(self):
         return self.head.get_pose_in_base_coords(rotated=False)
+
+    @property
+    def ee_camera_pose(self):
+        return self._ros_client.get_frame_pose(self.ee_camera_frame)
 
     @property
     def rgb_cam(self):
@@ -289,19 +296,6 @@ class StretchClient(RobotClient):
             joint=joint_positions,
             camera_K=self.get_camera_intrinsics(),
         )
-
-        # Create the observation
-        # obs = Observations(
-        #    rgb=rgb.copy(),
-        #    depth=depth.copy(),
-        #    xyz=xyz.copy(),
-        #    gps=gps,
-        #    compass=np.array([theta]),
-        #    camera_pose=self.head.get_pose(rotated=rotate_head_pts),
-        #    # joint=self.model.config_to_hab(joint_positions),
-        #    joint=joint_positions,
-        #    camera_K=self.get_camera_intrinsics(),
-        # )
         return obs
 
     def get_camera_intrinsics(self) -> torch.Tensor:
