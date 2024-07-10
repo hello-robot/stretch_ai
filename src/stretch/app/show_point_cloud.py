@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
+import time
+
 import click
+import numpy as np
+import trimesh
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -31,10 +35,26 @@ def main(
         demo.move_closed_loop([0, 0, 0], max_time=60.0)
 
     servo = None
-    while servo is None:
+    obs = None
+    while servo is None or obs is None:
         servo = robot.get_servo_observation()
+        obs = robot.get_observation()
 
         if servo is not None:
+            head_xyz = trimesh.transform_points(
+                servo.compute_xyz(1e-3).reshape(-1, 3), servo.camera_pose
+            )
+            ee_xyz = trimesh.transform_points(
+                servo.compute_ee_xyz(1e-3).reshape(-1, 3), servo.ee_camera_pose
+            )
+
+            xyz = np.concatenate([head_xyz, ee_xyz], axis=0)
+            rgb = (
+                np.concatenate([servo.rgb.reshape(-1, 3), servo.ee_rgb.reshape(-1, 3)], axis=0)
+                / 255
+            )
+            show_point_cloud(xyz, rgb, orig=np.zeros(3))
+
             breakpoint()
 
         time.sleep(0.01)

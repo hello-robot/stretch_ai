@@ -253,16 +253,16 @@ class Observations:
     # Sequence number - which message was this?
     seq_id: int = -1
 
-    def compute_xyz(self) -> Optional[np.ndarray]:
+    def compute_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
         """Compute xyz from depth and camera intrinsics."""
         if self.depth is not None and self.camera_K is not None:
-            self.xyz = self.depth_to_xyz(self.depth, self.camera_K)
+            self.xyz = self.depth_to_xyz(self.depth * scaling, self.camera_K)
         return self.xyz
 
-    def compute_ee_xyz(self) -> Optional[np.ndarray]:
+    def compute_ee_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
         """Compute xyz from depth and camera intrinsics."""
         if self.ee_depth is not None and self.ee_camera_K is not None:
-            self.ee_xyz = self.depth_to_xyz(self.ee_depth, self.ee_camera_K)
+            self.ee_xyz = self.depth_to_xyz(self.ee_depth * scaling, self.ee_camera_K)
         return self.ee_xyz
 
     def depth_to_xyz(self, depth, camera_K) -> np.ndarray:
