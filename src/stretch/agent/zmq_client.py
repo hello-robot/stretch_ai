@@ -671,7 +671,8 @@ class HomeRobotZmqClient(RobotClient):
 
     def send_action(self, timeout: float = 10.0, verbose: bool = False) -> None:
         """Send the next action to the robot"""
-        print("-> sending", self._next_action)
+        if verbose:
+            print("-> sending", self._next_action)
         blocking = False
         block_id = None
         with self._act_lock:
