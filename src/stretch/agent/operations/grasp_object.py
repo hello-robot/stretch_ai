@@ -13,6 +13,7 @@ from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 from stretch.utils.gripper import GripperArucoDetector
+from stretch.utils.point_cloud import show_point_cloud
 
 
 class GraspObjectOperation(ManagedOperation):
@@ -45,6 +46,23 @@ class GraspObjectOperation(ManagedOperation):
     # Timing issues
     expected_network_delay = 0.2
     open_loop: bool = False
+
+    def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray):
+        """Show the point cloud for debugging purposes.
+
+        Args:
+            servo (Observations): Servo observation
+            current_xyz (np.ndarray): Current xyz location
+        """
+        # TODO: remove this, overrides existing servo state
+        servo = self.robot.get_servo_observation()
+        world_xyz = servo.get_ee_xyz_in_world_frame()
+        world_xyz_head = servo.get_xyz_in_world_frame()
+        breakpoint()
+        all_xyz = np.concatenate([world_xyz_head.reshape(-1, 3), world_xyz.reshape(-1, 3)], axis=0)
+        all_rgb = np.concatenate([servo.rgb.reshape(-1, 3), servo.ee_rgb.reshape(-1, 3)], axis=0)
+        show_point_cloud(all_xyz, all_rgb / 255, orig=current_xyz)
+        breakpoint()
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
@@ -225,12 +243,7 @@ class GraspObjectOperation(ManagedOperation):
                     and world_xyz.shape[1] == servo.semantic.shape[1]
                 ), "World xyz shape does not match semantic shape."
                 current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
-
-                from stretch.utils.point_cloud import show_point_cloud
-
-                show_point_cloud(world_xyz, servo.ee_rgb.reshape(-1, 3) / 255, orig=current_xyz)
-                obs = self.robot.get_observation()
-                breakpoint()
+                self._debug_show_point_cloud(servo, current_xyz)
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
