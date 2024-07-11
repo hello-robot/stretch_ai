@@ -13,7 +13,9 @@ from stretch.utils.point_cloud import show_point_cloud
 
 
 @click.command()
-@click.option("--robot_ip", default="192.168.1.69", help="IP address of the robot")
+@click.option(
+    "--robot_ip", default="", help="IP address of the robot (blank to use stored IP address)"
+)
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 def main(
@@ -29,10 +31,13 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    demo = RobotAgent(robot, parameters, None)
-    demo.start(visualize_map_at_start=False)
     if reset:
+        demo = RobotAgent(robot, parameters, None)
+        demo.start(visualize_map_at_start=False, can_move=True)
         demo.move_closed_loop([0, 0, 0], max_time=60.0)
+    else:
+        print("Starting")
+        robot.start()
 
     servo = None
     obs = None

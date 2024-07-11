@@ -13,6 +13,7 @@ from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 from stretch.utils.gripper import GripperArucoDetector
+from stretch.utils.point_cloud import show_point_cloud
 
 
 class GraspObjectOperation(ManagedOperation):
@@ -26,6 +27,7 @@ class GraspObjectOperation(ManagedOperation):
     # Debugging UI elements
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
+    show_point_cloud: bool = False
 
     # Thresholds for centering on object
     align_x_threshold: int = 15
@@ -45,6 +47,21 @@ class GraspObjectOperation(ManagedOperation):
     # Timing issues
     expected_network_delay = 0.2
     open_loop: bool = False
+
+    def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
+        """Show the point cloud for debugging purposes.
+
+        Args:
+            servo (Observations): Servo observation
+            current_xyz (np.ndarray): Current xyz location
+        """
+        # TODO: remove this, overrides existing servo state
+        # servo = self.robot.get_servo_observation()
+        world_xyz = servo.get_ee_xyz_in_world_frame()
+        world_xyz_head = servo.get_xyz_in_world_frame()
+        all_xyz = np.concatenate([world_xyz_head.reshape(-1, 3), world_xyz.reshape(-1, 3)], axis=0)
+        all_rgb = np.concatenate([servo.rgb.reshape(-1, 3), servo.ee_rgb.reshape(-1, 3)], axis=0)
+        show_point_cloud(all_xyz, all_rgb / 255, orig=current_xyz)
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
@@ -225,6 +242,8 @@ class GraspObjectOperation(ManagedOperation):
                     and world_xyz.shape[1] == servo.semantic.shape[1]
                 ), "World xyz shape does not match semantic shape."
                 current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
+                if self.show_point_cloud:
+                    self._debug_show_point_cloud(servo, current_xyz)
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
@@ -347,26 +366,20 @@ class GraspObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
 
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
-        ee_pos, ee_rot = model.manip_fk(joint_state)
         object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
-            # dy = relative_gripper_xyz[1] - relative_object_xyz[1]
+            ee_pos, ee_rot = model.manip_fk(joint_state)
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
             pitch_from_vertical = np.arctan2(dy, dz)
-            # current_ee_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
         else:
             pitch_from_vertical = 0.0
 
-        # Joint state goal
+        # Compute final pregrasp joint state goal and send the robot there
         joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
-
-        # Strip out fields from the full robot state to only get the 6dof manipulator state
-        # TODO: we should probably handle this in the zmq wrapper.
-        # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
         if self.servo_to_grasp:
@@ -376,12 +389,23 @@ class GraspObjectOperation(ManagedOperation):
         if not self._success:
             self.grasp_open_loop(object_xyz)
 
-    def grasp_open_loop(self, object_xyz: np.ndarray):
-        """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper."""
+    def grasp_open_loop(self, object_xyz: np.ndarray) -> bool:
+        """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
 
+        Args:
+            object_xyz (np.ndarray): Location to grasp
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+
+        model = self.robot.get_robot_model()
+        xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
         joint_state = self.robot.get_joint_state()
-        xyt = self.robot.get_base_pose()
+
+        # We assume the current end-effector orientation is the correct one, going into this
+        ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # If we failed, or if we are not servoing, then just move to the object
         target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
@@ -409,16 +433,14 @@ class GraspObjectOperation(ManagedOperation):
         # Move to the target joint state
         print(f"{self.name}: Moving to grasp position.")
         self.robot.arm_to(target_joint_state, blocking=True)
-        time.sleep(3.0)
+        time.sleep(0.5)
         print(f"{self.name}: Closing the gripper.")
         self.robot.close_gripper(blocking=True)
-        time.sleep(2.0)
+        time.sleep(0.5)
         print(f"{self.name}: Lifting the arm up so as not to hit the base.")
         self.robot.arm_to(target_joint_state_lifted, blocking=False)
-        time.sleep(2.0)
         print(f"{self.name}: Return arm to initial configuration.")
         self.robot.arm_to(joint_state, blocking=True)
-        time.sleep(3.0)
         print(f"{self.name}: Done.")
         self._success = True
 

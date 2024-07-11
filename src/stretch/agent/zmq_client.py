@@ -21,6 +21,7 @@ from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
+from stretch.utils.network import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
 
 # TODO: debug code - remove later if necessary
@@ -48,14 +49,10 @@ class HomeRobotZmqClient(RobotClient):
         recv_socket.setsockopt(zmq.RCVHWM, 1)
         recv_socket.setsockopt(zmq.CONFLATE, 1)
 
-        # Use remote computer or whatever
-        if use_remote_computer:
-            recv_address = "tcp://" + robot_ip + ":" + str(port)
-        else:
-            recv_address = "tcp://" + "127.0.0.1" + ":" + str(port)
-
+        recv_address = lookup_address(robot_ip, use_remote_computer) + ":" + str(port)
         print(f"Connecting to {recv_address} to receive {message_type}...")
         recv_socket.connect(recv_address)
+
         return recv_socket
 
     def __init__(
@@ -133,11 +130,9 @@ class HomeRobotZmqClient(RobotClient):
         self.send_socket.setsockopt(zmq.SNDHWM, 1)
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
 
-        # Use remote computer or whatever
-        if use_remote_computer:
-            self.send_address = "tcp://" + robot_ip + ":" + str(self.send_port)
-        else:
-            self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
+        self.send_address = (
+            lookup_address(robot_ip, use_remote_computer) + ":" + str(self.send_port)
+        )
 
         print(f"Connecting to {self.send_address} to send action messages...")
         self.send_socket.connect(self.send_address)

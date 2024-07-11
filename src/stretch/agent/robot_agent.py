@@ -605,7 +605,13 @@ class RobotAgent:
             name = self.semantic_sensor.get_class_name_for_id(oid)
             print(i, name, instance.score)
 
-    def start(self, goal: Optional[str] = None, visualize_map_at_start: bool = False):
+    def start(
+        self,
+        goal: Optional[str] = None,
+        visualize_map_at_start: bool = False,
+        can_move: bool = True,
+        verbose: bool = False,
+    ):
 
         # Call the robot's own startup hooks
         started = self.robot.start()
@@ -613,18 +619,22 @@ class RobotAgent:
             # update here
             raise RuntimeError("Robot failed to start!")
 
-        # First, open the gripper...
-        self.robot.switch_to_manipulation_mode()
-        self.robot.open_gripper()
+        if can_move:
+            # First, open the gripper...
+            self.robot.switch_to_manipulation_mode()
+            self.robot.open_gripper()
 
-        # Tuck the arm away
-        print("Sending arm to  home...")
-        self.robot.move_to_nav_posture()
-        print("... done.")
+            # Tuck the arm away
+            if verbose:
+                print("Sending arm to  home...")
+            self.robot.move_to_nav_posture()
+            if verbose:
+                print("... done.")
 
         # Move the robot into navigation mode
         self.robot.switch_to_navigation_mode()
-        print("- Update map after switching to navigation posture")
+        if verbose:
+            print("- Update map after switching to navigation posture")
         self.update(visualize_map=False)  # Append latest observations
 
         # Add some debugging stuff - show what 3d point clouds look like
