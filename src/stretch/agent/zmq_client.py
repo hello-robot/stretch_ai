@@ -219,15 +219,17 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
 
         # Handle blocking
+        steps = 0
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
 
-                # Resend the action until we get there
-                with self._act_lock:
-                    self._next_action["joint"] = joint_angles
-                    self._next_action["manip_blocking"] = blocking
-                self.send_action()
+                if steps % 10 == 9:
+                    # Resend the action until we get there
+                    with self._act_lock:
+                        self._next_action["joint"] = joint_angles
+                        self._next_action["manip_blocking"] = blocking
+                    self.send_action()
 
                 joint_state = self.get_joint_state()
                 if joint_state is None:
@@ -270,6 +272,7 @@ class HomeRobotZmqClient(RobotClient):
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for arm to move")
                     break
+                steps += 1
             return False
         return True
 
