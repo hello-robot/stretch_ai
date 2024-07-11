@@ -138,7 +138,10 @@ class Task:
                     # Transition if we were successful
                     self.info(f"Operation {self.current_operation.name} successful.")
                     self.current_operation = self.current_operation.on_success
-                    self.info(f"Transitioning to {self.current_operation.name}")
+                    if self.current_operation is None:
+                        self.info("Task completed successfully!")
+                    else:
+                        self.info(f"Transitioning to {self.current_operation.name}")
                 else:
                     # And if we failed
                     self.current_operation = self.current_operation.on_failure

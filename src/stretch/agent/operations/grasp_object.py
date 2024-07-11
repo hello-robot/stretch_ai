@@ -225,6 +225,8 @@ class GraspObjectOperation(ManagedOperation):
                     self.error(
                         "Lost track before even seeing object with EE camera. Just try open loop."
                     )
+                    if self.show_servo_gui:
+                        cv2.destroyAllWindows()
                     return False
                 elif failed_counter < 5:
                     failed_counter += 1
@@ -232,7 +234,9 @@ class GraspObjectOperation(ManagedOperation):
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
-                    current_xyz[2] -= 0.05
+                    current_xyz[2] -= 0.1
+                    if self.show_servo_gui:
+                        cv2.destroyAllWindows()
                     return self.grasp_open_loop(current_xyz)
             else:
                 failed_counter = 0
@@ -346,6 +350,8 @@ class GraspObjectOperation(ManagedOperation):
             prev_lift = lift
             time.sleep(self.expected_network_delay)
 
+        if self.show_servo_gui:
+            cv2.destroyAllWindows()
         return success
 
     def run(self):
