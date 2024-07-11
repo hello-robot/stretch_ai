@@ -35,6 +35,7 @@ def main(
         demo = RobotAgent(robot, parameters, None)
         demo.start(visualize_map_at_start=False, can_move=True)
         demo.move_closed_loop([0, 0, 0], max_time=60.0)
+        robot.move_to_manip_posture()
     else:
         print("Starting")
         robot.start()
