@@ -226,6 +226,12 @@ class GraspObjectOperation(ManagedOperation):
                 ), "World xyz shape does not match semantic shape."
                 current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
 
+                from stretch.utils.point_cloud import show_point_cloud
+
+                show_point_cloud(world_xyz, servo.ee_rgb.reshape(-1, 3) / 255, orig=current_xyz)
+                obs = self.robot.get_observation()
+                breakpoint()
+
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
