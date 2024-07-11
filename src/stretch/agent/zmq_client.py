@@ -303,7 +303,7 @@ class HomeRobotZmqClient(RobotClient):
     def open_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Open the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_OPEN
-        print("Opening gripper to", gripper_target)
+        print("[ZMQ CLIENT] Opening gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking=False)
         if blocking:
             t0 = timeit.default_timer()
@@ -311,11 +311,12 @@ class HomeRobotZmqClient(RobotClient):
                 joint_state = self.get_joint_state()
                 if joint_state is None:
                     continue
-                elif joint_state[HelloStretchIdx.GRIPPER] > gripper_target - 0.1:
+                gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
+                if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
-                    print("Timeout waiting for gripper to close")
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
                     break
                 self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
@@ -325,7 +326,7 @@ class HomeRobotZmqClient(RobotClient):
     def close_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Close the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_CLOSED
-        print("Closing gripper to", gripper_target)
+        print("[ZMQ CLIENT] Closing gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking=False)
         if blocking:
             t0 = timeit.default_timer()
@@ -333,7 +334,9 @@ class HomeRobotZmqClient(RobotClient):
                 joint_state = self.get_joint_state()
                 if joint_state is None:
                     continue
-                elif joint_state[HelloStretchIdx.GRIPPER] < gripper_target + 0.1:
+                gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
+                print(gripper_err, gripper_target)
+                if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:

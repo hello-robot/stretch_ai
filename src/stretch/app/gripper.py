@@ -34,6 +34,7 @@ def main(
     )
     print("Starting")
     robot.start()
+    robot.switch_to_manipulation_mode()
     if open:
         robot.open_gripper(blocking=blocking)
     if close:
