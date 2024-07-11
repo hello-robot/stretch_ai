@@ -335,12 +335,12 @@ class HomeRobotZmqClient(RobotClient):
                 if joint_state is None:
                     continue
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
-                print(gripper_err, gripper_target)
+                print("Closing gripper:", gripper_err, gripper_target)
                 if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
-                    print("Timeout waiting for gripper to close")
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
                     break
                 self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
@@ -407,6 +407,7 @@ class HomeRobotZmqClient(RobotClient):
                 continue
             pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
             tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
+            print("Waiting for head to move", pan_err, tilt_err)
             if pan_err < 0.1 and tilt_err < 0.1:
                 break
             elif resend_action is not None:
