@@ -68,7 +68,12 @@ Stretch AI is a collection of tools and applications for the Stretch robot. Thes
 
 Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
 
-All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`.
+All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`. For example:
+
+```bash
+export ROBOT_IP=192.168.1.15
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
 
 ### Print Joint States
 
@@ -81,7 +86,7 @@ python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
 You can also print out just one specific joint. For example, to just get arm extension in a loop, run:
 
 ```
-python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP --joint arm
+python -m stretch.app.print_joint_states --joint arm
 ```
 
 ### Visualization and Streaming Video
@@ -194,10 +199,10 @@ python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024
 This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
 
 ```bash
-python -m stretch.app.pickup
+python -m stretch.app.pickup --target_object toy
 ```
 
-You can add the `--reset` flag to make it go back to the start position.
+You can add the `--reset` flag to make it go back to the start position. The default object is "toy", but you can specify other objects as well, like "bottle", "cup", or "shoe".
 
 ```
 python -m stretch.app.pickup --reset

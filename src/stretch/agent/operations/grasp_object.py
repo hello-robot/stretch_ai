@@ -232,6 +232,7 @@ class GraspObjectOperation(ManagedOperation):
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
+                    current_xyz[2] -= 0.05
                     return self.grasp_open_loop(current_xyz)
             else:
                 failed_counter = 0
