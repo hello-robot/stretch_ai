@@ -122,7 +122,7 @@ class Task:
         operation.on_success = on_success
 
     def info(self, message):
-        print(colored("Task: " + str(message), "cyan"))
+        print(colored("[TASK INFO] " + str(message), "cyan"))
 
     def run(self):
         """Start the task. This is a blocking loop which will continue until there are no operations left to execute."""
