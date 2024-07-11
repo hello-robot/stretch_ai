@@ -222,6 +222,13 @@ class HomeRobotZmqClient(RobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
+
+                # Resend the action until we get there
+                with self._act_lock:
+                    self._next_action["joint"] = joint_angles
+                    self._next_action["manip_blocking"] = blocking
+                self.send_action()
+
                 joint_state = self.get_joint_state()
                 if joint_state is None:
                     time.sleep(0.01)
@@ -370,8 +377,7 @@ class HomeRobotZmqClient(RobotClient):
         with self._act_lock:
             self._next_action["posture"] = "navigation"
         self.send_action()
-        time.sleep(0.1)
-        self._wait_for_head(constants.STRETCH_NAVIGATION_Q)
+        self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
@@ -380,11 +386,13 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["posture"] = "manipulation"
         self.send_action()
         time.sleep(0.1)
-        self._wait_for_head(constants.STRETCH_PREGRASP_Q)
+        self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
         assert self.in_manipulation_mode()
 
-    def _wait_for_head(self, q: np.ndarray, timeout: float = 10.0) -> None:
+    def _wait_for_head(
+        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
+    ) -> None:
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
         while True:
@@ -395,6 +403,8 @@ class HomeRobotZmqClient(RobotClient):
             tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
             if pan_err < 0.1 and tilt_err < 0.1:
                 break
+            elif resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 print("Timeout waiting for head to move")
@@ -592,16 +602,22 @@ class HomeRobotZmqClient(RobotClient):
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
             # just_xy = len(pt) == 2
             # self.navigate_to(pt, relative, position_only=just_xy, blocking=False)
-            self.navigate_to(pt, relative, blocking=False)
-            self.wait_for_waypoint(
+            last_waypoint = i == len(trajectory) - 1
+            self.navigate_to(
                 pt,
-                pos_err_threshold=pos_err_threshold,
-                rot_err_threshold=rot_err_threshold,
-                rate=spin_rate,
-                verbose=verbose,
-                timeout=per_waypoint_timeout,
+                relative,
+                blocking=last_waypoint,
+                timeout=final_timeout if last_waypoint else per_waypoint_timeout,
             )
-        self.navigate_to(pt, blocking=True, timeout=final_timeout)
+            if not last_waypoint:
+                self.wait_for_waypoint(
+                    pt,
+                    pos_err_threshold=pos_err_threshold,
+                    rot_err_threshold=rot_err_threshold,
+                    rate=spin_rate,
+                    verbose=verbose,
+                    timeout=per_waypoint_timeout,
+                )
 
     def wait_for_waypoint(
         self,
