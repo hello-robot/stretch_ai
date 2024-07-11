@@ -45,7 +45,7 @@ class GraspObjectOperation(ManagedOperation):
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
-    max_failed_attempts: int = 10
+    max_failed_attempts: int = 20
 
     # Timing issues
     expected_network_delay = 0.2
