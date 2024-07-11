@@ -350,8 +350,7 @@ class GraspObjectOperation(ManagedOperation):
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
 
-            # breakpoint()
-            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
+            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=False)
             prev_lift = lift
             time.sleep(self.expected_network_delay)
 
