@@ -30,8 +30,8 @@ class GraspObjectOperation(ManagedOperation):
     show_point_cloud: bool = False
 
     # Thresholds for centering on object
-    align_x_threshold: int = 15
-    align_y_threshold: int = 10
+    align_x_threshold: int = 10
+    align_y_threshold: int = 7
 
     # Visual servoing config
     track_image_center: bool = False
@@ -294,6 +294,8 @@ class GraspObjectOperation(ManagedOperation):
 
             print()
             print("----- STEP VISUAL SERVOING -----")
+            print("Observed this many target mask points:", num_target_mask_pts)
+            print("failed =", failed_counter, "/", self.max_failed_attempts)
             print("cur x =", base_x)
             print(" lift =", lift)
             print("  arm =", arm)
@@ -302,6 +304,7 @@ class GraspObjectOperation(ManagedOperation):
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
             print("Center in mask?", center_in_mask)
+            print("Current XYZ:", current_xyz)
             if center_in_mask and (
                 center_depth < self.median_distance_when_grasping
                 or median_object_depth < self.median_distance_when_grasping
@@ -310,6 +313,10 @@ class GraspObjectOperation(ManagedOperation):
                 success = self._grasp()
                 break
             aligned = np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
+
+            # Fix lift to only go down
+            lift = min(lift, prev_lift)
+
             if aligned:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
@@ -345,7 +352,7 @@ class GraspObjectOperation(ManagedOperation):
                 prev_target_mask = None
 
             print("tgt x =", base_x)
-            print(" lift =", min(lift, prev_lift))
+            print(" lift =", lift)
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
 
