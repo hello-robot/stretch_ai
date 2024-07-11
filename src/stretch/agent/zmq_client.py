@@ -407,7 +407,6 @@ class HomeRobotZmqClient(RobotClient):
         t0 = timeit.default_timer()
         while True:
             with self._state_lock:
-                print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if verbose:
                     print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if self._control_mode == mode:
