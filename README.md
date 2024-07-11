@@ -19,6 +19,7 @@ Then, first try these:
 
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
+- [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
 - [Gripper](#gripper-tool) - Open and close the gripper.
 
 Advanced:
@@ -67,6 +68,8 @@ Stretch AI is a collection of tools and applications for the Stretch robot. Thes
 
 Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
 
+All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`.
+
 ### Print Joint States
 
 To make sure the robot is  connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
@@ -99,6 +102,20 @@ You can visualize gripper Aruco markers as well; the aruco markers can be used t
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
+```
+
+### Show Point Cloud
+
+Show a joint point cloud from the end effector and head cameras. This will open an Open3d window with the point cloud, aggregated between the two cameras and displayed in world frame. It will additionally show the map's origin with a small coordinate axis; the blue arrow points up (z), the red arrow points right (x), and the green arrow points forward (y).
+
+```bash
+python -m stretch.app.show_point_cloud
+```
+
+You can use the `--reset` flag to put the robot into its default manipulation posture on the origin (0, 0, 0). Note that this is a blind, unsafe motion! Use with care.
+
+```bash
+python -m stretch.app.show_point_cloud --reset
 ```
 
 ### Gripper Tool

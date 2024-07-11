@@ -23,9 +23,7 @@ from stretch.perception import create_semantic_sensor
 
 @click.command()
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
-@click.option("--recv_port", default=4401, help="Port to receive observations on")
-@click.option("--send_port", default=4402, help="Port to send actions to on the robot")
-@click.option("--robot_ip", default="192.168.1.15")
+@click.option("--robot_ip", default="")
 @click.option("--rate", default=5, type=int)
 @click.option("--visualize", default=False, is_flag=True)
 @click.option("--manual-wait", default=False, is_flag=True)
@@ -64,8 +62,6 @@ def main(
     write_instance_images: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     local: bool = True,
-    recv_port: int = 4401,
-    send_port: int = 4402,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
     **kwargs,
@@ -76,8 +72,6 @@ def main(
 
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
-        recv_port=recv_port,
-        send_port=send_port,
         use_remote_computer=(not local),
         parameters=parameters,
     )

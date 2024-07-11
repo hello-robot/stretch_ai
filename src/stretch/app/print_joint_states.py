@@ -12,7 +12,7 @@ from stretch.motion import HelloStretchIdx
 
 
 @click.command()
-@click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
+@click.option("--robot_ip", default="", help="IP address of the robot")
 @click.option(
     "--local",
     is_flag=True,
