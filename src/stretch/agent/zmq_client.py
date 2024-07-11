@@ -32,7 +32,6 @@ from stretch.utils.point_cloud import show_point_cloud
 
 class HomeRobotZmqClient(RobotClient):
 
-    update_control_mode_from_full_obs: bool = False
     update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000
 
@@ -350,6 +349,7 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["control_mode"] = "navigation"
         self.send_action()
         self._wait_for_mode("navigation")
+        assert self.in_navigation_mode()
 
     def in_navigation_mode(self) -> bool:
         """Returns true if we are navigating (robot head forward, velocity control on)"""
@@ -362,22 +362,27 @@ class HomeRobotZmqClient(RobotClient):
         with self._act_lock:
             self._next_action["control_mode"] = "manipulation"
         self.send_action()
+        time.sleep(0.1)
         self._wait_for_mode("manipulation")
+        assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "navigation"
         self.send_action()
-        self._wait_for_mode("navigation")
+        time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q)
+        self._wait_for_mode("navigation")
+        assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "manipulation"
         self.send_action()
-        self._wait_for_mode("manipulation")
-        # TODO: wait for head
+        time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q)
+        self._wait_for_mode("manipulation")
+        assert self.in_manipulation_mode()
 
     def _wait_for_head(self, q: np.ndarray, timeout: float = 10.0) -> None:
         """Wait for the head to move to a particular configuration."""
@@ -402,6 +407,7 @@ class HomeRobotZmqClient(RobotClient):
         t0 = timeit.default_timer()
         while True:
             with self._state_lock:
+                print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if verbose:
                     print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if self._control_mode == mode:
@@ -410,6 +416,7 @@ class HomeRobotZmqClient(RobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
+        assert self._control_mode == mode
 
     def _wait_for_action(
         self,
@@ -519,8 +526,6 @@ class HomeRobotZmqClient(RobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            if self.update_control_mode_from_full_obs:
-                self._control_mode = obs["control_mode"]
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = self._last_step
@@ -533,9 +538,8 @@ class HomeRobotZmqClient(RobotClient):
         """
         with self._state_lock:
             self._state = state
-            if not self.update_control_mode_from_full_obs:
-                self._control_mode = state["control_mode"]
-                self._at_goal = state["at_goal"]
+            self._control_mode = state["control_mode"]
+            self._at_goal = state["at_goal"]
 
     def at_goal(self) -> bool:
         """Check if the robot is at the goal.
@@ -650,7 +654,7 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def send_action(self, timeout: float = 10.0):
+    def send_action(self, timeout: float = 10.0, verbose: bool = False) -> None:
         """Send the next action to the robot"""
         print("-> sending", self._next_action)
         blocking = False
@@ -680,7 +684,7 @@ class HomeRobotZmqClient(RobotClient):
             self._wait_for_action(
                 block_id,
                 goal_angle=goal_angle,
-                verbose=True,
+                verbose=verbose,
                 timeout=timeout,
                 # resend_action=current_action,
             )

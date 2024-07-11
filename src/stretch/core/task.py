@@ -1,6 +1,8 @@
 import abc
 from typing import Optional
 
+from termcolor import colored
+
 
 class Operation:
     pass
@@ -119,6 +121,9 @@ class Task:
         on_success = self._operations[on_success_name]
         operation.on_success = on_success
 
+    def info(self, message):
+        print(colored("Task: " + str(message), "cyan"))
+
     def run(self):
         """Start the task. This is a blocking loop which will continue until there are no operations left to execute."""
         self.current_operation = self.initial_operation
@@ -126,15 +131,19 @@ class Task:
             raise ValueError("No initial operation set.")
         while self.current_operation is not None:
             if self.current_operation.can_start():
+                self.info(f"Starting operation {self.current_operation.name}")
                 self.current_operation.run()
+                self.info("Operation complete.")
                 if self.current_operation.was_successful():
                     # Transition if we were successful
+                    self.info(f"Operation {self.current_operation.name} successful.")
                     self.current_operation = self.current_operation.on_success
+                    self.info(f"Transitioning to {self.current_operation.name}")
                 else:
                     # And if we failed
                     self.current_operation = self.current_operation.on_failure
             else:
-                print(f"Operation {self.current_operation.name} cannot start.")
+                self.info(f"Operation {self.current_operation.name} cannot start.")
                 if self.current_operation.on_cannot_start is None:
                     raise ValueError("Cannot start critical operation.")
                 self.current_operation = self.current_operation.on_cannot_start
