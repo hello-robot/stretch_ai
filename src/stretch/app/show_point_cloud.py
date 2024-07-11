@@ -36,6 +36,7 @@ def main(
         demo.start(visualize_map_at_start=False, can_move=True)
         demo.move_closed_loop([0, 0, 0], max_time=60.0)
     else:
+        print("Starting")
         robot.start()
 
     servo = None

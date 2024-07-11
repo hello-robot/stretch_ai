@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import trimesh
 
 
 class GeneralTaskState(Enum):
@@ -293,6 +294,7 @@ class Observations:
             self.compute_xyz(scaling=scaling)
         if self.xyz is not None and self.camera_pose is not None:
             return self.transform_points(self.xyz, self.camera_pose)
+        return None
 
     def transform_points(self, points: np.ndarray, pose: np.ndarray):
         """Transform points to world frame."""

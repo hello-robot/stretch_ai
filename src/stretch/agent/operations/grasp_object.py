@@ -27,6 +27,7 @@ class GraspObjectOperation(ManagedOperation):
     # Debugging UI elements
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
+    show_point_cloud: bool = False
 
     # Thresholds for centering on object
     align_x_threshold: int = 15
@@ -47,7 +48,7 @@ class GraspObjectOperation(ManagedOperation):
     expected_network_delay = 0.2
     open_loop: bool = False
 
-    def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray):
+    def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
 
         Args:
@@ -55,14 +56,12 @@ class GraspObjectOperation(ManagedOperation):
             current_xyz (np.ndarray): Current xyz location
         """
         # TODO: remove this, overrides existing servo state
-        servo = self.robot.get_servo_observation()
+        # servo = self.robot.get_servo_observation()
         world_xyz = servo.get_ee_xyz_in_world_frame()
         world_xyz_head = servo.get_xyz_in_world_frame()
-        breakpoint()
         all_xyz = np.concatenate([world_xyz_head.reshape(-1, 3), world_xyz.reshape(-1, 3)], axis=0)
         all_rgb = np.concatenate([servo.rgb.reshape(-1, 3), servo.ee_rgb.reshape(-1, 3)], axis=0)
         show_point_cloud(all_xyz, all_rgb / 255, orig=current_xyz)
-        breakpoint()
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
@@ -243,7 +242,8 @@ class GraspObjectOperation(ManagedOperation):
                     and world_xyz.shape[1] == servo.semantic.shape[1]
                 ), "World xyz shape does not match semantic shape."
                 current_xyz = world_xyz[int(mask_center[0]), int(mask_center[1])]
-                self._debug_show_point_cloud(servo, current_xyz)
+                if self.show_point_cloud:
+                    self._debug_show_point_cloud(servo, current_xyz)
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui:
