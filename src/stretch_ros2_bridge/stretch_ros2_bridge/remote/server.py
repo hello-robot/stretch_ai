@@ -325,7 +325,6 @@ class ZmqServer(CommsNode):
                 "head_cam/pose": self.client.head.get_pose(rotated=False),
                 "robot/config": obs.joint,
             }
-
             self.send_servo_socket.send_pyobj(d405_output)
 
             # Finish with some speed info

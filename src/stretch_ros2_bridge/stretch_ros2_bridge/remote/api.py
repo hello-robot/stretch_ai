@@ -6,6 +6,7 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import torch
+import trimesh.transformations as tra
 
 from stretch.core.interfaces import Observations
 from stretch.core.robot import ControlMode, RobotClient
@@ -31,6 +32,7 @@ class StretchClient(RobotClient):
 
     camera_frame = "camera_color_optical_frame"
     ee_camera_frame = "gripper_camera_color_optical_frame"
+    world_frame = "map"
 
     def __init__(
         self,
@@ -153,7 +155,10 @@ class StretchClient(RobotClient):
 
     @property
     def ee_camera_pose(self):
-        return self._ros_client.get_frame_pose(self.ee_camera_frame)
+        p0 = self._ros_client.get_frame_pose(self.ee_camera_frame, base_frame=self.world_frame)
+        if p0 is not None:
+            p0 = p0 @ tra.euler_matrix(0, 0, 0)
+        return p0
 
     @property
     def rgb_cam(self):
