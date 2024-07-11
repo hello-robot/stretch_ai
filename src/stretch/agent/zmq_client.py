@@ -12,6 +12,7 @@ import numpy as np
 import zmq
 from termcolor import colored
 
+import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
@@ -368,17 +369,37 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["posture"] = "navigation"
         self.send_action()
         self._wait_for_mode("navigation")
+        self._wait_for_head(constants.STRETCH_NAVIGATION_Q)
 
     def move_to_manip_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "manipulation"
         self.send_action()
         self._wait_for_mode("manipulation")
+        # TODO: wait for head
+        self._wait_for_head(constants.STRETCH_PREGRASP_Q)
+
+    def _wait_for_head(self, q: np.ndarray, timeout: float = 10.0) -> None:
+        """Wait for the head to move to a particular configuration."""
+        t0 = timeit.default_timer()
+        while True:
+            joint_state = self.get_joint_state()
+            if joint_state is None:
+                continue
+            pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
+            tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
+            if pan_err < 0.1 and tilt_err < 0.1:
+                break
+            t1 = timeit.default_timer()
+            if t1 - t0 > timeout:
+                print("Timeout waiting for head to move")
+                break
+            time.sleep(0.01)
 
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
         while True:
-            with self._obs_lock:
+            with self._state_lock:
                 if verbose:
                     print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if self._control_mode == mode:
