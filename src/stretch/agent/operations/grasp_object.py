@@ -45,7 +45,7 @@ class GraspObjectOperation(ManagedOperation):
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
-    max_failed_attempts: int = 20
+    max_failed_attempts: int = 10
 
     # Timing issues
     expected_network_delay = 0.2
@@ -233,8 +233,7 @@ class GraspObjectOperation(ManagedOperation):
                     return False
                 elif failed_counter < self.max_failed_attempts:
                     failed_counter += 1
-                    time.sleep(0.05)
-                    continue
+                    mask_center = np.array([center_y, center_x])
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
