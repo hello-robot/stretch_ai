@@ -5,11 +5,13 @@
 from typing import Optional, Tuple
 
 import numpy as np
-import pybullet as pb
 
 from stretch.motion.base.ik_solver_base import IKSolverBase
 from stretch.motion.robot import RobotModel
 from stretch.utils.bullet import PbArticulatedObject, PbClient
+
+# TODO: resolve this
+# import pybullet as pb
 
 
 class BulletRobotModel(RobotModel):
