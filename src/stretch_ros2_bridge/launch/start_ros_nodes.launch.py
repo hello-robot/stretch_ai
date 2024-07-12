@@ -25,13 +25,17 @@ def generate_launch_description():
         "align_depth.enable": "True",
         "camera_name": "camera",
         "camera_namespace": "",
-        "decimation_filter.enable": "True",
-        "spatial_filter.enable": "True",
-        "temporal_filter.enable": "True",
-        "disparity_filter.enable": "False",
+        # "decimation_filter.enable": "True",
+        # "spatial_filter.enable": "True",
+        # "temporal_filter.enable": "True",
+        # "disparity_filter.enable": "False",
         "device_type": "d435i",
-        "rgb_camera.profile": "1280x720x15",
-        "depth_module.profile": "848x480x15",
+        "rgb_camera.color_profile": "640x480x30",
+        "depth_module.infra_profile": "640x480x30",
+        "enable_gyro": "true",
+        "enable_accel": "true",
+        "gyro_fps": "200",
+        "accel_fps": "100",
     }
     realsense_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(

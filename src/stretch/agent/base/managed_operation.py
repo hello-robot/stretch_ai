@@ -35,6 +35,9 @@ class ManagedOperation(Operation):
     def error(self, message: str):
         print(colored(f"Error in {self.name}: {message}", "red"))
 
+    def info(self, message: str):
+        print(colored(f"{self.name}: {message}", "blue"))
+
     def cheer(self, message: str):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))

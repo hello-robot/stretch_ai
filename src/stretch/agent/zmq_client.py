@@ -32,7 +32,6 @@ from stretch.utils.point_cloud import show_point_cloud
 
 class HomeRobotZmqClient(RobotClient):
 
-    update_control_mode_from_full_obs: bool = False
     update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000
 
@@ -220,9 +219,18 @@ class HomeRobotZmqClient(RobotClient):
         self.send_action()
 
         # Handle blocking
+        steps = 0
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
+
+                if steps % 10 == 9:
+                    # Resend the action until we get there
+                    with self._act_lock:
+                        self._next_action["joint"] = joint_angles
+                        self._next_action["manip_blocking"] = blocking
+                    self.send_action()
+
                 joint_state = self.get_joint_state()
                 if joint_state is None:
                     time.sleep(0.01)
@@ -264,6 +272,7 @@ class HomeRobotZmqClient(RobotClient):
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for arm to move")
                     break
+                steps += 1
             return False
         return True
 
@@ -294,7 +303,7 @@ class HomeRobotZmqClient(RobotClient):
     def open_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Open the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_OPEN
-        print("Opening gripper to", gripper_target)
+        print("[ZMQ CLIENT] Opening gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking=False)
         if blocking:
             t0 = timeit.default_timer()
@@ -302,11 +311,12 @@ class HomeRobotZmqClient(RobotClient):
                 joint_state = self.get_joint_state()
                 if joint_state is None:
                     continue
-                elif joint_state[HelloStretchIdx.GRIPPER] > gripper_target - 0.1:
+                gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
+                if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
-                    print("Timeout waiting for gripper to close")
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
                     break
                 self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
@@ -316,7 +326,7 @@ class HomeRobotZmqClient(RobotClient):
     def close_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Close the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_CLOSED
-        print("Closing gripper to", gripper_target)
+        print("[ZMQ CLIENT] Closing gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking=False)
         if blocking:
             t0 = timeit.default_timer()
@@ -324,11 +334,13 @@ class HomeRobotZmqClient(RobotClient):
                 joint_state = self.get_joint_state()
                 if joint_state is None:
                     continue
-                elif joint_state[HelloStretchIdx.GRIPPER] < gripper_target + 0.1:
+                gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
+                print("Closing gripper:", gripper_err, gripper_target)
+                if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
-                    print("Timeout waiting for gripper to close")
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
                     break
                 self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
@@ -350,6 +362,7 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["control_mode"] = "navigation"
         self.send_action()
         self._wait_for_mode("navigation")
+        assert self.in_navigation_mode()
 
     def in_navigation_mode(self) -> bool:
         """Returns true if we are navigating (robot head forward, velocity control on)"""
@@ -362,24 +375,30 @@ class HomeRobotZmqClient(RobotClient):
         with self._act_lock:
             self._next_action["control_mode"] = "manipulation"
         self.send_action()
+        time.sleep(0.1)
         self._wait_for_mode("manipulation")
+        assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "navigation"
         self.send_action()
+        self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
-        self._wait_for_head(constants.STRETCH_NAVIGATION_Q)
+        assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "manipulation"
         self.send_action()
+        time.sleep(0.1)
+        self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
-        # TODO: wait for head
-        self._wait_for_head(constants.STRETCH_PREGRASP_Q)
+        assert self.in_manipulation_mode()
 
-    def _wait_for_head(self, q: np.ndarray, timeout: float = 10.0) -> None:
+    def _wait_for_head(
+        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
+    ) -> None:
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
         while True:
@@ -388,8 +407,11 @@ class HomeRobotZmqClient(RobotClient):
                 continue
             pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
             tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
+            print("Waiting for head to move", pan_err, tilt_err)
             if pan_err < 0.1 and tilt_err < 0.1:
                 break
+            elif resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 print("Timeout waiting for head to move")
@@ -410,6 +432,7 @@ class HomeRobotZmqClient(RobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
+        assert self._control_mode == mode
 
     def _wait_for_action(
         self,
@@ -519,8 +542,6 @@ class HomeRobotZmqClient(RobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            if self.update_control_mode_from_full_obs:
-                self._control_mode = obs["control_mode"]
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = self._last_step
@@ -533,9 +554,8 @@ class HomeRobotZmqClient(RobotClient):
         """
         with self._state_lock:
             self._state = state
-            if not self.update_control_mode_from_full_obs:
-                self._control_mode = state["control_mode"]
-                self._at_goal = state["at_goal"]
+            self._control_mode = state["control_mode"]
+            self._at_goal = state["at_goal"]
 
     def at_goal(self) -> bool:
         """Check if the robot is at the goal.
@@ -589,16 +609,22 @@ class HomeRobotZmqClient(RobotClient):
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
             # just_xy = len(pt) == 2
             # self.navigate_to(pt, relative, position_only=just_xy, blocking=False)
-            self.navigate_to(pt, relative, blocking=False)
-            self.wait_for_waypoint(
+            last_waypoint = i == len(trajectory) - 1
+            self.navigate_to(
                 pt,
-                pos_err_threshold=pos_err_threshold,
-                rot_err_threshold=rot_err_threshold,
-                rate=spin_rate,
-                verbose=verbose,
-                timeout=per_waypoint_timeout,
+                relative,
+                blocking=last_waypoint,
+                timeout=final_timeout if last_waypoint else per_waypoint_timeout,
             )
-        self.navigate_to(pt, blocking=True, timeout=final_timeout)
+            if not last_waypoint:
+                self.wait_for_waypoint(
+                    pt,
+                    pos_err_threshold=pos_err_threshold,
+                    rot_err_threshold=rot_err_threshold,
+                    rate=spin_rate,
+                    verbose=verbose,
+                    timeout=per_waypoint_timeout,
+                )
 
     def wait_for_waypoint(
         self,
@@ -650,9 +676,10 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def send_action(self, timeout: float = 10.0):
+    def send_action(self, timeout: float = 10.0, verbose: bool = False) -> None:
         """Send the next action to the robot"""
-        print("-> sending", self._next_action)
+        if verbose:
+            print("-> sending", self._next_action)
         blocking = False
         block_id = None
         with self._act_lock:
@@ -680,7 +707,7 @@ class HomeRobotZmqClient(RobotClient):
             self._wait_for_action(
                 block_id,
                 goal_angle=goal_angle,
-                verbose=True,
+                verbose=verbose,
                 timeout=timeout,
                 # resend_action=current_action,
             )

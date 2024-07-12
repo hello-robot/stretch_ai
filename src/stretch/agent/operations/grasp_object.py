@@ -30,8 +30,8 @@ class GraspObjectOperation(ManagedOperation):
     show_point_cloud: bool = False
 
     # Thresholds for centering on object
-    align_x_threshold: int = 15
-    align_y_threshold: int = 10
+    align_x_threshold: int = 10
+    align_y_threshold: int = 7
 
     # Visual servoing config
     track_image_center: bool = False
@@ -43,6 +43,9 @@ class GraspObjectOperation(ManagedOperation):
     wrist_pitch_step: float = 0.1
     median_distance_when_grasping: float = 0.175
     percentage_of_image_when_grasping: float = 0.2
+    open_loop_z_offset: float = -0.1
+    open_loop_x_offset: float = -0.1
+    max_failed_attempts: int = 10
 
     # Timing issues
     expected_network_delay = 0.2
@@ -225,14 +228,19 @@ class GraspObjectOperation(ManagedOperation):
                     self.error(
                         "Lost track before even seeing object with EE camera. Just try open loop."
                     )
+                    if self.show_servo_gui:
+                        cv2.destroyAllWindows()
                     return False
-                elif failed_counter < 5:
+                elif failed_counter < self.max_failed_attempts:
                     failed_counter += 1
-                    continue
+                    mask_center = np.array([center_y, center_x])
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
-                    current_xyz[2] -= 0.05
+                    current_xyz[0] += self.open_loop_x_offset
+                    current_xyz[2] += self.open_loop_z_offset
+                    if self.show_servo_gui:
+                        cv2.destroyAllWindows()
                     return self.grasp_open_loop(current_xyz)
             else:
                 failed_counter = 0
@@ -286,6 +294,8 @@ class GraspObjectOperation(ManagedOperation):
 
             print()
             print("----- STEP VISUAL SERVOING -----")
+            print("Observed this many target mask points:", num_target_mask_pts)
+            print("failed =", failed_counter, "/", self.max_failed_attempts)
             print("cur x =", base_x)
             print(" lift =", lift)
             print("  arm =", arm)
@@ -294,6 +304,7 @@ class GraspObjectOperation(ManagedOperation):
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
             print("Center in mask?", center_in_mask)
+            print("Current XYZ:", current_xyz)
             if center_in_mask and (
                 center_depth < self.median_distance_when_grasping
                 or median_object_depth < self.median_distance_when_grasping
@@ -302,6 +313,10 @@ class GraspObjectOperation(ManagedOperation):
                 success = self._grasp()
                 break
             aligned = np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
+
+            # Fix lift to only go down
+            lift = min(lift, prev_lift)
+
             if aligned:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
@@ -337,15 +352,16 @@ class GraspObjectOperation(ManagedOperation):
                 prev_target_mask = None
 
             print("tgt x =", base_x)
-            print(" lift =", min(lift, prev_lift))
+            print(" lift =", lift)
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
 
-            # breakpoint()
-            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=True)
+            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=False)
             prev_lift = lift
             time.sleep(self.expected_network_delay)
 
+        if self.show_servo_gui:
+            cv2.destroyAllWindows()
         return success
 
     def run(self):

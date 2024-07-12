@@ -77,7 +77,9 @@ class PickupManager(TaskManager):
         """Create a task plan that will pick up a single object in the environment. It will explore until it finds a single object, and will then pick it up and place it in a receptacle."""
 
         # Put the robot into navigation mode
-        go_to_navigation_mode = GoToNavOperation("go to navigation mode", self)
+        go_to_navigation_mode = GoToNavOperation(
+            "go to navigation mode", self, retry_on_failure=True
+        )
 
         if add_rotate:
             # Spin in place to find objects.
