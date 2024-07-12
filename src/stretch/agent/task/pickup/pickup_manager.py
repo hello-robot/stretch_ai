@@ -135,6 +135,7 @@ class PickupManager(TaskManager):
             parent=pregrasp_object,
             on_failure=pregrasp_object,
             on_cannot_start=go_to_object,
+            retry_on_failure=False,
         )
         grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
         place_object_on_receptacle = PlaceObjectOperation(
@@ -160,6 +161,7 @@ class PickupManager(TaskManager):
         task.connect_on_success(pregrasp_object.name, grasp_object.name)
         task.connect_on_success(grasp_object.name, go_to_receptacle.name)
         task.connect_on_success(go_to_receptacle.name, place_object_on_receptacle.name)
+
         task.connect_on_success(search_for_receptacle.name, search_for_object.name)
 
         task.connect_on_cannot_start(go_to_object.name, search_for_object.name)
