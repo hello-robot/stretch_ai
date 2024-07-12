@@ -18,8 +18,8 @@ ros2 launch stretch_ros2_bridge server.launch.py
 On your PC, you can easily send commands and stream data:
 
 ```python
-from stretch.agent import RobotAgent
-robot = RobotAgent(robot_ip="192.168.1.15")  # Replace with your robot's IP
+from stretch.agent import RobotClient
+robot = RobotClient(robot_ip="192.168.1.15")  # Replace with your robot's IP
 # On future connection attempts, the IP address can be left blank
 
 # Turn head towards robot's hand
@@ -37,9 +37,11 @@ robot.navigate_to([0, 0, 0])
 # Move the robot 0.5m forward
 robot.navigate_to([0.5, 0, 0], relative=True)
 
-# Rotate the robot 90 degrees
-import numpy as np
-robot.navigate_to([0, 0, np.pi/2], relative=True)
+# Rotate the robot 90 degrees to the left
+robot.navigate_to([0, 0, 3.14159/2], relative=True)
+
+# And to the right
+robot.navigate_to([0, 0, -3.14159/2], relative=True)
 ```
 
 ## Apps
