@@ -7,6 +7,41 @@
 
 Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
 
+## Quickstart
+
+Start the server on your robot:
+
+```bash
+ros2 launch stretch_ros2_bridge server.launch.py
+```
+
+On your PC, you can easily send commands and stream data:
+
+```python
+from stretch.agent import RobotAgent
+robot = RobotAgent(robot_ip="192.168.1.15")  # Replace with your robot's IP
+# On future connection attempts, the IP address can be left blank
+
+# Turn head towards robot's hand
+robot.move_to_manip_posture()
+
+# Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
+robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
+
+# Switch to navigation mode
+robot.move_to_nav_posture()
+
+# Move the robot back to origin
+robot.navigate_to([0, 0, 0])
+
+# Move the robot 0.5m forward
+robot.navigate_to([0.5, 0, 0], relative=True)
+
+# Rotate the robot 90 degrees
+import numpy as np
+robot.navigate_to([0, 0, np.pi/2], relative=True)
+```
+
 ## Apps
 
 After [installation](#installation), on the robot, run the server:

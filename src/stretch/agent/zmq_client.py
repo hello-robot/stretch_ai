@@ -16,7 +16,7 @@ import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
-from stretch.core.parameters import Parameters
+from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import RobotClient
 from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
@@ -57,7 +57,7 @@ class HomeRobotZmqClient(RobotClient):
 
     def __init__(
         self,
-        robot_ip: str = "192.168.1.15",
+        robot_ip: str = "",
         recv_port: int = 4401,
         send_port: int = 4402,
         recv_state_port: int = 4403,
@@ -96,6 +96,8 @@ class HomeRobotZmqClient(RobotClient):
         self._seq_id = 0  # Number of messages we received
         self._started = False
 
+        if parameters is None or len(parameters) == 0:
+            parameters = get_parameters("default_planner.yaml")
         self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
@@ -195,7 +197,12 @@ class HomeRobotZmqClient(RobotClient):
             blocking: Whether to block until the motion is complete
             timeout: How long to wait for the motion to complete
             verbose: Whether to print out debug information
+
+        Returns:
+            bool: Whether the motion was successful
         """
+        if not self.in_manipulation_mode():
+            raise ValueError("Robot must be in manipulation mode to move the arm")
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
         if len(joint_angles) > 6:

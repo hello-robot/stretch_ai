@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import Parameters, get_parameters
 from stretch.motion import HelloStretchIdx
 
 
@@ -18,7 +17,7 @@ from stretch.motion import HelloStretchIdx
     is_flag=True,
     help="Set if we are executing on the robot and not on a remote computer",
 )
-@click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
+@click.option("--parameter_file", default="", help="Path to parameter file")
 @click.option("-j", "--joint", default="", help="Joint to print")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -31,7 +30,6 @@ def main(
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
-        parameters=parameters,
     )
     robot.start()
     try:

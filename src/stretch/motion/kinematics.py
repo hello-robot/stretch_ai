@@ -9,7 +9,6 @@ from typing import List, Optional, Tuple
 import numpy as np
 from scipy.spatial.transform.rotation import Rotation
 
-import stretch.utils.bullet as hrb
 from stretch.core.interfaces import ContinuousFullBodyAction
 from stretch.motion.constants import (
     MANIP_STRETCH_URDF,
@@ -368,10 +367,6 @@ class HelloStretchKinematics:
 
     def get_backend(self):
         return self.backend
-
-    def get_object(self) -> hrb.PbArticulatedObject:
-        """return back-end reference to the Bullet object"""
-        return self.ref
 
     def _set_joint_group(self, idxs, val):
         for idx in idxs:
