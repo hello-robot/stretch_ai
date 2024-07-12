@@ -96,7 +96,7 @@ class HomeRobotZmqClient(RobotClient):
         self._seq_id = 0  # Number of messages we received
         self._started = False
 
-        if parameters is None or len(parameters) == 0:
+        if parameters is None:
             parameters = get_parameters("default_planner.yaml")
         self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]

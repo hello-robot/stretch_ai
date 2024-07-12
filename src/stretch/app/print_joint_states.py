@@ -17,7 +17,6 @@ from stretch.motion import HelloStretchIdx
     is_flag=True,
     help="Set if we are executing on the robot and not on a remote computer",
 )
-@click.option("--parameter_file", default="", help="Path to parameter file")
 @click.option("-j", "--joint", default="", help="Joint to print")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -26,7 +25,6 @@ def main(
     joint: str = "",
 ):
     # Create robot
-    parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
