@@ -192,48 +192,23 @@ class StretchClient(RobotClient):
     def move_to_manip_posture(self):
         """Move the arm and head into manip mode posture: gripper down, head facing the gripper."""
         self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=True)
         pos = self.manip._extract_joint_pos(STRETCH_PREGRASP_Q)
         print("- go to configuration:", pos)
         self.manip.goto_joint_positions(pos, blocking=True)
+        self.head.look_at_ee(blocking=True)
         print("- Robot switched to manipulation mode.")
-
-    def move_to_demo_pregrasp_posture(self):
-        """Move the arm and head into pre-demo posture: gripper straight, arm way down, head facing the gripper."""
-        self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=True)
-        self.manip.goto_joint_positions(
-            self.manip._extract_joint_pos(STRETCH_DEMO_PREGRASP_Q), blocking=True
-        )
-
-    def move_to_pre_demo_posture(self):
-        """Move the arm and head into pre-demo posture: gripper straight, arm way down, head facing the gripper."""
-        self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=True)
-        self.manip.goto_joint_positions(
-            self.manip._extract_joint_pos(STRETCH_PREDEMO_Q), blocking=True
-        )
 
     def move_to_nav_posture(self):
         """Move the arm and head into nav mode. The head will be looking front."""
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        # self.head.look_front(blocking=True)
         self.manip.goto_joint_positions(
             self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q), blocking=True
         )
+        self.head.look_front(blocking=True)
         self.switch_to_navigation_mode()
         print("- Robot switched to navigation mode.")
-
-    def move_to_post_nav_posture(self):
-        """Move the arm to nav mode, head to nav mode with PREGRASP's tilt. The head will be looking front."""
-        self.switch_to_manipulation_mode()
-        # self.head.look_front(blocking=False)
-        self.manip.goto_joint_positions(
-            self.manip._extract_joint_pos(STRETCH_POSTNAV_Q), blocking=True
-        )
-        self.switch_to_navigation_mode()
 
     def get_base_pose(self) -> np.ndarray:
         """Get the robot's base pose as XYT."""
