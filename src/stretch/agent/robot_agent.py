@@ -279,7 +279,7 @@ class RobotAgent:
                     import matplotlib.pyplot as plt
 
                 # Check to see if we have a receptacle in the map
-                instances = self.voxel_map.instances.get_instances()
+                instances = self.voxel_map.get_instances()
                 for ins, instance in enumerate(instances):
                     name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
                     print(

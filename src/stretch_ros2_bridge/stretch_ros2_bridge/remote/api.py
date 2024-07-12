@@ -219,7 +219,7 @@ class StretchClient(RobotClient):
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        self.head.look_front(blocking=True)
+        # self.head.look_front(blocking=True)
         self.manip.goto_joint_positions(
             self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q), blocking=True
         )
@@ -229,7 +229,7 @@ class StretchClient(RobotClient):
     def move_to_post_nav_posture(self):
         """Move the arm to nav mode, head to nav mode with PREGRASP's tilt. The head will be looking front."""
         self.switch_to_manipulation_mode()
-        self.head.look_front(blocking=False)
+        # self.head.look_front(blocking=False)
         self.manip.goto_joint_positions(
             self.manip._extract_joint_pos(STRETCH_POSTNAV_Q), blocking=True
         )
