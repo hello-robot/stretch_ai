@@ -193,9 +193,9 @@ class StretchClient(RobotClient):
         """Move the arm and head into manip mode posture: gripper down, head facing the gripper."""
         self.switch_to_manipulation_mode()
         pos = self.manip._extract_joint_pos(STRETCH_PREGRASP_Q)
-        print("- go to configuration:", pos)
-        self.manip.goto_joint_positions(pos, blocking=True)
-        self.head.look_at_ee(blocking=True)
+        pan, tilt = self._robot_model.look_at_ee
+        print("- go to configuration:", pos, "pan =", pan, "tilt =", tilt)
+        self.manip.goto_joint_positions(pos, blocking=True, pan=pan, tilt=tilt)
         print("- Robot switched to manipulation mode.")
 
     def move_to_nav_posture(self):
@@ -203,10 +203,10 @@ class StretchClient(RobotClient):
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        self.manip.goto_joint_positions(
-            self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q), blocking=True
-        )
-        self.head.look_front(blocking=True)
+        pan, tilt = self._robot_model.look_front
+        pos = self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q)
+        print("- go to configuration:", pos, "pan =", pan, "tilt =", tilt)
+        self.manip.goto_joint_positions(pos, blocking=True, pan=pan, tilt=tilt)
         self.switch_to_navigation_mode()
         print("- Robot switched to navigation mode.")
 
