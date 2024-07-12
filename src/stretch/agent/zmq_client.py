@@ -397,7 +397,11 @@ class HomeRobotZmqClient(RobotClient):
         assert self.in_manipulation_mode()
 
     def _wait_for_head(
-        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
+        self,
+        q: np.ndarray,
+        timeout: float = 10.0,
+        resend_action: Optional[dict] = None,
+        verbose: bool = True,
     ) -> None:
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
@@ -407,7 +411,8 @@ class HomeRobotZmqClient(RobotClient):
                 continue
             pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
             tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
-            print("Waiting for head to move", pan_err, tilt_err)
+            if verbose:
+                print("Waiting for head to move", pan_err, tilt_err)
             if pan_err < 0.1 and tilt_err < 0.1:
                 break
             elif resend_action is not None:
