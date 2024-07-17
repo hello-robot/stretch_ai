@@ -451,7 +451,18 @@ class WebcamArucoDetector:
                 distance_between_markers = self.tongs_open_grip_width
             hypotenuse = self.tongs_pin_joint_to_marker_center
             opposite_side = distance_between_markers / 2.0
-            adjacent_side = math.sqrt((hypotenuse * hypotenuse) - (opposite_side * opposite_side))
+            try:
+                adjacent_side = math.sqrt(
+                    (hypotenuse * hypotenuse) - (opposite_side * opposite_side)
+                )
+            except ValueError:
+                print(
+                    "WebcamArucoDetector.process_tongs: ValueError: hypotenuse =",
+                    hypotenuse,
+                    "opposite_side =",
+                    opposite_side,
+                )
+                return None
             grip_pos = grip_pos + (-(adjacent_side) * grip_y_axis)
 
             virtual_marker_name = "tongs"
