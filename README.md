@@ -140,7 +140,7 @@ python -m stretch.app.view_images --robot_ip $ROBOT_IP
 You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
 
 ```bash
-python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
+python -m stretch.app.view_images --robot_ip $ROBOT_IP ----run_semantic_segmentation
 ```
 
 You can visualize gripper Aruco markers as well; the aruco markers can be used to determine the finger locations in the image.
