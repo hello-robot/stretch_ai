@@ -49,6 +49,7 @@ class ACTLeader(Evaluator):
 
         self.base_x_origin = None
         self.current_base_x = 0.0
+        self.action_origin = None
 
         self.goal_send_socket = self._make_pub_socket(
             send_port, robot_ip=robot_ip, use_remote_computer=True
@@ -136,8 +137,6 @@ class ACTLeader(Evaluator):
             self._recording = not self._recording
             self.prev_goal_dict = None
             if self._recording:
-                # Reset base_x_origin
-                self.base_x_origin = None
                 print("[LEADER] Recording started.")
             else:
                 print("[LEADER] Recording stopped.")
@@ -155,6 +154,9 @@ class ACTLeader(Evaluator):
         elif key == ord("p"):
             self._run_policy = not self._run_policy
             if self._run_policy:
+                # Reset base_x_origin
+                self.base_x_origin = None
+                self.action_origin = None
                 self.policy.reset()
                 print("[LEADER] Running policy!")
                 self._recording = True
@@ -183,6 +185,7 @@ class ACTLeader(Evaluator):
 
             if self.teleop_mode == "base_x":
                 if self.base_x_origin is None:
+                    print("Base_x reset!")
                     self.base_x_origin = raw_state["base_x"]
 
                 # Calculate relative base_x
@@ -207,10 +210,14 @@ class ACTLeader(Evaluator):
 
             # Get first batch
             action = raw_action[0].tolist()
-
-            action_dict["joint_mobile_base_translation"] = action[0]
+            if self.action_origin is None:
+                self.action_origin = action[0]
+            action_dict["joint_mobile_base_translation"] = action[0] - self.action_origin
             # Translate by is difference between predicted base_x and current base_x
-            action_dict["joint_mobile_base_translate_by"] = action[0] - self.current_base_x
+            # self.current_base_x = raw_state["base_x"]
+            action_dict["joint_mobile_base_translate_by"] = (
+                action_dict["joint_mobile_base_translation"] - self.current_base_x
+            )
             # action_dict["joint_mobile_base_translate_by"] = action[1]
             action_dict["joint_mobile_base_rotate_by"] = action[2]
             action_dict["joint_lift"] = action[3]
