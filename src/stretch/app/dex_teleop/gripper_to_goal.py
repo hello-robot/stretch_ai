@@ -71,7 +71,6 @@ class GripperToGoal:
 
     def __init__(
         self,
-        robot_speed,
         starting_configuration,
         robot: rb.Robot,
         robot_move: rm.RobotMove,
@@ -513,28 +512,11 @@ if __name__ == "__main__":
     # first trying new code and interface objects.
     robot_allowed_to_move = True
 
-    # The 'default', 'slow', 'fast', and 'max' options are defined by
-    # Hello Robot. The 'fastest_stretch_2' option has been specially tuned for
-    # this application.
-    #
-    # WARNING: 'fastest_stretch_2' has velocities and accelerations that exceed
-    # the factory 'max' values defined by Hello Robot.
-    if use_fastest_mode:
-        if using_stretch_2:
-            robot_speed = "fastest_stretch_2"
-        else:
-            robot_speed = "fastest_stretch_3"
-    else:
-        robot_speed = "slow"
-    print("running with robot_speed =", robot_speed)
-
     lift_middle = dt.get_lift_middle(manipulate_on_ground)
     center_configuration = dt.get_center_configuration(lift_middle)
     starting_configuration = dt.get_starting_configuration(lift_middle)
 
-    gripper_to_goal = GripperToGoal(
-        robot_speed, starting_configuration, robot_allowed_to_move, using_stretch_2
-    )
+    gripper_to_goal = GripperToGoal(starting_configuration, robot_allowed_to_move, using_stretch_2)
 
     if use_multiprocessing:
         shm = shared_memory.SharedMemory(name=dt.shared_memory_name, create=False)

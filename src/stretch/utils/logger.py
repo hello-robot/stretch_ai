@@ -11,3 +11,7 @@ def info(*args):
 
 def warning(*args):
     print(colored(*args, "yellow"))
+
+
+def alert(*args):
+    print(colored(*args, "green"))

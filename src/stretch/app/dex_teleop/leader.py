@@ -15,6 +15,7 @@ import stretch.app.dex_teleop.goal_from_teleop as gt
 import stretch.app.dex_teleop.webcam_teleop_interface as wt
 import stretch.motion.simple_ik as si
 import stretch.utils.compression as compression
+import stretch.utils.logger as logger
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
@@ -165,6 +166,7 @@ class DexTeleopLeader(Evaluator):
         recv_port: int = 4405,
         send_port: int = 4406,
         teleop_mode: str = None,
+        record_success: bool = False,
     ):
         super().__init__()
         self.camera = None
@@ -175,10 +177,12 @@ class DexTeleopLeader(Evaluator):
         self.display_point_cloud = display_point_cloud
         self.save_images = save_images
         self.teleop_mode = teleop_mode
+        self.record_success = record_success
 
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
 
+        self.base_x_origin = None
         self.current_base_x = 0.0
 
         self.goal_send_socket = self._make_pub_socket(
@@ -208,6 +212,10 @@ class DexTeleopLeader(Evaluator):
         center_configuration = dt.get_center_configuration(lift_middle)
         starting_configuration = dt.get_starting_configuration(lift_middle)
 
+        if debug_aruco:
+            logger.warning(
+                "Debugging aruco markers. This displays an OpenCV UI which may make it difficult to enter commands. Do not use this option when doing data collection."
+            )
         if left_handed:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
                 tongs_prefix="left",
@@ -401,6 +409,8 @@ class DexTeleopLeader(Evaluator):
             self._recording = not self._recording
             self.prev_goal_dict = None
             if self._recording:
+                # Reset base_x_origin
+                self.base_x_origin = None
                 print("[LEADER] Recording started.")
             else:
                 print("[LEADER] Recording stopped.")
@@ -451,9 +461,12 @@ class DexTeleopLeader(Evaluator):
             # Process teleop gripper goal to goal joint configurations using IK
             goal_configuration = self.get_goal_joint_config(**goal_dict)
 
-            # TODO temporary implementation of teleop mode action filtering
+            # TODO temporary implementation of teleop mode filtering
             if self.teleop_mode == "stationary_base":
                 goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+            elif self.teleop_mode == "base_x":
+                # Override with reset base_x
+                goal_dict["current_state"]["base_x"] = self.current_base_x
 
             if self._recording:
                 print("[LEADER] goal_dict =")
@@ -484,10 +497,25 @@ class DexTeleopLeader(Evaluator):
         self.prev_goal_dict = goal_dict
 
         if self._need_to_write:
-            print("[LEADER] Writing data to disk.")
-            self._recorder.write()
+            if self.record_success:
+                success = self.ask_for_success()
+                print("[LEADER] Writing data to disk with success = ", success)
+                self._recorder.write(success=success)
+            else:
+                print("[LEADER] Writing data to disk.")
+                self._recorder.write()
             self._need_to_write = False
         return goal_dict
+
+    def ask_for_success(self) -> bool:
+        """Ask the user if the episode was successful."""
+        while True:
+            logger.alert("Was the episode successful? (y/n)")
+            key = cv2.waitKey(0)
+            if key == ord("y"):
+                return True
+            elif key == ord("n"):
+                return False
 
     def get_goal_joint_config(
         self,
@@ -710,7 +738,12 @@ class DexTeleopLeader(Evaluator):
             if self.teleop_mode == "base_x":
                 new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
 
-                self.current_base_x = current_state["base_x"]
+                # Base_x_origin is reset to base_x coordinate at start of demonstration
+                if self.base_x_origin is None:
+                    self.base_x_origin = current_state["base_x"]
+
+                self.current_base_x = current_state["base_x"] - self.base_x_origin
+
                 new_goal_configuration["joint_mobile_base_translate_by"] = (
                     new_goal_configuration["joint_mobile_base_translation"] - self.current_base_x
                 )
@@ -759,7 +792,15 @@ if __name__ == "__main__":
         help="The filename of the recorded session to replay, if set..",
     )
     parser.add_argument("--display_point_cloud", action="store_true")
-    parser.add_argument("--teleop-mode", type=str, default="stationary_base")
+    parser.add_argument(
+        "--teleop-mode",
+        "--teleop_mode",
+        type=str,
+        default="base_x",
+        choices=["stationary_base", "base_x"],
+    )
+    parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
+    parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     args = parser.parse_args()
 
     client = RobotClient(
@@ -781,6 +822,8 @@ if __name__ == "__main__":
         send_port=args.send_port,
         robot_ip=args.robot_ip,
         teleop_mode=args.teleop_mode,
+        record_success=args.record_success,
+        debug_aruco=args.show_aruco,
     )
     try:
         client.run(evaluator)

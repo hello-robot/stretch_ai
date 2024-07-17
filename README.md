@@ -28,7 +28,7 @@ robot.move_to_manip_posture()
 # Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
 robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
 
-# Switch to navigation mode
+# Turn head towards robot's base
 robot.move_to_nav_posture()
 
 # Move the robot back to origin

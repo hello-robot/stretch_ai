@@ -43,6 +43,8 @@ setuptools.setup(
         "schema",
         # For siglip encoder
         "sentencepiece",
+        # For git tools
+        "gitpython",
         # Configuration tools and neural networks
         "hydra-core",
         "timm",
