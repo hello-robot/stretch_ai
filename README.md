@@ -28,10 +28,13 @@ robot.move_to_manip_posture()
 # Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
 robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
 
-# Turn head towards robot's base
+# Turn head towards robot's base and switch base to navigation mode
+# In navigation mode, we can stream velocity commands to the base for smooth motions, and base
+# rotations are enabled
 robot.move_to_nav_posture()
 
 # Move the robot back to origin
+# navigate_to() is only allowed in navigation mode
 robot.navigate_to([0, 0, 0])
 
 # Move the robot 0.5m forward
