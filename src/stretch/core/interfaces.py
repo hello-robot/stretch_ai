@@ -201,7 +201,7 @@ class Observations:
     # Pose
     # TODO: add these instead of gps + compass
     # base_pose: Pose
-    ee_pose: Optional[np.array] = None
+    # ee_pose: Pose
 
     # Pose
     gps: np.ndarray  # (x, y) where positive x is forward, positive y is translation to left in meters
@@ -230,6 +230,9 @@ class Observations:
 
     # Pose of the end effector camera in world coordinates
     ee_camera_pose: Optional[np.array] = None
+
+    # Pose of the end effector grasp center in world coordinates
+    ee_pose: Optional[np.array] = None 
 
     # Instance IDs per observation frame
     # Size: (camera_height, camera_width)
