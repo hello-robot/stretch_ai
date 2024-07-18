@@ -22,7 +22,7 @@ setuptools.setup(
         "torchvision",
         "pyyaml",
         "pyzmq",
-        "numpy",
+        "numpy<2",
         "numba",
         "opencv-python",
         "scipy",
@@ -41,6 +41,8 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
+        # For siglip encoder
+        "sentencepiece",
         # For git tools
         "gitpython",
         # Configuration tools and neural networks

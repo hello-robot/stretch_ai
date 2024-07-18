@@ -2,11 +2,9 @@ from typing import Optional, Union
 
 import numpy as np
 
-from stretch.agent.robot_agent import RobotAgent
-from stretch.core.task import Operation, Task
-from stretch.mapping.instance import Instance
-
-from .operations import (
+import stretch.utils.logger as logger
+from stretch.agent.base import TaskManager
+from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
@@ -14,11 +12,14 @@ from .operations import (
     PreGraspObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
-    SearchForReceptacle,
+    SearchForReceptacleOperation,
 )
+from stretch.agent.robot_agent import RobotAgent
+from stretch.core.task import Task
+from stretch.mapping.instance import Instance
 
 
-class PickupManager:
+class PickupManager(TaskManager):
     """Simple robot that will look around and pick up different objects"""
 
     def __init__(
@@ -50,36 +51,35 @@ class PickupManager:
         self.current_receptacle = None
         self.reset_object_plans()
 
-    def reset_object_plans(self):
-        """Clear stored object planning information."""
-        self.plans = {}
-        self.unreachable_instances = set()
-
-    def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
-        """Mark an instance as unreachable."""
-        if isinstance(instance, Instance):
-            instance_id = instance.id
-        elif isinstance(instance, int):
-            instance_id = instance
-        else:
-            raise ValueError("Instance must be an Instance object or an int")
-        self.unreachable_instances.add(instance_id)
-
-    def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
-        """Check if an instance is unreachable."""
-        if isinstance(instance, Instance):
-            instance_id = instance.id
-        elif isinstance(instance, int):
-            instance_id = instance
-        else:
-            raise ValueError("Instance must be an Instance object or an int")
-        return instance_id in self.unreachable_instances
-
-    def get_task(self, add_rotate: bool = False) -> Task:
+    def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
         """Create a task plan with loopbacks and recovery from failure"""
 
+        if mode == "one_shot":
+            return self.get_one_shot_task(add_rotate=add_rotate)
+        elif mode == "all":
+            if not add_rotate:
+                logger.warning(
+                    "When performing pickup task in 'all' mode, we must add a rotate operation to explore the robot's area to identify multiple object instances."
+                )
+            return self.get_all_task(add_rotate=True)
+
+    def get_all_task(self, add_rotate: bool = False) -> Task:
+        """Create a task plan that will pick up all objects in the environment. It starts by exploring the robot's immediate area, then will move around picking up all available objects.
+
+        Args:
+            add_rotate (bool, optional): Whether to add a rotate operation to explore the robot's area. Defaults to False.
+
+        Returns:
+            Task: Executable task plan for the robot to pick up all objects in the environment.
+        """
+
+    def get_one_shot_task(self, add_rotate: bool = False) -> Task:
+        """Create a task plan that will pick up a single object in the environment. It will explore until it finds a single object, and will then pick it up and place it in a receptacle."""
+
         # Put the robot into navigation mode
-        go_to_navigation_mode = GoToNavOperation("go to navigation mode", self)
+        go_to_navigation_mode = GoToNavOperation(
+            "go to navigation mode", self, retry_on_failure=True
+        )
 
         if add_rotate:
             # Spin in place to find objects.
@@ -88,7 +88,7 @@ class PickupManager:
             )
 
         # Look for the target receptacle
-        search_for_receptacle = SearchForReceptacle(
+        search_for_receptacle = SearchForReceptacleOperation(
             "search_for_box",
             self,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
@@ -135,6 +135,7 @@ class PickupManager:
             parent=pregrasp_object,
             on_failure=pregrasp_object,
             on_cannot_start=go_to_object,
+            retry_on_failure=False,
         )
         grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
         place_object_on_receptacle = PlaceObjectOperation(
@@ -160,6 +161,7 @@ class PickupManager:
         task.connect_on_success(pregrasp_object.name, grasp_object.name)
         task.connect_on_success(grasp_object.name, go_to_receptacle.name)
         task.connect_on_success(go_to_receptacle.name, place_object_on_receptacle.name)
+
         task.connect_on_success(search_for_receptacle.name, search_for_object.name)
 
         task.connect_on_cannot_start(go_to_object.name, search_for_object.name)

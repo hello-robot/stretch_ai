@@ -12,15 +12,17 @@ import numpy as np
 import zmq
 from termcolor import colored
 
+import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
-from stretch.core.parameters import Parameters
+from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import RobotClient
 from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
+from stretch.utils.network import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
 
 # TODO: debug code - remove later if necessary
@@ -30,7 +32,6 @@ from stretch.utils.point_cloud import show_point_cloud
 
 class HomeRobotZmqClient(RobotClient):
 
-    update_control_mode_from_full_obs: bool = False
     update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000
 
@@ -48,19 +49,15 @@ class HomeRobotZmqClient(RobotClient):
         recv_socket.setsockopt(zmq.RCVHWM, 1)
         recv_socket.setsockopt(zmq.CONFLATE, 1)
 
-        # Use remote computer or whatever
-        if use_remote_computer:
-            recv_address = "tcp://" + robot_ip + ":" + str(port)
-        else:
-            recv_address = "tcp://" + "127.0.0.1" + ":" + str(port)
-
+        recv_address = lookup_address(robot_ip, use_remote_computer) + ":" + str(port)
         print(f"Connecting to {recv_address} to receive {message_type}...")
         recv_socket.connect(recv_address)
+
         return recv_socket
 
     def __init__(
         self,
-        robot_ip: str = "192.168.1.15",
+        robot_ip: str = "",
         recv_port: int = 4401,
         send_port: int = 4402,
         recv_state_port: int = 4403,
@@ -73,6 +70,7 @@ class HomeRobotZmqClient(RobotClient):
         grasp_frame: Optional[str] = None,
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
+        start_immediately: bool = True,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -96,7 +94,10 @@ class HomeRobotZmqClient(RobotClient):
         # Variables we set here should not change
         self._iter = 0  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
+        self._started = False
 
+        if parameters is None:
+            parameters = get_parameters("default_planner.yaml")
         self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
@@ -131,11 +132,9 @@ class HomeRobotZmqClient(RobotClient):
         self.send_socket.setsockopt(zmq.SNDHWM, 1)
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
 
-        # Use remote computer or whatever
-        if use_remote_computer:
-            self.send_address = "tcp://" + robot_ip + ":" + str(self.send_port)
-        else:
-            self.send_address = "tcp://" + "127.0.0.1" + ":" + str(self.send_port)
+        self.send_address = (
+            lookup_address(robot_ip, use_remote_computer) + ":" + str(self.send_port)
+        )
 
         print(f"Connecting to {self.send_address} to send action messages...")
         self.send_socket.connect(self.send_address)
@@ -145,6 +144,9 @@ class HomeRobotZmqClient(RobotClient):
         self._act_lock = Lock()
         self._state_lock = Lock()
         self._servo_lock = Lock()
+
+        if start_immediately:
+            self.start()
 
     def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current joint positions"""
@@ -181,13 +183,26 @@ class HomeRobotZmqClient(RobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
-    def arm_to(self, joint_angles: np.ndarray, blocking: bool = False):
+    def arm_to(
+        self,
+        joint_angles: np.ndarray,
+        blocking: bool = False,
+        timeout: float = 10.0,
+        verbose: bool = False,
+    ) -> bool:
         """Move the arm to a particular joint configuration.
 
         Args:
             joint_angles: 6 or Nx6 array of the joint angles to move to
             blocking: Whether to block until the motion is complete
+            timeout: How long to wait for the motion to complete
+            verbose: Whether to print out debug information
+
+        Returns:
+            bool: Whether the motion was successful
         """
+        if not self.in_manipulation_mode():
+            raise ValueError("Robot must be in manipulation mode to move the arm")
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
         if len(joint_angles) > 6:
@@ -209,6 +224,64 @@ class HomeRobotZmqClient(RobotClient):
 
         # Blocking is handled in here
         self.send_action()
+
+        # Handle blocking
+        steps = 0
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+
+                if steps % 10 == 9:
+                    # Resend the action until we get there
+                    with self._act_lock:
+                        self._next_action["joint"] = joint_angles
+                        self._next_action["manip_blocking"] = blocking
+                    self.send_action()
+
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    time.sleep(0.01)
+                    continue
+                arm_diff = np.abs(joint_state[HelloStretchIdx.ARM] - joint_angles[2])
+                lift_diff = np.abs(joint_state[HelloStretchIdx.LIFT] - joint_angles[1])
+                base_x_diff = np.abs(joint_state[HelloStretchIdx.BASE_X] - joint_angles[0])
+                wrist_roll_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_ROLL], joint_angles[3])
+                )
+                wrist_pitch_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_PITCH], joint_angles[4])
+                )
+                wrist_yaw_diff = np.abs(
+                    angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
+                )
+                if (
+                    (arm_diff < 0.05)
+                    and (lift_diff < 0.05)
+                    and (base_x_diff < 0.05)
+                    and (wrist_roll_diff < 0.05)
+                    and (wrist_pitch_diff < 0.05)
+                    and (wrist_yaw_diff < 0.05)
+                ):
+                    return True
+                else:
+                    if verbose:
+                        print(
+                            f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
+                        )
+                time.sleep(0.01)
+
+                # TODO: Is this necessary? If not, we should just delete this commented-out code block.
+                # Resend the action
+                # self._next_action["joint"] = joint_angles
+                # self.send_action()
+
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("[ZMQ CLIENT] Timeout waiting for arm to move")
+                    break
+                steps += 1
+            return False
+        return True
 
     def navigate_to(
         self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
@@ -234,17 +307,52 @@ class HomeRobotZmqClient(RobotClient):
         self._finish = False
         self._last_step = -1
 
-    def open_gripper(self, blocking: bool = True):
+    def open_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Open the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_OPEN
-        print("Opening gripper to", gripper_target)
-        self.gripper_to(gripper_target, blocking)
+        print("[ZMQ CLIENT] Opening gripper to", gripper_target)
+        self.gripper_to(gripper_target, blocking=False)
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    continue
+                gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
+                if gripper_err < 0.1:
+                    return True
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
+                    break
+                self.gripper_to(gripper_target, blocking=False)
+                time.sleep(0.01)
+            return False
+        return True
 
-    def close_gripper(self, blocking: bool = True):
+    def close_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
         """Close the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_CLOSED
-        print("Closing gripper to", gripper_target)
-        self.gripper_to(gripper_target, blocking)
+        print("[ZMQ CLIENT] Closing gripper to", gripper_target)
+        self.gripper_to(gripper_target, blocking=False)
+        if blocking:
+            t0 = timeit.default_timer()
+            while not self._finish:
+                joint_state = self.get_joint_state()
+                if joint_state is None:
+                    continue
+                gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
+                print("Closing gripper:", gripper_err, gripper_target)
+                if gripper_err < 0.1:
+                    return True
+                t1 = timeit.default_timer()
+                if t1 - t0 > timeout:
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
+                    break
+                self.gripper_to(gripper_target, blocking=False)
+                time.sleep(0.01)
+            return False
+        return True
 
     def gripper_to(self, target: float, blocking: bool = True):
         """Send the gripper to a target position."""
@@ -261,6 +369,7 @@ class HomeRobotZmqClient(RobotClient):
             self._next_action["control_mode"] = "navigation"
         self.send_action()
         self._wait_for_mode("navigation")
+        assert self.in_navigation_mode()
 
     def in_navigation_mode(self) -> bool:
         """Returns true if we are navigating (robot head forward, velocity control on)"""
@@ -273,24 +382,60 @@ class HomeRobotZmqClient(RobotClient):
         with self._act_lock:
             self._next_action["control_mode"] = "manipulation"
         self.send_action()
+        time.sleep(0.1)
         self._wait_for_mode("manipulation")
+        assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "navigation"
         self.send_action()
+        self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
+        assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
         with self._act_lock:
             self._next_action["posture"] = "manipulation"
         self.send_action()
+        time.sleep(0.1)
+        self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
+        assert self.in_manipulation_mode()
+
+    def _wait_for_head(
+        self,
+        q: np.ndarray,
+        timeout: float = 10.0,
+        resend_action: Optional[dict] = None,
+        verbose: bool = True,
+    ) -> None:
+        """Wait for the head to move to a particular configuration."""
+        t0 = timeit.default_timer()
+        while True:
+            joint_state = self.get_joint_state()
+            if joint_state is None:
+                continue
+            pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
+            tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
+            if verbose:
+                print("Waiting for head to move", pan_err, tilt_err)
+            if pan_err < 0.1 and tilt_err < 0.1:
+                break
+            elif resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
+            t1 = timeit.default_timer()
+            if t1 - t0 > timeout:
+                print("Timeout waiting for head to move")
+                break
+            time.sleep(0.01)
+        # Tiny pause after head rotation
+        time.sleep(0.5)
 
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
         while True:
-            with self._obs_lock:
+            with self._state_lock:
                 if verbose:
                     print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if self._control_mode == mode:
@@ -299,18 +444,33 @@ class HomeRobotZmqClient(RobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
+        assert self._control_mode == mode
 
     def _wait_for_action(
         self,
         block_id: int,
-        verbose: bool = True,
+        verbose: bool = False,
         timeout: float = 10.0,
         moving_threshold: Optional[float] = None,
         angle_threshold: Optional[float] = None,
         min_steps_not_moving: Optional[int] = 1,
         goal_angle: Optional[float] = None,
         goal_angle_threshold: Optional[float] = 0.1,
-    ):
+        resend_action: Optional[dict] = None,
+    ) -> None:
+        """Wait for the navigation action to finish.
+
+        Args:
+            block_id(int): The unique, tracked integer id of the action to wait for
+            verbose(bool): Whether to print out debug information
+            timeout(float): How long to wait for the action to finish
+            moving_threshold(float): How far the robot must move to be considered moving
+            angle_threshold(float): How far the robot must rotate to be considered moving
+            min_steps_not_moving(int): How many steps the robot must not move for to be considered stopped
+            goal_angle(float): The goal angle to reach
+            goal_angle_threshold(float): The threshold for the goal angle
+            resend_action(dict): The action to resend if the robot is not moving. If none, do not resend.
+        """
         print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
         last_ang = None
@@ -322,53 +482,53 @@ class HomeRobotZmqClient(RobotClient):
         if min_steps_not_moving is None:
             min_steps_not_moving = self._min_steps_not_moving
         t0 = timeit.default_timer()
+        close_to_goal = False
         while True:
             with self._obs_lock:
-                if self._obs is not None:
+                if self._obs is None:
+                    continue
+            xyt = self.get_base_pose()
+            pos = xyt[:2]
+            ang = xyt[2]
 
-                    if not self._obs["at_goal"]:
-                        t0 = timeit.default_timer()
-                        continue
-                    if self.update_base_pose_from_full_obs:
-                        pos = self._obs["gps"]
-                        ang = self._obs["compass"][0]
-                    else:
-                        pos = self._state["base_pose"][:2]
-                        ang = self._state["base_pose"][2]
-                    moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-                    angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
-                    if goal_angle is not None:
-                        angle_dist_to_goal = angle_difference(ang, goal_angle)
-                        at_goal = angle_dist_to_goal < goal_angle_threshold
-                    else:
-                        at_goal = True
-                    not_moving = (
-                        last_pos is not None
-                        and moved_dist < moving_threshold
-                        and angle_dist < angle_threshold
-                    )
-                    if not_moving:
-                        not_moving_count += 1
-                    else:
-                        not_moving_count = 0
-                    last_pos = pos
-                    last_ang = ang
-                    if verbose:
-                        print(
-                            f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
-                        )
-                        if goal_angle is not None:
-                            print(
-                                f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}"
-                            )
-                    if (
-                        self._last_step >= block_id
-                        and self._obs["at_goal"]
-                        and at_goal
-                        and not_moving_count > min_steps_not_moving
-                    ):
-                        break
-                    self._obs = None
+            if not self.at_goal():
+                t0 = timeit.default_timer()
+                continue
+
+            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
+            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+            if goal_angle is not None:
+                angle_dist_to_goal = angle_difference(ang, goal_angle)
+                at_goal = angle_dist_to_goal < goal_angle_threshold
+            else:
+                at_goal = True
+            not_moving = (
+                last_pos is not None
+                and moved_dist < moving_threshold
+                and angle_dist < angle_threshold
+            )
+            if not_moving:
+                not_moving_count += 1
+            else:
+                not_moving_count = 0
+            last_pos = pos
+            last_ang = ang
+            close_to_goal = at_goal
+            if verbose:
+                print(
+                    f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
+                )
+                if goal_angle is not None:
+                    print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
+            if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
+                break
+
+            # Resend the action if we are not moving for some reason and it's been provided
+            if resend_action is not None and not close_to_goal:
+                # Resend the action
+                self.send_socket.send_pyobj(resend_action)
+
+            # Minor delay at the end - give it time to get new messages
             time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
@@ -394,18 +554,31 @@ class HomeRobotZmqClient(RobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            if self.update_control_mode_from_full_obs:
-                self._control_mode = obs["control_mode"]
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = self._last_step
 
-    def _update_state(self, state):
-        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control."""
+    def _update_state(self, state: dict) -> None:
+        """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
+
+        Args:
+            state (dict): state message from the robot
+        """
         with self._state_lock:
             self._state = state
-            if not self.update_control_mode_from_full_obs:
-                self._control_mode = state["control_mode"]
+            self._control_mode = state["control_mode"]
+            self._at_goal = state["at_goal"]
+
+    def at_goal(self) -> bool:
+        """Check if the robot is at the goal.
+
+        Returns:
+            at_goal (bool): whether the robot is at the goal
+        """
+        with self._state_lock:
+            if self._state is None:
+                return False
+            return self._state["at_goal"]
 
     def get_observation(self):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
@@ -448,16 +621,22 @@ class HomeRobotZmqClient(RobotClient):
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
             # just_xy = len(pt) == 2
             # self.navigate_to(pt, relative, position_only=just_xy, blocking=False)
-            self.navigate_to(pt, relative, blocking=False)
-            self.wait_for_waypoint(
+            last_waypoint = i == len(trajectory) - 1
+            self.navigate_to(
                 pt,
-                pos_err_threshold=pos_err_threshold,
-                rot_err_threshold=rot_err_threshold,
-                rate=spin_rate,
-                verbose=verbose,
-                timeout=per_waypoint_timeout,
+                relative,
+                blocking=last_waypoint,
+                timeout=final_timeout if last_waypoint else per_waypoint_timeout,
             )
-        self.navigate_to(pt, blocking=True, timeout=final_timeout)
+            if not last_waypoint:
+                self.wait_for_waypoint(
+                    pt,
+                    pos_err_threshold=pos_err_threshold,
+                    rot_err_threshold=rot_err_threshold,
+                    rate=spin_rate,
+                    verbose=verbose,
+                    timeout=per_waypoint_timeout,
+                )
 
     def wait_for_waypoint(
         self,
@@ -509,9 +688,10 @@ class HomeRobotZmqClient(RobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def send_action(self, timeout: float = 10.0):
+    def send_action(self, timeout: float = 10.0, verbose: bool = False) -> None:
         """Send the next action to the robot"""
-        print("-> sending", self._next_action)
+        if verbose:
+            print("-> sending", self._next_action)
         blocking = False
         block_id = None
         with self._act_lock:
@@ -529,14 +709,21 @@ class HomeRobotZmqClient(RobotClient):
                 goal_angle = None
 
             # Empty it out for the next one
+            current_action = self._next_action
             self._next_action = dict()
 
         # Make sure we had time to read
-        time.sleep(0.2)
+        time.sleep(0.1)
         if blocking:
             # Wait for the command to finish
-            self._wait_for_action(block_id, goal_angle=goal_angle, verbose=True, timeout=timeout)
-            time.sleep(0.2)
+            self._wait_for_action(
+                block_id,
+                goal_angle=goal_angle,
+                verbose=verbose,
+                timeout=timeout,
+                # resend_action=current_action,
+            )
+            time.sleep(0.1)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
@@ -589,23 +776,14 @@ class HomeRobotZmqClient(RobotClient):
 
         # color_image = compression.from_webp(message["ee_cam/color_image"])
         color_image = compression.from_jpg(message["ee_cam/color_image"])
-        # depth_image = compression.unzip_depth(
-        #    message["ee_cam/depth_image"], message["ee_cam/depth_image/shape"]
-        # )
         depth_image = compression.from_jp2(message["ee_cam/depth_image"])
         image_scaling = message["ee_cam/image_scaling"]
 
         # Get head information from the message as well
-        # head_color_image = compression.from_webp(message["head_cam/color_image"])
         head_color_image = compression.from_jpg(message["head_cam/color_image"])
-        # head_depth_image = compression.unzip_depth(
-        #    message["head_cam/depth_image"], message["head_cam/depth_image/shape"]
-        # )
         head_depth_image = compression.from_jp2(message["head_cam/depth_image"])
-        # head_depth_camera_info = message["head_cam/depth_camera_info"]
         head_image_scaling = message["head_cam/image_scaling"]
         joint = message["robot/config"]
-        # head_depth_scale = message["head_cam/depth_scale"]
         with self._servo_lock and self._state_lock:
             observation = Observations(
                 gps=self._state["base_pose"][:2],
@@ -618,6 +796,10 @@ class HomeRobotZmqClient(RobotClient):
                 ee_xyz=None,
                 joint=joint,
             )
+            observation.camera_K = message["head_cam/depth_camera_K"]
+            observation.ee_camera_K = message["ee_cam/depth_camera_K"]
+            observation.camera_pose = message["head_cam/pose"]
+            observation.ee_camera_pose = message["ee_cam/pose"]
             self._servo = observation
 
     def get_servo_observation(self):
@@ -667,6 +849,9 @@ class HomeRobotZmqClient(RobotClient):
 
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
+        if self._started:
+            return True
+
         self._thread = threading.Thread(target=self.blocking_spin)
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
@@ -691,6 +876,7 @@ class HomeRobotZmqClient(RobotClient):
                 )
                 logger.info("Robot IP:", self.send_address)
                 return False
+        self._started = True
         return True
 
     def __del__(self):

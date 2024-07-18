@@ -14,7 +14,7 @@ import zmq
 
 import stretch.utils.compression as compression
 from stretch.core.comms import CommsNode
-from stretch.utils.image import adjust_gamma
+from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
 
 
@@ -135,6 +135,7 @@ class ZmqServer(CommsNode):
                 "joint_velocities": dq,
                 "joint_efforts": eff,
                 "control_mode": self.get_control_mode(),
+                "at_goal": self.client.at_goal(),
             }
             self.send_state_socket.send_pyobj(message)
 
@@ -215,7 +216,7 @@ class ZmqServer(CommsNode):
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:
                         print(f"Moving arm to config={action['joint']}")
-                    self.client.arm_to(action["joint"])
+                    self.client.arm_to(action["joint"], blocking=False)
                 if "gripper" in action:
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
@@ -289,11 +290,6 @@ class ZmqServer(CommsNode):
             compressed_ee_color_image = compression.to_jpg(ee_color_image)
             compressed_head_color_image = compression.to_jpg(head_color_image)
             if self.debug_compression:
-                # TODO: remove debug code
-                # print(f"{ee_color_image.shape=}")
-                # print(f"{ee_depth_image.shape=}")
-                # print(f"{head_color_image.shape=}")
-                # print(f"{head_depth_image.shape=}")
                 ct2 = timeit.default_timer()
                 print(
                     ct1 - ct0,
@@ -303,25 +299,32 @@ class ZmqServer(CommsNode):
                 )
 
             d405_output = {
-                "ee_cam/color_camera_K": self.client.ee_rgb_cam.get_K(),
-                "ee_cam/depth_camera_K": self.client.ee_dpt_cam.get_K(),
+                "ee_cam/color_camera_K": scale_camera_matrix(
+                    self.client.ee_rgb_cam.get_K(), self.ee_image_scaling
+                ),
+                "ee_cam/depth_camera_K": scale_camera_matrix(
+                    self.client.ee_dpt_cam.get_K(), self.ee_image_scaling
+                ),
                 "ee_cam/color_image": compressed_ee_color_image,
                 "ee_cam/depth_image": compressed_ee_depth_image,
                 "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
-                "head_cam/color_camera_K": self.client.rgb_cam.get_K(),
-                "head_cam/depth_camera_K": self.client.dpt_cam.get_K(),
+                "ee_cam/pose": self.client.ee_camera_pose,
+                "head_cam/color_camera_K": scale_camera_matrix(
+                    self.client.rgb_cam.get_K(), self.image_scaling
+                ),
+                "head_cam/depth_camera_K": scale_camera_matrix(
+                    self.client.dpt_cam.get_K(), self.image_scaling
+                ),
                 "head_cam/color_image": compressed_head_color_image,
                 "head_cam/depth_image": compressed_head_depth_image,
                 "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image/shape": head_depth_image.shape,
                 "head_cam/image_scaling": self.image_scaling,
+                "head_cam/pose": self.client.head.get_pose(rotated=False),
                 "robot/config": obs.joint,
-                # "robot/ee_position": ee_pos,
-                # "robot/ee_rotation": ee_rot,
             }
-
             self.send_servo_socket.send_pyobj(d405_output)
 
             # Finish with some speed info
@@ -341,11 +344,18 @@ class ZmqServer(CommsNode):
 
     def start(self):
         """Starts both threads spinning separately for efficiency."""
+        print("==========================================")
+        print("Starting up threads:")
+        print(" - Starting send thread")
         self._send_thread = threading.Thread(target=self.spin_send)
+        print(" - Starting recv thread")
         self._recv_thread = threading.Thread(target=self.spin_recv)
+        print(" - Sending state information")
         self._send_state_thread = threading.Thread(target=self.spin_send_state)
+        print(" - Sending servo information")
         self._send_servo_thread = threading.Thread(target=self.spin_send_servo)
         self._done = False
+        print("Running all...")
         self._send_thread.start()
         self._recv_thread.start()
         self._send_state_thread.start()

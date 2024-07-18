@@ -6,6 +6,7 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import torch
+import trimesh.transformations as tra
 
 from stretch.core.interfaces import Observations
 from stretch.core.robot import ControlMode, RobotClient
@@ -28,6 +29,10 @@ from .ros import StretchRosInterface
 
 class StretchClient(RobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
+
+    camera_frame = "camera_color_optical_frame"
+    ee_camera_frame = "gripper_camera_color_optical_frame"
+    world_frame = "map"
 
     def __init__(
         self,
@@ -149,6 +154,13 @@ class StretchClient(RobotClient):
         return self.head.get_pose_in_base_coords(rotated=False)
 
     @property
+    def ee_camera_pose(self):
+        p0 = self._ros_client.get_frame_pose(self.ee_camera_frame, base_frame=self.world_frame)
+        if p0 is not None:
+            p0 = p0 @ tra.euler_matrix(0, 0, 0)
+        return p0
+
+    @property
     def rgb_cam(self):
         return self._ros_client.rgb_cam
 
@@ -180,40 +192,23 @@ class StretchClient(RobotClient):
     def move_to_manip_posture(self):
         """Move the arm and head into manip mode posture: gripper down, head facing the gripper."""
         self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=True)
         pos = self.manip._extract_joint_pos(STRETCH_PREGRASP_Q)
-        print("- go to configuration:", pos)
-        self.manip.goto_joint_positions(pos)
+        pan, tilt = self._robot_model.look_at_ee
+        print("- go to configuration:", pos, "pan =", pan, "tilt =", tilt)
+        self.manip.goto_joint_positions(pos, head_pan=pan, head_tilt=tilt, blocking=True)
         print("- Robot switched to manipulation mode.")
-
-    def move_to_demo_pregrasp_posture(self):
-        """Move the arm and head into pre-demo posture: gripper straight, arm way down, head facing the gripper."""
-        self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=True)
-        self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_DEMO_PREGRASP_Q))
-
-    def move_to_pre_demo_posture(self):
-        """Move the arm and head into pre-demo posture: gripper straight, arm way down, head facing the gripper."""
-        self.switch_to_manipulation_mode()
-        self.head.look_at_ee(blocking=True)
-        self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_PREDEMO_Q))
 
     def move_to_nav_posture(self):
         """Move the arm and head into nav mode. The head will be looking front."""
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        self.head.look_front(blocking=True)
-        self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q))
+        pan, tilt = self._robot_model.look_front
+        pos = self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q)
+        print("- go to configuration:", pos, "pan =", pan, "tilt =", tilt)
+        self.manip.goto_joint_positions(pos, head_pan=pan, head_tilt=tilt, blocking=True)
         self.switch_to_navigation_mode()
         print("- Robot switched to navigation mode.")
-
-    def move_to_post_nav_posture(self):
-        """Move the arm to nav mode, head to nav mode with PREGRASP's tilt. The head will be looking front."""
-        self.switch_to_manipulation_mode()
-        self.head.look_front(blocking=False)
-        self.manip.goto_joint_positions(self.manip._extract_joint_pos(STRETCH_POSTNAV_Q))
-        self.switch_to_navigation_mode()
 
     def get_base_pose(self) -> np.ndarray:
         """Get the robot's base pose as XYT."""
@@ -281,29 +276,16 @@ class StretchClient(RobotClient):
             joint=joint_positions,
             camera_K=self.get_camera_intrinsics(),
         )
-
-        # Create the observation
-        # obs = Observations(
-        #    rgb=rgb.copy(),
-        #    depth=depth.copy(),
-        #    xyz=xyz.copy(),
-        #    gps=gps,
-        #    compass=np.array([theta]),
-        #    camera_pose=self.head.get_pose(rotated=rotate_head_pts),
-        #    # joint=self.model.config_to_hab(joint_positions),
-        #    joint=joint_positions,
-        #    camera_K=self.get_camera_intrinsics(),
-        # )
         return obs
 
     def get_camera_intrinsics(self) -> torch.Tensor:
         """Get 3x3 matrix of camera intrisics K"""
         return torch.from_numpy(self.head._ros_client.rgb_cam.K).float()
 
-    def arm_to(self, q: np.ndarray):
+    def arm_to(self, q: np.ndarray, blocking: bool = False):
         """Send arm commands"""
         assert len(q) == 6
-        self.manip.goto_joint_positions(joint_positions=q)
+        self.manip.goto_joint_positions(joint_positions=q, blocking=blocking)
 
 
 if __name__ == "__main__":
