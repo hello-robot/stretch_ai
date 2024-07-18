@@ -37,6 +37,7 @@ class ACTLeader(Evaluator):
         recv_port: int = 4405,
         send_port: int = 4406,
         teleop_mode: str = None,
+        depth_filter_k=None,
     ):
         super().__init__()
         self.camera = None
@@ -46,6 +47,7 @@ class ACTLeader(Evaluator):
         self.device = device
         self.policy_path = policy_path
         self.teleop_mode = teleop_mode
+        self.depth_filter_k = depth_filter_k
 
         self.base_x_origin = None
         self.current_base_x = 0.0
@@ -119,8 +121,8 @@ class ACTLeader(Evaluator):
         head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
 
         # Clip and normalize depth
-        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image)
-        head_depth_image = clip_and_normalize_depth(head_depth_image)
+        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image, self.depth_filter_k)
+        head_depth_image = clip_and_normalize_depth(head_depth_image, self.depth_filter_k)
 
         if display_received_images:
 
@@ -277,6 +279,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--policy_name", type=str, required=True)
     parser.add_argument("--teleop-mode", type=str, default="standard")
+    parser.add_argument("--depth-filter-k", type=int, default=None)
     args = parser.parse_args()
 
     client = RobotClient(
@@ -301,6 +304,7 @@ if __name__ == "__main__":
         save_images=args.save_images,
         send_port=args.send_port,
         teleop_mode=args.teleop_mode,
+        depth_filter_k=args.depth_filter_k,
     )
     try:
         client.run(evaluator)
