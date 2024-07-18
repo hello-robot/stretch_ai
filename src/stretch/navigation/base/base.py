@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+import numpy as np
+from scipy.spatial.transform import Rotation
+
 
 class Slam(ABC):
     """slam base class - placeholder"""
@@ -97,6 +100,10 @@ class Pose(ABC):
     def get_yaw(self) -> float:
         """get pose yaw"""
         return self.yaw
+
+    def get_rotation_matrix(self) -> np.ndarray:
+        """get rotation matrix from euler angles"""
+        return Rotation.from_euler("xyz", [self.roll, self.pitch, self.yaw]).as_matrix()
 
 
 class Slam(ABC):

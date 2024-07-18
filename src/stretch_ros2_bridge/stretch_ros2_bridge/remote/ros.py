@@ -11,7 +11,6 @@ import numpy as np
 
 # from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 import rclpy
-import ros2_numpy
 import sophuspy as sp
 import tf2_ros
 from control_msgs.action import FollowJointTrajectory
@@ -32,7 +31,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 from stretch.motion.constants import STRETCH_HEAD_CAMERA_ROTATIONS
 from stretch.motion.kinematics import HelloStretchIdx
-from stretch.utils.pose import to_matrix
+from stretch.utils.pose import to_matrix, transform_to_list
 from stretch_ros2_bridge.constants import (
     CONFIG_TO_ROS,
     ROS_ARM_JOINTS,
@@ -49,8 +48,8 @@ from stretch_ros2_bridge.ros.visualizer import Visualizer
 DEFAULT_COLOR_TOPIC = "/camera/color"
 DEFAULT_DEPTH_TOPIC = "/camera/aligned_depth_to_color"
 DEFAULT_LIDAR_TOPIC = "/scan"
-DEFAULT_EE_COLOR_TOPIC = "/ee_camera/color"
-DEFAULT_EE_DEPTH_TOPIC = "/ee_camera/aligned_depth_to_color"
+DEFAULT_EE_COLOR_TOPIC = "/gripper_camera/color"
+DEFAULT_EE_DEPTH_TOPIC = "/gripper_camera/aligned_depth_to_color"
 
 
 class StretchRosInterface(Node):
@@ -487,7 +486,7 @@ class StretchRosInterface(Node):
     def get_frame_pose(self, frame, base_frame=None, lookup_time=None, timeout_s=None):
         """look up a particular frame in base coords (or some other coordinate frame)."""
         if lookup_time is None:
-            lookup_time = Time(clock_type=ClockType.ROS_TIME)  # return most recent transform
+            lookup_time = Time()
         if timeout_s is None:
             timeout_ros = Duration(seconds=0.1)
         else:
@@ -498,7 +497,8 @@ class StretchRosInterface(Node):
             stamped_transform = self.tf2_buffer.lookup_transform(
                 base_frame, frame, lookup_time, timeout_ros
             )
-            pose_mat = ros2_numpy.numpify(stamped_transform.transform)
+            trans, rot = transform_to_list(stamped_transform)
+            pose_mat = to_matrix(trans, rot)
         except TransformException:
             print("!!! Lookup failed from", base_frame, "to", frame, "!!!")
             return None
