@@ -3,11 +3,12 @@ import torch
 from lerobot.common.policies.act.modeling_act import ACTPolicy
 from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from lerobot.common.policies.diffusion_depth.modeling_diffusion import DiffusionPolicy as DPdepth
+from lerobot.common.policies.vqbet.modeling_vqbet import VQBeTPolicy
 from torchvision.transforms import v2
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
 
-SUPPORTED_POLICIES = ["act", "diffusion", "diffusion_depth"]
+SUPPORTED_POLICIES = ["act", "diffusion", "diffusion_depth", "vqbet"]
 
 
 def load_policy(
@@ -21,6 +22,8 @@ def load_policy(
         policy = DiffusionPolicy.from_pretrained(policy_path)
     elif policy_name == "diffusion_depth":
         policy = DPdepth.from_pretrained(policy_path)
+    elif policy_name == "vqbet":
+        policy = VQBeTPolicy.from_pretrained(policy_path)
     else:
         raise NotImplementedError(
             f"{policy_name} is not a supported policy. Supported policies: {SUPPORTED_POLICIES}"
@@ -116,6 +119,36 @@ def prepare_observations(
     return observations
 
 
-def prepare_action_dict():
-    # TODO
-    return
+def prepare_action_dict(
+    raw_actions: list | None, teleop_mode: str | None, current_base_x, action_origin
+):
+    """Formats actions predicted by the model into correctly labeled action_dict based on teleop mode"""
+    action_dict = {}
+
+    # TODO This mode is only here to support old models with 7 action features. Remove when this is no longer needed
+    if teleop_mode == "old_stationary_base":
+        action_dict["joint_mobile_base_rotate_by"] = raw_actions[0]
+        action_dict["joint_lift"] = raw_actions[1]
+        action_dict["joint_arm_l0"] = raw_actions[2]
+        action_dict["joint_wrist_roll"] = raw_actions[3]
+        action_dict["joint_wrist_pitch"] = raw_actions[4]
+        action_dict["joint_wrist_yaw"] = raw_actions[5]
+        action_dict["stretch_gripper"] = raw_actions[6]
+
+    elif teleop_mode == "base_x":
+        action_dict["joint_mobile_base_translation"] = raw_actions[0] - action_origin
+        # Translate by is difference between predicted base_x and current base_x
+        # self.current_base_x = raw_state["base_x"]
+        action_dict["joint_mobile_base_translate_by"] = (
+            action_dict["joint_mobile_base_translation"] - current_base_x
+        )
+        # action_dict["joint_mobile_base_translate_by"] = action[1]
+        action_dict["joint_mobile_base_rotate_by"] = raw_actions[2]
+        action_dict["joint_lift"] = raw_actions[3]
+        action_dict["joint_arm_l0"] = raw_actions[4]
+        action_dict["joint_wrist_roll"] = raw_actions[5]
+        action_dict["joint_wrist_pitch"] = raw_actions[6]
+        action_dict["joint_wrist_yaw"] = raw_actions[7]
+        action_dict["stretch_gripper"] = raw_actions[8]
+
+    return action_dict

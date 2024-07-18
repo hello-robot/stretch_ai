@@ -212,23 +212,11 @@ class ACTLeader(Evaluator):
             action = raw_action[0].tolist()
             if self.action_origin is None:
                 self.action_origin = action[0]
-            action_dict["joint_mobile_base_translation"] = action[0] - self.action_origin
-            # Translate by is difference between predicted base_x and current base_x
-            # self.current_base_x = raw_state["base_x"]
-            action_dict["joint_mobile_base_translate_by"] = (
-                action_dict["joint_mobile_base_translation"] - self.current_base_x
-            )
-            # action_dict["joint_mobile_base_translate_by"] = action[1]
-            action_dict["joint_mobile_base_rotate_by"] = action[2]
-            action_dict["joint_lift"] = action[3]
-            action_dict["joint_arm_l0"] = action[4]
-            action_dict["joint_wrist_roll"] = action[5]
-            action_dict["joint_wrist_pitch"] = action[6]
-            action_dict["joint_wrist_yaw"] = action[7]
-            action_dict["stretch_gripper"] = action[8]
 
-            # TODO Temporary solution
-            action_dict["joint_mobile_base_rotate_by"] = 0.0
+            # Format actions based on teleop_mode
+            action_dict = prepare_action_dict(
+                action, self.teleop_mode, self.current_base_x, self.action_origin
+            )
 
         # Send action_dict to stretch follower
         self.goal_send_socket.send_pyobj(action_dict)
