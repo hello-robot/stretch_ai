@@ -71,7 +71,6 @@ class GripperToGoal:
 
     def __init__(
         self,
-        robot_speed,
         starting_configuration,
         robot: rb.Robot,
         robot_move: rm.RobotMove,
@@ -95,7 +94,8 @@ class GripperToGoal:
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_mobile_base_rotate_by",
+            # "joint_mobile_base_rotate_by",
+            "joint_mobile_base_translate_by",
         ]
         self._ik_joints_allowed_to_move = [
             "joint_arm_l0",
@@ -103,23 +103,28 @@ class GripperToGoal:
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_mobile_base_rotation",
+            # "joint_mobile_base_rotation",
+            "joint_mobile_base_translation",
         ]
 
         # Get Wrist URDF joint limits
-        rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
-        rotary_urdf = load_urdf(rotary_urdf_file_name)
+        # rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
+        # rotary_urdf = load_urdf(rotary_urdf_file_name)
+        translation_urdf_file_name = "./stretch_base_translation_ik_with_fixed_wrist.urdf"
+        translation_urdf = load_urdf(translation_urdf_file_name)
         wrist_joints = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
         self.wrist_joint_limits = {}
         for joint_name in wrist_joints:
-            joint = rotary_urdf.joint_map.get(joint_name, None)
+            joint = translation_urdf.joint_map.get(joint_name, None)
             if joint is not None:
                 lower = float(joint.limit.lower)
                 upper = float(joint.limit.upper)
                 self.wrist_joint_limits[joint.name] = (lower, upper)
 
-        rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
-        self._create_ik_solver(rotary_urdf_with_wrist_file_name)
+        # rotary_urdf_with_wrist_file_name = "./stretch_base_rotation_ik.urdf"
+        translation_urdf_with_wrist_file_name = "./stretch_base_translation_ik.urdf"
+        print(self._ik_joints_allowed_to_move)
+        self._create_ik_solver(translation_urdf_with_wrist_file_name)
 
         self.robot_allowed_to_move = robot_allowed_to_move
         self.drop_extreme_wrist_orientation_change = True
@@ -172,18 +177,24 @@ class GripperToGoal:
 
     def get_current_config(self):
         state = {
-            "joint_mobile_base_rotation": 0.0,
+            "base_x": self.robot.status["base"]["x"],
+            "base_x_vel": self.robot.status["base"]["x_vel"],
+            "base_y": self.robot.status["base"]["y"],
+            "base_y_vel": self.robot.status["base"]["y_vel"],
+            "base_theta": self.robot.status["base"]["theta"],
+            "base_theta_vel": self.robot.status["base"]["theta_vel"],
             "joint_lift": self.robot.status["lift"]["pos"],
             "joint_arm_l0": self.robot.status["arm"]["pos"],
             "joint_wrist_pitch": self.robot.status["end_of_arm"]["wrist_pitch"]["pos"],
             "joint_wrist_yaw": self.robot.status["end_of_arm"]["wrist_yaw"]["pos"],
             "joint_wrist_roll": self.robot.status["end_of_arm"]["wrist_roll"]["pos"],
+            "stretch_gripper": self.robot.status["end_of_arm"]["stretch_gripper"]["pos_pct"],
         }
         return state
 
     def get_current_ee_pose(self):
         state = self.get_current_config()
-        return self.manip_ik_solver.compute_fk(state)
+        return self.manip_ik_solver.compute_fk(state, ignore_missing_joints=True)
 
     def __del__(self):
         if self.robot is not None:
@@ -455,7 +466,36 @@ class GripperToGoal:
                 print()
                 self.robot.sys_thread.stats.pretty_print()
 
-            #####################################################
+    def execute_goal(self, new_goal_configuration):
+        # If motion allowed, command the robot to move to the target configuration
+        if self.robot_allowed_to_move:
+            if nan_in_configuration(new_goal_configuration):
+                print()
+                print("******************************************************************")
+                print(
+                    "WARNING: dex_teleop: new_goal_configuration has a nan, so skipping execution on the robot"
+                )
+                print()
+                print("     new_goal_configuration =", new_goal_configuration)
+                print()
+                print("******************************************************************")
+                print()
+            else:
+                self.robot_move.to_configuration(
+                    new_goal_configuration, self.joints_allowed_to_move
+                )
+                self.robot.pimu.set_fan_on()
+                self.robot.push_command()
+
+        # Print robot status timing stats, if desired.
+        if self.print_robot_status_thread_timing:
+            self.robot.non_dxl_thread.stats.pretty_print()
+            print()
+            self.robot.dxl_end_of_arm_thread.stats.pretty_print()
+            print()
+            self.robot.dxl_head_thread.stats.pretty_print()
+            print()
+            self.robot.sys_thread.stats.pretty_print()
 
 
 if __name__ == "__main__":
@@ -472,28 +512,11 @@ if __name__ == "__main__":
     # first trying new code and interface objects.
     robot_allowed_to_move = True
 
-    # The 'default', 'slow', 'fast', and 'max' options are defined by
-    # Hello Robot. The 'fastest_stretch_2' option has been specially tuned for
-    # this application.
-    #
-    # WARNING: 'fastest_stretch_2' has velocities and accelerations that exceed
-    # the factory 'max' values defined by Hello Robot.
-    if use_fastest_mode:
-        if using_stretch_2:
-            robot_speed = "fastest_stretch_2"
-        else:
-            robot_speed = "fastest_stretch_3"
-    else:
-        robot_speed = "slow"
-    print("running with robot_speed =", robot_speed)
-
     lift_middle = dt.get_lift_middle(manipulate_on_ground)
     center_configuration = dt.get_center_configuration(lift_middle)
     starting_configuration = dt.get_starting_configuration(lift_middle)
 
-    gripper_to_goal = GripperToGoal(
-        robot_speed, starting_configuration, robot_allowed_to_move, using_stretch_2
-    )
+    gripper_to_goal = GripperToGoal(starting_configuration, robot_allowed_to_move, using_stretch_2)
 
     if use_multiprocessing:
         shm = shared_memory.SharedMemory(name=dt.shared_memory_name, create=False)

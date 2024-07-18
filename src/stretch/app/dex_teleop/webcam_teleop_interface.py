@@ -14,6 +14,7 @@ from yaml.loader import SafeLoader
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.teleop_aruco_detector as ad
 import stretch.app.dex_teleop.webcam as wc
+from stretch.utils.config import get_full_config_path
 
 
 def pixel_from_3d(xyz, camera_info):
@@ -53,8 +54,8 @@ class WebcamArucoDetector:
         self.visualize_detections = visualize_detections
 
         self.marker_info = {}
-        aruco_marker_info_file_name = (
-            "./configs/app/dex_teleop/teleop_aruco_marker_info_" + dt.tongs_to_use + ".yaml"
+        aruco_marker_info_file_name = get_full_config_path(
+            "app/dex_teleop/teleop_aruco_marker_info_" + dt.tongs_to_use + ".yaml"
         )
         with open(aruco_marker_info_file_name) as f:
             self.marker_info = yaml.load(f, Loader=SafeLoader)
@@ -450,7 +451,18 @@ class WebcamArucoDetector:
                 distance_between_markers = self.tongs_open_grip_width
             hypotenuse = self.tongs_pin_joint_to_marker_center
             opposite_side = distance_between_markers / 2.0
-            adjacent_side = math.sqrt((hypotenuse * hypotenuse) - (opposite_side * opposite_side))
+            try:
+                adjacent_side = math.sqrt(
+                    (hypotenuse * hypotenuse) - (opposite_side * opposite_side)
+                )
+            except ValueError:
+                print(
+                    "WebcamArucoDetector.process_tongs: ValueError: hypotenuse =",
+                    hypotenuse,
+                    "opposite_side =",
+                    opposite_side,
+                )
+                return None
             grip_pos = grip_pos + (-(adjacent_side) * grip_y_axis)
 
             virtual_marker_name = "tongs"

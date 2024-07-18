@@ -51,6 +51,13 @@ def get_arg_parser():
         help="Set the port used for sending d405 images.",
     )
     parser.add_argument(
+        "-r",
+        "--recv-port",
+        type=int,
+        default=4406,
+        help="Set the port used for receiving actions.",
+    )
+    parser.add_argument(
         "--gamma",
         action="store",
         type=float,
@@ -71,6 +78,13 @@ def get_arg_parser():
         type=float,
         default=0.5,
         help="Set the scaling factor for the images.",
+    )
+    parser.add_argument(
+        "--leader-ip",
+        action="store",
+        type=str,
+        default="192.168.1.169",
+        help="Set the IP of dex teleop leader when running with remote computer",
     )
 
     return parser
@@ -187,9 +201,15 @@ robot_allowed_to_move = True
 # the lift range are outside of this range.
 
 # Minimum distance from the tongs to the camera in meters
-min_dist_from_camera_to_tongs = 0.6  # 0.5
+# min_dist_from_camera_to_tongs = 0.6  # 0.5
 # Maximum distance from the tongs to the camera in meters
-max_dist_from_camera_to_tongs = 1.0  # 1.0
+# max_dist_from_camera_to_tongs = 1.0  # 1.0
+
+# Custom range for ACT demonstrations
+# Minimum distance from the tongs to the camera in meters
+min_dist_from_camera_to_tongs = 0.6
+# Maximum distance from the tongs to the camera in meters
+max_dist_from_camera_to_tongs = 1.2
 
 # Maximum height range of tongs
 max_tongs_height_range = max_dist_from_camera_to_tongs - min_dist_from_camera_to_tongs
@@ -208,6 +228,8 @@ teleop_origin_y = 0.24
 
 teleop_origin = np.array([teleop_origin_x, teleop_origin_y, teleop_origin_z])
 
+# Supported modes of teleoperation, used to define state and action formatting
+SUPPORTED_MODES = ["standard", "rotary_base", "stationary_base", "base_x", "old_stationary_base"]
 
 # Robot configuration used to define the center wrist position
 
@@ -249,9 +271,10 @@ def get_starting_configuration(lift_middle):
         "joint_mobile_base_rotate_by": 0.0,
         "joint_lift": lift_middle,
         "joint_arm_l0": 0.01,
-        "joint_wrist_yaw": 0.9 * np.pi,
+        "joint_wrist_yaw": 0.0,
         "joint_wrist_pitch": 0.0,
         "joint_wrist_roll": 0.0,
+        "stretch_gripper": 200.0,
     }
     return starting_configuration
 
@@ -335,3 +358,38 @@ def get_do_nothing_goal_array():
 def is_a_do_nothing_goal_array(goal_array):
     test = goal_array[1:, :] < -1000.0
     return np.any(test)
+
+
+def format_state(raw_state: dict | None = None, teleop_mode: str | None = "standard"):
+    # Zero out unused features for specific teleop modes
+    if teleop_mode == "standard":
+        pass
+    elif teleop_mode == "rotary_base":
+        raw_state["base_x"] = 0.0
+        raw_state["base_x_vel"] = 0.0
+        raw_state["base_y"] = 0.0
+        raw_state["base_y_vel"] = 0.0
+
+    elif teleop_mode == "stationary_base":
+        raw_state["base_x"] = 0.0
+        raw_state["base_x_vel"] = 0.0
+        raw_state["base_y"] = 0.0
+        raw_state["base_y_vel"] = 0.0
+        raw_state["base_theta"] = 0.0
+        raw_state["base_theta_vel"] = 0.0
+
+    elif teleop_mode == "base_x":
+        raw_state["base_y"] = 0.0
+        raw_state["base_y_vel"] = 0.0
+        raw_state["base_theta"] = 0.0
+        raw_state["base_theta_vel"] = 0.0
+
+    # TODO Remove once support for older models with feature dim of 7 isn't needed
+    elif teleop_mode == "old_stationary_base":
+        pass
+    else:
+        raise NotImplementedError(
+            f"{teleop_mode} is not a supported teleop mode. Supported modes: {SUPPORTED_MODES}"
+        )
+
+    return raw_state

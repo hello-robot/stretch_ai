@@ -484,17 +484,43 @@ def adjust_gamma(image: np.ndarray, gamma: float = 1.0):
 def autoAdjustments_with_convertScaleAbs(img):
     # Initial code copied from
     # https://answers.opencv.org/question/75510/how-to-make-auto-adjustmentsbrightness-and-contrast-for-image-android-opencv-image-correction/
-    alow = img.min()
+    a_low = img.min()
     # ahigh = img.max()
-    ahigh = np.percentile(img, 90)
-    amax = 255
-    amin = 0
+    a_high = np.percentile(img, 90)
+    a_max = 255
+    a_min = 0
 
     # calculate alpha, beta
-    alpha = (amax - amin) / (ahigh - alow)
-    beta = amin - alow * alpha
+    alpha = (a_max - a_min) / (a_high - a_low)
+    beta = a_min - a_low * alpha
     # perform the operation g(x,y)= α * f(x,y)+ β
     new_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
 
     # return [new_img, alpha, beta]
     return new_img
+
+
+def scale_camera_matrix(K: np.ndarray, scale_factor: float) -> np.ndarray:
+    """
+    Modify the camera matrix K when shrinking an image by a scale factor.
+
+    Parameters:
+    K (numpy.ndarray): 3x3 camera intrinsic matrix
+    scale_factor (float): Scale factor for image shrinking (0 < scale_factor <= 1)
+
+    Returns:
+    numpy.ndarray: Modified 3x3 camera matrix
+    """
+    if not 0 < scale_factor <= 1:
+        raise ValueError("Scale factor must be between 0 and 1")
+
+    # Create a copy of K to avoid modifying the original matrix
+    K_scaled = K.copy()
+
+    # Scale the focal length (fx, fy) and principal point (cx, cy)
+    K_scaled[0, 0] *= scale_factor  # fx
+    K_scaled[1, 1] *= scale_factor  # fy
+    K_scaled[0, 2] *= scale_factor  # cx
+    K_scaled[1, 2] *= scale_factor  # cy
+
+    return K_scaled

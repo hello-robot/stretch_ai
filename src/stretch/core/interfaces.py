@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import trimesh
 
 
 class GeneralTaskState(Enum):
@@ -53,7 +54,7 @@ class ContinuousNavigationAction(Action):
 
     def __init__(self, xyt: np.ndarray):
         if not len(xyt) == 3:
-            raise RuntimeError("continuous navigation action space has 3 dimentions, x y and theta")
+            raise RuntimeError("continuous navigation action space has 3 dimensions, x y and theta")
         self.xyt = xyt
 
     def __str__(self):
@@ -67,7 +68,7 @@ class ContinuousFullBodyAction:
     def __init__(self, joints: np.ndarray, xyt: np.ndarray = None):
         """Create full-body continuous action"""
         if xyt is not None and not len(xyt) == 3:
-            raise RuntimeError("continuous navigation action space has 3 dimentions, x y and theta")
+            raise RuntimeError("continuous navigation action space has 3 dimensions, x y and theta")
         self.xyt = xyt
         # Joint states in robot action format
         self.joints = joints
@@ -93,7 +94,7 @@ class ContinuousEndEffectorAction:
             and not (pos.shape[1] + ori.shape[1] + g.shape[1]) == 8
         ):
             raise RuntimeError(
-                "continuous end-effector action space has 8 dimentions: pos=3, ori=4, gripper=1"
+                "continuous end-effector action space has 8 dimensions: pos=3, ori=4, gripper=1"
             )
         self.pos = pos
         self.ori = ori
@@ -215,6 +216,21 @@ class Observations:
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
     camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
+    # Pose of the camera in world coordinates
+    camera_pose: Optional[np.array] = None
+
+    # End effector camera
+    ee_rgb: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in [0, 255]
+    ee_depth: Optional[np.ndarray] = None  # (camera_height, camera_width) in meters
+    ee_xyz: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in camera coordinates
+    ee_semantic: Optional[
+        np.array
+    ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
+    ee_camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
+
+    # Pose of the end effector camera in world coordinates
+    ee_camera_pose: Optional[np.array] = None
+
     # Instance IDs per observation frame
     # Size: (camera_height, camera_width)
     # Range: 0 to max int
@@ -222,10 +238,6 @@ class Observations:
 
     # Optional third-person view from simulation
     third_person_image: Optional[np.array] = None
-
-    # Pose of the camera in world coordinates
-    camera_pose: Optional[np.array] = None
-    camera_K: Optional[np.array] = None
 
     # Proprioreception
     joint: Optional[np.array] = None  # joint positions of the robot
@@ -241,3 +253,49 @@ class Observations:
 
     # Sequence number - which message was this?
     seq_id: int = -1
+
+    def compute_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+        """Compute xyz from depth and camera intrinsics."""
+        if self.depth is not None and self.camera_K is not None:
+            self.xyz = self.depth_to_xyz(self.depth * scaling, self.camera_K)
+        return self.xyz
+
+    def compute_ee_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+        """Compute xyz from depth and camera intrinsics."""
+        if self.ee_depth is not None and self.ee_camera_K is not None:
+            self.ee_xyz = self.depth_to_xyz(self.ee_depth * scaling, self.ee_camera_K)
+        return self.ee_xyz
+
+    def depth_to_xyz(self, depth, camera_K) -> np.ndarray:
+        """Convert depth image to xyz point cloud."""
+        # Get the camera intrinsics
+        fx, fy, cx, cy = camera_K[0, 0], camera_K[1, 1], camera_K[0, 2], camera_K[1, 2]
+        # Get the image size
+        h, w = depth.shape
+        # Create the grid
+        x = np.tile(np.arange(w), (h, 1))
+        y = np.tile(np.arange(h).reshape(-1, 1), (1, w))
+        # Compute the xyz
+        x = (x - cx) * depth / fx
+        y = (y - cy) * depth / fy
+        return np.stack([x, y, depth], axis=-1)
+
+    def get_ee_xyz_in_world_frame(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+        """Get the end effector xyz in world frame."""
+        if self.ee_xyz is None:
+            self.compute_ee_xyz(scaling=scaling)
+        if self.ee_xyz is not None and self.ee_camera_pose is not None:
+            return self.transform_points(self.ee_xyz, self.ee_camera_pose)
+        return None
+
+    def get_xyz_in_world_frame(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+        """Get the xyz in world frame."""
+        if self.xyz is None:
+            self.compute_xyz(scaling=scaling)
+        if self.xyz is not None and self.camera_pose is not None:
+            return self.transform_points(self.xyz, self.camera_pose)
+        return None
+
+    def transform_points(self, points: np.ndarray, pose: np.ndarray):
+        """Transform points to world frame."""
+        return np.dot(points, pose[:3, :3].T) + pose[:3, 3]

@@ -25,7 +25,8 @@ setuptools.setup(
         "torchvision",
         "pyyaml",
         "pyzmq",
-        "numpy",
+        "numpy<2",
+        "numba",
         "opencv-python",
         "scipy",
         "matplotlib",
@@ -33,7 +34,6 @@ setuptools.setup(
         "openai-clip",
         "yacs",
         "loguru",
-        "atomicwrites",
         "transformers",
         "scikit-image",
         "pybullet",
@@ -41,7 +41,17 @@ setuptools.setup(
         "pin",  # Pinocchio IK solver
         "pynput",
         "pyrealsense2",
-        "orbslam3",
+        "urchin",
+        "pyusb",
+        "schema",
+        # For siglip encoder
+        "sentencepiece",
+        # For git tools
+        "gitpython",
+        # Configuration tools and neural networks
+        "hydra-core",
+        "timm",
+        "huggingface_hub[cli]",
         # Compression tools
         "pyliblzfse",
         "webp",

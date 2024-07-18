@@ -56,6 +56,7 @@ class RobotMove:
 
                 if speed == "fastest_stretch_2":
                     custom_parameters = {
+                        "joint_mobile_base_translate_by": (None, {"v_m": 0.3, "a_m": 0.5}),
                         "joint_mobile_base_rotate_by": (None, {"v_r": 0.3, "a_r": 0.5}),
                         "joint_lift": (None, {"v_m": 0.2, "a_m": 1.0}),
                         "joint_arm_l0": (None, {"v_m": 0.18, "a_m": 1.0}),
@@ -67,6 +68,7 @@ class RobotMove:
                 elif speed == "fastest_stretch_3":
                     # 'joint_lift': (None, {'v_m': 0.13, 'a_m': 1.0}),
                     custom_parameters = {
+                        "joint_mobile_base_translate_by": (None, {"v_m": 0.3, "a_m": 0.5}),
                         "joint_mobile_base_rotate_by": (None, {"v_r": 0.3, "a_r": 0.5}),
                         "joint_lift": (None, {"v_m": 0.2, "a_m": 1.0}),
                         "joint_arm_l0": (None, {"v_m": 0.18, "a_m": 1.0}),
@@ -77,6 +79,7 @@ class RobotMove:
                     }
 
                 joint_functions = {
+                    "joint_mobile_base_translate_by": robot.base.translate_by,
                     "joint_mobile_base_rotate_by": robot.base.rotate_by,
                     "joint_lift": robot.lift.move_to,
                     "joint_arm_l0": robot.arm.move_to,
@@ -103,6 +106,9 @@ class RobotMove:
             else:
 
                 base_speed = self.params["base"]["motion"][speed]
+                base_trans_v = base_speed["vel_m"]
+                base_trans_a = base_speed["accel_m"]
+
                 base_rot_v = base_speed["vel_m"]
                 base_rot_a = base_speed["accel_m"]
 
@@ -140,6 +146,9 @@ class RobotMove:
                 #     """
 
                 move_to_functions = {
+                    "joint_mobile_base_translate_by": partial(
+                        robot.base.translate_by, v_m=base_trans_v, a_m=base_trans_a
+                    ),
                     "joint_mobile_base_rotate_by": partial(
                         robot.base.rotate_by, v_r=base_rot_v, a_r=base_rot_a
                     ),
@@ -166,6 +175,10 @@ class RobotMove:
                 }
 
                 move_to_settings = {
+                    "joint_mobile_base_translate_by": (
+                        None,
+                        {"v_r": base_trans_v, "a_r": base_trans_a},
+                    ),
                     "joint_mobile_base_rotate_by": (
                         None,
                         {"v_r": base_rot_v, "a_r": base_rot_a},

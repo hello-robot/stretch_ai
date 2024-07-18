@@ -108,7 +108,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self._orientation_resolution = 64
         self._oriented_masks = []
 
-        # NOTE: this is just debug code - lets you see waht the masks look like
+        # NOTE: this is just debug code - lets you see what the masks look like
         assert not show_all or orientation_resolution == 64
 
         for i in range(orientation_resolution):
@@ -320,6 +320,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         debug: bool = False,
         look_at_any_point: bool = False,
         conservative: bool = True,
+        rotation_offset: float = 0.0,
     ) -> Optional[np.ndarray]:
         """Sample a position near the mask and return.
 
@@ -393,7 +394,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
             xyt = torch.zeros(3)
             xyt[:2] = point
-            xyt[2] = theta
+            xyt[2] = theta + rotation_offset
 
             # Check to see if this point is valid
             if verbose:

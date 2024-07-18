@@ -122,3 +122,16 @@ webcam_calibration_images/
 # Data files
 *.pkl
 *.pcd
+*.png
+*.jpg
+*.jpeg
+
+# Policy weights and configs
+policy/
+
+# Data collection folder
+data/
+log/
+
+# install folder
+install/

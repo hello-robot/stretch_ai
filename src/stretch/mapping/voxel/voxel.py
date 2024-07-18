@@ -16,16 +16,13 @@ import open3d as open3d
 import scipy
 import skimage
 import torch
-import trimesh
-from pytorch3d.structures import Pointclouds
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
 from stretch.mapping.grid import GridParams
-from stretch.mapping.instance import Instance, InstanceMemory, InstanceView
+from stretch.mapping.instance import Instance, InstanceMemory
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
-from stretch.utils.bboxes_3d import BBoxes3D
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import (
@@ -105,6 +102,7 @@ class SparseVoxelMap(object):
         log_dir_overwrite_ok=True,
         mask_cropped_instances="False",
     )
+    debug_valid_depth: bool = False
 
     def __init__(
         self,
@@ -482,6 +480,21 @@ class SparseVoxelMap(object):
                     valid_depth & (median_filter_error < self.median_filter_max_error).bool()
                 )
 
+            if self.debug_valid_depth:
+                # This is a block of debug code for displaying valid depths, in case for some reason valid regions and objects are being rejected out of hand for no good reason.
+                print("valid_depth", valid_depth.sum(), valid_depth.shape)
+                import matplotlib
+
+                matplotlib.use("TkAgg")
+                import matplotlib.pyplot as plt
+
+                plt.subplot(121)
+                plt.imshow(valid_depth.cpu().numpy())
+                valid_depth_mask = valid_depth[:, :, None].repeat([1, 1, 3])
+                plt.subplot(122)
+                plt.imshow(valid_depth_mask.cpu().numpy() * rgb.cpu().numpy().astype(np.uint8))
+                plt.show()
+
         # Add instance views to memory
         if self.use_instance_memory:
             # Add to instance memory
@@ -839,7 +852,7 @@ class SparseVoxelMap(object):
         elif backend == "pytorch3d":
             return self._show_pytorch3d(instances, **backend_kwargs)
         else:
-            raise NotImplementedError(f"Uknown backend {backend}, must be 'open3d' or 'pytorch3d")
+            raise NotImplementedError(f"Unknown backend {backend}, must be 'open3d' or 'pytorch3d")
 
     def get_xyz_rgb(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return xyz and rgb of the current map"""
@@ -847,69 +860,7 @@ class SparseVoxelMap(object):
         return points, rgb
 
     def _show_pytorch3d(self, instances: bool = True, mock_plot: bool = False, **plot_scene_kwargs):
-        from pytorch3d.vis.plotly_vis import AxisArgs, plot_scene
-
-        from stretch.utils.bboxes_3d_plotly import plot_scene_with_bboxes
-        from stretch.utils.plotly_vis.camera import add_camera_poses, colormap_to_rgb_strings
-
-        points, rgb = self.get_xyz_rgb()
-
-        # TODO: Xiaohan--need to normalize for older versions of pytorch3d. remove before merge
-        rgb = rgb / 128.0
-
-        traces = {}
-
-        # Show points
-        ptc = None
-        if points is None and mock_plot:
-            ptc = Pointclouds(points=[torch.zeros((2, 3))], features=[torch.zeros((2, 3))])
-        elif points is not None:
-            ptc = Pointclouds(points=[points], features=[rgb])
-        if ptc is not None:
-            traces["Points"] = ptc
-
-        # Show instances
-        if instances:
-            if len(self.get_instances()) > 0:
-                bounds, names = zip(*[(v.bounds, v.category_id) for v in self.get_instances()])
-                detected_boxes = BBoxes3D(
-                    bounds=[torch.stack(bounds, dim=0)],
-                    # At some point we can color the boxes according to class, but that's not implemented yet
-                    # features = [categorcolors],
-                    names=[torch.stack(names, dim=0).unsqueeze(-1)],
-                )
-            else:
-                detected_boxes = BBoxes3D(
-                    bounds=[torch.zeros((2, 3, 2))],
-                    # At some point we can color the boxes according to class, but that's not implemented yet
-                    # features = [categorcolors],
-                    names=[torch.zeros((2, 1), dtype=torch.long)],
-                )
-            traces["IB"] = detected_boxes
-
-        # Show cameras
-        # "Fused boxes": global_boxes,
-        # "cameras": cameras,
-
-        _default_plot_args = dict(
-            xaxis={"backgroundcolor": "rgb(230, 200, 200)"},
-            yaxis={"backgroundcolor": "rgb(200, 230, 200)"},
-            zaxis={"backgroundcolor": "rgb(200, 200, 230)"},
-            axis_args=AxisArgs(showgrid=True),
-            pointcloud_marker_size=3,
-            pointcloud_max_points=800_000,
-            boxes_plot_together=True,
-            boxes_wireframe_width=3,
-            aspectmode="cube",
-        )
-        fig = plot_scene_with_bboxes(
-            plots={"Global scene": traces},
-            **update(_default_plot_args, plot_scene_kwargs),
-        )
-        # Show cameras
-        poses = [obs.camera_pose for obs in self.observations]
-        add_camera_poses(fig, poses)
-        return fig
+        print("SparseVoxelMap::_show_pytorch_3d: Warning! pytorch3d support deprecated!")
 
     def sample_explored(self) -> Optional[np.ndarray]:
         """Return obstacle-free xy point in explored space"""
@@ -1004,6 +955,7 @@ class SparseVoxelMap(object):
         norm: float = 255.0,
         xyt: Optional[np.ndarray] = None,
         footprint: Optional[Footprint] = None,
+        add_planner_visuals: bool = True,
         **backend_kwargs,
     ):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
@@ -1020,17 +972,18 @@ class SparseVoxelMap(object):
         obstacles, explored = self.get_2d_map()
         traversible = explored & ~obstacles
 
-        geoms += self._get_boxes_from_points(traversible, [0, 1, 0])
-        geoms += self._get_boxes_from_points(obstacles, [1, 0, 0])
+        if add_planner_visuals:
+            geoms += self._get_boxes_from_points(traversible, [0, 1, 0])
+            geoms += self._get_boxes_from_points(obstacles, [1, 0, 0])
 
-        if xyt is not None and footprint is not None:
-            geoms += self._get_boxes_from_points(
-                footprint.get_rotated_mask(self.grid_resolution, float(xyt[2])),
-                [0, 0, 1],
-                is_map=False,
-                height=0.1,
-                offset=xyt[:2],
-            )
+            if xyt is not None and footprint is not None:
+                geoms += self._get_boxes_from_points(
+                    footprint.get_rotated_mask(self.grid_resolution, float(xyt[2])),
+                    [0, 0, 1],
+                    is_map=False,
+                    height=0.1,
+                    offset=xyt[:2],
+                )
 
         if instances:
             self._get_instances_open3d(geoms)
@@ -1079,6 +1032,18 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
+    def delete_obstacles(
+        self,
+        bounds: Optional[np.ndarray] = None,
+        point: Optional[np.ndarray] = None,
+        radius: Optional[float] = None,
+    ) -> None:
+        """Delete obstacles from the map"""
+        self.voxel_pcd.remove(bounds, point, radius)
+
+        # Force recompute of 2d map
+        self.get_2d_map()
+
     def _show_open3d(
         self,
         instances: bool,
@@ -1086,12 +1051,15 @@ class SparseVoxelMap(object):
         norm: float = 255.0,
         xyt: Optional[np.ndarray] = None,
         footprint: Optional[Footprint] = None,
+        planner_visuals: bool = True,
         **backend_kwargs,
     ):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
 
         # get geometries so we can use them
-        geoms = self._get_open3d_geometries(instances, orig, norm, xyt=xyt, footprint=footprint)
+        geoms = self._get_open3d_geometries(
+            instances, orig, norm, xyt=xyt, footprint=footprint, add_planner_visuals=planner_visuals
+        )
 
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)

@@ -1,7 +1,6 @@
----
-name: "\U0001F41B Bug Report"
-about: Submit a bug report
----
+______________________________________________________________________
+
+## name: "\\U0001F41B Bug Report" about: Submit a bug report
 
 ## 🐛 Bug
 
@@ -12,7 +11,9 @@ about: Submit a bug report
 Steps to reproduce the behavior:
 
 <!-- If you were running a command, post the exact command that you were running -->
+
 <!-- Please note that without a minimal working example to reproduce the bug, we may not be able to help. -->
+
 <!-- If you have a code sample, error messages, stack traces, please provide it here as well -->
 
 ## Expected behavior

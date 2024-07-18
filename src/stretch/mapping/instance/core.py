@@ -8,6 +8,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import cv2
 import numpy as np
 import torch
 from torch import Tensor
@@ -52,7 +53,7 @@ class InstanceView:
     point_cloud: Tensor = None
     """point_cloud: 3d locations of world points corresponding to instance view pixels"""
     point_cloud_rgb: Tensor = None
-    """point_cloud_rgb: rgb colors corrsponding to point_cloud"""
+    """point_cloud_rgb: rgb colors corresponding to point_cloud"""
     point_cloud_features: Tensor = None
     """point_cloud_features: features corresponding to point_clouds"""
     cam_to_world: Tensor = None
@@ -126,6 +127,19 @@ class Instance:
     """Confidence score of bbox detection"""
     score_aggregation_method: str = "max"
 
+    @property
+    def id(self) -> int:
+        """Convenience function to get the unique global id of the instance"""
+        return self.global_id
+
+    def get_category_id(self) -> int:
+        """Get the category id of the instance, making sure it's actually an int."""
+        if isinstance(self.category_id, torch.Tensor):
+            return int(self.category_id.item())
+        elif self.category_id is None:
+            return None
+        return int(self.category_id)
+
     def get_image_embedding(self, aggregation_method="max", normalize: bool = True):
         """Get the combined image embedding across all views"""
         view_embeddings = [view.embedding for view in self.instance_views]
@@ -163,6 +177,16 @@ class Instance:
         else:
             raise NotImplementedError(f"metric {metric} not supported")
         return best_view
+
+    def show_best_view(self, metric: str = "area", title: Optional[str] = None) -> None:
+        """Show the best view of the instance"""
+        best_view = self.get_best_view(metric=metric)
+        image = best_view.get_image()
+        # Convert from RGB to BGR
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        cv2.imshow(title, image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     def add_instance_view(self, instance_view: InstanceView):
         if len(self.instance_views) == 0:

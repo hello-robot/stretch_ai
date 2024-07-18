@@ -9,12 +9,11 @@ import pickle
 import time
 import timeit
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import clip
 import numpy as np
 import torch
-from atomicwrites import atomic_write
 from loguru import logger
 from PIL import Image
 from torchvision import transforms
@@ -26,10 +25,9 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
-from stretch.perception.encoders import get_encoder
+from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
+from stretch.utils.geometry import angle_difference
 from stretch.utils.threading import Interval
-
-# from transformers import Owlv2ForObjectDetection, Owlv2Processor
 
 
 class RobotAgent:
@@ -45,6 +43,8 @@ class RobotAgent:
         grasp_client: Optional[GraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
+        debug_instances: bool = True,
+        show_instances_detected: bool = False,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -55,13 +55,15 @@ class RobotAgent:
         self.robot = robot
         self.rpc_stub = rpc_stub
         self.grasp_client = grasp_client
+        self.debug_instances = debug_instances
+        self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
         self.normalize_embeddings = True
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
-        self.encoder = get_encoder(parameters["encoder"], parameters["encoder_args"])
+        self.encoder = get_encoder(parameters["encoder"], parameters.get("encoder_args", {}))
         self.obs_count = 0
         self.obs_history = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
@@ -157,11 +159,63 @@ class RobotAgent:
         self.openai_key = None
         self.task = None
 
+    def get_encoder(self) -> BaseImageTextEncoder:
+        """Return the encoder in use by this model"""
+        return self.encoder
+
+    def encode_text(self, text: str) -> torch.Tensor:
+        """Encode text using the encoder"""
+        return self.encoder.encode_text(text)
+
+    def encode_image(self, image: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        """Encode image using the encoder"""
+        return self.encoder.encode_image(image)
+
     def set_openai_key(self, key):
         self.openai_key = key
 
     def set_task(self, task):
         self.task = task
+
+    def get_instance_from_text(
+        self,
+        text_query: str,
+        aggregation_method: str = "mean",
+        normalize: bool = False,
+        verbose: bool = True,
+    ) -> Optional[Instance]:
+        """Get the instance that best matches the text query.
+
+        Args:
+            text_query(str): the text query
+            aggregation_method(str): how to aggregate the embeddings. Should be one of (max, mean).
+            normalize(bool): whether to normalize the embeddings
+            verbose(bool): whether to print debug info
+
+        Returns:
+            activation(float): the cosine similarity between the text query and the instance embedding
+            instance(Instance): the instance that best matches the text query
+        """
+        if self.semantic_sensor is None:
+            return None
+        instances = self.voxel_map.instances.get_instances()
+        assert aggregation_method in [
+            "max",
+            "mean",
+        ], f"Invalid aggregation method {aggregation_method}"
+        activations = []
+        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
+        for ins, instance in enumerate(instances):
+            emb = instance.get_image_embedding(
+                aggregation_method=aggregation_method, normalize=normalize
+            )
+            activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
+            activations.append(activation.item())
+            if verbose:
+                print(f" - Instance {ins} has activation {activation.item()}")
+        idx = np.argmax(activations)
+        best_instance = instances[idx]
+        return activations[idx], best_instance
 
     def get_navigation_space(self) -> ConfigurationSpace:
         """Returns reference to the navigation space."""
@@ -186,8 +240,12 @@ class RobotAgent:
             return False
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
-    def rotate_in_place(self, steps: int = 12, visualize: bool = True) -> bool:
+    def rotate_in_place(self, steps: int = 12, visualize: bool = False) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
+
+        Args:
+            steps(int): number of steps to rotate (each step is 360 degrees / steps). Default is 12.
+            visualize(bool): show the map as we rotate. Default is False.
 
         Returns:
             executed(bool): false if we did not actually do any rotations"""
@@ -197,19 +255,47 @@ class RobotAgent:
 
         step_size = 2 * np.pi / steps
         i = 0
+        x, y, _ = self.robot.get_base_pose()
+        print(f"==== ROTATE IN PLACE at {x}, {y} ====")
         while i < steps:
-            self.robot.navigate_to([0, 0, i * step_size], relative=False, blocking=True)
+            self.robot.navigate_to([x, y, i * step_size], relative=False, blocking=True)
 
             if self.robot.last_motion_failed():
                 # We have a problem!
                 raise RuntimeError("Robot is stuck!")
-                # continue
             else:
                 i += 1
 
             # Add an observation after the move
             print("---- UPDATE ----")
             self.update()
+
+            if self.debug_instances:
+                if self.show_instances_detected:
+                    import matplotlib
+
+                    # TODO: why do we need to configure this every time
+                    matplotlib.use("TkAgg")
+                    import matplotlib.pyplot as plt
+
+                # Check to see if we have a receptacle in the map
+                instances = self.voxel_map.get_instances()
+                for ins, instance in enumerate(instances):
+                    name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
+                    print(
+                        f" - Found instance {ins} with name {name} and global id {instance.global_id}."
+                    )
+                    view = instance.get_best_view()
+                    if self.show_instances_detected:
+                        plt.imshow(view.get_image())
+                        plt.title(f"Instance {ins} with name {name}")
+                        plt.axis("off")
+                        plt.show()
+                    else:
+                        image = Image.fromarray(view.get_image())
+                        filename = f"{self.path}/viz_data/instance_{ins}_is_a_{name}.png"
+                        print(f"- Saving debug image to {filename}")
+                        image.save(filename)
 
             if visualize:
                 self.voxel_map.show(
@@ -277,7 +363,7 @@ class RobotAgent:
 
         # Add observation - helper function will unpack it
         if visualize_map:
-            # Now draw 2d maps to show waht was happening
+            # Now draw 2d maps to show what was happening
             self.voxel_map.get_2d_map(debug=True)
 
         if debug_instances:
@@ -317,6 +403,8 @@ class RobotAgent:
         instance_id: int = -1,
         max_tries: int = 10,
         radius_m: float = 0.5,
+        rotation_offset: float = 0.0,
+        use_cache: bool = True,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found.
 
@@ -324,6 +412,7 @@ class RobotAgent:
             instance(Instance): an object in the world
             verbose(bool): extra info is printed
             instance_ind(int): if >= 0 we will try to use this to retrieve stored plans
+            rotation_offset(float): added to rotation of goal to change final relative orientation
         """
 
         res = None
@@ -337,7 +426,7 @@ class RobotAgent:
 
         # plan to the sampled goal
         has_plan = False
-        if instance_id >= 0 and instance_id in self._cached_plans:
+        if use_cache and instance_id >= 0 and instance_id in self._cached_plans:
             res = self._cached_plans[instance_id]
             has_plan = res.success
             if verbose:
@@ -345,7 +434,14 @@ class RobotAgent:
 
         if not has_plan:
             # Call planner
-            res = self.plan_to_bounds(instance.bounds, start, verbose, max_tries, radius_m)
+            res = self.plan_to_bounds(
+                instance.bounds,
+                start,
+                verbose,
+                max_tries,
+                radius_m,
+                rotation_offset=rotation_offset,
+            )
             if instance_id >= 0:
                 self._cached_plans[instance_id] = res
 
@@ -359,6 +455,7 @@ class RobotAgent:
         verbose: bool = False,
         max_tries: int = 10,
         radius_m: float = 0.5,
+        rotation_offset: float = 0.0,
     ) -> PlanResult:
         """Move to be near a bounding box in the world. Goes until a motion plan is found or max_tries is reached.
 
@@ -380,7 +477,10 @@ class RobotAgent:
         conservative_sampling = True
         # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
         for goal in self.space.sample_near_mask(
-            mask, radius_m=radius_m, conservative=conservative_sampling
+            mask,
+            radius_m=radius_m,
+            conservative=conservative_sampling,
+            rotation_offset=rotation_offset,
         ):
             goal = goal.cpu().numpy()
             if verbose:
@@ -505,7 +605,13 @@ class RobotAgent:
             name = self.semantic_sensor.get_class_name_for_id(oid)
             print(i, name, instance.score)
 
-    def start(self, goal: Optional[str] = None, visualize_map_at_start: bool = False):
+    def start(
+        self,
+        goal: Optional[str] = None,
+        visualize_map_at_start: bool = False,
+        can_move: bool = True,
+        verbose: bool = False,
+    ):
 
         # Call the robot's own startup hooks
         started = self.robot.start()
@@ -513,18 +619,22 @@ class RobotAgent:
             # update here
             raise RuntimeError("Robot failed to start!")
 
-        # First, open the gripper...
-        self.robot.switch_to_manipulation_mode()
-        self.robot.open_gripper()
+        if can_move:
+            # First, open the gripper...
+            self.robot.switch_to_manipulation_mode()
+            self.robot.open_gripper()
 
-        # Tuck the arm away
-        print("Sending arm to  home...")
-        self.robot.move_to_nav_posture()
-        print("... done.")
+            # Tuck the arm away
+            if verbose:
+                print("Sending arm to  home...")
+            self.robot.move_to_nav_posture()
+            if verbose:
+                print("... done.")
 
         # Move the robot into navigation mode
         self.robot.switch_to_navigation_mode()
-        print("- Update map after switching to navigation posture")
+        if verbose:
+            print("- Update map after switching to navigation posture")
         self.update(visualize_map=False)  # Append latest observations
 
         # Add some debugging stuff - show what 3d point clouds look like
@@ -891,8 +1001,47 @@ class RobotAgent:
                 print("WARNING: planning to home failed!")
         return matches
 
-    def save_instance_images(self, root: str = "."):
-        """Save out instance images from the voxel map that we hav ecollected while exploring."""
+    def move_closed_loop(self, goal: np.ndarray, max_time: float = 10.0) -> bool:
+        """Helper function which will move while also checking which position the robot reached.
+
+        Args:
+            goal(np.ndarray): the goal position
+            max_time(float): the maximum time to wait for the robot to reach the goal
+
+        Returns:
+            bool: true if the robot reached the goal, false otherwise
+        """
+        t0 = timeit.default_timer()
+        self.robot.move_to_nav_posture()
+        while True:
+            self.robot.navigate_to(goal, blocking=False, timeout=30.0)
+            if self.robot.last_motion_failed():
+                return False
+            position = self.robot.get_base_pose()
+            if (
+                np.linalg.norm(position[:2] - goal[:2]) < 0.1
+                and angle_difference(position[2], goal[2]) < 0.1
+                and self.robot.at_goal()
+            ):
+                return True
+            t1 = timeit.default_timer()
+            if t1 - t0 > max_time:
+                return False
+            time.sleep(0.1)
+
+    def reset(self, verbose: bool = True):
+        """Reset the robot's spatial memory. This deletes the instance memory and spatial map, and clears all observations.
+
+        Args:
+            verbose(bool): print out a message to the user making sure this does not go unnoticed. Defaults to True."""
+        if verbose:
+            print(
+                "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
+            )
+        self.voxel_map.reset()
+
+    def save_instance_images(self, root: str = ".", verbose: bool = False) -> None:
+        """Save out instance images from the voxel map that we have collected while exploring."""
 
         if isinstance(root, str):
             root = Path(root)
@@ -902,4 +1051,6 @@ class RobotAgent:
             for j, view in enumerate(instance.instance_views):
                 image = Image.fromarray(view.cropped_image.byte().cpu().numpy())
                 filename = f"instance{i}_view{j}.png"
+                if verbose:
+                    print(f"Saving instance image {i} view {j} to {root / filename}")
                 image.save(root / filename)
