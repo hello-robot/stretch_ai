@@ -6,16 +6,15 @@ from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
 from .clip_encoder import ClipEncoder, NormalizedClipEncoder
+from .siglip_encoder import SiglipEncoder
 
 
 def get_encoder(encoder_name, args: Any):
     if encoder_name == "clip":
-        return ClipEncoder(args)
+        return ClipEncoder(**args)
     elif encoder_name == "normalized_clip":
-        return NormalizedClipEncoder(args)
-    elif encoder_name == "mtm":
-        from .mtm_encoder import HomeRobotMTMEncoder
-
-        return HomeRobotMTMEncoder()
+        return NormalizedClipEncoder(**args)
+    elif encoder_name == "siglip":
+        return SiglipEncoder(**args)
     else:
         raise ValueError(f"Encoder {encoder_name} not implemented or not supported.")

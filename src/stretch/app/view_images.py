@@ -10,11 +10,12 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.perception import create_semantic_sensor, get_encoder
+from stretch.utils.gripper import GripperArucoDetector
 from stretch.utils.image import adjust_gamma
 
 
 @click.command()
-@click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
+@click.option("--robot_ip", default="", help="IP address of the robot")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--local",
@@ -30,6 +31,7 @@ from stretch.utils.image import adjust_gamma
     "--run_semantic_segmentation", is_flag=True, help="Run semantic segmentation on EE rgb images"
 )
 @click.option("--segment_ee", is_flag=True, help="Run semantic segmentation on EE rgb images")
+@click.option("--aruco", is_flag=True, help="Run aruco detection on EE rgb images")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -42,6 +44,7 @@ def main(
     run_semantic_segmentation: bool = False,
     gamma: float = 1.0,
     segment_ee: bool = False,
+    aruco: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -59,6 +62,10 @@ def main(
             category_map_file=parameters["open_vocab_category_map_file"],
             confidence_threshold=0.3,
         )
+    if aruco:
+        aruco_detector = GripperArucoDetector()
+    else:
+        aruco_detector = None
 
     print("Starting the robot...")
     robot.start()
@@ -88,6 +95,10 @@ def main(
             continue
         if servo.ee_rgb is None:
             print("No end effector image. Skipping.")
+            continue
+        if servo.ee_depth is None:
+            print("No end effector depth image. Skipping.")
+            # servo.ee_depth = np.zeros_like(servo.ee_rgb)
             continue
 
         # First time info
@@ -132,6 +143,14 @@ def main(
                 img.copy(), alpha, semantic_segmentation, 1 - alpha, 0
             )
 
+        # Visualize depth
+        viz_depth = cv2.normalize(servo.depth, None, 0, 255, cv2.NORM_MINMAX)
+        viz_depth = viz_depth.astype(np.uint8)
+        viz_depth = cv2.applyColorMap(viz_depth, cv2.COLORMAP_JET)
+        viz_ee_depth = cv2.normalize(servo.ee_depth, None, 0, 255, cv2.NORM_MINMAX)
+        viz_ee_depth = viz_ee_depth.astype(np.uint8)
+        viz_ee_depth = cv2.applyColorMap(viz_ee_depth, cv2.COLORMAP_JET)
+
         # This is the head image
         image = obs.rgb
 
@@ -142,7 +161,15 @@ def main(
         servo_head_rgb = cv2.cvtColor(servo.rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow("servo: head camera image", servo_head_rgb)
         servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+
+        if aruco_detector is not None:
+            servo_corners, servo_ids, servo_ee_rgb = aruco_detector.detect_and_draw_aruco_markers(
+                servo_ee_rgb
+            )
         cv2.imshow("servo: ee camera image", servo_ee_rgb)
+
+        cv2.imshow("servo: ee depth image", viz_ee_depth)
+        cv2.imshow("servo: head depth image", viz_depth)
         if run_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)
 
