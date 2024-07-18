@@ -201,7 +201,7 @@ class Observations:
     # Pose
     # TODO: add these instead of gps + compass
     # base_pose: Pose
-    # ee_pose: Pose
+    ee_pose: Optional[np.array] = None
 
     # Pose
     gps: np.ndarray  # (x, y) where positive x is forward, positive y is translation to left in meters

@@ -311,6 +311,7 @@ class ZmqServer(CommsNode):
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
                 "ee_cam/pose": self.client.ee_camera_pose,
+                "ee/pose": self.client.ee_pose,
                 "head_cam/color_camera_K": scale_camera_matrix(
                     self.client.rgb_cam.get_K(), self.image_scaling
                 ),

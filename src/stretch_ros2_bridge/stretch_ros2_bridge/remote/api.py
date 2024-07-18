@@ -32,6 +32,7 @@ class StretchClient(RobotClient):
 
     camera_frame = "camera_color_optical_frame"
     ee_camera_frame = "gripper_camera_color_optical_frame"
+    ee_frame = "link_grasp_center"
     world_frame = "map"
 
     def __init__(
@@ -156,6 +157,13 @@ class StretchClient(RobotClient):
     @property
     def ee_camera_pose(self):
         p0 = self._ros_client.get_frame_pose(self.ee_camera_frame, base_frame=self.world_frame)
+        if p0 is not None:
+            p0 = p0 @ tra.euler_matrix(0, 0, 0)
+        return p0
+
+    @property
+    def ee_pose(self):
+        p0 = self._ros_client.get_frame_pose(self.ee_frame, base_frame=self.world_frame)
         if p0 is not None:
             p0 = p0 @ tra.euler_matrix(0, 0, 0)
         return p0

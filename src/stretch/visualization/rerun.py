@@ -14,6 +14,7 @@ def decompose_homogeneous_matrix(homogeneous_matrix):
 
 class RerunVsualizer:
     def __init__(self):
+        self.model = None
         rr.init("Stretch_robot", spawn=False)
         rr.serve(open_browser=False, server_memory_limit="1GB")
         # Create environment Box place holder
@@ -60,7 +61,7 @@ class RerunVsualizer:
 
     def log_ee_frame(self, servo):
         # EE Frame
-        rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
+        rot, trans = decompose_homogeneous_matrix(servo.ee_pose)
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[1, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
