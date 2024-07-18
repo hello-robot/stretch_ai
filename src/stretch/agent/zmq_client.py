@@ -24,6 +24,7 @@ from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.network import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
+from stretch.visualization.rerun import RerunVsualizer
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
@@ -144,6 +145,8 @@ class HomeRobotZmqClient(RobotClient):
         self._act_lock = Lock()
         self._state_lock = Lock()
         self._servo_lock = Lock()
+
+        self._rerun = RerunVsualizer()
 
         if start_immediately:
             self.start()
@@ -846,6 +849,12 @@ class HomeRobotZmqClient(RobotClient):
                     f"[STATE] time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
                 )
             t0 = timeit.default_timer()
+    
+    def blocking_spin_rerun(self):
+        while True:
+            self._rerun.step(self._obs)
+            time.sleep(0.2)
+
 
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
@@ -855,10 +864,12 @@ class HomeRobotZmqClient(RobotClient):
         self._thread = threading.Thread(target=self.blocking_spin)
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
+        self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)
         self._finish = False
         self._thread.start()
         self._state_thread.start()
         self._servo_thread.start()
+        self._rerun_thread.start()
 
         t0 = timeit.default_timer()
         while self._obs is None or self._state is None or self._servo is None:
@@ -890,6 +901,8 @@ class HomeRobotZmqClient(RobotClient):
             self._state_thread.join()
         if self._servo_thread is not None:
             self._servo_thread.join()
+        if self._rerun_thread is not None:
+            self._rerun_thread.join()
 
         # Close the sockets and context
         self.recv_socket.close()
