@@ -85,6 +85,7 @@ On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament works
 ```bash
 cd stretch_ai
 ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
+cd ~/ament_ws
 colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
