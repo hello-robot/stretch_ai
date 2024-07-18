@@ -92,7 +92,7 @@ To run the docker image, we need to:
 ### 1. Run a container and attach to the shell
 
 The network=host argument makes the container to use your LAN, so it can see your robot
-And to have GUI visualization through X server grant root permision to `xhost` and provide `DISPLAY` environment.
+And to have GUI visualization through X server grant root permission to `xhost` and provide `DISPLAY` environment.
 ```bash
 xhost si:localuser:root
 docker run \
