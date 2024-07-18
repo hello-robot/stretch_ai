@@ -34,6 +34,7 @@ jobs:
         cd src/; python -m pip install --no-cache-dir .[dev]
     - name: Precommit hooks
       run: |
+        mkdir -p ~/.mypy_cache
         pip install pre-commit
         pre-commit install-hooks
         pre-commit run --all-files
