@@ -852,8 +852,8 @@ class HomeRobotZmqClient(RobotClient):
     
     def blocking_spin_rerun(self):
         while True:
-            self._rerun.step(self._obs)
-            time.sleep(0.2)
+            self._rerun.step(self._obs, self._servo)
+            time.sleep(0.3)
 
 
     def start(self) -> bool:
