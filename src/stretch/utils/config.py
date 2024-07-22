@@ -29,7 +29,7 @@ class Config(yacs.config.CfgNode):
 
 def get_full_config_path(ext: str) -> Path:
     """Returns full path to a particular file"""
-    return os.path.join(CONFIG_ROOT, ext)
+    return Path(os.path.join(CONFIG_ROOT, ext))
 
 
 def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
@@ -40,11 +40,11 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
         path: path to our code's config
         opts: command line arguments overriding the config
     """
-    path = get_full_config_path(path)
+    full_path = get_full_config_path(path)
 
     # Start with our code's config
     config = Config()
-    config.merge_from_file(path)
+    config.merge_from_file(full_path)
 
     # Add command line arguments
     if opts is not None:
