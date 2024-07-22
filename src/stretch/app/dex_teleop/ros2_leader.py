@@ -568,8 +568,13 @@ class DexTeleopLeader:
             pass
 
 
-def main():
-    # CONFIGS
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--robot_ip", type=str, default="192.168.1.155")
+    args = parser.parse_args()
+
     use_gripper_center = True
     teleop_mode = "base_x"
 
@@ -594,7 +599,7 @@ def main():
 
     parameters = get_parameters("default_planner.yaml")
     robot = HomeRobotZmqClient(
-        robot_ip="192.168.1.155",
+        robot_ip=args.robot_ip,
         parameters=parameters,
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
     )
@@ -608,7 +613,3 @@ def main():
         pass
 
     robot.stop()
-
-
-if __name__ == "__main__":
-    main()
