@@ -237,8 +237,9 @@ class GraspObjectOperation(ManagedOperation):
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
-                    current_xyz[0] += self.open_loop_x_offset
-                    current_xyz[2] += self.open_loop_z_offset
+                    if current_xyz is not None:
+                        current_xyz[0] += self.open_loop_x_offset
+                        current_xyz[2] += self.open_loop_z_offset
                     if self.show_servo_gui:
                         cv2.destroyAllWindows()
                     return self.grasp_open_loop(current_xyz)
@@ -406,7 +407,7 @@ class GraspObjectOperation(ManagedOperation):
         if not self._success:
             self.grasp_open_loop(object_xyz)
 
-    def grasp_open_loop(self, object_xyz: np.ndarray) -> None:
+    def grasp_open_loop(self, object_xyz: np.ndarray):
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
 
         Args:
@@ -460,6 +461,7 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(joint_state, blocking=True)
         print(f"{self.name}: Done.")
         self._success = True
+        return
 
     def was_successful(self) -> bool:
         """Return true if successful"""
