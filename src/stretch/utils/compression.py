@@ -1,6 +1,6 @@
 import io
 import pickle
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import cv2
 import liblzfse
@@ -94,9 +94,15 @@ def to_jpg(image: np.ndarray, quality: int = 90):
     return compressed_image
 
 
-def from_jpg(compressed_image):
+def from_jpg(compressed_image: Union[bytes, np.ndarray]) -> np.ndarray:
+    """Convert compressed image to numpy array"""
+    if isinstance(compressed_image, bytes):
+        compressed_image = np.frombuffer(compressed_image, dtype=np.uint8)
     return cv2.imdecode(compressed_image, cv2.IMREAD_COLOR)
 
 
-def from_jp2(compressed_image):
+def from_jp2(compressed_image: Union[bytes, np.ndarray]) -> np.ndarray:
+    """Convert compressed image to numpy array"""
+    if isinstance(compressed_image, bytes):
+        compressed_image = np.frombuffer(compressed_image, dtype=np.uint8)
     return cv2.imdecode(compressed_image, cv2.IMREAD_UNCHANGED)

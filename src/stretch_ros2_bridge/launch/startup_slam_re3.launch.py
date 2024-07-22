@@ -17,38 +17,9 @@ def generate_launch_description():
             )
         )
     )
-    realsense_d405_config = {
-        "align_depth.enable": "true",
-        "camera_name": "ee_camera",
-        "camera_namespace": "",
-        # "decimation_filter.enable": "True",
-        # "spatial_filter.enable": "True",
-        # "temporal_filter.enable": "True",
-        # "disparity_filter.enable": "True",
-        "device_type": "d405",
-        "rgb_camera.profile": "640x480x15",
-        "depth_module.profile": "640x480x15",
-        # "rgb_camera.profile": "480x270x30",
-        # "depth_module.profile": "480x270x30",
-        "rgb_camera.enable_auto_exposure": "true",
-        "gyro_fps": "200",
-        "accel_fps": "100",
-        "pointcloud.enable": "true",
-        "pointcloud.stream_filter": "2",
-        "pointcloud.stream_filter_index": "0",
-        "allow_no_texture_points": "true",
-        "enable_sync": "true",
-    }
-    realsense_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
-        ),
-        launch_arguments=realsense_d405_config.items(),
-    )
     ld = LaunchDescription(
         [
             base_slam_launch,
-            realsense_launch,
         ]
     )
 

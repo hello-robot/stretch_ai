@@ -142,7 +142,8 @@ class OrbSlam3(Node):
     def run(self):
         while True:
             if (
-                self.rgb_image is None
+                self.slam is None
+                or self.rgb_image is None
                 or self.depth_image is None
                 or self.accel_data is None
                 or self.gyro_data is None

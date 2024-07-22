@@ -5,8 +5,9 @@ import time
 import click
 import numpy as np
 
+from stretch.agent.operations import GraspObjectOperation, UpdateOperation
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import GraspObjectOperation, PickupManager, UpdateOperation
+from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, get_parameters
 from stretch.core.task import Operation, Task
@@ -25,6 +26,7 @@ def get_task(robot, demo, target_object):
         )
         grasp_object.show_object_to_grasp = True
         grasp_object.servo_to_grasp = True
+        grasp_object.show_servo_gui = True
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -35,7 +37,9 @@ def get_task(robot, demo, target_object):
 
 
 @click.command()
-@click.option("--robot_ip", default="192.168.1.15", help="IP address of the robot")
+@click.option(
+    "--robot_ip", default="", help="IP address of the robot (blank to use stored IP address)"
+)
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--local",
@@ -45,7 +49,7 @@ def get_task(robot, demo, target_object):
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
 def main(
-    robot_ip: str = "192.168.1.15",
+    robot_ip: str = "",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     device_id: int = 0,

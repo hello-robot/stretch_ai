@@ -9,7 +9,6 @@ from typing import List, Optional, Tuple
 import numpy as np
 from scipy.spatial.transform.rotation import Rotation
 
-import stretch.utils.bullet as hrb
 from stretch.core.interfaces import ContinuousFullBodyAction
 from stretch.motion.constants import (
     MANIP_STRETCH_URDF,
@@ -54,6 +53,27 @@ class HelloStretchIdx:
     WRIST_YAW = 8
     HEAD_PAN = 9
     HEAD_TILT = 10
+
+    name_to_idx = {
+        "base_x": BASE_X,
+        "base_y": BASE_Y,
+        "base_theta": BASE_THETA,
+        "lift": LIFT,
+        "arm": ARM,
+        "gripper_finger_right": GRIPPER,
+        "wrist_roll": WRIST_ROLL,
+        "wrist_pitch": WRIST_PITCH,
+        "wrist_yaw": WRIST_YAW,
+        "head_pan": HEAD_PAN,
+        "head_tilt": HEAD_TILT,
+    }
+
+    @classmethod
+    def get_idx(cls, name: str) -> int:
+        if name in cls.name_to_idx:
+            return cls.name_to_idx[name]
+        else:
+            raise ValueError(f"Unknown joint name: {name}")
 
 
 class HelloStretchKinematics:
@@ -347,10 +367,6 @@ class HelloStretchKinematics:
 
     def get_backend(self):
         return self.backend
-
-    def get_object(self) -> hrb.PbArticulatedObject:
-        """return back-end reference to the Bullet object"""
-        return self.ref
 
     def _set_joint_group(self, idxs, val):
         for idx in idxs:

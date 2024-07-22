@@ -124,7 +124,9 @@ class StretchManipulationClient(AbstractControlModule):
         blocking: bool = True,
         debug: bool = False,
         move_base: bool = True,
-        velocities=None,
+        velocities: float = None,
+        head_tilt: float = None,
+        head_pan: float = None,
     ):
         """
         list of robot arm joint positions:
@@ -160,6 +162,12 @@ class StretchManipulationClient(AbstractControlModule):
         if move_base:
             joint_goals[self._ros_client.BASE_TRANSLATION_JOINT] = joint_pos_goal[0] - self.base_x
         self.base_x = joint_pos_goal[0]
+
+        # head stuff
+        if head_pan is not None:
+            joint_goals[self._ros_client.HEAD_PAN] = head_pan
+        if head_tilt is not None:
+            joint_goals[self._ros_client.HEAD_TILT] = head_tilt
 
         # Send command to trajectory server
         self._ros_client.send_trajectory_goals(joint_goals, velocities=velocities)
