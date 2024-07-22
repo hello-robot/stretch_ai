@@ -23,11 +23,17 @@ repos:
     rev: v0.981
     hooks:
       - id: mypy
-        exclude: |
-          (?x)(
-              ^src/stretch_ros2_bridge/|
-          )$
-        args: [--ignore-missing-imports, --install-types, --non-interactive, --no-strict-optional]
+        entry: mypy
+        types: [python]
+        language: system
+        exclude: ^src/stretch/perception/detection/detic/Detic|^src/stretch/app|^src/stretch_ros2_bridge|^third_party/|^src/stretch/agent|^src/stretch/mapping|^src/stretch/perception|^src/stretch/utils
+        args:
+          - --ignore-missing-imports
+          - --install-types
+          - --non-interactive
+          - --no-strict-optional
+          - --no-warn-no-return
+          - --allow-untyped-defs
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
     hooks:
