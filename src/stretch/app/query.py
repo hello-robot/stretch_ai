@@ -131,6 +131,9 @@ def main(
         # Show the best view of the detected instance
         instance.show_best_view()
 
+    # Go to the instance view
+    agent.move_to_instance_view(instance)
+
     # Debugging: write out images of instances that you saw
     if write_instance_images:
         agent.save_instance_images(".", verbose=True)
