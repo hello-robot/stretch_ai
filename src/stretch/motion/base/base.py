@@ -11,6 +11,7 @@ from .space import ConfigurationSpace, Node
 This just defines the standard interface for a motion planner
 """
 
+
 class PlanResult(object):
     """Stores motion plan. Can be extended."""
 

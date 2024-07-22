@@ -47,7 +47,7 @@ class TrajFollower:
         # Check for trajectory updates
         if self.traj_buffer is not None:
             with self._traj_update_lock:
-                self.traj = self.traj_buffer
+                self.traj = self.traj_buffer  # type: ignore
                 self.traj_buffer = None
             self._is_done = False
 

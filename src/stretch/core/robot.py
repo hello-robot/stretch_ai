@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Optional, Union, Iterable
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import torch
