@@ -11,7 +11,6 @@ from loguru import logger
 from scipy.spatial.transform import Rotation as R
 
 from stretch.motion.base.ik_solver_base import IKSolverBase
-from stretch.motion.utils.bullet import PybulletIKSolver
 
 # --DEFAULTS--
 # Error tolerances
@@ -242,7 +241,7 @@ class PositionIKOptimizer(IKSolverBase):
 
     def __init__(
         self,
-        ik_solver: Union[PinocchioIKSolver, PybulletIKSolver],
+        ik_solver: IKSolverBase,
         pos_error_tol: float,
         ori_error_range: Union[float, np.ndarray],
         pos_weight: float = 1.0,
