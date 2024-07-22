@@ -27,7 +27,6 @@ from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.utils.geometry import angle_difference
-from stretch.utils.threading import Interval
 
 
 class RobotAgent:

@@ -25,7 +25,7 @@ class TreeNode(Node):
         self.state = state
         self.parent = parent
 
-    def backup(self) -> List[TreeNode]:
+    def backup(self) -> List["TreeNode"]:
         """Get the full plan by looking back from this point. Returns a list of TreeNodes which contain state."""
         sequence = []
         node = self
