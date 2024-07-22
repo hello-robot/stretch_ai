@@ -11,7 +11,6 @@ from typing import Optional
 import numpy as np
 import stretch_body.robot as rb
 import urchin as urdf_loader
-from hello_helpers import hello_misc as hm
 from scipy.spatial.transform import Rotation
 from stretch_body.robot_params import RobotParams
 
@@ -23,7 +22,7 @@ import stretch.utils.loop_stats as lt
 # This tells us if we are using the gripper center for control or not
 from stretch.app.dex_teleop.leader import use_gripper_center
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
-from stretch.utils.geometry import get_rotation_from_xyz
+from stretch.utils.geometry import angle_difference, get_rotation_from_xyz
 
 
 def load_urdf(file_name):
@@ -215,14 +214,14 @@ class GripperToGoal:
         # extrinsic rotations
         ypr = rotation.as_euler("ZXY", degrees=False)
 
-        wrist_yaw = hm.angle_diff_rad(ypr[0] + np.pi, 0.0)
+        wrist_yaw = angle_difference(ypr[0] + np.pi, 0.0)
         lower_limit, upper_limit = self.wrist_joint_limits["joint_wrist_yaw"]
         if wrist_yaw < lower_limit:
             wrist_yaw = wrist_yaw + (2.0 * np.pi)
 
         wrist_pitch = ypr[1]
 
-        wrist_roll = hm.angle_diff_rad(ypr[2] + np.pi, 0.0)
+        wrist_roll = angle_difference(ypr[2] + np.pi, 0.0)
         return wrist_yaw, wrist_pitch, wrist_roll
 
     def update_goal(
@@ -405,7 +404,7 @@ class GripperToGoal:
             # convert base odometry angle to be in the range -pi to pi
             # negative is to the robot's right side (counterclockwise)
             # positive is to the robot's left side (clockwise)
-            base_odom_theta = hm.angle_diff_rad(self.robot.base.status["theta"], 0.0)
+            base_odom_theta = angle_difference(self.robot.base.status["theta"], 0.0)
             current_mobile_base_angle = base_odom_theta
 
             # Compute base rotation to reach the position determined by the IK solver
