@@ -444,7 +444,7 @@ class DexTeleopLeader(Evaluator):
 
         if goal_dict is not None:
             # Convert goal dict into a quaternion
-            process_goal_dict(goal_dict, self.prev_goal_dict)
+            goal_dict = process_goal_dict(goal_dict, self.prev_goal_dict)
         else:
             # Goal dict that is not worth processing
             goal_dict = {"valid": False}
