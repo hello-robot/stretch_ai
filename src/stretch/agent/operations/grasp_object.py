@@ -364,7 +364,7 @@ class GraspObjectOperation(ManagedOperation):
             cv2.destroyAllWindows()
         return success
 
-    def run(self):
+    def run(self) -> None:
         self.intro("Grasping the object.")
         self._success = False
         if self.show_object_to_grasp:
@@ -406,7 +406,7 @@ class GraspObjectOperation(ManagedOperation):
         if not self._success:
             self.grasp_open_loop(object_xyz)
 
-    def grasp_open_loop(self, object_xyz: np.ndarray) -> bool:
+    def grasp_open_loop(self, object_xyz: np.ndarray) -> None:
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
 
         Args:
@@ -461,6 +461,6 @@ class GraspObjectOperation(ManagedOperation):
         print(f"{self.name}: Done.")
         self._success = True
 
-    def was_successful(self):
+    def was_successful(self) -> bool:
         """Return true if successful"""
         return self._success
