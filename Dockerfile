@@ -39,7 +39,10 @@ ENV PATH /root/miniforge3/bin:$PATH
 COPY . .
 RUN chmod +x install.sh
 RUN ./install.sh -y
-
+RUN apt-get update && apt-get install  -y \
+    ffmpeg \
+    libsm6 \
+    libxext6
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .
