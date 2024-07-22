@@ -45,6 +45,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option("--frame", default=-1, help="Final frame to read from input file")
 @click.option("--text", default="", help="Text to encode")
+@click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -61,6 +62,7 @@ def main(
     input_file: str = "",
     frame: int = -1,
     text: str = "",
+    yes: bool = False,
 ):
 
     print("- Load parameters")
