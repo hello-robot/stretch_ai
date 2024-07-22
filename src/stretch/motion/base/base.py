@@ -50,15 +50,19 @@ class Planner(ABC):
         self._nodes: Optional[List[Node]] = None
 
     @property
-    def space(self):
+    def space(self) -> ConfigurationSpace:
         return self._space
 
     @property
-    def nodes(self):
+    def nodes(self) -> List[Node]:
         return self._nodes
 
+    @nodes.setter
+    def nodes(self, nodes: List[Node]):
+        self._nodes = nodes
+
     @abstractmethod
-    def plan(self, start, goal) -> PlanResult:
+    def plan(self, start, goal, verbose: bool = False, **kwargs) -> PlanResult:
         """returns a trajectory"""
         raise NotImplementedError
 

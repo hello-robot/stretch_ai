@@ -8,7 +8,7 @@
 
 import time
 from random import random
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -71,7 +71,7 @@ class RRT(Planner):
         self.goal_state = None
         self.nodes = []
 
-    def plan(self, start, goal, verbose: bool = True) -> PlanResult:
+    def plan(self, start, goal, verbose: bool = True, **kwargs) -> PlanResult:
         """plan from start to goal. creates a new tree.
 
         Based on Caelan Garrett's code (MIT licensed):
@@ -113,10 +113,20 @@ class RRT(Planner):
     def step_planner(
         self,
         force_sample_goal=False,
-        nodes: Optional[TreeNode] = None,
+        nodes: Optional[List[TreeNode]] = None,
         next_state: Optional[np.ndarray] = None,
-    ) -> PlanResult:
-        """Continue planning for a while. In case you want to try for anytime planning."""
+    ) -> Tuple[PlanResult, TreeNode]:
+        """Continue planning for a while. In case you want to try for anytime planning.
+
+        Args:
+            force_sample_goal: Whether to force sampling the goal
+            nodes: The nodes to use
+            next_state: The next state to try
+
+        Returns:
+            PlanResult: The result of the planning
+            TreeNode: The last node in the tree
+        """
         assert self.goal_state is not None, "no goal provided with a call to plan(start, goal)"
         assert (
             self.start_time is not None

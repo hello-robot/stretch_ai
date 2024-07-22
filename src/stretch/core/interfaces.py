@@ -224,7 +224,7 @@ class Observations:
     ee_depth: Optional[np.ndarray] = None  # (camera_height, camera_width) in meters
     ee_xyz: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in camera coordinates
     ee_semantic: Optional[
-        np.array
+        np.ndarray
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
     ee_camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
