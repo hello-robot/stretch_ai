@@ -80,6 +80,7 @@ def main(
     )
 
     if len(input_file) == 0 or input_file is None:
+        real_robot = True
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
@@ -115,6 +116,7 @@ def main(
         # At the end...
         robot.stop()
     else:
+        real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
         agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
@@ -129,6 +131,18 @@ def main(
 
             # Show the best view of the detected instance
             instance.show_best_view(title=text)
+
+            if real_robot and not stationary:
+                # Confirm before moving
+                if not yes:
+                    confirm = input("Move to instance? [y/n]: ")
+                    if confirm != "y":
+                        print("Exiting...")
+                        sys.exit(0)
+                print("Moving to instance...")
+                break
+
+            # Get a new query
             text = input("Enter text to encode, empty to quit: ")
     else:
         # Get the best instance using agent's API
@@ -137,14 +151,20 @@ def main(
         # Show the best view of the detected instance
         instance.show_best_view()
 
-    if not stationary:
-        if not yes:
-            confirm = input("Move to instance? [y/n]: ")
-            if confirm != "y":
-                print("Exiting...")
-                sys.exit(0)
+        if real_robot and not stationary:
+            # Confirm before moving
+            if not yes:
+                confirm = input("Move to instance? [y/n]: ")
+                if confirm != "y":
+                    print("Exiting...")
+                    sys.exit(0)
+            print("Moving to instance...")
 
+    # Move to the instance if we are on the real robot and not told to stay stationary
+    if not stationary:
         # Move to the instance
+        # Note: this is a blocking call
+        # Generates a motion plan based on what we can see
         agent.move_to_instance(instance)
 
     # Debugging: write out images of instances that you saw
