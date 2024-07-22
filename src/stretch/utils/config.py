@@ -27,9 +27,9 @@ class Config(yacs.config.CfgNode):
         super().__init__(*args, **kwargs, new_allowed=True)
 
 
-def get_full_config_path(ext: str) -> Path:
+def get_full_config_path(ext: str) -> str:
     """Returns full path to a particular file"""
-    return Path(os.path.join(CONFIG_ROOT, ext))
+    return os.path.join(CONFIG_ROOT, ext)
 
 
 def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
@@ -52,7 +52,7 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
     config.freeze()
 
     # Generate a string representation of our code's config
-    config_dict = yaml.load(open(path), Loader=yaml.FullLoader)
+    config_dict = yaml.load(open(full_path), Loader=yaml.FullLoader)
     if opts is not None:
         for i in range(0, len(opts), 2):
             dict = config_dict
