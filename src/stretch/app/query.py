@@ -131,8 +131,15 @@ def main(
         # Show the best view of the detected instance
         instance.show_best_view()
 
-    # Go to the instance view
-    agent.move_to_instance_view(instance)
+    if not stationary:
+        if not yes:
+            confirm = input("Move to instance? [y/n]: ")
+            if confirm != "y":
+                print("Exiting...")
+                sys.exit(0)
+
+        # Move to the instance
+        agent.move_to_instance(instance)
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:
