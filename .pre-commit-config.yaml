@@ -33,7 +33,6 @@ repos:
           - --non-interactive
           - --no-strict-optional
           - --no-warn-no-return
-          - --allow-untyped-defs
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
     hooks:
