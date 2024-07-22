@@ -212,12 +212,12 @@ class Observations:
     depth: np.ndarray  # (camera_height, camera_width) in meters
     xyz: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in camera coordinates
     semantic: Optional[
-        np.array
+        np.ndarray
     ] = None  # (camera_height, camera_width) in [0, num_sem_categories - 1]
     camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
     # Pose of the camera in world coordinates
-    camera_pose: Optional[np.array] = None
+    camera_pose: Optional[np.ndarray] = None
 
     # End effector camera
     ee_rgb: Optional[np.ndarray] = None  # (camera_height, camera_width, 3) in [0, 255]
@@ -229,22 +229,22 @@ class Observations:
     ee_camera_K: Optional[np.ndarray] = None  # (3, 3) camera intrinsics matrix
 
     # Pose of the end effector camera in world coordinates
-    ee_camera_pose: Optional[np.array] = None
+    ee_camera_pose: Optional[np.ndarray] = None
 
     # Instance IDs per observation frame
     # Size: (camera_height, camera_width)
     # Range: 0 to max int
-    instance: Optional[np.array] = None
+    instance: Optional[np.ndarray] = None
 
     # Optional third-person view from simulation
-    third_person_image: Optional[np.array] = None
+    third_person_image: Optional[np.ndarray] = None
 
     # Proprioreception
-    joint: Optional[np.array] = None  # joint positions of the robot
+    joint: Optional[np.ndarray] = None  # joint positions of the robot
     relative_resting_position: Optional[
-        np.array
+        np.ndarray
     ] = None  # end-effector position relative to the desired resting position
-    is_holding: Optional[np.array] = None  # whether the agent is holding the object
+    is_holding: Optional[np.ndarray] = None  # whether the agent is holding the object
     # --------------------------------------------------------
     # Untyped task-specific observations
     # --------------------------------------------------------

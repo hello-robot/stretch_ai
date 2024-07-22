@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union, Iterable
 
 import numpy as np
 import torch
@@ -84,12 +84,12 @@ class RobotClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def move_to_nav_posture():
+    def move_to_nav_posture(self):
         """Move to a safe posture for navigation"""
         raise NotImplementedError()
 
     @abstractmethod
-    def move_to_manip_posture():
+    def move_to_manip_posture(self):
         """Move to a safe posture for manipulation"""
         raise NotImplementedError()
 

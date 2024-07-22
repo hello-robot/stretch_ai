@@ -79,7 +79,7 @@ class GraspObjectOperation(ManagedOperation):
         Returns:
             np.ndarray: Mask for the class of the object we are trying to grasp
         """
-        mask = np.zeros_like(servo.semantic).astype(bool)
+        mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
         for iid in np.unique(servo.semantic):
             name = self.manager.semantic_sensor.get_class_name_for_id(iid)
             if name is not None and self.manager.target_object in name:

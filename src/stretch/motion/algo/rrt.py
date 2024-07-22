@@ -16,12 +16,6 @@ import numpy as np
 from stretch.motion.base import ConfigurationSpace, Node, Planner, PlanResult
 
 
-class TreeNode:
-    """Placeholder class"""
-
-    pass
-
-
 class TreeNode(Node):
     """Stores an individual spot in the tree"""
 
@@ -59,6 +53,18 @@ class RRT(Planner):
         self.goal_tolerance = goal_tolerance
         self.max_iter = max_iter
         self.reset()
+
+    @property
+    def nodes(self):
+        return self._nodes
+
+    @nodes.setter
+    def nodes(self, value):
+        self._nodes = value
+
+    @property
+    def space(self):
+        return self._space
 
     def reset(self):
         self.start_time = None
