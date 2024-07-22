@@ -112,25 +112,42 @@ def main(
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
             agent.voxel_map.write_to_pickle(output_pkl_filename)
-
-        # At the end...
-        robot.stop()
     else:
         real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
         agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
 
-    if len(text) == 0:
-        # Read text from command line
-        text = input("Enter text to encode, empty to quit: ")
-        while len(text) > 0:
+    try:
+        if len(text) == 0:
+            # Read text from command line
+            text = input("Enter text to encode, empty to quit: ")
+            while len(text) > 0:
+                # Get the best instance using agent's API
+                print("Best image for:", text)
+                _, instance = agent.get_instance_from_text(text)
+
+                # Show the best view of the detected instance
+                instance.show_best_view(title=text)
+
+                if real_robot and not stationary:
+                    # Confirm before moving
+                    if not yes:
+                        confirm = input("Move to instance? [y/n]: ")
+                        if confirm != "y":
+                            print("Exiting...")
+                            sys.exit(0)
+                    print("Moving to instance...")
+                    break
+
+                # Get a new query
+                text = input("Enter text to encode, empty to quit: ")
+        else:
             # Get the best instance using agent's API
-            print("Best image for:", text)
             _, instance = agent.get_instance_from_text(text)
 
             # Show the best view of the detected instance
-            instance.show_best_view(title=text)
+            instance.show_best_view()
 
             if real_robot and not stationary:
                 # Confirm before moving
@@ -140,25 +157,10 @@ def main(
                         print("Exiting...")
                         sys.exit(0)
                 print("Moving to instance...")
-                break
-
-            # Get a new query
-            text = input("Enter text to encode, empty to quit: ")
-    else:
-        # Get the best instance using agent's API
-        _, instance = agent.get_instance_from_text(text)
-
-        # Show the best view of the detected instance
-        instance.show_best_view()
-
-        if real_robot and not stationary:
-            # Confirm before moving
-            if not yes:
-                confirm = input("Move to instance? [y/n]: ")
-                if confirm != "y":
-                    print("Exiting...")
-                    sys.exit(0)
-            print("Moving to instance...")
+    except KeyboardInterrupt:
+        # Stop the robot now
+        robot.stop()
+        sys.exit(0)
 
     # Move to the instance if we are on the real robot and not told to stay stationary
     if not stationary:
@@ -166,6 +168,9 @@ def main(
         # Note: this is a blocking call
         # Generates a motion plan based on what we can see
         agent.move_to_instance(instance)
+
+    # At the end...
+    robot.stop()
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:
