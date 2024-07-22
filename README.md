@@ -85,6 +85,7 @@ On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament works
 ```bash
 cd stretch_ai
 ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
+cd ~/ament_ws
 colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
@@ -140,7 +141,7 @@ python -m stretch.app.view_images --robot_ip $ROBOT_IP
 You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
 
 ```bash
-python -m stretch.app.view_images --robot_ip $ROBOT_IP --semantic_segmentation
+python -m stretch.app.view_images --robot_ip $ROBOT_IP ----run_semantic_segmentation
 ```
 
 You can visualize gripper Aruco markers as well; the aruco markers can be used to determine the finger locations in the image.
