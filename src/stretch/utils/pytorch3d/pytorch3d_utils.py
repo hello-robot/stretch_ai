@@ -60,7 +60,7 @@ def list_to_padded(
         raise ValueError("All items have to have the same number of dimensions!")
 
     if pad_size is None:
-        pad_dims = [max(y.shape[dim] for y in x if len(y) > 0) for dim in range(x[0].ndim)]
+        pad_dims = list(max(y.shape[dim] for y in x if len(y) > 0) for dim in range(x[0].ndim))
     else:
         if any(len(pad_size) != y.ndim for y in x):
             raise ValueError("Pad size must contain target size for all dimensions.")
