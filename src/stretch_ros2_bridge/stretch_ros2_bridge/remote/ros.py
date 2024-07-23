@@ -198,10 +198,11 @@ class StretchRosInterface(Node):
         # Use Idx to convert
         joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
         joint_pose[self.Idx.ARM] = joint_goals[self.ARM_JOINT]
-        joint_pose[self.Idx.GRIPPER] = joint_goals[self.GRIPPER_FINGER]
         joint_pose[self.Idx.WRIST_ROLL] = joint_goals[self.WRIST_ROLL]
         joint_pose[self.Idx.WRIST_PITCH] = joint_goals[self.WRIST_PITCH]
         joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
+        # if self.GRIPPER_FINGER in joint_goals:
+        #     joint_pose[self.Idx.GRIPPER] = joint_goals[self.GRIPPER_FINGER]
         if self.HeadIdx.HEAD_PAN in joint_goals:
             joint_pose[self.Idx.HEAD_PAN] = joint_goals[self.HEAD_PAN]
         if self.HeadIdx.HEAD_TILT in joint_goals:
@@ -703,16 +704,11 @@ class StretchRosInterface(Node):
             abs(delta_position) > 0
         ):  # TODO controller seems to be commanding 0.05s.... self.exec_tol[HelloStretchIdx.GRIPPER]:  #0: #0.01:  # TODO: this is ...really high? (5?) self.exec_tol[HelloStretchIdx.GRIPPER]:
             position = self.pos[HelloStretchIdx.GRIPPER] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal(
-                "joint_gripper_finger_left", position
-            )
+            trajectory_goal = self._construct_single_joint_ros_goal(self.GRIPPER_FINGER, position)
             if wait:
                 self.trajectory_client.send_goal(trajectory_goal)
             else:
                 self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
         return True
 
     def goto_head_pan_position(self, delta_position, wait=False):
