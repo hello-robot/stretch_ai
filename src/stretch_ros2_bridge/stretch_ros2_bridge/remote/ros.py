@@ -208,14 +208,14 @@ class StretchRosInterface(Node):
         if self.HEAD_TILT in joint_goals:
             joint_pose[self.Idx.HEAD_TILT] = joint_goals[self.HEAD_TILT]
         if self.BASE_TRANSLATION_JOINT in joint_goals:
-            joint_pose[self.Idx.BASE_TRANSLATION] = joint_goals[self.BASE_TRANSLATION_JOINT]
+            joint_pose[self.Idx.BASE_TRANSLATE] = joint_goals[self.BASE_TRANSLATION_JOINT]
 
         print(joint_pose)
 
         # Create the message now that it's been computed
         msg = Float64MultiArray()
         msg.data = list(joint_pose)
-        self.publisher_.publish(msg)
+        self._joint_goal_publisher.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)
 
     def send_trajectory_goals(
