@@ -7,10 +7,7 @@ from typing import Optional
 import cv2
 import numpy as np
 import torch
-import zmq
 from lerobot.common.datasets.push_dataset_to_hub.dobbe_format import clip_and_normalize_depth
-from lerobot.common.policies.act.modeling_act import ACTPolicy
-from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from torchvision.transforms import v2
 
 import stretch.utils.compression as compression
@@ -19,7 +16,6 @@ from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.image import Camera
-from stretch.utils.point_cloud import show_point_cloud
 
 
 class ACTLeader(Evaluator):
@@ -41,6 +37,7 @@ class ACTLeader(Evaluator):
         recv_port: int = 4405,
         send_port: int = 4406,
         teleop_mode: str = None,
+        depth_filter_k=None,
     ):
         super().__init__()
         self.camera = None
@@ -50,6 +47,11 @@ class ACTLeader(Evaluator):
         self.device = device
         self.policy_path = policy_path
         self.teleop_mode = teleop_mode
+        self.depth_filter_k = depth_filter_k
+
+        self.base_x_origin = None
+        self.current_base_x = 0.0
+        self.action_origin = None
 
         self.goal_send_socket = self._make_pub_socket(
             send_port, robot_ip=robot_ip, use_remote_computer=True
@@ -119,8 +121,8 @@ class ACTLeader(Evaluator):
         head_depth_image = head_depth_image.astype(np.float32) * head_depth_scale
 
         # Clip and normalize depth
-        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image)
-        head_depth_image = clip_and_normalize_depth(head_depth_image)
+        gripper_depth_image = clip_and_normalize_depth(gripper_depth_image, self.depth_filter_k)
+        head_depth_image = clip_and_normalize_depth(head_depth_image, self.depth_filter_k)
 
         if display_received_images:
 
@@ -154,6 +156,9 @@ class ACTLeader(Evaluator):
         elif key == ord("p"):
             self._run_policy = not self._run_policy
             if self._run_policy:
+                # Reset base_x_origin
+                self.base_x_origin = None
+                self.action_origin = None
                 self.policy.reset()
                 print("[LEADER] Running policy!")
                 self._recording = True
@@ -180,6 +185,17 @@ class ACTLeader(Evaluator):
             # Build state observations in correct format
             raw_state = message["robot/config"]
 
+            if self.teleop_mode == "base_x":
+                if self.base_x_origin is None:
+                    print("Base_x reset!")
+                    self.base_x_origin = raw_state["base_x"]
+
+                # Calculate relative base_x
+                self.current_base_x = raw_state["base_x"] - self.base_x_origin
+
+                # Replace raw base_x with relative base_x
+                raw_state["base_x"] = self.current_base_x
+
             observations = prepare_observations(
                 raw_state,
                 gripper_color_image,
@@ -196,19 +212,13 @@ class ACTLeader(Evaluator):
 
             # Get first batch
             action = raw_action[0].tolist()
+            if self.action_origin is None:
+                self.action_origin = action[0]
 
-            action_dict["joint_mobile_base_translation"] = action[0]
-            action_dict["joint_mobile_base_translate_by"] = action[1]
-            action_dict["joint_mobile_base_rotate_by"] = action[2]
-            action_dict["joint_lift"] = action[3]
-            action_dict["joint_arm_l0"] = action[4]
-            action_dict["joint_wrist_roll"] = action[5]
-            action_dict["joint_wrist_pitch"] = action[6]
-            action_dict["joint_wrist_yaw"] = action[7]
-            action_dict["stretch_gripper"] = action[8]
-
-            # TODO Temporary solution
-            action_dict["joint_mobile_base_rotate_by"] = 0.0
+            # Format actions based on teleop_mode
+            action_dict = prepare_action_dict(
+                action, self.teleop_mode, self.current_base_x, self.action_origin
+            )
 
         # Send action_dict to stretch follower
         self.goal_send_socket.send_pyobj(action_dict)
@@ -269,6 +279,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--policy_name", type=str, required=True)
     parser.add_argument("--teleop-mode", type=str, default="standard")
+    parser.add_argument("--depth-filter-k", type=int, default=None)
     args = parser.parse_args()
 
     client = RobotClient(
@@ -293,6 +304,7 @@ if __name__ == "__main__":
         save_images=args.save_images,
         send_port=args.send_port,
         teleop_mode=args.teleop_mode,
+        depth_filter_k=args.depth_filter_k,
     )
     try:
         client.run(evaluator)

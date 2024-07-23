@@ -4,10 +4,6 @@ from typing import Optional
 from termcolor import colored
 
 
-class Operation:
-    pass
-
-
 class Operation(abc.ABC):
     """An operation is a single unit of work that can be executed. It can be part of a task. It
     also has an associated set of pre- and post-conditions. Operations can be chained together to
@@ -22,7 +18,7 @@ class Operation(abc.ABC):
         on_cannot_start: Optional[Operation] = None,
         retry_on_failure: bool = False,
     ) -> None:
-        self.name = name
+        self._name = name
         self._started = False
         self.parent = parent
         self.on_cannot_start = on_cannot_start
@@ -40,6 +36,11 @@ class Operation(abc.ABC):
                     f"Cannot have on_failure set for {self.name} - it will just retry itself."
                 )
             self.on_failure = self
+
+    @property
+    def name(self) -> str:
+        """Return the name of the operation."""
+        return self._name
 
     @abc.abstractmethod
     def can_start(self) -> bool:

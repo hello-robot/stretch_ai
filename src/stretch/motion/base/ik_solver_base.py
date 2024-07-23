@@ -30,11 +30,13 @@ class IKSolverBase(object):
         self,
         pos_desired: np.ndarray,
         quat_desired: np.ndarray,
-        q_init: Optional[np.ndarray] = None,
-        max_iterations: int = 100,
+        q_init=None,
+        max_iterations=100,
         num_attempts: int = 1,
-        verbose: int = False,
+        verbose: bool = False,
+        ignore_missing_joints: bool = False,
     ) -> Tuple[np.ndarray, bool, dict]:
+
         """
         Given an end-effector position and quaternion, return the joint states and a success flag.
         Some solvers (e.g. the PositionIKOptimizer solver) will return a result regardless; the success flag indicates

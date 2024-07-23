@@ -27,7 +27,6 @@ from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.utils.geometry import angle_difference
-from stretch.utils.threading import Interval
 
 
 class RobotAgent:
@@ -826,7 +825,7 @@ class RobotAgent:
         manual_wait: bool = False,
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
-    ) -> bool:
+    ) -> PlanResult:
         """Motion plan to a frontier location."""
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
@@ -1040,7 +1039,7 @@ class RobotAgent:
             )
         self.voxel_map.reset()
 
-    def save_instance_images(self, root: str = ".", verbose: bool = False) -> None:
+    def save_instance_images(self, root: Union[Path, str] = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""
 
         if isinstance(root, str):
