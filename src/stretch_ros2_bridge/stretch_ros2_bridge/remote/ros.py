@@ -208,7 +208,7 @@ class StretchRosInterface(Node):
         if self.HEAD_TILT in joint_goals:
             joint_pose[self.Idx.HEAD_TILT] = joint_goals[self.HEAD_TILT]
         if self.BASE_TRANSLATION_JOINT in joint_goals:
-            joint_pose[self.Idx.BASE_X] = joint_goals[self.BASE_TRANSLATION_JOINT]
+            joint_pose[self.Idx.BASE_TRANSLATION] = joint_goals[self.BASE_TRANSLATION_JOINT]
 
         print(joint_pose)
 
