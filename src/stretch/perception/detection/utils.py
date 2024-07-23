@@ -8,7 +8,9 @@ from typing import Optional, Tuple
 import numpy as np
 
 
-def overlay_masks(masks: np.ndarray, class_idcs: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+def overlay_masks(
+    masks: np.ndarray, class_idcs: np.ndarray, shape: Tuple[int, int]
+) -> Tuple[np.ndarray, np.ndarray]:
     """Overlays the masks of objects
     Determines the order of masks based on mask size
     """
