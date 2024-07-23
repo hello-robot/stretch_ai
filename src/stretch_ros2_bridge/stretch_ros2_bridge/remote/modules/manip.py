@@ -127,6 +127,7 @@ class StretchManipulationClient(AbstractControlModule):
         velocities: float = None,
         head_tilt: float = None,
         head_pan: float = None,
+        gripper: float = None,
     ):
         """
         list of robot arm joint positions:
@@ -169,6 +170,8 @@ class StretchManipulationClient(AbstractControlModule):
             joint_goals[self._ros_client.HEAD_PAN] = head_pan
         if head_tilt is not None:
             joint_goals[self._ros_client.HEAD_TILT] = head_tilt
+        if gripper is not None:
+            joint_goals[self._ros_client.GRIPPER_FINGER] = gripper
 
         # Send command to trajectory server
         # TODO: should we support trajectory actions?
