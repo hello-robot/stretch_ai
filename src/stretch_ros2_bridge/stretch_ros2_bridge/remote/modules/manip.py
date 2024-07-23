@@ -173,7 +173,7 @@ class StretchManipulationClient(AbstractControlModule):
         # Send command to trajectory server
         # TODO: should we support trajectory actions?
         # self._ros_client.send_trajectory_goals(joint_goals, velocities=velocities)
-        self._ros_client.send_joint_command(joint_goals, velocities=velocities)
+        self._ros_client.send_joint_goals(joint_goals, velocities=velocities)
 
         # Wait logic
         def joint_move_wait():
