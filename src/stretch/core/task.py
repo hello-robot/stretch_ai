@@ -12,10 +12,10 @@ class Operation(abc.ABC):
     def __init__(
         self,
         name: str,
-        parent: Optional[Operation] = None,
-        on_success: Optional[Operation] = None,
-        on_failure: Optional[Operation] = None,
-        on_cannot_start: Optional[Operation] = None,
+        parent: Optional["Operation"] = None,
+        on_success: Optional["Operation"] = None,
+        on_failure: Optional["Operation"] = None,
+        on_cannot_start: Optional["Operation"] = None,
         retry_on_failure: bool = False,
     ) -> None:
         self._name = name
