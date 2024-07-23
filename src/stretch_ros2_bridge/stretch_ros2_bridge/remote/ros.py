@@ -203,9 +203,9 @@ class StretchRosInterface(Node):
         joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
         # if self.GRIPPER_FINGER in joint_goals:
         #     joint_pose[self.Idx.GRIPPER] = joint_goals[self.GRIPPER_FINGER]
-        if self.HeadIdx.HEAD_PAN in joint_goals:
+        if self.HEAD_PAN in joint_goals:
             joint_pose[self.Idx.HEAD_PAN] = joint_goals[self.HEAD_PAN]
-        if self.HeadIdx.HEAD_TILT in joint_goals:
+        if self.HEAD_TILT in joint_goals:
             joint_pose[self.Idx.HEAD_TILT] = joint_goals[self.HEAD_TILT]
         if self.BASE_TRANSLATION_JOINT in joint_goals:
             joint_pose[self.Idx.BASE_X] = joint_goals[self.BASE_TRANSLATION_JOINT]
