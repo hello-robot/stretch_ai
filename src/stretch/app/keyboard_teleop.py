@@ -20,6 +20,10 @@ else:
 def key_pressed(robot: HomeRobotZmqClient, key):
     xyt = robot.get_base_pose()
     print(f"Key '{key}' was pressed {xyt}")
+    if key == "a":
+        xyt[2] += 0.1
+    elif key == "d":
+        xyt[2] -= 0.1
 
 
 def getch():
@@ -61,7 +65,7 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False):
         elif char in ["w", "a", "s", "d"]:
             key_pressed(robot, char)
         else:
-            print("Invalid input. Please press W, A, S, or D.")
+            print("Invalid input. Please press W, A, S, or D. Press 'q' to quit.")
 
 
 if __name__ == "__main__":
