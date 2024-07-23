@@ -32,11 +32,12 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
         cd src/; python -m pip install --no-cache-dir .[dev]
-    - name: Precommit hooks
-      run: |
-        pip install pre-commit
-        pre-commit install-hooks
-        pre-commit run --all-files
+    ## Run pre-commit and try to apply fixes
+    - name: Run pre-commit
+      uses: pre-commit/action@v3.0.1
+    - name: Apply fixes from pre-commit
+      uses: pre-commit-ci/lite-action@v1.0.2
+      if: always()
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names

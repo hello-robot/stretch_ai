@@ -727,7 +727,7 @@ class HomeRobotZmqClient(RobotClient):
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
-        sum_time = 0
+        sum_time = 0.0
         steps = 0
         t0 = timeit.default_timer()
         camera = None

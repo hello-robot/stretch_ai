@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import cv2
 import numpy as np
 
@@ -28,20 +30,9 @@ class Evaluator(ClientCommsNode):
 
     def apply(
         self,
-        color_image: np.ndarray,
-        depth_image: np.ndarray,
+        message: Dict[str, Any],
         display_received_images: bool = True,
         **kwargs,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """Overwrite this to implement a simple loop operating on camera logic. Designed to decrease the amount of boilerplate code needed to implement a perception loop. Returns a results dict, which can be basically anything."""
-
-        assert (self.camera_info is not None) and (
-            self.depth_scale is not None
-        ), "ERROR: YoloServoPerception: set_camera_parameters must be called prior to apply. self.camera_info or self.depth_scale is None"
-        if display_received_images:
-            cv2.imshow("Received RGB Image", color_image)
-            cv2.imshow("Received Depth Image", depth_image)
-            cv2.waitKey(1)
-
-        results_dict = dict()
-        return results_dict
+        raise NotImplementedError
