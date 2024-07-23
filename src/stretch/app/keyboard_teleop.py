@@ -4,6 +4,7 @@ import os
 import sys
 
 import click
+import numpy as np
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
@@ -73,6 +74,7 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False):
     while True:
         char = getch()
         if char == "q":
+            robot.stop()
             break
         elif char in ["w", "a", "s", "d"]:
             key_pressed(robot, char)
