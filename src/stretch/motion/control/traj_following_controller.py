@@ -30,7 +30,7 @@ class TrajFollower:
 
         self._is_done = True
         self.traj = None
-        self.traj_buffer = None
+        self.traj_buffer: Optional[Callable[[float], Tuple[np.ndarray, np.ndarray, bool]]] = None
 
         self.e_int = np.zeros(3)
         self._t_prev = 0
@@ -47,9 +47,13 @@ class TrajFollower:
         # Check for trajectory updates
         if self.traj_buffer is not None:
             with self._traj_update_lock:
-                self.traj = self.traj_buffer
+                self.traj = self.traj_buffer  # type: ignore
                 self.traj_buffer = None
             self._is_done = False
+
+        if self.traj is None:
+            # Return zero velocities if no trajectory is active
+            return 0.0, 0.0
 
         # Return zero velocites if no trajectory is active
         if self._is_done:

@@ -143,6 +143,7 @@ class StretchManipulationClient(AbstractControlModule):
             blocking: Whether command blocks until completion
         """
         assert len(joint_positions) == 6, "Joint position vector must be of length 6."
+        joint_positions = [float(x) for x in joint_positions]
 
         # Compute joint states
         joint_pos_init = self.get_joint_positions()
