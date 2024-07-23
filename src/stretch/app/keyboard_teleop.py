@@ -3,6 +3,10 @@
 import os
 import sys
 
+import click
+
+from stretch.agent.zmq_client import HomeRobotZmqClient
+
 # For Windows
 if os.name == "nt":
     import msvcrt
@@ -13,8 +17,9 @@ else:
     import tty
 
 
-def key_pressed(key):
-    print(f"Key '{key}' was pressed")
+def key_pressed(robot: HomeRobotZmqClient, key):
+    xyt = robot.get_base_pose()
+    print(f"Key '{key}' was pressed {xyt}")
 
 
 def getch():
@@ -31,14 +36,30 @@ def getch():
         return ch.lower()
 
 
-def main():
+@click.command()
+@click.option("--robot_ip", default="", help="IP address of the robot")
+@click.option(
+    "--local",
+    is_flag=True,
+    help="Set if we are executing on the robot and not on a remote computer",
+)
+def main(robot_ip: str = "192.168.1.15", local: bool = False):
+
+    # Create robot
+    robot = HomeRobotZmqClient(
+        robot_ip=robot_ip,
+        use_remote_computer=(not local),
+    )
+    if not robot.in_navigation_mode():
+        robot.move_to_nav_posture()
+
     print("Press W, A, S, or D. Press 'q' to quit.")
     while True:
         char = getch()
         if char == "q":
             break
         elif char in ["w", "a", "s", "d"]:
-            key_pressed(char)
+            key_pressed(robot, char)
         else:
             print("Invalid input. Please press W, A, S, or D.")
 
