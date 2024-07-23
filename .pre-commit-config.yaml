@@ -27,8 +27,6 @@ repos:
         types: [python]
         language: system
         exclude: ^src/stretch/perception/detection/detic/Detic|^src/stretch/app|^src/stretch_ros2_bridge|^third_party/|^src/stretch/agent|^src/stretch/mapping|^src/stretch/perception|^src/stretch/utils
-        # TODO: fix each sub-module to pass mypy checks
-        # exclude: ^src/stretch/perception/detection/detic/Detic|^src/stretch/app|^src/stretch_ros2_bridge|^third_party/|^src/stretch/agent|^src/stretch/mapping|^src/stretch/perception
         args:
           - --ignore-missing-imports
           - --install-types
