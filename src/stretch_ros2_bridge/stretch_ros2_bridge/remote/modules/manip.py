@@ -171,12 +171,15 @@ class StretchManipulationClient(AbstractControlModule):
             joint_goals[self._ros_client.HEAD_TILT] = head_tilt
 
         # Send command to trajectory server
-        self._ros_client.send_trajectory_goals(joint_goals, velocities=velocities)
+        # TODO: should we support trajectory actions?
+        # self._ros_client.send_trajectory_goals(joint_goals, velocities=velocities)
+        self._ros_client.send_joint_goals(joint_goals, velocities=velocities)
 
         # Wait logic
         def joint_move_wait():
             # Wait for action to complete
-            self._ros_client.wait_for_trajectory_action()
+            # TODO: no trajectory actions
+            # self._ros_client.wait_for_trajectory_action()
 
             # Check final joint states
             joint_pos_final = self.get_joint_positions()
