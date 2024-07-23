@@ -71,7 +71,9 @@ def list_to_padded(
     for i, y in enumerate(x):
         if len(y) > 0:
             slices = (i, *(slice(0, y.shape[dim]) for dim in range(y.ndim)))
-            x_padded[slices] = y
+            # Ignoring type issues here because this code was brought in from Pytorch3d
+            # as a third-party library and we don't want to change the code.
+            x_padded[slices] = y  # type: ignore
     return x_padded
 
 
