@@ -18,12 +18,24 @@ else:
 
 
 def key_pressed(robot: HomeRobotZmqClient, key):
+    """Handle a key press event. Will just move the base for now.
+
+    Args:
+        robot (HomeRobotZmqClient): The robot client object.
+        key (str): The key that was pressed.
+    """
     xyt = robot.get_base_pose()
     print(f"Key '{key}' was pressed {xyt}")
-    if key == "a":
-        xyt[2] += 0.1
+    goal_xyt = np.array([0.0, 0.0, 0.0])
+    if key == "w":
+        goal_xyt[0] = 0.1
+    elif key == "s":
+        goal_xyt[0] = -0.1
+    elif key == "a":
+        goal_xyt[1] = 0.1
     elif key == "d":
-        xyt[2] -= 0.1
+        goal_xyt[1] = -0.1
+    robot.navigate_to(goal_xyt, relative=True)
 
 
 def getch():
