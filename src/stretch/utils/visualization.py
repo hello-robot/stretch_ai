@@ -84,7 +84,7 @@ def create_disk(radius: float, size: int):
     return disk
 
 
-def get_x_and_y_from_path(path: List[torch.Tensor]) -> Tuple[List[float]]:
+def get_x_and_y_from_path(path: List[torch.Tensor]) -> Tuple[List[float], List[float]]:
     x_list, y_list = zip(
         *[
             (t[0].item(), t[1].item()) if t.dim() == 1 else (t[0, 0].item(), t[0, 1].item())

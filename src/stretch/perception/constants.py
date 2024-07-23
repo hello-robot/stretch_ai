@@ -80,6 +80,7 @@ class SemanticCategoryMapping(ABC):
 
     def __init__(self, goal_id_to_goal_name: Dict[int, str]):
         self.goal_id_to_goal_name = goal_id_to_goal_name
+        self.goal_name_to_goal_id: Dict[str, int] = {}
         for gid, gname in self.goal_id_to_goal_name.items():
             self.goal_name_to_goal_id[gname] = gid
 

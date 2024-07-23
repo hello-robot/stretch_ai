@@ -122,9 +122,9 @@ class _box3d_overlap(Function):
             - torch.max(torch.tensor([box1_size[i][0], box2_size[i][0]]))
             for i in range(3)
         ]
-        overlap = torch.tensor(overlap).clamp(min=0.0)
+        clamped_overlap = torch.tensor(overlap).clamp(min=0.0)
 
-        voi = torch.prod(overlap)
+        voi = torch.prod(clamped_overlap)
         return voi
 
     @staticmethod
