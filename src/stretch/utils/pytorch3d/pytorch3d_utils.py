@@ -64,7 +64,7 @@ def list_to_padded(
     else:
         if any(len(pad_size) != y.ndim for y in x):
             raise ValueError("Pad size must contain target size for all dimensions.")
-        pad_dims = pad_size
+        pad_dims = pad_size  # type: ignore
 
     N = len(x)
     x_padded = x[0].new_full((N, *pad_dims), pad_value)
@@ -105,10 +105,10 @@ def padded_to_list(
 
     for i in range(N):
         if isinstance(split_size[i], int):
-            x_list[i] = x_list[i][: split_size[i]]
+            x_list[i] = x_list[i][: split_size[i]]  # type: ignore
         else:
-            slices = tuple(slice(0, s) for s in split_size[i])  # pyre-ignore
-            x_list[i] = x_list[i][slices]
+            slices = tuple(slice(0, s) for s in split_size[i])  # type: ignore
+            x_list[i] = x_list[i][slices]  # type: ignore
     return x_list
 
 
