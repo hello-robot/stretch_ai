@@ -53,7 +53,7 @@ class OrbSlam(Slam):
         self.dirty = False
         self.timestamp = None
         self.pose = Pose(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-        self.trajectory_points = []
+        self.trajectory_points: List[Pose] = []
 
     def __del__(self):
         self.camera_thread.join()

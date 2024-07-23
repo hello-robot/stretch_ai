@@ -18,6 +18,7 @@ setuptools.setup(
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
     install_requires=[
+        # Machine learning code
         "torch",
         "torchvision",
         "pyyaml",
@@ -57,6 +58,10 @@ setuptools.setup(
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
+        # Other stuff
+        "mypy",
+        "flake8",
+        "black",
     ],
     extras_require={
         "dev": [

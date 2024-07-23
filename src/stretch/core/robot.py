@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Optional
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import torch
@@ -28,7 +28,12 @@ class RobotClient(ABC):
         self._base_control_mode = ControlMode.IDLE
 
     @abstractmethod
-    def navigate_to(self, xyt: ContinuousNavigationAction, relative=False, blocking=False):
+    def navigate_to(
+        self,
+        xyt: Union[Iterable[float], ContinuousNavigationAction],
+        relative=False,
+        blocking=False,
+    ):
         """Move to xyt in global coordinates or relative coordinates."""
         raise NotImplementedError()
 
@@ -76,6 +81,26 @@ class RobotClient(ABC):
         relative: bool = False,
     ):
         """Open loop trajectory execution"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def move_to_nav_posture(self):
+        """Move to a safe posture for navigation"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def move_to_manip_posture(self):
+        """Move to a safe posture for manipulation"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_base_pose(self) -> np.ndarray:
+        """Get the current pose of the base"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def at_goal(self) -> bool:
+        """Is the robot at a goal?"""
         raise NotImplementedError()
 
 

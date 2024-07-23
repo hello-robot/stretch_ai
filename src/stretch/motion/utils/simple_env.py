@@ -60,7 +60,7 @@ class SimpleEnv:
 
         # Draw obstacle box
         obstacle_rect = plt.Rectangle(
-            self.obstacle_pos,
+            tuple(self.obstacle_pos),
             self.obstacle_size,
             self.obstacle_size,
             color="red",
