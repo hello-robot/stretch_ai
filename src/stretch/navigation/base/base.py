@@ -5,33 +5,18 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 
-class Slam(ABC):
-    """slam base class - placeholder"""
-
-    pass
-
-
 class Pose(ABC):
     """Stores estimated pose from a SLAM backend"""
 
-    def __init__(self):
-        self.timestamp = 0.0
-        self.x = 0.0
-        self.y = 0.0
-        self.z = 0.0
-        self.roll = 0.0
-        self.pitch = 0.0
-        self.yaw = 0.0
-
     def __init__(
         self,
-        timestamp: float,
-        x: float,
-        y: float,
-        z: float,
-        roll: float,
-        pitch: float,
-        yaw: float,
+        timestamp: float = 0.0,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+        roll: float = 0.0,
+        pitch: float = 0.0,
+        yaw: float = 0.0,
     ):
         self.timestamp = timestamp
         self.x = x

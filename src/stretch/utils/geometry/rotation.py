@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -79,9 +79,7 @@ def rotate_camera_to_point_at(up_from, lookat_from, up_to, lookat_to):
     return np.dot(r2, r1)
 
 
-def get_grid(
-    pose: Tensor, grid_size: Tuple[int, int, int, int], precision: torch.dtype
-) -> Tuple[Tensor, Tensor]:
+def get_grid(pose: Tensor, grid_size: List[int], precision: torch.dtype) -> Tuple[Tensor, Tensor]:
     """
     Input:
         `pose` FloatTensor(bs, 3)
@@ -96,6 +94,9 @@ def get_grid(
     y = pose[:, 1]
     t = pose[:, 2]
 
+    assert x.shape == y.shape == t.shape
+    assert len(grid_size) == 4, "grid_size must be a 4-tuple"
+
     t = t * np.pi / 180.0
     cos_t = t.cos()
     sin_t = t.sin()
@@ -108,8 +109,8 @@ def get_grid(
     theta22 = torch.stack([torch.zeros_like(x), torch.ones_like(x), y], 1)
     theta2 = torch.stack([theta21, theta22], 1)
 
-    rot_grid = F.affine_grid(theta1, torch.Size(grid_size), align_corners=False).to(precision)
-    trans_grid = F.affine_grid(theta2, torch.Size(grid_size), align_corners=False).to(precision)
+    rot_grid = F.affine_grid(theta1, grid_size, align_corners=False).to(precision)
+    trans_grid = F.affine_grid(theta2, grid_size, align_corners=False).to(precision)
 
     return rot_grid, trans_grid
 
