@@ -34,7 +34,6 @@ repos:
           - --install-types
           - --non-interactive
           - --no-strict-optional
-          - --no-warn-no-return
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
     hooks:

@@ -209,8 +209,8 @@ class HelloStretchKinematics:
             full_body_urdf = PLANNER_STRETCH_URDF
             manip_urdf = MANIP_STRETCH_URDF
         else:
-            full_body_urdf = Path(os.path.join(urdf_path, "planner_calibrated.urdf"))
-            manip_urdf = Path(os.path.join(urdf_path, "planner_calibrated_manipulation_mode.urdf"))
+            full_body_urdf = os.path.join(urdf_path, "planner_calibrated.urdf")
+            manip_urdf = os.path.join(urdf_path, "planner_calibrated_manipulation_mode.urdf")
         self.full_body_urdf_path = os.path.join(root, full_body_urdf)
         self.manip_mode_urdf_path = os.path.join(root, manip_urdf)
         self.name = name
