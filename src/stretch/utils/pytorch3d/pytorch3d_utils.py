@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in this directory.
 
-from typing import List, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import torch
 
@@ -19,7 +19,7 @@ Util functions for points/verts/faces/volumes.
 
 def list_to_padded(
     x: Union[List[torch.Tensor], Tuple[torch.Tensor]],
-    pad_size: Union[Sequence[int], None] = None,
+    pad_size: Union[List[int], None] = None,
     pad_value: float = 0.0,
     equisized: bool = False,
 ) -> torch.Tensor:
@@ -77,7 +77,7 @@ def list_to_padded(
 
 def padded_to_list(
     x: torch.Tensor,
-    split_size: Union[Sequence[int], Sequence[Sequence[int]], None] = None,
+    split_size: Optional[Union[Sequence[int], Sequence[Sequence[int]]]] = None,
 ):
     r"""
     Transforms a padded tensor of shape (N, S_1, S_2, ..., S_D) into a list
@@ -105,9 +105,9 @@ def padded_to_list(
 
     for i in range(N):
         if isinstance(split_size[i], int):
-            x_list[i] = x_list[i][: split_size[i]]
+            x_list[i] = x_list[i][: split_size[i]]  # type: ignore
         else:
-            slices = tuple(slice(0, s) for s in split_size[i])  # pyre-ignore
+            slices = tuple(slice(0, s) for s in split_size[i])  # type: ignore
             x_list[i] = x_list[i][slices]
     return x_list
 
