@@ -551,8 +551,8 @@ class DexTeleopLeader:
                             goal_configuration["joint_wrist_pitch"],
                             goal_configuration["joint_wrist_roll"],
                         ],
+                        gripper=goal_configuration["stretch_gripper"],
                     )
-                    # self.robot.gripper_to()
 
                 self.prev_goal_dict = goal_dict
 
