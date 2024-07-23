@@ -52,7 +52,15 @@ class PickupManager(TaskManager):
         self.reset_object_plans()
 
     def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
-        """Create a task plan with loopbacks and recovery from failure"""
+        """Create a task plan with loopbacks and recovery from failure. The robot will explore the environment, find objects, and pick them up
+
+        Args:
+            add_rotate (bool, optional): Whether to add a rotate operation to explore the robot's area. Defaults to False.
+            mode (str, optional): Type of task to create. Can be "one_shot" or "all". Defaults to "one_shot".
+
+        Returns:
+            Task: Executable task plan for the robot to pick up objects in the environment.
+        """
 
         if mode == "one_shot":
             return self.get_one_shot_task(add_rotate=add_rotate)
@@ -62,6 +70,8 @@ class PickupManager(TaskManager):
                     "When performing pickup task in 'all' mode, we must add a rotate operation to explore the robot's area to identify multiple object instances."
                 )
             return self.get_all_task(add_rotate=True)
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
 
     def get_all_task(self, add_rotate: bool = False) -> Task:
         """Create a task plan that will pick up all objects in the environment. It starts by exploring the robot's immediate area, then will move around picking up all available objects.

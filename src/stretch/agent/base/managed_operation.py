@@ -19,6 +19,15 @@ class ManagedOperation(Operation):
         self.agent = manager.agent
         self.robot_model = self.robot.get_robot_model()
 
+    @property
+    def name(self) -> str:
+        """Return the name of the operation.
+
+        Returns:
+            str: the name of the operation
+        """
+        return self._name
+
     def update(self):
         print(colored("================ Updating the world model ==================", "blue"))
         self.agent.update()

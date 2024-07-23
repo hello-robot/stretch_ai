@@ -5,17 +5,11 @@
 from abc import ABC, abstractmethod
 from typing import Callable, List, Optional
 
-from .space import ConfigurationSpace
+from .space import ConfigurationSpace, Node
 
 """
 This just defines the standard interface for a motion planner
 """
-
-
-class Planner(ABC):
-    """planner base class - placeholder"""
-
-    pass
 
 
 class PlanResult(object):
@@ -26,7 +20,7 @@ class PlanResult(object):
         success,
         trajectory: Optional[List] = None,
         reason: Optional[str] = None,
-        planner: Optional[Planner] = None,
+        planner: Optional["Planner"] = None,
     ):
         self.success = success
         self.trajectory = trajectory
@@ -52,10 +46,32 @@ class Planner(ABC):
     """planner base class"""
 
     def __init__(self, space: ConfigurationSpace, validate_fn: Callable):
-        self.space = space
-        self.validate = validate_fn
+        self._space = space
+        self._validate = validate_fn
+        self._nodes: Optional[List[Node]] = None
+
+    @property
+    def space(self) -> ConfigurationSpace:
+        return self._space
+
+    @property
+    def nodes(self) -> List[Node]:
+        return self._nodes
+
+    @nodes.setter
+    def nodes(self, nodes: List[Node]):
+        self._nodes = nodes
 
     @abstractmethod
-    def plan(self, start, goal) -> PlanResult:
+    def plan(self, start, goal, verbose: bool = False, **kwargs) -> PlanResult:
         """returns a trajectory"""
         raise NotImplementedError
+
+    @abstractmethod
+    def reset(self):
+        """reset the planner"""
+        raise NotImplementedError
+
+    def validate(self, state) -> bool:
+        """Check if state is valid"""
+        return self._validate(state)

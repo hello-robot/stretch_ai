@@ -143,6 +143,7 @@ class StretchManipulationClient(AbstractControlModule):
             blocking: Whether command blocks until completion
         """
         assert len(joint_positions) == 6, "Joint position vector must be of length 6."
+        joint_positions = [float(x) for x in joint_positions]
 
         # Compute joint states
         joint_pos_init = self.get_joint_positions()
@@ -172,7 +173,7 @@ class StretchManipulationClient(AbstractControlModule):
         # Send command to trajectory server
         # TODO: should we support trajectory actions?
         # self._ros_client.send_trajectory_goals(joint_goals, velocities=velocities)
-        self._ros_client.send_joint_command(joint_goals, velocities=velocities)
+        self._ros_client.send_joint_goals(joint_goals, velocities=velocities)
 
         # Wait logic
         def joint_move_wait():

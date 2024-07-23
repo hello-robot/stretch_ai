@@ -11,7 +11,6 @@ from loguru import logger
 from scipy.spatial.transform import Rotation as R
 
 from stretch.motion.base.ik_solver_base import IKSolverBase
-from stretch.motion.utils.bullet import PybulletIKSolver
 
 # --DEFAULTS--
 # Error tolerances
@@ -37,7 +36,7 @@ logger.remove(0)
 logger.add(sys.stderr, filter=level_filter(levels=["WARNING", "ERROR"]))
 
 
-class PinocchioIKSolver:
+class PinocchioIKSolver(IKSolverBase):
     """IK solver using pinocchio which can handle end-effector constraints for optimized IK solutions"""
 
     EPS = 1e-4
@@ -242,7 +241,7 @@ class PositionIKOptimizer(IKSolverBase):
 
     def __init__(
         self,
-        ik_solver: Union[PinocchioIKSolver, PybulletIKSolver],
+        ik_solver: IKSolverBase,
         pos_error_tol: float,
         ori_error_range: Union[float, np.ndarray],
         pos_weight: float = 1.0,
@@ -260,7 +259,7 @@ class PositionIKOptimizer(IKSolverBase):
         if type(ori_error_range) is float:
             self.ori_error_range = ori_error_range * np.ones(3)
         else:
-            self.ori_error_range = ori_error_range
+            self.ori_error_range = ori_error_range  # type: ignore
 
         cem_params = {} if cem_params is None else cem_params
         max_iterations = (

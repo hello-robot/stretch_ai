@@ -34,7 +34,7 @@ class RRTConnect(RRT):
         self.nodes_rev = []
         self.nodes = None
 
-    def plan(self, start, goal, verbose: bool = False) -> PlanResult:
+    def plan(self, start, goal, verbose: bool = False, **kwargs) -> PlanResult:
         """Plan from start to goal. creates a new tree.
 
         Based on Caelan Garrett's code (MIT licensed):
