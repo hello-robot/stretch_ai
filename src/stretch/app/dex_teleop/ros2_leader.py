@@ -320,7 +320,13 @@ class DexTeleopLeader:
             # INPUT: grip_width between 0.0 and 1.0
 
             if (grip_width is not None) and (grip_width > -1000.0):
-                new_goal_configuration["stretch_gripper"] = self.grip_range * (grip_width - 0.5)
+                # Use width to interpolate between open and closed
+                new_goal_configuration["stretch_gripper"] = (
+                    self.robot._robot_model.GRIPPER_CLOSED
+                ) + grip_width * (
+                    abs(self.robot._robot_model.GRIPPER_OPEN)
+                    + abs(self.robot._robot_model.GRIPPER_CLOSED)
+                )
 
             ##################################################
             # INPUT: x_axis, y_axis, z_axis
@@ -551,8 +557,8 @@ class DexTeleopLeader:
                             goal_configuration["joint_wrist_pitch"],
                             goal_configuration["joint_wrist_roll"],
                         ],
+                        gripper=goal_configuration["stretch_gripper"],
                     )
-                    # self.robot.gripper_to()
 
                 self.prev_goal_dict = goal_dict
 
@@ -604,6 +610,7 @@ if __name__ == "__main__":
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
     )
     robot.switch_to_manipulation_mode()
+    robot.move_to_manip_posture()
 
     leader = DexTeleopLeader(robot)
 

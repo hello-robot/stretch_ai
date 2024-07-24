@@ -216,8 +216,13 @@ class ZmqServer(CommsNode):
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:
                         print(f"Moving arm to config={action['joint']}")
-                    self.client.arm_to(action["joint"], blocking=False)
-                if "gripper" in action:
+                    if "gripper" in action:
+                        self.client.arm_and_gripper_to(
+                            action["joint"], gripper=action["gripper"], blocking=False
+                        )
+                    else:
+                        self.client.arm_to(action["joint"], blocking=False)
+                if "gripper" in action and "joint" not in action:
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
                     self.client.manip.move_gripper(action["gripper"])
