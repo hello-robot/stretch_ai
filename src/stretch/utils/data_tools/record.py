@@ -245,7 +245,7 @@ class FileDataRecorder:
                 "ffmpeg",
                 "-y",
                 "-framerate",
-                "15",
+                "6",
                 "-i",
                 str(rgb_dir / "{}").format(filename_format),
                 "-c:v",
