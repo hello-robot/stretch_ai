@@ -22,6 +22,7 @@ from stretch.utils.point_cloud import show_point_cloud
 
 # Use Simple IK, if False use Pinocchio IK
 use_simple_gripper_rules = False
+use_gripper_center = True
 
 
 class DexTeleopLeader(Evaluator):
@@ -35,7 +36,6 @@ class DexTeleopLeader(Evaluator):
     look_down_cfg = np.array([0.0, math.radians(-58)])
 
     # Configuration for IK
-    use_gripper_center = True
     _use_simple_gripper_rules = not use_gripper_center
     max_rotation_change = 0.5
     _ee_link_name = "link_grasp_center"
@@ -75,6 +75,7 @@ class DexTeleopLeader(Evaluator):
         # TODO: fix these two things
         manipulate_on_ground = False
         slide_lift_range = False
+        self.use_gripper_center = use_gripper_center
         self.display_point_cloud = display_point_cloud
         self.save_images = save_images
         self.teleop_mode = teleop_mode
@@ -224,7 +225,7 @@ class DexTeleopLeader(Evaluator):
         self._recording = False or self._force
         self._need_to_write = False
         self._recorder = FileDataRecorder(
-            data_dir, task_name, user_name, env_name, save_images, self.metadata
+            data_dir, task_name, user_name, env_name, save_images, self.metadata, fps=6
         )
         self.prev_goal_dict = None
 
