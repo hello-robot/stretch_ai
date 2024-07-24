@@ -1,16 +1,13 @@
-import errno
 import math
-import os
 import pprint as pp
 from typing import Optional
 
 import cv2
 import numpy as np
-import urchin as urdf_loader
-import zmq
 from scipy.spatial.transform import Rotation
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
 import stretch.app.dex_teleop.goal_from_teleop as gt
 import stretch.app.dex_teleop.webcam_teleop_interface as wt
 import stretch.motion.simple_ik as si
@@ -20,108 +17,11 @@ from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver
 from stretch.utils.data_tools.record import FileDataRecorder
-from stretch.utils.geometry import get_rotation_from_xyz
 from stretch.utils.image import Camera
 from stretch.utils.point_cloud import show_point_cloud
 
-use_gripper_center = True
-
 # Use Simple IK, if False use Pinocchio IK
 use_simple_gripper_rules = False
-
-
-def load_urdf(file_name):
-    if not os.path.isfile(file_name):
-        print()
-        print("*****************************")
-        print(
-            "ERROR: "
-            + file_name
-            + " was not found. Simple IK requires a specialized URDF saved with this file name. prepare_base_rotation_ik_urdf.py can be used to generate this specialized URDF."
-        )
-        print("*****************************")
-        print()
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_name)
-    urdf = urdf_loader.URDF.load(file_name, lazy_load_meshes=True)
-    return urdf
-
-
-def nan_in_configuration(configuration):
-    for k, v in configuration.items():
-        if math.isnan(v) or np.isnan(v):
-            return True
-    return False
-
-
-def process_goal_dict(goal_dict, prev_goal_dict=None) -> dict:
-    """Process goal dict:
-    - fix orientation if necessary
-    - calculate relative gripper position and orientation
-    - compute quaternion
-    - fix offsets if necessary
-    """
-
-    if "gripper_x_axis" not in goal_dict:
-        # If we don't have the necessary information, return the goal_dict as is
-        # This means tool was not detected
-        goal_dict["valid"] = False
-        return goal_dict
-
-    # Convert goal dict into a quaternion
-    # Start by getting the rotation as a usable object
-    r = get_rotation_from_xyz(
-        goal_dict["gripper_x_axis"],
-        goal_dict["gripper_y_axis"],
-        goal_dict["gripper_z_axis"],
-    )
-    if use_gripper_center:
-        # Apply conversion
-        # This is a simple frame transformation which should rotate into gripper grasp frame
-        delta = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0]])
-        r_matrix = r.as_matrix() @ delta
-        r = r.from_matrix(r_matrix)
-    else:
-        goal_dict["gripper_orientation"] = r.as_quat()
-        r_matrix = r.as_matrix()
-
-    # Get pose matrix for current frame
-    T1 = np.eye(4)
-    T1[:3, :3] = r_matrix
-    T1[:3, 3] = goal_dict["wrist_position"]
-
-    if use_gripper_center:
-        T_wrist_to_grasp = np.eye(4)
-        T_wrist_to_grasp[2, 3] = 0
-        T_wrist_to_grasp[0, 3] = 0.3
-        # T_wrist_to_grasp[1, 3] = 0.3
-        T1 = T1 @ T_wrist_to_grasp
-        goal_dict["gripper_orientation"] = Rotation.from_matrix(T1[:3, :3]).as_quat()
-        goal_dict["gripper_x_axis"] = T1[:3, 0]
-        goal_dict["gripper_y_axis"] = T1[:3, 1]
-        goal_dict["gripper_z_axis"] = T1[:3, 2]
-        goal_dict["wrist_position"] = T1[:3, 3]
-        # Note: print debug information; TODO: remove
-        # If we need to, we can tune this to center the gripper
-        # Charlie had some code which did this in a slightly nicer way, I think
-        # print(T1[:3, 3])
-
-    goal_dict["use_gripper_center"] = use_gripper_center
-    if prev_goal_dict is not None and "gripper_orientation" in prev_goal_dict:
-
-        T0 = np.eye(4)
-        r0 = Rotation.from_quat(prev_goal_dict["gripper_orientation"])
-        T0[:3, :3] = r0.as_matrix()
-        T0[:3, 3] = prev_goal_dict["wrist_position"]
-
-        T = np.linalg.inv(T0) @ T1
-        goal_dict["relative_gripper_position"] = T[:3, 3]
-        goal_dict["relative_gripper_orientation"] = Rotation.from_matrix(T[:3, :3]).as_quat()
-
-        goal_dict["valid"] = True
-    else:
-        goal_dict["valid"] = False
-
-    return goal_dict
 
 
 class DexTeleopLeader(Evaluator):
@@ -135,6 +35,7 @@ class DexTeleopLeader(Evaluator):
     look_down_cfg = np.array([0.0, math.radians(-58)])
 
     # Configuration for IK
+    use_gripper_center = True
     _use_simple_gripper_rules = not use_gripper_center
     max_rotation_change = 0.5
     _ee_link_name = "link_grasp_center"
@@ -233,7 +134,7 @@ class DexTeleopLeader(Evaluator):
         # rotary_urdf_file_name = "./stretch_base_rotation_ik_with_fixed_wrist.urdf"
         # rotary_urdf = load_urdf(rotary_urdf_file_name)
         translation_urdf_file_name = "./stretch_base_translation_ik_with_fixed_wrist.urdf"
-        translation_urdf = load_urdf(translation_urdf_file_name)
+        translation_urdf = dt_utils.load_urdf(translation_urdf_file_name)
         wrist_joints = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
         self.wrist_joint_limits = {}
         for joint_name in wrist_joints:
@@ -444,7 +345,9 @@ class DexTeleopLeader(Evaluator):
 
         if goal_dict is not None:
             # Convert goal dict into a quaternion
-            goal_dict = process_goal_dict(goal_dict, self.prev_goal_dict)
+            goal_dict = dt_utils.process_goal_dict(
+                goal_dict, self.prev_goal_dict, self.use_gripper_center
+            )
         else:
             # Goal dict that is not worth processing
             goal_dict = {"valid": False}
@@ -455,7 +358,7 @@ class DexTeleopLeader(Evaluator):
 
         # Process incoming state based on teleop mode
         raw_state_received = message["robot/config"]
-        goal_dict["current_state"] = dt.format_state(raw_state_received, self.teleop_mode)
+        goal_dict["current_state"] = dt_utils.format_state(raw_state_received, self.teleop_mode)
 
         if goal_dict["valid"]:
             # Process teleop gripper goal to goal joint configurations using IK
@@ -529,7 +432,10 @@ class DexTeleopLeader(Evaluator):
     ):
         # Process goal dict in gripper pose format to full joint configuration format with IK
         # INPUT: wrist_position
-        if "use_gripper_center" in config and config["use_gripper_center"] != use_gripper_center:
+        if (
+            "use_gripper_center" in config
+            and config["use_gripper_center"] != self.use_gripper_center
+        ):
             raise RuntimeError("leader and follower are not set up to use the same target poses.")
 
         # Use Simple IK to find configurations for the

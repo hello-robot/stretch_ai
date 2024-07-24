@@ -231,6 +231,9 @@ teleop_origin = np.array([teleop_origin_x, teleop_origin_y, teleop_origin_z])
 # Supported modes of teleoperation, used to define state and action formatting
 SUPPORTED_MODES = ["standard", "rotary_base", "stationary_base", "base_x", "old_stationary_base"]
 
+# Scaling factor for arm from IK to ros2 backend
+ros2_arm_scaling_factor = 3.5
+
 # Robot configuration used to define the center wrist position
 
 
@@ -358,38 +361,3 @@ def get_do_nothing_goal_array():
 def is_a_do_nothing_goal_array(goal_array):
     test = goal_array[1:, :] < -1000.0
     return np.any(test)
-
-
-def format_state(raw_state: dict | None = None, teleop_mode: str | None = "standard"):
-    # Zero out unused features for specific teleop modes
-    if teleop_mode == "standard":
-        pass
-    elif teleop_mode == "rotary_base":
-        raw_state["base_x"] = 0.0
-        raw_state["base_x_vel"] = 0.0
-        raw_state["base_y"] = 0.0
-        raw_state["base_y_vel"] = 0.0
-
-    elif teleop_mode == "stationary_base":
-        raw_state["base_x"] = 0.0
-        raw_state["base_x_vel"] = 0.0
-        raw_state["base_y"] = 0.0
-        raw_state["base_y_vel"] = 0.0
-        raw_state["base_theta"] = 0.0
-        raw_state["base_theta_vel"] = 0.0
-
-    elif teleop_mode == "base_x":
-        raw_state["base_y"] = 0.0
-        raw_state["base_y_vel"] = 0.0
-        raw_state["base_theta"] = 0.0
-        raw_state["base_theta_vel"] = 0.0
-
-    # TODO Remove once support for older models with feature dim of 7 isn't needed
-    elif teleop_mode == "old_stationary_base":
-        pass
-    else:
-        raise NotImplementedError(
-            f"{teleop_mode} is not a supported teleop mode. Supported modes: {SUPPORTED_MODES}"
-        )
-
-    return raw_state

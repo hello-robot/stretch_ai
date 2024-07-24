@@ -1,14 +1,10 @@
-import errno
-import os
 import pprint as pp
-import time
 
 import cv2
 import numpy as np
-import urchin as urdf_loader
-from scipy.spatial.transform import Rotation
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
+import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
 import stretch.app.dex_teleop.goal_from_teleop as gt
 import stretch.app.dex_teleop.webcam_teleop_interface as wt
 import stretch.motion.simple_ik as si
@@ -16,95 +12,8 @@ import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
-from stretch.utils.geometry import get_rotation_from_xyz
-
-
-def load_urdf(file_name):
-    if not os.path.isfile(file_name):
-        print()
-        print("*****************************")
-        print(
-            "ERROR: "
-            + file_name
-            + " was not found. Simple IK requires a specialized URDF saved with this file name. prepare_base_rotation_ik_urdf.py can be used to generate this specialized URDF."
-        )
-        print("*****************************")
-        print()
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_name)
-    urdf = urdf_loader.URDF.load(file_name, lazy_load_meshes=True)
-    return urdf
-
-
-def process_goal_dict(goal_dict, prev_goal_dict=None, use_gripper_center=True) -> dict:
-    """Process goal dict:
-    - fix orientation if necessary
-    - calculate relative gripper position and orientation
-    - compute quaternion
-    - fix offsets if necessary
-    """
-
-    if "gripper_x_axis" not in goal_dict:
-        # If we don't have the necessary information, return the goal_dict as is
-        # This means tool was not detected
-        goal_dict["valid"] = False
-        return goal_dict
-
-    # Convert goal dict into a quaternion
-    # Start by getting the rotation as a usable object
-    r = get_rotation_from_xyz(
-        goal_dict["gripper_x_axis"],
-        goal_dict["gripper_y_axis"],
-        goal_dict["gripper_z_axis"],
-    )
-    if use_gripper_center:
-        # Apply conversion
-        # This is a simple frame transformation which should rotate into gripper grasp frame
-        delta = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0]])
-        r_matrix = r.as_matrix() @ delta
-        r = r.from_matrix(r_matrix)
-    else:
-        goal_dict["gripper_orientation"] = r.as_quat()
-        r_matrix = r.as_matrix()
-
-    # Get pose matrix for current frame
-    T1 = np.eye(4)
-    T1[:3, :3] = r_matrix
-    T1[:3, 3] = goal_dict["wrist_position"]
-
-    if use_gripper_center:
-        T_wrist_to_grasp = np.eye(4)
-        T_wrist_to_grasp[2, 3] = 0
-        T_wrist_to_grasp[0, 3] = 0.3
-        # T_wrist_to_grasp[1, 3] = 0.3
-        T1 = T1 @ T_wrist_to_grasp
-        goal_dict["gripper_orientation"] = Rotation.from_matrix(T1[:3, :3]).as_quat()
-        goal_dict["gripper_x_axis"] = T1[:3, 0]
-        goal_dict["gripper_y_axis"] = T1[:3, 1]
-        goal_dict["gripper_z_axis"] = T1[:3, 2]
-        goal_dict["wrist_position"] = T1[:3, 3]
-        # Note: print debug information; TODO: remove
-        # If we need to, we can tune this to center the gripper
-        # Charlie had some code which did this in a slightly nicer way, I think
-        # print(T1[:3, 3])
-
-    goal_dict["use_gripper_center"] = use_gripper_center
-    if prev_goal_dict is not None and "gripper_orientation" in prev_goal_dict:
-
-        T0 = np.eye(4)
-        r0 = Rotation.from_quat(prev_goal_dict["gripper_orientation"])
-        T0[:3, :3] = r0.as_matrix()
-        T0[:3, 3] = prev_goal_dict["wrist_position"]
-
-        T = np.linalg.inv(T0) @ T1
-        goal_dict["relative_gripper_position"] = T[:3, 3]
-        goal_dict["relative_gripper_orientation"] = Rotation.from_matrix(T[:3, :3]).as_quat()
-
-        goal_dict["valid"] = True
-    else:
-        goal_dict["valid"] = False
-
-    return goal_dict
 
 
 class DexTeleopLeader:
@@ -141,6 +50,8 @@ class DexTeleopLeader:
         self.base_x_origin = None
         self.current_base_x = 0.0
 
+        self.use_gripper_center = True
+
         lift_middle = dt.get_lift_middle(manipulate_on_ground)
         center_configuration = dt.get_center_configuration(lift_middle)
         starting_configuration = dt.get_starting_configuration(lift_middle)
@@ -164,7 +75,7 @@ class DexTeleopLeader:
 
         # Get Wrist URDF joint limits
         translation_urdf_file_name = "./stretch_base_translation_ik_with_fixed_wrist.urdf"
-        translation_urdf = load_urdf(translation_urdf_file_name)
+        translation_urdf = dt_utils.load_urdf(translation_urdf_file_name)
         wrist_joints = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
         self.wrist_joint_limits = {}
         for joint_name in wrist_joints:
@@ -264,7 +175,6 @@ class DexTeleopLeader:
         grip_width,
         wrist_position: np.ndarray,
         gripper_orientation: np.ndarray,
-        # current_state,
         relative: bool = False,
         verbose: bool = False,
         **config,
@@ -273,7 +183,6 @@ class DexTeleopLeader:
         res, success, info = self.robot._robot_model.manip_ik_solver.compute_ik(
             wrist_position,
             gripper_orientation,
-            # q_init=current_state,
             ignore_missing_joints=True,
         )
         new_goal_configuration = self.robot._robot_model.manip_ik_solver.q_array_to_dict(res)
@@ -304,6 +213,12 @@ class DexTeleopLeader:
                         new_goal_configuration["joint_arm_l0"],
                     ]
                 )
+
+            # Arm scaling
+            new_wrist_position_configuration[2] = (
+                new_wrist_position_configuration[2] * dt.ros2_arm_scaling_factor
+            )
+
             # Use exponential smoothing to filter the wrist
             # position configuration used to command the
             # robot.
@@ -469,8 +384,6 @@ class DexTeleopLeader:
                     combined = np.hstack((gripper_color_image / 255, depth_image_x3 / 4))
 
                     # Head images
-                    # head_depth_image = cv2.rotate(head_depth_image, cv2.ROTATE_90_CLOCKWISE)
-                    # head_color_image = cv2.rotate(head_color_image, cv2.ROTATE_90_CLOCKWISE)
                     head_depth_image_x3 = np.stack((head_depth_image,) * 3, axis=-1)
                     head_combined = np.hstack((head_color_image / 255, head_depth_image_x3 / 4))
 
@@ -520,22 +433,20 @@ class DexTeleopLeader:
                 # Raw input from teleop
                 markers = self.webcam_aruco_detector.process_next_frame()
 
-                # get joint state observations, immediately after getting input actions
-                joint_state = self.robot.get_joint_state()
-
                 # Set up commands to be sent to the robot
                 goal_dict = self.goal_from_markers.get_goal_dict(markers)
 
                 if goal_dict is not None:
                     # Convert goal dict into a quaternion
-                    goal_dict = process_goal_dict(goal_dict, self.prev_goal_dict)
+                    goal_dict = dt_utils.process_goal_dict(
+                        goal_dict, self.prev_goal_dict, self.use_gripper_center
+                    )
                 else:
                     # Goal dict that is not worth processing
                     goal_dict = {"valid": False}
 
                 if goal_dict["valid"]:
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
-                    # print(goal_configuration)
 
                     # TODO temporary implementation of teleop mode filtering
                     if self.teleop_mode == "stationary_base":
@@ -560,14 +471,40 @@ class DexTeleopLeader:
                         gripper=goal_configuration["stretch_gripper"],
                     )
 
+                    # Prep joint states as dict
+                    observation.joint = {
+                        k: observation.joint[v] for k, v in HelloStretchIdx.name_to_idx.items()
+                    }
+
+                    if self._recording and self.prev_goal_dict is not None:
+                        self._recorder.add(
+                            ee_rgb=gripper_color_image,
+                            ee_depth=gripper_depth_image,
+                            xyz=goal_dict["relative_gripper_position"],
+                            quaternion=goal_dict["relative_gripper_orientation"],
+                            gripper=goal_dict["grip_width"],
+                            head_rgb=head_color_image,
+                            head_depth=head_depth_image,
+                            observations=observation.joint,
+                            actions=goal_configuration,
+                            ee_pos=observation.ee_camera_pose,
+                            ee_rot=observation.ee_camera_pose,
+                        )
+
                 self.prev_goal_dict = goal_dict
 
-                # loop_timer.mark_end()
-                # if self.verbose:
-                #     loop_timer.pretty_print()
+                loop_timer.mark_end()
+                loop_timer.pretty_print()
 
-                # if evaluator.is_done():
-                #     break
+                if self._need_to_write:
+                    if self.record_success:
+                        success = self.ask_for_success()
+                        print("[LEADER] Writing data to disk with success = ", success)
+                        self._recorder.write(success=success)
+                    else:
+                        print("[LEADER] Writing data to disk.")
+                        self._recorder.write()
+                    self._need_to_write = False
 
         finally:
             print("Exiting...")
@@ -581,7 +518,6 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--robot_ip", type=str, default="192.168.1.155")
     args = parser.parse_args()
 
-    use_gripper_center = True
     teleop_mode = "base_x"
 
     if teleop_mode == "base_x":
