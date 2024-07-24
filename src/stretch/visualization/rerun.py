@@ -92,7 +92,11 @@ class RerunVsualizer:
         rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def update_voxel_map(self, space):
-        pass
+        points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
+        rr.log(
+            "world/point_cloud",
+            rr.Points3D(positions=points, radii=np.ones(rgb.shape[0]) * 0.01, colors=np.int64(rgb)),
+        )
 
     def step(self, obs, servo):
         if obs:
