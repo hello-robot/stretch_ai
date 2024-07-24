@@ -68,9 +68,9 @@ class RerunVsualizer:
             ),
         )
 
-    def log_ee_frame(self, servo):
+    def log_ee_frame(self, obs):
         # EE Frame
-        rot, trans = decompose_homogeneous_matrix(servo.ee_pose)
+        rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
@@ -99,7 +99,7 @@ class RerunVsualizer:
             try:
                 self.log_robot_xyt(obs)
                 self.log_head_camera(obs)
-                self.log_ee_frame(servo)
+                self.log_ee_frame(obs)
                 self.log_ee_camera(servo)
             except Exception as e:
                 print(e)
