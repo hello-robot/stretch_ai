@@ -380,6 +380,9 @@ class RobotAgent:
                 plt.axis("off")
                 plt.show()
 
+        if self.robot._rerun:
+            self.robot._rerun.update_voxel_map(self.space)
+
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
         if self.scene_graph is None:
