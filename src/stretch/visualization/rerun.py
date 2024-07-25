@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 
+from typing import Optional, Tuple
+
 import numpy as np
-import rerun as rr  # pip install rerun-sdk
+import rerun as rr
 
 
-def decompose_homogeneous_matrix(homogeneous_matrix):
+def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Decomposes a 4x4 homogeneous transformation matrix into its rotation matrix and translation vector components.
+
+    Args:
+        homogeneous_matrix (numpy.ndarray): A 4x4 matrix representing a homogeneous transformation.
+
+    Returns:
+        tuple: A tuple containing:
+            - rotation_matrix : A 3x3 matrix representing the rotation component.
+            - translation_vector : A 1D array of length 3 representing the translation component.
+    """
     if homogeneous_matrix.shape != (4, 4):
         raise ValueError("Input matrix must be 4x4")
     rotation_matrix = homogeneous_matrix[:3, :3]
@@ -13,8 +26,22 @@ def decompose_homogeneous_matrix(homogeneous_matrix):
 
 
 def occupancy_map_to_3d_points(
-    occupancy_map, grid_center, grid_resolution, offset=np.array([0, 0])
-):
+    occupancy_map: np.ndarray,
+    grid_center: np.ndarray,
+    grid_resolution: float,
+    offset: Optional[np.ndarray] = np.array([0, 0, 0]),
+) -> np.ndarray:
+    """
+    Converts a 2D occupancy map to a list of 3D points.
+    Args:
+        occupancy_map: A 2D array boolean map
+        grid_center: The (x, y, z) coordinates of the center of the grid map
+        grid_resolution: The resolution of the grid map
+        offset: The (x, y, z) offset to be added to the points
+
+    Returns:
+        np.ndarray: A array of 3D points representing the occupied cells in the world frame.
+    """
     points = []
     rows, cols = occupancy_map.shape
     center_row, center_col, _ = grid_center
@@ -27,9 +54,10 @@ def occupancy_map_to_3d_points(
                 z = 0  # Assuming the map is 2D, so z is always 0
                 x = x + offset[0]
                 y = y + offset[1]
-                points.append((-x, y, z))
+                z = z + offset[2]
+                points.append(np.array[-x, y, z])
 
-    return points
+    return np.array(points)
 
 
 class RerunVsualizer:
@@ -53,7 +81,7 @@ class RerunVsualizer:
         )
 
     def log_head_camera(self, obs):
-        # Head Camera
+        """Log head camera pose and images"""
         rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
         rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"], meter=1000.0))
         rr.log(
@@ -67,7 +95,7 @@ class RerunVsualizer:
         rr.log("world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_robot_xyt(self, obs):
-        # Robot World pose
+        """Log robot world pose"""
         xy = obs["gps"]
         theta = obs["compass"]
         rb_arrow = rr.Arrows3D(
@@ -89,6 +117,7 @@ class RerunVsualizer:
         )
 
     def log_ee_frame(self, obs):
+        """log end effector pose"""
         # EE Frame
         rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
         ee_arrow = rr.Arrows3D(
@@ -98,6 +127,7 @@ class RerunVsualizer:
         rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_ee_camera(self, servo):
+        """Log end effector camera pose and images"""
         # EE Camera
         rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
         rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth, meter=1000.0))
@@ -112,6 +142,7 @@ class RerunVsualizer:
         rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def update_voxel_map(self, space):
+        """Log voxel map (SparseVoxelMapNavigationSpace)"""
         points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
         rr.log(
             "world/point_cloud",
@@ -143,6 +174,7 @@ class RerunVsualizer:
         )
 
     def step(self, obs, servo):
+        """Log all the data"""
         if obs:
             try:
                 self.log_robot_xyt(obs)

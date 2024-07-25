@@ -41,6 +41,7 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
+        "rerun-sdk",
         # For siglip encoder
         "sentencepiece",
         # For git tools
