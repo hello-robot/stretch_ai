@@ -124,7 +124,12 @@ Use the WASD keys to move the robot around.
 
 ```bash
 python -m stretch.app.keyboard_teleop --robot_ip $ROBOT_IP
+
+# You may also run in a headless mode without the OpenCV gui
+python -m stretch.app.keyboard_teleop --headless
 ```
+
+Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
 
 ### Test Timing
 
@@ -134,10 +139,10 @@ Test the timing of the robot's control loop over the network. This will print ou
 python -m stretch.app.timing --robot_ip $ROBOT_IP
 
 # Headless mode - no display
-python -m stretch.app.timing --robot_ip $ROBOT_IP --headless
+python -m stretch.app.timing --headless
 
 # Set the number of iterations per histogram to 1000
-python -m stretch.app.timing --robot_ip $ROBOT_IP --iterations 1000
+python -m stretch.app.timing --iterations 1000
 ```
 
 ### Print Joint States
