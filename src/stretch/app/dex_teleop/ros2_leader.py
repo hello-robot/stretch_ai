@@ -16,14 +16,14 @@ from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
 
 
-class DexTeleopLeader:
-    """A class for evaluating the DexTeleop system."""
+class ZmqRos2Leader:
+    """Leader class for DexTeleop using the Zmq_client for ROS2 on Stretch"""
 
     def __init__(
         self,
         robot: HomeRobotZmqClient,
+        verbose: bool = False,
         left_handed: bool = False,
-        using_stretch2: bool = False,
         data_dir: str = "./data",
         task_name: str = "task",
         user_name: str = "default_user",
@@ -33,6 +33,7 @@ class DexTeleopLeader:
         save_images: bool = False,
         teleop_mode: str = "base_x",
         record_success: bool = False,
+        platform: str = "linux",
     ):
         self.robot = robot
         self.camera = None
@@ -43,9 +44,10 @@ class DexTeleopLeader:
         self.save_images = save_images
         self.teleop_mode = teleop_mode
         self.record_success = record_success
+        self.platform = platform
+        self.verbose = verbose
 
         self.left_handed = left_handed
-        self.using_stretch_2 = using_stretch2
 
         self.base_x_origin = None
         self.current_base_x = 0.0
@@ -65,12 +67,14 @@ class DexTeleopLeader:
                 tongs_prefix="left",
                 visualize_detections=False,
                 show_debug_images=debug_aruco,
+                platform=platform,
             )
         else:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
                 tongs_prefix="right",
                 visualize_detections=False,
                 show_debug_images=debug_aruco,
+                platform=platform,
             )
 
         # Get Wrist URDF joint limits
@@ -109,11 +113,6 @@ class DexTeleopLeader:
             "joint_wrist_pitch": None,
             "joint_wrist_roll": None,
         }
-
-        if self.using_stretch_2:
-            self.grip_range = dt.dex_wrist_grip_range
-        else:
-            self.grip_range = dt.dex_wrist_3_grip_range
 
         # This is the weight multiplied by the current wrist angle command when performing exponential smoothing.
         # 0.5 with 'max' robot speed was too noisy on the wrist
@@ -490,8 +489,9 @@ class DexTeleopLeader:
 
                 self.prev_goal_dict = goal_dict
 
-                loop_timer.mark_end()
-                loop_timer.pretty_print()
+                if self.verbose:
+                    loop_timer.mark_end()
+                    loop_timer.pretty_print()
 
                 if self._need_to_write:
                     if self.record_success:
@@ -512,23 +512,56 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--robot_ip", type=str, default="192.168.1.155")
+    parser.add_argument("-i", "--robot_ip", type=str, default="192.168.1.15")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-u", "--user-name", type=str, default="default_user")
+    parser.add_argument("-t", "--task-name", type=str, default="default_task")
+    parser.add_argument("-e", "--env-name", type=str, default="default_env")
+    parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
+    parser.add_argument("-d", "--data-dir", type=str, default="./data")
+    parser.add_argument(
+        "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
+    )
+    parser.add_argument("-P", "--send_port", type=int, default=4402, help="Port to send goals to.")
+    parser.add_argument(
+        "--teleop-mode",
+        "--teleop_mode",
+        type=str,
+        default="base_x",
+        choices=["stationary_base", "rotary_base", "base_x"],
+    )
+    parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
+    parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
+    parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
     args = parser.parse_args()
 
-    teleop_mode = "base_x"
-
-    MANIP_MODE_CONTROLLED_JOINTS = dt_utils.get_teleop_controlled_joints(teleop_mode)
-
+    # Parameters
+    MANIP_MODE_CONTROLLED_JOINTS = dt_utils.get_teleop_controlled_joints(args.teleop_mode)
     parameters = get_parameters("default_planner.yaml")
+
+    # Zmq client
     robot = HomeRobotZmqClient(
         robot_ip=args.robot_ip,
+        send_port=args.send_port,
         parameters=parameters,
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
     )
     robot.switch_to_manipulation_mode()
     robot.move_to_manip_posture()
 
-    leader = DexTeleopLeader(robot)
+    leader = ZmqRos2Leader(
+        robot=robot,
+        verbose=args.verbose,
+        data_dir=args.data_dir,
+        user_name=args.user_name,
+        task_name=args.task_name,
+        env_name=args.env_name,
+        force_record=args.force,
+        save_images=args.save_images,
+        teleop_mode=args.teleop_mode,
+        record_success=args.record_success,
+        platform=args.platform,
+    )
 
     try:
         leader.run(display_received_images=True)
