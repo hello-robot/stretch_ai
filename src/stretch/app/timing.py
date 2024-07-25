@@ -27,17 +27,17 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False, headless: bool = F
         use_remote_computer=(not local),
     )
 
+    if not headless:
+        print("Press 'q' to quit")
+
     loop = LoopStats("servo_timing", target_loop_rate=15.0)
     counter = 0
     while True:
         loop.mark_start()
         observation = robot.get_servo_observation()
 
+        char = None
         if not headless:
-            # Get servo observation from the robot
-            # This is a more compact, lower-res image representation for better performance over network
-            observation = robot.get_servo_observation()
-
             # Get RGB and Depth
             rgb = observation.rgb
             depth = observation.depth
@@ -53,7 +53,7 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False, headless: bool = F
 
             # Show the image
             cv2.imshow("Robot View", combined)
-            cv2.waitKey(1)
+            char = chr(cv2.waitKey(1) & 0xFF)  # 0xFF is a mask to get the last 8 bits
 
         loop.mark_end()
         loop.pretty_print()
@@ -62,6 +62,14 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False, headless: bool = F
             loop.generate_rate_histogram()
         else:
             loop.sleep()
+
+        # Get key press and act on it
+        if not headless and char == "q":
+            break
+
+    if not headless:
+        cv2.destroyAllWindows()
+    robot.stop()
 
 
 if __name__ == "__main__":
