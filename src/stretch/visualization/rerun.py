@@ -12,6 +12,26 @@ def decompose_homogeneous_matrix(homogeneous_matrix):
     return rotation_matrix, translation_vector
 
 
+def occupancy_map_to_3d_points(
+    occupancy_map, grid_center, grid_resolution, offset=np.array([0, 0])
+):
+    points = []
+    rows, cols = occupancy_map.shape
+    center_row, center_col, _ = grid_center
+
+    for i in range(rows):
+        for j in range(cols):
+            if occupancy_map[i][j]:
+                x = (j - center_col) * grid_resolution
+                y = (i - center_row) * grid_resolution
+                z = 0  # Assuming the map is 2D, so z is always 0
+                x = x + offset[0]
+                y = y + offset[1]
+                points.append((-x, y, z))
+
+    return points
+
+
 class RerunVsualizer:
     def __init__(self):
         rr.init("Stretch_robot", spawn=False)
@@ -19,7 +39,7 @@ class RerunVsualizer:
 
         # Create environment Box place holder
         rr.log(
-            "map/box",
+            "world/map_box",
             rr.Boxes3D(half_sizes=[10, 10, 3], centers=[0, 0, 2], colors=[255, 255, 255, 255]),
             static=True,
         )
@@ -96,6 +116,30 @@ class RerunVsualizer:
         rr.log(
             "world/point_cloud",
             rr.Points3D(positions=points, radii=np.ones(rgb.shape[0]) * 0.01, colors=np.int64(rgb)),
+        )
+        grid_origin = space.voxel_map.grid_origin
+        obstacles, explored = space.voxel_map.get_2d_map()
+        grid_resolution = space.voxel_map.grid_resolution
+        offset = np.array([0, 0])
+        obs_points = np.array(
+            occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution, offset)
+        )
+        explored_points = np.array(
+            occupancy_map_to_3d_points(explored, grid_origin, grid_resolution, offset)
+        )
+        rr.log(
+            "world/obstacles",
+            rr.Points3D(
+                positions=obs_points, radii=np.ones(points.shape[0]) * 0.02, colors=[255, 0, 0]
+            ),
+        )
+        rr.log(
+            "world/explored",
+            rr.Points3D(
+                positions=explored_points,
+                radii=np.ones(points.shape[0]) * 0.02,
+                colors=[255, 255, 255],
+            ),
         )
 
     def step(self, obs, servo):
