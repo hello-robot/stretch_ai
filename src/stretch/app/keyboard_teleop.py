@@ -104,7 +104,7 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False, headless: bool = F
             break
         elif char in ["w", "a", "s", "d"]:
             key_pressed(robot, char)
-        elif headless and char == chr(255):
+        elif not headless and char == chr(255):
             # Nothing was pressed
             pass
         else:
