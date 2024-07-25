@@ -34,9 +34,9 @@ def key_pressed(robot: HomeRobotZmqClient, key):
     elif key == "s":
         goal_xyt[0] = -0.1
     elif key == "a":
-        goal_xyt[1] = 0.1
+        goal_xyt[2] = 0.2
     elif key == "d":
-        goal_xyt[1] = -0.1
+        goal_xyt[2] = -0.2
     robot.navigate_to(goal_xyt, relative=True)
 
 
