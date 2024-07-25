@@ -71,8 +71,12 @@ def format_actions(raw_actions: dict):
     for x in DEX_TELEOP_CONTROLLED_JOINTS:
         if x not in raw_actions:
             raw_actions[x] = 0.0
-    # assert len(raw_actions) == len(
-    #     DEX_TELEOP_CONTROLLED_JOINTS), f"Action length {len(raw_actions)} is not equal to the number of controlled joints {len(DEX_TELEOP_CONTROLLED_JOINTS)} "
+
+    # Remove individual arm joints
+    del raw_actions["joint_arm_l1"]
+    del raw_actions["joint_arm_l2"]
+    del raw_actions["joint_arm_l3"]
+
     return raw_actions
 
 
