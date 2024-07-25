@@ -5,7 +5,10 @@ import numpy as np
 import urchin as urdf_loader
 from scipy.spatial.transform import Rotation
 
-from stretch.app.dex_teleop.dex_teleop_parameters import SUPPORTED_MODES
+from stretch.app.dex_teleop.dex_teleop_parameters import (
+    DEX_TELEOP_CONTROLLED_JOINTS,
+    SUPPORTED_MODES,
+)
 from stretch.utils.geometry import get_rotation_from_xyz
 
 
@@ -25,7 +28,11 @@ def load_urdf(file_name):
     return urdf
 
 
-def format_state(raw_state: dict | None = None, teleop_mode: str | None = "standard"):
+def format_state(raw_state: dict | None = None, teleop_mode: str | None = "base_x"):
+    """
+    This function is used with the old leader-follower with stretch_body move_to backend.
+    State format: [x, x_vel, y, y_vel, theta, theta_vel, lift, arm, wrist_r, wrist_p, wrist_y, gripper]
+    """
     # Zero out unused features for specific teleop modes
     if teleop_mode == "standard":
         pass
@@ -58,6 +65,31 @@ def format_state(raw_state: dict | None = None, teleop_mode: str | None = "stand
         )
 
     return raw_state
+
+
+def format_actions(raw_actions: dict):
+    for x in DEX_TELEOP_CONTROLLED_JOINTS:
+        if x not in raw_actions:
+            raw_actions[x] = 0.0
+    # assert len(raw_actions) == len(
+    #     DEX_TELEOP_CONTROLLED_JOINTS), f"Action length {len(raw_actions)} is not equal to the number of controlled joints {len(DEX_TELEOP_CONTROLLED_JOINTS)} "
+    return raw_actions
+
+
+def get_teleop_controlled_joints(teleop_mode: str):
+    arm = [
+        "joint_arm_l0",
+        "joint_lift",
+        "joint_wrist_yaw",
+        "joint_wrist_pitch",
+        "joint_wrist_roll",
+    ]
+    if teleop_mode == "base_x":
+        return arm.append("base_x_joint")
+    elif teleop_mode == "rotary_base":
+        return arm.append("base_theta_joint")
+    elif teleop_mode == "stationary_base":
+        return arm
 
 
 def process_goal_dict(

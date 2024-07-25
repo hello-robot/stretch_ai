@@ -219,13 +219,14 @@ class DexTeleopLeader(Evaluator):
             "env_name": env_name,
             "left_handed": left_handed,
             "teleop_mode": teleop_mode,
+            "backend": "stretch_body",
         }
 
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
         self._recorder = FileDataRecorder(
-            data_dir, task_name, user_name, env_name, save_images, self.metadata, fps=6
+            data_dir, task_name, user_name, env_name, save_images, self.metadata, fps=15
         )
         self.prev_goal_dict = None
 

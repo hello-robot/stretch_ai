@@ -234,6 +234,18 @@ SUPPORTED_MODES = ["standard", "rotary_base", "stationary_base", "base_x", "old_
 # Scaling factor for arm from IK to ros2 backend
 ros2_arm_scaling_factor = 3.5
 
+# Dex teleop controlled joints
+DEX_TELEOP_CONTROLLED_JOINTS = [
+    "base_x_joint",
+    "base_y_joint",
+    "base_theta_joint",
+    "joint_arm_l0",
+    "joint_lift",
+    "joint_wrist_roll",
+    "joint_wrist_pitch",
+    "joint_wrist_yaw",
+    "stretch_gripper",
+]
 # Robot configuration used to define the center wrist position
 
 

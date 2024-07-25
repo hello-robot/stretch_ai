@@ -150,13 +150,14 @@ class DexTeleopLeader:
             "env_name": env_name,
             "left_handed": left_handed,
             "teleop_mode": teleop_mode,
+            "backend": "ros2",
         }
 
         self._force = force_record
         self._recording = False or self._force
         self._need_to_write = False
         self._recorder = FileDataRecorder(
-            data_dir, task_name, user_name, env_name, save_images, self.metadata
+            data_dir, task_name, user_name, env_name, save_images, self.metadata, fps=6
         )
         self.prev_goal_dict = None
 
@@ -448,12 +449,8 @@ class DexTeleopLeader:
                 if goal_dict["valid"]:
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
 
-                    # TODO temporary implementation of teleop mode filtering
-                    if self.teleop_mode == "stationary_base":
-                        goal_configuration["joint_mobile_base_rotate_by"] = 0.0
-                    # elif self.teleop_mode == "base_x":
-                    #     # Override with reset base_x
-                    #     goal_dict["current_state"]["base_x"] = self.current_base_x
+                    # Format to standard action space
+                    goal_configuration = dt_utils.format_actions(goal_configuration)
 
                     if self._recording:
                         print("[LEADER] goal_dict =")
@@ -520,24 +517,7 @@ if __name__ == "__main__":
 
     teleop_mode = "base_x"
 
-    if teleop_mode == "base_x":
-        MANIP_MODE_CONTROLLED_JOINTS = [
-            "joint_arm_l0",
-            "joint_lift",
-            "joint_wrist_yaw",
-            "joint_wrist_pitch",
-            "joint_wrist_roll",
-            "base_x_joint",
-        ]
-    else:
-        MANIP_MODE_CONTROLLED_JOINTS = [
-            "joint_arm_l0",
-            "joint_lift",
-            "joint_wrist_yaw",
-            "joint_wrist_pitch",
-            "joint_wrist_roll",
-            "base_theta_joint",
-        ]
+    MANIP_MODE_CONTROLLED_JOINTS = dt_utils.get_teleop_controlled_joints(teleop_mode)
 
     parameters = get_parameters("default_planner.yaml")
     robot = HomeRobotZmqClient(
