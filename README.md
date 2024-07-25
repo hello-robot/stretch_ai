@@ -57,6 +57,7 @@ ros2 launch stretch_ros2_bridge server.launch.py
 
 Then, first try these:
 
+- [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
@@ -114,6 +115,14 @@ All of these take the `--robot_ip` flag to specify the robot's IP address. You s
 ```bash
 export ROBOT_IP=192.168.1.15
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
+
+### Keyboard Teleop
+
+Use the WASD keys to move the robot around.
+
+```bash
+python -m stretch.app.keyboard_teleop --robot_ip $ROBOT_IP
 ```
 
 ### Print Joint States
