@@ -45,6 +45,12 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option("--frame", default=-1, help="Final frame to read from input file")
 @click.option("--text", default="", help="Text to encode")
+@click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
+@click.option(
+    "--stationary",
+    is_flag=True,
+    help="Don't move the robot to the instance, if using real robot instead of offline data",
+)
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -61,6 +67,8 @@ def main(
     input_file: str = "",
     frame: int = -1,
     text: str = "",
+    yes: bool = False,
+    stationary: bool = False,
 ):
 
     print("- Load parameters")
@@ -72,6 +80,7 @@ def main(
     )
 
     if len(input_file) == 0 or input_file is None:
+        real_robot = True
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
@@ -103,31 +112,65 @@ def main(
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
             agent.voxel_map.write_to_pickle(output_pkl_filename)
-
-        # At the end...
-        robot.stop()
     else:
+        real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
         agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
 
-    if len(text) == 0:
-        # Read text from command line
-        text = input("Enter text to encode, empty to quit: ")
-        while len(text) > 0:
+    try:
+        if len(text) == 0:
+            # Read text from command line
+            text = input("Enter text to encode, empty to quit: ")
+            while len(text) > 0:
+                # Get the best instance using agent's API
+                print("Best image for:", text)
+                _, instance = agent.get_instance_from_text(text)
+
+                # Show the best view of the detected instance
+                instance.show_best_view(title=text)
+
+                if real_robot and not stationary:
+                    # Confirm before moving
+                    if not yes:
+                        confirm = input("Move to instance? [y/n]: ")
+                        if confirm != "y":
+                            print("Exiting...")
+                            sys.exit(0)
+                    print("Moving to instance...")
+                    break
+
+                # Get a new query
+                text = input("Enter text to encode, empty to quit: ")
+        else:
             # Get the best instance using agent's API
-            print("Best image for:", text)
             _, instance = agent.get_instance_from_text(text)
 
             # Show the best view of the detected instance
-            instance.show_best_view(title=text)
-            text = input("Enter text to encode, empty to quit: ")
-    else:
-        # Get the best instance using agent's API
-        _, instance = agent.get_instance_from_text(text)
+            instance.show_best_view()
 
-        # Show the best view of the detected instance
-        instance.show_best_view()
+            if real_robot and not stationary:
+                # Confirm before moving
+                if not yes:
+                    confirm = input("Move to instance? [y/n]: ")
+                    if confirm != "y":
+                        print("Exiting...")
+                        sys.exit(0)
+                print("Moving to instance...")
+    except KeyboardInterrupt:
+        # Stop the robot now
+        robot.stop()
+        sys.exit(0)
+
+    # Move to the instance if we are on the real robot and not told to stay stationary
+    if not stationary:
+        # Move to the instance
+        # Note: this is a blocking call
+        # Generates a motion plan based on what we can see
+        agent.move_to_instance(instance)
+
+    # At the end...
+    robot.stop()
 
     # Debugging: write out images of instances that you saw
     if write_instance_images:
