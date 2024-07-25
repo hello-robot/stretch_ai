@@ -19,7 +19,15 @@ from stretch.utils import LoopStats
     help="Set if we are executing on the robot and not on a remote computer",
 )
 @click.option("--headless", is_flag=True, help="Do not show camera feeds")
-def main(robot_ip: str = "192.168.1.15", local: bool = False, headless: bool = False):
+@click.option(
+    "--iterations", default=100, help="Number of iterations between rate histogram updates"
+)
+def main(
+    robot_ip: str = "192.168.1.15",
+    local: bool = False,
+    headless: bool = False,
+    iterations: int = 500,
+):
 
     # Create robot
     robot = HomeRobotZmqClient(
@@ -58,7 +66,7 @@ def main(robot_ip: str = "192.168.1.15", local: bool = False, headless: bool = F
         loop.mark_end()
         loop.pretty_print()
         counter += 1
-        if counter % 100 == 0:
+        if counter % iterations == 0:
             loop.generate_rate_histogram()
         else:
             loop.sleep()
