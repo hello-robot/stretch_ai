@@ -68,6 +68,7 @@ class DexTeleopLeader(Evaluator):
         send_port: int = 4406,
         teleop_mode: str = None,
         record_success: bool = False,
+        platform: str = "linux",
     ):
         super().__init__()
         self.camera = None
@@ -80,6 +81,7 @@ class DexTeleopLeader(Evaluator):
         self.save_images = save_images
         self.teleop_mode = teleop_mode
         self.record_success = record_success
+        self.platform = platform
 
         self.left_handed = left_handed
         self.using_stretch_2 = using_stretch2
@@ -123,12 +125,14 @@ class DexTeleopLeader(Evaluator):
                 tongs_prefix="left",
                 visualize_detections=False,
                 show_debug_images=debug_aruco,
+                platform=platform,
             )
         else:
             self.webcam_aruco_detector = wt.WebcamArucoDetector(
                 tongs_prefix="right",
                 visualize_detections=False,
                 show_debug_images=debug_aruco,
+                platform=platform,
             )
 
         # Get Wrist URDF joint limits
@@ -709,6 +713,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
+    parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
     args = parser.parse_args()
 
     client = RobotClient(
@@ -732,6 +737,7 @@ if __name__ == "__main__":
         teleop_mode=args.teleop_mode,
         record_success=args.record_success,
         debug_aruco=args.show_aruco,
+        platform=args.platform,
     )
     try:
         client.run(evaluator)
