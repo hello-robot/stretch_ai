@@ -35,12 +35,16 @@ class ZmqServer(CommsNode):
         verbose: bool = False,
         image_scaling: float = 0.5,
         ee_image_scaling: float = 0.5,  # 0.6,
+        depth_scaling: float = 0.001,
+        ee_depth_scaling: float = 0.001,
     ):
         self.verbose = verbose
         self.client = StretchClient(d405=True)
         self.context = zmq.Context()
         self.image_scaling = image_scaling
         self.ee_image_scaling = ee_image_scaling
+        self.depth_scaling = depth_scaling
+        self.ee_depth_scaling = ee_depth_scaling
 
         # Set up the publisher socket using ZMQ
         self.send_socket = self._make_pub_socket(send_port, use_remote_computer)
@@ -315,6 +319,7 @@ class ZmqServer(CommsNode):
                 "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
+                "ee_cam/depth_scaling": self.ee_depth_scaling,
                 "ee_cam/pose": self.client.ee_camera_pose,
                 "head_cam/color_camera_K": scale_camera_matrix(
                     self.client.rgb_cam.get_K(), self.image_scaling
@@ -327,6 +332,7 @@ class ZmqServer(CommsNode):
                 "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image/shape": head_depth_image.shape,
                 "head_cam/image_scaling": self.image_scaling,
+                "head_cam/depth_scaling": self.depth_scaling,
                 "head_cam/pose": self.client.head.get_pose(rotated=False),
                 "robot/config": obs.joint,
             }
