@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import time
 from typing import Optional, Tuple
 
 import numpy as np
@@ -29,7 +30,7 @@ def occupancy_map_to_3d_points(
     occupancy_map: np.ndarray,
     grid_center: np.ndarray,
     grid_resolution: float,
-    offset: Optional[np.ndarray] = np.array([0, 0, 0]),
+    offset: Optional[np.ndarray] = np.zeros(3),
 ) -> np.ndarray:
     """
     Converts a 2D occupancy map to a list of 3D points.
@@ -49,13 +50,13 @@ def occupancy_map_to_3d_points(
     for i in range(rows):
         for j in range(cols):
             if occupancy_map[i][j]:
-                x = (j - center_col) * grid_resolution
-                y = (i - center_row) * grid_resolution
+                x = (i - center_col) * grid_resolution
+                y = (j - center_col) * grid_resolution
                 z = 0  # Assuming the map is 2D, so z is always 0
                 x = x + offset[0]
                 y = y + offset[1]
                 z = z + offset[2]
-                points.append(np.array[-x, y, z])
+                points.append(np.array([x, y, z]))
 
     return np.array(points)
 
@@ -151,24 +152,21 @@ class RerunVsualizer:
         grid_origin = space.voxel_map.grid_origin
         obstacles, explored = space.voxel_map.get_2d_map()
         grid_resolution = space.voxel_map.grid_resolution
-        offset = np.array([0, 0])
-        obs_points = np.array(
-            occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution, offset)
-        )
+        obs_points = np.array(occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution))
         explored_points = np.array(
-            occupancy_map_to_3d_points(explored, grid_origin, grid_resolution, offset)
+            occupancy_map_to_3d_points(explored, grid_origin, grid_resolution)
         )
         rr.log(
             "world/obstacles",
             rr.Points3D(
-                positions=obs_points, radii=np.ones(points.shape[0]) * 0.02, colors=[255, 0, 0]
+                positions=obs_points, radii=np.ones(points.shape[0]) * 0.025, colors=[255, 0, 0]
             ),
         )
         rr.log(
             "world/explored",
             rr.Points3D(
                 positions=explored_points,
-                radii=np.ones(points.shape[0]) * 0.02,
+                radii=np.ones(points.shape[0]) * 0.01,
                 colors=[255, 255, 255],
             ),
         )
