@@ -373,8 +373,9 @@ class ZmqRos2Leader:
 
                 # Process images
                 gripper_color_image = cv2.cvtColor(observation.ee_rgb, cv2.COLOR_RGB2BGR)
-                gripper_depth_image = observation.ee_depth.astype(
-                    np.float32) * observation.ee_depth_scaling
+                gripper_depth_image = (
+                    observation.ee_depth.astype(np.float32) * observation.ee_depth_scaling
+                )
 
                 head_color_image = cv2.cvtColor(observation.rgb, cv2.COLOR_RGB2BGR)
                 head_depth_image = observation.depth.astype(np.float32) * observation.depth_scaling
