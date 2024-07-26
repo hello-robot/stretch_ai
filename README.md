@@ -68,6 +68,10 @@ Advanced:
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
 
+Debug tools:
+
+- [Camera Info](#camera-info) - Print out camera information.
+
 Finally:
 
 - [Dex Teleop](#dex-teleop-for-data-collection) - Teleoperate the robot to collect demonstration data.
@@ -128,6 +132,23 @@ You can also print out just one specific joint. For example, to just get arm ext
 
 ```
 python -m stretch.app.print_joint_states --joint arm
+```
+
+### Camera Info
+
+Print out information about the cameras on the robot for debugging purposes:
+
+```bash
+python -m stretch.app.camera_info --robot_ip $ROBOT_IP
+```
+
+This will print out information about the resolutions of different images sent by the robot's cameras, and should show something like this:
+
+```
+---------------------- Camera Info ----------------------
+Servo Head RGB shape: (320, 240, 3) Servo Head Depth shape: (320, 240)
+Servo EE RGB shape: (240, 320, 3) Servo EE Depth shape: (240, 320)
+Observation RGB shape: (640, 480, 3) Observation Depth shape: (640, 480)
 ```
 
 ### Visualization and Streaming Video
