@@ -57,6 +57,8 @@ ros2 launch stretch_ros2_bridge server.launch.py
 
 Then, first try these:
 
+- [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
+- [Test Timing](#test-timing) - Test the timing of the robot's control loop over the network.
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
@@ -114,6 +116,33 @@ All of these take the `--robot_ip` flag to specify the robot's IP address. You s
 ```bash
 export ROBOT_IP=192.168.1.15
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
+
+### Keyboard Teleop
+
+Use the WASD keys to move the robot around.
+
+```bash
+python -m stretch.app.keyboard_teleop --robot_ip $ROBOT_IP
+
+# You may also run in a headless mode without the OpenCV gui
+python -m stretch.app.keyboard_teleop --headless
+```
+
+Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
+
+### Test Timing
+
+Test the timing of the robot's control loop over the network. This will print out the time it takes to send a command to the robot and receive a response. It will show a histogram after a fixed number of iterations given by the `--iterations` flag (default is 500).
+
+```bash
+python -m stretch.app.timing --robot_ip $ROBOT_IP
+
+# Headless mode - no display
+python -m stretch.app.timing --headless
+
+# Set the number of iterations per histogram to 1000
+python -m stretch.app.timing --iterations 1000
 ```
 
 ### Print Joint States
