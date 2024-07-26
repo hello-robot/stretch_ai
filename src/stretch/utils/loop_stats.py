@@ -100,8 +100,13 @@ class LoopStats:
 
     def get_loop_sleep_time(self):
         """
-        Returns
-        -------
-        float : Time to sleep for to hit target loop rate
+        Returns:
+            float: Time to sleep for to hit target loop rate
         """
         return max(0.0, self.sleep_time_s)
+
+    def sleep(self):
+        """
+        Sleeps for the remaining time to hit target loop rate
+        """
+        time.sleep(self.get_loop_sleep_time())
