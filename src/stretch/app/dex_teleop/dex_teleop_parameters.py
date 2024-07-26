@@ -207,9 +207,9 @@ robot_allowed_to_move = True
 
 # Custom range for ACT demonstrations
 # Minimum distance from the tongs to the camera in meters
-min_dist_from_camera_to_tongs = 0.6
+min_dist_from_camera_to_tongs = 0.8
 # Maximum distance from the tongs to the camera in meters
-max_dist_from_camera_to_tongs = 1.2
+max_dist_from_camera_to_tongs = 1.4
 
 # Maximum height range of tongs
 max_tongs_height_range = max_dist_from_camera_to_tongs - min_dist_from_camera_to_tongs
@@ -232,7 +232,7 @@ teleop_origin = np.array([teleop_origin_x, teleop_origin_y, teleop_origin_z])
 SUPPORTED_MODES = ["standard", "rotary_base", "stationary_base", "base_x", "old_stationary_base"]
 
 # Scaling factor for arm from IK to ros2 backend
-ros2_arm_scaling_factor = 3.5
+ros2_arm_scaling_factor = 3.8
 
 # Dex teleop controlled joints
 DEX_TELEOP_CONTROLLED_JOINTS = [

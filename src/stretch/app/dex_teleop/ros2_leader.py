@@ -469,10 +469,9 @@ class ZmqRos2Leader:
                     )
 
                     # Prep joint states as dict
-                    observation.joint = {
+                    joint_states = {
                         k: observation.joint[v] for k, v in HelloStretchIdx.name_to_idx.items()
                     }
-
                     if self._recording and self.prev_goal_dict is not None:
                         self._recorder.add(
                             ee_rgb=gripper_color_image,
@@ -482,7 +481,7 @@ class ZmqRos2Leader:
                             gripper=goal_dict["grip_width"],
                             head_rgb=head_color_image,
                             head_depth=head_depth_image,
-                            observations=observation.joint,
+                            observations=joint_states,
                             actions=goal_configuration,
                             ee_pos=observation.ee_camera_pose,
                             ee_rot=observation.ee_camera_pose,
