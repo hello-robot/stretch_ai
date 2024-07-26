@@ -96,19 +96,19 @@ else
     esac
 fi
 
-# Exit immediately if anything fails
-set -e
+# # Exit immediately if anything fails
+# set -e
 
-$MAMBA env remove -n $ENV_NAME -y
-# If using cpu only, create a separate environment
-if [ "$CPU_ONLY" == "true" ]; then
-    $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
-else
-    # Else, install the cuda version
-    $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
-fi
+# $MAMBA env remove -n $ENV_NAME -y
+# # If using cpu only, create a separate environment
+# if [ "$CPU_ONLY" == "true" ]; then
+#     $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
+# else
+#     # Else, install the cuda version
+#     $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
+# fi
 
-source activate $ENV_NAME
+# source activate $ENV_NAME
 
 # Now install pytorch3d a bit faster
 $MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
@@ -159,6 +159,32 @@ else
     echo "Install detectron2 for perception (required by Detic)"
     git submodule update --init --recursive
     cd third_party/detectron2
+    pip install -e .
+
+    echo "Install Detic for perception"
+    cd ../../src/stretch/perception/detection/detic/Detic
+    # Make sure it's up to date
+    git submodule update --init --recursive
+    pip install -r requirements.txt
+
+    # cd ../../src/stretch/perception/detection/detic/Detic
+    # Create folder for checkpoints and download
+    mkdir -p models
+    echo "Download DETIC checkpoint..."
+    wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+fi
+
+echo ""
+echo "---------------------------------------------"
+echo "----   INSTALLING YOLO WORLD FOR PERCEPTION   ----"
+
+# If not cpu only, then we can use perception
+if [ "$CPU_ONLY" == "true" ]; then
+    echo "Skipping YOLO World installation for CPU only"
+else
+    echo "Install YOLO World for perception"
+   cd ../../src/stretch/perception/detection/yolo_world/YoloWorld
+    pip install wheel
     pip install -e .
 
     echo "Install Detic for perception"

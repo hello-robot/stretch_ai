@@ -67,6 +67,15 @@ class OvmmPerception:
                 verbose=verbose,
                 **module_kwargs,
             )
+        elif self._detection_module == "yolo_world":
+            from home_robot.perception.detection.yolo_world import YOLOWorldPerception
+
+            self._segmentation = YOLOWorldPerception(
+                custom_vocabulary=".",
+                sem_gpu_id=gpu_device_id,
+                verbose=verbose,
+                **module_kwargs,
+            )
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
 
