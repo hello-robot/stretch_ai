@@ -14,7 +14,7 @@ def generate_launch_description():
     realsense_config = {
         "align_depth.enable": "True",
         "camera_name": "camera",
-        "camera_namespace": "camera",
+        "camera_namespace": "",
         # "decimation_filter.enable": "True",
         # "spatial_filter.enable": "True",
         # "temporal_filter.enable": "True",
@@ -38,7 +38,7 @@ def generate_launch_description():
     realsense_d405_config = {
         "align_depth.enable": "true",
         "camera_name": "gripper_camera",
-        "camera_namespace": "gripper_camera",
+        "camera_namespace": "",
         # "decimation_filter.enable": "True",
         # "spatial_filter.enable": "True",
         # "temporal_filter.enable": "True",
