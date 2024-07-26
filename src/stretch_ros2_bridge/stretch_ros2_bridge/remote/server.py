@@ -33,7 +33,7 @@ class ZmqServer(CommsNode):
         send_servo_port: int = 4404,
         use_remote_computer: bool = True,
         verbose: bool = False,
-        image_scaling: float = 0.25,
+        image_scaling: float = 0.5,
         ee_image_scaling: float = 0.5,  # 0.6,
     ):
         self.verbose = verbose
