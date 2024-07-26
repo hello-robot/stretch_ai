@@ -59,6 +59,11 @@ configurable_parameters = [
     {"name": "enable_infra1", "default": "false", "description": "enable infra1 stream"},
     {"name": "enable_infra2", "default": "false", "description": "enable infra2 stream"},
     {
+        "name": "depth_module.color_profile",
+        "default": "0,0,0",
+        "description": "color stream profile",
+    },
+    {
         "name": "depth_module.depth_profile",
         "default": "0,0,0",
         "description": "depth stream profile",
