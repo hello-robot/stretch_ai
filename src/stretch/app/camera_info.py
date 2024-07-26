@@ -38,8 +38,7 @@ def main(
             if obs is None:
                 continue
 
-            print()
-            print("----------------------")
+            print("---------------------- Camera Info ----------------------")
             print(
                 f"Servo Head RGB shape: {servo.rgb.shape} Servo Head Depth shape: {servo.depth.shape}"
             )
@@ -49,7 +48,7 @@ def main(
             print(
                 f"Observation RGB shape: {obs.rgb.shape} Observation Depth shape: {obs.depth.shape}"
             )
-            time.sleep(0.25)
+            break
 
     except KeyboardInterrupt:
         pass
