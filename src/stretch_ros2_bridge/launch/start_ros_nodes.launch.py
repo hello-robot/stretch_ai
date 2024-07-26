@@ -39,7 +39,10 @@ def generate_launch_description():
     }
     realsense_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
+            # os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
+            os.path.join(
+                get_package_share_directory("stretch_ros2_bridge"), "launch/camera/rs_launch.py"
+            )
         ),
         launch_arguments=realsense_config.items(),
     )
@@ -53,8 +56,8 @@ def generate_launch_description():
         # "temporal_filter.enable": "True",
         # "disparity_filter.enable": "True",
         "device_type": "d405",
-        "rgb_camera.profile": "640x480x15",
-        "depth_module.profile": "640x480x15",
+        "rgb_camera.color_profile": "640x480x15",
+        "depth_module.depth_profile": "640x480x15",
         # "rgb_camera.profile": "480x270x30",
         # "depth_module.profile": "480x270x30",
         "rgb_camera.enable_auto_exposure": "true",
@@ -68,7 +71,10 @@ def generate_launch_description():
     }
     realsense_d405_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
+            # os.path.join(get_package_share_directory("realsense2_camera"), "launch/rs_launch.py")
+            os.path.join(
+                get_package_share_directory("stretch_ros2_bridge"), "launch/camera/rs_launch.py"
+            )
         ),
         launch_arguments=realsense_d405_config.items(),
     )
