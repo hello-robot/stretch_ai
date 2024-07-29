@@ -133,7 +133,7 @@ def main(
             text = input("Enter text to encode, empty to quit: ")
             while len(text) > 0:
                 # Get the best instance using agent's API
-                print("Best image for:", text)
+                print(f"Finding best image(s) for '{text}'")
                 if all_matches:
                     instances = agent.get_instances_from_text(text, threshold=threshold)
                 else:
@@ -142,6 +142,7 @@ def main(
 
                 if len(instances) == 0:
                     logger.error("No matches found for query:", text)
+                    text = ""
                     continue
 
                 for instance in instances:
@@ -167,7 +168,7 @@ def main(
                 _, instance = agent.get_instance_from_text(text)
 
             if len(instances) == 0:
-                print("No matches found for query")
+                logger.error("No matches found for query")
                 return
 
             # Show the best view of the detected instance
