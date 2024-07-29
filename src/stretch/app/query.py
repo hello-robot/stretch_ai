@@ -142,24 +142,22 @@ def main(
 
                 if len(instances) == 0:
                     logger.error("No matches found for query:", text)
-                    text = ""
-                    continue
+                else:
+                    for instance in instances:
+                        instance.show_best_view(title=text)
 
-                for instance in instances:
-                    instance.show_best_view(title=text)
+                        if real_robot and not stationary:
+                            # Confirm before moving
+                            if not yes:
+                                confirm = input("Move to instance? [y/n]: ")
+                                if confirm != "y":
+                                    print("Exiting...")
+                                    sys.exit(0)
+                            print("Moving to instance...")
+                            break
 
-                    if real_robot and not stationary:
-                        # Confirm before moving
-                        if not yes:
-                            confirm = input("Move to instance? [y/n]: ")
-                            if confirm != "y":
-                                print("Exiting...")
-                                sys.exit(0)
-                        print("Moving to instance...")
-                        break
-
-                    # Get a new query
-                    text = input("Enter text to encode, empty to quit: ")
+                # Get a new query
+                text = input("Enter text to encode, empty to quit: ")
         else:
             # Get the best instance using agent's API
             if all_matches:
