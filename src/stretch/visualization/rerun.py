@@ -85,6 +85,7 @@ class RerunVsualizer:
 
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
+        rr.set_time_seconds('realtime', time.time())
         rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
         rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"], meter=1000.0))
         rr.log(
@@ -99,6 +100,7 @@ class RerunVsualizer:
 
     def log_robot_xyt(self, obs):
         """Log robot world pose"""
+        rr.set_time_seconds('realtime', time.time())
         xy = obs["gps"]
         theta = obs["compass"]
         rb_arrow = rr.Arrows3D(
@@ -121,6 +123,7 @@ class RerunVsualizer:
 
     def log_ee_frame(self, obs):
         """log end effector pose"""
+        rr.set_time_seconds('realtime', time.time())
         # EE Frame
         rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
         ee_arrow = rr.Arrows3D(
@@ -131,6 +134,7 @@ class RerunVsualizer:
 
     def log_ee_camera(self, servo):
         """Log end effector camera pose and images"""
+        rr.set_time_seconds('realtime', time.time())
         # EE Camera
         rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
         rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth, meter=1000.0))
@@ -146,6 +150,7 @@ class RerunVsualizer:
 
     def update_voxel_map(self, space):
         """Log voxel map (SparseVoxelMapNavigationSpace)"""
+        rr.set_time_seconds('realtime', time.time())
         points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
         rr.log(
             "world/point_cloud",
@@ -180,6 +185,7 @@ class RerunVsualizer:
             semantic_sensor (OvmmPerception): Semantic sensor object
         """
         if semantic_sensor:
+            rr.set_time_seconds('realtime', time.time())
             centers = []
             labels = []
             bounds = []
@@ -211,7 +217,8 @@ class RerunVsualizer:
 
     def step(self, obs, servo):
         """Log all the data"""
-        if obs:
+        if obs and servo:
+            rr.set_time_seconds('realtime', time.time())
             try:
                 self.log_robot_xyt(obs)
                 self.log_head_camera(obs)
