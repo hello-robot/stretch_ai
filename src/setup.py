@@ -42,6 +42,7 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
+        # Visualization
         "rerun-sdk",
         # For siglip encoder
         "sentencepiece",
