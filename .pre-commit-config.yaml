@@ -57,4 +57,5 @@ repos:
           (?x)^( 
             | .*\.svg 
             | .*\.tsv
+            | ^src/test/audio/test_text_to_speech.py
           )$ 
