@@ -511,6 +511,39 @@ class RobotAgent:
             return PlanResult(success=False, reason="no valid plans found")
         return res
 
+    def move_to_instance(self, instance: Instance, max_try_per_instance=10) -> bool:
+        """Move to a specific instance. Goes until a motion plan is found.
+
+        Args:
+            instance(Instance): an object in the world
+            max_try_per_instance(int): number of tries to move to the instance
+
+        Returns:
+            bool: whether the robot went to the instance
+        """
+
+        # Get the start position
+        start = self.robot.get_base_pose()
+
+        # Try to move to the instance
+        # We will plan multiple times to see if we can get there
+        for i in range(max_try_per_instance):
+            res = self.plan_to_instance(instance, start)
+            if res is not None and res.success:
+                for i, pt in enumerate(res.trajectory):
+                    print("-", i, pt.state)
+
+                # Follow the planned trajectory
+                self.robot.execute_trajectory(
+                    [pt.state for pt in res.trajectory],
+                    pos_err_threshold=self.pos_err_threshold,
+                    rot_err_threshold=self.rot_err_threshold,
+                )
+
+                # Check if the robot is stuck or if anything went wrong during motion execution
+                return self.robot.last_motion_failed()
+        return False
+
     def move_to_any_instance(self, matches: List[Tuple[int, Instance]], max_try_per_instance=10):
         """Check instances and find one we can move to"""
         self.current_state = "NAV_TO_INSTANCE"
@@ -828,7 +861,7 @@ class RobotAgent:
         manual_wait: bool = False,
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
-    ) -> bool:
+    ) -> PlanResult:
         """Motion plan to a frontier location."""
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
@@ -1043,7 +1076,7 @@ class RobotAgent:
             )
         self.voxel_map.reset()
 
-    def save_instance_images(self, root: str = ".", verbose: bool = False) -> None:
+    def save_instance_images(self, root: Union[Path, str] = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""
 
         if isinstance(root, str):

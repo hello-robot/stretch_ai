@@ -944,14 +944,14 @@ def get_box_verts_from_bounds(
     minx, miny, minz = bounds[:, :, 0].unbind(1)
     maxx, maxy, maxz = bounds[:, :, 1].unbind(1)
 
-    v0 = torch.stack([minx, miny, minz], axis=-1)
-    v1 = torch.stack([maxx, miny, minz], axis=-1)
-    v2 = torch.stack([maxx, maxy, minz], axis=-1)
-    v3 = torch.stack([minx, maxy, minz], axis=-1)
-    v4 = torch.stack([minx, miny, maxz], axis=-1)
-    v5 = torch.stack([maxx, miny, maxz], axis=-1)
-    v6 = torch.stack([maxx, maxy, maxz], axis=-1)
-    v7 = torch.stack([minx, maxy, maxz], axis=-1)
+    v0 = torch.stack([minx, miny, minz], dim=-1)
+    v1 = torch.stack([maxx, miny, minz], dim=-1)
+    v2 = torch.stack([maxx, maxy, minz], dim=-1)
+    v3 = torch.stack([minx, maxy, minz], dim=-1)
+    v4 = torch.stack([minx, miny, maxz], dim=-1)
+    v5 = torch.stack([maxx, miny, maxz], dim=-1)
+    v6 = torch.stack([maxx, maxy, maxz], dim=-1)
+    v7 = torch.stack([minx, maxy, maxz], dim=-1)
 
     # Either one works
     # v0 = torch.stack([minx, miny, minz], axis=-1)

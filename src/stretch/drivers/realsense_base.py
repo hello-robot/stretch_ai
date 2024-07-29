@@ -10,6 +10,7 @@ class Realsense(abc.ABC):
         self.exposure = exposure
         self.pipeline = rs.pipeline()
         self.config = rs.config()
+        self.profile = self.pipeline.start(self.config)
 
     def get_depth_scale(self) -> float:
         """Get scaling between depth values and metric units (meters)"""

@@ -33,14 +33,18 @@ class ZmqServer(CommsNode):
         send_servo_port: int = 4404,
         use_remote_computer: bool = True,
         verbose: bool = False,
-        image_scaling: float = 0.25,
+        image_scaling: float = 0.5,
         ee_image_scaling: float = 0.5,  # 0.6,
+        depth_scaling: float = 0.001,
+        ee_depth_scaling: float = 0.001,
     ):
         self.verbose = verbose
         self.client = StretchClient(d405=True)
         self.context = zmq.Context()
         self.image_scaling = image_scaling
         self.ee_image_scaling = ee_image_scaling
+        self.depth_scaling = depth_scaling
+        self.ee_depth_scaling = ee_depth_scaling
 
         # Set up the publisher socket using ZMQ
         self.send_socket = self._make_pub_socket(send_port, use_remote_computer)
@@ -217,8 +221,13 @@ class ZmqServer(CommsNode):
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:
                         print(f"Moving arm to config={action['joint']}")
-                    self.client.arm_to(action["joint"], blocking=False)
-                if "gripper" in action:
+                    if "gripper" in action:
+                        self.client.arm_and_gripper_to(
+                            action["joint"], gripper=action["gripper"], blocking=False
+                        )
+                    else:
+                        self.client.arm_to(action["joint"], blocking=False)
+                if "gripper" in action and "joint" not in action:
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
                     self.client.manip.move_gripper(action["gripper"])
@@ -311,6 +320,7 @@ class ZmqServer(CommsNode):
                 "ee_cam/color_image/shape": ee_color_image.shape,
                 "ee_cam/depth_image/shape": ee_depth_image.shape,
                 "ee_cam/image_scaling": self.ee_image_scaling,
+                "ee_cam/depth_scaling": self.ee_depth_scaling,
                 "ee_cam/pose": self.client.ee_camera_pose,
                 "ee/pose": self.client.ee_pose,
                 "head_cam/color_camera_K": scale_camera_matrix(
@@ -324,6 +334,7 @@ class ZmqServer(CommsNode):
                 "head_cam/color_image/shape": head_color_image.shape,
                 "head_cam/depth_image/shape": head_depth_image.shape,
                 "head_cam/image_scaling": self.image_scaling,
+                "head_cam/depth_scaling": self.depth_scaling,
                 "head_cam/pose": self.client.head.get_pose(rotated=False),
                 "robot/config": obs.joint,
             }

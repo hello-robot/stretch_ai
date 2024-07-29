@@ -92,7 +92,7 @@ class RobotModel(abc.ABC):
     @abc.abstractmethod
     def get_dof(self) -> int:
         """return degrees of freedom of the robot"""
-        return self.dof
+        raise NotImplementedError
 
     @abc.abstractmethod
     def set_config(self, q):

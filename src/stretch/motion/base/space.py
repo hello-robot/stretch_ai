@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Any, List
 
 import numpy as np
 
@@ -36,7 +36,7 @@ class ConfigurationSpace(ABC):
 
     def distance(self, q0, q1) -> float:
         """Return distance between q0 and q1."""
-        return np.linalg.norm(q0 - q1)
+        return float(np.linalg.norm(q0 - q1))
 
     def extend(self, q0, q1):
         """extend towards another configuration in this space"""

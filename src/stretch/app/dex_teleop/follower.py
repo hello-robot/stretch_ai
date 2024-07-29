@@ -342,7 +342,7 @@ def main(args):
         exposure=args.exposure,
         send_port=args.send_port,
         recv_port=args.recv_port,
-        look_at_ee=False,
+        look_at_ee=True,
     )
     follower.spin()
 
