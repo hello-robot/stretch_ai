@@ -79,7 +79,7 @@ class GraspObjectOperation(ManagedOperation):
         Returns:
             np.ndarray: Mask for the class of the object we are trying to grasp
         """
-        mask = np.zeros_like(servo.semantic).astype(bool)
+        mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
         for iid in np.unique(servo.semantic):
             name = self.manager.semantic_sensor.get_class_name_for_id(iid)
             if name is not None and self.manager.target_object in name:
@@ -237,8 +237,9 @@ class GraspObjectOperation(ManagedOperation):
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
                     self.error(f"Lost track. Trying to grasp at {current_xyz}.")
-                    current_xyz[0] += self.open_loop_x_offset
-                    current_xyz[2] += self.open_loop_z_offset
+                    if current_xyz is not None:
+                        current_xyz[0] += self.open_loop_x_offset
+                        current_xyz[2] += self.open_loop_z_offset
                     if self.show_servo_gui:
                         cv2.destroyAllWindows()
                     return self.grasp_open_loop(current_xyz)
@@ -364,7 +365,7 @@ class GraspObjectOperation(ManagedOperation):
             cv2.destroyAllWindows()
         return success
 
-    def run(self):
+    def run(self) -> None:
         self.intro("Grasping the object.")
         self._success = False
         if self.show_object_to_grasp:
@@ -406,7 +407,7 @@ class GraspObjectOperation(ManagedOperation):
         if not self._success:
             self.grasp_open_loop(object_xyz)
 
-    def grasp_open_loop(self, object_xyz: np.ndarray) -> bool:
+    def grasp_open_loop(self, object_xyz: np.ndarray):
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
 
         Args:
@@ -460,7 +461,8 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(joint_state, blocking=True)
         print(f"{self.name}: Done.")
         self._success = True
+        return
 
-    def was_successful(self):
+    def was_successful(self) -> bool:
         """Return true if successful"""
         return self._success

@@ -4,12 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 import math
 import os
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy.spatial.transform.rotation import Rotation
 
 from stretch.core.interfaces import ContinuousFullBodyAction
+from stretch.motion.base import IKSolverBase
 from stretch.motion.constants import (
     MANIP_STRETCH_URDF,
     PIN_CONTROLLED_JOINTS,
@@ -21,7 +23,6 @@ from stretch.motion.constants import (
 )
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint
-from stretch.motion.utils.bullet import BulletRobotModel, PybulletIKSolver
 from stretch.utils.pose import to_matrix
 
 
@@ -172,31 +173,20 @@ class HelloStretchKinematics:
 
         # You can set one of the visualize flags to true to debug IK issues
         self._manip_dof = len(self._manip_mode_controlled_joints)
-        if "pybullet" in ik_type:
-            raise NotImplementedError("pybullet IK solver not supported")
-            ranges = np.zeros((self._manip_dof, 2))
-            ranges[:, 0] = self._to_manip_format(self.range[:, 0])
-            ranges[:, 1] = self._to_manip_format(self.range[:, 1])
-            self.manip_ik_solver = PybulletIKSolver(
-                self.manip_mode_urdf_path,
-                self._ee_link_name,
-                self._manip_mode_controlled_joints,
-                visualize=visualize,
-                joint_range=ranges,
-            )
-        elif "pinocchio" in ik_type:
-            self.manip_ik_solver = PinocchioIKSolver(
-                self.manip_mode_urdf_path,
-                self._ee_link_name,
-                self._manip_mode_controlled_joints,
-            )
-
+        _manip_ik_solver = PinocchioIKSolver(
+            self.manip_mode_urdf_path,
+            self._ee_link_name,
+            self._manip_mode_controlled_joints,
+        )
+        self.manip_ik_solver: Optional[IKSolverBase] = None
         if "optimize" in ik_type:
             self.manip_ik_solver = PositionIKOptimizer(
-                ik_solver=self.manip_ik_solver,
+                ik_solver=_manip_ik_solver,
                 pos_error_tol=0.005,
                 ori_error_range=np.array([0.0, 0.0, 0.2]),
             )
+        else:
+            self.manip_ik_solver = _manip_ik_solver
 
     def __init__(
         self,
@@ -778,7 +768,9 @@ class HelloStretchKinematics:
             joints[9] = tilt
         return ContinuousFullBodyAction(joints=joints, xyt=xyt)
 
-    def delta_hab_to_position_command(self, cmd, pan, tilt, deltas) -> List:
+    def delta_hab_to_position_command(
+        self, cmd, pan, tilt, deltas
+    ) -> Tuple[List[float], float, float]:
         """Compute deltas"""
         assert len(deltas) == 10
         arm = deltas[0] + deltas[1] + deltas[2] + deltas[3]
@@ -786,7 +778,6 @@ class HelloStretchKinematics:
         roll = deltas[5]
         pitch = deltas[6]
         yaw = deltas[7]
-        pan, tilt = self.head.get_pan_tilt()
         positions = [
             0,  # This is the robot's base x axis - not currently used
             cmd[1] + lift,
@@ -822,7 +813,7 @@ class HelloStretchKinematics:
         hab[9] = q[HelloStretchIdx.HEAD_TILT]
         return hab
 
-    def hab_to_position_command(self, hab_positions) -> List:
+    def hab_to_position_command(self, hab_positions) -> Tuple[List[float], float, float]:
         """Compute hab_positions"""
         assert len(hab_positions) == 10
         arm = hab_positions[0] + hab_positions[1] + hab_positions[2] + hab_positions[3]

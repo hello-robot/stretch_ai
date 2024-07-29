@@ -44,6 +44,7 @@ class FileDataRecorder:
         env: str = "default_env",
         save_images: bool = False,
         metadata: dict = None,
+        fps: int = 15,
     ):
         """Initialize the recorder.
 
@@ -52,6 +53,7 @@ class FileDataRecorder:
             task: The name of the task.
             user: The name of the user.
             env: The name of the environment.
+            fps: The fps to write videos at
         """
         if isinstance(datadir, Path):
             self.datadir = datadir
@@ -65,6 +67,7 @@ class FileDataRecorder:
         self.save_images = save_images
 
         self.metadata = metadata
+        self.fps = fps
 
         self.reset()
 
@@ -245,7 +248,7 @@ class FileDataRecorder:
                 "ffmpeg",
                 "-y",
                 "-framerate",
-                "15",
+                f"{self.fps}",
                 "-i",
                 str(rgb_dir / "{}").format(filename_format),
                 "-c:v",

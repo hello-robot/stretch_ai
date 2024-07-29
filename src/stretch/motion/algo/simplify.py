@@ -93,7 +93,7 @@ class SimplifyXYT(Planner):
                     print(i + 1, "/", res.get_length())
                     print(
                         "anchor =",
-                        anchor_node.state if anchor_node is not None else None,
+                        anchor_node.state if anchor_node is not None else None,  # type: ignore
                     )
                 # Set the last node in the simplified sequence
                 if anchor_node is None:

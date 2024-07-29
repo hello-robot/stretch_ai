@@ -4,9 +4,7 @@ import zmq
 from zmq import Socket
 
 
-class CommsNode:
-    """Stretch comms"""
-
+class BaseCommsNode:
     def __init__(self):
         self.context = zmq.Context()
 
@@ -23,6 +21,10 @@ class CommsNode:
         recv_socket.setsockopt(zmq.RCVHWM, 1)
         recv_socket.setsockopt(zmq.CONFLATE, 1)
         return recv_socket
+
+
+class CommsNode(BaseCommsNode):
+    """Stretch comms"""
 
     def _make_pub_socket(self, send_port: int, use_remote_computer: bool = True) -> Socket:
         socket = self._new_pub_socket()
@@ -54,7 +56,7 @@ class CommsNode:
         return recv_socket, recv_address
 
 
-class ClientCommsNode(CommsNode):
+class ClientCommsNode(BaseCommsNode):
     """Version of comms node which operates remotely."""
 
     def _get_ip_address(self, port: int, robot_ip: str, use_remote_computer: bool = True) -> str:

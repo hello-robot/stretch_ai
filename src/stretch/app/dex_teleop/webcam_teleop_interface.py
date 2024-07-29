@@ -44,10 +44,18 @@ def pixel_to_3d(xy_pix, z_in, camera_info):
 
 
 class WebcamArucoDetector:
-    def __init__(self, tongs_prefix, visualize_detections=False, show_debug_images: bool = False):
+    def __init__(
+        self,
+        tongs_prefix,
+        visualize_detections=False,
+        show_debug_images: bool = False,
+        platform: str = "linux",
+    ):
 
         # self.webcam = wc.Webcam(fps=30, image_width=800, image_height=448, use_calibration=True)
-        self.webcam = wc.Webcam(fps=30, image_width=1920, image_height=1080, use_calibration=True)
+        self.webcam = wc.Webcam(
+            fps=30, image_width=1920, image_height=1080, use_calibration=True, platform=platform
+        )
         # self.webcam = wc.Webcam(fps=15, image_width=1920, image_height=1080, use_calibration=True)
 
         self.first_frame = True
