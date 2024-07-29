@@ -245,6 +245,7 @@ class RobotAgent:
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
         instances = self.voxel_map.instances.get_instances()
+        activations = []
         matches = []
         # Encode the text query and move it to the same device as the instance embeddings
         encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
@@ -256,12 +257,13 @@ class RobotAgent:
             activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
             # Add the instance to the list of matches if the cosine similarity is above the threshold
             if activation.item() > threshold:
-                matches.append((activation.item(), instance))
+                activations.append(activation.item())
+                matches.append(instance)
                 if verbose:
                     print(f" - Instance {ins} has activation {activation.item()}")
             elif verbose:
-                print(f" - Skipped instance {ins} has activation {activation.item()}")
-        return matches
+                print(f" - Skipped instance {ins} with activation {activation.item()}")
+        return activations, matches
 
     def get_navigation_space(self) -> ConfigurationSpace:
         """Returns reference to the navigation space."""
