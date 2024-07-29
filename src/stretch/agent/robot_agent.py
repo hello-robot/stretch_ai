@@ -391,6 +391,7 @@ class RobotAgent:
             self.scene_graph.update(self.voxel_map.get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
+        self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def get_scene_graph(self) -> SceneGraph:
         """Return scene graph, such as it is."""

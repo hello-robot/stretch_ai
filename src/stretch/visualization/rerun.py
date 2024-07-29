@@ -81,6 +81,8 @@ class RerunVsualizer:
             ),
         )
 
+        self.bbox_colors_memory = {}
+
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
         rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
@@ -170,6 +172,42 @@ class RerunVsualizer:
                 colors=[255, 255, 255],
             ),
         )
+
+    def update_scene_graph(self, scene_graph, semantic_sensor=None):
+        """Log objects bounding boxes and relationships
+        Args:
+            scene_graph (SceneGraph): Scene graph object
+            semantic_sensor (OvmmPerception): Semantic sensor object
+        """
+        if semantic_sensor:
+            centers = []
+            labels = []
+            bounds = []
+            colors = []
+
+            for idx, instance in enumerate(scene_graph.instances):
+                name = semantic_sensor.get_class_name_for_id(instance.category_id)
+                if name not in self.bbox_colors_memory:
+                    self.bbox_colors_memory[name] = np.random.randint(0, 255, 3)
+                best_view = instance.get_best_view()
+                bbox_bounds = best_view.bounds  # 3D Bounds
+                half_sizes = [(b[0] - b[1]) / 2 for b in bbox_bounds]
+                bounds.append(half_sizes)
+                pose = scene_graph.get_ins_center_pos(idx)
+                confidence = best_view.score
+                centers.append(pose)
+                labels.append(f"{name} {confidence:.2f}")
+                colors.append(self.bbox_colors_memory[name])
+            rr.log(
+                "world/objects",
+                rr.Boxes3D(
+                    half_sizes=bounds,
+                    centers=centers,
+                    labels=labels,
+                    radii=0.01,
+                    colors=colors,
+                ),
+            )
 
     def step(self, obs, servo):
         """Log all the data"""
