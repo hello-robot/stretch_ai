@@ -15,21 +15,33 @@ import sophuspy as sp
 import tf2_ros
 from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import PointStamped, Pose, PoseStamped, Twist
+from hello_helpers.joint_qpos_conversion import get_Idx
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionClient
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.clock import ClockType
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.time import Time
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Bool, Empty, Float32, String
+from std_msgs.msg import Bool, Empty, Float32, Float64MultiArray, String
 from std_srvs.srv import SetBool, Trigger
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from stretch.motion.constants import STRETCH_HEAD_CAMERA_ROTATIONS
+from stretch.motion.constants import (
+    ROS_ARM_JOINTS,
+    ROS_GRIPPER_FINGER,
+    ROS_HEAD_PAN,
+    ROS_HEAD_TILT,
+    ROS_LIFT_JOINT,
+    ROS_WRIST_PITCH,
+    ROS_WRIST_ROLL,
+    ROS_WRIST_YAW,
+    STRETCH_HEAD_CAMERA_ROTATIONS,
+)
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.pose import to_matrix, transform_to_list
 from stretch_ros2_bridge.constants import (
@@ -67,14 +79,14 @@ class StretchRosInterface(Node):
     # Joint names in the ROS joint trajectory server
     BASE_TRANSLATION_JOINT = "translate_mobile_base"
     ARM_JOINT = "joint_arm"
-    LIFT_JOINT = "joint_lift"
-    WRIST_YAW = "joint_wrist_yaw"
-    WRIST_PITCH = "joint_wrist_pitch"
-    WRIST_ROLL = "joint_wrist_roll"
-    GRIPPER_FINGER = "joint_gripper_finger_left"  # used to control entire gripper
-    HEAD_PAN = "joint_head_pan"
-    HEAD_TILT = "joint_head_tilt"
-    ARM_JOINTS_ACTUAL = ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
+    LIFT_JOINT = ROS_LIFT_JOINT
+    WRIST_YAW = ROS_WRIST_YAW
+    WRIST_PITCH = ROS_WRIST_PITCH
+    WRIST_ROLL = ROS_WRIST_ROLL
+    GRIPPER_FINGER = ROS_GRIPPER_FINGER
+    HEAD_PAN = ROS_HEAD_PAN
+    HEAD_TILT = ROS_HEAD_TILT
+    ARM_JOINTS_ACTUAL = ROS_ARM_JOINTS
 
     def __init__(
         self,
@@ -99,6 +111,7 @@ class StretchRosInterface(Node):
         self.pos = np.zeros(self.dof)
         self.vel = np.zeros(self.dof)
         self.frc = np.zeros(self.dof)
+        self.joint_status: Dict[str, float] = {}
 
         self.se3_base_filtered: Optional[sp.SE3] = None
         self.se3_base_odom: Optional[sp.SE3] = None
@@ -126,6 +139,9 @@ class StretchRosInterface(Node):
         for i in range(3, self.dof):
             self._ros_joint_names += CONFIG_TO_ROS[i]
 
+        # Get indexer
+        self.Idx = get_Idx("eoa_wrist_dw3_tool_sg3")
+
         # Initialize cameras
         self._color_topic = DEFAULT_COLOR_TOPIC if color_topic is None else color_topic
         self._depth_topic = DEFAULT_DEPTH_TOPIC if depth_topic is None else depth_topic
@@ -152,7 +168,59 @@ class StretchRosInterface(Node):
         with self._js_lock:
             return self.pos, self.vel, self.frc
 
-    def send_trajectory_goals(self, joint_goals: Dict[str, float], velocities=None):
+    def _process_joint_status(self, j_status) -> np.ndarray:
+        """Get joint status from ROS joint state message and convert it into the form we use for streaming position commands."""
+        pose = np.zeros(self.Idx.num_joints)
+        pose[self.Idx.LIFT] = j_status[ROS_LIFT_JOINT]
+        pose[self.Idx.ARM] = (
+            j_status[ROS_ARM_JOINTS[0]]
+            + j_status[ROS_ARM_JOINTS[1]]
+            + j_status[ROS_ARM_JOINTS[2]]
+            + j_status[ROS_ARM_JOINTS[3]]
+        )
+        pose[self.Idx.GRIPPER] = j_status[ROS_GRIPPER_FINGER]
+        pose[self.Idx.WRIST_ROLL] = j_status[ROS_WRIST_ROLL]
+        pose[self.Idx.WRIST_PITCH] = j_status[ROS_WRIST_PITCH]
+        pose[self.Idx.WRIST_YAW] = j_status[ROS_WRIST_YAW]
+        pose[self.Idx.HEAD_PAN] = j_status[ROS_HEAD_PAN]
+        pose[self.Idx.HEAD_TILT] = j_status[ROS_HEAD_TILT]
+        return pose
+
+    def send_joint_goals(
+        self, joint_goals: Dict[str, float], velocities: Optional[Dict[str, float]] = None
+    ):
+        """Send joint goals to the robot. Goals are a dictionary of joint names and strings. Can optionally provide velicities as well."""
+        print(joint_goals)
+        with self._js_lock:
+            joint_pose = self._process_joint_status(self.joint_status)
+        print(joint_pose)
+
+        # Use Idx to convert
+        joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
+        joint_pose[self.Idx.ARM] = joint_goals[self.ARM_JOINT]
+        joint_pose[self.Idx.WRIST_ROLL] = joint_goals[self.WRIST_ROLL]
+        joint_pose[self.Idx.WRIST_PITCH] = joint_goals[self.WRIST_PITCH]
+        joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
+        if self.GRIPPER_FINGER in joint_goals:
+            joint_pose[self.Idx.GRIPPER] = joint_goals[self.GRIPPER_FINGER]
+        if self.HEAD_PAN in joint_goals:
+            joint_pose[self.Idx.HEAD_PAN] = joint_goals[self.HEAD_PAN]
+        if self.HEAD_TILT in joint_goals:
+            joint_pose[self.Idx.HEAD_TILT] = joint_goals[self.HEAD_TILT]
+        if self.BASE_TRANSLATION_JOINT in joint_goals:
+            joint_pose[self.Idx.BASE_TRANSLATE] = joint_goals[self.BASE_TRANSLATION_JOINT]
+
+        print(joint_pose)
+
+        # Create the message now that it's been computed
+        msg = Float64MultiArray()
+        msg.data = list(joint_pose)
+        self._joint_goal_publisher.publish(msg)
+        self.get_logger().info('Publishing: "%s"' % msg.data)
+
+    def send_trajectory_goals(
+        self, joint_goals: Dict[str, float], velocities: Optional[Dict[str, float]] = None
+    ):
         """Send trajectory goals to the robot. Goals are a dictionary of joint names and strings. Can optionally provide velicities as well."""
 
         # Preprocess arm joints (arm joints are actually 4 joints in one)
@@ -339,8 +407,22 @@ class StretchRosInterface(Node):
         )  # Doubt action type
 
         self._js_lock = threading.Lock()  # store latest joint state message - lock for access
+
+        # This callback group is used to ensure that the joint goal publisher is reentrant
+        # TODO: notes on what this is for?
+        self._reentrant_cb = ReentrantCallbackGroup()
+
         self._joint_state_subscriber = self.create_subscription(
-            JointState, "stretch/joint_states", self._js_callback, 100
+            JointState,
+            "stretch/joint_states",
+            self._js_callback,
+            100,
+            callback_group=self._reentrant_cb,
+        )
+
+        # Create joint goal publisher for streaming joint goals
+        self._joint_goal_publisher = self.create_publisher(
+            Float64MultiArray, "joint_pose_cmd", 10, callback_group=self._reentrant_cb
         )
 
         print("Waiting for trajectory server...")
@@ -468,7 +550,10 @@ class StretchRosInterface(Node):
         """Read in current joint information from ROS topics and update state"""
         # loop over all joint state info
         pos, vel, trq = np.zeros(self.dof), np.zeros(self.dof), np.zeros(self.dof)
+        joint_status = {}
         for name, p, v, e in zip(msg.name, msg.position, msg.velocity, msg.effort):
+            # Update joint status dictionary with name and postiion only
+            joint_status[name] = p
             # Check name etc
             if name in ROS_ARM_JOINTS:
                 pos[HelloStretchIdx.ARM] += p
@@ -482,6 +567,7 @@ class StretchRosInterface(Node):
         trq[HelloStretchIdx.ARM] /= 4
         with self._js_lock:
             self.pos, self.vel, self.frc = pos, vel, trq
+            self.joint_status = joint_status
 
     def get_frame_pose(self, frame, base_frame=None, lookup_time=None, timeout_s=None):
         """look up a particular frame in base coords (or some other coordinate frame)."""
@@ -618,16 +704,11 @@ class StretchRosInterface(Node):
             abs(delta_position) > 0
         ):  # TODO controller seems to be commanding 0.05s.... self.exec_tol[HelloStretchIdx.GRIPPER]:  #0: #0.01:  # TODO: this is ...really high? (5?) self.exec_tol[HelloStretchIdx.GRIPPER]:
             position = self.pos[HelloStretchIdx.GRIPPER] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal(
-                "joint_gripper_finger_left", position
-            )
+            trajectory_goal = self._construct_single_joint_ros_goal(self.GRIPPER_FINGER, position)
             if wait:
                 self.trajectory_client.send_goal(trajectory_goal)
             else:
                 self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
         return True
 
     def goto_head_pan_position(self, delta_position, wait=False):

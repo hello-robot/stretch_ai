@@ -186,6 +186,7 @@ class HomeRobotZmqClient(RobotClient):
     def arm_to(
         self,
         joint_angles: np.ndarray,
+        gripper: float = None,
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
@@ -220,6 +221,8 @@ class HomeRobotZmqClient(RobotClient):
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
         with self._act_lock:
             self._next_action["joint"] = joint_angles
+            if gripper:
+                self._next_action["gripper"] = gripper
             self._next_action["manip_blocking"] = blocking
 
         # Blocking is handled in here
@@ -800,6 +803,8 @@ class HomeRobotZmqClient(RobotClient):
             observation.ee_camera_K = message["ee_cam/depth_camera_K"]
             observation.camera_pose = message["head_cam/pose"]
             observation.ee_camera_pose = message["ee_cam/pose"]
+            observation.depth_scaling = message["head_cam/depth_scaling"]
+            observation.ee_depth_scaling = message["ee_cam/image_scaling"]
             self._servo = observation
 
     def get_servo_observation(self):
