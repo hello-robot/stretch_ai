@@ -290,6 +290,7 @@ class StretchClient(RobotClient):
 
     def head_to(self, pan: float, tilt: float, blocking: bool = False):
         """Send head commands"""
+        print("pan =", pan, "tilt= ", tilt)
         self.head.goto_joint_positions(pan=pan, tilt=tilt, blocking=blocking)
 
     def arm_and_gripper_to(self, q: np.ndarray, gripper: float = None, blocking: bool = False):
