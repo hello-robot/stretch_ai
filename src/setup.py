@@ -59,9 +59,15 @@ setuptools.setup(
         # UI tools
         "termcolor",
         # Audio
-        "pyaudio",
-        "wave",
+        "gtts",  # online TTS engine
+        "PyAudio==0.2.14", # the version specification is necessary because apt has 0.2.12 which is incompatibile with recent numpy
         "openai-whisper",
+        "overrides", # better inheritance of docstrings
+        "pydub",  # playback audio
+        "pyttsx3",  # offline TTS engine. TODO: There are better options, such as "tts_models/en/ljspeech/fast_pitch" from https://github.com/coqui-ai/TTS
+        "simpleaudio",  # playback audio
+        "sounddevice", # Suppresses ALSA warnings when launching PyAudio
+        "wave",
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
