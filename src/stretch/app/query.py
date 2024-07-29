@@ -16,6 +16,7 @@ import numpy as np
 
 # Mapping and perception
 import stretch.utils.depth as du
+import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import Parameters, RobotClient, get_parameters
@@ -27,7 +28,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
 @click.option("--recv_port", default=4401, help="Port to receive observations on")
 @click.option("--send_port", default=4402, help="Port to send actions to on the robot")
-@click.option("--robot_ip", default="192.168.1.15")
+@click.option("--robot_ip", default="")
 @click.option("--output-filename", default="stretch_output", type=str)
 @click.option("--explore-iter", default=0)
 @click.option("--spin", default=False, is_flag=True)
@@ -47,6 +48,12 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--text", default="", help="Text to encode")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
 @click.option(
+    "--all-matches",
+    is_flag=True,
+    help="Find all objects with a similarity to the query above some threshold",
+)
+@click.option("--threshold", default=0.5, help="Threshold for similarity when using --all-matches")
+@click.option(
     "--stationary",
     is_flag=True,
     help="Don't move the robot to the instance, if using real robot instead of offline data",
@@ -58,7 +65,7 @@ def main(
     local: bool = True,
     recv_port: int = 4401,
     send_port: int = 4402,
-    robot_ip: str = "192.168.1.15",
+    robot_ip: str = "",
     reset: bool = False,
     explore_iter: int = 0,
     output_filename: str = "stretch_output",
@@ -69,6 +76,8 @@ def main(
     text: str = "",
     yes: bool = False,
     stationary: bool = False,
+    all_matches: bool = False,
+    threshold: float = 0.5,
 ):
 
     print("- Load parameters")
@@ -125,26 +134,41 @@ def main(
             while len(text) > 0:
                 # Get the best instance using agent's API
                 print("Best image for:", text)
-                _, instance = agent.get_instance_from_text(text)
+                if all_matches:
+                    instances = agent.get_instances_from_text(text, threshold=threshold)
+                else:
+                    _, instance = agent.get_instance_from_text(text)
+                    instances = [instance]
 
-                # Show the best view of the detected instance
-                instance.show_best_view(title=text)
+                if len(instances) == 0:
+                    logger.error("No matches found for query:", text)
+                    continue
 
-                if real_robot and not stationary:
-                    # Confirm before moving
-                    if not yes:
-                        confirm = input("Move to instance? [y/n]: ")
-                        if confirm != "y":
-                            print("Exiting...")
-                            sys.exit(0)
-                    print("Moving to instance...")
-                    break
+                for instance in instances:
+                    instance.show_best_view(title=text)
 
-                # Get a new query
-                text = input("Enter text to encode, empty to quit: ")
+                    if real_robot and not stationary:
+                        # Confirm before moving
+                        if not yes:
+                            confirm = input("Move to instance? [y/n]: ")
+                            if confirm != "y":
+                                print("Exiting...")
+                                sys.exit(0)
+                        print("Moving to instance...")
+                        break
+
+                    # Get a new query
+                    text = input("Enter text to encode, empty to quit: ")
         else:
             # Get the best instance using agent's API
-            _, instance = agent.get_instance_from_text(text)
+            if all_matches:
+                instances = agent.get_instances_from_text(text, threshold=threshold)
+            else:
+                _, instance = agent.get_instance_from_text(text)
+
+            if len(instances) == 0:
+                print("No matches found for query")
+                return
 
             # Show the best view of the detected instance
             instance.show_best_view()

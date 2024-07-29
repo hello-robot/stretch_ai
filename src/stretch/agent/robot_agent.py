@@ -197,11 +197,11 @@ class RobotAgent:
         """
         if self.semantic_sensor is None:
             return None
-        instances = self.voxel_map.instances.get_instances()
         assert aggregation_method in [
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
+        instances = self.voxel_map.instances.get_instances()
         activations = []
         encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
         for ins, instance in enumerate(instances):
@@ -215,6 +215,53 @@ class RobotAgent:
         idx = np.argmax(activations)
         best_instance = instances[idx]
         return activations[idx], best_instance
+
+    def get_instances_from_text(
+        self,
+        text_query: str,
+        aggregation_method: str = "mean",
+        normalize: bool = False,
+        verbose: bool = True,
+        threshold: float = 0.5,
+    ) -> List[Tuple[float, Instance]]:
+        """Get all instances that match the text query.
+
+        Args:
+            text_query(str): the text query
+            aggregation_method(str): how to aggregate the embeddings. Should be one of (max, mean).
+            normalize(bool): whether to normalize the embeddings
+            verbose(bool): whether to print debug info
+            threshold(float): the minimum cosine similarity between the text query and the instance embedding
+
+        Returns:
+            matches: a list of tuples with two members:
+                activation(float): the cosine similarity between the text query and the instance embedding
+                instance(Instance): the instance that best matches the text query
+        """
+        if self.semantic_sensor is None:
+            return None
+        assert aggregation_method in [
+            "max",
+            "mean",
+        ], f"Invalid aggregation method {aggregation_method}"
+        instances = self.voxel_map.instances.get_instances()
+        matches = []
+        # Encode the text query and move it to the same device as the instance embeddings
+        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
+        # Compute the cosine similarity between the text query and each instance embedding
+        for ins, instance in enumerate(instances):
+            emb = instance.get_image_embedding(
+                aggregation_method=aggregation_method, normalize=normalize
+            )
+            activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
+            # Add the instance to the list of matches if the cosine similarity is above the threshold
+            if activation.item() > threshold:
+                matches.append((activation.item(), instance))
+                if verbose:
+                    print(f" - Instance {ins} has activation {activation.item()}")
+            elif verbose:
+                print(f" - Skipped instance {ins} has activation {activation.item()}")
+        return matches
 
     def get_navigation_space(self) -> ConfigurationSpace:
         """Returns reference to the navigation space."""
