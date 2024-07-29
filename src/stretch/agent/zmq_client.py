@@ -185,11 +185,12 @@ class HomeRobotZmqClient(RobotClient):
 
     def arm_to(
         self,
-        joint_angles: np.ndarray,
+        joint_angles: Optional[np.ndarray] = None,
         gripper: float = None,
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
+        **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
 
@@ -198,6 +199,7 @@ class HomeRobotZmqClient(RobotClient):
             blocking: Whether to block until the motion is complete
             timeout: How long to wait for the motion to complete
             verbose: Whether to print out debug information
+            **config: arm configuration options; maps joints to values.
 
         Returns:
             bool: Whether the motion was successful
@@ -210,8 +212,12 @@ class HomeRobotZmqClient(RobotClient):
             print(
                 "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
             )
-            # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
             joint_angles = self._robot_model.config_to_manip_command(joint_angles)
+        if joint_angles is None:
+            assert (
+                config is not None and len(config.keys()) > 0
+            ), "Must provide joint angles array or specific joint values as params"
+            joint_angles = np.zeros(self._robot_model.dof)
         if len(joint_angles) < 6:
             raise ValueError(
                 "joint_angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"

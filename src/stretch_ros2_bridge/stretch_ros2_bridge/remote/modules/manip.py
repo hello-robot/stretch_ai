@@ -8,6 +8,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
 
+import stretch.motion.conversions as conversions
 from stretch.core.state import ManipulatorBaseParams
 from stretch.motion.constants import STRETCH_HOME_Q
 from stretch.motion.kinematics import HelloStretchIdx
@@ -360,4 +361,4 @@ class StretchManipulationClient(AbstractControlModule):
 
     def _extract_joint_pos(self, q):
         """Helper to convert from the general-purpose config including full robot state, into the command space used in just the manip controller. Extracts just lift/arm/wrist information."""
-        return self._robot_model.config_to_manip_command(q)
+        return conversions.config_to_manip_command(q)
