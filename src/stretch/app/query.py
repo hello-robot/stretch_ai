@@ -52,7 +52,8 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
     is_flag=True,
     help="Find all objects with a similarity to the query above some threshold",
 )
-@click.option("--threshold", default=0.5, help="Threshold for similarity when using --all-matches")
+# This threshold seems to work ok for Siglip - will not work for e.g. CLIP
+@click.option("--threshold", default=0.05, help="Threshold for similarity when using --all-matches")
 @click.option(
     "--stationary",
     is_flag=True,
@@ -135,7 +136,7 @@ def main(
                 # Get the best instance using agent's API
                 print(f"Finding best image(s) for '{text}'")
                 if all_matches:
-                    instances = agent.get_instances_from_text(text, threshold=threshold)
+                    _, instances = agent.get_instances_from_text(text, threshold=threshold)
                 else:
                     _, instance = agent.get_instance_from_text(text)
                     instances = [instance]
