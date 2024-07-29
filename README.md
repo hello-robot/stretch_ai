@@ -9,13 +9,13 @@ Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo 
 
 ## Quickstart
 
-Start the server on your robot:
+After following the [installation instructions](#installation), start the server on your robot:
 
 ```bash
 ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
-On your PC, you can easily send commands and stream data:
+Then, on your PC, you can easily send commands and stream data:
 
 ```python
 from stretch.agent import RobotClient
@@ -55,7 +55,7 @@ After [installation](#installation), on the robot, run the server:
 ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
-Then, first try these:
+Then, first try these apps to make sure connections are working properly:
 
 - [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
 - [Test Timing](#test-timing) - Test the timing of the robot's control loop over the network.
