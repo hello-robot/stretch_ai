@@ -36,6 +36,7 @@ jobs:
       run: git config --global --add safe.directory `pwd`
     - name: Install dependencies and code
       run: |
+        apt install libasound2-dev
         # ./install.sh -y --no-remove --no-submodules
         python -m pip install -e ./src[dev]
         python -m pip install mypy flake8 pytest 
