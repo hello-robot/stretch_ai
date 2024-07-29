@@ -1,8 +1,17 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
 from stretch.motion import HelloStretchIdx
+
+HelloStretchManipIdx: Dict[str, int] = {
+    "BASE_X": 0,
+    "LIFT": 1,
+    "ARM": 2,
+    "WRIST_YAW": 3,
+    "WRIST_PITCH": 4,
+    "WRIST_ROLL": 5,
+}
 
 
 def delta_hab_to_position_command(cmd, pan, tilt, deltas) -> Tuple[List[float], float, float]:
@@ -70,3 +79,8 @@ def hab_to_position_command(hab_positions) -> Tuple[List[float], float, float]:
     pan = hab_positions[8]
     tilt = hab_positions[9]
     return positions, pan, tilt
+
+
+def get_manip_joint_idx(joint: str) -> int:
+    """Get manip joint index"""
+    return HelloStretchManipIdx[joint.upper()]

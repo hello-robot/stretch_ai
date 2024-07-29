@@ -13,6 +13,7 @@ import zmq
 from termcolor import colored
 
 import stretch.motion.constants as constants
+import stretch.motion.conversions as conversions
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
@@ -183,6 +184,27 @@ class HomeRobotZmqClient(RobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
+    def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
+        """Move the robot to a particular joint configuration."""
+        with self._act_lock:
+            self._next_action["joint"] = joint_angles
+            self._next_action["manip_blocking"] = blocking
+        self.send_action(timeout=timeout)
+
+    def head_to(
+        self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
+    ):
+        """Move the head to a particular configuration."""
+        with self._act_lock:
+            self._next_action["head_to"] = [head_pan, head_tilt]
+        self.send_action(timeout=timeout)
+
+        if blocking:
+            whole_body_q = np.zeros(self._robot_model.dof)
+            whole_body_q[HelloStretchIdx.HEAD_PAN] = head_pan
+            whole_body_q[HelloStretchIdx.HEAD_TILT] = head_tilt
+            self._wait_for_head(whole_body_q)
+
     def arm_to(
         self,
         joint_angles: Optional[np.ndarray] = None,
@@ -208,23 +230,30 @@ class HomeRobotZmqClient(RobotClient):
             raise ValueError("Robot must be in manipulation mode to move the arm")
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
-        if len(joint_angles) > 6:
-            print(
-                "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
-            )
-            joint_angles = self._robot_model.config_to_manip_command(joint_angles)
         if joint_angles is None:
             assert (
                 config is not None and len(config.keys()) > 0
             ), "Must provide joint angles array or specific joint values as params"
             joint_angles = np.zeros(self._robot_model.dof)
-        if len(joint_angles) < 6:
+        elif len(joint_angles) > 6:
+            print(
+                "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
+            )
+            joint_angles = self._robot_model.config_to_manip_command(joint_angles)
+
+        elif len(joint_angles) < 6:
             raise ValueError(
                 "joint_angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
             )
+        if config is not None and len(config.keys()) > 0:
+            # Convert joint names to indices and update joint angles
+            for joint, value in config.items():
+                joint_angles[conversions.get_manip_joint_idx(joint)] = value
+        # Make sure it's all the right size
         assert (
             len(joint_angles) == 6
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
+        # Now send
         with self._act_lock:
             self._next_action["joint"] = joint_angles
             if gripper:

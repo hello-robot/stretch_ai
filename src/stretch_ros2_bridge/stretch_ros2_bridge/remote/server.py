@@ -226,6 +226,14 @@ class ZmqServer(CommsNode):
                         )
                     else:
                         self.client.arm_to(action["joint"], blocking=False)
+                if "head" in action:
+                    if self.verbose:
+                        print(f"Moving head to {action['head']}")
+                    self.client.head_to(
+                        action["head"]["pan"],
+                        action["head"]["tilt"],
+                        blocking=False,
+                    )
                 if "gripper" in action and "joint" not in action:
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
