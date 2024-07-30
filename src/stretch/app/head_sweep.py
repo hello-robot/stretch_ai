@@ -45,8 +45,8 @@ def main(
     robot.head_to(head_pan=0, head_tilt=-np.pi / 2, blocking=True)
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
 
-    robot.stop()
     print("Done.")
+    robot.stop()
 
 
 if __name__ == "__main__":
