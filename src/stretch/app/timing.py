@@ -23,7 +23,7 @@ from stretch.utils import LoopStats
     "--iterations", default=100, help="Number of iterations between rate histogram updates"
 )
 def main(
-    robot_ip: str = "192.168.1.15",
+    robot_ip: str = "",
     local: bool = False,
     headless: bool = False,
     iterations: int = 500,
