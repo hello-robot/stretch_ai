@@ -164,6 +164,20 @@ class HomeRobotZmqClient(RobotClient):
                     logger.error("Timeout waiting for state message")
                     return None
             joint_positions = self._state["joint_positions"]
+            joint_velocities = self._state["joint_velocities"]
+            joint_efforts = self._state["joint_efforts"]
+        return joint_positions, joint_velocities, joint_efforts
+
+    def get_joint_positions(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint positions"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_positions = self._state["joint_positions"]
         return joint_positions
 
     def get_joint_velocities(self, timeout: float = 5.0) -> np.ndarray:
@@ -177,6 +191,18 @@ class HomeRobotZmqClient(RobotClient):
                     return None
             joint_velocities = self._state["joint_velocities"]
         return joint_velocities
+
+    def get_joint_efforts(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint efforts"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_efforts = self._state["joint_efforts"]
+        return joint_efforts
 
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current pose of the base"""
@@ -261,7 +287,7 @@ class HomeRobotZmqClient(RobotClient):
                     if verbose:
                         print("Resending action", joint_angles)
 
-                joint_state = self.get_joint_state()
+                joint_state = self.get_joint_positions()
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
@@ -337,7 +363,7 @@ class HomeRobotZmqClient(RobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
-                joint_state = self.get_joint_state()
+                joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
@@ -435,7 +461,7 @@ class HomeRobotZmqClient(RobotClient):
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
         while True:
-            joint_state = self.get_joint_state()
+            joint_state = self.get_joint_positions()
             if joint_state is None:
                 continue
             pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
