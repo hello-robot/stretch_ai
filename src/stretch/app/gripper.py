@@ -18,7 +18,7 @@ from stretch.core import Parameters, get_parameters
 @click.option("--blocking", is_flag=True, help="Block until the gripper is done")
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 def main(
-    robot_ip: str = "192.168.1.15",
+    robot_ip: str = "",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     open: bool = False,
