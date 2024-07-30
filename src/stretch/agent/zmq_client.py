@@ -107,11 +107,15 @@ class HomeRobotZmqClient(RobotClient):
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
 
         # Read in joint tolerances from config file
-        self._head_pan_tolerance = parameters["motion"]["joint_thresholds"]["head_pan_tolerance"]
-        self._head_tilt_tolerance = parameters["motion"]["joint_thresholds"]["head_tilt_tolerance"]
-        self._head_not_moving_tolerance = parameters["motion"]["joint_thresholds"][
-            "head_not_moving_tolerance"
-        ]
+        self._head_pan_tolerance = float(
+            parameters["motion"]["joint_thresholds"]["head_pan_tolerance"]
+        )
+        self._head_tilt_tolerance = float(
+            parameters["motion"]["joint_thresholds"]["head_tilt_tolerance"]
+        )
+        self._head_not_moving_tolerance = float(
+            parameters["motion"]["joint_thresholds"]["head_not_moving_tolerance"]
+        )
 
         # Robot model
         self._robot_model = HelloStretchKinematics(
@@ -525,7 +529,7 @@ class HomeRobotZmqClient(RobotClient):
                 joint_positions[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT]
             )
             head_speed = np.linalg.norm(
-                joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+                joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
             )
             if verbose:
                 print("Waiting for head to move", pan_err, tilt_err, "head speed =", head_speed)
@@ -533,11 +537,11 @@ class HomeRobotZmqClient(RobotClient):
                 break
             elif resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
-            t1 = timeit.default_timer()
 
+            t1 = timeit.default_timer()
             if t1 - t0 > min_wait_time and head_speed < self._head_not_moving_tolerance:
                 if verbose:
-                    print("Timeout waiting for head to move")
+                    print("Head not moving, we are done")
                 break
 
             if t1 - t0 > timeout:
