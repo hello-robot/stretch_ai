@@ -100,15 +100,15 @@ fi
 # set -e
 
 # $MAMBA env remove -n $ENV_NAME -y
-# # If using cpu only, create a separate environment
-# if [ "$CPU_ONLY" == "true" ]; then
-#     $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
-# else
-#     # Else, install the cuda version
-#     $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
-# fi
+# If using cpu only, create a separate environment
+if [ "$CPU_ONLY" == "true" ]; then
+    $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
+else
+    # Else, install the cuda version
+    $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
+fi
 
-# source activate $ENV_NAME
+conda activate $ENV_NAME
 
 # Now install pytorch3d a bit faster
 $MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
@@ -183,7 +183,7 @@ if [ "$CPU_ONLY" == "true" ]; then
     echo "Skipping YOLO World installation for CPU only"
 else
     echo "Install YOLO World for perception"
-   cd ../../src/stretch/perception/detection/yolo_world/YoloWorld
+   cd ../../yolo_world/YoloWorld
     pip install wheel
     pip install -e .
 fi
