@@ -1038,6 +1038,7 @@ class RobotAgent:
                 print("!!!!!!!!!!!!!!!!!!!!!!")
                 print("ROBOT IS STUCK! Move back!")
                 print(f"robot base pose: {self.robot.get_base_pose()}")
+                raise RuntimeError("Robot is stuck!")
 
                 r = np.random.randint(3)
                 if r == 0:
