@@ -93,8 +93,9 @@ class TestOperation(ManagedOperation):
         first_pose = [0.0, 0.75, 0.05, 0.0, 0.0, 0.0]
         self.robot.arm_to(first_pose, blocking=True)
 
-        poses = [[0.0, 0.75, 0.05, 0.2 * (-(1**i)), 0.0, 0.0] for i in range(5)]
-        for pose in poses:
+        for i in range(5):
+            sign = 1 if i % 2 == 0 else -1
+            pose = [0.0, 0.75, 0.05, 0.2 * sign, 0.0, 0.0]
             self.robot.arm_to(pose, blocking=True)
             sleep(0.5)
 
