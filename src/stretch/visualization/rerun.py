@@ -82,21 +82,23 @@ class RerunVsualizer:
         )
 
         self.bbox_colors_memory = {}
+        self.step_delay_s = 1/15
 
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
         rr.set_time_seconds('realtime', time.time())
         rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
-        rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"], meter=1000.0))
+        rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]))
+        rot, trans = decompose_homogeneous_matrix(obs["camera_pose"])
+        rr.log("world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
         rr.log(
-            "world/head_camera/rgb",
+            "world/head_camera",
             rr.Pinhole(
                 resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
                 image_from_camera=obs["camera_K"],
+                image_plane_distance=0.5,
             ),
         )
-        rot, trans = decompose_homogeneous_matrix(obs["camera_pose"])
-        rr.log("world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_robot_xyt(self, obs):
         """Log robot world pose"""
@@ -111,7 +113,7 @@ class RerunVsualizer:
             colors=[255, 0, 0, 255],
         )
         rr.log("world/robot/arrow", rb_arrow)
-        rr.log("world/robot/blob", rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.175))
+        rr.log("world/robot/blob", rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13))
         rr.log(
             "world/robot",
             rr.Transform3D(
@@ -122,7 +124,10 @@ class RerunVsualizer:
         )
 
     def log_ee_frame(self, obs):
-        """log end effector pose"""
+        """log end effector pose
+        Args:
+            obs (Observations): Observation dataclass
+        """
         rr.set_time_seconds('realtime', time.time())
         # EE Frame
         rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
@@ -133,23 +138,30 @@ class RerunVsualizer:
         rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_ee_camera(self, servo):
-        """Log end effector camera pose and images"""
+        """Log end effector camera pose and images
+        Args:
+            servo (Servo): Servo observation dataclass
+        """
         rr.set_time_seconds('realtime', time.time())
         # EE Camera
         rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
-        rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth, meter=1000.0))
+        rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
+        rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
+        rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
         rr.log(
-            "world/ee_camera/rgb",
+            "world/ee_camera",
             rr.Pinhole(
                 resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
                 image_from_camera=servo.ee_camera_K,
+                image_plane_distance=0.5,
             ),
         )
-        rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
-        rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def update_voxel_map(self, space):
-        """Log voxel map (SparseVoxelMapNavigationSpace)"""
+        """Log voxel map 
+        Args:
+            space (SparseVoxelMapNavigationSpace): Voxel map object
+        """
         rr.set_time_seconds('realtime', time.time())
         points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
         rr.log(
