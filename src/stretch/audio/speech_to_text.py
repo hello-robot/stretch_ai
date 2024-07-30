@@ -1,7 +1,9 @@
 import whisper
 
+from .base import AbstractSpeechToText
 
-class WhisperSpeechToText:
+
+class WhisperSpeechToText(AbstractSpeechToText):
     """Use the whisper model to transcribe speech to text."""
 
     def __init__(self):
