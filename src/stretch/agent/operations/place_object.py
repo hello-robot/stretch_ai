@@ -80,11 +80,11 @@ class PlaceObjectOperation(ManagedOperation):
         if joint_state is None:
             joint_state = self.robot.get_observation().joint
 
-        target_joint_state, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
+        target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
             pos, quat, q0=joint_state
         )
 
-        return target_joint_state, success
+        return target_joint_positions, success
 
     def run(self) -> None:
         self.intro("Placing the object on the receptacle.")
@@ -136,7 +136,7 @@ class PlaceObjectOperation(ManagedOperation):
                 orig=place_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
-        target_joint_state, success = self._get_place_joint_state(
+        target_joint_positions, success = self._get_place_joint_state(
             pos=place_xyz, quat=ee_rot, joint_state=joint_state
         )
         self.attempt(f"Trying to place the object on the receptacle at {place_xyz}.")
@@ -145,7 +145,7 @@ class PlaceObjectOperation(ManagedOperation):
             return
 
         # Move to the target joint state
-        self.robot.arm_to(target_joint_state, blocking=True)
+        self.robot.arm_to(target_joint_positions, blocking=True)
         time.sleep(0.5)
 
         # Open the gripper
@@ -153,9 +153,9 @@ class PlaceObjectOperation(ManagedOperation):
         time.sleep(0.5)
 
         # Move directly up
-        target_joint_state_lifted = target_joint_state.copy()
-        target_joint_state_lifted[HelloStretchIdx.LIFT] += self.lift_distance
-        self.robot.arm_to(target_joint_state_lifted, blocking=True)
+        target_joint_positions_lifted = target_joint_positions.copy()
+        target_joint_positions_lifted[HelloStretchIdx.LIFT] += self.lift_distance
+        self.robot.arm_to(target_joint_positions_lifted, blocking=True)
 
         # Return arm to initial configuration and switch to nav posture
         self.robot.move_to_nav_posture()

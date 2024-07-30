@@ -47,7 +47,7 @@ motion:
     lift: 0.05
     wrist_roll: 0.25
     wrist_pitch: 0.25
-    wrist_yaw: 0.25
+    wrist_yaw: 0.05
 
 # Exploration
 in_place_rotation_steps: 8

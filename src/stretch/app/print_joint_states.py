@@ -32,7 +32,7 @@ def main(
     robot.start()
     try:
         while True:
-            joint_state = robot.get_joint_state()
+            joint_state = robot.get_joint_positions()
             if joint_state is None:
                 continue
             if len(joint) > 0:

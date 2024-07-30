@@ -4,7 +4,7 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
 import cv2
@@ -154,7 +154,21 @@ class HomeRobotZmqClient(RobotClient):
         if start_immediately:
             self.start()
 
-    def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
+    def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Get the current joint positions, velocities, and efforts"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_positions = self._state["joint_positions"]
+            joint_velocities = self._state["joint_velocities"]
+            joint_efforts = self._state["joint_efforts"]
+        return joint_positions, joint_velocities, joint_efforts
+
+    def get_joint_positions(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current joint positions"""
         t0 = timeit.default_timer()
         with self._state_lock:
@@ -165,6 +179,30 @@ class HomeRobotZmqClient(RobotClient):
                     return None
             joint_positions = self._state["joint_positions"]
         return joint_positions
+
+    def get_joint_velocities(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint velocities"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_velocities = self._state["joint_velocities"]
+        return joint_velocities
+
+    def get_joint_efforts(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint efforts"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_efforts = self._state["joint_efforts"]
+        return joint_efforts
 
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current pose of the base"""
@@ -196,6 +234,7 @@ class HomeRobotZmqClient(RobotClient):
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
+        min_time: float = 0.1,
     ) -> bool:
         """Move the arm to a particular joint configuration.
 
@@ -249,10 +288,11 @@ class HomeRobotZmqClient(RobotClient):
                     if verbose:
                         print("Resending action", joint_angles)
 
-                joint_state = self.get_joint_state()
+                joint_state, joint_velocities, _ = self.get_joint_state()
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
+
                 arm_diff = np.abs(joint_state[HelloStretchIdx.ARM] - joint_angles[2])
                 lift_diff = np.abs(joint_state[HelloStretchIdx.LIFT] - joint_angles[1])
                 base_x_diff = np.abs(joint_state[HelloStretchIdx.BASE_X] - joint_angles[0])
@@ -265,6 +305,11 @@ class HomeRobotZmqClient(RobotClient):
                 wrist_yaw_diff = np.abs(
                     angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
                 )
+                print(
+                    f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
+                )
+
+                t1 = timeit.default_timer()
                 if (
                     (arm_diff < self._arm_joint_tolerance)
                     and (lift_diff < self._lift_joint_tolerance)
@@ -274,6 +319,9 @@ class HomeRobotZmqClient(RobotClient):
                     and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     return True
+                elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
+                    # Arm stopped moving but did not reach goal
+                    return False
                 else:
                     if verbose:
                         print(
@@ -281,7 +329,6 @@ class HomeRobotZmqClient(RobotClient):
                         )
                 time.sleep(0.01)
 
-                t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for arm to move")
                     break
@@ -321,7 +368,7 @@ class HomeRobotZmqClient(RobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
-                joint_state = self.get_joint_state()
+                joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
@@ -419,7 +466,7 @@ class HomeRobotZmqClient(RobotClient):
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
         while True:
-            joint_state = self.get_joint_state()
+            joint_state = self.get_joint_positions()
             if joint_state is None:
                 continue
             pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
