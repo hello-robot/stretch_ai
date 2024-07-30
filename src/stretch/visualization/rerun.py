@@ -8,6 +8,9 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 from stretch.motion import HelloStretchIdx
+from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
+from stretch.mapping.scene_graph import SceneGraph
+from stretch.perception.wrapper import OvmmPerception
 
 
 def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -178,7 +181,7 @@ class RerunVsualizer:
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
-    def update_voxel_map(self, space):
+    def update_voxel_map(self, space: SparseVoxelMapNavigationSpace):
         """Log voxel map
         Args:
             space (SparseVoxelMapNavigationSpace): Voxel map object
@@ -211,7 +214,9 @@ class RerunVsualizer:
             ),
         )
 
-    def update_scene_graph(self, scene_graph, semantic_sensor=None):
+    def update_scene_graph(
+        self, scene_graph: SceneGraph, semantic_sensor: Optional[OvmmPerception] = None
+    ):
         """Log objects bounding boxes and relationships
         Args:
             scene_graph (SceneGraph): Scene graph object
