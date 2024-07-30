@@ -7,7 +7,6 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-
 from stretch.motion import HelloStretchIdx
 
 
@@ -86,20 +85,22 @@ class RerunVsualizer:
         )
 
         self.bbox_colors_memory = {}
-        self.step_delay_s = 1/15
-        self.setup_blueprint() 
-    
+        self.step_delay_s = 1 / 15
+        self.setup_blueprint()
+
     def setup_blueprint(self):
-        my_blueprint = rrb.Blueprint(rrb.Spatial3DView(origin="world"),
-                                     rrb.BlueprintPanel(expanded=True),
-                                     rrb.SelectionPanel(expanded=True),
-                                     rrb.TimePanel(expanded=True),
-                                     collapse_panels=True)
+        my_blueprint = rrb.Blueprint(
+            rrb.Spatial3DView(origin="world"),
+            rrb.BlueprintPanel(expanded=True),
+            rrb.SelectionPanel(expanded=True),
+            rrb.TimePanel(expanded=True),
+            collapse_panels=True,
+        )
         rr.send_blueprint(my_blueprint)
 
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
-        rr.set_time_seconds('realtime', time.time())
+        rr.set_time_seconds("realtime", time.time())
         rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
         rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]))
         rot, trans = decompose_homogeneous_matrix(obs["camera_pose"])
@@ -115,7 +116,7 @@ class RerunVsualizer:
 
     def log_robot_xyt(self, obs):
         """Log robot world pose"""
-        rr.set_time_seconds('realtime', time.time())
+        rr.set_time_seconds("realtime", time.time())
         xy = obs["gps"]
         theta = obs["compass"]
         rb_arrow = rr.Arrows3D(
@@ -141,7 +142,7 @@ class RerunVsualizer:
         Args:
             obs (Observations): Observation dataclass
         """
-        rr.set_time_seconds('realtime', time.time())
+        rr.set_time_seconds("realtime", time.time())
         # EE Frame
         rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
         ee_arrow = rr.Arrows3D(
@@ -155,7 +156,7 @@ class RerunVsualizer:
         Args:
             servo (Servo): Servo observation dataclass
         """
-        rr.set_time_seconds('realtime', time.time())
+        rr.set_time_seconds("realtime", time.time())
         # EE Camera
         rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
         rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
@@ -169,20 +170,20 @@ class RerunVsualizer:
                 image_plane_distance=0.35,
             ),
         )
-    
+
     def log_robot_state(self, obs):
         """Log robot joint states"""
-        rr.set_time_seconds('realtime', time.time())
+        rr.set_time_seconds("realtime", time.time())
         state = obs["joint"]
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
     def update_voxel_map(self, space):
-        """Log voxel map 
+        """Log voxel map
         Args:
             space (SparseVoxelMapNavigationSpace): Voxel map object
         """
-        rr.set_time_seconds('realtime', time.time())
+        rr.set_time_seconds("realtime", time.time())
         points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
         rr.log(
             "world/point_cloud",
@@ -217,7 +218,7 @@ class RerunVsualizer:
             semantic_sensor (OvmmPerception): Semantic sensor object
         """
         if semantic_sensor:
-            rr.set_time_seconds('realtime', time.time())
+            rr.set_time_seconds("realtime", time.time())
             centers = []
             labels = []
             bounds = []
@@ -231,9 +232,10 @@ class RerunVsualizer:
                 bbox_bounds = best_view.bounds  # 3D Bounds
                 point_cloud_rgb = instance.point_cloud
                 pcd_rgb = instance.point_cloud_rgb
-                rr.log(f"world/{instance.id}_{name}", 
-                       rr.Points3D(positions=point_cloud_rgb, 
-                                   colors=np.int64(pcd_rgb)))
+                rr.log(
+                    f"world/{instance.id}_{name}",
+                    rr.Points3D(positions=point_cloud_rgb, colors=np.int64(pcd_rgb)),
+                )
                 half_sizes = [(b[0] - b[1]) / 2 for b in bbox_bounds]
                 bounds.append(half_sizes)
                 pose = scene_graph.get_ins_center_pos(idx)
@@ -255,7 +257,7 @@ class RerunVsualizer:
     def step(self, obs, servo):
         """Log all the data"""
         if obs and servo:
-            rr.set_time_seconds('realtime', time.time())
+            rr.set_time_seconds("realtime", time.time())
             try:
                 self.log_robot_xyt(obs)
                 self.log_head_camera(obs)
