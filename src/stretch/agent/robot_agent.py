@@ -429,6 +429,9 @@ class RobotAgent:
                 plt.axis("off")
                 plt.show()
 
+        if self.robot._rerun:
+            self.robot._rerun.update_voxel_map(self.space)
+
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
         if self.scene_graph is None:
@@ -437,6 +440,7 @@ class RobotAgent:
             self.scene_graph.update(self.voxel_map.get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
+        self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def get_scene_graph(self) -> SceneGraph:
         """Return scene graph, such as it is."""
@@ -1114,7 +1118,8 @@ class RobotAgent:
         """Reset the robot's spatial memory. This deletes the instance memory and spatial map, and clears all observations.
 
         Args:
-            verbose(bool): print out a message to the user making sure this does not go unnoticed. Defaults to True."""
+            verbose(bool): print out a message to the user making sure this does not go unnoticed. Defaults to True.
+        """
         if verbose:
             print(
                 "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"

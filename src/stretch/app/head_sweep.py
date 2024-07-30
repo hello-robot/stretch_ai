@@ -18,13 +18,9 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
     is_flag=True,
     help="Set if we are executing on the robot and not on a remote computer",
 )
-@click.option(
-    "--iterations", default=100, help="Number of iterations between rate histogram updates"
-)
 def main(
     robot_ip: str = "",
     local: bool = False,
-    iterations: int = 500,
 ):
 
     # Create robot
@@ -35,21 +31,16 @@ def main(
 
     observation = robot.get_observation()
     robot.move_to_nav_posture()
-    robot.move_to_manip_posture()
 
     # Wait and then...
-    input("----")
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
+    robot.head_to(head_pan=-np.pi / 2, head_tilt=0, blocking=True)
+    robot.head_to(head_pan=-np.pi, head_tilt=0, blocking=True)
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
+    robot.head_to(head_pan=0, head_tilt=-np.pi / 2, blocking=True)
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
-    robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
-    robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
 
+    print("Done.")
     robot.stop()
 
 
