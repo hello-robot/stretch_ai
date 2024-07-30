@@ -186,18 +186,6 @@ else
    cd ../../src/stretch/perception/detection/yolo_world/YoloWorld
     pip install wheel
     pip install -e .
-
-    echo "Install Detic for perception"
-    cd ../../src/stretch/perception/detection/detic/Detic
-    # Make sure it's up to date
-    git submodule update --init --recursive
-    pip install -r requirements.txt
-
-    # cd ../../src/stretch/perception/detection/detic/Detic
-    # Create folder for checkpoints and download
-    mkdir -p models
-    echo "Download DETIC checkpoint..."
-    wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 fi
 
 echo ""
