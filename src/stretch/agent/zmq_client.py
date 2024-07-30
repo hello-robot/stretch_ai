@@ -166,6 +166,18 @@ class HomeRobotZmqClient(RobotClient):
             joint_positions = self._state["joint_positions"]
         return joint_positions
 
+    def get_joint_velocities(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the current joint velocities"""
+        t0 = timeit.default_timer()
+        with self._state_lock:
+            while self._state is None:
+                time.sleep(1e-4)
+                if timeit.default_timer() - t0 > timeout:
+                    logger.error("Timeout waiting for state message")
+                    return None
+            joint_velocities = self._state["joint_velocities"]
+        return joint_velocities
+
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current pose of the base"""
         t0 = timeit.default_timer()
