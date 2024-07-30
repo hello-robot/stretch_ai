@@ -5,9 +5,9 @@ import numpy as np
 from stretch.agent.base import ManagedOperation
 
 
-class EmoteOperation(ManagedOperation):
+class WaveOperation(ManagedOperation):
     """
-    Provides emote functionality for the robot.
+    Waves the robot's hand
     """
 
     def can_start(self) -> bool:
@@ -30,6 +30,8 @@ class EmoteOperation(ManagedOperation):
             yaw_amplitude (float): The amplitude of the yaw (radians).
             wave_duration (float): The duration of each wave (radians).
         """
+        self.robot.switch_to_manipulation_mode()
+
         first_pose = [0.0, lift_height, 0.05, 0.0, 0.0, 0.0]
 
         # move to initial lift height
@@ -55,6 +57,46 @@ class EmoteOperation(ManagedOperation):
             sleep(0.375)
 
         self.robot.arm_to(first_pose, blocking=False)
+
+    def was_successful(self) -> bool:
+        return True
+
+
+class NodHeadOperation(ManagedOperation):
+    """
+    Nods the robot's head.
+    """
+
+    def can_start(self) -> bool:
+        return True
+
+    def run(self, n_nods: int = 3, pitch_amplitude: float = 0.1, pitch_zero=0.0):
+        self.robot.switch_to_manipulation_mode()
+
+        # TODO
+
+    def was_successful(self) -> bool:
+        return True
+
+
+class TestOperation(ManagedOperation):
+    """
+    Demonstrates weird blocking behavior.
+    """
+
+    def can_start(self) -> bool:
+        return True
+
+    def run(self):
+        self.robot.switch_to_manipulation_mode()
+
+        first_pose = [0.0, 0.75, 0.05, 0.0, 0.0, 0.0]
+        self.robot.arm_to(first_pose, blocking=True)
+
+        poses = [[0.0, 0.75, 0.05, 0.2 * (-(1**i)), 0.0, 0.0] for i in range(5)]
+        for pose in poses:
+            self.robot.arm_to(pose, blocking=True)
+            sleep(0.5)
 
     def was_successful(self) -> bool:
         return True
