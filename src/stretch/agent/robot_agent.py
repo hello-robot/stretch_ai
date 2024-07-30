@@ -1037,10 +1037,6 @@ class RobotAgent:
             if self.robot.last_motion_failed():
                 print("!!!!!!!!!!!!!!!!!!!!!!")
                 print("ROBOT IS STUCK! Move back!")
-
-                # help with debug TODO: remove
-                # self.update()
-                # self.save_svm(".")
                 print(f"robot base pose: {self.robot.get_base_pose()}")
 
                 r = np.random.randint(3)
