@@ -35,20 +35,13 @@ def main(
 
     observation = robot.get_observation()
     robot.move_to_nav_posture()
-    robot.move_to_manip_posture()
+    # robot.move_to_manip_posture()
 
     # Wait and then...
-    input("----")
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
+    robot.head_to(head_pan=np.pi / 2, head_tilt=0, blocking=True)
+    robot.head_to(head_pan=np.pi, head_tilt=0, blocking=True)
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
-    robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
-    robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
-    robot.head_to(head_pan=0, head_tilt=0, blocking=True)
-    input("----")
 
     robot.stop()
 
