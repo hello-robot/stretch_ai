@@ -60,6 +60,7 @@ setuptools.setup(
         "termcolor",
         # Audio
         "gtts",  # online TTS engine
+        "librosa",  # audio analysis (e.g., spectral similarity)
         "PyAudio==0.2.14", # the version specification is necessary because apt has 0.2.12 which is incompatibile with recent numpy
         "openai-whisper",
         "overrides", # better inheritance of docstrings
