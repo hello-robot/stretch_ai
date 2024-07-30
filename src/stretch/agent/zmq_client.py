@@ -514,7 +514,7 @@ class HomeRobotZmqClient(RobotClient):
         timeout: float = 10.0,
         min_wait_time: float = 0.5,
         resend_action: Optional[dict] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
