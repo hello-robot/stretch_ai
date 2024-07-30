@@ -233,7 +233,7 @@ class VoxelizedPointcloud:
         ) = self.get_idxs(points)
         return cluster_consecutive_idx
 
-    def get_pointcloud(self) -> Tuple[Tensor]:
+    def get_pointcloud(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Returns pointcloud (1 point per occupied voxel)
 
         Returns:
@@ -300,7 +300,7 @@ def voxelize(
     batch: Optional[Tensor] = None,
     start: Optional[Union[float, Tensor]] = None,
     end: Optional[Union[float, Tensor]] = None,
-) -> Tuple[Tensor]:
+) -> Tuple[Tensor, Tensor, Tensor]:
     """Returns voxel indices and packed (consecutive) indices for points
 
     Args:
@@ -355,7 +355,7 @@ def reduce_pointcloud(
     weights: Optional[Tensor] = None,
     rgbs: Optional[Tensor] = None,
     feature_reduce: str = "mean",
-) -> Tuple[Tensor]:
+) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     """Pools values within each voxel
 
     Args:
