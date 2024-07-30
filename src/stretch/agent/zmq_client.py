@@ -253,6 +253,7 @@ class HomeRobotZmqClient(RobotClient):
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
+
                 arm_diff = np.abs(joint_state[HelloStretchIdx.ARM] - joint_angles[2])
                 lift_diff = np.abs(joint_state[HelloStretchIdx.LIFT] - joint_angles[1])
                 base_x_diff = np.abs(joint_state[HelloStretchIdx.BASE_X] - joint_angles[0])
@@ -264,6 +265,9 @@ class HomeRobotZmqClient(RobotClient):
                 )
                 wrist_yaw_diff = np.abs(
                     angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
+                )
+                print(
+                    f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
                 )
                 if (
                     (arm_diff < self._arm_joint_tolerance)

@@ -230,6 +230,7 @@ class TestOperation(ManagedOperation):
         for i in range(5):
             sign = 1 if i % 2 == 0 else -1
             pose = [0.0, 0.75, 0.05, 0.2 * sign, 0.0, 0.0]
+            print(f"Moving to pose {i + 1} = {pose}")
             self.robot.arm_to(pose, blocking=True, verbose=self.debug_arm_to)
             sleep(0.5)
 
