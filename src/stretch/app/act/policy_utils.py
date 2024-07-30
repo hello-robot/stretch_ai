@@ -37,8 +37,10 @@ def load_policy(
 def prepare_state(
     raw_state: dict | None = None, teleop_mode: str | None = None, device: str | None = "cuda"
 ):
+
     # Format based on teleop mode
-    state = dt.format_state(raw_state, teleop_mode)
+    # state = dt.format_state(raw_state, teleop_mode)
+    state = raw_state
 
     # TODO This mode is only here to support old models with 7 state features. Remove when this is no longer needed
     if teleop_mode == "old_stationary_base":
@@ -50,6 +52,19 @@ def prepare_state(
             state["joint_wrist_pitch"],
             state["joint_wrist_yaw"],
             state["stretch_gripper"],
+        ]
+    elif teleop_mode == "base_x":
+        # This is the format for state space under the ROS2 backend
+        state = [
+            state["base_x"],
+            state["base_y"],
+            state["base_theta"],
+            state["lift"],
+            state["arm"],
+            state["wrist_roll"],
+            state["wrist_pitch"],
+            state["wrist_yaw"],
+            state["gripper_finger_right"],
         ]
     else:
         # Define explicit order for input state features
