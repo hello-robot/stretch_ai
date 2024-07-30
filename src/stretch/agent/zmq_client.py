@@ -106,6 +106,10 @@ class HomeRobotZmqClient(RobotClient):
         self._angle_threshold = parameters["motion"]["angle_threshold"]
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
 
+        # Read in joint tolerances from config file
+        self._head_pan_tolerance = parameters["motion"]["joint_thresholds"]["head_pan_tolerance"]
+        self._head_tilt_tolerance = parameters["motion"]["joint_thresholds"]["head_tilt_tolerance"]
+
         # Robot model
         self._robot_model = HelloStretchKinematics(
             urdf_path=urdf_path,
@@ -476,7 +480,7 @@ class HomeRobotZmqClient(RobotClient):
             tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
             if verbose:
                 print("Waiting for head to move", pan_err, tilt_err)
-            if pan_err < 0.1 and tilt_err < 0.1:
+            if pan_err < self._head_pan_tolerance and tilt_err < self._head_tilt_tolerance:
                 break
             elif resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
