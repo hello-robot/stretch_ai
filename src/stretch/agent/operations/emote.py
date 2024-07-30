@@ -36,15 +36,7 @@ class WaveOperation(ManagedOperation):
 
         # move to initial lift height
         first_pose[1] = lift_height
-        self.robot.arm_to(first_pose, blocking=False)
-
-        # hacky wait...
-        while True:
-            joint_state = self.robot.get_observation().joint
-            lift = joint_state[3]
-            if abs(lift - lift_height) < 0.01:
-                break
-            sleep(0.05)
+        self.robot.arm_to(first_pose, blocking=True)
 
         # generate poses
         wave_poses = np.zeros((n_waves * 2, 6))
@@ -53,11 +45,12 @@ class WaveOperation(ManagedOperation):
             wave_poses[j] = [0.0, lift_height, 0.05, -yaw_amplitude, pitch, -roll_amplitude]
             wave_poses[j + 1] = [0.0, lift_height, 0.05, yaw_amplitude, pitch, roll_amplitude]
 
+        # move to poses w/o blocking to make smoother motions
         for pose in wave_poses:
             self.robot.arm_to(pose, blocking=False)
             sleep(0.375)
 
-        self.robot.arm_to(first_pose, blocking=False)
+        self.robot.arm_to(first_pose, blocking=True)
 
     def was_successful(self) -> bool:
         return True
@@ -71,23 +64,31 @@ class NodHeadOperation(ManagedOperation):
     def can_start(self) -> bool:
         return True
 
-    def run(self, n_nods: int = 3, pitch_amplitude: float = 0.1, pitch_zero=0.0):
+    def run(
+        self,
+        n_nods: int = 2,
+        pitch_amplitude: float = 0.3,
+        override_current_tilt: bool = False,
+        tilt_zero=0.0,
+    ):
         self.robot.switch_to_manipulation_mode()
 
-        first_head_pose = [-np.pi / 2.0, 0.0]
+        current_pan = self.robot.get_observation().joint[9]
+        if not override_current_tilt:
+            tilt_zero = self.robot.get_observation().joint[10]
 
-        # TODO: move head to pose
+        first_head_pose = [current_pan, tilt_zero]
+        self.robot.head_to(*first_head_pose, blocking=True)
 
         #  generate poses
         poses = np.zeros((n_nods * 2, 2))
         for i in range(n_nods):
             j = i * 2
-            poses[j] = [pitch_zero - pitch_amplitude, 0.0]
-            poses[j + 1] = [pitch_zero + pitch_amplitude, 0.0]
+            poses[j] = [current_pan, tilt_zero - pitch_amplitude]
+            poses[j + 1] = [current_pan, tilt_zero]
 
         for pose in poses:
-            pass
-            # TODO: move head to pose
+            self.robot.head_to(*pose, blocking=True)
 
     def was_successful(self) -> bool:
         return True
@@ -101,23 +102,33 @@ class ShakeHeadOperation(ManagedOperation):
     def can_start(self) -> bool:
         return True
 
-    def run(self, n_shakes: int = 3, yaw_amplitude: float = 0.1, yaw_zero=0.0):
+    def run(
+        self,
+        n_shakes: int = 2,
+        pan_amplitude: float = 0.3,
+        override_current_pan: bool = False,
+        pan_zero=-np.pi / 2.0,
+    ):
         self.robot.switch_to_manipulation_mode()
 
-        first_head_pose = [-np.pi / 2.0, 0.0]
+        current_tilt = self.robot.get_observation().joint[10]
+        if not override_current_pan:
+            pan_zero = self.robot.get_observation().joint[9]
 
-        # TODO: move head to pose
+        first_head_pose = [pan_zero, current_tilt]
+        self.robot.head_to(*first_head_pose, blocking=True)
 
         # generate poses
         poses = np.zeros((n_shakes * 2, 2))
         for i in range(n_shakes):
             j = i * 2
-            poses[j] = [0.0, yaw_zero - yaw_amplitude]
-            poses[j + 1] = [0.0, yaw_zero + yaw_amplitude]
+            poses[j] = [pan_zero - pan_amplitude, current_tilt]
+            poses[j + 1] = [pan_zero + pan_amplitude, current_tilt]
 
         for pose in poses:
-            pass
-            # TODO: move head to pose
+            self.robot.head_to(*pose, blocking=True)
+
+        self.robot.head_to(*first_head_pose, blocking=False)
 
     def was_successful(self) -> bool:
         return True
@@ -155,28 +166,28 @@ class AvertGazeOperation(ManagedOperation):
     """
 
     def can_start(self) -> bool:
-        return False
+        return True
 
-    def run(self):
-        raise NotImplementedError
+    def run(
+        self,
+        target_tilt: float = -np.pi / 2.5,
+        return_to_initial_tilt: bool = False,
+        return_to_initial_tilt_delay: float = 1.0,
+    ):
+        self.robot.switch_to_manipulation_mode()
+        joint_state = self.robot.get_observation().joint
+        current_pan = joint_state[9]
+        current_tilt = joint_state[10]
+
+        avert_pose = [current_pan, target_tilt]
+        self.robot.head_to(*avert_pose, blocking=True)
+
+        if return_to_initial_tilt:
+            sleep(return_to_initial_tilt_delay)
+            self.robot.head_to(current_pan, current_tilt, blocking=False)
 
     def was_successful(self) -> bool:
-        return False
-
-
-class LookAtOperation(ManagedOperation):
-    """
-    Look at something.
-    """
-
-    def can_start(self) -> bool:
-        return False
-
-    def run(self):
-        raise NotImplementedError
-
-    def was_successful(self) -> bool:
-        return False
+        return True
 
 
 class ApproachOperation(ManagedOperation):
@@ -211,7 +222,7 @@ class WithdrawOperation(ManagedOperation):
 
 class TestOperation(ManagedOperation):
     """
-    Demonstrates weird blocking behavior.
+    Wiggles wrist. Demonstrated weird blocking behavior that has since been patched.
     """
 
     # Print out extra debug information

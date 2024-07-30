@@ -532,7 +532,7 @@ class HomeRobotZmqClient(RobotClient):
                 break
             time.sleep(0.01)
         # Tiny pause after head rotation
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
