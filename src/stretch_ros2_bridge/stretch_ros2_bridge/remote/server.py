@@ -172,7 +172,6 @@ class ZmqServer(CommsNode):
             if action is not None:
                 if True or self.verbose:
                     print(f" - Action received: {action}")
-                    print("head_to" in action)
                 self._last_step = action.get("step", -1)
                 print(
                     f"Action #{self._last_step} received:",
@@ -228,7 +227,6 @@ class ZmqServer(CommsNode):
                     else:
                         self.client.arm_to(action["joint"], blocking=False)
                 if "head_to" in action:
-                    breakpoint()
                     if self.verbose or True:
                         print(f"Moving head to {action['head_to']}")
                     self.client.head_to(
