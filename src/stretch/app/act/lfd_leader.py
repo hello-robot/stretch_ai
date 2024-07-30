@@ -19,8 +19,8 @@ from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
 
 
-class LfdLeader:
-    """A class for running an ACT model as leader with stretch."""
+class ROS2LfdLeader:
+    """ROS2 version of leader for evaluating trained LfD policies with Stretch. To be used in conjunction with stretch_ros2_bridge server"""
 
     def __init__(
         self,
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     robot.switch_to_manipulation_mode()
     robot.move_to_manip_posture()
 
-    leader = LfdLeader(
+    leader = ROS2LfdLeader(
         robot=robot,
         verbose=args.verbose,
         data_dir=args.data_dir,
