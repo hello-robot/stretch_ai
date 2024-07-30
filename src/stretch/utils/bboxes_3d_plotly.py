@@ -36,7 +36,7 @@ import math
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import warnings
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import plotly.graph_objects as go
 import torch
@@ -497,7 +497,7 @@ def plot_scene_with_bboxes(
     y_settings.update(**kwargs.get("yaxis", {}))
     z_settings.update(**kwargs.get("zaxis", {}))
 
-    camera = {
+    camera: Dict[str, Any] = {
         "up": {
             "x": 0.0,
             "y": 0.0,

@@ -570,7 +570,7 @@ class BBoxes3D:
         else:
             self._bounds_padded = struct_utils.list_to_padded(
                 self.bounds_list(),
-                (self._P, 3, 3),
+                [self._P, 3, 3],
                 pad_value=0.0,
                 equisized=self.equisized,
             )
@@ -578,7 +578,7 @@ class BBoxes3D:
             if names_list is not None:
                 self._names_padded = struct_utils.list_to_padded(
                     names_list,
-                    (self._P, 1),
+                    [self._P, 1],
                     pad_value=0.0,
                     equisized=self.equisized,
                 )
@@ -586,7 +586,7 @@ class BBoxes3D:
             if features_list is not None:
                 self._features_padded = struct_utils.list_to_padded(
                     features_list,
-                    (self._P, self._C),
+                    [self._P, self._C],
                     pad_value=0.0,
                     equisized=self.equisized,
                 )
@@ -822,7 +822,9 @@ class BBoxes3D:
         if N <= 0:
             raise ValueError("N must be > 0.")
 
-        new_bounds_list, new_names_list, new_features_list = [], None, None
+        new_bounds_list: List[int] = []
+        new_names_list: Optional[List[str]] = None
+        new_features_list: Optional[Tensor] = None
         for bounds in self.bounds_list():
             new_bounds_list.extend(bounds.clone() for _ in range(N))
         names_list = self.names_list()
