@@ -5,6 +5,10 @@ from typing import Optional, Tuple
 
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
+
+
+from stretch.motion import HelloStretchIdx
 
 
 def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -83,6 +87,15 @@ class RerunVsualizer:
 
         self.bbox_colors_memory = {}
         self.step_delay_s = 1/15
+        self.setup_blueprint() 
+    
+    def setup_blueprint(self):
+        my_blueprint = rrb.Blueprint(rrb.Spatial3DView(origin="world"),
+                                     rrb.BlueprintPanel(expanded=True),
+                                     rrb.SelectionPanel(expanded=True),
+                                     rrb.TimePanel(expanded=True),
+                                     collapse_panels=True)
+        rr.send_blueprint(my_blueprint)
 
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
@@ -156,6 +169,13 @@ class RerunVsualizer:
                 image_plane_distance=0.35,
             ),
         )
+    
+    def log_robot_state(self, obs):
+        """Log robot joint states"""
+        rr.set_time_seconds('realtime', time.time())
+        state = obs["joint"]
+        for k in HelloStretchIdx.name_to_idx:
+            rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
     def update_voxel_map(self, space):
         """Log voxel map 
@@ -241,5 +261,6 @@ class RerunVsualizer:
                 self.log_head_camera(obs)
                 self.log_ee_frame(obs)
                 self.log_ee_camera(servo)
+                self.log_robot_state(obs)
             except Exception as e:
                 print(e)
