@@ -1024,13 +1024,14 @@ class RobotAgent:
                         pos_err_threshold=self.pos_err_threshold,
                         rot_err_threshold=self.rot_err_threshold,
                     )
-                if not res.success:
-                    if self._retry_on_fail:
-                        print("Failed. Try again!")
-                        continue
-                    else:
-                        print("Failed. Quitting!")
-                        break
+            else:
+                # if it fails, try again or just quit
+                if self._retry_on_fail:
+                    print("Failed. Try again!")
+                    continue
+                else:
+                    print("Failed. Quitting!")
+                    break
 
             # Error handling
             if self.robot.last_motion_failed():
@@ -1071,11 +1072,6 @@ class RobotAgent:
                 if len(matches) > 0:
                     print("!!! GOAL FOUND! Done exploration. !!!")
                     break
-
-        # if it fails to find any frontier in the given iteration, simply quit in sim
-        if no_success_explore:
-            print("The robot did not explore at all, force quit in sim")
-            self.robot.force_quit = True
 
         if go_home_at_end:
             self.current_state = "NAV_TO_HOME"

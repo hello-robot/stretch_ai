@@ -524,17 +524,17 @@ class HomeRobotZmqClient(RobotClient):
             tilt_err = np.abs(
                 joint_positions[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT]
             )
+            head_speed = np.linalg.norm(
+                joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+            )
             if verbose:
-                print("Waiting for head to move", pan_err, tilt_err)
+                print("Waiting for head to move", pan_err, tilt_err, "head speed =", head_speed)
             if pan_err < self._head_pan_tolerance and tilt_err < self._head_tilt_tolerance:
                 break
             elif resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
             t1 = timeit.default_timer()
 
-            head_speed = np.linalg.norm(
-                joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
-            )
             if t1 - t0 > min_wait_time and head_speed < self._head_not_moving_tolerance:
                 if verbose:
                     print("Timeout waiting for head to move")
