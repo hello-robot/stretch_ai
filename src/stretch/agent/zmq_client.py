@@ -102,6 +102,12 @@ class HomeRobotZmqClient(RobotClient):
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
+        self._arm_joint_tolerance = parameters["motion"]["joint_tolerance"]["arm"]
+        self._lift_joint_tolerance = parameters["motion"]["joint_tolerance"]["lift"]
+        self._base_x_joint_tolerance = parameters["motion"]["joint_tolerance"]["base_x"]
+        self._wrist_roll_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_roll"]
+        self._wrist_pitch_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_pitch"]
+        self._wrist_yaw_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_yaw"]
 
         # Robot model
         self._robot_model = HelloStretchKinematics(
@@ -240,6 +246,8 @@ class HomeRobotZmqClient(RobotClient):
                         self._next_action["joint"] = joint_angles
                         self._next_action["manip_blocking"] = blocking
                     self.send_action()
+                    if verbose:
+                        print("Resending action", joint_angles)
 
                 joint_state = self.get_joint_state()
                 if joint_state is None:
@@ -258,12 +266,12 @@ class HomeRobotZmqClient(RobotClient):
                     angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
                 )
                 if (
-                    (arm_diff < 0.05)
-                    and (lift_diff < 0.05)
-                    and (base_x_diff < 0.05)
-                    and (wrist_roll_diff < 0.05)
-                    and (wrist_pitch_diff < 0.05)
-                    and (wrist_yaw_diff < 0.05)
+                    (arm_diff < self._arm_joint_tolerance)
+                    and (lift_diff < self._lift_joint_tolerance)
+                    and (base_x_diff < self._base_x_joint_tolerance)
+                    and (wrist_roll_diff < self._wrist_roll_joint_tolerance)
+                    and (wrist_pitch_diff < self._wrist_pitch_joint_tolerance)
+                    and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     return True
                 else:
@@ -272,11 +280,6 @@ class HomeRobotZmqClient(RobotClient):
                             f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
                         )
                 time.sleep(0.01)
-
-                # TODO: Is this necessary? If not, we should just delete this commented-out code block.
-                # Resend the action
-                # self._next_action["joint"] = joint_angles
-                # self.send_action()
 
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:

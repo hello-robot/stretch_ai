@@ -85,7 +85,7 @@ class TestOperation(ManagedOperation):
     """
 
     # Print out extra debug information
-    debug_arm_to: bool = False
+    debug_arm_to: bool = True
 
     def can_start(self) -> bool:
         """We can always start this operation."""
