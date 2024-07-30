@@ -4,7 +4,7 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
 import cv2
@@ -154,8 +154,8 @@ class HomeRobotZmqClient(RobotClient):
         if start_immediately:
             self.start()
 
-    def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
-        """Get the current joint positions"""
+    def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Get the current joint positions, velocities, and efforts"""
         t0 = timeit.default_timer()
         with self._state_lock:
             while self._state is None:
