@@ -84,7 +84,11 @@ class TestOperation(ManagedOperation):
     Demonstrates weird blocking behavior.
     """
 
+    # Print out extra debug information
+    debug_arm_to: bool = False
+
     def can_start(self) -> bool:
+        """We can always start this operation."""
         return True
 
     def run(self):
@@ -96,8 +100,10 @@ class TestOperation(ManagedOperation):
         for i in range(5):
             sign = 1 if i % 2 == 0 else -1
             pose = [0.0, 0.75, 0.05, 0.2 * sign, 0.0, 0.0]
-            self.robot.arm_to(pose, blocking=True)
+            self.robot.arm_to(pose, blocking=True, verbose=self.debug_arm_to)
             sleep(0.5)
 
     def was_successful(self) -> bool:
+        """Successful if the full sequence was completed."""
+        # Todo; check if the arm is in the correct position
         return True
