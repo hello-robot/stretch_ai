@@ -100,6 +100,7 @@ class ZmqServer(CommsNode):
                 "depth": depth,
                 "camera_K": obs.camera_K.cpu().numpy(),
                 "camera_pose": obs.camera_pose,
+                "ee_pose": self.client.ee_pose,
                 "joint": obs.joint,
                 "gps": obs.gps,
                 "compass": obs.compass,
@@ -226,6 +227,14 @@ class ZmqServer(CommsNode):
                         )
                     else:
                         self.client.arm_to(action["joint"], blocking=False)
+                if "head_to" in action:
+                    if self.verbose or True:
+                        print(f"Moving head to {action['head_to']}")
+                    self.client.head_to(
+                        action["head_to"][0],
+                        action["head_to"][1],
+                        blocking=False,
+                    )
                 if "gripper" in action and "joint" not in action:
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
@@ -321,6 +330,7 @@ class ZmqServer(CommsNode):
                 "ee_cam/image_scaling": self.ee_image_scaling,
                 "ee_cam/depth_scaling": self.ee_depth_scaling,
                 "ee_cam/pose": self.client.ee_camera_pose,
+                "ee/pose": self.client.ee_pose,
                 "head_cam/color_camera_K": scale_camera_matrix(
                     self.client.rgb_cam.get_K(), self.image_scaling
                 ),

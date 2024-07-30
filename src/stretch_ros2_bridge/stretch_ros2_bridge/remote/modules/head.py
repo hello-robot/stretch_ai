@@ -62,6 +62,14 @@ class StretchHeadClient(AbstractControlModule):
         """Return 3x3 intrinsics matrics"""
         return self._ros_client.rgb_cam.K
 
+    def goto_joint_positions(
+        self,
+        pan: Optional[float] = None,
+        tilt: Optional[float] = None,
+        blocking: bool = True,
+    ):
+        return self.set_pan_tilt(pan=pan, tilt=tilt, blocking=blocking)
+
     def set_pan_tilt(
         self,
         pan: Optional[float] = None,

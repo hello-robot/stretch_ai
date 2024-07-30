@@ -13,6 +13,7 @@ import zmq
 from termcolor import colored
 
 import stretch.motion.constants as constants
+import stretch.motion.conversions as conversions
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
@@ -24,6 +25,7 @@ from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.network import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
+from stretch.visualization.rerun import RerunVsualizer
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
@@ -71,6 +73,7 @@ class HomeRobotZmqClient(RobotClient):
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
         start_immediately: bool = True,
+        enable_rerun_server: bool = True,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -151,6 +154,11 @@ class HomeRobotZmqClient(RobotClient):
         self._state_lock = Lock()
         self._servo_lock = Lock()
 
+        if enable_rerun_server:
+            self._rerun = RerunVsualizer()
+        else:
+            self._rerun = None
+
         if start_immediately:
             self.start()
 
@@ -227,14 +235,42 @@ class HomeRobotZmqClient(RobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
+    def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
+        """Move the robot to a particular joint configuration."""
+        with self._act_lock:
+            self._next_action["joint"] = joint_angles
+            self._next_action["manip_blocking"] = blocking
+        self.send_action(timeout=timeout)
+
+    def head_to(
+        self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
+    ):
+        """Move the head to a particular configuration."""
+        if head_pan > 0 or head_pan < -np.pi:
+            logger.warning("Head pan is restricted to be between -pi and 0 for safety.")
+        if head_tilt > 0 or head_tilt < -np.pi / 2:
+            logger.warning("Head tilt is restricted to be between -pi/2 and 0 for safety.")
+        head_pan = np.clip(head_pan, -np.pi, 0)
+        head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
+        with self._act_lock:
+            self._next_action["head_to"] = [float(head_pan), float(head_tilt)]
+        self.send_action(timeout=timeout)
+
+        if blocking:
+            whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
+            whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
+            whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
+            self._wait_for_head(whole_body_q)
+
     def arm_to(
         self,
-        joint_angles: np.ndarray,
+        joint_angles: Optional[np.ndarray] = None,
         gripper: float = None,
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
         min_time: float = 0.1,
+        **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
 
@@ -243,6 +279,7 @@ class HomeRobotZmqClient(RobotClient):
             blocking: Whether to block until the motion is complete
             timeout: How long to wait for the motion to complete
             verbose: Whether to print out debug information
+            **config: arm configuration options; maps joints to values.
 
         Returns:
             bool: Whether the motion was successful
@@ -251,19 +288,31 @@ class HomeRobotZmqClient(RobotClient):
             raise ValueError("Robot must be in manipulation mode to move the arm")
         if isinstance(joint_angles, list):
             joint_angles = np.array(joint_angles)
-        if len(joint_angles) > 6:
+        if joint_angles is None:
+            assert (
+                config is not None and len(config.keys()) > 0
+            ), "Must provide joint angles array or specific joint values as params"
+            joint_positions = self.get_joint_state()
+            joint_angles = self._robot_model.config_to_manip_command(joint_positions)
+        elif len(joint_angles) > 6:
             print(
                 "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
             )
-            # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
             joint_angles = self._robot_model.config_to_manip_command(joint_angles)
-        if len(joint_angles) < 6:
+
+        elif len(joint_angles) < 6:
             raise ValueError(
                 "joint_angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
             )
+        if config is not None and len(config.keys()) > 0:
+            # Convert joint names to indices and update joint angles
+            for joint, value in config.items():
+                joint_angles[conversions.get_manip_joint_idx(joint)] = value
+        # Make sure it's all the right size
         assert (
             len(joint_angles) == 6
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
+        # Now send
         with self._act_lock:
             self._next_action["joint"] = joint_angles
             if gripper:
@@ -853,6 +902,7 @@ class HomeRobotZmqClient(RobotClient):
             observation.ee_camera_K = message["ee_cam/depth_camera_K"]
             observation.camera_pose = message["head_cam/pose"]
             observation.ee_camera_pose = message["ee_cam/pose"]
+            observation.ee_pose = message["ee/pose"]
             observation.depth_scaling = message["head_cam/depth_scaling"]
             observation.ee_depth_scaling = message["ee_cam/image_scaling"]
             self._servo = observation
@@ -902,6 +952,11 @@ class HomeRobotZmqClient(RobotClient):
                 )
             t0 = timeit.default_timer()
 
+    def blocking_spin_rerun(self):
+        while True:
+            self._rerun.step(self._obs, self._servo)
+            time.sleep(0.3)
+
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         if self._started:
@@ -910,10 +965,14 @@ class HomeRobotZmqClient(RobotClient):
         self._thread = threading.Thread(target=self.blocking_spin)
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
+        if self._rerun:
+            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)
         self._finish = False
         self._thread.start()
         self._state_thread.start()
         self._servo_thread.start()
+        if self._rerun:
+            self._rerun_thread.start()
 
         t0 = timeit.default_timer()
         while self._obs is None or self._state is None or self._servo is None:
@@ -945,6 +1004,8 @@ class HomeRobotZmqClient(RobotClient):
             self._state_thread.join()
         if self._servo_thread is not None:
             self._servo_thread.join()
+        if self._rerun_thread is not None:
+            self._rerun_thread.join()
 
         # Close the sockets and context
         self.recv_socket.close()
