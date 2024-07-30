@@ -156,7 +156,7 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
 
         # Get a joint state for the object
-        joint_state = self.robot.get_joint_state()
+        joint_state = self.robot.get_joint_positions()
 
         # Lifted joint state
         lifted_joint_state = joint_state.copy()
@@ -190,7 +190,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Get servo observation
             servo = self.robot.get_servo_observation()
-            joint_state = self.robot.get_joint_state()
+            joint_state = self.robot.get_joint_positions()
             world_xyz = servo.get_ee_xyz_in_world_frame()
 
             if not self.open_loop:
@@ -374,7 +374,7 @@ class GraspObjectOperation(ManagedOperation):
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
-        joint_state = self.robot.get_joint_state()
+        joint_state = self.robot.get_joint_positions()
         model = self.robot.get_robot_model()
 
         if joint_state[HelloStretchIdx.GRIPPER] < 0.0:
@@ -420,7 +420,7 @@ class GraspObjectOperation(ManagedOperation):
         model = self.robot.get_robot_model()
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
-        joint_state = self.robot.get_joint_state()
+        joint_state = self.robot.get_joint_positions()
 
         # We assume the current end-effector orientation is the correct one, going into this
         ee_pos, ee_rot = model.manip_fk(joint_state)
