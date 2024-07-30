@@ -153,7 +153,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
                 image_from_camera=servo.ee_camera_K,
-                image_plane_distance=0.5,
+                image_plane_distance=0.35,
             ),
         )
 
@@ -209,6 +209,11 @@ class RerunVsualizer:
                     self.bbox_colors_memory[name] = np.random.randint(0, 255, 3)
                 best_view = instance.get_best_view()
                 bbox_bounds = best_view.bounds  # 3D Bounds
+                point_cloud_rgb = instance.point_cloud
+                pcd_rgb = instance.point_cloud_rgb
+                rr.log(f"world/{instance.id}_{name}", 
+                       rr.Points3D(positions=point_cloud_rgb, 
+                                   colors=np.int64(pcd_rgb)))
                 half_sizes = [(b[0] - b[1]) / 2 for b in bbox_bounds]
                 bounds.append(half_sizes)
                 pose = scene_graph.get_ins_center_pos(idx)
