@@ -285,7 +285,9 @@ class StretchClient(RobotClient):
     def arm_to(self, q: np.ndarray, blocking: bool = False):
         """Send arm commands"""
         assert len(q) == 6
-        self.manip.goto_joint_positions(joint_positions=q, blocking=blocking)
+        self.manip.goto_joint_positions(
+            joint_positions=q, blocking=blocking, head_pan=None, head_tilt=None
+        )
 
     def arm_and_gripper_to(self, q: np.ndarray, gripper: float = None, blocking: bool = False):
         """Send arm commands"""
