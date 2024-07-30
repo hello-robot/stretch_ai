@@ -3,6 +3,7 @@
 
 import os
 import sys
+import time
 
 import click
 import cv2
@@ -51,16 +52,22 @@ def main(
 
     # Wait and then...
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
+    time.sleep(1.0)
     agent.update()
     robot.head_to(head_pan=-np.pi / 2, head_tilt=0, blocking=True)
+    time.sleep(1.0)
     agent.update()
     robot.head_to(head_pan=-np.pi, head_tilt=0, blocking=True)
+    time.sleep(1.0)
     agent.update()
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
+    time.sleep(1.0)
     agent.update()
     robot.head_to(head_pan=0, head_tilt=-np.pi / 2, blocking=True)
+    time.sleep(1.0)
     agent.update()
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
+    time.sleep(1.0)
     agent.update()
 
     if show_open3d:
