@@ -1038,6 +1038,9 @@ class RobotAgent:
                 print("!!!!!!!!!!!!!!!!!!!!!!")
                 print("ROBOT IS STUCK! Move back!")
                 print(f"robot base pose: {self.robot.get_base_pose()}")
+                # Note that this is some random-walk code from habitat sim
+                # This is a terrible idea, do not execute on a real robot
+                # Not yet at least
                 raise RuntimeError("Robot is stuck!")
 
                 r = np.random.randint(3)
