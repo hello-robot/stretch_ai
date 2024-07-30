@@ -46,14 +46,15 @@ class WaveOperation(ManagedOperation):
                 break
             sleep(0.05)
 
-        wave_waypoints = np.zeros((n_waves * 2, 6))
+        # generate poses
+        wave_poses = np.zeros((n_waves * 2, 6))
         for i in range(n_waves):
             j = i * 2
-            wave_waypoints[j] = [0.0, lift_height, 0.05, -yaw_amplitude, pitch, -roll_amplitude]
-            wave_waypoints[j + 1] = [0.0, lift_height, 0.05, yaw_amplitude, pitch, roll_amplitude]
+            wave_poses[j] = [0.0, lift_height, 0.05, -yaw_amplitude, pitch, -roll_amplitude]
+            wave_poses[j + 1] = [0.0, lift_height, 0.05, yaw_amplitude, pitch, roll_amplitude]
 
-        for waypoint in wave_waypoints:
-            self.robot.arm_to(waypoint, blocking=False)
+        for pose in wave_poses:
+            self.robot.arm_to(pose, blocking=False)
             sleep(0.375)
 
         self.robot.arm_to(first_pose, blocking=False)
@@ -73,10 +74,139 @@ class NodHeadOperation(ManagedOperation):
     def run(self, n_nods: int = 3, pitch_amplitude: float = 0.1, pitch_zero=0.0):
         self.robot.switch_to_manipulation_mode()
 
-        # TODO
+        first_head_pose = [-np.pi / 2.0, 0.0]
+
+        # TODO: move head to pose
+
+        #  generate poses
+        poses = np.zeros((n_nods * 2, 2))
+        for i in range(n_nods):
+            j = i * 2
+            poses[j] = [pitch_zero - pitch_amplitude, 0.0]
+            poses[j + 1] = [pitch_zero + pitch_amplitude, 0.0]
+
+        for pose in poses:
+            pass
+            # TODO: move head to pose
 
     def was_successful(self) -> bool:
         return True
+
+
+class ShakeHeadOperation(ManagedOperation):
+    """
+    Shakes the robot's head.
+    """
+
+    def can_start(self) -> bool:
+        return True
+
+    def run(self, n_shakes: int = 3, yaw_amplitude: float = 0.1, yaw_zero=0.0):
+        self.robot.switch_to_manipulation_mode()
+
+        first_head_pose = [-np.pi / 2.0, 0.0]
+
+        # TODO: move head to pose
+
+        # generate poses
+        poses = np.zeros((n_shakes * 2, 2))
+        for i in range(n_shakes):
+            j = i * 2
+            poses[j] = [0.0, yaw_zero - yaw_amplitude]
+            poses[j + 1] = [0.0, yaw_zero + yaw_amplitude]
+
+        for pose in poses:
+            pass
+            # TODO: move head to pose
+
+    def was_successful(self) -> bool:
+        return True
+
+
+class ShrugOperation(ManagedOperation):
+    """
+    "Shrug" the robot's lift.
+    """
+
+    def can_start(self) -> bool:
+        return True
+
+    def run(self, lift_delta: float = 0.1):
+        self.robot.switch_to_manipulation_mode()
+
+        # get current lift state
+        joint_state = self.robot.get_observation().joint
+        lift = joint_state[3]
+
+        # generate poses
+        first_pose = [0.0, lift, 0.05, 0.0, 0.0, 0.0]
+        shrug_pose = [0.0, lift + lift_delta, 0.05, 0.0, 0.0, 0.0]
+
+        for pose in [first_pose, shrug_pose, first_pose]:
+            self.robot.arm_to(pose, blocking=True)
+
+    def was_successful(self) -> bool:
+        return True
+
+
+class AvertGazeOperation(ManagedOperation):
+    """
+    Bashfully avert gaze.
+    """
+
+    def can_start(self) -> bool:
+        return False
+
+    def run(self):
+        raise NotImplementedError
+
+    def was_successful(self) -> bool:
+        return False
+
+
+class LookAtOperation(ManagedOperation):
+    """
+    Look at something.
+    """
+
+    def can_start(self) -> bool:
+        return False
+
+    def run(self):
+        raise NotImplementedError
+
+    def was_successful(self) -> bool:
+        return False
+
+
+class ApproachOperation(ManagedOperation):
+    """
+    Move closer to something.
+    """
+
+    def can_start(self) -> bool:
+        return False
+
+    def run(self):
+        raise NotImplementedError
+
+    def was_successful(self) -> bool:
+        return False
+
+
+class WithdrawOperation(ManagedOperation):
+    """
+    Move away from something.
+    """
+
+    def can_start(self) -> bool:
+        return False
+
+    def run(self):
+        raise NotImplementedError
+
+    def was_successful(self) -> bool:
+        return False
 
 
 class TestOperation(ManagedOperation):
