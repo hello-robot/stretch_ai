@@ -68,9 +68,9 @@ class OvmmPerception:
                 **module_kwargs,
             )
         elif self._detection_module == "yolo_world":
-            from home_robot.perception.detection.yolo_world import YOLOWorldPerception
+            from stretch.perception.detection.yolo_world import YoloWorldPerception
 
-            self._segmentation = YOLOWorldPerception(
+            self._segmentation = YoloWorldPerception(
                 custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
