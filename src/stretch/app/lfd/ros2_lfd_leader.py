@@ -9,7 +9,7 @@ import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.app.act.policy_utils import load_policy, prepare_image, prepare_state
+from stretch.app.lfd.policy_utils import load_policy, prepare_image, prepare_state
 from stretch.core import get_parameters
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder

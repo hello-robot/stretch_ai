@@ -7,7 +7,7 @@ import torch
 from lerobot.common.datasets.push_dataset_to_hub.dobbe_format import clip_and_normalize_depth
 
 import stretch.utils.compression as compression
-from stretch.app.act.policy_utils import load_policy, prepare_action_dict, prepare_observations
+from stretch.app.lfd.policy_utils import load_policy, prepare_action_dict, prepare_observations
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
