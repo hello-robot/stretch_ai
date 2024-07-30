@@ -53,7 +53,7 @@ def occupancy_map_to_3d_points(
     for i in range(rows):
         for j in range(cols):
             if occupancy_map[i][j]:
-                x = (i - center_col) * grid_resolution
+                x = (i - center_row) * grid_resolution
                 y = (j - center_col) * grid_resolution
                 z = 0  # Assuming the map is 2D, so z is always 0
                 x = x + offset[0]
