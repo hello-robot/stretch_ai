@@ -5,11 +5,7 @@ import numpy as np
 import torch
 from lerobot.common.datasets.push_dataset_to_hub import dobbe_format
 
-import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
-import stretch.app.dex_teleop.goal_from_teleop as gt
-import stretch.app.dex_teleop.webcam_teleop_interface as wt
-import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -262,10 +258,6 @@ class ROS2LfdLeader:
         finally:
             print("Exiting...")
             pass
-
-    # def __del__(self):
-    #     if self._recording or self._need_to_write:
-    #         self._recorder.write()
 
 
 if __name__ == "__main__":
