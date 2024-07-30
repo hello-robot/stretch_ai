@@ -20,7 +20,7 @@ class ControlMode(Enum):
     MANIPULATION = 3
 
 
-class RobotClient(ABC):
+class AbstractRobotClient(ABC):
     """Connection to a robot."""
 
     def __init__(self):
@@ -104,10 +104,10 @@ class RobotClient(ABC):
         raise NotImplementedError()
 
 
-class GraspClient(ABC):
+class AbstractGraspClient(ABC):
     """Connection to grasping."""
 
-    def set_robot_client(self, robot_client: RobotClient):
+    def set_robot_client(self, robot_client: AbstractRobotClient):
         """Update the robot client this grasping client uses"""
         self.robot_client = robot_client
 
