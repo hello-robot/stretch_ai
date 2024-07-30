@@ -202,6 +202,12 @@ class HomeRobotZmqClient(RobotClient):
         self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
     ):
         """Move the head to a particular configuration."""
+        if head_pan > 0 or head_pan < -np.pi:
+            logger.warning("Head pan is restricted to be between -pi and 0 for safety.")
+        if head_tilt > 0 or head_tilt < -np.pi / 2:
+            logger.warning("Head tilt is restricted to be between -pi/2 and 0 for safety.")
+        head_pan = np.clip(head_pan, -np.pi, 0)
+        head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         with self._act_lock:
             self._next_action["head_to"] = [float(head_pan), float(head_tilt)]
         self.send_action(timeout=timeout)
