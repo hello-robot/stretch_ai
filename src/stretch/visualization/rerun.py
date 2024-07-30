@@ -7,9 +7,9 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-from stretch.motion import HelloStretchIdx
-from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.mapping.scene_graph import SceneGraph
+from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
+from stretch.motion import HelloStretchIdx
 from stretch.perception.wrapper import OvmmPerception
 
 
