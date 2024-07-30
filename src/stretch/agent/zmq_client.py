@@ -196,13 +196,13 @@ class HomeRobotZmqClient(RobotClient):
     ):
         """Move the head to a particular configuration."""
         with self._act_lock:
-            self._next_action["head_to"] = [head_pan, head_tilt]
+            self._next_action["head_to"] = [float(head_pan), float(head_tilt)]
         self.send_action(timeout=timeout)
 
         if blocking:
-            whole_body_q = np.zeros(self._robot_model.dof)
-            whole_body_q[HelloStretchIdx.HEAD_PAN] = head_pan
-            whole_body_q[HelloStretchIdx.HEAD_TILT] = head_tilt
+            whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
+            whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
+            whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
             self._wait_for_head(whole_body_q)
 
     def arm_to(
