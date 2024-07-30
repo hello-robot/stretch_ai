@@ -34,12 +34,7 @@ from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path, load_config
 
 
-def get_clip_embeddings(vocabulary, prompt="a "):
-    text_encoder = build_text_encoder(pretrain=True)
-    text_encoder.eval()
-    texts = [prompt + x for x in vocabulary]
-    emb = text_encoder(texts).detach().permute(1, 0).contiguous().cpu()
-    return emb
+sys.path.insert(0, str(Path(__file__).resolve().parent / "yolo_world/YoloWorld"))
 
 
 class YoloWorldPerception(PerceptionModule):
@@ -68,16 +63,15 @@ class YoloWorldPerception(PerceptionModule):
         if config_file is None:
             config_file = str(
                 Path(__file__).resolve().parent
-                / "YoloWorld/configs/pretrain"
-                "yolo_world_v2_m_vlpan_bn_2e-3_100e_4x8gpus_obj365v1"
-                "_goldg_train_1280ft_lvis_minival.py"
+                / "YoloWorld/configs/segmentation/"
+                "yolo_world_seg_m_dual_vlpan_2e-4_80e_8gpus_allmodules_finetune_lvis.py"
             )
         else:
             config_file = get_full_config_path(config_file)
 
         if checkpoint_file is None:
             checkpoint_file = get_full_config_path(
-                    "perception/yolo_world_v2_l_obj365v1_goldg_pretrain_1280ft-9babe3f6.pth")
+                    "perception/yolo_world_seg_m_dual_vlpan_2e-4_80e_8gpus_allmodules_finetune_lvis-ca465825.pth")
         else:
             checkpoint_file = get_full_config_path(checkpoint_file)
 
@@ -85,7 +79,8 @@ class YoloWorldPerception(PerceptionModule):
         if not Path(checkpoint_file).exists():
             # Download the checkpoint file
             os.system(f"wget -O {checkpoint_file} https://huggingface.co/wondervictor/YOLO-World/"
-                      "resolve/main/yolo_world_v2_l_obj365v1_goldg_pretrain_1280ft-9babe3f6.pth")
+                                                    "resolve/main/yolo_world_seg_m_dual_vlpan_2e-4"
+                                                    "_80e_8gpus_allmodules_finetune_lvis-ca465825.pth")
 
         if self.verbose:
             print(f"Loading Yolo World with config={config_file} and checkpoint={checkpoint_file}")
@@ -97,6 +92,7 @@ class YoloWorldPerception(PerceptionModule):
         self.label_annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
         self.mask_annotator = sv.MaskAnnotator()
 
+        print(f"Loadingconfig from {config_file}")
         self.config = Config.fromfile(config_file)
         self.config.work_dir = "."
         self.config.load_from = checkpoint_file
@@ -141,7 +137,7 @@ class YoloWorldPerception(PerceptionModule):
         if vocab_type == "custom":
             self.metadata = MetadataCatalog.get("__unused")
             self.metadata.thing_classes = new_vocab
-            classifier = get_clip_embeddings(self.metadata.thing_classes)
+            # classifier = get_clip_embeddings(self.metadata.thing_classes)
             self.categories_mapping = {i: i for i in range(len(self.metadata.thing_classes))}
         else:
             raise NotImplementedError(
@@ -150,7 +146,6 @@ class YoloWorldPerception(PerceptionModule):
         self.num_sem_categories = len(self.categories_mapping)
 
         num_classes = len(self.metadata.thing_classes)
-        reset_cls_test(self.predictor.model, classifier, num_classes)
         self.tempfile = NamedTemporaryFile(suffix=".png")
 
     def predict(
