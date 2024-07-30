@@ -24,6 +24,7 @@ from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.network import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
+from stretch.visualization.rerun import RerunVsualizer
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
@@ -71,6 +72,7 @@ class HomeRobotZmqClient(RobotClient):
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
         start_immediately: bool = True,
+        enable_rerun_server: bool = True,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -144,6 +146,11 @@ class HomeRobotZmqClient(RobotClient):
         self._act_lock = Lock()
         self._state_lock = Lock()
         self._servo_lock = Lock()
+
+        if enable_rerun_server:
+            self._rerun = RerunVsualizer()
+        else:
+            self._rerun = None
 
         if start_immediately:
             self.start()
@@ -803,6 +810,7 @@ class HomeRobotZmqClient(RobotClient):
             observation.ee_camera_K = message["ee_cam/depth_camera_K"]
             observation.camera_pose = message["head_cam/pose"]
             observation.ee_camera_pose = message["ee_cam/pose"]
+            observation.ee_pose = message["ee/pose"]
             observation.depth_scaling = message["head_cam/depth_scaling"]
             observation.ee_depth_scaling = message["ee_cam/image_scaling"]
             self._servo = observation
@@ -852,6 +860,11 @@ class HomeRobotZmqClient(RobotClient):
                 )
             t0 = timeit.default_timer()
 
+    def blocking_spin_rerun(self):
+        while True:
+            self._rerun.step(self._obs, self._servo)
+            time.sleep(0.3)
+
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         if self._started:
@@ -860,10 +873,14 @@ class HomeRobotZmqClient(RobotClient):
         self._thread = threading.Thread(target=self.blocking_spin)
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
+        if self._rerun:
+            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)
         self._finish = False
         self._thread.start()
         self._state_thread.start()
         self._servo_thread.start()
+        if self._rerun:
+            self._rerun_thread.start()
 
         t0 = timeit.default_timer()
         while self._obs is None or self._state is None or self._servo is None:
@@ -895,6 +912,8 @@ class HomeRobotZmqClient(RobotClient):
             self._state_thread.join()
         if self._servo_thread is not None:
             self._servo_thread.join()
+        if self._rerun_thread is not None:
+            self._rerun_thread.join()
 
         # Close the sockets and context
         self.recv_socket.close()

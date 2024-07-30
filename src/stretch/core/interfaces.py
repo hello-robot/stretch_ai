@@ -231,6 +231,9 @@ class Observations:
     # Pose of the end effector camera in world coordinates
     ee_camera_pose: Optional[np.ndarray] = None
 
+    # Pose of the end effector grasp center in world coordinates
+    ee_pose: Optional[np.ndarray] = None
+
     # Instance IDs per observation frame
     # Size: (camera_height, camera_width)
     # Range: 0 to max int
