@@ -386,6 +386,15 @@ class RobotAgent:
         else:
             return self.ask("please type any task you want the robot to do: ")
 
+    def show_map(self):
+        """Helper function to visualize the 3d map as it stands right now"""
+        self.voxel_map.show(
+            orig=np.zeros(3),
+            xyt=self.robot.get_base_pose(),
+            footprint=self.robot.get_robot_model().get_footprint(),
+            instances=True,
+        )
+
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None

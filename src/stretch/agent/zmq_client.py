@@ -156,6 +156,10 @@ class HomeRobotZmqClient(RobotClient):
         if start_immediately:
             self.start()
 
+    @property
+    def parameters(self) -> Parameters:
+        return self._parameters
+
     def get_joint_state(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current joint positions"""
         t0 = timeit.default_timer()
