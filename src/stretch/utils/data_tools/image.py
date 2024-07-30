@@ -20,11 +20,11 @@ def img_from_bytes(data: bytes, height=None, width=None, format="png") -> np.nda
     # Issue: not quite as good at handling depth
     # image = Image.open(data, mode='r', formats=['webp'])
     if height and width:
-        image = image.resize([width, height])
+        image = image.resize((width, height))
     return np.asarray(image)
 
 
-def pil_to_bytes(img: Image, format="png") -> bytes:
+def pil_to_bytes(img: Image.Image, format="png") -> bytes:
     """Convert image to bytes using PIL"""
     data = io.BytesIO()
     img.save(data, format=format)
@@ -32,9 +32,9 @@ def pil_to_bytes(img: Image, format="png") -> bytes:
 
 
 def img_to_bytes(img: np.ndarray, format="png") -> bytes:
-    # return bytes(Image.fromarray(data)).tobytes()
-    img = Image.fromarray(img)
-    return pil_to_bytes(img, format)
+    """Convert image to bytes"""
+    pil_img = Image.fromarray(img)
+    return pil_to_bytes(pil_img, format)
 
 
 def torch_to_bytes(img: np.ndarray) -> bytes:

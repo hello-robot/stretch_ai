@@ -37,7 +37,9 @@ class GripperArucoDetector:
         """
         return detect_aruco_markers(image, self.aruco_detector)
 
-    def detect_and_draw_aruco_markers(self, image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def detect_and_draw_aruco_markers(
+        self, image: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Detect AR markers in an image and draw them.
 
         Args:
