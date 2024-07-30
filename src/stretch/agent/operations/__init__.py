@@ -1,3 +1,4 @@
+from .emote import EmoteOperation
 from .grasp_object import GraspObjectOperation
 from .navigate import NavigateToObjectOperation
 from .place_object import PlaceObjectOperation
