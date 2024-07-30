@@ -234,6 +234,7 @@ class HomeRobotZmqClient(RobotClient):
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
+        min_time: float = 0.1,
     ) -> bool:
         """Move the arm to a particular joint configuration.
 
@@ -287,7 +288,7 @@ class HomeRobotZmqClient(RobotClient):
                     if verbose:
                         print("Resending action", joint_angles)
 
-                joint_state = self.get_joint_positions()
+                joint_state, joint_velocities, _ = self.get_joint_state()
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
@@ -307,6 +308,8 @@ class HomeRobotZmqClient(RobotClient):
                 print(
                     f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
                 )
+
+                t1 = timeit.default_timer()
                 if (
                     (arm_diff < self._arm_joint_tolerance)
                     and (lift_diff < self._lift_joint_tolerance)
@@ -316,6 +319,9 @@ class HomeRobotZmqClient(RobotClient):
                     and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     return True
+                elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
+                    # Arm stopped moving but did not reach goal
+                    return False
                 else:
                     if verbose:
                         print(
@@ -323,7 +329,6 @@ class HomeRobotZmqClient(RobotClient):
                         )
                 time.sleep(0.01)
 
-                t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for arm to move")
                     break
