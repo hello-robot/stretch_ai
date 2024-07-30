@@ -19,7 +19,7 @@ from stretch.motion import HelloStretchIdx
 )
 @click.option("-j", "--joint", default="", help="Joint to print")
 def main(
-    robot_ip: str = "192.168.1.15",
+    robot_ip: str = "",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     joint: str = "",

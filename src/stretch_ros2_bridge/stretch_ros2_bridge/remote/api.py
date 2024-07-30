@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import trimesh.transformations as tra
 
+import stretch.motion.conversions as conversions
 from stretch.core.interfaces import Observations
 from stretch.core.robot import ControlMode, RobotClient
 from stretch.motion import RobotModel
@@ -294,6 +295,10 @@ class StretchClient(RobotClient):
         """Send arm commands"""
         assert len(q) == 6
         self.manip.goto_joint_positions(joint_positions=q, blocking=blocking)
+
+    def head_to(self, pan: float, tilt: float, blocking: bool = False):
+        """Send head commands"""
+        self.head.goto_joint_positions(pan=float(pan), tilt=float(tilt), blocking=blocking)
 
     def arm_and_gripper_to(self, q: np.ndarray, gripper: float = None, blocking: bool = False):
         """Send arm commands"""
