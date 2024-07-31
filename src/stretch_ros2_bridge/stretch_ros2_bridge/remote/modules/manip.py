@@ -76,7 +76,7 @@ class StretchManipulationClient(AbstractControlModule):
     def get_ee_pose(self, world_frame=False, matrix=False):
         q, _, _ = self._ros_client.get_joint_state()
         pos_base, quat_base = self._robot_model.manip_fk(q)
-        pos_base[0] += self.base_x
+        pos_base[0] += self.get_base_x()
 
         if world_frame:
             pose_base2ee = posquat2sophus(pos_base, quat_base)
@@ -183,8 +183,11 @@ class StretchManipulationClient(AbstractControlModule):
             self._ros_client.WRIST_ROLL: joint_pos_goal[5],
         }
         if move_base:
-            joint_goals[self._ros_client.BASE_TRANSLATION_JOINT] = joint_pos_goal[0] - self.base_x
-        self.base_x = joint_pos_goal[0]
+            joint_goals[self._ros_client.BASE_TRANSLATION_JOINT] = (
+                joint_pos_goal[0] - self.get_base_x()
+            )
+        # TODO: hopefully this updates correctly
+        # self.base_x = joint_pos_goal[0]
 
         # head stuff
         if head_pan is not None:
