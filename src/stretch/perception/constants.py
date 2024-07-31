@@ -1848,7 +1848,6 @@ class HM3DtoLongTailIndoor(SemanticCategoryMapping):
         return len(long_tail_indoor_categories)
 
 
-
 # ----------------------------------------------------
 # Yolo World Vocabulary
 # ----------------------------------------------------

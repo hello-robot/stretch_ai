@@ -14,6 +14,9 @@ from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple
 
 import cv2
+import numpy as np
+import supervision as sv
+import torch
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine.defaults import DefaultPredictor
@@ -23,14 +26,11 @@ from mmengine.dataset import Compose
 from mmengine.runner import Runner
 from mmengine.runner.amp import autocast
 from mmyolo.registry import RUNNERS
-import numpy as np
-import supervision as sv
-import torch
+from stretcg.perception.constants import yolo_world_vocabulary
 from torchvision.ops import nms
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
-from stretcg.perception.constants import yolo_world_vocabulary
 from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path, load_config
 
@@ -62,8 +62,7 @@ class YoloWorldPerception(PerceptionModule):
         self.verbose = verbose
         if config_file is None:
             config_file = str(
-                Path(__file__).resolve().parent
-                / "YoloWorld/configs/segmentation/"
+                Path(__file__).resolve().parent / "YoloWorld/configs/segmentation/"
                 "yolo_world_seg_m_dual_vlpan_2e-4_80e_8gpus_allmodules_finetune_lvis.py"
             )
         else:
@@ -71,16 +70,19 @@ class YoloWorldPerception(PerceptionModule):
 
         if checkpoint_file is None:
             checkpoint_file = get_full_config_path(
-                    "perception/yolo_world_seg_m_dual_vlpan_2e-4_80e_8gpus_allmodules_finetune_lvis-ca465825.pth")
+                "perception/yolo_world_seg_m_dual_vlpan_2e-4_80e_8gpus_allmodules_finetune_lvis-ca465825.pth"
+            )
         else:
             checkpoint_file = get_full_config_path(checkpoint_file)
 
         # Check if the checkpoint file exists
         if not Path(checkpoint_file).exists():
             # Download the checkpoint file
-            os.system(f"wget -O {checkpoint_file} https://huggingface.co/wondervictor/YOLO-World/"
-                                                    "resolve/main/yolo_world_seg_m_dual_vlpan_2e-4"
-                                                    "_80e_8gpus_allmodules_finetune_lvis-ca465825.pth")
+            os.system(
+                f"wget -O {checkpoint_file} https://huggingface.co/wondervictor/YOLO-World/"
+                "resolve/main/yolo_world_seg_m_dual_vlpan_2e-4"
+                "_80e_8gpus_allmodules_finetune_lvis-ca465825.pth"
+            )
 
         if self.verbose:
             print(f"Loading Yolo World with config={config_file} and checkpoint={checkpoint_file}")
@@ -100,7 +102,7 @@ class YoloWorldPerception(PerceptionModule):
         self.runner = Runner.from_cfg(self.config)
         self.runner.call_hook("before_run")
         self.runner.load_or_resume()
-        self.config.test_dataloader.dataset.pipeline[0].type = 'mmdet.LoadImageFromNDArray'
+        self.config.test_dataloader.dataset.pipeline[0].type = "mmdet.LoadImageFromNDArray"
         pipeline = self.config.test_dataloader.dataset.pipeline
         self.runner.pipeline = Compose(pipeline)
 
@@ -166,15 +168,16 @@ class YoloWorldPerception(PerceptionModule):
             rgb = rgb.numpy()
         else:
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
-        
+
         # Save the image to a temporary file
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        data_info = self.runner.pipeline(dict(img_id=0,
-                                              img=image,
-                                              texts=[[t.strip()] for t in self.class_names + [" "]]))
-        data_batch = dict(inputs=data_info["inputs"].unsqueeze(0),
-                          data_samples=[data_info["data_samples"]])
-        
+        data_info = self.runner.pipeline(
+            dict(img_id=0, img=image, texts=[[t.strip()] for t in self.class_names + [" "]])
+        )
+        data_batch = dict(
+            inputs=data_info["inputs"].unsqueeze(0), data_samples=[data_info["data_samples"]]
+        )
+
         with autocast(enabled=False), torch.no_grad():
             output = self.runner.model.test_step(data_batch)[0]
             pred_instances = output.pred_instances
@@ -199,14 +202,13 @@ class YoloWorldPerception(PerceptionModule):
         detections = sv.Detections(
             xyxy=pred_instances["bboxes"],
             class_id=pred_instances["labels"],
-            confidence=pred_instances["scores"]
+            confidence=pred_instances["scores"],
         )
 
         # label ids with confidence scores
         labels = [
             f"{class_id} {confidence:0.2f}"
-            for class_id, confidence
-            in zip(detections.class_id, detections.confidence)
+            for class_id, confidence in zip(detections.class_id, detections.confidence)
         ]
 
         task_observations = dict()
@@ -223,6 +225,7 @@ class YoloWorldPerception(PerceptionModule):
         task_observations["bounding_boxes"] = detections.xyxy
 
         return None, None, task_observations
+
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
