@@ -9,6 +9,7 @@ export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 CPU_ONLY="false"
 NO_REMOVE="false"
+NO_SUBMODULES="false"
 INSTALL_PYTORCH3D="false"
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
@@ -35,6 +36,10 @@ do
             ;;
         --no-remove)
             NO_REMOVE="true"
+            shift
+            ;;
+        --no-submodules)
+            NO_SUBMODULES="true"
             shift
             ;;
         *)
@@ -167,7 +172,8 @@ else
 fi
 
 # If not cpu only, then we can use perception
-if [ "$CPU_ONLY" == "true" ]; then
+# OR if no submodules, then we can't install perception
+if [ "$CPU_ONLY" == "true" ] || [ "$NO_SUBMODULES" == "true" ]; then
     echo "Skipping perception installation for CPU only"
 else
     echo "Install detectron2 for perception (required by Detic)"
