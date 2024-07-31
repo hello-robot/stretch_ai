@@ -8,12 +8,13 @@
 
   - Advanced installation is only needed if you also want to train/evaluate policies with GPU, pure data collection should be fine with [normal installation](data_collection.md#on-robot)
 
-- [Prepare URDFs and camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
+- [Camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
-- Install our fork of lerobot in a new conda environment:
+- Install our fork of lerobot in the same conda environment as stretch_ai:
 
   ```bash
-  conda create -y -n lerobot python=3.10 && conda activate lerobot
+  conda activate stretch_ai
+
   git clone git@github.com:hello-yiche/lerobot.git
   cd lerobot
   git switch stretch-act
@@ -31,21 +32,47 @@
     pip3 install -e .
   ```
 
+- Generate specialized URDFs and move URDFs to PC
+
+  ```bash
+    cd stretch_ai
+    python3 src/stretch/app/dex_teleop/prepare_specialized_urdfs.py
+  ```
+
+  URDFs should now have been generated into stretch_ai folder on the robot. Using your preferred method, move the following URDF files to the stretch_ai folder on your PC
+
+  - stretch_base_rotation_ik_with_fixed_wrist.urdf
+  - stretch_base_rotation_ik.urdf
+  - stretch_base_translation_ik_with_fixed_wrist.urdf
+  - stretch_base_translation_ik.urdf
+
+- Link stretch_ros2_bridge and build ament_ws
+
+  ```bash
+    cd stretch_ai
+    ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
+
+    cd ~/ament_ws
+    colcon build
+  ```
+
 - [Prepare URDFs for dex teleop](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs)
 
 ## Quickstart: Record Some Data
 
 On the robot run:
 
-```
-python -m stretch.app.dex_teleop.follower
+```bash
+ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
 On the PC run:
 
 ```bash
-python -m stretch.app.dex_teleop.leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --env-name default
+python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
 ```
+
+A GUI displaying RGB and depth feeds from both cameras will now pop up. All commands are sent by pressing the keyboard with this GUI selected as the active window.
 
 You can now record demonstrations by pressing `spacebar` to start and stop recording. See [Recording demonstrations with Dex Teleop](data_collection.md#recording-demonstrations-with-dex-teleop) for more details. After a trial is over, press y/n to record if it was successful.
 
@@ -54,8 +81,7 @@ You can now record demonstrations by pressing `spacebar` to start and stop recor
 1. Launch dex teleop follower on robot
 
    ```bash
-   # Launch this command from the directory where URDFs are stored
-   python3 -m stretch.app.act.act_follower
+   ros2 launch stretch_ros2_bridge server.launch.py
    ```
 
 1. Launch dex teleop leader on PC
@@ -66,19 +92,19 @@ You can now record demonstrations by pressing `spacebar` to start and stop recor
    # Launch this command from the directory where URDFs are stored
    # The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
 
-   python3 -m stretch.app.dex_teleop.leader -i <ip-of-robot> --env-name <name-of-task> --teleop-mode <teleop-mode> -s
+   python3 -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --task-name <name-of-task> --teleop-mode <teleop-mode> --record-success --save-images
    ```
 
-For example
+   For example
 
-```bash
-python3 -m stretch.app.dex_teleop.leader -i $ROBOT_IP --env-name default_task --teleop-mode base_x -s
-```
+   ```bash
+   python3 -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --task-name default_task --teleop-mode base_x --record-success --save-images
+   ```
 
 1. Record episodes
 
    - Press `spacebar` to start recording a demonstration, press `spacebar` again to end demonstration
-   - Demonstrations will be stored in stretch_ai/data/default_task/default_user/`name-of-task`
+   - Demonstrations will be stored in stretch_ai/data/`name-of-task`/default_user/default_env
 
 ## Format data and push to huggingface repo
 
@@ -92,20 +118,28 @@ python3 -m stretch.app.dex_teleop.leader -i $ROBOT_IP --env-name default_task --
    # --video: If true, dataset will only contain videos and no images
    # --fps: FPS of demonstrations
 
-   python .\lerobot\scripts\push_dataset_to_hub.py \
+   python ./lerobot/scripts/push_dataset_to_hub.py \
    --raw-dir /path/to/raw/dir \
    --raw-format dobbe \
    --local-dir ../data/default_task/default_user/hellorobotinc/<your-dataset-name> \
    --video 0 \
-   --fps 15 \
+   --fps 6 \
    --repo-id hellorobotinc/<your-dataset-name>
    ```
 
 1. Visualizing dataset with Rerun.io
 
    ```bash
+   # Sample command
+   python3 ./lerobot/scripts/visualize_dataset.py --repo-id hellorobotinc/my-dataset --episode-index 0 --root ../data/default_task/default_user
+   ```
+
+   ```bash
    # Specify root if you wish to use local copy of the dataset, else dataset will be pulled from web
-   python .\lerobot\scripts\visualize_dataset.py \
+   # --repo-id: Huggingface dataset repo
+   # --episode-index: Which episode to visualize
+   # --root: Where the local copy of the huggingface dataset is stored (e.g. local-dir in the previous step)
+   python ./lerobot/scripts/visualize_dataset.py \
    --repo-id hellorobotinc/<your-dataset-name> \
    --episode-index <episode-idx> \
    --root ../data/default_task/default_user
@@ -147,23 +181,24 @@ training.num_workers=16
 ### On Robot:
 
 ```bash
-python3 -m stretch.app.act.act_follower
+ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
 ### On PC:
 
-Specify the policy of the weights provided:
+Specify the policy name of the weights provided:
 
-- Available policies: `diffusion`,`act`
+- Available policies: `diffusion`,`diffusion_depth`,`act`,`vqbet`
 
 Specify the teleop mode according to the teleop mode used to train the policy
 
-- Available teleop modes: `standard`,`rotary_base`,`stationary_base`,`base_x`,`old_stationary_base`
+- Available teleop modes: `base_x`,`stationary_base`,`old_stationary_base`
 
 ```bash
-python3 -m stretch.app.act.act_leader \
+python3 -m stretch.app.act.lfd_leader \
 -i <robot-ip> \
 --policy_name <name-of-policy> \
 --policy_path <path-to-weights-folder> \
---teleop-mode <teleop-mode>
+--teleop-mode <teleop-mode> \
+--record-success
 ```

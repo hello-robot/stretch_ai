@@ -1,25 +1,21 @@
-import math
-import os
 import pprint as pp
-from pathlib import Path
 from typing import Optional
 
 import cv2
 import numpy as np
 import torch
 from lerobot.common.datasets.push_dataset_to_hub.dobbe_format import clip_and_normalize_depth
-from torchvision.transforms import v2
 
 import stretch.utils.compression as compression
-from stretch.app.act.policy_utils import load_policy, prepare_action_dict, prepare_observations
+from stretch.app.lfd.policy_utils import load_policy, prepare_action_dict, prepare_observations
 from stretch.core import Evaluator
 from stretch.core.client import RobotClient
 from stretch.utils.data_tools.record import FileDataRecorder
 from stretch.utils.image import Camera
 
 
-class ACTLeader(Evaluator):
-    """A class for running an ACT model as leader with stretch."""
+class StretchBodyLfdLeader(Evaluator):
+    """Stretch body version of leader for evaluating trained LfD policies with stretch. To be used in conjunction with stretch.app.dex_teleop.follower"""
 
     def __init__(
         self,
@@ -290,7 +286,7 @@ if __name__ == "__main__":
     )
 
     # Create dex teleop leader - this will detect markers and send off goal dicts to the robot.
-    evaluator = ACTLeader(
+    evaluator = StretchBodyLfdLeader(
         robot_ip=args.robot_ip,
         data_dir=args.data_dir,
         user_name=args.user_name,
