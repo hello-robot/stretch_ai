@@ -64,14 +64,14 @@ def main(
     grasp_client = None
 
     # Agents wrap the robot high level planning interface for now
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
-    demo.start(visualize_map_at_start=show_intermediate_maps)
+    agent = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
-        demo.move_closed_loop([0, 0, 0], max_time=60.0)
+        agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     # After the robot has started...
     try:
-        manager = PickupManager(demo, target_object=target_object)
+        manager = PickupManager(agent, target_object=target_object)
         task = manager.get_task(add_rotate=force_rotate, mode=mode)
     except Exception as e:
         print(f"Error creating task: {e}")
@@ -82,7 +82,7 @@ def main(
 
     if reset:
         # Send the robot home at the end!
-        demo.go_home()
+        agent.go_home()
 
     # At the end, disable everything
     robot.stop()

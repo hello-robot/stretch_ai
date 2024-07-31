@@ -386,6 +386,15 @@ class RobotAgent:
         else:
             return self.ask("please type any task you want the robot to do: ")
 
+    def show_map(self):
+        """Helper function to visualize the 3d map as it stands right now"""
+        self.voxel_map.show(
+            orig=np.zeros(3),
+            xyt=self.robot.get_base_pose(),
+            footprint=self.robot.get_robot_model().get_footprint(),
+            instances=True,
+        )
+
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
@@ -1015,23 +1024,24 @@ class RobotAgent:
                         pos_err_threshold=self.pos_err_threshold,
                         rot_err_threshold=self.rot_err_threshold,
                     )
-                if not res.success:
-                    if self._retry_on_fail:
-                        print("Failed. Try again!")
-                        continue
-                    else:
-                        print("Failed. Quitting!")
-                        break
+            else:
+                # if it fails, try again or just quit
+                if self._retry_on_fail:
+                    print("Failed. Try again!")
+                    continue
+                else:
+                    print("Failed. Quitting!")
+                    break
 
             # Error handling
             if self.robot.last_motion_failed():
                 print("!!!!!!!!!!!!!!!!!!!!!!")
                 print("ROBOT IS STUCK! Move back!")
-
-                # help with debug TODO: remove
-                # self.update()
-                # self.save_svm(".")
                 print(f"robot base pose: {self.robot.get_base_pose()}")
+                # Note that this is some random-walk code from habitat sim
+                # This is a terrible idea, do not execute on a real robot
+                # Not yet at least
+                raise RuntimeError("Robot is stuck!")
 
                 r = np.random.randint(3)
                 if r == 0:
@@ -1062,11 +1072,6 @@ class RobotAgent:
                 if len(matches) > 0:
                     print("!!! GOAL FOUND! Done exploration. !!!")
                     break
-
-        # if it fails to find any frontier in the given iteration, simply quit in sim
-        if no_success_explore:
-            print("The robot did not explore at all, force quit in sim")
-            self.robot.force_quit = True
 
         if go_home_at_end:
             self.current_state = "NAV_TO_HOME"
