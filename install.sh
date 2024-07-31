@@ -8,6 +8,7 @@ CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 CPU_ONLY="false"
+NO_REMOVE="false"
 INSTALL_PYTORCH3D="false"
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
@@ -30,6 +31,10 @@ do
             ;;
         --pytorch3d)
             INSTALL_PYTORCH3D="true"
+            shift
+            ;;
+        --no-remove)
+            NO_REMOVE="true"
             shift
             ;;
         *)
@@ -99,7 +104,11 @@ fi
 # Exit immediately if anything fails
 set -e
 
-$MAMBA env remove -n $ENV_NAME -y
+# Only remove if NO_REMOVe is false
+if [ "$NO_REMOVE" == "false" ]; then
+    echo "Removing existing environment..."
+    $MAMBA env remove -n $ENV_NAME -y
+fi
 # If using cpu only, create a separate environment
 if [ "$CPU_ONLY" == "true" ]; then
     $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
