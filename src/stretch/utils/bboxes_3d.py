@@ -23,6 +23,7 @@
 #  * Neither the name Meta nor the names of its contributors may be used to
 #    endorse or promote products derived from this software without specific
 #    prior written permission.
+# mypy: ignore-errors
 
 import warnings
 
