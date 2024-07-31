@@ -131,7 +131,7 @@ class YoloWorldPerception(PerceptionModule):
             self.categories_mapping = {i: i for i in range(len(self.metadata.thing_classes))}
         else:
             raise NotImplementedError(
-                "Detic does not have support for resetting from custom to coco vocab"
+                "Yolo does not have support for resetting from custom to coco vocab"
             )
         self.num_sem_categories = len(self.categories_mapping)
 
