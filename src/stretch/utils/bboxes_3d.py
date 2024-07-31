@@ -355,9 +355,10 @@ class BBoxes3D:
             # NOTE consider converting index to cpu for efficiency
             if index.dtype == torch.bool:
                 # advanced indexing on a single dimension
+                # Mypy type hinting is not perfect here
                 index = index.nonzero()  # type: ignore
-                index = index.squeeze(1) if index.numel() > 0 else index
-                index = index.tolist()
+                index = index.squeeze(1) if index.numel() > 0 else index  # type: ignore
+                index = index.tolist()  # type: ignore
             bounds = [self.bounds_list()[i] for i in index]
             if names_list is not None:
                 names = [names_list[i] for i in index]
