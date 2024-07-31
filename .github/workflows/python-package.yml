@@ -37,7 +37,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        ./install.sh -y --no-remove --no-submodules
+        pwd
+        # ./install.sh -y --no-remove --no-submodules
     ## Run pre-commit and try to apply fixes
     - name: Run pre-commit
       #uses: pre-commit/action@v3.0.1
