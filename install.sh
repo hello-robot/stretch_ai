@@ -110,8 +110,9 @@ __conda_setup="$('conda' 'shell.bash' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
 else
-    if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
-        . "$HOME/miniconda3/etc/profile.d/conda.sh"
+    CONDA_BASE=$(conda info --base)
+    if [ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
+        . "$CONDA_BASE/etc/profile.d/conda.sh"
     else
         export PATH="$HOME/miniconda3/bin:$PATH"
     fi
@@ -131,7 +132,7 @@ else
     $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
 fi
 
-$MAMBA activate $ENV_NAME
+conda activate $ENV_NAME
 #source activate $ENV_NAME
 #echo "Activating environment... `$MAMBA info --base`/envs/$ENV_NAME/bin/activate"
 #source `$MAMBA info --base`/envs/$ENV_NAME/bin/activate
