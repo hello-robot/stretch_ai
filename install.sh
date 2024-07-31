@@ -105,20 +105,6 @@ fi
 # Exit immediately if anything fails
 set -e
 
-# Ensure conda is initialized
-__conda_setup="$('conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    CONDA_BASE=$(conda info --base)
-    if [ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
-        . "$CONDA_BASE/etc/profile.d/conda.sh"
-    else
-        export PATH="$HOME/miniconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then
     echo "Removing existing environment..."
@@ -132,8 +118,8 @@ else
     $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
 fi
 
-conda activate $ENV_NAME
-#source activate $ENV_NAME
+source activate $ENV_NAME
+# conda activate $ENV_NAME
 #echo "Activating environment... `$MAMBA info --base`/envs/$ENV_NAME/bin/activate"
 #source `$MAMBA info --base`/envs/$ENV_NAME/bin/activate
 #echo "activated"
