@@ -35,7 +35,7 @@ def depth_to_xyz(depth: torch.Tensor, camera: Camera):
     y = torch.tensor(indices[:, :, 0] - camera.py).to(z.device) * (z / camera.fy)
 
     # Should now be batch x height x width x 3, after this:
-    xyz = torch.stack([x, y, z], axis=-1)
+    xyz = torch.stack([x, y, z], dim=-1)
     return xyz
 
 
@@ -220,7 +220,7 @@ def get_one_point_per_voxel_from_pointcloud(
                 torch.tensor([0]).to(grid_cell_counts.device),
                 grid_cell_counts.cumsum(0)[:-1],
             ),
-            axis=0,
+            dim=0,
         )
         + random_offsets
     )

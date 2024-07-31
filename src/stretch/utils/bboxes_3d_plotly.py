@@ -143,7 +143,7 @@ def get_bbox_wireframe(
             v7,
             v4,
         ]
-    lines = torch.stack([x.float() for x in corner_points], axis=-2)
+    lines = torch.stack([x.float() for x in corner_points], dim=-2)
     return lines
 
 

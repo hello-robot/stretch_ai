@@ -124,20 +124,20 @@ class BBoxes3D:
         self._num_boxes_per_scene = None  # N
 
         # Packed representation.
-        self._bounds_packed = None  # (sum(P_n), 3)
-        self._names_packed = None  # (sum(P_n), 3)
-        self._features_packed = None  # (sum(P_n), C)
+        self._bounds_packed: torch.Tensor = None  # (sum(P_n), 3)
+        self._names_packed: torch.Tensor = None  # (sum(P_n), 3)
+        self._features_packed: torch.Tensor = None  # (sum(P_n), C)
 
-        self._packed_to_scene_idx = None  # sum(P_n)
+        self._packed_to_scene_idx: torch.Tensor = None  # sum(P_n)
 
         # Index of each scene's first point in the packed boxes.
         # Assumes packing is sequential.
-        self._scene_to_packed_first_idx = None  # N
+        self._scene_to_packed_first_idx: torch.Tensor = None  # N
 
         # Padded representation.
         self._bounds_padded: torch.Tensor = None  # (N, max(P_n), 3)
-        self._names_padded = None  # (N, max(P_n), 3)
-        self._features_padded = None  # (N, max(P_n), C)
+        self._names_padded: torch.Tensor = None  # (N, max(P_n), 3)
+        self._features_padded: torch.Tensor = None  # (N, max(P_n), C)
 
         # Index to convert boxes from flattened padded to packed.
         self._padded_to_packed_idx = None  # N * max_P
@@ -826,19 +826,22 @@ class BBoxes3D:
 
         new_bounds_list: List[int] = []
         new_names_list: Optional[List[str]] = None
-        new_features_list: Optional[Tensor] = None
+        new_features_list: Optional[List[Tensor]] = None
         for bounds in self.bounds_list():
-            new_bounds_list.extend(bounds.clone() for _ in range(N))
+            # mypy type checking is failing here
+            new_bounds_list.extend(bounds.clone() for _ in range(N))  # type: ignore
         names_list = self.names_list()
         if names_list is not None:
             new_names_list = []
             for names in names_list:
-                new_names_list.extend(names.clone() for _ in range(N))
+                # mypy type checking is failing here
+                new_names_list.extend(names.clone() for _ in range(N))  # type: ignore
         features_list = self.features_list()
         if features_list is not None:
             new_features_list = []
             for features in features_list:
-                new_features_list.extend(features.clone() for _ in range(N))
+                # mypy type checking is failing here
+                new_features_list.extend(features.clone() for _ in range(N))  # type: ignore
         return self.__class__(
             bounds=new_bounds_list, names=new_names_list, features=new_features_list
         )
