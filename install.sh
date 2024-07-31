@@ -118,7 +118,8 @@ else
     $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
 fi
 
-source activate $ENV_NAME
+# source activate $ENV_NAME
+source `$MAMBA info --base`/envs/$ENV_NAME/bin/activate
 
 # Now install pytorch3d a bit faster
 $MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
