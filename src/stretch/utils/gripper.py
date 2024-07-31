@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -15,7 +15,7 @@ def get_gripper_aruco_detector() -> cv2.aruco.ArucoDetector:
 
 def detect_aruco_markers(
     image: np.ndarray, aruco_detector: cv2.aruco.ArucoDetector
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[Sequence[np.ndarray], np.ndarray]:
     """Detect AR markers in an image."""
     corners, ids, _ = aruco_detector.detectMarkers(image)
     return corners, ids
@@ -25,7 +25,7 @@ class GripperArucoDetector:
     def __init__(self):
         self.aruco_detector = get_gripper_aruco_detector()
 
-    def detect_aruco_markers(self, image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def detect_aruco_markers(self, image: np.ndarray) -> Tuple[Sequence[np.ndarray], np.ndarray]:
         """Detect AR markers in an image.
 
         Args:
@@ -39,7 +39,7 @@ class GripperArucoDetector:
 
     def detect_and_draw_aruco_markers(
         self, image: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[Sequence[np.ndarray], np.ndarray, np.ndarray]:
         """Detect AR markers in an image and draw them.
 
         Args:
