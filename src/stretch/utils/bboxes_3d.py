@@ -135,7 +135,7 @@ class BBoxes3D:
         self._scene_to_packed_first_idx = None  # N
 
         # Padded representation.
-        self._bounds_padded = None  # (N, max(P_n), 3)
+        self._bounds_padded: torch.Tensor = None  # (N, max(P_n), 3)
         self._names_padded = None  # (N, max(P_n), 3)
         self._features_padded = None  # (N, max(P_n), C)
 
@@ -376,7 +376,8 @@ class BBoxes3D:
         Returns:
             bool indicating whether there is any data.
         """
-        return self._N == 0 or self.valid.eq(False).all()
+        # mypy type checking is failing here
+        return self._N == 0 or self.valid.eq(False).all()  # type: ignore
 
     def bounds_list(self) -> List[torch.Tensor]:
         """
