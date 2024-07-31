@@ -30,6 +30,7 @@ from torchvision.ops import nms
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
+from stretcg.perception.constants import yolo_world_vocabulary
 from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path, load_config
 
@@ -108,19 +109,7 @@ class YoloWorldPerception(PerceptionModule):
         if custom_vocabulary != "":
             self.class_names = custom_vocabulary.split(",")
         else:
-            self.class_names = (
-                "person, bicycle, car, motorcycle, airplane, bus, train, truck, boat, "
-                "traffic light, fire hydrant, stop sign, parking meter, bench, bird, "
-                "cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe, "
-                "backpack, umbrella, handbag, tie, suitcase, frisbee, skis, snowboard, "
-                "sports ball, kite, baseball bat, baseball glove, skateboard, "
-                "surfboard, tennis racket, bottle, wine glass, cup, fork, knife, "
-                "spoon, bowl, banana, apple, sandwich, orange, broccoli, carrot, "
-                "hot dog, pizza, donut, cake, chair, couch, potted plant, bed, "
-                "dining table, toilet, tv, laptop, mouse, remote, keyboard, "
-                "cell phone, microwave, oven, toaster, sink, refrigerator, book, "
-                "clock, vase, scissors, teddy bear, hair drier, toothbrush"
-            ).split(", ")
+            self.class_names = yolo_world_vocabulary
 
         self.instance_mode = ColorMode.IMAGE
 
