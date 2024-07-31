@@ -2,6 +2,7 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python package
+runs-on: self-hosted
 
 on:
   push:
@@ -12,6 +13,7 @@ on:
 jobs:
   build:
 
+    # runs-on: ubuntu-latest
     runs-on: self-hosted
     strategy:
       fail-fast: false
