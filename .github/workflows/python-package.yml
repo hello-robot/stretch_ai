@@ -31,10 +31,10 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        #./install.sh -y --no-remove
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
-        cd src/; python -m pip install --no-cache-dir .[dev]
+        ./install.sh -y --no-remove
+        #python -m pip install --upgrade pip
+        #if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+        #cd src/; python -m pip install --no-cache-dir .[dev]
     ## Run pre-commit and try to apply fixes
     - name: Run pre-commit
       uses: pre-commit/action@v3.0.1
