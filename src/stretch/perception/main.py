@@ -12,11 +12,11 @@ import cv2
 import supervision as sv
 
 cfg = Config.fromfile(
-        "configs/pretrain/yolo_world_v2_l_vlpan_bn_2e-3_100e_4x8gpus_obj365v1_goldg_train_1280ft_lvis_minival.py"
+        "YoloWorld/configs/pretrain/yolo_world_v2_l_vlpan_bn_2e-3_100e_4x8gpus_obj365v1_goldg_train_1280ft_lvis_minival.py"
 )
 
 cfg.work_dir = "."
-cfg.load_from = "pretrained_weights/yolo_world_v2_l_obj365v1_goldg_pretrain_1280ft-9babe3f6.pth"
+cfg.load_from = "YoloWorld/pretrained_weights/yolo_world_v2_l_obj365v1_goldg_pretrain_1280ft-9babe3f6.pth"
 
 runner = Runner.from_cfg(cfg)
 runner.call_hook("before_run")
@@ -124,5 +124,6 @@ def run_image(
 
     return svimage[:, :, ::-1]
 
-img = run_image(runner,"dog.jpeg")
-sv.plot_image(img)
+if __name__=="__main__":
+    img = run_image(runner,"dog.jpeg")
+    sv.plot_image(img)
