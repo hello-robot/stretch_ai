@@ -183,8 +183,11 @@ if [ "$CPU_ONLY" == "true" ]; then
     echo "Skipping YOLO World installation for CPU only"
 else
     echo "Install YOLO World for perception"
-   cd ../../yolo_world/YoloWorld
+    cd ../../yolo_world/YoloWorld
     pip install wheel
+    pip install -e .
+    echo "Install mmyolo for Yolo World"
+    cd third_party/mmyolo
     pip install -e .
 fi
 
