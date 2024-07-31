@@ -16,14 +16,14 @@ jobs:
     # runs-on: ubuntu-latest
     #runs-on: [self-hosted, ubuntu-22.04]
     runs-on: self-hosted
-    strategy:
-      fail-fast: false
-      matrix:
-        # TODO: for now I have to comment out the latest version of Python
-        # This is because Open3d and scikit-fmm aren't supported on 3.12 yet
-        # python-version: ["3.9", "3.10", "3.11", "3.12"]
-        # python-version: ["3.9", "3.10", "3.11"]
-        python-version: ["3.11"]
+    #strategy:
+    #  fail-fast: false
+    #  matrix:
+    #    # TODO: for now I have to comment out the latest version of Python
+    #    # This is because Open3d and scikit-fmm aren't supported on 3.12 yet
+    #    # python-version: ["3.9", "3.10", "3.11", "3.12"]
+    #    # python-version: ["3.9", "3.10", "3.11"]
+    #    python-version: ["3.11"]
 
     # Use pre-built container
     container:
