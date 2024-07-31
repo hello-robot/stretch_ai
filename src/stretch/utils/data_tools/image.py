@@ -60,7 +60,8 @@ def png_to_gif(group: h5py.Group, key: str, name: str, save=True, height=None, w
         img = img_from_bytes(bindata, height, width)
         gif.append(img)
     if save:
-        imageio.mimsave(name, gif)
+        # Mypy note: the type of gif is List[np.ndarray] which is fine for this function.
+        imageio.mimsave(name, gif)  # type: ignore
     else:
         return gif
 
@@ -123,7 +124,8 @@ def png_to_mp4(group: h5py.Group, key: str, name: str, fps=10):
         img[:, :, 2] = _img[:, :, 0]
 
         if writer is None:
-            fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+            # Mypy note: this definitely does exist but mypy says it does not. Ignore error.
+            fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")  # type: ignore
             writer = cv2.VideoWriter(name, fourcc, fps, (h, w))
         writer.write(img)
     writer.release()
