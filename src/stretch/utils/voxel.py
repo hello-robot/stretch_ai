@@ -186,7 +186,7 @@ class VoxelizedPointcloud:
         )
         return
 
-    def get_idxs(self, points: Tensor) -> Tensor:
+    def get_idxs(self, points: Tensor) -> Tuple[Tensor, Tensor]:
         """Returns voxel index (long tensor) for each point in points
 
         Args:
