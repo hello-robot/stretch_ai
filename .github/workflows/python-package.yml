@@ -45,8 +45,7 @@ jobs:
     - name: Run pre-commit
       #uses: pre-commit/action@v3.0.1
       run: |
-        ls -al
-        pwd
+        pip install pre-commit
         pre-commit install
         pre-commit run --all-files
     #- name: Apply fixes from pre-commit
