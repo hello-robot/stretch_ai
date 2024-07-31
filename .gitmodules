@@ -4,6 +4,6 @@
 [submodule "third_party/detectron2"]
 	path = third_party/detectron2
 	url = https://github.com/facebookresearch/detectron2.git
-[submodule "src/stretch/perception/detection/yolo_world/YoloWorld"]
-	path = src/stretch/perception/detection/yolo_world/YoloWorld
-	url = https://github.com/AILab-CVC/YOLO-World.git
+[submodule "/home/atharva/stretch_ai/src/stretch/perception/detection/yolo_world/YoloWorld"]
+	path = /home/atharva/stretch_ai/src/stretch/perception/detection/yolo_world/YoloWorld
+	url = git@github.com:hello-atharva/YOLO-World.git
