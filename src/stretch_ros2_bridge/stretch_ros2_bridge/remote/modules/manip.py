@@ -13,7 +13,12 @@ from stretch.core.state import ManipulatorBaseParams
 from stretch.motion.constants import STRETCH_HOME_Q
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
-from stretch.utils.geometry import posquat2sophus, sophus2posquat, xyt2sophus
+from stretch.utils.geometry import (
+    pose_global_to_base_xyt,
+    posquat2sophus,
+    sophus2posquat,
+    xyt2sophus,
+)
 
 from .abstract import AbstractControlModule, enforce_enabled
 
@@ -34,8 +39,7 @@ class StretchManipulationClient(AbstractControlModule):
         self._ros_client = ros_client
         self._robot_model = robot_model
 
-        # Tmp: keep track of base_x movement
-        self.base_x = 0.0
+        self._init_base_pose = None
 
     # Enable / disable
 
@@ -44,9 +48,16 @@ class StretchManipulationClient(AbstractControlModule):
         # Switch interface mode & print messages
         result = self._ros_client.pos_mode_service.call(Trigger.Request())
         self._ros_client.get_logger().info(result.message)
-        self.base_x = 0.0
+        self._init_base_pose = self._ros_client.se3_base_filtered
 
         return result.success
+
+    def get_base_x(self):
+        """Get the current base x position"""
+        current_global_pose = self._ros_client.se3_base_filtered
+        relative_xyt = pose_global_to_base_xyt(current_global_pose, self._init_base_pose)
+        print(relative_xyt)
+        return relative_xyt[0]
 
     def _disable_hook(self) -> bool:
         """Called when interface is disabled."""
@@ -76,8 +87,9 @@ class StretchManipulationClient(AbstractControlModule):
 
     def get_joint_positions(self):
         q, _, _ = self._ros_client.get_joint_state()
+        base_x = self.get_base_x()
         return [
-            self.base_x,
+            base_x,
             q[HelloStretchIdx.LIFT],
             q[HelloStretchIdx.ARM],
             q[HelloStretchIdx.WRIST_YAW],
