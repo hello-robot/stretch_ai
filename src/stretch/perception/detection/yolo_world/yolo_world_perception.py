@@ -33,8 +33,7 @@ from stretch.core.interfaces import Observations
 from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path, load_config
 
-
-sys.path.insert(0, str(Path(__file__).resolve().parent / "yolo_world/YoloWorld"))
+sys.path.append(str(Path(__file__).resolve().parent / "YoloWorld"))
 
 
 class YoloWorldPerception(PerceptionModule):
@@ -100,6 +99,7 @@ class YoloWorldPerception(PerceptionModule):
         self.runner = Runner.from_cfg(self.config)
         self.runner.call_hook("before_run")
         self.runner.load_or_resume()
+        self.config.test_dataloader.dataset.pipeline[0].type = 'mmdet.LoadImageFromNDArray'
         pipeline = self.config.test_dataloader.dataset.pipeline
         self.runner.pipeline = Compose(pipeline)
 
@@ -133,7 +133,8 @@ class YoloWorldPerception(PerceptionModule):
         """
         if self.verbose:
             print(f"Resetting vocabulary to {new_vocab}")
-        MetadataCatalog.remove("__unused")
+        if "__unused" in MetadataCatalog.keys():
+            MetadataCatalog.remove("__unused")
         if vocab_type == "custom":
             self.metadata = MetadataCatalog.get("__unused")
             self.metadata.thing_classes = new_vocab
