@@ -26,6 +26,14 @@ RUN apt-get update && apt-get install -y \
     libxext6\
     && rm -rf /var/lib/apt/lists/*
 
+# Audio dependencies - for PyAudio
+RUN apt-get update && apt-get install -y \
+    libasound-dev \
+    portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 
