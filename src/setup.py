@@ -62,6 +62,7 @@ setuptools.setup(
         # Audio
         "pyaudio",
         "wave",
+        "openai-whisper",
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
