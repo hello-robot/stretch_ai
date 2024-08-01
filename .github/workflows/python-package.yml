@@ -44,6 +44,7 @@ jobs:
       #uses: pre-commit/action@v3.0.1
       run: |
         echo `pwd`
+        ls -la
         pip install pre-commit
         pre-commit install
         pre-commit run --all-files
