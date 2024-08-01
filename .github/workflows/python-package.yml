@@ -32,6 +32,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Configure Git to trust the directory
+      run: git config --global --add safe.directory /__w/stretch_ai/
     - name: Set up Python "3.11"
       uses: actions/setup-python@v5
       with:
