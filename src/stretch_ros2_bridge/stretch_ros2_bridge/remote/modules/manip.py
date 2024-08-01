@@ -64,7 +64,6 @@ class StretchManipulationClient(AbstractControlModule):
             return 0.0
         current_global_pose = self._ros_client.se3_base_filtered
         relative_xyt = pose_global_to_base_xyt(current_global_pose, self._init_base_pose)
-        print(relative_xyt)
         return relative_xyt[0]
 
     def _disable_hook(self) -> bool:
