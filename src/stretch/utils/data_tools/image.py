@@ -20,7 +20,8 @@ def img_from_bytes(data: bytes, height=None, width=None, format="png") -> np.nda
     # Issue: not quite as good at handling depth
     # image = Image.open(data, mode='r', formats=['webp'])
     if height and width:
-        image = image.resize((width, height))
+        # mypy: this can be an ImageFile apparently?
+        image = image.resize((width, height))  # type: ignore
     return np.asarray(image)
 
 
