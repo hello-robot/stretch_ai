@@ -42,7 +42,7 @@ jobs:
       run: |
         # ./install.sh -y --no-remove --no-submodules
         python -m pip install -e ./src[dev]
-        python -m pip install mypy flake8 pytest
+        python -m pip install mypy flake8 pytest 
     ## Run pre-commit and try to apply fixes
     - name: Set up pre-commit cache
       uses: actions/cache@v3
