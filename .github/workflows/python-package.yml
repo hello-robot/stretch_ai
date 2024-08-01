@@ -41,8 +41,8 @@ jobs:
     - name: Install dependencies and code
       run: |
         # ./install.sh -y --no-remove --no-submodules
-        pip install -e .
-        pip install mypy flake8 pytest
+        python -m pip install -e .
+        python -m pip install mypy flake8 pytest
     ## Run pre-commit and try to apply fixes
     - name: Set up pre-commit cache
       uses: actions/cache@v3
@@ -56,6 +56,6 @@ jobs:
       if: always()
     - name: Test with pytest
       run: |
-        pip pytest
+        python -m pip install pytest
         mkdir -p ~/.stretch; printf "robots:\n  - ip_addr: 127.0.0.1\n    port: 20200\n" > ~/.stretch/config.yaml
         cd src/; python -m pytest .
