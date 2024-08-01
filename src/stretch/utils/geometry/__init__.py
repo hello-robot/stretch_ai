@@ -6,6 +6,7 @@
 from ._base import (
     normalize_ang_error,
     point_global_to_base,
+    pose_global_to_base_xyt,
     posquat2sophus,
     sophus2posquat,
     sophus2xyt,
