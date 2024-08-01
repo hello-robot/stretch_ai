@@ -46,7 +46,7 @@ def main():
     conversation_history = []
 
     print("Talk to me, Stretch! If you don't say anything, I will give up.")
-    for i in range(1):
+    for i in range(5):
         # Record audio
         audio_recorder.record("recording.wav", duration=10, silence_limit=1.0)
 

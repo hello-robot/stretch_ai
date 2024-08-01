@@ -48,6 +48,7 @@ class AudioRecorder:
         self.stream: pyaudio.Stream = None
 
         self.reset()
+        self.start()
 
     def reset(self) -> None:
         self.frames: List[bytes] = []
@@ -71,7 +72,6 @@ class AudioRecorder:
         Args:
             duration (float): Recording duration in seconds.
         """
-        stream: pyaudio.Stream = self.get_stream()
 
         # Tracks if we have started hearing things
         audio_started: bool = False
@@ -81,7 +81,7 @@ class AudioRecorder:
 
         for _ in tqdm(range(0, int(self.sample_rate / self.chunk * duration))):
 
-            data: bytes = stream.read(self.chunk)
+            data: bytes = self.stream.read(self.chunk)
             self.frames.append(data)
 
             rms = audioop.rms(data, 2)  # Get audio level
@@ -100,12 +100,14 @@ class AudioRecorder:
 
         print("Recording finished.")
 
-        stream.stop_stream()
-        stream.close()
-
         self.audio.terminate()
         self.save(filename)
         self.reset()
+
+    def __del__(self):
+        self.stream.stop_stream()
+        self.stream.close()
+        self.audio.terminate()
 
     def get_stream(self) -> pyaudio.Stream:
         """Return an audio stream."""
