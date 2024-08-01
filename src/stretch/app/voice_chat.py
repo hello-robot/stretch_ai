@@ -78,6 +78,9 @@ def main():
         # Decode and print the result
         print(colored("I heard:", "green"), input_text)
         print(colored("Response:", "blue"), assistant_response)
+        print("-" * 80)
+        print("Time taken:", t1 - t0)
+        print("-" * 80)
 
 
 if __name__ == "__main__":
