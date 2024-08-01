@@ -301,12 +301,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 config is not None and len(config.keys()) > 0
             ), "Must provide joint angles array or specific joint values as params"
             joint_positions = self.get_joint_positions()
-            joint_angles = self._robot_model.config_to_manip_command(joint_positions)
+            joint_angles = conversions.config_to_manip_command(joint_positions)
         elif len(joint_angles) > 6:
             print(
                 "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
             )
-            joint_angles = self._robot_model.config_to_manip_command(joint_angles)
+            joint_angles = conversions.config_to_manip_command(joint_angles)
 
         elif len(joint_angles) < 6:
             raise ValueError(
