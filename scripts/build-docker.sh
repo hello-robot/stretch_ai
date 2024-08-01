@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=0.0.5
+VERSION=0.0.6
 echo "Building docker image with tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
 SKIP_ASKING="false"
 for arg in "$@"
@@ -25,6 +25,10 @@ if [ "$SKIP_ASKING" == "false" ]; then
         exit 1
     fi
 fi
+
+# Exit immediately if anything fails
+set -e
+
 # Build the docker image with the current tag.
 docker build -t hellorobotinc/stretch-ai_cuda-11.8:$VERSION .
 docker push hellorobotinc/stretch-ai_cuda-11.8:$VERSION
