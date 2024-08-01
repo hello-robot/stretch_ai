@@ -1,3 +1,4 @@
+import torch
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -26,15 +27,23 @@ My question is:
 
 """
 
-history = []
+import timeit
+
+from transformers import pipeline
 
 
 def main():
     # Load the tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("google/gemma-2b")
-    model = AutoModelForCausalLM.from_pretrained("google/gemma-2b")
     audio_recorder = AudioRecorder()
     whisper = WhisperSpeechToText()
+    pipe = pipeline(
+        "text-generation",
+        model="google/gemma-2-2b-it",
+        model_kwargs={"torch_dtype": torch.bfloat16},
+        device="cuda",  # replace with "mps" to run on a Mac device
+    )
+
+    conversation_history = []
 
     print("Talk to me, Stretch! If you don't say anything, I will give up.")
     for i in range(1):
@@ -50,14 +59,25 @@ def main():
             break
         if i == 0:
             input_text = prompt + input_text
-        input_ids = tokenizer(input_text, return_tensors="pt")
 
-        # Generate output
-        outputs = model.generate(**input_ids)
+        new_message = {"role": "user", "content": input_text}
+        conversation_history.append(new_message)
+
+        # Prepare the messages including the conversation history
+        messages = conversation_history.copy()
+
+        t0 = timeit.default_timer()
+        outputs = pipe(messages, max_new_tokens=512)
+        t1 = timeit.default_timer()
+
+        assistant_response = outputs[0]["generated_text"][-1]["content"].strip()
+
+        # Add the assistant's response to the conversation history
+        conversation_history.append({"role": "assistant", "content": assistant_response})
 
         # Decode and print the result
         print(colored("I heard:", "green"), input_text)
-        print(colored("Response:", "blue"), tokenizer.decode(outputs[0]))
+        print(colored("Response:", "blue"), assistant_response)
 
 
 if __name__ == "__main__":
