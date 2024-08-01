@@ -28,9 +28,7 @@ class PickupManager(TaskManager):
         target_object: Optional[str] = None,
         use_visual_servoing_for_grasp: bool = True,
     ) -> None:
-
-        # Agent wraps high level functionality
-        self.agent = agent
+        super().__init__(agent)
 
         # Task information
         self.target_object = target_object
