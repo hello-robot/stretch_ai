@@ -52,9 +52,9 @@ class AudioRecorder:
 
     def reset(self) -> None:
         self.frames: List[bytes] = []
-        if self.stream is not None:
-            self.stream.stop_stream()
-            self.stream.close()
+        # if self.stream is not None:
+        #    self.stream.stop_stream()
+        #    self.stream.close()
 
     def start(self) -> None:
         """
@@ -99,8 +99,6 @@ class AudioRecorder:
                 break
 
         print("Recording finished.")
-
-        self.audio.terminate()
         self.save(filename)
         self.reset()
 
