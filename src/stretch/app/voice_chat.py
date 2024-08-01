@@ -48,6 +48,7 @@ def main():
     print("Talk to me, Stretch! If you don't say anything, I will give up.")
     for i in range(5):
         # Record audio
+        print(colored("Recording...", "yellow"))
         audio_recorder.record("recording.wav", duration=10, silence_limit=1.0)
 
         # Transcribe the audio file
@@ -82,6 +83,7 @@ def main():
         print("-" * 80)
         print("Time taken:", t1 - t0)
         print("-" * 80)
+        print("Press enter to continue or ctrl+c to exit.")
 
 
 if __name__ == "__main__":
