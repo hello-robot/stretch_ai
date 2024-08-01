@@ -41,14 +41,15 @@ class WhisperSpeechToText(AbstractSpeechToText):
 
 if __name__ == "__main__":
     wst = WhisperSpeechToText()
-    # print(wst.transcribe_file("recording.wav"))
+    print(wst.transcribe_file("recording.wav"))
 
     # Record audio
-    from .audio_recorder import AudioRecorder
+    # from .audio_recorder import AudioRecorder
 
-    audio_recorder = AudioRecorder()
+    # audio_recorder = AudioRecorder()
 
     # Get stream
-    stream = audio_recorder.get_stream()
+    # stream = audio_recorder.get_stream()
 
     # Transcribe in a loop
+    # wst.transcribe_stream(stream)

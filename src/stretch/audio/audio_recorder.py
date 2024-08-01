@@ -4,11 +4,13 @@
 A simple audio recorder using PyAudio.
 """
 
+import audioop
 import wave
 from typing import List
 
 import numpy as np
 import pyaudio
+from tqdm import tqdm
 
 from stretch.audio import AbstractSpeechToText
 
@@ -23,6 +25,7 @@ class AudioRecorder:
         chunk: int = 1024,
         channels: int = 2,
         sample_rate: int = 44100,
+        volume_threshold: int = 500,
     ) -> None:
         """
         Initialize the AudioRecorder.
@@ -32,11 +35,13 @@ class AudioRecorder:
             chunk (int): Number of frames per buffer. Defaults to 1024.
             channels (int): Number of channels to record. Defaults to 2 (stereo).
             sample_rate (int): Sampling rate. Defaults to 44100 Hz.
+            volume_threshold (int): Minimum volume threshold to start recording. Defaults to 500.
         """
         self.chunk: int = chunk
         self.channels: int = channels
         self.sample_rate: int = sample_rate
         self.format: int = pyaudio.paInt16
+        self.volume_threshold: int = volume_threshold
         self.audio: pyaudio.PyAudio = pyaudio.PyAudio()
 
         # Stream object - used if you want to record audio in real-time
@@ -57,7 +62,9 @@ class AudioRecorder:
         self.stream = self.get_stream()
         self.stream.start_stream()
 
-    def record(self, filename: str = "recording.wav", duration: float = 5.0) -> None:
+    def record(
+        self, filename: str = "recording.wav", duration: float = 10.0, silence_limit: float = 1.0
+    ) -> None:
         """
         Record audio from the microphone for a specified duration.
 
@@ -66,11 +73,30 @@ class AudioRecorder:
         """
         stream: pyaudio.Stream = self.get_stream()
 
+        # Tracks if we have started hearing things
+        audio_started: bool = False
+        silent_chunks: int = 0
+
         print("Recording...")
 
-        for _ in range(0, int(self.sample_rate / self.chunk * duration)):
+        for _ in tqdm(range(0, int(self.sample_rate / self.chunk * duration))):
+
             data: bytes = stream.read(self.chunk)
             self.frames.append(data)
+
+            rms = audioop.rms(data, 2)  # Get audio level
+
+            if audio_started:
+                self.frames.append(data)
+
+            if rms > self.volume_threshold:
+                audio_started = True
+                silent_chunks = 0
+            elif audio_started:
+                silent_chunks += 1
+
+            if silent_chunks > silence_limit * self.sample_rate / self.chunk:
+                break
 
         print("Recording finished.")
 
