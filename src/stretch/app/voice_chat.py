@@ -58,9 +58,10 @@ def main():
             print("No input detected.")
             break
         if i == 0:
-            input_text = prompt + input_text
+            new_message = {"role": "user", "content": prompt + input_text}
+        else:
+            new_message = {"role": "user", "content": input_text}
 
-        new_message = {"role": "user", "content": input_text}
         conversation_history.append(new_message)
 
         # Prepare the messages including the conversation history
