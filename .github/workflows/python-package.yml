@@ -40,10 +40,11 @@ jobs:
         # ./install.sh -y --no-remove --no-submodules
         pip install -e .
     ## Run pre-commit and try to apply fixes
-    - uses: actions/cache@v3
+    - name: Set up pre-commit cache
+      uses: actions/cache@v3
       with:
-      path: ~/.cache/pre-commit
-      key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+        path: ~/.cache/pre-commit
+        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
     - name: Run pre-commit
       uses: pre-commit/action@v3.0.1
     - name: Apply fixes from pre-commit
