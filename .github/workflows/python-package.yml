@@ -42,6 +42,7 @@ jobs:
       run: |
         # ./install.sh -y --no-remove --no-submodules
         pip install -e .
+        pip install mypy
     ## Run pre-commit and try to apply fixes
     - name: Set up pre-commit cache
       uses: actions/cache@v3
