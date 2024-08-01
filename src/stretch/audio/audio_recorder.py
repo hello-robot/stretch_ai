@@ -12,7 +12,7 @@ import numpy as np
 import pyaudio
 from tqdm import tqdm
 
-from stretch.audio import AbstractSpeechToText
+from stretch.audio.base import AbstractSpeechToText
 
 
 class AudioRecorder:
