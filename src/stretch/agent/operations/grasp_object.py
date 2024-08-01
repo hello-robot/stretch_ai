@@ -38,14 +38,16 @@ class GraspObjectOperation(ManagedOperation):
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
     detected_center_offset_y: int = -40
-    lift_arm_ratio: float = 0.1
-    base_x_step: float = 0.12
-    wrist_pitch_step: float = 0.1
     median_distance_when_grasping: float = 0.175
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
     max_failed_attempts: int = 10
+
+    # Movement parameters
+    lift_arm_ratio: float = 0.08
+    base_x_step: float = 0.10
+    wrist_pitch_step: float = 0.075
 
     # Timing issues
     expected_network_delay = 0.2
@@ -156,7 +158,7 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
 
         # Get a joint state for the object
-        joint_state = self.robot.get_joint_state()
+        joint_state = self.robot.get_joint_positions()
 
         # Lifted joint state
         lifted_joint_state = joint_state.copy()
@@ -190,7 +192,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Get servo observation
             servo = self.robot.get_servo_observation()
-            joint_state = self.robot.get_joint_state()
+            joint_state = self.robot.get_joint_positions()
             world_xyz = servo.get_ee_xyz_in_world_frame()
 
             if not self.open_loop:
@@ -374,7 +376,7 @@ class GraspObjectOperation(ManagedOperation):
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
-        joint_state = self.robot.get_joint_state()
+        joint_state = self.robot.get_joint_positions()
         model = self.robot.get_robot_model()
 
         if joint_state[HelloStretchIdx.GRIPPER] < 0.0:
@@ -420,7 +422,7 @@ class GraspObjectOperation(ManagedOperation):
         model = self.robot.get_robot_model()
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
-        joint_state = self.robot.get_joint_state()
+        joint_state = self.robot.get_joint_positions()
 
         # We assume the current end-effector orientation is the correct one, going into this
         ee_pos, ee_rot = model.manip_fk(joint_state)

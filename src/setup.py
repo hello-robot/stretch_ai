@@ -62,16 +62,14 @@ setuptools.setup(
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
-        # Other stuff
-        "mypy",
-        "flake8",
-        "black",
     ],
     extras_require={
         "dev": [
             "pre-commit",
             "pytest",
             "flake8",
+            "black",
+            "mypy",
         ]
     },
 )

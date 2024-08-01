@@ -77,7 +77,7 @@ class PreGraspObjectOperation(ManagedOperation):
 
         # Strip out fields from the full robot state to only get the 6dof manipulator state
         # TODO: we should probably handle this in the zmq wrapper.
-        # arm_cmd = self.robot_model.config_to_manip_command(joint_state)
+        # arm_cmd = conversions.config_to_manip_command(joint_state)
         self.robot.arm_to(joint_state, blocking=True)
 
     def was_successful(self):

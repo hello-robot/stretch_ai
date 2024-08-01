@@ -45,6 +45,18 @@ def xyt_global_to_base(XYT, current_pose):
     return sophus2xyt(pose_base2target)
 
 
+def pose_global_to_base_xyt(pose_world2target: Pose, pose_world2base: Pose) -> np.ndarray:
+    """Transform a pose from global to base frame, getting the relative xyt.
+    Input:
+        pose: Pose object
+        current_pose: Pose object
+    Output:
+        xyz: np.ndarray
+    """
+    pose_base2target = pose_world2base.inverse() * pose_world2target
+    return sophus2xyt(pose_base2target)
+
+
 def xyt_base_to_global(out_XYT, current_pose):
     """
     Transforms the point cloud from base frame into geocentric frame
