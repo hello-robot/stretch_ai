@@ -61,7 +61,6 @@ class AudioRecorder:
         Start recording audio.
         """
         self.stream = self.get_stream()
-        self.stream.start_stream()
 
     def record(
         self, filename: str = "recording.wav", duration: float = 10.0, silence_limit: float = 1.0
@@ -78,6 +77,10 @@ class AudioRecorder:
         silent_chunks: int = 0
 
         print("Recording...")
+        if self.stream is None:
+            self.start()
+
+        self.stream.start_stream()
 
         for _ in tqdm(range(0, int(self.sample_rate / self.chunk * duration))):
 
@@ -99,6 +102,7 @@ class AudioRecorder:
                 break
 
         print("Recording finished.")
+        self.stream.stop_stream()
         self.save(filename)
         self.reset()
 

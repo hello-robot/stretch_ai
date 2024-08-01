@@ -46,7 +46,7 @@ def main():
     conversation_history = []
 
     print("Talk to me, Stretch! If you don't say anything, I will give up.")
-    for i in range(5):
+    for i in range(50):
         # Record audio
         input(colored("Press enter to speak or ctrl+c to exit.", "yellow"))
         audio_recorder.record("recording.wav", duration=10, silence_limit=1.0)
