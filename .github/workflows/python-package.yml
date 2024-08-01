@@ -41,16 +41,10 @@ jobs:
         pip install -e .
     ## Run pre-commit and try to apply fixes
     - name: Run pre-commit
-      #uses: pre-commit/action@v3.0.1
-      run: |
-        echo `pwd`
-        ls -la
-        pip install pre-commit
-        pre-commit install
-        pre-commit run --all-files
-    #- name: Apply fixes from pre-commit
-    #  uses: pre-commit-ci/lite-action@v1.0.2
-    #  if: always()
+      uses: pre-commit/action@v3.0.1
+    - name: Apply fixes from pre-commit
+      uses: pre-commit-ci/lite-action@v1.0.2
+      if: always()
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
