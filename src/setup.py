@@ -48,8 +48,6 @@ setuptools.setup(
         "sentencepiece",
         # For git tools
         "gitpython",
-        # Speech to text
-        "openai-whisper",
         # Configuration tools and neural networks
         "hydra-core",
         "timm",
