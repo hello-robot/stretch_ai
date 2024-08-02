@@ -98,6 +98,14 @@ colcon build --symlink-install --packages-select stretch_ros2_bridge
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
 
+### Audio Dependencies
+
+These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
+
+```bash
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0
+```
+
 ### Using LLMs
 
 We use many open-source LLMs from [Huggingface](https://huggingface.co/). TO use them, you will need to make sure `transformers` is installed and up to date. You can install it with:
