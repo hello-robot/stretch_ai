@@ -1,7 +1,9 @@
 import copy
 from typing import Optional
 
-from stretch.llms.abstract import AbstractPrompt
+import overrides
+
+from stretch.llms.base import AbstractPromptBuilder
 
 DEFAULT_OBJECTS = "fanta can, tennis ball, black head band, purple shampoo bottle, toothpaste, orange packaging, green hair cream jar, green detergent pack,  blue moisturizer, green plastic cover, storage container, blue hair oil bottle, blue pretzels pack, blue hair gel tube, red bottle, blue bottle,  wallet"
 
@@ -60,7 +62,8 @@ You will respond ONLY with the executable commands, i.e. the part following "Ret
 """
 
 
-class OkRobotPrompt(AbstractPrompt):
+class OkRobotPromptBuilder(AbstractPromptBuilder):
+    @overrides
     def configure(
         self,
         objects: Optional[str] = None,

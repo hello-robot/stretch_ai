@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
-class Prompt(ABC):
+class AbstractPromptBuilder(ABC):
     """Abstract base class for a prompt generator."""
 
     def __init__(self, **kwargs):
@@ -23,7 +23,11 @@ class Prompt(ABC):
 class AbstractLLMClient(ABC):
     """Abstract base class for a client that interacts with a language model."""
 
-    def __init__(self, prompt: Union[str, Prompt], prompt_kwargs: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        prompt: Union[str, AbstractPromptBuilder],
+        prompt_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         self.prompt_kwargs = prompt
         self.reset()
 

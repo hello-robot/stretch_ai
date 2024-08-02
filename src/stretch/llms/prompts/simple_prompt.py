@@ -1,4 +1,4 @@
-from stretch.llms.abstract import AbstractPrompt
+from stretch.llms.base import AbstractPromptBuilder
 
 simple_stretch_prompt = """You are a friendly, helpful robot named Stretch. You are always helpful, and answer questions concisely. You can do the following tasks:
     - Answer questions
@@ -18,17 +18,25 @@ Remember to be friendly, helpful, and concise.
 """
 
 
-class SimplePrompt(AbstractPrompt):
+class SimplePromptBuilder(AbstractPromptBuilder):
     def __init__(self, prompt: str):
         self.prompt = prompt
 
     def __str__(self):
         return self.prompt
 
+    def configure(self, **kwargs) -> str:
+        assert len(kwargs) == 0, "SimplePromptBuilder does not take any arguments."
+        return self.prompt
 
-class SimpleStretchPrompt(AbstractPrompt):
+
+class SimpleStretchPromptBuilder(AbstractPromptBuilder):
     def __init__(self):
         self.prompt = simple_stretch_prompt
 
     def __str__(self):
+        return self.prompt
+
+    def configure(self, **kwargs) -> str:
+        assert len(kwargs) == 0, "SimpleStretchPromptBuilder does not take any arguments."
         return self.prompt

@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from openai import OpenAI
 
-from stretch.llms.base import AbstractLLMClient, AbstractPrompt
+from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
 
 class OpenaiClient(AbstractLLMClient):
@@ -14,7 +14,7 @@ class OpenaiClient(AbstractLLMClient):
 
     def __init__(
         self,
-        prompt: Union[str, AbstractPrompt],
+        prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(prompt, prompt_kwargs)

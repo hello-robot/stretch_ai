@@ -5,13 +5,13 @@ import torch
 from termcolor import colored
 from transformers import pipeline
 
-from stretch.llms.base import AbstractLLMClient, AbstractPrompt
+from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
 
 class GemmaClient(AbstractLLMClient):
     def __init__(
         self,
-        prompt: Union[str, AbstractPrompt],
+        prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
         max_tokens: int = 512,
     ):
@@ -49,9 +49,9 @@ class GemmaClient(AbstractLLMClient):
 
 
 if __name__ == "__main__":
-    from stretch.llms.prompts.simple_prompt import SimpleStretchPrompt
+    from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
 
-    prompt = SimpleStretchPrompt()
+    prompt = SimpleStretchPromptBuilder()
     client = GemmaClient(prompt)
     for _ in range(50):
         msg = input("Enter a message (empty to quit):")
