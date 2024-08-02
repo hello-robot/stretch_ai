@@ -92,7 +92,8 @@ def get_x_and_y_from_path(path: List[torch.Tensor]) -> Tuple[List[float], List[f
         ]
     )
     assert len(x_list) == len(y_list), "problem parsing tensors"
-    return x_list, y_list
+    # Mypy note: the return type is a tuple of two lists of floats. this is fine.
+    return x_list, y_list  # type: ignore
 
 
 class PI:

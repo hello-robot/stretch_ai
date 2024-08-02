@@ -6,13 +6,13 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-# from stretch.core.robot import ControlMode, RobotClient
+from stretch.core import AbstractRobotClient
 from stretch.motion import Footprint, RobotModel
 
 # from stretch.motion.kinematics import HelloStretchKinematics
 
 
-class DummyStretchClient:  # (RobotClient):
+class DummyStretchClient(AbstractRobotClient, RobotModel):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
     def __init__(

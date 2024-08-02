@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import cv2
 import liblzfse
@@ -38,7 +38,7 @@ class FileDataRecorder:
 
     def __init__(
         self,
-        datadir: str = "./data",
+        datadir: Union[str, Path] = "./data",
         task: str = "default_task",
         user: str = "default_user",
         env: str = "default_env",
