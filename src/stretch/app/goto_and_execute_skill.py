@@ -1,0 +1,262 @@
+# (c) 2024 Hello Robot by Chris Paxton
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+import datetime
+import pickle
+import sys
+import time
+import timeit
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import click
+import matplotlib.pyplot as plt
+import numpy as np
+
+import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
+
+# Mapping and perception
+import stretch.utils.depth as du
+from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.zmq_client import HomeRobotZmqClient
+from stretch.app.lfd.ros2_lfd_leader import ROS2LfdLeader
+from stretch.core import Parameters, RobotClient, get_parameters
+from stretch.perception import create_semantic_sensor
+
+
+@click.command()
+@click.option("--local", is_flag=True, help="Run code locally on the robot.")
+@click.option("--robot_ip", default="")
+@click.option("--rate", default=5, type=int)
+@click.option("--visualize", default=False, is_flag=True)
+@click.option("--manual-wait", default=False, is_flag=True)
+@click.option("--output-filename", default="stretch_output", type=str)
+@click.option("--show-intermediate-maps", default=False, is_flag=True)
+@click.option("--show-final-map", default=False, is_flag=True)
+@click.option("--show-paths", default=False, is_flag=True)
+@click.option("--random-goals", default=False, is_flag=True)
+@click.option("--explore-iter", default=-1)
+@click.option("--navigate-home", default=False, is_flag=True)
+@click.option("--force-explore", default=False, is_flag=True)
+@click.option("--no-manip", default=False, is_flag=True)
+@click.option(
+    "--write-instance-images",
+    default=False,
+    is_flag=True,
+    help="write out images of every object we found",
+)
+@click.option("--parameter-file", default="default_planner.yaml")
+@click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
+def main(
+    rate,
+    visualize,
+    manual_wait,
+    output_filename,
+    navigate_home: bool = True,
+    device_id: int = 0,
+    verbose: bool = True,
+    show_intermediate_maps: bool = False,
+    show_final_map: bool = False,
+    show_paths: bool = False,
+    random_goals: bool = True,
+    force_explore: bool = False,
+    no_manip: bool = False,
+    explore_iter: int = 10,
+    write_instance_images: bool = False,
+    parameter_file: str = "config/default_planner.yaml",
+    local: bool = True,
+    robot_ip: str = "192.168.1.15",
+    reset: bool = False,
+    **kwargs,
+):
+
+    print("- Load parameters")
+    parameters = get_parameters(parameter_file)
+
+    MANIP_MODE_CONTROLLED_JOINTS = dt_utils.get_teleop_controlled_joints("base_x")
+    robot = HomeRobotZmqClient(
+        robot_ip=robot_ip,
+        use_remote_computer=(not local),
+        parameters=parameters,
+        manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
+    )
+    # Call demo_main with all the arguments
+    demo_main(
+        robot,
+        parameters=parameters,
+        rate=rate,
+        visualize=visualize,
+        manual_wait=manual_wait,
+        output_filename=output_filename,
+        navigate_home=navigate_home,
+        device_id=device_id,
+        verbose=verbose,
+        show_intermediate_maps=show_intermediate_maps,
+        show_final_map=show_final_map,
+        show_paths=show_paths,
+        random_goals=random_goals,
+        force_explore=force_explore,
+        no_manip=no_manip,
+        explore_iter=explore_iter,
+        write_instance_images=write_instance_images,
+        parameter_file=parameter_file,
+        reset=reset,
+        **kwargs,
+    )
+
+
+def demo_main(
+    robot: RobotClient,
+    rate,
+    visualize,
+    manual_wait,
+    output_filename,
+    navigate_home: bool = True,
+    device_id: int = 0,
+    verbose: bool = True,
+    show_intermediate_maps: bool = False,
+    show_final_map: bool = False,
+    show_paths: bool = False,
+    random_goals: bool = True,
+    force_explore: bool = False,
+    no_manip: bool = False,
+    explore_iter: int = 10,
+    write_instance_images: bool = False,
+    parameters: Optional[Parameters] = None,
+    parameter_file: str = "config/default.yaml",
+    reset: bool = False,
+    **kwargs,
+):
+    """
+    Including only some selected arguments here.
+
+    Args:
+        show_intermediate_maps(bool): show maps as we explore
+        show_final_map(bool): show the final 3d map after moving around and mapping the world
+        show_paths(bool): display paths after planning
+        random_goals(bool): randomly sample frontier goals instead of looking for closest
+    """
+    policy_path = f"/lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model"
+
+    leader = ROS2LfdLeader(
+        robot=robot,
+        verbose=False,
+        data_dir="./data",
+        user_name="Jensen",
+        task_name="navigate_and_open_cabinet",
+        env_name="kitchen",
+        save_images=False,
+        teleop_mode="base_x",
+        record_success=False,
+        policy_name="diffusion",
+        policy_path=policy_path,
+        device="cuda",
+        force_execute=True,
+    )
+
+    current_datetime = datetime.datetime.now()
+    formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+    output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
+
+    if parameters is None:
+        print("- Load parameters")
+        parameters = get_parameters(parameter_file)
+        print(parameters)
+
+    click.echo("Will connect to a Stretch robot and collect a short trajectory.")
+    print("- Connect to Stretch")
+
+    if explore_iter >= 0:
+        parameters["exploration_steps"] = explore_iter
+    object_to_find, location_to_place = parameters.get_task_goals()
+
+    if write_instance_images:
+        print("- Create semantic sensor based on detic")
+        _, semantic_sensor = create_semantic_sensor(
+            device_id=device_id,
+            verbose=verbose,
+            category_map_file=parameters["open_vocab_category_map_file"],
+        )
+    else:
+        semantic_sensor = None
+
+    print("- Start robot agent with data collection")
+    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
+
+    pos_err_threshold = parameters["trajectory_pos_err_threshold"]
+    rot_err_threshold = parameters["trajectory_rot_err_threshold"]
+
+    # input_path = "living_room_2024-07-31_15-39-07.pkl"
+    input_path = "kitchen_2024-08-01_21-40-13.pkl"
+    # Load map
+    input_path = Path(input_path)
+    print("Loading:", input_path)
+
+    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client, voxel_map=None)
+    voxel_map = demo.voxel_map
+    print("Reading from pkl file of raw observations...")
+    voxel_map.read_from_pickle(input_path, num_frames=-1)
+
+    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
+
+    # Run the actual procedure
+    try:
+        demo.update()
+        current = robot.get_base_pose()
+        task = np.array([0.70500136, 0.34254823, 0.85715184])
+        home = np.array([0, 0, 0])
+
+        print("Current position: ", current)
+        planner = demo.planner
+        res = planner.plan(current, task)
+        print("RES: ", res.success)
+
+        if res.success:
+            for i, pt in enumerate(res.trajectory):
+                print("-", i, pt.state)
+
+            # Follow the planned trajectory
+            robot.execute_trajectory(
+                [pt.state for pt in res.trajectory],
+                pos_err_threshold=pos_err_threshold,
+                rot_err_threshold=rot_err_threshold,
+            )
+        else:
+            print("[ERROR] NO PLAN COULD BE GENERATED")
+        demo.update()
+
+        print("- Starting policy evaluation")
+        robot.switch_to_manipulation_mode()
+        robot.move_to_manip_posture()
+        leader.run(display_received_images=True)
+        print("- Ending policy evaluation")
+
+        print("- Task finished, going home...")
+        demo.go_home()
+
+    except Exception as e:
+        raise (e)
+    finally:
+        # if show_final_map:
+        #     pc_xyz, pc_rgb = demo.voxel_map.show()
+        # else:
+        #     pc_xyz, pc_rgb = demo.voxel_map.get_xyz_rgb()
+
+        # if pc_rgb is None:
+        #     return
+
+        # # Create pointcloud and write it out
+        # if len(output_pkl_filename) > 0:
+        #     print(f"Write pkl to {output_pkl_filename}...")
+        #     demo.voxel_map.write_to_pickle(output_pkl_filename)
+
+        # if write_instance_images:
+        #     demo.save_instance_images(".")
+
+        # demo.go_home()
+        robot.stop()
+
+
+if __name__ == "__main__":
+    main()
