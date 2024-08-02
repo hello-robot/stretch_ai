@@ -17,4 +17,4 @@ from .interfaces import Action, Observations
 from .parameters import Parameters, get_parameters
 
 # Abstract robot client interface
-from .robot import RobotClient
+from .robot import AbstractRobotClient
