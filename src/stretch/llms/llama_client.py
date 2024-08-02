@@ -4,7 +4,6 @@ from typing import Optional, Union
 import torch
 import transformers
 from termcolor import colored
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
@@ -28,8 +27,7 @@ class LlamaClient(AbstractLLMClient):
         if model_id is None:
             model_id = default_model_id
 
-        # self.model = transformers.GPT2LMHeadModel.from_pretrained(model_id).to(self.device)
-        self.tokenizer = transformers.GPT2TokenizerFast.from_pretrained(model_id)
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         self.tokenizer.chat_template = self.chat_template
 
         # Set up huggingface inference pipeline
