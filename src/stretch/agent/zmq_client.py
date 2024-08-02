@@ -173,28 +173,15 @@ class HomeRobotZmqClient(RobotClient):
         if start_immediately:
             self.start()
 
-<<<<<<< HEAD
     def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get the current joint positions, velocities, and efforts"""
-=======
-    @property
-    def parameters(self) -> Parameters:
-        return self._parameters
-
-    def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Get the current joint positions"""
->>>>>>> main
         t0 = timeit.default_timer()
         with self._state_lock:
             while self._state is None:
                 time.sleep(1e-4)
                 if timeit.default_timer() - t0 > timeout:
                     logger.error("Timeout waiting for state message")
-<<<<<<< HEAD
-                    return None
-=======
                     return None, None, None
->>>>>>> main
             joint_positions = self._state["joint_positions"]
             joint_velocities = self._state["joint_velocities"]
             joint_efforts = self._state["joint_efforts"]
@@ -361,11 +348,7 @@ class HomeRobotZmqClient(RobotClient):
                     if verbose:
                         print("Resending action", joint_angles)
 
-<<<<<<< HEAD
                 joint_state, joint_velocities, _ = self.get_joint_state()
-=======
-                joint_state = self.get_joint_positions()
->>>>>>> main
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
@@ -544,13 +527,8 @@ class HomeRobotZmqClient(RobotClient):
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
         while True:
-<<<<<<< HEAD
-            joint_state = self.get_joint_positions()
-            if joint_state is None:
-=======
             joint_positions, joint_velocities, _ = self.get_joint_state()
             if joint_positions is None:
->>>>>>> main
                 continue
             pan_err = np.abs(
                 joint_positions[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN]
