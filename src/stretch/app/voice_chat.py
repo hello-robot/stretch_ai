@@ -1,4 +1,5 @@
 import torch
+import tempfile
 import os
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer
