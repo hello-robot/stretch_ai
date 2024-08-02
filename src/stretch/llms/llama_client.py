@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 import torch
 import transformers
+from termcolor import colored
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
@@ -25,3 +26,17 @@ class LlamaClient(AbstractLLMClient):
 
     def __call__(self, command: str, verbose: bool = False):
         raise NotImplementedError("This method should be implemented by the subclass.")
+
+
+if __name__ == "__main__":
+    from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
+
+    prompt = SimpleStretchPromptBuilder()
+    client = LlamaClient(prompt)
+    for _ in range(50):
+        msg = input("Enter a message (empty to quit):")
+        if len(msg) == 0:
+            break
+        response = client(msg)
+        print(colored("You said:", "green"), msg)
+        print(colored("Response", "blue"), response)
