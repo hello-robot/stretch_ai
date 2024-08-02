@@ -41,7 +41,6 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
-        "overrides"
         # Visualization
         "rerun-sdk",
         # For siglip encoder
