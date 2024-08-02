@@ -12,6 +12,9 @@ default_model_id = "meta-llama/Meta-Llama-3.1-8B"
 
 
 class LlamaClient(AbstractLLMClient):
+    def chat_template(self, prompt):
+        return f"User: {prompt}\nAssistant:"
+
     def __init__(
         self,
         prompt: Optional[Union[str, AbstractPromptBuilder]],
@@ -27,6 +30,7 @@ class LlamaClient(AbstractLLMClient):
 
         # self.model = transformers.GPT2LMHeadModel.from_pretrained(model_id).to(self.device)
         self.tokenizer = transformers.GPT2TokenizerFast.from_pretrained(model_id)
+        self.tokenizer.chat_template = self.chat_template
 
         # Set up huggingface inference pipeline
         self.pipe = transformers.pipeline(
@@ -39,7 +43,14 @@ class LlamaClient(AbstractLLMClient):
             device_map="auto",
         )
 
+    # def get_history(self) -> str:
+    #    """Return the conversation history as a string."""
+    #    history = super().get_history()
+    #    history_str = ""
+
     def __call__(self, command: str, verbose: bool = False):
+        return self.pipe(command, max_new_tokens=self.max_tokens)
+
         if self.is_first_message():
             new_message = {"role": "user", "content": self.system_prompt + msg}
         else:
@@ -48,6 +59,7 @@ class LlamaClient(AbstractLLMClient):
         self.add_history(new_message)
         # Prepare the messages including the conversation history
         messages = self.get_history()
+
         t0 = timeit.default_timer()
         outputs = self.pipe(messages, max_new_tokens=self.max_tokens)
         t1 = timeit.default_timer()
