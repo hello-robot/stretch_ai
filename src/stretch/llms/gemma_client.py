@@ -34,9 +34,7 @@ class GemmaClient(AbstractLLMClient):
         # Prepare the messages including the conversation history
         messages = self.get_history()
         t0 = timeit.default_timer()
-        outputs = self.pipe(
-            messages, max_new_tokens=self.max_tokens, return_full=True, verbose=verbose
-        )
+        outputs = self.pipe(messages, max_new_tokens=self.max_tokens)
         t1 = timeit.default_timer()
         assistant_response = outputs[0]["generated_text"][-1]["content"].strip()
 
