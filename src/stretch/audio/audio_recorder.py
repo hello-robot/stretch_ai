@@ -121,7 +121,7 @@ class AudioRecorder:
             frames_per_buffer=self.chunk,
         )
 
-    def transcribe(self, text_to_speech: AbstractSpeechToText) -> None:
+    def transcribe(self, speech_to_text: AbstractSpeechToText) -> None:
         """Use this audio stream"""
         while True:
             # Read audio data
