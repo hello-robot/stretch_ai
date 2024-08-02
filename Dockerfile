@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-base-ubuntu22.04
+FROM nvidia/cuda:11.8.0-dev-ubuntu22.04
 
 # Set up timezone
 ENV TZ=UTC
@@ -30,15 +30,6 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6\
     && rm -rf /var/lib/apt/lists/*
-
-# Audio dependencies - for PyAudio
-RUN apt-get update && apt-get install -y \
-    libasound-dev \
-    portaudio19-dev \
-    libportaudio2 \
-    libportaudiocpp0 \
-    && rm -rf /var/lib/apt/lists/*
-
 # Set working directory
 WORKDIR /app
 
@@ -52,10 +43,22 @@ ENV PATH /root/miniforge3/bin:$PATH
 COPY . .
 RUN chmod +x install.sh
 RUN ./install.sh -y
+
+# Install ffmpeg dependencies
 RUN apt-get update && apt-get install  -y \
     ffmpeg \
     libsm6 \
     libxext6
+
+# Audio dependencies - for PyAudio
+RUN apt-get update && apt-get install -y \
+    libasound-dev \
+    portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
+    && rm -rf /var/lib/apt/lists/*
+
+
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .
