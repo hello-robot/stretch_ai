@@ -105,12 +105,6 @@ class HomeRobotZmqClient(RobotClient):
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
-        self._arm_joint_tolerance = parameters["motion"]["joint_tolerance"]["arm"]
-        self._lift_joint_tolerance = parameters["motion"]["joint_tolerance"]["lift"]
-        self._base_x_joint_tolerance = parameters["motion"]["joint_tolerance"]["base_x"]
-        self._wrist_roll_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_roll"]
-        self._wrist_pitch_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_pitch"]
-        self._wrist_yaw_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_yaw"]
 
         # Read in joint tolerances from config file
         self._head_pan_tolerance = float(
@@ -371,12 +365,12 @@ class HomeRobotZmqClient(RobotClient):
 
                 t1 = timeit.default_timer()
                 if (
-                    (arm_diff < self._arm_joint_tolerance)
-                    and (lift_diff < self._lift_joint_tolerance)
-                    and (base_x_diff < self._base_x_joint_tolerance)
-                    and (wrist_roll_diff < self._wrist_roll_joint_tolerance)
-                    and (wrist_pitch_diff < self._wrist_pitch_joint_tolerance)
-                    and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
+                    (arm_diff < 0.05)
+                    and (lift_diff < 0.05)
+                    and (base_x_diff < 0.05)
+                    and (wrist_roll_diff < 0.05)
+                    and (wrist_pitch_diff < 0.05)
+                    and (wrist_yaw_diff < 0.05)
                 ):
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
