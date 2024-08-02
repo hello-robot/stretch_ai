@@ -52,6 +52,7 @@ setuptools.setup(
         "timm",
         "huggingface_hub[cli]",
         "transformers",
+        "accelerate",
         # Compression tools
         "pyliblzfse",
         "webp",
