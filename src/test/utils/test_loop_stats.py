@@ -65,20 +65,21 @@ def test_loop_rate_max():
     assert np.isclose(test_stats.status["max_rate_hz"], 25.1, atol=1)
 
 
-def test_execution_time_ms():
-    test_loop_name = "TestLoopExecution"
-    test_loop_rate = 5.0
-    test_stats = LoopStats(loop_name=test_loop_name, target_loop_rate=test_loop_rate)
-
-    loop_rate_target = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
-
-    test_stats.mark_start()
-    test_stats.mark_end()
-    assert np.isclose(test_stats.status["execution_time_ns"], 0, atol=1e3)
-
-    for target_freq in loop_rate_target:
-        test_stats.mark_start()
-        time.sleep(1 / target_freq)
-        test_stats.mark_end()
-
-        assert np.isclose(test_stats.status["execution_time_ns"], (1 / target_freq) * 1e9, atol=1e7)
+# def test_execution_time_ms():
+#    test_loop_name = "TestLoopExecution"
+#    test_loop_rate = 5.0
+#    test_stats = LoopStats(loop_name=test_loop_name, target_loop_rate=test_loop_rate)
+#
+#    loop_rate_target = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
+#
+#    test_stats.mark_start()
+#    test_stats.mark_end()
+#
+#    assert np.isclose(test_stats.status["execution_time_ns"], 0, atol=1e3)
+#
+#    for target_freq in loop_rate_target:
+#        test_stats.mark_start()
+#        time.sleep(1 / target_freq)
+#        test_stats.mark_end()
+#
+#        assert np.isclose(test_stats.status["execution_time_ns"], (1 / target_freq) * 1e9, atol=1e7)

@@ -191,7 +191,7 @@ class StretchClient(RobotClient):
         # If we are in manipulation mode...
         if self._base_control_mode == ControlMode.MANIPULATION:
             # ...we need to get the joint positions from the manipulator
-            q[HelloStretchIdx.BASE_X] = self.manip.base_x
+            q[HelloStretchIdx.BASE_X] = self.manip.get_base_x()
         return q, dq, eff
 
     def get_frame_pose(self, frame, base_frame=None, lookup_time=None):

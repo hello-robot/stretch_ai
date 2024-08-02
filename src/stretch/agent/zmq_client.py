@@ -112,6 +112,17 @@ class HomeRobotZmqClient(RobotClient):
         self._wrist_pitch_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_pitch"]
         self._wrist_yaw_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_yaw"]
 
+        # Read in joint tolerances from config file
+        self._head_pan_tolerance = float(
+            parameters["motion"]["joint_thresholds"]["head_pan_tolerance"]
+        )
+        self._head_tilt_tolerance = float(
+            parameters["motion"]["joint_thresholds"]["head_tilt_tolerance"]
+        )
+        self._head_not_moving_tolerance = float(
+            parameters["motion"]["joint_thresholds"]["head_not_moving_tolerance"]
+        )
+
         # Robot model
         self._robot_model = HelloStretchKinematics(
             urdf_path=urdf_path,
@@ -162,15 +173,28 @@ class HomeRobotZmqClient(RobotClient):
         if start_immediately:
             self.start()
 
+<<<<<<< HEAD
     def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get the current joint positions, velocities, and efforts"""
+=======
+    @property
+    def parameters(self) -> Parameters:
+        return self._parameters
+
+    def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Get the current joint positions"""
+>>>>>>> main
         t0 = timeit.default_timer()
         with self._state_lock:
             while self._state is None:
                 time.sleep(1e-4)
                 if timeit.default_timer() - t0 > timeout:
                     logger.error("Timeout waiting for state message")
+<<<<<<< HEAD
                     return None
+=======
+                    return None, None, None
+>>>>>>> main
             joint_positions = self._state["joint_positions"]
             joint_velocities = self._state["joint_velocities"]
             joint_efforts = self._state["joint_efforts"]
@@ -292,13 +316,13 @@ class HomeRobotZmqClient(RobotClient):
             assert (
                 config is not None and len(config.keys()) > 0
             ), "Must provide joint angles array or specific joint values as params"
-            joint_positions = self.get_joint_state()
-            joint_angles = self._robot_model.config_to_manip_command(joint_positions)
+            joint_positions = self.get_joint_positions()
+            joint_angles = conversions.config_to_manip_command(joint_positions)
         elif len(joint_angles) > 6:
             print(
                 "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
             )
-            joint_angles = self._robot_model.config_to_manip_command(joint_angles)
+            joint_angles = conversions.config_to_manip_command(joint_angles)
 
         elif len(joint_angles) < 6:
             raise ValueError(
@@ -337,7 +361,11 @@ class HomeRobotZmqClient(RobotClient):
                     if verbose:
                         print("Resending action", joint_angles)
 
+<<<<<<< HEAD
                 joint_state, joint_velocities, _ = self.get_joint_state()
+=======
+                joint_state = self.get_joint_positions()
+>>>>>>> main
                 if joint_state is None:
                     time.sleep(0.01)
                     continue
@@ -440,7 +468,7 @@ class HomeRobotZmqClient(RobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
-                joint_state = self.get_joint_state()
+                joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
@@ -509,24 +537,43 @@ class HomeRobotZmqClient(RobotClient):
         self,
         q: np.ndarray,
         timeout: float = 10.0,
+        min_wait_time: float = 0.5,
         resend_action: Optional[dict] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
         while True:
+<<<<<<< HEAD
             joint_state = self.get_joint_positions()
             if joint_state is None:
+=======
+            joint_positions, joint_velocities, _ = self.get_joint_state()
+            if joint_positions is None:
+>>>>>>> main
                 continue
-            pan_err = np.abs(joint_state[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN])
-            tilt_err = np.abs(joint_state[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT])
+            pan_err = np.abs(
+                joint_positions[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN]
+            )
+            tilt_err = np.abs(
+                joint_positions[HelloStretchIdx.HEAD_TILT] - q[HelloStretchIdx.HEAD_TILT]
+            )
+            head_speed = np.linalg.norm(
+                joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+            )
             if verbose:
-                print("Waiting for head to move", pan_err, tilt_err)
-            if pan_err < 0.1 and tilt_err < 0.1:
+                print("Waiting for head to move", pan_err, tilt_err, "head speed =", head_speed)
+            if pan_err < self._head_pan_tolerance and tilt_err < self._head_tilt_tolerance:
                 break
             elif resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
+
             t1 = timeit.default_timer()
+            if t1 - t0 > min_wait_time and head_speed < self._head_not_moving_tolerance:
+                if verbose:
+                    print("Head not moving, we are done")
+                break
+
             if t1 - t0 > timeout:
                 print("Timeout waiting for head to move")
                 break

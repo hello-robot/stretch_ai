@@ -28,6 +28,7 @@ def main(
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
+        enable_rerun_server=False,
     )
     robot.start()
     try:
