@@ -930,22 +930,12 @@ class RobotAgent:
         if random_goals:
             goal = next(self.space.sample_random_frontier()).cpu().numpy()
         else:
-            res = plan_to_frontier(
-                start,
-                self.planner,
-                self.space,
-                self.voxel_map,
-                try_to_plan_iter=try_to_plan_iter,
-                visualize=False,  # visualize,
-                expand_frontier_size=self._default_expand_frontier_size,
-            )
             # Get frontier sampler
             sampler = self.space.sample_closest_frontier(
                 start,
                 verbose=False,
                 min_dist=self._frontier_min_dist,
                 step_dist=self._frontier_step_dist,
-                debug=True,
             )
             for i, goal in enumerate(sampler):
                 if goal is None:

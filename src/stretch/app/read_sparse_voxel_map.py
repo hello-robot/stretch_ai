@@ -235,6 +235,7 @@ def main(
             print("It will try to plan to the closest frontier point.")
             print("-" * 80)
             res = agent.plan_to_frontier(x0)
+            print("... planning done. success =", res.success)
             if res.success:
                 plan_to_deltas(x0, res)
                 goal = res.trajectory[-1].state
