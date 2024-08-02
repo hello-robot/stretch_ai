@@ -8,25 +8,27 @@ from transformers import pipeline
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
 
-class GemmaClient(AbstractLLMClient):
+class Gemma2bClient(AbstractLLMClient):
     def __init__(
         self,
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
         max_tokens: int = 512,
+        device: str = "cuda",
     ):
         super().__init__(prompt, prompt_kwargs)
+        assert device in ["cuda", "mps"], f"Invalid device: {device}"
         self.max_tokens = max_tokens
         self.pipe = pipeline(
             "text-generation",
             model="google/gemma-2-2b-it",
             model_kwargs={"torch_dtype": torch.bfloat16},
-            device="cuda",  # replace with "mps" to run on a Mac device
+            device=device,
         )
 
     def __call__(self, command: str, verbose: bool = False):
         if self.steps == 0:
-            new_message = {"role": "user", "content": msg}
+            new_message = {"role": "user", "content": self.system_prompt + msg}
         else:
             new_message = {"role": "user", "content": msg}
 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
     from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
 
     prompt = SimpleStretchPromptBuilder()
-    client = GemmaClient(prompt)
+    client = Gemma2bClient(prompt)
     for _ in range(50):
         msg = input("Enter a message (empty to quit):")
         if len(msg) == 0:

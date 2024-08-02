@@ -39,11 +39,16 @@ class AbstractLLMClient(ABC):
 
         # If the prompt is a string, use it as the prompt. Otherwise, generate the prompt string.
         if isinstance(prompt, str):
-            self.prompt = prompt
+            self._prompt = prompt
         else:
             if prompt_kwargs is None:
                 prompt_kwargs = {}
-            self.prompt = prompt(**prompt_kwargs)
+            self._prompt = prompt(**prompt_kwargs)
+
+    @property
+    def system_prompt(self) -> str:
+        """Return the system prompt string for an LLM."""
+        return self._prompt
 
     def reset(self) -> None:
         """Reset the client state."""
