@@ -20,23 +20,23 @@ Remember to be friendly, helpful, and concise.
 
 class SimplePromptBuilder(AbstractPromptBuilder):
     def __init__(self, prompt: str):
-        self.prompt = prompt
+        self.prompt_str = prompt
 
     def __str__(self):
-        return self.prompt
+        return self.prompt_str
 
     def configure(self, **kwargs) -> str:
         assert len(kwargs) == 0, "SimplePromptBuilder does not take any arguments."
-        return self.prompt
+        return self.prompt_str
 
 
 class SimpleStretchPromptBuilder(AbstractPromptBuilder):
     def __init__(self):
-        self.prompt = simple_stretch_prompt
+        self.prompt_str = simple_stretch_prompt
 
     def __str__(self):
-        return self.prompt
+        return self.prompt_str
 
     def configure(self, **kwargs) -> str:
         assert len(kwargs) == 0, "SimpleStretchPromptBuilder does not take any arguments."
-        return self.prompt
+        return self.prompt_str

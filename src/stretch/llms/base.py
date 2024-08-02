@@ -6,12 +6,18 @@ class AbstractPromptBuilder(ABC):
     """Abstract base class for a prompt generator."""
 
     def __init__(self, **kwargs):
+        print(" kwargs: ")
+        print(kwargs)
         self.prompt_str = self.configure(**kwargs)
 
     @abstractmethod
     def configure(self, **kwargs) -> str:
         """Configure the prompt with the given parameters, then return the prompt string."""
         pass
+
+    def __str__(self) -> str:
+        """Return the system prompt string for an LLM."""
+        return self.prompt_str
 
     def __call__(self, kwargs: Optional[Dict[str, Any]] = None) -> str:
         """Return the system prompt string for an LLM."""
@@ -35,6 +41,8 @@ class AbstractLLMClient(ABC):
         if isinstance(prompt, str):
             self.prompt = prompt
         else:
+            if prompt_kwargs is None:
+                prompt_kwargs = {}
             self.prompt = prompt(**prompt_kwargs)
 
     def reset(self) -> None:
