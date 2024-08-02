@@ -64,6 +64,7 @@ Then, first try these apps to make sure connections are working properly:
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
 - [Gripper](#gripper-tool) - Open and close the gripper.
 - [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
+- [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
 Advanced:
 
@@ -281,6 +282,14 @@ You should see something like this:
 ```
 [2024-07-29T17:58:34Z INFO  re_ws_comms::server] Hosting a WebSocket server on ws://localhost:9877. You can connect to this with a native viewer (`rerun ws://localhost:9877`) or the web viewer (with `?url=ws://localhost:9877`).
 [2024-07-29T17:58:34Z INFO  re_sdk::web_viewer] Hosting a web-viewer at http://localhost:9090?url=ws://localhost:9877
+```
+
+### Voice Chat
+
+Chat with the robot using LLMs.
+
+```bash
+python -m stretch.app.voice_chat
 ```
 
 ### Dex Teleop for Data Collection
