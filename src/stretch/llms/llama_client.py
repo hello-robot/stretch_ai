@@ -29,6 +29,8 @@ class LlamaClient(AbstractLLMClient):
 
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         self.tokenizer.chat_template = self.chat_template
+        self.tokenizer.system_prompt = self.system_prompt
+        self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Set up huggingface inference pipeline
         self.pipe = transformers.pipeline(
@@ -59,6 +61,17 @@ class LlamaClient(AbstractLLMClient):
         # Get response text
         assistant_response = output[0]["generated_text"].strip()
 
+        # Try to remove messages from output
+        assistant_response = assistant_response.replace(messages, "")
+
+        # Hack: search for "User" in the response and remove everything after it
+        user_idx = assistant_response.find("User")
+        if user_idx != -1:
+            assistant_response = assistant_response[:user_idx]
+        assistaant_idx = assistant_response.find("Assistant")
+        if assistaant_idx != -1:
+            assistant_response = assistant_response[:assistaant_idx]
+
         # Add the assistant's response to the conversation history
         self.add_history({"role": "assistant", "content": assistant_response})
         if verbose:
@@ -73,7 +86,7 @@ if __name__ == "__main__":
     prompt = SimpleStretchPromptBuilder()
     client = LlamaClient(prompt)
     for _ in range(50):
-        msg = input("Enter a message (empty to quit):")
+        msg = input("Enter a message (empty to quit): ")
         if len(msg) == 0:
             break
         response = client(msg)
