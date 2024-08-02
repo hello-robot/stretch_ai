@@ -177,7 +177,8 @@ def main(
         plt.show()
 
         if test_planning:
-
+            print("-" * 80)
+            print("Test planning.")
             print("--- Sampling goals ---")
             start_is_valid = space.is_valid(x0, verbose=True, debug=False)
             if not start_is_valid:
