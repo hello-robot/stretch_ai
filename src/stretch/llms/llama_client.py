@@ -4,6 +4,7 @@ from typing import Optional, Union
 import torch
 import transformers
 from termcolor import colored
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
@@ -20,14 +21,21 @@ class LlamaClient(AbstractLLMClient):
         super().__init__(prompt)
         self.max_tokens = max_tokens
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # self.model = transformers.GPT2LMHeadModel.from_pretrained(model_id).to(self.device)
-        # self.tokenizer = transformers.GPT2TokenizerFast.from_pretrained(model_id)
+
         if model_id is None:
             model_id = default_model_id
+
+        # self.model = transformers.GPT2LMHeadModel.from_pretrained(model_id).to(self.device)
+        self.tokenizer = transformers.GPT2TokenizerFast.from_pretrained(model_id)
+
+        # Set up huggingface inference pipeline
         self.pipe = transformers.pipeline(
             "text-generation",
+            # TODO: remove old code
             model=model_id,
             model_kwargs={"torch_dtype": torch.bfloat16},
+            # model=model,
+            tokenizer=self.tokenizer,
             device_map="auto",
         )
 
