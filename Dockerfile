@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-dev-ubuntu22.04
+FROM nvidia/cuda:11.8.0-base-ubuntu22.04
 
 # Set up timezone
 ENV TZ=UTC
