@@ -30,6 +30,15 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6\
     && rm -rf /var/lib/apt/lists/*
+
+# Audio dependencies - for PyAudio
+RUN apt-get update && apt-get install -y \
+    libasound-dev \
+    portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 
@@ -49,16 +58,6 @@ RUN apt-get update && apt-get install  -y \
     ffmpeg \
     libsm6 \
     libxext6
-
-# Audio dependencies - for PyAudio
-RUN apt-get update && apt-get install -y \
-    libasound-dev \
-    portaudio19-dev \
-    libportaudio2 \
-    libportaudiocpp0 \
-    && rm -rf /var/lib/apt/lists/*
-
-
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .
