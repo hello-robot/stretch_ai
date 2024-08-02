@@ -27,6 +27,6 @@ if [ "$SKIP_ASKING" == "false" ]; then
 fi
 # Build the docker image with the current tag.
 docker build -t hellorobotinc/stretch-ai_cuda-11.8:$VERSION .
-#docker push hellorobotinc/stretch-ai_cuda-11.8:$VERSION
-#docker tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION hellorobotinc/stretch-ai_cuda-11.8:latest
-#docker push hellorobotinc/stretch-ai_cuda-11.8:latest
+docker push hellorobotinc/stretch-ai_cuda-11.8:$VERSION
+docker tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION hellorobotinc/stretch-ai_cuda-11.8:latest
+docker push hellorobotinc/stretch-ai_cuda-11.8:latest
