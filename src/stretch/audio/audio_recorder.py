@@ -123,6 +123,9 @@ class AudioRecorder:
 
     def transcribe(self, speech_to_text: AbstractSpeechToText) -> None:
         """Use this audio stream"""
+
+        # TODO: this loop is blocking, need to make it non-blocking and make it terminate properly
+        # It should probably time out at some point if not moving into a separate thread
         while True:
             # Read audio data
             data = self.stream.read(self.chunk)
@@ -131,7 +134,7 @@ class AudioRecorder:
             # Convert audio data to float32 and normalize
             audio_float32 = audio_data.astype(np.float32) / 32768
 
-            text = text_to_speech.process_audio(audio_float32)
+            text = speech_to_text.process_audio(audio_float32)
             print(text)
 
     def save(self, filename: str) -> None:
