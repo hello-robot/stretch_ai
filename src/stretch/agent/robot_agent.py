@@ -6,6 +6,7 @@ import copy
 import datetime
 import os
 import pickle
+import random
 import time
 import timeit
 from pathlib import Path
@@ -70,7 +71,11 @@ class RobotAgent:
         self.use_scene_graph = parameters["plan_with_scene_graph"]
 
         # Expanding frontier - how close to frontier are we allowed to go?
-        self.default_expand_frontier_size = parameters["default_expand_frontier_size"]
+        self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
+            "default_expand_frontier_size"
+        ]
+        self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
+        self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -920,6 +925,7 @@ class RobotAgent:
         manual_wait: bool = False,
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
+        fix_random_seed: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
         start = self.robot.get_base_pose()
@@ -940,9 +946,30 @@ class RobotAgent:
                 self.voxel_map,
                 try_to_plan_iter=try_to_plan_iter,
                 visualize=False,  # visualize,
-                expand_frontier_size=self.default_expand_frontier_size,
+                expand_frontier_size=self._default_expand_frontier_size,
             )
-        return res
+            # Get frontier sampler
+            sampler = self.space.sample_closest_frontier(
+                start,
+                verbose=False,
+                min_dist=self._frontier_min_dist,
+                step_dist=self._frontier_step_dist,
+                debug=True,
+            )
+            for i, goal in enumerate(sampler):
+                if goal is None:
+                    # No more positions to sample
+                    break
+
+                # For debugging, we can set the random seed to 0
+                if fix_random_seed:
+                    np.random.seed(0)
+                    random.seed(0)
+
+                res = self.planner.plan(start, goal.cpu().numpy())
+                if res.success:
+                    return res
+        return PlanResult(False, reason="no valid plans found")
 
     def run_exploration(
         self,
