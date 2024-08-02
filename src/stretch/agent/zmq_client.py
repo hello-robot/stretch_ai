@@ -602,6 +602,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             min_steps_not_moving = self._min_steps_not_moving
         t0 = timeit.default_timer()
         close_to_goal = False
+        verbose = True
         while True:
             with self._obs_lock:
                 if self._obs is None:
