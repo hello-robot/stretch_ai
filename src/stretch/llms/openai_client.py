@@ -17,10 +17,7 @@ class OpenaiClient(AbstractLLMClient):
         prompt: Union[str, AbstractPrompt],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        if isinstance(prompt, str):
-            self.prompt = prompt
-        else:
-            self.prompt = prompt(**prompt_kwargs)
+        super().__init__(prompt, prompt_kwargs)
         self._openai = OpenAI()
 
     def __call__(self, command: str, verbose: bool = False):

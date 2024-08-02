@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class Prompt(ABC):
@@ -22,6 +22,21 @@ class Prompt(ABC):
 
 class AbstractLLMClient(ABC):
     """Abstract base class for a client that interacts with a language model."""
+
+    def __init__(self, prompt: Union[str, Prompt], prompt_kwargs: Optional[Dict[str, Any]] = None):
+        self.prompt_kwargs = prompt
+        self.reset()
+
+        # If the prompt is a string, use it as the prompt. Otherwise, generate the prompt string.
+        if isinstance(prompt, str):
+            self.prompt = prompt
+        else:
+            self.prompt = prompt(**prompt_kwargs)
+
+    def reset(self) -> None:
+        """Reset the client state."""
+        self.conversation_history: List[Dict[str, Any]] = []
+        self.iterations = 0
 
     @abstractmethod
     def __call__(self, command: str, verbose: bool = False):
