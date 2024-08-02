@@ -160,9 +160,6 @@ class RobotAgent:
         os.makedirs(self.path, exist_ok=True)
         os.makedirs(f"{self.path}/viz_data", exist_ok=True)
 
-        self.openai_key = None
-        self.task = None
-
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
         return self.encoder
@@ -174,12 +171,6 @@ class RobotAgent:
     def encode_image(self, image: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         """Encode image using the encoder"""
         return self.encoder.encode_image(image)
-
-    def set_openai_key(self, key):
-        self.openai_key = key
-
-    def set_task(self, task):
-        self.task = task
 
     def get_instance_from_text(
         self,
