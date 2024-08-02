@@ -19,6 +19,11 @@ RUN apt-get update && apt-get install -y \
     python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
+# Python3 dev
+RUN apt-get update && apt-get install -y \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install opencv dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
