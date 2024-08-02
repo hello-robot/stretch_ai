@@ -17,7 +17,7 @@ class LlamaClient(AbstractLLMClient):
         # self.tokenizer = transformers.GPT2TokenizerFast.from_pretrained(model_id)
         if model_id is None:
             model_id = default_model_id
-        pipeline = transformers.pipeline(
+        self.pipeline = transformers.pipeline(
             "text-generation",
             model=model_id,
             model_kwargs={"torch_dtype": torch.bfloat16},
@@ -25,7 +25,7 @@ class LlamaClient(AbstractLLMClient):
         )
 
     def __call__(self, command: str, verbose: bool = False):
-        raise NotImplementedError("This method should be implemented by the subclass.")
+        self.pipeline(command)
 
 
 if __name__ == "__main__":
