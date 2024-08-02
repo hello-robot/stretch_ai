@@ -22,6 +22,7 @@
 #  * Neither the name Meta nor the names of its contributors may be used to
 #    endorse or promote products derived from this software without specific
 #    prior written permission.
+# mypy: ignore-errors
 
 import math
 
@@ -36,7 +37,7 @@ import math
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import warnings
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import plotly.graph_objects as go
 import torch
@@ -102,14 +103,14 @@ def get_bbox_wireframe(
     assert bbox3d.shape[1] == 3 and bbox3d.shape[2] == 2
     minx, miny, minz = bbox3d[:, :, 0].unbind(1)
     maxx, maxy, maxz = bbox3d[:, :, 1].unbind(1)
-    v0 = torch.stack([minx, miny, minz], axis=-1)
-    v1 = torch.stack([minx, miny, maxz], axis=-1)
-    v2 = torch.stack([maxx, miny, maxz], axis=-1)
-    v3 = torch.stack([maxx, miny, minz], axis=-1)
-    v4 = torch.stack([minx, maxy, minz], axis=-1)
-    v5 = torch.stack([minx, maxy, maxz], axis=-1)
-    v6 = torch.stack([maxx, maxy, maxz], axis=-1)
-    v7 = torch.stack([maxx, maxy, minz], axis=-1)
+    v0 = torch.stack([minx, miny, minz], dim=-1)
+    v1 = torch.stack([minx, miny, maxz], dim=-1)
+    v2 = torch.stack([maxx, miny, maxz], dim=-1)
+    v3 = torch.stack([maxx, miny, minz], dim=-1)
+    v4 = torch.stack([minx, maxy, minz], dim=-1)
+    v5 = torch.stack([minx, maxy, maxz], dim=-1)
+    v6 = torch.stack([maxx, maxy, maxz], dim=-1)
+    v7 = torch.stack([maxx, maxy, minz], dim=-1)
     corner_points = [v0, v1, v2, v3, v0, v4, v5, v1, v5, v6, v2, v6, v7, v3, v7, v4]
     if add_cross_face_bars:
         corner_points = [
@@ -143,7 +144,7 @@ def get_bbox_wireframe(
             v7,
             v4,
         ]
-    lines = torch.stack([x.float() for x in corner_points], axis=-2)
+    lines = torch.stack([x.float() for x in corner_points], dim=-2)
     return lines
 
 
@@ -497,7 +498,7 @@ def plot_scene_with_bboxes(
     y_settings.update(**kwargs.get("yaxis", {}))
     z_settings.update(**kwargs.get("zaxis", {}))
 
-    camera = {
+    camera: Dict[str, Any] = {
         "up": {
             "x": 0.0,
             "y": 0.0,
