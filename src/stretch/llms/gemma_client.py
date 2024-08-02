@@ -28,9 +28,9 @@ class Gemma2bClient(AbstractLLMClient):
 
     def __call__(self, command: str, verbose: bool = False):
         if self.is_first_message():
-            new_message = {"role": "user", "content": self.system_prompt + msg}
+            new_message = {"role": "user", "content": self.system_prompt + command}
         else:
-            new_message = {"role": "user", "content": msg}
+            new_message = {"role": "user", "content": command}
 
         self.add_history(new_message)
         # Prepare the messages including the conversation history
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     prompt = SimpleStretchPromptBuilder()
     client = Gemma2bClient(prompt)
     for _ in range(50):
-        msg = input("Enter a message (empty to quit):")
+        msg = input("Enter a message (empty to quit): ")
         if len(msg) == 0:
             break
         response = client(msg)
