@@ -2,6 +2,7 @@ import os
 import tempfile
 import timeit
 
+import click
 import torch
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -12,6 +13,13 @@ from stretch.llms import Gemma2bClient, LlamaClient
 from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
 
 
+@click.command()
+@click.option(
+    "--model",
+    default="gemma",
+    help="The model to use (gemma or llama)",
+    type=click.Choice(["gemma", "llama"]),
+)
 def main(model="gemma"):
     # Load the tokenizer and model
     audio_recorder = AudioRecorder()
