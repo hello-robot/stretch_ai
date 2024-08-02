@@ -98,6 +98,35 @@ colcon build --symlink-install --packages-select stretch_ros2_bridge
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
 
+### Using LLMs
+
+We use many open-source LLMs from [Huggingface](https://huggingface.co/). TO use them, you will need to make sure `transformers` is installed and up to date. You can install it with:
+
+```bash
+pip install transformers --upgrade
+```
+
+You will need to go to the associated websites and accept their license agreements.
+
+- [Gemma 2](https://huggingface.co/google/gemma-2b)
+- [Llama 3.1](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B)
+
+Then you need to login to the huggingface CLI:
+
+```bash
+huggingface-cli login
+```
+
+This will require a personal access token created on the Huggingface website. After this, you can test LLM chat APIs via:
+
+```bash
+# Start a local chat with Gamma 2-2B -- requires ~5gb GPU memory
+python -m stretch.llms.gemma_client
+
+# Start a local chat with Llama 3.1 8B -- requires a bigger GPU
+python -m stretch.llms.llama_client
+```
+
 ### Advanced Installation (PC Only)
 
 If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
