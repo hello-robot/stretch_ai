@@ -17,7 +17,7 @@ class GemmaClient(AbstractLLMClient):
     ):
         super().__init__(prompt, prompt_kwargs)
         self.max_tokens = max_tokens
-        pipe = pipeline(
+        self.pipe = pipeline(
             "text-generation",
             model="google/gemma-2-2b-it",
             model_kwargs={"torch_dtype": torch.bfloat16},
