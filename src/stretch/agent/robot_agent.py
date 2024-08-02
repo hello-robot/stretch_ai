@@ -19,7 +19,7 @@ from PIL import Image
 from torchvision import transforms
 
 from stretch.core.parameters import Parameters
-from stretch.core.robot import GraspClient, RobotClient
+from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
@@ -36,10 +36,10 @@ class RobotAgent:
 
     def __init__(
         self,
-        robot: RobotClient,
+        robot: AbstractRobotClient,
         parameters: Dict[str, Any],
         semantic_sensor: Optional = None,
-        grasp_client: Optional[GraspClient] = None,
+        grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
         debug_instances: bool = True,

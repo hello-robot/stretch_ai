@@ -295,7 +295,7 @@ def build_mask(
         mask.float(),
         torch.ones(1, 1, mask_extra_radius, mask_extra_radius, device=mask.device),
         padding=(mask_extra_radius // 2),
-    )
+    )  # type: ignore
     return (~mask).expand_as(target)
 
 

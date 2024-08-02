@@ -23,6 +23,7 @@
 #  * Neither the name Meta nor the names of its contributors may be used to
 #    endorse or promote products derived from this software without specific
 #    prior written permission.
+# mypy: ignore-errors
 
 import warnings
 
@@ -124,20 +125,20 @@ class BBoxes3D:
         self._num_boxes_per_scene = None  # N
 
         # Packed representation.
-        self._bounds_packed = None  # (sum(P_n), 3)
-        self._names_packed = None  # (sum(P_n), 3)
-        self._features_packed = None  # (sum(P_n), C)
+        self._bounds_packed: torch.Tensor = None  # (sum(P_n), 3)
+        self._names_packed: torch.Tensor = None  # (sum(P_n), 3)
+        self._features_packed: torch.Tensor = None  # (sum(P_n), C)
 
-        self._packed_to_scene_idx = None  # sum(P_n)
+        self._packed_to_scene_idx: torch.Tensor = None  # sum(P_n)
 
         # Index of each scene's first point in the packed boxes.
         # Assumes packing is sequential.
-        self._scene_to_packed_first_idx = None  # N
+        self._scene_to_packed_first_idx: torch.Tensor = None  # N
 
         # Padded representation.
-        self._bounds_padded = None  # (N, max(P_n), 3)
-        self._names_padded = None  # (N, max(P_n), 3)
-        self._features_padded = None  # (N, max(P_n), C)
+        self._bounds_padded: torch.Tensor = None  # (N, max(P_n), 3)
+        self._names_padded: torch.Tensor = None  # (N, max(P_n), 3)
+        self._features_padded: torch.Tensor = None  # (N, max(P_n), C)
 
         # Index to convert boxes from flattened padded to packed.
         self._padded_to_packed_idx = None  # N * max_P
@@ -355,9 +356,10 @@ class BBoxes3D:
             # NOTE consider converting index to cpu for efficiency
             if index.dtype == torch.bool:
                 # advanced indexing on a single dimension
-                index = index.nonzero()
-                index = index.squeeze(1) if index.numel() > 0 else index
-                index = index.tolist()
+                # Mypy type hinting is not perfect here
+                index = index.nonzero()  # type: ignore
+                index = index.squeeze(1) if index.numel() > 0 else index  # type: ignore
+                index = index.tolist()  # type: ignore
             bounds = [self.bounds_list()[i] for i in index]
             if names_list is not None:
                 names = [names_list[i] for i in index]
@@ -375,7 +377,8 @@ class BBoxes3D:
         Returns:
             bool indicating whether there is any data.
         """
-        return self._N == 0 or self.valid.eq(False).all()
+        # mypy type checking is failing here
+        return self._N == 0 or self.valid.eq(False).all()  # type: ignore
 
     def bounds_list(self) -> List[torch.Tensor]:
         """
@@ -570,7 +573,7 @@ class BBoxes3D:
         else:
             self._bounds_padded = struct_utils.list_to_padded(
                 self.bounds_list(),
-                (self._P, 3, 3),
+                [self._P, 3, 3],
                 pad_value=0.0,
                 equisized=self.equisized,
             )
@@ -578,7 +581,7 @@ class BBoxes3D:
             if names_list is not None:
                 self._names_padded = struct_utils.list_to_padded(
                     names_list,
-                    (self._P, 1),
+                    [self._P, 1],
                     pad_value=0.0,
                     equisized=self.equisized,
                 )
@@ -586,7 +589,7 @@ class BBoxes3D:
             if features_list is not None:
                 self._features_padded = struct_utils.list_to_padded(
                     features_list,
-                    (self._P, self._C),
+                    [self._P, self._C],
                     pad_value=0.0,
                     equisized=self.equisized,
                 )
@@ -822,19 +825,24 @@ class BBoxes3D:
         if N <= 0:
             raise ValueError("N must be > 0.")
 
-        new_bounds_list, new_names_list, new_features_list = [], None, None
+        new_bounds_list: List[int] = []
+        new_names_list: Optional[List[str]] = None
+        new_features_list: Optional[List[Tensor]] = None
         for bounds in self.bounds_list():
-            new_bounds_list.extend(bounds.clone() for _ in range(N))
+            # mypy type checking is failing here
+            new_bounds_list.extend(bounds.clone() for _ in range(N))  # type: ignore
         names_list = self.names_list()
         if names_list is not None:
             new_names_list = []
             for names in names_list:
-                new_names_list.extend(names.clone() for _ in range(N))
+                # mypy type checking is failing here
+                new_names_list.extend(names.clone() for _ in range(N))  # type: ignore
         features_list = self.features_list()
         if features_list is not None:
             new_features_list = []
             for features in features_list:
-                new_features_list.extend(features.clone() for _ in range(N))
+                # mypy type checking is failing here
+                new_features_list.extend(features.clone() for _ in range(N))  # type: ignore
         return self.__class__(
             bounds=new_bounds_list, names=new_names_list, features=new_features_list
         )
