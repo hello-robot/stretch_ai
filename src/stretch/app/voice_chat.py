@@ -1,4 +1,5 @@
 import torch
+import os
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -49,10 +50,17 @@ def main():
     for i in range(50):
         # Record audio
         input(colored("Press enter to speak or ctrl+c to exit.", "yellow"))
-        audio_recorder.record("recording.wav", duration=10, silence_limit=1.0)
 
-        # Transcribe the audio file
-        input_text = whisper.transcribe_file("recording.wav")
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+            temp_filename = temp_audio_file.name
+            audio_recorder.record(temp_filename, duration=10, silence_limit=1.0)
+
+            # Transcribe the audio file
+            input_text = whisper.transcribe_file(temp_filename)
+
+        # Remove the temporary file
+        os.remove(temp_filename)
 
         # Prepare input text
         if input_text == "":
