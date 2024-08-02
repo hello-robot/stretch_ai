@@ -712,7 +712,7 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
-    def get_2d_map(self, debug: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_2d_map(self, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
 
         # Is this already cached? If so we don't need to go to all this work
