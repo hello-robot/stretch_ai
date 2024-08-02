@@ -12,7 +12,7 @@ default_model_id = "meta-llama/Meta-Llama-3.1-8B"
 
 class LlamaClient(AbstractLLMClient):
     def chat_template(self, prompt):
-        return f"User: {prompt}\nAssistant:"
+        return f"\nUser: {prompt}\nAssistant:"
 
     def __init__(
         self,
@@ -41,18 +41,23 @@ class LlamaClient(AbstractLLMClient):
             device_map="auto",
         )
 
-    # def get_history(self) -> str:
-    #    """Return the conversation history as a string."""
-    #    history = super().get_history()
-    #    history_str = ""
+    def get_history(self) -> str:
+        """Return the conversation history as a string."""
+        history = super().get_history()
+        history_str = ""
+        for item in history:
+            if isinstance(item, str):
+                history_str += item
+            else:
+                history_str += f"\n{item['role']}: {item['content']}"
+        return history_str
 
     def __call__(self, command: str, verbose: bool = False):
-        return self.pipe(command, max_new_tokens=self.max_tokens)[0]["generated_text"].strip()
-
+        # return self.pipe(command, max_new_tokens=self.max_tokens)[0]["generated_text"].strip()
         if self.is_first_message():
-            new_message = {"role": "user", "content": self.system_prompt + msg}
+            new_message = self.system_prompt + self.chat_template(command)
         else:
-            new_message = {"role": "user", "content": msg}
+            new_message = self.chat_template(command)
 
         self.add_history(new_message)
         # Prepare the messages including the conversation history
