@@ -56,4 +56,5 @@ if __name__ == "__main__":
         if len(msg) == 0:
             break
         response = client(msg)
+        print(colored("You said:", "green"), msg)
         print(colored("Response", "blue"), response)
