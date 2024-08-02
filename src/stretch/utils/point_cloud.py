@@ -2,7 +2,7 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Optional
+from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -23,7 +23,7 @@ def numpy_to_pcd(xyz: np.ndarray, rgb: np.ndarray = None) -> o3d.geometry.PointC
     return pcd
 
 
-def pcd_to_numpy(pcd: o3d.geometry.PointCloud) -> (np.ndarray, np.ndarray):
+def pcd_to_numpy(pcd: o3d.geometry.PointCloud) -> Tuple[np.ndarray, np.ndarray]:
     """Convert an open3d point cloud into xyz, rgb numpy arrays and return them."""
     xyz = np.asarray(pcd.points)
     rgb = np.asarray(pcd.colors)
