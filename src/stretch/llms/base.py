@@ -48,7 +48,12 @@ class AbstractLLMClient(ABC):
     def reset(self) -> None:
         """Reset the client state."""
         self.conversation_history: List[Dict[str, Any]] = []
-        self.iterations = 0
+        self._iterations = 0
+
+    @property
+    def steps(self) -> int:
+        """Return the number of steps taken by the client."""
+        return self._iterations
 
     def add_history(self, message: Dict[str, Any]) -> None:
         """Add a message to the conversation history."""
