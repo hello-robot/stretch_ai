@@ -38,6 +38,14 @@ class AbstractLLMClient(ABC):
         self.conversation_history: List[Dict[str, Any]] = []
         self.iterations = 0
 
+    def add_history(self, message: Dict[str, Any]) -> None:
+        """Add a message to the conversation history."""
+        self.conversation_history.append(message)
+
+    def get_history(self) -> List[Dict[str, Any]]:
+        """Get the conversation history."""
+        return self.conversation_history.copy()
+
     @abstractmethod
     def __call__(self, command: str, verbose: bool = False):
         """Interact with the language model to generate a plan."""
