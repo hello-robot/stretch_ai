@@ -41,9 +41,9 @@ class LlamaClient(AbstractLLMClient):
             device_map="auto",
         )
 
-    def get_history(self) -> str:
+    def get_history_as_str(self) -> str:
         """Return the conversation history as a string."""
-        history = super().get_history()
+        history = self.get_history()
         history_str = ""
         for item in history:
             if isinstance(item, str):
@@ -61,12 +61,14 @@ class LlamaClient(AbstractLLMClient):
 
         self.add_history(new_message)
         # Prepare the messages including the conversation history
-        messages = self.get_history()
+        messages = self.get_history_as_str()
+        print(f"Messages: {messages}")
 
         t0 = timeit.default_timer()
-        outputs = self.pipe(messages, max_new_tokens=self.max_tokens)
+        output = self.pipe(messages, max_new_tokens=self.max_tokens)
         t1 = timeit.default_timer()
-        assistant_response = outputs[0]["generated_text"][-1]["content"].strip()
+        breakpoint()
+        assistant_response = output["generated_text"][-1]["content"].strip()
 
         # Add the assistant's response to the conversation history
         self.add_history({"role": "assistant", "content": assistant_response})
