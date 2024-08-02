@@ -25,7 +25,7 @@ class LlamaClient(AbstractLLMClient):
         )
 
     def __call__(self, command: str, verbose: bool = False):
-        self.pipeline(command)
+        return self.pipeline(command)[0]["generated_text"].strip()
 
 
 if __name__ == "__main__":
