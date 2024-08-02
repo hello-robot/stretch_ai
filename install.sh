@@ -7,6 +7,7 @@ export PYTHON_VERSION=3.10
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
+VERSION="_0.0.6"
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -49,7 +50,6 @@ do
     esac
 done
 
-VERSION="_0.0.5"
 # If cpu only, set the cuda version to cpu
 if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu
