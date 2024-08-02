@@ -246,7 +246,7 @@ def main(
                     voxel_map.show(
                         instances=show_instances,
                         orig=start_xyz,
-                        xyt=goal.cpu().numpy(),
+                        xyt=goal,
                         footprint=footprint,
                     )
         if test_sampling:
