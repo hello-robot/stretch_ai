@@ -1,6 +1,7 @@
-import torch
-import tempfile
 import os
+import tempfile
+
+import torch
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
