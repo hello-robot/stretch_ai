@@ -55,6 +55,10 @@ class AbstractLLMClient(ABC):
         self.conversation_history: List[Dict[str, Any]] = []
         self._iterations = 0
 
+    def is_first_message(self) -> bool:
+        """Return True if the client has not yet sent a message."""
+        return len(self.conversation_history) == 0
+
     @property
     def steps(self) -> int:
         """Return the number of steps taken by the client."""

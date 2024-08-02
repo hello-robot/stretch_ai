@@ -27,7 +27,7 @@ class Gemma2bClient(AbstractLLMClient):
         )
 
     def __call__(self, command: str, verbose: bool = False):
-        if self.steps == 0:
+        if self.is_first_message():
             new_message = {"role": "user", "content": self.system_prompt + msg}
         else:
             new_message = {"role": "user", "content": msg}
