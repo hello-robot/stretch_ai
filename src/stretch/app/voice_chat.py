@@ -20,7 +20,13 @@ from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
     help="The model to use (gemma or llama)",
     type=click.Choice(["gemma", "llama"]),
 )
-def main(model="gemma"):
+@click.option(
+    "--max_audio_duration", default=10.0, help="The maximum duration of the audio recording"
+)
+@click.option(
+    "--silence_limit", default=2.0, help="The amount of silence before stopping the recording"
+)
+def main(model="gemma", max_audio_duration: float = 10.0, silence_limit: float = 2.0):
     # Load the tokenizer and model
     audio_recorder = AudioRecorder()
     whisper = WhisperSpeechToText()
@@ -40,7 +46,9 @@ def main(model="gemma"):
         # Create a temporary file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
             temp_filename = temp_audio_file.name
-            audio_recorder.record(temp_filename, duration=10, silence_limit=1.0)
+            audio_recorder.record(
+                temp_filename, duration=max_audio_duration, silence_limit=silence_limit
+            )
 
             # Transcribe the audio file
             input_text = whisper.transcribe_file(temp_filename)
