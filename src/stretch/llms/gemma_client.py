@@ -13,7 +13,7 @@ class Gemma2bClient(AbstractLLMClient):
         self,
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
-        max_tokens: int = 512,
+        max_tokens: int = 4096,
         device: str = "cuda",
     ):
         super().__init__(prompt, prompt_kwargs)
