@@ -269,7 +269,7 @@ class RobotAgent:
         """Returns reference to the navigation space."""
         return self.space
 
-    def place(self, object_goal: Optional[str] = None, **kwargs) -> bool:
+    def place_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
         """Try to place an object."""
         if not self.robot.in_manipulation_mode():
             self.robot.switch_to_manipulation_mode()
@@ -278,7 +278,7 @@ class RobotAgent:
             return False
         return self.grasp_client.try_placing(object_goal=object_goal, **kwargs)
 
-    def grasp(self, object_goal: Optional[str] = None, **kwargs) -> bool:
+    def grasp_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
         """Try to grasp a potentially specified object."""
         # Put the robot in manipulation mode
         if not self.robot.in_manipulation_mode():
@@ -362,21 +362,6 @@ class RobotAgent:
         with open(filename, "wb") as f:
             pickle.dump(self.voxel_map, f)
         print(f"SVM logged to {filename}")
-
-    def say(self, msg: str):
-        """Provide input either on the command line or via chat client"""
-        # if self.chat is not None:
-        #    self.chat.output(msg)
-        # TODO: support other ways of saying
-        print(msg)
-
-    def ask(self, msg: str) -> str:
-        """Receive input from the user either via the command line or something else"""
-        # if self.chat is not None:
-        #  return self.chat.input(msg)
-        # else:
-        # TODO: support other ways of saying
-        return input(msg)
 
     def get_command(self):
         if (
@@ -1145,3 +1130,119 @@ class RobotAgent:
                 if verbose:
                     print(f"Saving instance image {i} view {j} to {root / filename}")
                 image.save(root / filename)
+
+    # OVMM primitives
+    def go_to(self, object_goal: str, **kwargs) -> bool:
+        """Go to a specific object in the world."""
+        # Find closest instance
+        instances = self.get_found_instances_by_class(object_goal)
+        if len(instances) == 0:
+            return False
+
+        # Move to the instance with the highest score
+        # Sort by score
+        instances.sort(key=lambda x: x[1].score, reverse=True)
+        instance = instances[0][1]
+
+        # Move to the instance
+        return self.move_to_instance(instance)
+
+    def pick(self, object_goal: str, **kwargs) -> bool:
+        """Pick up an object."""
+        # Find closest instance
+        instances = self.get_found_instances_by_class(object_goal)
+        if len(instances) == 0:
+            return False
+
+        # Move to the instance with the highest score
+        # Sort by score
+        instances.sort(key=lambda x: x[1].score, reverse=True)
+        instance = instances[0][1]
+
+        # Move to the instance
+        if not self.move_to_instance(instance):
+            return False
+
+        # Grasp the object
+        return self.grasp_object(object_goal)
+
+    def place(self, object_goal: str, **kwargs) -> bool:
+        """Place an object."""
+        # Find closest instance
+        instances = self.get_found_instances_by_class(object_goal)
+
+        if len(instances) == 0:
+            return False
+
+        # Move to the instance with the highest score
+        # Sort by score
+        instances.sort(key=lambda x: x[1].score, reverse=True)
+        instance = instances[0][1]
+
+        # Move to the instance
+        if not self.move_to_instance(instance):
+            return False
+
+        # Place the object
+        return self.place_object(object_goal)
+
+    def say(self, msg: str):
+        """Provide input either on the command line or via chat client"""
+        # if self.chat is not None:
+        #    self.chat.output(msg)
+        # TODO: support other ways of saying
+        print(msg)
+
+    def ask(self, msg: str) -> str:
+        """Receive input from the user either via the command line or something else"""
+        # if self.chat is not None:
+        #  return self.chat.input(msg)
+        # else:
+        # TODO: support other ways of saying
+        return input(msg)
+
+    def open_cabinet(self, object_goal: str, **kwargs) -> bool:
+        """Open a cabinet."""
+        print("Not implemented yet.")
+        return True
+
+    def close_cabinet(self, object_goal: str, **kwargs) -> bool:
+        """Close a cabinet."""
+        print("Not implemented yet.")
+        return True
+
+    def wave(self, **kwargs) -> bool:
+        """Wave."""
+        print("Not implemented yet.")
+        return True
+
+    def get_detections(self, **kwargs) -> List[Instance]:
+        """Get the current detections."""
+        instances = self.voxel_map.get_instances()
+
+        # Consider only instances close to the robot
+        robot_pose = self.robot.get_base_pose()
+        close_instances = []
+
+        for instance in instances:
+            instance_pose = instance.get_best_view().cam_to_world
+            distance = np.linalg.norm(robot_pose[:2] - instance_pose[:2])
+            if distance < 2.0:
+                close_instances.append(instance)
+
+        close_instances_names = [
+            self.semantic_sensor.get_class_name_for_id(instance.category_id)
+            for instance in close_instances
+        ]
+
+        return close_instances_names
+
+    def execute(self, plan: str) -> bool:
+        """Execute a plan function given as a string."""
+        try:
+            exec(plan)
+
+            return True
+        except Exception as e:
+            print(f"Failed to execute plan: {e}")
+            return False
