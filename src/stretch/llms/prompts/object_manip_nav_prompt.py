@@ -232,10 +232,11 @@ class ObjectManipNavPromptBuilder(AbstractPromptBuilder):
 
         self.prompt_str = ""
 
+        self.configure()
+
     def __str__(self):
         return self.prompt_str
 
-    @overrides.overrides
     def configure(self, **kwargs) -> str:
 
         self.prompt_specifics = copy.copy(PROMPT_SPECIFICS)
