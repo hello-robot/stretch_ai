@@ -271,6 +271,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self,
         joint_angles: Optional[np.ndarray] = None,
         gripper: float = None,
+        head: Optional[np.ndarray] = None,
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
@@ -304,6 +305,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
             )
             joint_angles = conversions.config_to_manip_command(joint_angles)
+        if head is not None:
+            assert len(head) == 2, "Head must be a 2D vector of pan and tilt"
 
         elif len(joint_angles) < 6:
             raise ValueError(
@@ -320,8 +323,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Now send
         with self._act_lock:
             self._next_action["joint"] = joint_angles
-            if gripper:
+            if gripper is not None:
                 self._next_action["gripper"] = gripper
+            if head is not None:
+                self._next_action["head_to"] = head
             self._next_action["manip_blocking"] = blocking
 
         # Blocking is handled in here
