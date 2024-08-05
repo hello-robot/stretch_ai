@@ -2,6 +2,7 @@ from time import sleep
 
 import numpy as np
 
+import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
 
 
@@ -32,11 +33,13 @@ class WaveOperation(ManagedOperation):
         """
         self.robot.switch_to_manipulation_mode()
 
+        assert self.robot.in_manipulation_mode(), "Did not switch to manipulation mode"
+
         first_pose = [0.0, lift_height, 0.05, 0.0, 0.0, 0.0]
 
         # move to initial lift height
         first_pose[1] = lift_height
-        self.robot.arm_to(first_pose, blocking=True)
+        self.robot.arm_to(first_pose, head=constants.look_at_ee, blocking=True)
 
         # generate poses
         wave_poses = np.zeros((n_waves * 2, 6))

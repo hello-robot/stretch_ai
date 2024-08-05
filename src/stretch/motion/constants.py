@@ -33,6 +33,12 @@ STRETCH_HEAD_CAMERA_ROTATIONS = 3  # number of counterclockwise rotations for th
 STRETCH_ARM_EXTENSION = 0.8
 STRETCH_ARM_LIFT = 0.8
 
+look_at_ee = np.array([-np.pi / 2, -np.pi / 4])
+look_front = np.array([0.0, math.radians(-30)])
+look_ahead = np.array([0.0, 0.0])
+look_close = np.array([0.0, math.radians(-45)])
+look_down = np.array([0.0, math.radians(-58)])
+
 
 # Stores joint indices for the Stretch configuration space
 class HelloStretchIdx:
