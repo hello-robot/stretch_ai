@@ -1,5 +1,7 @@
 import copy
-from typing import Optional, override
+from typing import Optional
+
+from typing_extensions import override
 
 from stretch.llms.base import AbstractPromptBuilder
 
