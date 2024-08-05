@@ -107,12 +107,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
 
         # Read in joint tolerances from config file
-        self._head_pan_tolerance = float(
-            parameters["motion"]["joint_thresholds"]["head_pan_tolerance"]
-        )
-        self._head_tilt_tolerance = float(
-            parameters["motion"]["joint_thresholds"]["head_tilt_tolerance"]
-        )
+        self._head_pan_tolerance = float(parameters["motion"]["joint_tolerance"]["head_pan"])
+        self._head_tilt_tolerance = float(parameters["motion"]["joint_tolerance"]["head_tilt"])
         self._head_not_moving_tolerance = float(
             parameters["motion"]["joint_thresholds"]["head_not_moving_tolerance"]
         )
@@ -166,6 +162,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         if start_immediately:
             self.start()
+
+    @property
+    def parameters(self) -> Parameters:
+        return self._parameters
 
     def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get the current joint positions, velocities, and efforts"""
