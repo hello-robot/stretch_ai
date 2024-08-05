@@ -38,14 +38,16 @@ class GraspObjectOperation(ManagedOperation):
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
     detected_center_offset_y: int = -40
-    lift_arm_ratio: float = 0.1
-    base_x_step: float = 0.12
-    wrist_pitch_step: float = 0.1
     median_distance_when_grasping: float = 0.175
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
     max_failed_attempts: int = 10
+
+    # Movement parameters
+    lift_arm_ratio: float = 0.08
+    base_x_step: float = 0.10
+    wrist_pitch_step: float = 0.075
 
     # Timing issues
     expected_network_delay = 0.2

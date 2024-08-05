@@ -35,7 +35,7 @@ def depth_to_xyz(depth: torch.Tensor, camera: Camera):
     y = torch.tensor(indices[:, :, 0] - camera.py).to(z.device) * (z / camera.fy)
 
     # Should now be batch x height x width x 3, after this:
-    xyz = torch.stack([x, y, z], axis=-1)
+    xyz = torch.stack([x, y, z], dim=-1)
     return xyz
 
 
@@ -115,8 +115,8 @@ def add_additive_noise_to_xyz(
 
     small_H, small_W = (np.array([H, W]) / gp_rescale_factor).astype(int)
     additive_noise = np.random.normal(loc=0.0, scale=gp_scale, size=(small_H, small_W, C))
-    additive_noise = cv2.resize(additive_noise, (W, H), interpolation=cv2.INTER_CUBIC)
-    additive_noise = torch.tensor(additive_noise).to(xyz_img.device)
+    additive_noise = cv2.resize(additive_noise, (W, H), interpolation=cv2.INTER_CUBIC)  # type: ignore
+    additive_noise = torch.tensor(additive_noise).to(xyz_img.device)  # type: ignore
     if valid_mask is not None:
         xyz_img[valid_mask, :] += additive_noise[valid_mask, :]
     else:
@@ -178,7 +178,7 @@ def dropout_random_ellipses(
             endAngle=360,
             color=1,
             thickness=-1,
-        )
+        )  # type: ignore
         depth_img[mask == 1] = 0
 
     return depth_img
@@ -220,7 +220,7 @@ def get_one_point_per_voxel_from_pointcloud(
                 torch.tensor([0]).to(grid_cell_counts.device),
                 grid_cell_counts.cumsum(0)[:-1],
             ),
-            axis=0,
+            dim=0,
         )
         + random_offsets
     )

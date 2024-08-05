@@ -55,17 +55,17 @@ def to_webp(img: np.ndarray):
         bytes: The WebP image data as bytes.
     """
     # Convert the NumPy array to a PIL Image
-    img = Image.fromarray(img)
+    pil_img = Image.fromarray(img)
 
     # Create a BytesIO object to store the WebP image data
     webp_bytes = io.BytesIO()
 
     # Save the image as WebP format to the BytesIO object
-    img.save(webp_bytes, format="WebP", lossless=False)
+    pil_img.save(webp_bytes, format="WebP", lossless=False)
 
     # Get the bytes from the BytesIO object
-    webp_bytes = webp_bytes.getvalue()
-    return webp_bytes
+    webp_bytes_data = webp_bytes.getvalue()
+    return webp_bytes_data
 
 
 def from_webp(webp_data) -> np.ndarray:

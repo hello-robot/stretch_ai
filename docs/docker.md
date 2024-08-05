@@ -150,7 +150,7 @@ docker run -it -v /run/desktop/mnt/host/wslg/.X11-unix:/tmp/.X11-unix `
     -e PULSE_SERVER=/mnt/wslg/PulseServer `
     --gpus all `
     --network host `
-    stretch-ai_cuda-11.8:latest
+    hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
 
 ### Developing within Docker Container Environment

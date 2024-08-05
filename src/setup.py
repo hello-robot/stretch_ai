@@ -42,6 +42,8 @@ setuptools.setup(
         "urchin",
         "pyusb",
         "schema",
+        # Visualization
+        "rerun-sdk",
         # For siglip encoder
         "sentencepiece",
         # For git tools
@@ -55,19 +57,21 @@ setuptools.setup(
         "webp",
         # UI tools
         "termcolor",
+        # Audio
+        "pyaudio",
+        "wave",
+        "openai-whisper",
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",
-        # Other stuff
-        "mypy",
-        "flake8",
-        "black",
     ],
     extras_require={
         "dev": [
             "pre-commit",
             "pytest",
             "flake8",
+            "black",
+            "mypy",
         ]
     },
 )

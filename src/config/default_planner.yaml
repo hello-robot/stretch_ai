@@ -41,6 +41,7 @@ motion:
   moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
   angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
   min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
+<<<<<<< HEAD
   joint_tolerance:
     arm: 0.05
     base_x: 0.05
@@ -48,6 +49,12 @@ motion:
     wrist_roll: 0.25
     wrist_pitch: 0.25
     wrist_yaw: 0.05
+=======
+  joint_thresholds:
+    head_pan_tolerance: 0.01
+    head_tilt_tolerance: 0.01
+    head_not_moving_tolerance: 1.0e-4
+>>>>>>> fd249029696751f2a8104d4ba89c4ee588ac6827
 
 # Exploration
 in_place_rotation_steps: 8

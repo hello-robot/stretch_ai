@@ -8,11 +8,17 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
 
+import stretch.motion.conversions as conversions
 from stretch.core.state import ManipulatorBaseParams
 from stretch.motion.constants import STRETCH_HOME_Q
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
-from stretch.utils.geometry import posquat2sophus, sophus2posquat, xyt2sophus
+from stretch.utils.geometry import (
+    pose_global_to_base_xyt,
+    posquat2sophus,
+    sophus2posquat,
+    xyt2sophus,
+)
 
 from .abstract import AbstractControlModule, enforce_enabled
 
@@ -33,8 +39,7 @@ class StretchManipulationClient(AbstractControlModule):
         self._ros_client = ros_client
         self._robot_model = robot_model
 
-        # Tmp: keep track of base_x movement
-        self.base_x = 0.0
+        self._init_base_pose = None
 
     # Enable / disable
 
@@ -43,9 +48,23 @@ class StretchManipulationClient(AbstractControlModule):
         # Switch interface mode & print messages
         result = self._ros_client.pos_mode_service.call(Trigger.Request())
         self._ros_client.get_logger().info(result.message)
-        self.base_x = 0.0
+        self._init_base_pose = self._ros_client.se3_base_filtered
 
         return result.success
+
+    def _disable_hook(self) -> bool:
+        """Called when interface is disabled. This will set the manip base pose back to none."""
+        self._init_base_pose = None
+        # We do not need to call the service to disable the mode
+        return True
+
+    def get_base_x(self):
+        """Get the current base x position"""
+        if self._init_base_pose is None:
+            return 0.0
+        current_global_pose = self._ros_client.se3_base_filtered
+        relative_xyt = pose_global_to_base_xyt(current_global_pose, self._init_base_pose)
+        return relative_xyt[0]
 
     def _disable_hook(self) -> bool:
         """Called when interface is disabled."""
@@ -56,7 +75,7 @@ class StretchManipulationClient(AbstractControlModule):
     def get_ee_pose(self, world_frame=False, matrix=False):
         q, _, _ = self._ros_client.get_joint_state()
         pos_base, quat_base = self._robot_model.manip_fk(q)
-        pos_base[0] += self.base_x
+        pos_base[0] += self.get_base_x()
 
         if world_frame:
             pose_base2ee = posquat2sophus(pos_base, quat_base)
@@ -75,8 +94,9 @@ class StretchManipulationClient(AbstractControlModule):
 
     def get_joint_positions(self):
         q, _, _ = self._ros_client.get_joint_state()
+        base_x = self.get_base_x()
         return [
-            self.base_x,
+            base_x,
             q[HelloStretchIdx.LIFT],
             q[HelloStretchIdx.ARM],
             q[HelloStretchIdx.WRIST_YAW],
@@ -162,8 +182,11 @@ class StretchManipulationClient(AbstractControlModule):
             self._ros_client.WRIST_ROLL: joint_pos_goal[5],
         }
         if move_base:
-            joint_goals[self._ros_client.BASE_TRANSLATION_JOINT] = joint_pos_goal[0] - self.base_x
-        self.base_x = joint_pos_goal[0]
+            joint_goals[self._ros_client.BASE_TRANSLATION_JOINT] = (
+                joint_pos_goal[0] - self.get_base_x()
+            )
+        # TODO: hopefully this updates correctly
+        # self.base_x = joint_pos_goal[0]
 
         # head stuff
         if head_pan is not None:
@@ -360,4 +383,4 @@ class StretchManipulationClient(AbstractControlModule):
 
     def _extract_joint_pos(self, q):
         """Helper to convert from the general-purpose config including full robot state, into the command space used in just the manip controller. Extracts just lift/arm/wrist information."""
-        return self._robot_model.config_to_manip_command(q)
+        return conversions.config_to_manip_command(q)

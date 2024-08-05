@@ -63,6 +63,7 @@ Then, first try these apps to make sure connections are working properly:
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
 - [Gripper](#gripper-tool) - Open and close the gripper.
+- [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
 
 Advanced:
 
@@ -96,6 +97,14 @@ colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
+
+### Audio Dependencies
+
+These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
+
+```bash
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0
+```
 
 ### Advanced Installation (PC Only)
 
@@ -228,6 +237,21 @@ Alternately:
 ```
 python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
 python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
+```
+
+### Rerun Web Server
+
+We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
+
+```bash
+python -m stretch.app.rerun --robot_ip $ROBOT_IP
+```
+
+You should see something like this:
+
+```
+[2024-07-29T17:58:34Z INFO  re_ws_comms::server] Hosting a WebSocket server on ws://localhost:9877. You can connect to this with a native viewer (`rerun ws://localhost:9877`) or the web viewer (with `?url=ws://localhost:9877`).
+[2024-07-29T17:58:34Z INFO  re_sdk::web_viewer] Hosting a web-viewer at http://localhost:9090?url=ws://localhost:9877
 ```
 
 ### Dex Teleop for Data Collection

@@ -20,11 +20,12 @@ def img_from_bytes(data: bytes, height=None, width=None, format="png") -> np.nda
     # Issue: not quite as good at handling depth
     # image = Image.open(data, mode='r', formats=['webp'])
     if height and width:
-        image = image.resize([width, height])
+        # mypy: this can be an ImageFile apparently?
+        image = image.resize((width, height))  # type: ignore
     return np.asarray(image)
 
 
-def pil_to_bytes(img: Image, format="png") -> bytes:
+def pil_to_bytes(img: Image.Image, format="png") -> bytes:
     """Convert image to bytes using PIL"""
     data = io.BytesIO()
     img.save(data, format=format)
@@ -32,9 +33,9 @@ def pil_to_bytes(img: Image, format="png") -> bytes:
 
 
 def img_to_bytes(img: np.ndarray, format="png") -> bytes:
-    # return bytes(Image.fromarray(data)).tobytes()
-    img = Image.fromarray(img)
-    return pil_to_bytes(img, format)
+    """Convert image to bytes"""
+    pil_img = Image.fromarray(img)
+    return pil_to_bytes(pil_img, format)
 
 
 def torch_to_bytes(img: np.ndarray) -> bytes:
@@ -60,7 +61,8 @@ def png_to_gif(group: h5py.Group, key: str, name: str, save=True, height=None, w
         img = img_from_bytes(bindata, height, width)
         gif.append(img)
     if save:
-        imageio.mimsave(name, gif)
+        # Mypy note: the type of gif is List[np.ndarray] which is fine for this function.
+        imageio.mimsave(name, gif)  # type: ignore
     else:
         return gif
 
@@ -123,7 +125,8 @@ def png_to_mp4(group: h5py.Group, key: str, name: str, fps=10):
         img[:, :, 2] = _img[:, :, 0]
 
         if writer is None:
-            fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+            # Mypy note: this definitely does exist but mypy says it does not. Ignore error.
+            fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")  # type: ignore
             writer = cv2.VideoWriter(name, fourcc, fps, (h, w))
         writer.write(img)
     writer.release()

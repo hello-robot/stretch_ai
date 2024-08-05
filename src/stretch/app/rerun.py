@@ -17,33 +17,21 @@ from stretch.motion import HelloStretchIdx
     is_flag=True,
     help="Set if we are executing on the robot and not on a remote computer",
 )
-@click.option("-j", "--joint", default="", help="Joint to print")
 def main(
-    robot_ip: str = "",
+    robot_ip: str = "192.168.1.15",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
-    joint: str = "",
 ):
     # Create robot
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
-        enable_rerun_server=False,
+        enable_rerun_server=True,
     )
     robot.start()
     try:
         while True:
-            joint_state = robot.get_joint_positions()
-            if joint_state is None:
-                continue
-            if len(joint) > 0:
-                print(f"{joint}: {joint_state[HelloStretchIdx.get_idx(joint.lower())]}")
-            else:
-                print(
-                    f"Arm: {joint_state[HelloStretchIdx.ARM]}, Lift: {joint_state[HelloStretchIdx.LIFT]}, Gripper: {joint_state[HelloStretchIdx.GRIPPER]}"
-                )
             time.sleep(0.01)
-
     except KeyboardInterrupt:
         pass
     robot.stop()
