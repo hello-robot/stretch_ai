@@ -60,6 +60,9 @@ class LlamaClient(AbstractLLMClient):
 
         # Get response text
         assistant_response = output[0]["generated_text"].strip()
+        print("===========")
+        print(assistant_response)
+        breakpoint()
 
         # Try to remove messages from output
         assistant_response = assistant_response.replace(messages, "")
@@ -68,15 +71,16 @@ class LlamaClient(AbstractLLMClient):
         user_idx = assistant_response.find("User")
         if user_idx != -1:
             assistant_response = assistant_response[:user_idx]
-        assistaant_idx = assistant_response.find("Assistant")
-        if assistaant_idx != -1:
-            assistant_response = assistant_response[:assistaant_idx]
+        assistant_idx = assistant_response.find("Assistant")
+        if assistant_idx != -1:
+            assistant_response = assistant_response[:assistant_idx]
 
         # Add the assistant's response to the conversation history
         self.add_history({"role": "assistant", "content": assistant_response})
         if verbose:
             print(f"Assistant response: {assistant_response}")
             print(f"Time taken: {t1 - t0:.2f}s")
+
         return assistant_response
 
 
