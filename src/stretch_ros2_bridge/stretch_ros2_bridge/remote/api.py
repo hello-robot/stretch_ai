@@ -294,6 +294,10 @@ class StretchClient(AbstractRobotClient):
     def arm_to(self, q: np.ndarray, blocking: bool = False):
         """Send arm commands"""
         assert len(q) == 6
+        print()
+        print()
+        print()
+        print()
         print(f"{q=}")
         self.manip.goto_joint_positions(
             joint_positions=q, blocking=blocking, head_pan=None, head_tilt=None
@@ -307,10 +311,10 @@ class StretchClient(AbstractRobotClient):
         """Send arm commands"""
         assert len(q) == 6
 
-        # TODO Ideally robot should hold head pose, but sending look_at_ee pose explicitly for now
-        pan, tilt = self._robot_model.look_at_ee
+        print("Arm and griper to", print(f"{q=}"))
+
         self.manip.goto_joint_positions(
-            joint_positions=q, gripper=gripper, head_pan=pan, head_tilt=tilt, blocking=blocking
+            joint_positions=q, gripper=gripper, head_pan=None, head_tilt=None, blocking=blocking
         )
 
 
