@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
-from stretch.agent.operations import WaveOperation
+from stretch.agent.operations import (
+    AvertGazeOperation,
+    NodHeadOperation,
+    ShakeHeadOperation,
+    WaveOperation,
+)
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -27,7 +32,21 @@ def main(
 
     # create task manager
     manager = EmoteManager(demo)
+    task = manager.get_task(NodHeadOperation("emote", manager))
+
+    # run task
+    task.run()
+
+    task = manager.get_task(ShakeHeadOperation("emote", manager))
+
+    task.run()
+
     task = manager.get_task(WaveOperation("emote", manager))
+
+    task.run()
+
+    task = manager.get_task(AvertGazeOperation("emote", manager))
+
     task.run()
 
 

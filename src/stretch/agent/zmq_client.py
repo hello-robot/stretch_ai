@@ -105,20 +105,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
-        self._arm_joint_tolerance = parameters["motion"]["joint_tolerance"]["arm"]
-        self._lift_joint_tolerance = parameters["motion"]["joint_tolerance"]["lift"]
-        self._base_x_joint_tolerance = parameters["motion"]["joint_tolerance"]["base_x"]
-        self._wrist_roll_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_roll"]
-        self._wrist_pitch_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_pitch"]
-        self._wrist_yaw_joint_tolerance = parameters["motion"]["joint_tolerance"]["wrist_yaw"]
 
         # Read in joint tolerances from config file
-        self._head_pan_tolerance = float(
-            parameters["motion"]["joint_thresholds"]["head_pan_tolerance"]
-        )
-        self._head_tilt_tolerance = float(
-            parameters["motion"]["joint_thresholds"]["head_tilt_tolerance"]
-        )
+        self._head_pan_tolerance = float(parameters["motion"]["joint_tolerance"]["head_pan"])
+        self._head_tilt_tolerance = float(parameters["motion"]["joint_tolerance"]["head_tilt"])
         self._head_not_moving_tolerance = float(
             parameters["motion"]["joint_thresholds"]["head_not_moving_tolerance"]
         )
@@ -178,7 +168,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return self._parameters
 
     def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Get the current joint positions"""
+        """Get the current joint positions, velocities, and efforts"""
         t0 = timeit.default_timer()
         with self._state_lock:
             while self._state is None:
@@ -375,12 +365,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
                 t1 = timeit.default_timer()
                 if (
-                    (arm_diff < self._arm_joint_tolerance)
-                    and (lift_diff < self._lift_joint_tolerance)
-                    and (base_x_diff < self._base_x_joint_tolerance)
-                    and (wrist_roll_diff < self._wrist_roll_joint_tolerance)
-                    and (wrist_pitch_diff < self._wrist_pitch_joint_tolerance)
-                    and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
+                    (arm_diff < 0.05)
+                    and (lift_diff < 0.05)
+                    and (base_x_diff < 0.05)
+                    and (wrist_roll_diff < 0.05)
+                    and (wrist_pitch_diff < 0.05)
+                    and (wrist_yaw_diff < 0.05)
                 ):
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
@@ -561,7 +551,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 break
             time.sleep(0.01)
         # Tiny pause after head rotation
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()

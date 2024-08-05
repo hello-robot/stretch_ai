@@ -1,7 +1,6 @@
 from .emote import (
     ApproachOperation,
     AvertGazeOperation,
-    LookAtOperation,
     NodHeadOperation,
     ShakeHeadOperation,
     TestOperation,
