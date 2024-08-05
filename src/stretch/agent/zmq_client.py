@@ -4,7 +4,7 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import click
 import cv2
@@ -242,10 +242,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
         """Move the robot to a particular joint configuration."""
-        with self._act_lock:
-            self._next_action["joint"] = joint_angles
-            self._next_action["manip_blocking"] = blocking
-        self.send_action(timeout=timeout)
+        next_action = {"joint": joint_angles, "manip_blocking": blocking}
+        self.send_action(next_action=next_action, timeout=timeout)
 
     def head_to(
         self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
@@ -257,9 +255,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             logger.warning("Head tilt is restricted to be between -pi/2 and 0 for safety.")
         head_pan = np.clip(head_pan, -np.pi, 0)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
-        with self._act_lock:
-            self._next_action["head_to"] = [float(head_pan), float(head_tilt)]
-        self.send_action(timeout=timeout)
+        next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
+        self.send_action(next_action, timeout=timeout)
 
         if blocking:
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
@@ -320,17 +317,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert (
             len(joint_angles) == 6
         ), "joint angles must be 6 dimensional: base_x, lift, arm, wrist roll, wrist pitch, wrist yaw"
-        # Now send
-        with self._act_lock:
-            self._next_action["joint"] = joint_angles
-            if gripper is not None:
-                self._next_action["gripper"] = gripper
-            if head is not None:
-                self._next_action["head_to"] = head
-            self._next_action["manip_blocking"] = blocking
 
-        # Blocking is handled in here
-        self.send_action()
+        # Create and send the action dictionary
+        _next_action = {"joint": joint_angles}
+        if gripper is not None:
+            _next_action["gripper"] = gripper
+        if head is not None:
+            _next_action["head_to"] = head
+        _next_action["manip_blocking"] = blocking
+        self.send_action(_next_action)
 
         # Handle blocking
         steps = 0
@@ -340,10 +335,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
                 if steps % 10 == 9:
                     # Resend the action until we get there
-                    with self._act_lock:
-                        self._next_action["joint"] = joint_angles
-                        self._next_action["manip_blocking"] = blocking
-                    self.send_action()
+                    self.send_action(_next_action)
                     if verbose:
                         print("Resending action", joint_angles)
 
@@ -814,28 +806,37 @@ class HomeRobotZmqClient(AbstractRobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def send_action(self, timeout: float = 10.0, verbose: bool = False) -> None:
+    def send_action(
+        self,
+        next_action: Optional[Dict[str, Any]] = None,
+        timeout: float = 10.0,
+        verbose: bool = False,
+    ) -> None:
         """Send the next action to the robot"""
         if verbose:
-            print("-> sending", self._next_action)
+            print("-> sending", next_action)
         blocking = False
         block_id = None
         with self._act_lock:
-            blocking = self._next_action.get("nav_blocking", False)
+            if next_action is None:
+                next_action = self._next_action
+
+            # Get blocking
+            blocking = next_action.get("nav_blocking", False)
             block_id = self._iter
             # Send it
-            self._next_action["step"] = block_id
+            next_action["step"] = block_id
             self._iter += 1
-            self.send_socket.send_pyobj(self._next_action)
+            self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
-            if "xyt" in self._next_action:
-                goal_angle = self._next_action["xyt"][2]
+            if "xyt" in next_action:
+                goal_angle = next_action["xyt"][2]
             else:
                 goal_angle = None
 
             # Empty it out for the next one
-            current_action = self._next_action
+            current_action = next_action
             self._next_action = dict()
 
         # Make sure we had time to read
@@ -883,8 +884,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 shown_point_cloud = True
 
             self._update_obs(output)
-            # with self._act_lock:
-            #    if len(self._next_action) > 0:
 
             t1 = timeit.default_timer()
             dt = t1 - t0
