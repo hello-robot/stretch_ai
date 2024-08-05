@@ -10,7 +10,7 @@ import trimesh.transformations as tra
 
 import stretch.motion.conversions as conversions
 from stretch.core.interfaces import Observations
-from stretch.core.robot import ControlMode, RobotClient
+from stretch.core.robot import AbstractRobotClient, ControlMode
 from stretch.motion import RobotModel
 from stretch.motion.constants import (
     STRETCH_DEMO_PREGRASP_Q,
@@ -28,7 +28,7 @@ from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
 
-class StretchClient(RobotClient):
+class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
     camera_frame = "camera_color_optical_frame"
@@ -105,6 +105,11 @@ class StretchClient(RobotClient):
         self._base_control_mode = ControlMode.NAVIGATION
 
         return result_pre and result_post
+
+    def switch_to_busy_mode(self) -> bool:
+        """Switch to a mode that says we are occupied doing something blocking"""
+        self._base_control_mode = ControlMode.BUSY
+        return True
 
     def switch_to_manipulation_mode(self):
         """Switch stretch to manipulation control
@@ -291,25 +296,29 @@ class StretchClient(RobotClient):
         """Get 3x3 matrix of camera intrisics K"""
         return torch.from_numpy(self.head._ros_client.rgb_cam.K).float()
 
-    def arm_to(self, q: np.ndarray, blocking: bool = False):
-        """Send arm commands"""
-        assert len(q) == 6
-        self.manip.goto_joint_positions(
-            joint_positions=q, blocking=blocking, head_pan=None, head_tilt=None
-        )
-
     def head_to(self, pan: float, tilt: float, blocking: bool = False):
         """Send head commands"""
         self.head.goto_joint_positions(pan=float(pan), tilt=float(tilt), blocking=blocking)
 
-    def arm_and_gripper_to(self, q: np.ndarray, gripper: float = None, blocking: bool = False):
+    def arm_to(
+        self,
+        q: np.ndarray,
+        gripper: float = None,
+        head_pan: float = None,
+        head_tilt: float = None,
+        blocking: bool = False,
+    ):
         """Send arm commands"""
         assert len(q) == 6
 
-        # TODO Ideally robot should hold head pose, but sending look_at_ee pose explicitly for now
-        pan, tilt = self._robot_model.look_at_ee
+        print(f"-> Sending arm and gripper to {q=} {gripper=} {head_pan=} {head_tilt=}")
+
         self.manip.goto_joint_positions(
-            joint_positions=q, gripper=gripper, head_pan=pan, head_tilt=tilt, blocking=blocking
+            joint_positions=q,
+            gripper=gripper,
+            head_pan=head_tilt,
+            head_tilt=head_tilt,
+            blocking=blocking,
         )
 
 
