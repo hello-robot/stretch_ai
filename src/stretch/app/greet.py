@@ -30,6 +30,9 @@ def main(
     task = manager.get_task(WaveOperation("emote", manager))
     task.run()
 
+    # Turn off the robot at the end
+    robot.stop()
+
 
 if __name__ == "__main__":
     main()
