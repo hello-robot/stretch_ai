@@ -1,4 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# (c) 2024 Hello Robot by Atharva Pusalkar
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -111,6 +111,10 @@ class YoloPerception(PerceptionModule):
         height, width, _ = image.shape
         pred = self.yolo(image)
         task_observations = dict()
+
+        if pred[0].boxes is None or pred[0].masks is None:
+            task_observations["semantic_frame"] = None
+            return None, None, task_observations
 
         class_idcs = pred[0].boxes.cls.cpu().numpy()
         masks = pred[0].masks.data.cpu().numpy()

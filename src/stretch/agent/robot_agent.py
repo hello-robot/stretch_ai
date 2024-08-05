@@ -18,6 +18,7 @@ from loguru import logger
 from PIL import Image
 from torchvision import transforms
 
+from stretch.audio.text_to_speech import GoogleCloudTextToSpeech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
@@ -26,6 +27,7 @@ from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace,
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
+from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference
 
 
@@ -38,7 +40,7 @@ class RobotAgent:
         self,
         robot: AbstractRobotClient,
         parameters: Dict[str, Any],
-        semantic_sensor: Optional = None,
+        semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
@@ -68,6 +70,7 @@ class RobotAgent:
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
+        self.tts_client = GoogleCloudTextToSpeech()
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self.default_expand_frontier_size = parameters["default_expand_frontier_size"]
@@ -402,6 +405,7 @@ class RobotAgent:
 
         if self.use_scene_graph:
             self._update_scene_graph()
+            self.scene_graph.get_relationships(debug=True)
 
         # Add observation - helper function will unpack it
         if visualize_map:
@@ -434,7 +438,7 @@ class RobotAgent:
             self.scene_graph.update(self.voxel_map.get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
-        self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+        # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def get_scene_graph(self) -> SceneGraph:
         """Return scene graph, such as it is."""
@@ -566,18 +570,22 @@ class RobotAgent:
             bool: whether the robot went to the instance
         """
 
+        print("Moving to instance...")
+
         # Get the start position
         start = self.robot.get_base_pose()
 
         # Try to move to the instance
         # We will plan multiple times to see if we can get there
         for i in range(max_try_per_instance):
-            res = self.plan_to_instance(instance, start)
+            res = self.plan_to_instance(instance, start, verbose=True)
+            print("Plan result:", res.success)
             if res is not None and res.success:
                 for i, pt in enumerate(res.trajectory):
                     print("-", i, pt.state)
 
                 # Follow the planned trajectory
+                print("Executing trajectory...")
                 self.robot.execute_trajectory(
                     [pt.state for pt in res.trajectory],
                     pos_err_threshold=self.pos_err_threshold,
@@ -585,7 +593,8 @@ class RobotAgent:
                 )
 
                 # Check if the robot is stuck or if anything went wrong during motion execution
-                return self.robot.last_motion_failed()
+                # return self.robot.last_motion_failed() # TODO (hello-atharva): Fix this. This is not implemented
+                return True
         return False
 
     def move_to_any_instance(self, matches: List[Tuple[int, Instance]], max_try_per_instance=10):
@@ -1135,14 +1144,9 @@ class RobotAgent:
     def go_to(self, object_goal: str, **kwargs) -> bool:
         """Go to a specific object in the world."""
         # Find closest instance
-        instances = self.get_found_instances_by_class(object_goal)
-        if len(instances) == 0:
-            return False
-
-        # Move to the instance with the highest score
-        # Sort by score
-        instances.sort(key=lambda x: x[1].score, reverse=True)
-        instance = instances[0][1]
+        print(f"Going to {object_goal}")
+        _, instance = self.get_instance_from_text(object_goal)
+        instance.show_best_view(title=object_goal)
 
         # Move to the instance
         return self.move_to_instance(instance)
@@ -1188,10 +1192,7 @@ class RobotAgent:
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
-        # if self.chat is not None:
-        #    self.chat.output(msg)
-        # TODO: support other ways of saying
-        print(msg)
+        self.tts_client.speak(msg)
 
     def ask(self, msg: str) -> str:
         """Receive input from the user either via the command line or something else"""
@@ -1213,8 +1214,32 @@ class RobotAgent:
 
     def wave(self, **kwargs) -> bool:
         """Wave."""
-        print("Not implemented yet.")
-        return True
+        n_waves = 3
+        pitch = 0.2
+        yaw_amplitude = 0.25
+        roll_amplitude = 0.15
+        lift_height = 1.0
+        self.robot.switch_to_manipulation_mode()
+
+        first_pose = [0.0, lift_height, 0.05, 0.0, 0.0, 0.0]
+
+        # move to initial lift height
+        first_pose[1] = lift_height
+        self.robot.arm_to(first_pose, blocking=True)
+
+        # generate poses
+        wave_poses = np.zeros((n_waves * 2, 6))
+        for i in range(n_waves):
+            j = i * 2
+            wave_poses[j] = [0.0, lift_height, 0.05, -yaw_amplitude, pitch, -roll_amplitude]
+            wave_poses[j + 1] = [0.0, lift_height, 0.05, yaw_amplitude, pitch, roll_amplitude]
+
+        # move to poses w/o blocking to make smoother motions
+        for pose in wave_poses:
+            self.robot.arm_to(pose, blocking=False)
+            time.sleep(0.375)
+
+        self.robot.switch_to_navigation_mode()
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""
