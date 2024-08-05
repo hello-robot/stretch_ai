@@ -291,30 +291,29 @@ class StretchClient(AbstractRobotClient):
         """Get 3x3 matrix of camera intrisics K"""
         return torch.from_numpy(self.head._ros_client.rgb_cam.K).float()
 
-    def arm_to(self, q: np.ndarray, blocking: bool = False):
-        """Send arm commands"""
-        assert len(q) == 6
-        print()
-        print()
-        print()
-        print()
-        print(f"{q=}")
-        self.manip.goto_joint_positions(
-            joint_positions=q, blocking=blocking, head_pan=None, head_tilt=None
-        )
-
     def head_to(self, pan: float, tilt: float, blocking: bool = False):
         """Send head commands"""
         self.head.goto_joint_positions(pan=float(pan), tilt=float(tilt), blocking=blocking)
 
-    def arm_and_gripper_to(self, q: np.ndarray, gripper: float = None, blocking: bool = False):
+    def arm_to(
+        self,
+        q: np.ndarray,
+        gripper: float = None,
+        head_pan: float = None,
+        head_tilt: float = None,
+        blocking: bool = False,
+    ):
         """Send arm commands"""
         assert len(q) == 6
 
-        print("Arm and griper to", print(f"{q=}"))
+        print(f"Arm and griper to {q=} {gripper=} {head_pan=} {head_tilt=}")
 
         self.manip.goto_joint_positions(
-            joint_positions=q, gripper=gripper, head_pan=None, head_tilt=None, blocking=blocking
+            joint_positions=q,
+            gripper=gripper,
+            head_pan=head_tilt,
+            head_tilt=head_tilt,
+            blocking=blocking,
         )
 
 

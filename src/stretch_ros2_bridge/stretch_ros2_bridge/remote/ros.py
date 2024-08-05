@@ -190,10 +190,9 @@ class StretchRosInterface(Node):
         self, joint_goals: Dict[str, float], velocities: Optional[Dict[str, float]] = None
     ):
         """Send joint goals to the robot. Goals are a dictionary of joint names and strings. Can optionally provide velicities as well."""
-        print(joint_goals)
+
         with self._js_lock:
             joint_pose = self._process_joint_status(self.joint_status)
-        print(joint_pose)
 
         # Use Idx to convert
         joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
@@ -209,8 +208,6 @@ class StretchRosInterface(Node):
             joint_pose[self.Idx.HEAD_TILT] = joint_goals[self.HEAD_TILT]
         if self.BASE_TRANSLATION_JOINT in joint_goals:
             joint_pose[self.Idx.BASE_TRANSLATE] = joint_goals[self.BASE_TRANSLATION_JOINT]
-
-        print(joint_pose)
 
         # Create the message now that it's been computed
         msg = Float64MultiArray()
