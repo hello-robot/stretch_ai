@@ -66,7 +66,9 @@ class LlamaClient(AbstractLLMClient):
         user_idx = assistant_response.find("User")
         if user_idx != -1:
             assistant_response = assistant_response[:user_idx]
-        assistant_idx = assistant_response.find("Assistant")
+        assistant_idx = min(
+            assistant_response.find("Assistant"), assistant_response.find("assistant")
+        )
         if assistant_idx != -1:
             assistant_response = assistant_response[:assistant_idx]
 
