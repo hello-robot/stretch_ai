@@ -182,9 +182,11 @@ class ZmqServer(CommsNode):
                     print(f" - last action step: {self._last_step}")
                 if "posture" in action:
                     if action["posture"] == "manipulation":
+                        self.client.switch_to_busy_mode()
                         self.client.move_to_manip_posture()
                         self.client.switch_to_manipulation_mode()
                     elif action["posture"] == "navigation":
+                        self.client.switch_to_busy_mode()
                         self.client.move_to_nav_posture()
                         self.client.switch_to_navigation_mode()
                     else:

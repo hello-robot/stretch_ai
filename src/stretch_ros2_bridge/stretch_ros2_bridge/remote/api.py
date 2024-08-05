@@ -106,6 +106,11 @@ class StretchClient(AbstractRobotClient):
 
         return result_pre and result_post
 
+    def switch_to_busy_mode(self) -> bool:
+        """Switch to a mode that says we are occupied doing something blocking"""
+        self._base_control_mode = ControlMode.BUSY
+        return True
+
     def switch_to_manipulation_mode(self):
         """Switch stretch to manipulation control
         Robot base is now controlled via position control.
