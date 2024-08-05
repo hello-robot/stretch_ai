@@ -53,7 +53,7 @@ class WaveOperation(ManagedOperation):
             self.robot.arm_to(pose, head=constants.look_at_ee, blocking=False)
             sleep(0.375)
 
-        self.robot.arm_to(first_pose, head=self.look_at_ee, blocking=True)
+        self.robot.arm_to(first_pose, head=constants.look_at_ee, blocking=True)
 
     def was_successful(self) -> bool:
         return True
