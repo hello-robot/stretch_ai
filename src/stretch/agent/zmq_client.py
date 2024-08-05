@@ -328,6 +328,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if head is not None:
                 self._next_action["head_to"] = head
             self._next_action["manip_blocking"] = blocking
+            print("Sending action", self._next_action)
 
         # Blocking is handled in here
         self.send_action()

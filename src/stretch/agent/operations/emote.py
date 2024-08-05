@@ -50,10 +50,10 @@ class WaveOperation(ManagedOperation):
 
         # move to poses w/o blocking to make smoother motions
         for pose in wave_poses:
-            self.robot.arm_to(pose, blocking=False)
+            self.robot.arm_to(pose, head=constants.look_at_ee, blocking=False)
             sleep(0.375)
 
-        self.robot.arm_to(first_pose, blocking=True)
+        self.robot.arm_to(first_pose, head=self.look_at_ee, blocking=True)
 
     def was_successful(self) -> bool:
         return True
@@ -157,7 +157,7 @@ class ShrugOperation(ManagedOperation):
         shrug_pose = [0.0, lift + lift_delta, 0.05, 0.0, 0.0, 0.0]
 
         for pose in [first_pose, shrug_pose, first_pose]:
-            self.robot.arm_to(pose, blocking=True)
+            self.robot.arm_to(pose, head=constants.look_at_ee, blocking=True)
 
     def was_successful(self) -> bool:
         return True
@@ -239,7 +239,7 @@ class TestOperation(ManagedOperation):
         self.robot.switch_to_manipulation_mode()
 
         first_pose = [0.0, 0.75, 0.05, 0.0, 0.0, 0.0]
-        self.robot.arm_to(first_pose, blocking=True)
+        self.robot.arm_to(first_pose, head=constants.look_at_ee, lookblocking=True)
 
         for i in range(5):
             sign = 1 if i % 2 == 0 else -1
