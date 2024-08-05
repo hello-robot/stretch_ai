@@ -10,7 +10,7 @@ import trimesh.transformations as tra
 
 import stretch.motion.conversions as conversions
 from stretch.core.interfaces import Observations
-from stretch.core.robot import ControlMode, RobotClient
+from stretch.core.robot import AbstractRobotClient, ControlMode
 from stretch.motion import RobotModel
 from stretch.motion.constants import (
     STRETCH_DEMO_PREGRASP_Q,
@@ -28,7 +28,7 @@ from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
 
-class StretchClient(RobotClient):
+class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
     camera_frame = "camera_color_optical_frame"
@@ -294,6 +294,7 @@ class StretchClient(RobotClient):
     def arm_to(self, q: np.ndarray, blocking: bool = False):
         """Send arm commands"""
         assert len(q) == 6
+        print(f"{q=}")
         self.manip.goto_joint_positions(
             joint_positions=q, blocking=blocking, head_pan=None, head_tilt=None
         )

@@ -132,11 +132,9 @@ class StretchManipulationClient(AbstractControlModule):
 
         return True
 
-    @enforce_enabled
     def home(self):
         self.goto(STRETCH_HOME_Q, wait=True)
 
-    @enforce_enabled
     def goto_joint_positions(
         self,
         joint_positions: List[float],
