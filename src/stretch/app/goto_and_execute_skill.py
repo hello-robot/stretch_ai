@@ -21,7 +21,7 @@ import stretch.utils.depth as du
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.app.lfd.ros2_lfd_leader import ROS2LfdLeader
-from stretch.core import Parameters, RobotClient, get_parameters
+from stretch.core import AbstractRobotClient, Parameters, get_parameters
 from stretch.perception import create_semantic_sensor
 
 
@@ -107,7 +107,7 @@ def main(
 
 
 def demo_main(
-    robot: RobotClient,
+    robot: AbstractRobotClient,
     rate,
     visualize,
     manual_wait,
@@ -205,9 +205,7 @@ def demo_main(
         demo.update()
         current = robot.get_base_pose()
         task = np.array([0.70500136, 0.34254823, 0.85715184])
-        home = np.array([0, 0, 0])
 
-        print("Current position: ", current)
         planner = demo.planner
         res = planner.plan(current, task)
         print("RES: ", res.success)
@@ -238,23 +236,6 @@ def demo_main(
     except Exception as e:
         raise (e)
     finally:
-        # if show_final_map:
-        #     pc_xyz, pc_rgb = demo.voxel_map.show()
-        # else:
-        #     pc_xyz, pc_rgb = demo.voxel_map.get_xyz_rgb()
-
-        # if pc_rgb is None:
-        #     return
-
-        # # Create pointcloud and write it out
-        # if len(output_pkl_filename) > 0:
-        #     print(f"Write pkl to {output_pkl_filename}...")
-        #     demo.voxel_map.write_to_pickle(output_pkl_filename)
-
-        # if write_instance_images:
-        #     demo.save_instance_images(".")
-
-        # demo.go_home()
         robot.stop()
 
 
