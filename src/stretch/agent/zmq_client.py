@@ -18,7 +18,7 @@ import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters, get_parameters
-from stretch.core.robot import RobotClient
+from stretch.core.robot import AbstractRobotClient
 from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
@@ -32,7 +32,7 @@ from stretch.visualization.rerun import RerunVsualizer
 # faulthandler.enable()
 
 
-class HomeRobotZmqClient(RobotClient):
+class HomeRobotZmqClient(AbstractRobotClient):
 
     update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000

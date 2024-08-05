@@ -114,6 +114,6 @@ class RobotModel(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_footprint(self) -> torch.Tensor:
+    def get_footprint(self) -> Footprint:
         """return a footprint mask that we can check 2d collisions against"""
         raise NotImplementedError
