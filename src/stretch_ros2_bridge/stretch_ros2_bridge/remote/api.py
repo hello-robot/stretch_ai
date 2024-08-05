@@ -306,7 +306,7 @@ class StretchClient(AbstractRobotClient):
         """Send arm commands"""
         assert len(q) == 6
 
-        print(f"Arm and griper to {q=} {gripper=} {head_pan=} {head_tilt=}")
+        print(f"-> Sending arm and gripper to {q=} {gripper=} {head_pan=} {head_tilt=}")
 
         self.manip.goto_joint_positions(
             joint_positions=q,
