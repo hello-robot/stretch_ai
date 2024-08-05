@@ -394,16 +394,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
         assert len(xyt) == 3, "xyt must be a vector of size 3"
-        with self._act_lock:
-            self._next_action["xyt"] = xyt
-            self._next_action["nav_relative"] = relative
-            self._next_action["nav_blocking"] = blocking
-        self.send_action(timeout=timeout)
+        next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
+        self.send_action(next_action, timeout=timeout)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
         self._control_mode = None
-        self._next_action = dict()
         self._obs = None  # Full observation includes high res images and camera pose, no EE camera
         self._state = None  # Low level state includes joint angles and base XYT
         self._servo = None  # Visual servoing state includes smaller images
@@ -460,18 +456,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def gripper_to(self, target: float, blocking: bool = True):
         """Send the gripper to a target position."""
-        with self._act_lock:
-            self._next_action["gripper"] = target
-            self._next_action["gripper_blocking"] = blocking
-        self.send_action()
+        next_action = {"gripper": target, "gripper_blocking": blocking}
+        self.send_action(next_action)
         if blocking:
             time.sleep(2.0)
 
     def switch_to_navigation_mode(self):
         """Velocity control of the robot base."""
-        with self._act_lock:
-            self._next_action["control_mode"] = "navigation"
-        self.send_action()
+        next_action = {"control_mode": "navigation"}
+        self.send_action(next_action)
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
@@ -483,25 +476,22 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return self._control_mode == "manipulation"
 
     def switch_to_manipulation_mode(self):
-        with self._act_lock:
-            self._next_action["control_mode"] = "manipulation"
-        self.send_action()
+        next_action = {"control_mode": "manipulation"}
+        self.send_action(next_action)
         time.sleep(0.1)
         self._wait_for_mode("manipulation")
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
-        with self._act_lock:
-            self._next_action["posture"] = "navigation"
-        self.send_action()
+        next_action = {"posture": "navigation"}
+        self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
-        with self._act_lock:
-            self._next_action["posture"] = "manipulation"
-        self.send_action()
+        next_action = {"posture": "manipulation"}
+        self.send_action(next_action)
         time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
@@ -818,8 +808,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         blocking = False
         block_id = None
         with self._act_lock:
-            if next_action is None:
-                next_action = self._next_action
 
             # Get blocking
             blocking = next_action.get("nav_blocking", False)
@@ -837,7 +825,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             # Empty it out for the next one
             current_action = next_action
-            self._next_action = dict()
 
         # Make sure we had time to read
         time.sleep(0.1)
