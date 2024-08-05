@@ -1,7 +1,5 @@
 import copy
-from typing import Optional
-
-import overrides
+from typing import Optional, override
 
 from stretch.llms.base import AbstractPromptBuilder
 
@@ -63,7 +61,7 @@ You will respond ONLY with the executable commands, i.e. the part following "Ret
 
 
 class OkRobotPromptBuilder(AbstractPromptBuilder):
-    @overrides
+    @override
     def configure(
         self,
         objects: Optional[str] = None,

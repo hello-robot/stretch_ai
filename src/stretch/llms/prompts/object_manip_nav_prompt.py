@@ -1,7 +1,5 @@
 import copy
-from typing import Optional
-
-import overrides
+from typing import Optional, override
 
 from stretch.llms.base import AbstractPromptBuilder
 
@@ -209,10 +207,16 @@ class ObjectManipNavPromptBuilder(AbstractPromptBuilder):
     def __str__(self):
         return self.prompt_str
 
-    @overrides
+    @override
     def configure(
-        self, objects: str, locations: str, prompt_intro: str, functions: str, prompt_examples: str
-    ):
+        self,
+        objects: str,
+        locations: str,
+        prompt_intro: str,
+        functions: str,
+        prompt_examples: str,
+        **kwargs
+    ) -> str:
         self.prompt_specifics = copy.copy(PROMPT_SPECIFICS)
         self.prompt_specifics = self.prompt_specifics.replace("$OBJECTS", objects)
         self.prompt_specifics = self.prompt_specifics.replace("$LOCATIONS", locations)
