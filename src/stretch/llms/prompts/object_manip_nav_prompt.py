@@ -1,6 +1,8 @@
 import copy
 from typing import Optional
 
+import overrides
+
 from stretch.llms.base import AbstractPromptBuilder
 
 DEFAULT_OBJECTS = "fanta can, tennis ball, black head band, purple shampoo bottle, toothpaste, orange packaging, green hair cream jar, green detergent pack,  blue moisturizer, green plastic cover, storage container, blue hair oil bottle, blue pretzels pack, blue hair gel tube, red bottle, blue bottle,  wallet"
@@ -181,12 +183,14 @@ Remember, you only have to reply with code for the latest user command. Just rep
 
 
 class ObjectManipNavPromptBuilder(AbstractPromptBuilder):
-    def __init__(self,
-                 default_objects: Optional[str] = None,
-                 default_locations: Optional[str] = None,
-                 prompt_intro: Optional[str] = None,
-                 functions: Optional[str] = None,
-                 prompt_examples: Optional[str] = None):
+    def __init__(
+        self,
+        default_objects: Optional[str] = None,
+        default_locations: Optional[str] = None,
+        prompt_intro: Optional[str] = None,
+        functions: Optional[str] = None,
+        prompt_examples: Optional[str] = None,
+    ):
         if default_objects is None:
             default_objects = copy.copy(DEFAULT_OBJECTS)
         if default_locations is None:
@@ -200,16 +204,15 @@ class ObjectManipNavPromptBuilder(AbstractPromptBuilder):
 
         self.prompt_str = ""
 
-        self.configure(default_objects,
-                       default_locations,
-                       prompt_intro,
-                       functions,
-                       prompt_examples)
+        self.configure(default_objects, default_locations, prompt_intro, functions, prompt_examples)
 
     def __str__(self):
         return self.prompt_str
 
-    def configure(self, objects: str, locations: str, prompt_intro: str, functions: str, prompt_examples: str):
+    @overrides
+    def configure(
+        self, objects: str, locations: str, prompt_intro: str, functions: str, prompt_examples: str
+    ):
         self.prompt_specifics = copy.copy(PROMPT_SPECIFICS)
         self.prompt_specifics = self.prompt_specifics.replace("$OBJECTS", objects)
         self.prompt_specifics = self.prompt_specifics.replace("$LOCATIONS", locations)
