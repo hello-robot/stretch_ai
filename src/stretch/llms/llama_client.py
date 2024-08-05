@@ -60,12 +60,7 @@ class LlamaClient(AbstractLLMClient):
 
         # Get response text
         assistant_response = output[0]["generated_text"].strip()
-        print("===========")
-        print(assistant_response)
-        breakpoint()
-
-        # Try to remove messages from output
-        assistant_response = assistant_response.replace(messages, "")
+        assistant_response = assistant_response[len(messages) :].strip()
 
         # Hack: search for "User" in the response and remove everything after it
         user_idx = assistant_response.find("User")
