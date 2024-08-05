@@ -48,6 +48,8 @@ class WaveOperation(ManagedOperation):
             wave_poses[j] = [0.0, lift_height, 0.05, -yaw_amplitude, pitch, -roll_amplitude]
             wave_poses[j + 1] = [0.0, lift_height, 0.05, yaw_amplitude, pitch, roll_amplitude]
 
+        assert self.robot.in_manipulation_mode(), "Did not switch to manipulation mode"
+
         # move to poses w/o blocking to make smoother motions
         for pose in wave_poses:
             self.robot.arm_to(pose, head=constants.look_at_ee, blocking=False)
