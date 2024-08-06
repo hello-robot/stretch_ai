@@ -38,12 +38,15 @@ class ManagedSearchOperation(ManagedOperation):
     def is_match_by_feature(self, instance: Instance) -> bool:
         # Compute the feature vector for the object if not saved
         if self._object_class_feature is None:
+            breakpoint()
             self._object_class_feature = self.agent.encode_text(self.object_class)
         emb = instance.get_image_embedding(
             aggregation_method=self.aggregation_method, normalize=False
         ).to(self._object_class_feature.device)
         activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
-        print(f" - Found instance {instance.global_id} with similarity {activation}.")
+        print(
+            f" - Found instance {instance.global_id} with similarity {activation} to {self.object_class}."
+        )
         return activation > self.agent.feature_match_threshold
 
     def is_match(self, instance: Instance) -> bool:
@@ -300,7 +303,6 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
 
     # Important parameters
     plan_for_manipulation: bool = True
-    object_class: Optional[str] = None
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
