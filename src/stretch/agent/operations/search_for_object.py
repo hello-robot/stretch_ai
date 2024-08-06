@@ -17,6 +17,8 @@ class ManagedSearchOperation(ManagedOperation):
     # Important parameters
     _object_class: Optional[str] = None
     _object_class_feature: Optional[torch.Tensor] = None
+
+    # How to choose the features from multiple views
     aggregation_method: str = "mean"
 
     @property
@@ -46,7 +48,7 @@ class ManagedSearchOperation(ManagedOperation):
 
     def is_match(self, instance: Instance) -> bool:
         if self.match_method == "feature":
-            return self.is_match_by_feature(Instance)
+            return self.is_match_by_feature(instance)
         elif self.match_method == "class":
             # Lookup the class name and check if it matches our target
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
