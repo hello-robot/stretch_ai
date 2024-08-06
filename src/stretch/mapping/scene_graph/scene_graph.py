@@ -76,14 +76,18 @@ class SceneGraph:
             .numpy()
         )
 
-    def get_relationships(self, debug: bool = False):
+    def get_relationships(self, debug: bool = True):
         # show symbolic relationships
         if debug:
             for idx_a, idx_b, rel in self.relationships:
                 print(idx_a, idx_b, rel)
 
-                img_a = self.get_instance_image(idx_a)
-                img_b = self.get_instance_image(idx_b)
+                if idx_b == "floor":
+                    img_a = self.get_instance_image(idx_a)
+                    img_b = np.zeros_like(img_a)
+                else:
+                    img_a = self.get_instance_image(idx_a)
+                    img_b = self.get_instance_image(idx_b)
 
                 import matplotlib
 
@@ -98,7 +102,8 @@ class SceneGraph:
                 plt.imshow(img_b)
                 plt.title("Instance B")
                 plt.axis("off")
-                plt.show()
+                # plt.show()
+                plt.savefig("/home/atharva/scene_graph.png")
         # Return the detected relationships in list form
         return self.relationships
 

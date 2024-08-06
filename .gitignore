@@ -122,6 +122,7 @@ webcam_calibration_images/
 # Data files
 *.pkl
 *.pcd
+*.pt
 *.png
 *.jpg
 *.jpeg
