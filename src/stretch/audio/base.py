@@ -27,3 +27,16 @@ class AbstractSpeechToText(abc.ABC):
             str: Transcribed text.
         """
         pass
+
+
+class AbstractTextToSpeech(abc.ABC):
+    """Basic text to speech module"""
+
+    @abc.abstractmethod
+    def speak(self, text: str):
+        """Speak the given text.
+
+        Args:
+            text (str): The text to speak.
+        """
+        pass

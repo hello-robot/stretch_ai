@@ -67,6 +67,15 @@ class OvmmPerception:
                 verbose=verbose,
                 **module_kwargs,
             )
+        elif self._detection_module == "yolo":
+            from stretch.perception.detection.yolo.yolo_perception import YoloPerception
+
+            self._segmentation = YoloPerception(
+                custom_vocabulary=".",
+                sem_gpu_id=gpu_device_id,
+                verbose=verbose,
+                **module_kwargs,
+            )
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
 

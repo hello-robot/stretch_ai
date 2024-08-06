@@ -77,7 +77,6 @@ class LlamaClient(AbstractLLMClient):
         if verbose:
             print(f"Assistant response: {assistant_response}")
             print(f"Time taken: {t1 - t0:.2f}s")
-
         return assistant_response
 
 
