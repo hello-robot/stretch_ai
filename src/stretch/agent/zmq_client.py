@@ -978,7 +978,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             t0 = timeit.default_timer()
 
     def blocking_spin_rerun(self):
-        while True:
+        while not self._finish:
             self._rerun.step(self._obs, self._servo)
             time.sleep(0.3)
 
