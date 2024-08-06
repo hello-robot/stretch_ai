@@ -10,7 +10,6 @@ class AbstractPromptBuilder(ABC):
         print(kwargs)
         self.prompt_str = self.configure(**kwargs)
 
-    @abstractmethod
     def configure(self, **kwargs) -> str:
         """Configure the prompt with the given parameters, then return the prompt string."""
         pass
