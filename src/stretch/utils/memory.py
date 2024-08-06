@@ -1,9 +1,11 @@
 import os
 
+path = os.path.expanduser("~/.stretch")
+
 
 def _ensure_path_exists() -> None:
     """Ensure that the ~/.stretch directory exists."""
-    path = os.path.expanduser("~/.stretch")
+
     if not os.path.exists(path):
         os.makedirs(path)
 
@@ -35,3 +37,6 @@ def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: boo
 
 def get_map_filename(name: str) -> str:
     """Gets a map filename in the .stretch store directory"""
+    _ensure_path_exists()
+    os.mkdirs(os.path.join(path, "maps"), exists_ok=True)
+    return os.path.join(path, "maps", name)
