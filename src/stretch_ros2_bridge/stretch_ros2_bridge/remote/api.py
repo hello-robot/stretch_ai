@@ -316,7 +316,7 @@ class StretchClient(AbstractRobotClient):
         self.manip.goto_joint_positions(
             joint_positions=q,
             gripper=gripper,
-            head_pan=head_tilt,
+            head_pan=head_pan,
             head_tilt=head_tilt,
             blocking=blocking,
         )
