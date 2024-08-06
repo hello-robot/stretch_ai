@@ -29,6 +29,7 @@ repos:
           - --install-types
           - --non-interactive
           - --no-strict-optional
+          - --disable-error-code=override
           - --disable-error-code=attr-defined
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
