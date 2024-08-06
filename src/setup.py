@@ -32,7 +32,6 @@ setuptools.setup(
         "openai-clip",
         "yacs",
         "loguru",
-        "transformers",
         "scikit-image",
         "pybullet",
         "sophuspy",
@@ -52,6 +51,8 @@ setuptools.setup(
         "hydra-core",
         "timm",
         "huggingface_hub[cli]",
+        "transformers",
+        "accelerate",
         # Compression tools
         "pyliblzfse",
         "webp",
