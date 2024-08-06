@@ -52,12 +52,12 @@ class GraspObjectOperation(ManagedOperation):
     wrist_pitch_step: float = 0.075
 
     # Timing issues
-    expected_network_delay = 0.2
+    expected_network_delay = 0.4
     open_loop: bool = False
 
     # Observation memory
     observations = MaskTemporalFilter(
-        observation_history_window_size_secs=10., observation_history_window_size_n=10
+        observation_history_window_size_secs=10.0, observation_history_window_size_n=3
     )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
@@ -222,13 +222,20 @@ class GraspObjectOperation(ManagedOperation):
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
-            target_mask = self.get_target_mask(
+            latest_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
-            
-            self.observations.push_to_observation_history(
-                observation=target_mask, timestamp=time.time(), acquire_lock=True
+
+            self.observations.push_mask_to_observation_history(
+                observation=latest_mask,
+                timestamp=time.time(),
+                mask_size_threshold=self.min_points_to_approach,
+                acquire_lock=True,
             )
+
+            target_mask = self.observations.get_latest_observation()
+            if target_mask is None:
+                target_mask = np.zeros([servo.ee_rgb.shape[0], servo.ee_rgb.shape[1]], dtype=bool)
 
             # Get depth
             center_depth = servo.ee_depth[center_y, center_x] / 1000
@@ -237,14 +244,14 @@ class GraspObjectOperation(ManagedOperation):
             # TODO: update this to use the mask centroid
             mask_center = self.observations.get_latest_centroid()
             if mask_center is None:
-                if not aligned_once:
-                    self.error(
-                        "Lost track before even seeing object with EE camera. Just try open loop."
-                    )
-                    if self.show_servo_gui:
-                        cv2.destroyAllWindows()
-                    return False
-                elif failed_counter < self.max_failed_attempts:
+                # if not aligned_once:
+                #     self.error(
+                #         "Lost track before even seeing object with EE camera. Just try open loop."
+                #     )
+                #     if self.show_servo_gui:
+                #         cv2.destroyAllWindows()
+                # return False
+                if failed_counter < self.max_failed_attempts:
                     mask_center = np.array([center_y, center_x])
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
@@ -287,8 +294,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # If we have a target mask, compute the median depth of the object
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
-            num_target_mask_pts = np.sum(target_mask.flatten())
-            if target_mask is not None and num_target_mask_pts > self.min_points_to_approach:
+            if target_mask is not None:
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
@@ -301,13 +307,14 @@ class GraspObjectOperation(ManagedOperation):
 
             # Is the center of the image part of the target mask or not?
             center_in_mask = target_mask[int(center_y), int(center_x)] > 0
+            # TODO: add deadband bubble around this?
 
             # Since we were able to detect it, copy over the target mask
             prev_target_mask = target_mask
 
             print()
             print("----- STEP VISUAL SERVOING -----")
-            print("Observed this many target mask points:", num_target_mask_pts)
+            print("Observed this many target mask points:", np.sum(target_mask.flatten()))
             print("failed =", failed_counter, "/", self.max_failed_attempts)
             print("cur x =", base_x)
             print(" lift =", lift)
