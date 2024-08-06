@@ -5,6 +5,7 @@ from termcolor import colored
 
 from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
+from stretch.motion import PlanResult
 
 
 class ManagedOperation(Operation):
@@ -51,7 +52,9 @@ class ManagedOperation(Operation):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))
 
-    def plan_to_instance_for_manipulation(self, instance, start, radius_m: float = 0.45):
+    def plan_to_instance_for_manipulation(
+        self, instance, start, radius_m: float = 0.55
+    ) -> PlanResult:
         """Manipulation planning wrapper. Plan to instance with a radius around it, ensuring a base location can be found in explored space."""
         return self.agent.plan_to_instance(
             instance, start=start, rotation_offset=np.pi / 2, radius_m=radius_m, max_tries=100

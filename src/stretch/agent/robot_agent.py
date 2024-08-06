@@ -711,7 +711,7 @@ class RobotAgent:
         visualize_map_at_start: bool = False,
         can_move: bool = True,
         verbose: bool = False,
-    ):
+    ) -> None:
 
         # Call the robot's own startup hooks
         started = self.robot.start()
@@ -735,10 +735,10 @@ class RobotAgent:
         self.robot.switch_to_navigation_mode()
         if verbose:
             print("- Update map after switching to navigation posture")
-        self.update(visualize_map=False)  # Append latest observations
 
         # Add some debugging stuff - show what 3d point clouds look like
         if visualize_map_at_start:
+            self.update(visualize_map=False)  # Append latest observations
             print("- Visualize map after updating")
             self.voxel_map.show(
                 orig=np.zeros(3),
@@ -746,9 +746,7 @@ class RobotAgent:
                 footprint=self.robot.get_robot_model().get_footprint(),
                 instances=True,
             )
-
-        self.print_found_classes(goal)
-        return self.get_found_instances_by_class(goal)
+            self.print_found_classes(goal)
 
     def encode_text(self, text: str):
         """Helper function for getting text embeddings"""
