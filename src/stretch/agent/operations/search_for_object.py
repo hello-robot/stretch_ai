@@ -38,7 +38,6 @@ class ManagedSearchOperation(ManagedOperation):
     def is_match_by_feature(self, instance: Instance) -> bool:
         # Compute the feature vector for the object if not saved
         if self._object_class_feature is None:
-            breakpoint()
             self._object_class_feature = self.agent.encode_text(self.object_class)
         emb = instance.get_image_embedding(
             aggregation_method=self.aggregation_method, normalize=False
@@ -69,10 +68,6 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
     def can_start(self) -> bool:
         self.attempt("will start searching for a receptacle on the floor.")
         return True
-
-    def is_name_match(self, name: str) -> bool:
-        """Check if the name of the object is a match for a receptacle."""
-        return "box" in name or "tray" in name
 
     def run(self) -> None:
         """Search for a receptacle on the floor."""
