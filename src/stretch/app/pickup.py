@@ -29,6 +29,14 @@ from stretch.perception import create_semantic_sensor, get_encoder
     help="Force the robot to rotate in place before doing anything.",
 )
 @click.option(
+    "--match_method",
+    type=str,
+    default="feature",
+    help="Method to match objects to pick up. Options: class, feature.",
+    show_default=True,
+    type=click.Choice(["class", "feature"]),
+)
+@click.option(
     "--mode",
     default="one_shot",
     help="Mode of operation for the robot.",
@@ -45,6 +53,7 @@ def main(
     target_object: str = "shoe",
     force_rotate: bool = False,
     mode: str = "one_shot",
+    match_method: str = "feature",
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -71,7 +80,7 @@ def main(
 
     # After the robot has started...
     try:
-        manager = PickupManager(agent, target_object=target_object)
+        manager = PickupManager(agent, target_object=target_object, matching=match_method)
         task = manager.get_task(add_rotate=force_rotate, mode=mode)
     except Exception as e:
         print(f"Error creating task: {e}")

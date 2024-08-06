@@ -66,6 +66,9 @@ instance_memory:
   max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.1
+  matching:
+    # Feature matching threshold for if something is considered a particular class
+    feature_match_threshold: 0.05
 
 # TAMP parameters
 guarantee_instance_is_reachable: True

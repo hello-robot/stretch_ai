@@ -70,6 +70,9 @@ class RobotAgent:
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
 
+        # Parameters for feature matching and exploration
+        self._is_match_threshold = parameters["instance_memory/matching/feature_match_threshold"]
+
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
             "default_expand_frontier_size"
@@ -159,6 +162,11 @@ class RobotAgent:
         print(f"Writing logs to {self.path}")
         os.makedirs(self.path, exist_ok=True)
         os.makedirs(f"{self.path}/viz_data", exist_ok=True)
+
+    @property
+    def feature_match_threshold(self) -> float:
+        """Return the feature match threshold"""
+        return self._is_match_threshold
 
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
