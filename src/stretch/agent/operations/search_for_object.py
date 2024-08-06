@@ -26,7 +26,6 @@ class ManagedSearchOperation(ManagedOperation):
         return self._object_class
 
     def __init__(self, *args, match_method="feature", **kwargs):
-        print("asdfasdfafd", args, kwargs, match_method)
         super().__init__(*args, **kwargs)
         self.match_method = match_method
 
@@ -44,6 +43,7 @@ class ManagedSearchOperation(ManagedOperation):
             aggregation_method=self.aggregation_method, normalize=False
         )
         activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
+        print(f" - Found instance {instance.global_id} with similarity {activation}.")
         return activation > self.agent.feature_matching_threshold
 
     def is_match(self, instance: Instance) -> bool:
@@ -52,6 +52,7 @@ class ManagedSearchOperation(ManagedOperation):
         elif self.match_method == "class":
             # Lookup the class name and check if it matches our target
             name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(f" - Found instance {instance.global_id} of class {name}")
             return self.is_name_match(name)
 
     def is_name_match(self, name: str) -> bool:
@@ -81,6 +82,8 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         self.update()
 
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+        if self.object_class is None:
+            self.set_target_object_class("box")
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
@@ -104,13 +107,12 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         instances = self.manager.instance_memory.get_instances()
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
-            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
-
+            # For debugging during exploration
             if self.show_instances_detected:
+                name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
                 self.show_instance(instance, f"Instance {i} with name {name}")
 
-            # Find a box
+            # Find the object we care about
             if self.is_match(instance):
                 # Check to see if we can motion plan to box or not
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
