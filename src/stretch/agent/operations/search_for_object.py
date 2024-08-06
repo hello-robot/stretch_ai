@@ -10,6 +10,11 @@ from stretch.mapping.instance import Instance
 
 class ManagedSearchOperation(ManagedOperation):
 
+    # For debugging
+    show_map_so_far: bool = False
+    show_instances_detected: bool = False
+
+    # Important parameters
     _object_class: Optional[str] = None
     _object_class_feature: Optional[torch.Tensor] = None
     aggregation_method: str = "mean"
@@ -55,10 +60,6 @@ class ManagedSearchOperation(ManagedOperation):
 
 class SearchForReceptacleOperation(ManagedOperation):
     """Find a place to put the objects we find on the floor. Will explore the map for a receptacle."""
-
-    # For debugging
-    show_map_so_far: bool = False
-    show_instances_detected: bool = False
 
     def can_start(self) -> bool:
         self.attempt("will start searching for a receptacle on the floor.")
@@ -295,10 +296,6 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
 
 class SearchForObjectOnFloorOperation(ManagedOperation):
     """Search for an object on the floor"""
-
-    # Debugging visualization
-    show_map_so_far: bool = False
-    show_instances_detected: bool = False
 
     # Important parameters
     plan_for_manipulation: bool = True
