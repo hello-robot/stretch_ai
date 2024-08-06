@@ -977,8 +977,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 )
             t0 = timeit.default_timer()
 
-    def blocking_spin_rerun(self):
-        while True:
+    def blocking_spin_rerun(self) -> None:
+        """Use the rerun server so that we can visualize what is going on as the robot takes actions in the world."""
+        while not self._finish:
             self._rerun.step(self._obs, self._servo)
             time.sleep(0.3)
 
