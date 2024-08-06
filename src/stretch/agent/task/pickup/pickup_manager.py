@@ -27,12 +27,16 @@ class PickupManager(TaskManager):
         agent: RobotAgent,
         target_object: Optional[str] = None,
         use_visual_servoing_for_grasp: bool = True,
+        matching: str = "feature",
     ) -> None:
         super().__init__(agent)
 
         # Task information
         self.target_object = target_object
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
+
+        assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
+        self.matching = matching
 
         # Sync these things
         self.robot = agent.robot
@@ -49,9 +53,7 @@ class PickupManager(TaskManager):
         self.current_receptacle = None
         self.reset_object_plans()
 
-    def get_task(
-        self, add_rotate: bool = False, mode: str = "one_shot", matching: str = "feature"
-    ) -> Task:
+    def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
         """Create a task plan with loopbacks and recovery from failure. The robot will explore the environment, find objects, and pick them up
 
         Args:
@@ -62,10 +64,8 @@ class PickupManager(TaskManager):
             Task: Executable task plan for the robot to pick up objects in the environment.
         """
 
-        assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
-
         if mode == "one_shot":
-            return self.get_one_shot_task(add_rotate=add_rotate, matching=matching)
+            return self.get_one_shot_task(add_rotate=add_rotate, matching=self.matching)
         elif mode == "all":
             if not add_rotate:
                 logger.warning(
