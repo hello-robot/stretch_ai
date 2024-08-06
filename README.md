@@ -64,6 +64,7 @@ Then, first try these apps to make sure connections are working properly:
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
 - [Gripper](#gripper-tool) - Open and close the gripper.
 - [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
+- [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
 Advanced:
 
@@ -104,6 +105,35 @@ These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/),
 
 ```bash
 sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0
+```
+
+### Using LLMs
+
+We use many open-source LLMs from [Huggingface](https://huggingface.co/). TO use them, you will need to make sure `transformers` is installed and up to date. You can install it with:
+
+```bash
+pip install transformers --upgrade
+```
+
+You will need to go to the associated websites and accept their license agreements.
+
+- [Gemma 2](https://huggingface.co/google/gemma-2b)
+- [Llama 3.1](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B)
+
+Then you need to login to the huggingface CLI:
+
+```bash
+huggingface-cli login
+```
+
+This will require a personal access token created on the Huggingface website. After this, you can test LLM chat APIs via:
+
+```bash
+# Start a local chat with Gamma 2-2B -- requires ~5gb GPU memory
+python -m stretch.llms.gemma_client
+
+# Start a local chat with Llama 3.1 8B -- requires a bigger GPU
+python -m stretch.llms.llama_client
 ```
 
 ### Advanced Installation (PC Only)
@@ -252,6 +282,14 @@ You should see something like this:
 ```
 [2024-07-29T17:58:34Z INFO  re_ws_comms::server] Hosting a WebSocket server on ws://localhost:9877. You can connect to this with a native viewer (`rerun ws://localhost:9877`) or the web viewer (with `?url=ws://localhost:9877`).
 [2024-07-29T17:58:34Z INFO  re_sdk::web_viewer] Hosting a web-viewer at http://localhost:9090?url=ws://localhost:9877
+```
+
+### Voice Chat
+
+Chat with the robot using LLMs.
+
+```bash
+python -m stretch.app.voice_chat
 ```
 
 ### Dex Teleop for Data Collection
