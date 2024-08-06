@@ -23,7 +23,7 @@ from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
-from stretch.utils.network import lookup_address
+from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
 from stretch.visualization.rerun import RerunVsualizer
 
