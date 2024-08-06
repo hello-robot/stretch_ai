@@ -69,6 +69,7 @@ def main(
         print("Done.")
     else:
         input("Press Enter when done...")
+
     robot.stop()
 
 
