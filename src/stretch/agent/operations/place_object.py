@@ -29,6 +29,7 @@ class PlaceObjectOperation(ManagedOperation):
         """Sample a placement position for the object on the receptacle."""
         if self.get_target() is None:
             raise RuntimeError("no target set")
+
         target = self.get_target()
         center_xyz = self.get_target_center()
         print(" - Placing object on receptacle at", center_xyz)
@@ -98,7 +99,6 @@ class PlaceObjectOperation(ManagedOperation):
         # Switch to place position
         print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
-
         # Get object xyz coords
         xyt = self.robot.get_base_pose()
         placement_xyz = self.sample_placement_position(xyt)
@@ -145,6 +145,7 @@ class PlaceObjectOperation(ManagedOperation):
             return
 
         # Move to the target joint state
+        self.robot.switch_to_manipulation_mode()
         self.robot.arm_to(target_joint_positions, blocking=True)
         time.sleep(0.5)
 
