@@ -104,7 +104,7 @@ More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_r
 These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
 
 ```bash
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak
 ```
 
 ### Using LLMs
