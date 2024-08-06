@@ -31,3 +31,7 @@ def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: boo
     else:
         recv_address = "tcp://127.0.0.1"
     return recv_address
+
+
+def get_map_filename(name: str) -> str:
+    """Gets a map filename in the .stretch store directory"""
