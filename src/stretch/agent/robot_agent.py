@@ -71,7 +71,9 @@ class RobotAgent:
         self.use_scene_graph = parameters["plan_with_scene_graph"]
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = parameters["instance_memory/matching/feature_match_threshold"]
+        self._is_match_threshold = parameters["instance_memory"]["matching"][
+            "feature_match_threshold"
+        ]
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
