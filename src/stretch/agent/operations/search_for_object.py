@@ -41,7 +41,7 @@ class ManagedSearchOperation(ManagedOperation):
             self._object_class_feature = self.agent.encode_text(self.object_class)
         emb = instance.get_image_embedding(
             aggregation_method=self.aggregation_method, normalize=False
-        )
+        ).to(self._object_class_feature.device)
         activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
         print(f" - Found instance {instance.global_id} with similarity {activation}.")
         return activation > self.agent.feature_matching_threshold
