@@ -66,10 +66,8 @@ def main(
 
     if show_open3d:
         agent.show_map()
-        print("Done.")
-    else:
-        input("Press Enter when done...")
 
+    print("Done.")
     robot.stop()
 
 
