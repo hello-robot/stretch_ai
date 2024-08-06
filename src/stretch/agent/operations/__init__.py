@@ -1,3 +1,12 @@
+from .emote import (
+    ApproachOperation,
+    AvertGazeOperation,
+    NodHeadOperation,
+    ShakeHeadOperation,
+    TestOperation,
+    WaveOperation,
+    WithdrawOperation,
+)
 from .grasp_object import GraspObjectOperation
 from .navigate import NavigateToObjectOperation
 from .place_object import PlaceObjectOperation

@@ -598,18 +598,6 @@ class HelloStretchKinematics:
     def get_ee_pose(self, q=None):
         raise NotImplementedError()
 
-    def update_look_front(self, q):
-        """look in front so we can see the floor"""
-        return self.update_head(q, self.look_front)
-
-    def update_look_ahead(self, q):
-        """look straight ahead; cannot see terrain"""
-        return self.update_head(q, self.look_ahead)
-
-    def update_look_at_ee(self, q):
-        """turn and look at ee area"""
-        return self.update_head(q, self.look_at_ee)
-
     def interpolate_angle(self, qi, theta0, thetag, step=0.1):
         """just rotate to target angle"""
         if theta0 > thetag:

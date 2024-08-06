@@ -182,9 +182,11 @@ class ZmqServer(CommsNode):
                     print(f" - last action step: {self._last_step}")
                 if "posture" in action:
                     if action["posture"] == "manipulation":
+                        self.client.switch_to_busy_mode()
                         self.client.move_to_manip_posture()
                         self.client.switch_to_manipulation_mode()
                     elif action["posture"] == "navigation":
+                        self.client.switch_to_busy_mode()
                         self.client.move_to_nav_posture()
                         self.client.switch_to_navigation_mode()
                     else:
@@ -221,13 +223,25 @@ class ZmqServer(CommsNode):
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:
                         print(f"Moving arm to config={action['joint']}")
+
                     if "gripper" in action:
-                        self.client.arm_and_gripper_to(
-                            action["joint"], gripper=action["gripper"], blocking=False
-                        )
+                        gripper_cmd = action["gripper"]
                     else:
-                        self.client.arm_to(action["joint"], blocking=False)
-                if "head_to" in action:
+                        gripper_cmd = None
+                    if "head_to" in action:
+                        head_pan_cmd, head_tilt_cmd = action["head_to"]
+                    else:
+                        head_pan_cmd, head_tilt_cmd = None, None
+                    # Now send all command fields here
+                    self.client.arm_to(
+                        action["joint"],
+                        gripper=gripper_cmd,
+                        head_pan=head_pan_cmd,
+                        head_tilt=head_tilt_cmd,
+                        blocking=False,
+                    )
+                elif "head_to" in action:
+                    # This will send head without anything else
                     if self.verbose or True:
                         print(f"Moving head to {action['head_to']}")
                     self.client.head_to(
@@ -235,7 +249,7 @@ class ZmqServer(CommsNode):
                         action["head_to"][1],
                         blocking=False,
                     )
-                if "gripper" in action and "joint" not in action:
+                elif "gripper" in action and "joint" not in action:
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
                     self.client.manip.move_gripper(action["gripper"])
