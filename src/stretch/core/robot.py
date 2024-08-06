@@ -18,6 +18,7 @@ class ControlMode(Enum):
     VELOCITY = 1
     NAVIGATION = 2
     MANIPULATION = 3
+    BUSY = 4
 
 
 class AbstractRobotClient(ABC):
