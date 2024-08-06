@@ -37,6 +37,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
     update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000
 
+    _head_pan_min = -np.pi
+    _head_pan_max = np.pi / 4
+    _head_tilt_min = -np.pi
+    _head_tilt_max = 0
+
     def _create_recv_socket(
         self,
         port: int,
@@ -249,10 +254,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
     ):
         """Move the head to a particular configuration."""
-        if head_pan > 0 or head_pan < -np.pi:
-            logger.warning("Head pan is restricted to be between -pi and 0 for safety.")
-        if head_tilt > 0 or head_tilt < -np.pi / 2:
-            logger.warning("Head tilt is restricted to be between -pi/2 and 0 for safety.")
+        if head_pan < self._head_pan_min or head_pan > self._head_pan_max:
+            logger.warning(
+                "Head pan is restricted to be between {self._head_pan_min} and {self._head_pan_max} for safety: was {head_pan}"
+            )
+        if head_tilt > self._head_tilt_max or head_tilt < self._head_tilt_min:
+            logger.warning(
+                f"Head tilt is restricted to be between {self._head_tilt_min} and {self._head_tilt_max} for safety: was{head_tilt}"
+            )
         head_pan = np.clip(head_pan, -np.pi, 0)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
