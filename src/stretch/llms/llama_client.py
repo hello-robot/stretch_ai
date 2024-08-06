@@ -60,17 +60,17 @@ class LlamaClient(AbstractLLMClient):
 
         # Get response text
         assistant_response = output[0]["generated_text"].strip()
-
-        # Try to remove messages from output
-        assistant_response = assistant_response.replace(messages, "")
+        assistant_response = assistant_response[len(messages) :].strip()
 
         # Hack: search for "User" in the response and remove everything after it
         user_idx = assistant_response.find("User")
         if user_idx != -1:
             assistant_response = assistant_response[:user_idx]
-        assistaant_idx = assistant_response.find("Assistant")
-        if assistaant_idx != -1:
-            assistant_response = assistant_response[:assistaant_idx]
+        assistant_idx = min(
+            assistant_response.find("Assistant"), assistant_response.find("assistant")
+        )
+        if assistant_idx != -1:
+            assistant_response = assistant_response[:assistant_idx]
 
         # Add the assistant's response to the conversation history
         self.add_history({"role": "assistant", "content": assistant_response})

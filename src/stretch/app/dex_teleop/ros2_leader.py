@@ -7,6 +7,7 @@ import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
 import stretch.app.dex_teleop.goal_from_teleop as gt
 import stretch.app.dex_teleop.webcam_teleop_interface as wt
+import stretch.motion.constants as constants
 import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
@@ -467,6 +468,7 @@ class ZmqRos2Leader:
                             goal_configuration["joint_wrist_roll"],
                         ],
                         gripper=goal_configuration["stretch_gripper"],
+                        head=constants.look_at_ee,
                     )
 
                     # Prep joint states as dict
