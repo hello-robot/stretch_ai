@@ -12,6 +12,7 @@ from stretch.agent.base import ManagedOperation
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
+from stretch.utils.filter import MaskTemporalFilter
 from stretch.utils.geometry import point_global_to_base
 from stretch.utils.gripper import GripperArucoDetector
 from stretch.utils.point_cloud import show_point_cloud
@@ -53,6 +54,11 @@ class GraspObjectOperation(ManagedOperation):
     # Timing issues
     expected_network_delay = 0.2
     open_loop: bool = False
+
+    # Observation memory
+    observations = MaskTemporalFilter(
+        observation_history_window_size_secs=10., observation_history_window_size_n=10
+    )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
@@ -219,14 +225,18 @@ class GraspObjectOperation(ManagedOperation):
             target_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
+            
+            self.observations.push_to_observation_history(
+                observation=target_mask, timestamp=time.time(), acquire_lock=True
+            )
 
             # Get depth
             center_depth = servo.ee_depth[center_y, center_x] / 1000
 
             # Compute the center of the mask in image coords
-            num_target_mask_pts = sum(target_mask.flatten())
-            if num_target_mask_pts == 0:
-                # mask_center = np.array([center_y, center_x])
+            # TODO: update this to use the mask centroid
+            mask_center = self.observations.get_latest_centroid()
+            if mask_center is None:
                 if not aligned_once:
                     self.error(
                         "Lost track before even seeing object with EE camera. Just try open loop."
@@ -235,7 +245,6 @@ class GraspObjectOperation(ManagedOperation):
                         cv2.destroyAllWindows()
                     return False
                 elif failed_counter < self.max_failed_attempts:
-                    failed_counter += 1
                     mask_center = np.array([center_y, center_x])
                 else:
                     # If we are aligned, but we lost the object, just try to grasp it
@@ -248,8 +257,8 @@ class GraspObjectOperation(ManagedOperation):
                     return self.grasp_open_loop(current_xyz)
             else:
                 failed_counter = 0
-                mask_pts = np.argwhere(target_mask)
-                mask_center = mask_pts.mean(axis=0)
+                mask_center = mask_center.astype(int)
+                mask_center = mask_center[::-1]
                 assert (
                     world_xyz.shape[0] == servo.semantic.shape[0]
                     and world_xyz.shape[1] == servo.semantic.shape[1]
@@ -279,6 +288,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # If we have a target mask, compute the median depth of the object
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
+            num_target_mask_pts = np.sum(target_mask.flatten())
             if target_mask is not None and num_target_mask_pts > self.min_points_to_approach:
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000

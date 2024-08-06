@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Any, List, Tuple
 from threading import Lock
 import time
@@ -83,3 +84,65 @@ class TemporalFilter:
         if acquire_lock:
             self._observation_history_lock.release()
         return retval
+    
+    def get_latest_observation(self) -> Any:
+        observations = self.get_observations_from_history()
+        if len(observations) == 0:
+            return None
+        return observations[-1]
+
+class MaskTemporalFilter(TemporalFilter):
+    @staticmethod
+    def mask_centroid(mask: np.ndarray):
+        """
+        computes the centroid of a mask in image space
+        """
+        num_mask_pts = MaskTemporalFilter.count_mask_pixels(mask)
+        
+        if num_mask_pts == 0:
+            mask_center = None
+        else:
+            mask_pts = np.argwhere(mask)
+            mask_center = mask_pts.mean(axis=0)
+        
+        return mask_center
+
+    @staticmethod
+    def count_mask_pixels(mask: np.ndarray) -> int:
+        return sum(mask.flatten())
+
+    def get_average_centroid(self) -> np.ndarray:
+        observations = self.get_observations_from_history()
+        if len(observations) == 0:
+            # No observations to average
+            return None
+        
+        centroids = [self.mask_centroid(observation) for observation in observations]
+        centroids = [centroid for centroid in centroids if centroid is not None]
+        if len(centroids) == 0:
+            # No centroids to average
+            return None
+        
+        avg_centroid = np.mean(centroids, axis=0)
+
+        return avg_centroid
+
+    def get_latest_centroid(self) -> np.ndarray:
+        observations = self.get_observations_from_history()
+        if len(observations) == 0:
+            # No observations to average
+            return None
+        
+        done = False
+        while not done:
+            latest_observation = observations[-1]
+            latest_centroid = self.mask_centroid(latest_observation)
+            if latest_centroid is not None:
+                done = True
+            else:
+                observations = observations[:-1]
+                if len(observations) == 0:
+                    # No centroids to average
+                    return None
+
+        return latest_centroid
