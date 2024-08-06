@@ -19,9 +19,7 @@ import stretch.utils.depth as du
 import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import AbstractRobotClient, Parameters, get_parameters
-from stretch.llms.gemma_client import Gemma2bClient
-from stretch.llms.prompts import ObjectManipNavPromptBuilder
+from stretch.core import Parameters, RobotClient, get_parameters
 from stretch.perception import create_semantic_sensor
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 
@@ -107,9 +105,6 @@ def main(
         robot.move_to_nav_posture()
         agent = RobotAgent(robot, parameters, semantic_sensor)
 
-        prompt = ObjectManipNavPromptBuilder()
-        client = Gemma2bClient(prompt)
-
         if reset:
             agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
@@ -136,94 +131,67 @@ def main(
     try:
         if len(text) == 0:
             # Read text from command line
-            text = input("Enter a long horizon task: ")
-            plan = client(text)
+            text = input("Enter text to encode, empty to quit: ")
+            while len(text) > 0:
+                # Get the best instance using agent's API
+                print(f"Finding best image(s) for '{text}'")
+                if all_matches:
+                    _, instances = agent.get_instances_from_text(text, threshold=threshold)
+                else:
+                    _, instance = agent.get_instance_from_text(text)
+                    instances = [instance]
 
-            print(f"Generated plan: \n{plan}")
-            # while len(text) > 0:
-            #     # Get the best instance using agent's API
-            #     print(f"Finding best image(s) for '{text}'")
-            #     if all_matches:
-            #         _, instances = agent.get_instances_from_text(text, threshold=threshold)
-            #     else:
-            #         _, instance = agent.get_instance_from_text(text)
-            #         instances = [instance]
+                if len(instances) == 0:
+                    logger.error("No matches found for query:", text)
+                else:
+                    for instance in instances:
+                        instance.show_best_view(title=text)
 
-            #     if len(instances) == 0:
-            #         logger.error("No matches found for query:", text)
-            #     else:
-            #         for instance in instances:
-            #             instance.show_best_view(title=text)
+                        if real_robot and not stationary:
+                            # Confirm before moving
+                            if not yes:
+                                confirm = input("Move to instance? [y/n]: ")
+                                if confirm != "y":
+                                    print("Exiting...")
+                                    sys.exit(0)
+                            print("Moving to instance...")
+                            break
 
-            #             if real_robot and not stationary:
-            #                 # Confirm before moving
-            #                 if not yes:
-            #                     confirm = input("Move to instance? [y/n]: ")
-            #                     if confirm != "y":
-            #                         print("Exiting...")
-            #                         sys.exit(0)
-            #                 print("Moving to instance...")
-            #                 break
-
-            #     # Get a new query
-            #     text = input("Enter text to encode, empty to quit: ")
+                # Get a new query
+                text = input("Enter text to encode, empty to quit: ")
         else:
-            plan = client(text)
+            # Get the best instance using agent's API
+            if all_matches:
+                instances = agent.get_instances_from_text(text, threshold=threshold)
+            else:
+                _, instance = agent.get_instance_from_text(text)
 
-            print(f"Generated plan: \n{plan}")
-            # # Get the best instance using agent's API
-            # if all_matches:
-            #     instances = agent.get_instances_from_text(text, threshold=threshold)
-            # else:
-            #     _, instance = agent.get_instance_from_text(text)
+            if len(instances) == 0:
+                logger.error("No matches found for query")
+                return
 
-            # if len(instances) == 0:
-            #     logger.error("No matches found for query")
-            #     return
+            # Show the best view of the detected instance
+            instance.show_best_view()
 
-            # # Show the best view of the detected instance
-            # instance.show_best_view()
-
-            # if real_robot and not stationary:
-            #     # Confirm before moving
-            #     if not yes:
-            #         confirm = input("Move to instance? [y/n]: ")
-            #         if confirm != "y":
-            #             print("Exiting...")
-            #             sys.exit(0)
-            #     print("Moving to instance...")
-
-        proceed = input("Proceed with plan? [y/n]: ")
-
-        # Remove first line if it is ```python
-        if plan.startswith("```python"):
-            plan = plan.split("\n", 1)[1]
-
-        # Remove last line if it is ```
-        if plan.endswith("```"):
-            plan = plan.rsplit("\n", 1)[0]
-
-        # Add execute_plan(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave, self.get_detections) to the last line
-        plan += "\nexecute_plan(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave, self.get_detections)"
-
-        if proceed != "y":
-            print("Exiting...")
-            sys.exit(0)
-
-        # Execute the plan
-        agent.execute_plan(plan)
-
+            if real_robot and not stationary:
+                # Confirm before moving
+                if not yes:
+                    confirm = input("Move to instance? [y/n]: ")
+                    if confirm != "y":
+                        print("Exiting...")
+                        sys.exit(0)
+                print("Moving to instance...")
     except KeyboardInterrupt:
         # Stop the robot now
         robot.stop()
         sys.exit(0)
 
-    # # Move to the instance if we are on the real robot and not told to stay stationary
-    # if not stationary:
-    #     # Move to the instance
-    #     # Note: this is a blocking call
-    #     # Generates a motion plan based on what we can see
-    #     agent.move_to_instance(instance)
+    # Move to the instance if we are on the real robot and not told to stay stationary
+    if not stationary:
+        # Move to the instance
+        # Note: this is a blocking call
+        # Generates a motion plan based on what we can see
+        agent.move_to_instance(instance)
 
     # At the end...
     robot.stop()
