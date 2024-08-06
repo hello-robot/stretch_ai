@@ -36,7 +36,7 @@ jobs:
       run: git config --global --add safe.directory `pwd`
     - name: Install dependencies and code
       run: |
-        sudo apt-get install libasound2-dev portaudio19-dev espeak
+        apt-get install libasound2-dev portaudio19-dev espeak
         # ./install.sh -y --no-remove --no-submodules
         python -m pip install -e ./src[dev]
         python -m pip install mypy flake8 pytest 
