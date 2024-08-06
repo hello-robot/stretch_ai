@@ -21,8 +21,6 @@ class ManagedSearchOperation(ManagedOperation):
 
     @property
     def object_class(self) -> str:
-        if self._object_class is None:
-            raise ValueError("Object class not set.")
         return self._object_class
 
     def __init__(self, *args, match_method="feature", **kwargs):
