@@ -324,6 +324,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             _next_action["gripper"] = gripper
         if head is not None:
             _next_action["head_to"] = head
+        else:
+            # TODO: remove this once we no longer need to specify all joints for arm_to
+            # If head is not specified, we need to set it to the right head position
+            # In this case, we assume if moving arm you should look at ee
+            _next_action["head_to"] = constants.look_at_ee
         _next_action["manip_blocking"] = blocking
         self.send_action(_next_action)
 
