@@ -44,7 +44,7 @@ class ManagedSearchOperation(ManagedOperation):
         ).to(self._object_class_feature.device)
         activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
         print(f" - Found instance {instance.global_id} with similarity {activation}.")
-        return activation > self.agent.feature_matching_threshold
+        return activation > self.agent.feature_match_threshold
 
     def is_match(self, instance: Instance) -> bool:
         if self.match_method == "feature":
