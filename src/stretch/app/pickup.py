@@ -30,11 +30,10 @@ from stretch.perception import create_semantic_sensor, get_encoder
 )
 @click.option(
     "--match_method",
-    type=str,
+    type=click.Choice(["class", "feature"]),
     default="feature",
     help="Method to match objects to pick up. Options: class, feature.",
     show_default=True,
-    type=click.Choice(["class", "feature"]),
 )
 @click.option(
     "--mode",
