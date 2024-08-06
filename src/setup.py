@@ -21,6 +21,7 @@ setuptools.setup(
         # Machine learning code
         "torch",
         "torchvision",
+        # General utilities
         "pyyaml",
         "pyzmq",
         "numpy<2",
@@ -33,14 +34,15 @@ setuptools.setup(
         "yacs",
         "loguru",
         "scikit-image",
-        "pybullet",
         "sophuspy",
         "pin",  # Pinocchio IK solver
         "pynput",
-        "pyrealsense2",
-        "urchin",
         "pyusb",
         "schema",
+        "overrides",
+        # Hardware dependencies
+        "pyrealsense2",
+        "urchin",
         # Visualization
         "rerun-sdk",
         # For siglip encoder
@@ -53,6 +55,9 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
+        "torch-cluster",
+        "torch-geometric",
+        "torch-scatter",
         # Compression tools
         "pyliblzfse",
         "webp",
