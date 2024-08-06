@@ -19,9 +19,11 @@ class TaskManager(abc.ABC):
         self.semantic_sensor = agent.semantic_sensor
         self.parameters = agent.parameters
         self.instance_memory = agent.voxel_map.instances
-        assert (
-            self.instance_memory is not None
-        ), "Make sure instance memory was created! This is configured in parameters file."
+
+        if agent.voxel_map.use_instance_memory:
+            assert (
+                self.instance_memory is not None
+            ), "Make sure instance memory was created! This is configured in parameters file."
 
     def reset_object_plans(self):
         """Clear stored object planning information."""
