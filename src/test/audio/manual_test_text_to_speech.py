@@ -2,9 +2,9 @@
 import time
 
 # Local imports
-from stretch.audio.text_to_speech import GTTS
+from stretch.audio.text_to_speech.gtts_engine import GTTSTextToSpeech
 
-engine = GTTS()
+engine = GTTSTextToSpeech()
 engine.voice_id = "com"
 engine.is_slow = False
 engine.say("Hello, my name is Stretch")

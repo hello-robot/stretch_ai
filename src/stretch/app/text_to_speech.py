@@ -11,68 +11,12 @@ This script adds a command-line interface (CLI) for text-to-speech. The CLI supp
 import argparse
 import os
 import readline  # Improve interactive input, e.g., up to access history, tab auto-completion.
-from typing import List, Optional
+
+from stretch.audio.text_to_speech.executor import TextToSpeechExecutor
+from stretch.audio.text_to_speech.gtts_engine import GTTSTextToSpeech
 
 # Local imports
-from stretch.audio.text_to_speech import TextToSpeechEngineType, TextToSpeechExecutor
-
-
-class HistoryCompleter:
-    """
-    This class enables readline tab auto-completion from the history.
-
-    Adapted from https://pymotw.com/3/readline/
-    """
-
-    def __init__(self):
-        """
-        Initialize the HistoryCompleter.
-        """
-        self.matches = []
-
-    @staticmethod
-    def get_history_items() -> List[str]:
-        """
-        Get the history items.
-
-        Returns
-        -------
-        List[str]
-            The history items.
-        """
-        num_items = readline.get_current_history_length() + 1
-        return [readline.get_history_item(i) for i in range(1, num_items)]
-
-    def complete(self, text: str, state: int) -> Optional[str]:
-        """
-        Return the next possible completion for 'text'.
-
-        This is called successively with state == 0, 1, 2, ... until it returns None.
-
-        Parameters
-        ----------
-        text : str
-            The string to complete.
-        state : int
-            The state of the completion.
-
-        Returns
-        -------
-        Optional[str]
-            The next possible completion for 'text'.
-        """
-        response = None
-        if state == 0:
-            history_values = HistoryCompleter.get_history_items()
-            if text:
-                self.matches = sorted(h for h in history_values if h and h.startswith(text))
-            else:
-                self.matches = []
-        try:
-            response = self.matches[state]
-        except IndexError:
-            response = None
-        return response
+from stretch.audio.utils.cli import HistoryCompleter
 
 
 class TextToSpeechComandLineInterface:
@@ -85,9 +29,8 @@ class TextToSpeechComandLineInterface:
         Initialize the TextToSpeechComandLineInterface.
         """
         self._executor = TextToSpeechExecutor(
-            engine_type=TextToSpeechEngineType.GTTS,
+            engine=GTTSTextToSpeech(),
         )
-        self._executor.initialize()
 
     def start(self) -> None:
         """
@@ -162,6 +105,9 @@ def main():
     if len(args.history_file) > 0 and os.path.exists(args.history_file):
         readline.read_history_file(args.history_file)
         print(f"Loaded the history from {args.history_file}")
+    readline.set_completer(HistoryCompleter().complete)
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer_delims("")  # Match the entire string, not individual words
 
     # Initialize the text-to-speech command line interface
     cli = TextToSpeechComandLineInterface()
