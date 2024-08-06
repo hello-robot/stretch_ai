@@ -12,7 +12,7 @@ from stretch.agent.base import ManagedOperation
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance
 from stretch.motion.kinematics import HelloStretchIdx
-from stretch.utils.filter import MaskTemporalFilter
+from stretch.utils.filters import MaskTemporalFilter
 from stretch.utils.geometry import point_global_to_base
 from stretch.utils.gripper import GripperArucoDetector
 from stretch.utils.point_cloud import show_point_cloud
@@ -258,7 +258,6 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 failed_counter = 0
                 mask_center = mask_center.astype(int)
-                mask_center = mask_center[::-1]
                 assert (
                     world_xyz.shape[0] == servo.semantic.shape[0]
                     and world_xyz.shape[1] == servo.semantic.shape[1]

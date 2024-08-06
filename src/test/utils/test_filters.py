@@ -46,10 +46,25 @@ def test_mask_temporal_filter():
 
     assert len(mask_temporal_filter.get_observations_from_history()) == n_observations
 
-    avg_obs = mask_temporal_filter.get_average_observation()
+def test_mask_temporal_filter_static():
+    test_mask = np.zeros([100, 100])
+    test_mask[:50, :50] = 1
+    centroid = MaskTemporalFilter.mask_centroid(test_mask)
+    assert len(centroid) == 2
 
-    assert avg_obs.shape == obs_shape
+    mask_temporal_filter = MaskTemporalFilter(
+        observation_history_window_size_secs=1.,
+        observation_history_window_size_n=10,
+    )
+
+    for _ in range(10):
+        mask_temporal_filter.push_to_observation_history(test_mask, timestamp=time.time(), acquire_lock=False)
+
+    centroid = mask_temporal_filter.get_latest_centroid()
+
+    assert len(centroid) == 2
 
 if __name__ == "__main__":
     test_temporal_filter()
     test_mask_temporal_filter()
+    test_mask_temporal_filter_static()
