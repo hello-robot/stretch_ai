@@ -293,7 +293,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         )
 
 
-class SearchForObjectOnFloorOperation(ManagedOperation):
+class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     """Search for an object on the floor"""
 
     # Important parameters

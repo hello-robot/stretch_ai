@@ -114,7 +114,7 @@ class PickupManager(TaskManager):
             "search_for_objects_on_floor",
             self,
             retry_on_failure=True,
-            # match_method=matching,
+            match_method=matching,
         )
         if self.target_object is not None:
             # Overwrite the default object to search for
