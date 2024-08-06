@@ -35,8 +35,8 @@ def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: boo
     return recv_address
 
 
-def get_map_filename(name: str) -> str:
+def get_path_to_map(name: str) -> str:
     """Gets a map filename in the .stretch store directory"""
     _ensure_path_exists()
-    os.mkdirs(os.path.join(path, "maps"), exists_ok=True)
+    os.makedirs(os.path.join(path, "maps"), exist_ok=True)
     return os.path.join(path, "maps", name)
