@@ -10,7 +10,7 @@ from std_srvs.srv import Trigger
 
 import stretch.motion.conversions as conversions
 from stretch.core.state import ManipulatorBaseParams
-from stretch.motion.constants import STRETCH_HOME_Q
+from stretch.motion.constants import STRETCH_HOME_Q, look_at_ee
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
 from stretch.utils.geometry import (
@@ -109,6 +109,11 @@ class StretchManipulationClient(AbstractControlModule):
         q, _, _ = self._ros_client.get_joint_state()
         return q[HelloStretchIdx.GRIPPER]
 
+    def get_head_position(self) -> List[float]:
+        """get current head [pan, tilt] as a list of floats"""
+        q, _, _ = self._ros_client.get_joint_state()
+        return [q[HelloStretchIdx.HEAD_PAN], q[HelloStretchIdx.HEAD_TILT]]
+
     @enforce_enabled
     def goto(
         self,
@@ -189,6 +194,9 @@ class StretchManipulationClient(AbstractControlModule):
         # self.base_x = joint_pos_goal[0]
 
         # head stuff
+        if head_pan is None and head_tilt is None:
+            head_pan, head_tilt = look_at_ee
+
         if head_pan is not None:
             joint_goals[self._ros_client.HEAD_PAN] = head_pan
         if head_tilt is not None:
@@ -199,6 +207,7 @@ class StretchManipulationClient(AbstractControlModule):
         # Send command to trajectory server
         # TODO: should we support trajectory actions?
         # self._ros_client.send_trajectory_goals(joint_goals, velocities=velocities)
+        print("before send... " + str(joint_goals))
         self._ros_client.send_joint_goals(joint_goals, velocities=velocities)
 
         # Wait logic
@@ -328,7 +337,13 @@ class StretchManipulationClient(AbstractControlModule):
             return False
 
         joint_pos = self._extract_joint_pos(full_body_cfg)
-        self.goto_joint_positions(joint_pos, blocking=blocking, debug=debug)
+
+        head_pan, head_tilt = self.get_head_position()
+        # head_pan, head_tilt = look_at_ee
+
+        self.goto_joint_positions(
+            joint_pos, head_pan=head_pan, head_tilt=head_tilt, blocking=blocking, debug=debug
+        )
 
         # Debug print
         if debug and blocking:

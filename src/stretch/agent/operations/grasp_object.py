@@ -10,6 +10,7 @@ from scipy.spatial.transform import Rotation
 from stretch.agent.base import ManagedOperation
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance
+from stretch.motion import constants
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 from stretch.utils.gripper import GripperArucoDetector
@@ -163,7 +164,7 @@ class GraspObjectOperation(ManagedOperation):
         # Lifted joint state
         lifted_joint_state = joint_state.copy()
         lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
-        self.robot.arm_to(lifted_joint_state, blocking=True)
+        self.robot.arm_to(lifted_joint_state, head=constants.look_at_ee, blocking=True)
         return True
 
     def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
@@ -359,7 +360,9 @@ class GraspObjectOperation(ManagedOperation):
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
 
-            self.robot.arm_to([base_x, lift, arm, 0, wrist_pitch, 0], blocking=False)
+            self.robot.arm_to(
+                [base_x, lift, arm, 0, wrist_pitch, 0], head=constants.look_at_ee, blocking=False
+            )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
 
@@ -400,7 +403,7 @@ class GraspObjectOperation(ManagedOperation):
 
         # Compute final pregrasp joint state goal and send the robot there
         joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
-        self.robot.arm_to(joint_state, blocking=True)
+        self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
             # If we try to servo, then do this
@@ -452,15 +455,15 @@ class GraspObjectOperation(ManagedOperation):
 
         # Move to the target joint state
         print(f"{self.name}: Moving to grasp position.")
-        self.robot.arm_to(target_joint_positions, blocking=True)
+        self.robot.arm_to(target_joint_positions, head=constants.look_at_ee, blocking=True)
         time.sleep(0.5)
         print(f"{self.name}: Closing the gripper.")
         self.robot.close_gripper(blocking=True)
         time.sleep(0.5)
         print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-        self.robot.arm_to(target_joint_positions_lifted, blocking=False)
+        self.robot.arm_to(target_joint_positions_lifted, head=constants.look_at_ee, blocking=False)
         print(f"{self.name}: Return arm to initial configuration.")
-        self.robot.arm_to(joint_state, blocking=True)
+        self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
         print(f"{self.name}: Done.")
         self._success = True
         return

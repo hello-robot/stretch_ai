@@ -212,6 +212,7 @@ class StretchRosInterface(Node):
         # Create the message now that it's been computed
         msg = Float64MultiArray()
         msg.data = list(joint_pose)
+        self.get_logger().info("joint goal: " + str(joint_goals))
         self._joint_goal_publisher.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)
 
