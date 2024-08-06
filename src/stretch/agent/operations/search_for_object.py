@@ -25,15 +25,16 @@ class ManagedSearchOperation(ManagedOperation):
             raise ValueError("Object class not set.")
         return self._object_class
 
+    def __init__(self, *args, match_method="feature", **kwargs):
+        print("asdfasdfafd", args, kwargs, match_method)
+        super().__init__(*args, **kwargs)
+        self.match_method = match_method
+
     def set_target_object_class(self, object_class: str):
         """Set the target object class for the search operation."""
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
         self._object_class = object_class
         self._object_class_feature = None
-
-    def __init__(self, *args, match_method="feature", **kwargs):
-        super().__init__(*args, **kwargs)
-        self.match_method = match_method
 
     def is_match_by_feature(self, instance: Instance) -> bool:
         # Compute the feature vector for the object if not saved
@@ -58,7 +59,7 @@ class ManagedSearchOperation(ManagedOperation):
         return self.object_class in name
 
 
-class SearchForReceptacleOperation(ManagedOperation):
+class SearchForReceptacleOperation(ManagedSearchOperation):
     """Find a place to put the objects we find on the floor. Will explore the map for a receptacle."""
 
     def can_start(self) -> bool:
@@ -164,11 +165,9 @@ class SearchForReceptacleOperation(ManagedOperation):
         return res
 
 
-class SearchForObjectOnFloorOperation(ManagedOperation):
+class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = True
-    show_instances_detected: bool = False
     plan_for_manipulation: bool = True
 
     def can_start(self) -> bool:
