@@ -221,7 +221,7 @@ class ZmqServer(CommsNode):
                         )
                 elif "say" in action:
                     # Text to speech from the robot, not the client/agent device
-                    self.say(action["say"])
+                    self.text_to_speech.say_async(action["say"])
                 elif "xyt" in action:
                     if self.verbose:
                         print(
