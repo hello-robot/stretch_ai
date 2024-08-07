@@ -1,7 +1,11 @@
-from stretch.utils.filters import *
 import time
 
-def test_temporal_filter(debug_print: bool=False):
+import numpy as np
+
+from stretch.utils.filters import MaskTemporalFilter, TemporalFilter
+
+
+def test_temporal_filter(debug_print: bool = False):
     n_observations = 10
     observation_history_window_size_secs = 0.5
     observation_history_window_size_n = n_observations
@@ -24,27 +28,31 @@ def test_temporal_filter(debug_print: bool=False):
         for _ in range(2 * n_observations):
             time.sleep(0.1)
             print(temporal_filter.get_observations_from_history())
-            
+
         assert len(temporal_filter.get_observations_from_history()) == 0
     else:
         print("Sleeping to empty queue for 1.5 * 0.1 * n_observations seconds...")
         time.sleep(1.5 * 0.1 * n_observations)
         assert len(temporal_filter.get_observations_from_history()) == 0
 
+
 def test_mask_temporal_filter():
     n_observations = 10
     obs_shape = (10,)
 
     mask_temporal_filter = MaskTemporalFilter(
-        observation_history_window_size_secs=1.,
+        observation_history_window_size_secs=1.0,
         observation_history_window_size_n=10,
     )
 
     for _ in range(n_observations):
         obs = np.random.rand(*obs_shape)
-        mask_temporal_filter.push_to_observation_history(obs, timestamp=time.time(), acquire_lock=False)
+        mask_temporal_filter.push_to_observation_history(
+            obs, timestamp=time.time(), acquire_lock=False
+        )
 
     assert len(mask_temporal_filter.get_observations_from_history()) == n_observations
+
 
 def test_mask_temporal_filter_static():
     test_mask = np.zeros([100, 100])
@@ -53,16 +61,19 @@ def test_mask_temporal_filter_static():
     assert len(centroid) == 2
 
     mask_temporal_filter = MaskTemporalFilter(
-        observation_history_window_size_secs=1.,
+        observation_history_window_size_secs=1.0,
         observation_history_window_size_n=10,
     )
 
     for _ in range(10):
-        mask_temporal_filter.push_to_observation_history(test_mask, timestamp=time.time(), acquire_lock=False)
+        mask_temporal_filter.push_to_observation_history(
+            test_mask, timestamp=time.time(), acquire_lock=False
+        )
 
     centroid = mask_temporal_filter.get_latest_centroid()
 
     assert len(centroid) == 2
+
 
 if __name__ == "__main__":
     test_temporal_filter()
