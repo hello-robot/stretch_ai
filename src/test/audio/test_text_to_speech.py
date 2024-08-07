@@ -106,12 +106,6 @@ def test_text_to_speech(
 
                         logger.info(f"Checking similarity for {full_filename}...")
 
-                        import audioread
-
-                        ground_truth_audio = audioread.ffdec.FFmpegAudioFile(ground_truth_filepath)
-                        tempfile_audio = audioread.ffdec.FFmpegAudioFile(tempfile.name)
-                        raise Exception()
-
                         similarity = spectral_contrast_similarity(
                             ground_truth_filepath, tempfile.name
                         )

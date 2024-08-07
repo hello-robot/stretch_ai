@@ -32,6 +32,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          lfs: true
+    - name: Get LFS objects
+      run: git lfs pull
     - name: Configure Git to trust the directory
       run: git config --global --add safe.directory `pwd`
     - name: Install dependencies and code
