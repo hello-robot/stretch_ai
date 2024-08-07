@@ -37,6 +37,10 @@ def test_text_to_speech(
     verbose : bool, optional
         Whether to enable verbose logs, by default False.
     """
+    import audioread
+
+    raise Exception(audioread.available_backends())
+
     # Configure the test cases
     engines_and_voice_ids = [
         (GTTSTextToSpeech(logger), ["com", "co.uk"]),
