@@ -9,6 +9,7 @@ repos:
     hooks:
       - id: add-license-headers
         args: [--license-filepath, docs/license_header.txt]
+        types: [python]
 
   - repo: https://github.com/psf/black
     rev: 22.3.0
