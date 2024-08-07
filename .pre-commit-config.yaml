@@ -8,7 +8,7 @@ repos:
     rev: v0.2.8  # Use the latest version available
     hooks:
       - id: add-license-headers
-        args: [--license-filepath, path/to/your/license_header.txt]
+        args: [--license-filepath, docs/license_header.txt]
 
   - repo: https://github.com/psf/black
     rev: 22.3.0

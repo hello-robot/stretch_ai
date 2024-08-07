@@ -8,13 +8,14 @@
 *This repository is currently under active development and is subject to change.*
 
 It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in real homes. It contains code for:
-  - grasping
-  - manipulation
-  - mapping
-  - navigation
-  - LLM agents
-  - text to speech and speech to text
-  - visualization and debugging
+
+- grasping
+- manipulation
+- mapping
+- navigation
+- LLM agents
+- text to speech and speech to text
+- visualization and debugging
 
 This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
