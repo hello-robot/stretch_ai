@@ -5,7 +5,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
+*This repository is currently under active development and is subject to change.*
+
+It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in a variety of homes.
 
 ## Quickstart
 
