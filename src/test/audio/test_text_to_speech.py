@@ -100,6 +100,7 @@ def test_text_to_speech(
 
                         if verbose:
                             with open(tempfile.name, "rb") as f:
+                                assert len(f.read()) > 0
                                 logger.info(
                                     f"Saved {len(f.read())} bytes of audio to {tempfile.name}"
                                 )
