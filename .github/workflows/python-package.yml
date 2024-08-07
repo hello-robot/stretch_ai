@@ -31,6 +31,8 @@ jobs:
       image: hellorobotinc/stretch-ai_cuda-11.8:0.0.7
 
     steps:
+    - name: Install git-lfs
+      run: apt-get install git-lfs
     - uses: actions/checkout@v4
       with:
           lfs: true
