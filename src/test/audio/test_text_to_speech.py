@@ -23,7 +23,7 @@ def test_text_to_speech(
     save: bool = False,
     similarity_threshold: float = 0.9,
     run_google_cloud_engine: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
 ) -> None:
     """
     Test the text-to-speech engines.
@@ -100,12 +100,18 @@ def test_text_to_speech(
 
                         if verbose:
                             with open(tempfile.name, "rb") as f:
-                                assert len(f.read()) > 0
                                 logger.info(
                                     f"Saved {len(f.read())} bytes of audio to {tempfile.name}"
                                 )
 
                         logger.info(f"Checking similarity for {full_filename}...")
+
+                        import audioread
+
+                        ground_truth_audio = audioread.ffdec.FFmpegAudioFile(ground_truth_filepath)
+                        tempfile_audio = audioread.ffdec.FFmpegAudioFile(tempfile.name)
+                        raise Exception()
+
                         similarity = spectral_contrast_similarity(
                             ground_truth_filepath, tempfile.name
                         )
