@@ -71,7 +71,7 @@ class RobotAgent:
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
-        self.tts_client = GoogleCloudTextToSpeech()
+        self.tts = GoogleCloudTextToSpeech()
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
@@ -1239,7 +1239,7 @@ class RobotAgent:
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
-        self.tts_client.speak(msg)
+        self.tts.say_async(msg)
 
     def ask(self, msg: str) -> str:
         """Receive input from the user either via the command line or something else"""
