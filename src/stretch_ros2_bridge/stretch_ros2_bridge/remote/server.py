@@ -13,6 +13,7 @@ import rclpy
 import zmq
 
 import stretch.utils.compression as compression
+from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
@@ -37,6 +38,7 @@ class ZmqServer(CommsNode):
         ee_image_scaling: float = 0.5,  # 0.6,
         depth_scaling: float = 0.001,
         ee_depth_scaling: float = 0.001,
+        text_to_speech_engine: str = "gTTS",
     ):
         self.verbose = verbose
         self.client = StretchClient(d405=True)
@@ -58,6 +60,9 @@ class ZmqServer(CommsNode):
         # Subscriber for actions
         self.recv_socket, self.recv_address = self._make_sub_socket(recv_port, use_remote_computer)
         self._last_step = -1
+
+        self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+
         print("Done!")
 
         # for the threads
