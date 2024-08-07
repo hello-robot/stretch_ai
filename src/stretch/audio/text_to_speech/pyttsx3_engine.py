@@ -99,9 +99,8 @@ class PyTTSx3TextToSpeech(AbstractTextToSpeech):
 
     @override  # inherit the docstring from the parent class
     def save_to_file(self, text: str, filepath: str, **kwargs: Any) -> None:
-        if not AbstractTextToSpeech.is_file_type_supported(filepath):
-            self._logger.error(f"Unsupported file type: {filepath} . Must end in `.mp3`")
-            return
+        if not self.is_file_type_supported(filepath):
+            return  # error message already logged
 
         # Get the parameters. In practice, because pyttsx3 spawns an ffmpeg
         # process when saving, it does not wait for the process to finish.

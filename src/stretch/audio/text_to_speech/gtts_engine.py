@@ -94,8 +94,7 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
 
     @override  # inherit the docstring from the parent class
     def save_to_file(self, text: str, filepath: str, **kwargs: Any) -> None:
-        if not AbstractTextToSpeech.is_file_type_supported(filepath):
-            self._logger.error(f"Unsupported file type: {filepath} . Must end in `.mp3`")
+        if not self.is_file_type_supported(filepath):
             return
         tts = gTTS(text=text, lang="en", tld=self.voice_id, slow=self.is_slow)
         tts.save(filepath)

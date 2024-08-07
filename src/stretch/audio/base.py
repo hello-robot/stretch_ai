@@ -169,8 +169,7 @@ class AbstractTextToSpeech(abc.ABC):
         """
         raise NotImplementedError
 
-    @staticmethod
-    def is_file_type_supported(filepath: str) -> bool:
+    def is_file_type_supported(self, filepath: str) -> bool:
         """
         Checks whether the file type is supported by the text-to-speech engine.
         This is a static method to enforce that every text-to-speech engine
@@ -186,7 +185,12 @@ class AbstractTextToSpeech(abc.ABC):
         bool
             Whether the file type is supported.
         """
-        return filepath.lower().strip().endswith(".mp3")
+        exts = [".mp3"]
+        for ext in exts:
+            if filepath.lower().strip().endswith(ext):
+                return True
+        self._logger.error(f"Unsupported file type: {filepath}. Must end in {exts}")
+        return False
 
     @abc.abstractmethod
     def save_to_file(self, text: str, filepath: str, **kwargs: Any):
