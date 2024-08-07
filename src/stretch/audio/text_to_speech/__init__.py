@@ -7,7 +7,7 @@ from .gtts_engine import GTTSTextToSpeech
 from .pyttsx3_engine import PyTTSx3TextToSpeech
 
 
-def get_text_to_speech(name: str, logger: Optional[logging.Logger] = None) -> AbstractTextToSpeech:
+def get_text_to_speech(name: str) -> AbstractTextToSpeech:
     """
     Get the text-to-speech engine by name.
 
@@ -24,9 +24,9 @@ def get_text_to_speech(name: str, logger: Optional[logging.Logger] = None) -> Ab
         The text-to-speech engine.
     """
     if name == "google":
-        return GoogleCloudTextToSpeech(logger)
+        return GoogleCloudTextToSpeech()
     if name == "gtts":
-        return GTTSTextToSpeech(logger)
+        return GTTSTextToSpeech()
     if name == "pyttsx3":
-        return PyTTSx3TextToSpeech(logger)
+        return PyTTSx3TextToSpeech()
     raise ValueError(f"Unsupported text-to-speech engine: {name}")
