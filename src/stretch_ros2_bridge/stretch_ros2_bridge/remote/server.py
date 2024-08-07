@@ -14,9 +14,11 @@ import zmq
 
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
+from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
+from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 
 class ZmqServer(CommsNode):
@@ -38,6 +40,7 @@ class ZmqServer(CommsNode):
         ee_image_scaling: float = 0.5,  # 0.6,
         depth_scaling: float = 0.001,
         ee_depth_scaling: float = 0.001,
+        text_to_speech_engine: str = "gTTS",
     ):
         self.verbose = verbose
         self.client = StretchClient(d405=True)
@@ -59,6 +62,13 @@ class ZmqServer(CommsNode):
         # Subscriber for actions
         self.recv_socket, self.recv_address = self._make_sub_socket(recv_port, use_remote_computer)
         self._last_step = -1
+
+        # Extensions to the ROS server
+        # Text to speech engine - let's let the robot talk
+        self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+        # Map saver - write and load map information from SLAM
+        self.map_saver = MapSerializerDeserializer()
+
         print("Done!")
 
         # for the threads
@@ -211,7 +221,7 @@ class ZmqServer(CommsNode):
                         )
                 elif "say" in action:
                     # Text to speech from the robot, not the client/agent device
-                    self.say(action["say"])
+                    self.text_to_speech.say_async(action["say"])
                 elif "xyt" in action:
                     if self.verbose:
                         print(
