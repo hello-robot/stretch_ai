@@ -364,15 +364,6 @@ class RobotAgent:
 
         return True
 
-    def save_svm(self, path, filename: Optional[str] = None):
-        """Debugging code for saving out an SVM"""
-        if filename is None:
-            filename = "debug_svm.pkl"
-        filename = os.path.join(path, filename)
-        with open(filename, "wb") as f:
-            pickle.dump(self.voxel_map, f)
-        print(f"SVM logged to {filename}")
-
     def get_command(self):
         if (
             "command" in self.parameters.data.keys()
