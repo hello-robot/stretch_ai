@@ -84,6 +84,7 @@ class RobotAgent:
         ]
         self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
+        self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -450,6 +451,36 @@ class RobotAgent:
         """Return scene graph, such as it is."""
         self._update_scene_graph()
         return self.scene_graph
+
+    def plan_to_instance_for_manipulation(
+        self,
+        instance: Instance,
+        start: np.ndarray,
+        max_tries: int = 100,
+        verbose: bool = True,
+        use_cache: bool = True,
+    ) -> PlanResult:
+        """Move to a specific instance. Goes until a motion plan is found. This function is specifically for manipulation tasks: it plans to a rotation that's rotated 90 degrees from the default.
+
+        Args:
+            instance(Instance): an object in the world
+            start(np.ndarray): the start position
+            max_tries(int): the maximum number of tries to find a plan
+            verbose(bool): extra info is printed
+            use_cache(bool): whether to use cached plans
+
+        Returns:
+            PlanResult: the result of the motion planner
+        """
+        return self.plan_to_instance(
+            instance,
+            start=start,
+            rotation_offset=np.pi / 2,
+            radius_m=self._manipulation_radius,
+            max_tries=max_tries,
+            verbose=verbose,
+            use_cache=use_cache,
+        )
 
     def plan_to_instance(
         self,

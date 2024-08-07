@@ -52,13 +52,9 @@ class ManagedOperation(Operation):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))
 
-    def plan_to_instance_for_manipulation(
-        self, instance, start, radius_m: float = 0.55
-    ) -> PlanResult:
+    def plan_to_instance_for_manipulation(self, instance, start) -> PlanResult:
         """Manipulation planning wrapper. Plan to instance with a radius around it, ensuring a base location can be found in explored space."""
-        return self.agent.plan_to_instance(
-            instance, start=start, rotation_offset=np.pi / 2, radius_m=radius_m, max_tries=100
-        )
+        return self.agent.plan_to_instance_for_manipulation(instance, start=start)
 
     def show_instance_segmentation_image(self):
         # Show the last instance image

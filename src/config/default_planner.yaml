@@ -98,6 +98,8 @@ motion_planner:
     min_dist: 0.1
     # Subsampling frontier space at this discretization
     step_dist: 0.1
+  goals:
+    manipulation_radius: 0.55
 
 # Trajectory following - how closely we follow intermediate waypoints
 # These should be less strict than whatever parameters the low-level controller is using; this will
