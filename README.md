@@ -7,7 +7,14 @@
 
 *This repository is currently under active development and is subject to change.*
 
-It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in a variety of homes.
+It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in real homes. It contains code for:
+  - grasping
+  - manipulation
+  - mapping
+  - navigation
+  - LLM agents
+  - text to speech and speech to text
+  - visualization and debugging
 
 ## Quickstart
 
