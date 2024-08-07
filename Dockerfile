@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    git-lfs \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,6 +38,11 @@ RUN apt-get update && apt-get install -y \
     portaudio19-dev \
     libportaudio2 \
     libportaudiocpp0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add espeak for text-to-speech
+RUN apt-get update && apt-get install -y \
+    espeak \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
