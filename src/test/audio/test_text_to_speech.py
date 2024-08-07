@@ -20,7 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 def test_text_to_speech(
-    save: bool = False, similarity_threshold: float = 0.9, verbose: bool = True
+    save: bool = False,
+    similarity_threshold: float = 0.9,
+    run_google_cloud_engine: bool = False,
+    verbose: bool = True,
 ) -> None:
     """
     Test the text-to-speech engines.
@@ -37,16 +40,23 @@ def test_text_to_speech(
         threshold was computed by comparing a GTTSTextToSpeech generation of an utterance to a GTTSTextToSpeech
         generation of all the other utternaces (difference text, voices, and speeds), and
         picking a threshold greater than their similarities.
+    run_google_cloud_engine : bool, optional
+        Whether to run the test for the Google Cloud engine, by default False.
+        Running it requires the Google Credentials to be set (e.g., with the env
+        variable GOOGLE_APPLICATION_CREDENTIALS), which isn't set on Github Actions.
     verbose : bool, optional
         Whether to enable verbose logs, by default False.
     """
 
     # Configure the test cases
     engines_and_voice_ids = [
-        (GoogleCloudTextToSpeech(logger), ["en-US-Neural2-I", "en-US-Standard-F"]),
         (GTTSTextToSpeech(logger), ["com", "co.uk"]),
         (PyTTSx3TextToSpeech(logger), ["english+m1", "english+f1"]),
     ]
+    if run_google_cloud_engine:
+        engines_and_voice_ids.append(
+            (GoogleCloudTextToSpeech(logger), ["en-US-Neural2-I", "en-US-Standard-F"])
+        )
     engine_names = {
         GoogleCloudTextToSpeech: "GoogleCloud",
         GTTSTextToSpeech: "GTTS",
