@@ -1,7 +1,7 @@
 import setuptools
 
 __version__ = None
-with open("stretch/versions.py") as f:
+with open("stretch/version.py") as f:
     exec(f.read())  # overrides __version__
 
 with open("../README.md", "r") as fh:
