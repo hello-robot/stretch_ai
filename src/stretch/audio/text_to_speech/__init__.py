@@ -23,6 +23,7 @@ def get_text_to_speech(name: str) -> AbstractTextToSpeech:
     AbstractTextToSpeech
         The text-to-speech engine.
     """
+    name = name.lower()
     if name == "google":
         return GoogleCloudTextToSpeech()
     if name == "gtts":
