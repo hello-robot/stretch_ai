@@ -13,6 +13,7 @@ import rclpy
 import zmq
 
 import stretch.utils.compression as compression
+import stretch.utils.logger as logger
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
@@ -205,7 +206,7 @@ class ZmqServer(CommsNode):
                             action["posture"],
                             "not recognized or supported.",
                         )
-                if "control_mode" in action:
+                elif "control_mode" in action:
                     if action["control_mode"] == "manipulation":
                         self.client.switch_to_manipulation_mode()
                         self.control_mode = "manipulation"
@@ -218,7 +219,10 @@ class ZmqServer(CommsNode):
                             action["control_mode"],
                             "not recognized or supported.",
                         )
-                if "xyt" in action:
+                elif "say" in action:
+                    # Text to speech from the robot, not the client/agent device
+                    self.say(action["say"])
+                elif "xyt" in action:
                     if self.verbose:
                         print(
                             "Is robot in navigation mode?",
@@ -229,7 +233,7 @@ class ZmqServer(CommsNode):
                         action["xyt"],
                         relative=action["nav_relative"],
                     )
-                if "joint" in action:
+                elif "joint" in action:
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:
                         print(f"Moving arm to config={action['joint']}")
@@ -263,6 +267,9 @@ class ZmqServer(CommsNode):
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
                     self.client.manip.move_gripper(action["gripper"])
+                else:
+                    logger.warning(" - action not recognized or supported.")
+                    logger.warning(action)
 
             # Finish with some speed info
             t1 = timeit.default_timer()
