@@ -1241,6 +1241,10 @@ class RobotAgent:
         """Provide input either on the command line or via chat client"""
         self.tts.say_async(msg)
 
+    def robot_say(self, msg: str):
+        """Hae the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
+        self.robot.say(msg)
+
     def ask(self, msg: str) -> str:
         """Receive input from the user either via the command line or something else"""
         # if self.chat is not None:
