@@ -17,7 +17,7 @@ import numpy as np
 import stretch.utils.depth as du
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import Parameters, RobotClient, get_parameters
+from stretch.core import AbstractRobotClient, Parameters, get_parameters
 from stretch.perception import create_semantic_sensor
 
 
@@ -101,7 +101,7 @@ def main(
 
 
 def demo_main(
-    robot: RobotClient,
+    robot: AbstractRobotClient,
     rate,
     visualize,
     manual_wait,
