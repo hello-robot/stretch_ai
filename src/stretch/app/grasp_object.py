@@ -24,9 +24,7 @@ def get_task(robot, demo, target_object):
             "grasp_the_object",
             manager,
         )
-        grasp_object.show_object_to_grasp = True
-        grasp_object.servo_to_grasp = True
-        grasp_object.show_servo_gui = True
+        grasp_object.configure(show_object_to_grasp=True, servo_to_grasp=True, show_servo_gui=True)
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:

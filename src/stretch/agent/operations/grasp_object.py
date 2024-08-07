@@ -54,6 +54,26 @@ class GraspObjectOperation(ManagedOperation):
     expected_network_delay = 0.2
     open_loop: bool = False
 
+    def configure(
+        self,
+        show_object_to_grasp: bool = False,
+        servo_to_grasp: bool = False,
+        show_servo_gui: bool = True,
+        show_point_cloud: bool = False,
+    ):
+        """Configure the operation with the given keyword arguments.
+
+        Args:
+            show_object_to_grasp (bool, optional): Show the object to grasp. Defaults to False.
+            servo_to_grasp (bool, optional): Use visual servoing to grasp. Defaults to False.
+            show_servo_gui (bool, optional): Show the servo GUI. Defaults to True.
+            show_point_cloud (bool, optional): Show the point cloud. Defaults to False.
+        """
+        self.show_object_to_grasp = show_object_to_grasp
+        self.servo_to_grasp = servo_to_grasp
+        self.show_servo_gui = show_servo_gui
+        self.show_point_cloud = show_point_cloud
+
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
 
