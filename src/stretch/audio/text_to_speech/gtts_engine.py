@@ -44,9 +44,9 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
         self.voice_id = "com"
         self._playback: Optional[simpleaudio.PlayObject] = None
 
-    def __synthesize_and_play_text(self, text: str) -> simpleaudio.PlayObject:
+    def __synthesize_text(self, text: str) -> gTTS:
         """
-        Get the playback object for the given text.
+        Synthesize the given text.
 
         Parameters
         ----------
@@ -55,10 +55,20 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
 
         Returns
         -------
-        simpleaudio.PlayObject
-            The playback object.
+        gTTS
+            The synthesized text.
         """
-        tts = gTTS(text=text, lang="en", tld=self.voice_id, slow=self.is_slow)
+        return gTTS(text=text, lang="en", tld=self.voice_id, slow=self.is_slow)
+
+    def __play_text(self, tts: gTTS) -> None:
+        """
+        Play the synthesized text.
+
+        Parameters
+        ----------
+        tts : gTTS
+            The synthesized text.
+        """
         fp = BytesIO()
         tts.write_to_fp(fp)
         fp.seek(0)
@@ -69,7 +79,8 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
 
     @override  # inherit the docstring from the parent class
     def say_async(self, text: str) -> None:
-        self.__synthesize_and_play_text(text)
+        tts = self.__synthesize_text(text)
+        self.__play_text(tts)
 
     @override  # inherit the docstring from the parent class
     def is_speaking(self) -> bool:
@@ -82,7 +93,8 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
 
     @override  # inherit the docstring from the parent class
     def say(self, text: str) -> None:
-        self.__synthesize_and_play_text(text)
+        tts = self.__synthesize_text(text)
+        self.__play_text(tts)
         self._playback.wait_done()
         self._playback = None
 
@@ -96,5 +108,5 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
     def save_to_file(self, text: str, filepath: str, **kwargs: Any) -> None:
         if not self.is_file_type_supported(filepath):
             return
-        tts = gTTS(text=text, lang="en", tld=self.voice_id, slow=self.is_slow)
+        tts = self.__synthesize_text(text)
         tts.save(filepath)

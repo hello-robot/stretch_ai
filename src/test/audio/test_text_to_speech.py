@@ -8,8 +8,11 @@ import librosa
 import numpy as np
 
 # Local imports
-from stretch.audio.text_to_speech.gtts_engine import GTTSTextToSpeech
-from stretch.audio.text_to_speech.pyttsx3_engine import PyTTSx3TextToSpeech
+from stretch.audio.text_to_speech import (
+    GoogleCloudTextToSpeech,
+    GTTSTextToSpeech,
+    PyTTSx3TextToSpeech,
+)
 from stretch.audio.utils.metrics import spectral_contrast_similarity
 
 logging.basicConfig(level=logging.INFO)
@@ -37,16 +40,17 @@ def test_text_to_speech(
     verbose : bool, optional
         Whether to enable verbose logs, by default False.
     """
-    import audioread
-
-    raise Exception(audioread.available_backends())
+    # import audioread
+    # raise Exception(audioread.available_backends())
 
     # Configure the test cases
     engines_and_voice_ids = [
+        (GoogleCloudTextToSpeech(logger), ["en-US-Neural2-I", "en-US-Standard-F"]),
         (GTTSTextToSpeech(logger), ["com", "co.uk"]),
         (PyTTSx3TextToSpeech(logger), ["english+m1", "english+f1"]),
     ]
     engine_names = {
+        GoogleCloudTextToSpeech: "GoogleCloud",
         GTTSTextToSpeech: "GTTS",
         PyTTSx3TextToSpeech: "PyTTSx3",
     }

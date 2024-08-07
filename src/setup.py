@@ -59,6 +59,7 @@ setuptools.setup(
         # UI tools
         "termcolor",
         # Audio
+        "google-cloud-texttospeech",  # online TTS engine
         "gtts",  # online TTS engine
         "librosa",  # audio analysis (e.g., spectral similarity)
         "PyAudio==0.2.14",  # the version specification is necessary because apt has 0.2.12 which is incompatible with recent numpy
