@@ -19,7 +19,7 @@ from loguru import logger
 from PIL import Image
 from torchvision import transforms
 
-from stretch.audio.text_to_speech import GoogleCloudTextToSpeech
+from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
@@ -71,7 +71,7 @@ class RobotAgent:
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
-        self.tts = GoogleCloudTextToSpeech()
+        self.tts = get_text_to_speech(parameters["tts_engine"])
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
