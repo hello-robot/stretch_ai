@@ -17,6 +17,7 @@ from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
+from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 
 class ZmqServer(CommsNode):
@@ -61,7 +62,11 @@ class ZmqServer(CommsNode):
         self.recv_socket, self.recv_address = self._make_sub_socket(recv_port, use_remote_computer)
         self._last_step = -1
 
+        # Extensions to the ROS server
+        # Text to speech engine - let's let the robot talk
         self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+        # Map saver - write and load map information from SLAM
+        self.map_saver = MapSerializerDeserializer()
 
         print("Done!")
 
