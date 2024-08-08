@@ -117,6 +117,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._head_not_moving_tolerance = float(
             parameters["motion"]["joint_thresholds"]["head_not_moving_tolerance"]
         )
+        self._arm_joint_tolerance = float(parameters["motion"]["joint_tolerance"]["arm"])
+        self._lift_joint_tolerance = float(parameters["motion"]["joint_tolerance"]["lift"])
+        self._base_x_joint_tolerance = float(parameters["motion"]["joint_tolerance"]["base_x"])
+        self._wrist_roll_joint_tolerance = float(
+            parameters["motion"]["joint_tolerance"]["wrist_roll"]
+        )
+        self._wrist_pitch_joint_tolerance = float(
+            parameters["motion"]["joint_tolerance"]["wrist_pitch"]
+        )
+        self._wrist_yaw_joint_tolerance = float(
+            parameters["motion"]["joint_tolerance"]["wrist_yaw"]
+        )
 
         # Robot model
         self._robot_model = HelloStretchKinematics(
@@ -281,7 +293,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
-        min_time: float = 0.1,
+        min_time: float = 0.5,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
@@ -376,15 +388,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
                 t1 = timeit.default_timer()
                 if (
-                    (arm_diff < 0.05)
-                    and (lift_diff < 0.05)
-                    and (base_x_diff < 0.05)
-                    and (wrist_roll_diff < 0.05)
-                    and (wrist_pitch_diff < 0.05)
-                    and (wrist_yaw_diff < 0.05)
+                    (arm_diff < self._arm_joint_tolerance)
+                    and (lift_diff < self._lift_joint_tolerance)
+                    and (base_x_diff < self._base_x_joint_tolerance)
+                    and (wrist_roll_diff < self._wrist_roll_joint_tolerance)
+                    and (wrist_pitch_diff < self._wrist_pitch_joint_tolerance)
+                    and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
+                    print("Arm not moving, we are done")
+                    print("Arm joint velocities", joint_velocities)
+                    print(t1 - t0)
                     # Arm stopped moving but did not reach goal
                     return False
                 else:
