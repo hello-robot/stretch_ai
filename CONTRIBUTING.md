@@ -22,23 +22,18 @@ pre-commit install
 ### Style
 
 We use [black](https://black.readthedocs.io/en/stable/) and [flake8](https://flake8.pycqa.org/en/latest/) to format our code.
-In addition, we use `isort` for sorting imports.
+In addition, we use [isort](https://pycqa.github.io/isort/) for sorting imports, [mypy](https://mypy-lang.org/) for static type checking, and [codespell](https://github.com/codespell-project/codespell) for spell checking, among other things.
 
-You can run them with:
-
-```
-# Make sure code is formatted correctly
-black .
-flake8
-
-# Make sure imports are organized and sorted for easy reading
-isort .
-```
-
-However, these should all be run automatically by the pre-commit hooks. You can force a run with:
-
+You can run the pre-commit hooks on all files with:
 ```
 pre-commit run --all-files
+```
+
+Please make sure that all changes are made and that the pre-commit hooks pass before submitting a pull request.
+
+If you need to temporarily commit something that is not passing, use:
+```
+git commit --no-verify
 ```
 
 ### Pull Requests
