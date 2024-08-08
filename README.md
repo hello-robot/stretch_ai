@@ -17,7 +17,7 @@ It is a pre-release codebase designed to enable developers to build intelligent 
 - text to speech and speech to text
 - visualization and debugging
 
-This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
+This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
 ## Quickstart
 
