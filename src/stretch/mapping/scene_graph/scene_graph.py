@@ -77,7 +77,7 @@ class SceneGraph:
             .numpy()
         )
 
-    def get_relationships(self, debug: bool = True) -> List[Tuple[int, int, str]]:
+    def get_relationships(self, debug: bool = False) -> List[Tuple[int, int, str]]:
         """Return the relationships between instances.
 
         Args:
@@ -112,7 +112,7 @@ class SceneGraph:
                 plt.title("Instance B")
                 plt.axis("off")
                 # plt.show()
-                plt.savefig(get_path_to_image("scene_graph.png"))
+                plt.savefig(get_path_to_image(f"scene_graph_{idx_a}_{idx_b}_{rel}.png"))
 
         # Return the detected relationships in list form
         return self.relationships
