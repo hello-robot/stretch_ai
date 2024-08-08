@@ -60,7 +60,6 @@ def main(
             parameters,
             device_id=device_id,
             verbose=verbose,
-            confidence_threshold=0.3,
         )
     if aruco:
         aruco_detector = GripperArucoDetector()
