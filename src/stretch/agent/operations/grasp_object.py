@@ -477,7 +477,6 @@ class GraspObjectOperation(ManagedOperation):
         print(f"{self.name}: Moving to grasp position.")
         self.robot.arm_to(target_joint_positions, head=constants.look_at_ee, blocking=True)
         time.sleep(0.5)
-        input("---")
         print(f"{self.name}: Closing the gripper.")
         self.robot.close_gripper(blocking=True)
         time.sleep(0.5)
