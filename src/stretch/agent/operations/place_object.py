@@ -16,8 +16,34 @@ class PlaceObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
-    place_step_size: float = 0.15
+    place_step_size: float = 0.25
     use_pitch_from_vertical: bool = True
+
+    def configure(
+        self,
+        place_distance_threshold: float = 0.8,
+        lift_distance: float = 0.2,
+        place_height_margin: float = 0.1,
+        show_place_in_voxel_grid: bool = False,
+        place_step_size: float = 0.25,
+        use_pitch_from_vertical: bool = True,
+    ):
+        """Configure the place operation.
+
+        Args:
+            place_distance_threshold: Distance threshold for placing object
+            lift_distance: Distance to lift the object
+            place_height_margin: Height margin for placing object
+            show_place_in_voxel_grid: Show the place in voxel grid
+            place_step_size: Step size for placing object. After finding closest point on target object to the robot, step this far towards object center.
+            use_pitch_from_vertical: Use pitch from vertical
+        """
+        self.place_distance_threshold = place_distance_threshold
+        self.lift_distance = lift_distance
+        self.place_height_margin = place_height_margin
+        self.show_place_in_voxel_grid = show_place_in_voxel_grid
+        self.place_step_size = place_step_size
+        self.use_pitch_from_vertical = use_pitch_from_vertical
 
     def get_target(self):
         return self.manager.current_receptacle
