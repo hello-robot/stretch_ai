@@ -13,7 +13,8 @@ We use the SAP [CLA Assistant bot](https://github.com/cla-assistant/cla-assistan
 Install the code and set up the pre-commit hooks:
 
 ```
-cd stretchpy/src
+git clone https://github.com/hello-robot/stretch_ai.git --recursive
+cd stretch_ai/src
 pip install -e .[dev]
 pre-commit install
 ```
