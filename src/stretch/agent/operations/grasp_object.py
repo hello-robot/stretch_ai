@@ -158,10 +158,10 @@ class GraspObjectOperation(ManagedOperation):
         else:
             return prev_mask
 
-    def _grasp(self) -> bool:
+    def _grasp(self, loose: bool = False) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
-        self.robot.close_gripper(loose=True, blocking=True)
+        self.robot.close_gripper(loose=loose, blocking=True)
         time.sleep(0.5)
 
         # Get a joint state for the object
