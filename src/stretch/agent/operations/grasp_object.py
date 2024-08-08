@@ -454,7 +454,6 @@ class GraspObjectOperation(ManagedOperation):
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
             relative_object_xyz, ee_rot, q0=joint_state
         )
-        target_joint_positions[HelloStretchIdx.BASE_X] -= 0.04
         if not success:
             print("Failed to find a valid IK solution.")
             self._success = False
