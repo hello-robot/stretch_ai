@@ -355,8 +355,10 @@ class StretchManipulationClient(AbstractControlModule):
         self.move_gripper(gripper_target, blocking=blocking)
 
     @enforce_enabled
-    def close_gripper(self, blocking: bool = True):
+    def close_gripper(self, loose: bool = False, blocking: bool = True):
         gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][0]
+        if loose:
+            gripper_target += 0.3
         self.move_gripper(gripper_target, blocking=blocking)
 
     @enforce_enabled

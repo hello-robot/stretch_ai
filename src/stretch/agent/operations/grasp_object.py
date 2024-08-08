@@ -161,7 +161,7 @@ class GraspObjectOperation(ManagedOperation):
     def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
-        self.robot.close_gripper(blocking=True)
+        self.robot.close_gripper(loose=True, blocking=True)
         time.sleep(0.5)
 
         # Get a joint state for the object
@@ -221,12 +221,22 @@ class GraspObjectOperation(ManagedOperation):
                 else:
                     center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
 
+            # add offset to center
+            center_x -= 10  # move closer to top
+
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
 
+            # dilate mask
+            kernel = np.ones((3, 3), np.uint8)
+            mask_np = latest_mask.astype(np.uint8)
+            dilated_mask = cv2.dilate(mask_np, kernel, iterations=1)
+            latest_mask = dilated_mask.astype(bool)
+
+            # push to history
             self.observations.push_mask_to_observation_history(
                 observation=latest_mask,
                 timestamp=time.time(),
