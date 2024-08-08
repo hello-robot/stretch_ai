@@ -568,8 +568,6 @@ class SparseVoxelMap(object):
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []
-        data["xyz"] = []
-        data["world_xyz"] = []
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
@@ -583,8 +581,6 @@ class SparseVoxelMap(object):
             data["camera_poses"].append(frame.camera_pose)
             data["base_poses"].append(frame.base_pose)
             data["camera_K"].append(frame.camera_K)
-            data["xyz"].append(frame.xyz)
-            data["world_xyz"].append(frame.full_world_xyz)
             data["rgb"].append(frame.rgb)
             data["depth"].append(frame.depth)
             data["feats"].append(frame.feats)
@@ -600,41 +596,6 @@ class SparseVoxelMap(object):
             data["combined_rgb"],
         ) = self.voxel_pcd.get_pointcloud()
         print("Dumping to pickle...")
-        with open(filename, "wb") as f:
-            pickle.dump(data, f)
-
-    def write_to_pickle_add_data(self, filename: str, newdata: dict):
-        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
-        data = {}
-        data["camera_poses"] = []
-        data["base_poses"] = []
-        data["xyz"] = []
-        data["rgb"] = []
-        data["depth"] = []
-        data["feats"] = []
-        data["obs"] = []
-        for key, value in newdata.items():
-            data[key] = value
-        for frame in self.observations:
-            # add it to pickle
-            # TODO: switch to using just Obs struct?
-            data["camera_poses"].append(frame.camera_pose)
-            data["base_poses"].append(frame.base_pose)
-            data["xyz"].append(frame.xyz)
-            data["rgb"].append(frame.rgb)
-            data["depth"].append(frame.depth)
-            data["feats"].append(frame.feats)
-            data["obs"].append(frame.obs)
-            for k, v in frame.info.items():
-                if k not in data:
-                    data[k] = []
-                data[k].append(v)
-        (
-            data["combined_xyz"],
-            data["combined_feats"],
-            data["combined_weights"],
-            data["combined_rgb"],
-        ) = self.voxel_pcd.get_pointcloud()
         with open(filename, "wb") as f:
             pickle.dump(data, f)
 
@@ -660,17 +621,15 @@ class SparseVoxelMap(object):
         assert filename.exists(), f"No file found at {filename}"
         with filename.open("rb") as f:
             data = pickle.load(f)
-        for i, (camera_pose, xyz, rgb, feats, depth, base_pose, obs, K, world_xyz,) in enumerate(
+        for i, (camera_pose, rgb, feats, depth, base_pose, obs, K) in enumerate(
             zip(
                 data["camera_poses"],
-                data["xyz"],
                 data["rgb"],
                 data["feats"],
                 data["depth"],
                 data["base_poses"],
                 data["obs"],
                 data["camera_K"],
-                data["world_xyz"],
             )
         ):
             # Handle the case where we dont actually want to load everything
@@ -678,7 +637,6 @@ class SparseVoxelMap(object):
                 break
 
             camera_pose = self.fix_data_type(camera_pose)
-            xyz = self.fix_data_type(xyz)
             rgb = self.fix_data_type(rgb)
             depth = self.fix_data_type(depth)
             if feats is not None:
@@ -687,7 +645,6 @@ class SparseVoxelMap(object):
             instance = self.fix_data_type(obs.instance)
             self.add(
                 camera_pose=camera_pose,
-                xyz=xyz,
                 rgb=rgb,
                 feats=feats,
                 depth=depth,
