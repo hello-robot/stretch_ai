@@ -28,7 +28,7 @@ class TextToSpeechComandLineInterface:
     A command-line interface to use text-to-speech.
     """
 
-    def __init__(self, engine: str = "gtts", voice_id: str = ""):
+    def __init__(self, engine: str = "gtts", voice_id: str = "", is_slow: bool = False):
         """
         Initialize the TextToSpeechComandLineInterface.
 
@@ -38,6 +38,8 @@ class TextToSpeechComandLineInterface:
             The text-to-speech engine to use. Default is "gtts".
         voice_id : str, optional
             The voice ID to use. Ignored if empty string.
+        is_slow : bool, optional
+            Whether to speak slowly or not. Default is False
         """
         if engine == "gtts":
             engine = GTTSTextToSpeech()
@@ -51,6 +53,7 @@ class TextToSpeechComandLineInterface:
             )
         if len(voice_id) > 0:
             engine.voice_id = voice_id
+        self.is_slow = is_slow
         self._executor = TextToSpeechExecutor(
             engine=engine,
         )
@@ -100,7 +103,7 @@ class TextToSpeechComandLineInterface:
                     continue
 
             # Publish the message
-            self._executor.say_utterance(message)
+            self._executor.say_utterance(message, is_slow=self.is_slow)
 
 
 def get_args() -> argparse.Namespace:
@@ -130,6 +133,11 @@ def get_args() -> argparse.Namespace:
             "a gibberish string, and the error message will show the available voice IDs."
         ),
     )
+    parser.add_argument(
+        "--is_slow",
+        action="store_true",
+        help="Whether to speak slowly or not.",
+    )
     return parser.parse_args()
 
 
@@ -149,7 +157,9 @@ def main():
     readline.set_completer_delims("")  # Match the entire string, not individual words
 
     # Initialize the text-to-speech command line interface
-    cli = TextToSpeechComandLineInterface(engine=args.engine, voice_id=args.voice_id)
+    cli = TextToSpeechComandLineInterface(
+        engine=args.engine, voice_id=args.voice_id, is_slow=args.is_slow
+    )
     cli.start()
 
     # Run the text-to-speech command line interface
