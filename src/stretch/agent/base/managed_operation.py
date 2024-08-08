@@ -3,6 +3,8 @@ from typing import Optional
 import numpy as np
 from termcolor import colored
 
+from stretch.agent.base.task_manager import TaskManager
+from stretch.core.robot import AbstractRobotClient
 from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
 from stretch.motion import PlanResult
@@ -11,13 +13,25 @@ from stretch.motion import PlanResult
 class ManagedOperation(Operation):
     """Placeholder node for an example in a task plan. Contains some functions to make it easier to print out different messages with color for interpretability, and also provides some utilities for making the robot do different tasks."""
 
-    def __init__(self, name, manager, **kwargs):
+    def __init__(
+        self,
+        name,
+        manager: Optional[TaskManager] = None,
+        robot: Optional[AbstractRobotClient] = None,
+        **kwargs,
+    ):
         super().__init__(name, **kwargs)
-        self.manager = manager
-        self.robot = manager.robot
-        self.parameters = manager.parameters
-        self.navigation_space = manager.navigation_space
-        self.agent = manager.agent
+        if manager is not None:
+            self.manager = manager
+            self.robot = manager.robot
+            self.parameters = manager.parameters
+            self.navigation_space = manager.navigation_space
+            self.agent = manager.agent
+        elif robot is not None:
+            self.robot = robot
+            self.parameters = robot.parameters
+
+        # Get the robot kinematic model
         self.robot_model = self.robot.get_robot_model()
 
     @property

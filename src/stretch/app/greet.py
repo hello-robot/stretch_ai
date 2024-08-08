@@ -26,7 +26,7 @@ def main(
     # create robot agent
     demo = RobotAgent(robot, parameters=parameters)
 
-    wave = WaveOperation("emote")
+    wave = WaveOperation("emote", robot=robot)
     res = wave()
     if not res:
         logger.error("Wave operation failed")
