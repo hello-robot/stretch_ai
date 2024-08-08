@@ -3,7 +3,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import copy
-import logging
 import math
 import pickle
 import timeit
@@ -59,8 +58,6 @@ Frame = namedtuple(
 )
 
 VALID_FRAMES = ["camera", "world"]
-
-logger = logging.getLogger(__name__)
 
 
 def ensure_tensor(arr):
@@ -648,17 +645,17 @@ class SparseVoxelMap(object):
         if "compressed" in data:
             compressed = data["compressed"]
 
-        for i, (camera_pose, rgb, feats, depth, base_pose, instance, K) in enumerate(
+        for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
             # TODO: compression of observations
             # Right now we just do not support this
             # data["obs"],  TODO: compression of Observations
             zip(
                 data["camera_poses"],
+                data["camera_K"],
                 data["rgb"],
                 data["feats"],
                 data["depth"],
                 data["base_poses"],
-                data["camera_K"],
                 data["instance"],
             )
         ):
@@ -668,14 +665,15 @@ class SparseVoxelMap(object):
 
             camera_pose = self.fix_data_type(camera_pose)
             if compressed:
-                rgb = compression.from_jpg(rgb).float()
+                rgb = compression.from_jpg(rgb)
                 depth = compression.from_jp2(depth) / 1000.0
-            rgb = self.fix_data_type(rgb)
-            depth = self.fix_data_type(depth)
+            rgb = self.fix_data_type(rgb).float()
+            depth = self.fix_data_type(depth).float()
             if feats is not None:
                 feats = self.fix_data_type(feats)
             base_pose = self.fix_data_type(base_pose)
             instance = self.fix_data_type(instance)
+            breakpoint()
             self.add(
                 camera_pose=camera_pose,
                 rgb=rgb,
