@@ -6,6 +6,8 @@ This repository is in an early state of development. Guidelines are subject to c
 
 Before contributing, you will need to sign a [Contributor License Agreement](https://gist.github.com/hello-cpaxton/8881ca0a05858dcaee4ebf0207d92f83). For more information, you can check out the [Stretch Contributor License Agreement](https://github.com/hello-robot/stretch_contributor_license_agreements) page for more information.
 
+We use the SAP [CLA Assistant bot](https://github.com/cla-assistant/cla-assistant), which will open a comment and give you instructions when you open a pull request.
+
 ### Setup
 
 Install the code and set up the pre-commit hooks:
