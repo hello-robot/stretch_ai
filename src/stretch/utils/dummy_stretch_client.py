@@ -55,6 +55,7 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
         )
         """
         self._robot_model = self
+        self.dof = 3 + 2 + 4 + 2
 
     def navigate_to(self, xyt, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
@@ -76,6 +77,28 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
     def get_robot_model(self) -> RobotModel:
         """return a model of the robot for planning"""
         return self._robot_model
+
+    def at_goal(self, goal, pos_err_threshold=0.1, rot_err_threshold=0.1):
+        """Check if the robot is at the goal."""
+        return True
+
+    def get_dof(self):
+        """Return the number of degrees of freedom of the robot."""
+        return self.dof
+
+    def move_to_manip_posture(self):
+        return True
+
+    def move_to_nav_posture(self):
+        return True
+
+    def set_config(self, config: Dict[str, float]):
+        """Set the configuration of the robot."""
+        return True
+
+    def get_base_pose(self):
+        """Return the current pose of the robot."""
+        return np.array([0.0, 0.0, 0.0])
 
     def execute_trajectory(
         self,

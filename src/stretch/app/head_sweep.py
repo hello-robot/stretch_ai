@@ -47,10 +47,10 @@ def main(
     # Create robot
     robot = RobotClient(robot_ip=robot_ip, use_remote_computer=(not local))
     if run_semantic_segmentation:
-        _, semantic_sensor = create_semantic_sensor(
+        semantic_sensor = create_semantic_sensor(
+            parameters=robot.parameters,
             device_id=device_id,
             verbose=verbose,
-            category_map_file=robot.parameters["open_vocab_category_map_file"],
         )
     else:
         semantic_sensor = None
@@ -75,9 +75,8 @@ def main(
 
     if show_open3d:
         agent.show_map()
-        print("Done.")
-    else:
-        input("Press Enter when done...")
+
+    print("Done.")
     robot.stop()
 
 

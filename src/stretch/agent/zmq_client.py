@@ -32,7 +32,7 @@ from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
-from stretch.utils.network import lookup_address
+from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
 from stretch.visualization.rerun import RerunVsualizer
 
@@ -45,6 +45,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     update_base_pose_from_full_obs: bool = False
     num_state_report_steps: int = 10000
+
+    _head_pan_min = -np.pi
+    _head_pan_max = np.pi / 4
+    _head_tilt_min = -np.pi
+    _head_tilt_max = 0
 
     def _create_recv_socket(
         self,
@@ -120,6 +125,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._head_tilt_tolerance = float(parameters["motion"]["joint_tolerance"]["head_tilt"])
         self._head_not_moving_tolerance = float(
             parameters["motion"]["joint_thresholds"]["head_not_moving_tolerance"]
+        )
+        self._arm_joint_tolerance = float(parameters["motion"]["joint_tolerance"]["arm"])
+        self._lift_joint_tolerance = float(parameters["motion"]["joint_tolerance"]["lift"])
+        self._base_x_joint_tolerance = float(parameters["motion"]["joint_tolerance"]["base_x"])
+        self._wrist_roll_joint_tolerance = float(
+            parameters["motion"]["joint_tolerance"]["wrist_roll"]
+        )
+        self._wrist_pitch_joint_tolerance = float(
+            parameters["motion"]["joint_tolerance"]["wrist_pitch"]
+        )
+        self._wrist_yaw_joint_tolerance = float(
+            parameters["motion"]["joint_tolerance"]["wrist_yaw"]
         )
 
         # Robot model
@@ -258,10 +275,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
     ):
         """Move the head to a particular configuration."""
-        if head_pan > 0 or head_pan < -np.pi:
-            logger.warning("Head pan is restricted to be between -pi and 0 for safety.")
-        if head_tilt > 0 or head_tilt < -np.pi / 2:
-            logger.warning("Head tilt is restricted to be between -pi/2 and 0 for safety.")
+        if head_pan < self._head_pan_min or head_pan > self._head_pan_max:
+            logger.warning(
+                "Head pan is restricted to be between {self._head_pan_min} and {self._head_pan_max} for safety: was {head_pan}"
+            )
+        if head_tilt > self._head_tilt_max or head_tilt < self._head_tilt_min:
+            logger.warning(
+                f"Head tilt is restricted to be between {self._head_tilt_min} and {self._head_tilt_max} for safety: was{head_tilt}"
+            )
         head_pan = np.clip(head_pan, -np.pi, 0)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
@@ -281,7 +302,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
-        min_time: float = 0.1,
+        min_time: float = 2.0,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
@@ -370,21 +391,25 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 wrist_yaw_diff = np.abs(
                     angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
                 )
-                print(
-                    f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
-                )
+                if verbose:
+                    print(
+                        f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
+                    )
 
                 t1 = timeit.default_timer()
                 if (
-                    (arm_diff < 0.05)
-                    and (lift_diff < 0.05)
-                    and (base_x_diff < 0.05)
-                    and (wrist_roll_diff < 0.05)
-                    and (wrist_pitch_diff < 0.05)
-                    and (wrist_yaw_diff < 0.05)
+                    (arm_diff < self._arm_joint_tolerance)
+                    and (lift_diff < self._lift_joint_tolerance)
+                    and (base_x_diff < self._base_x_joint_tolerance)
+                    and (wrist_roll_diff < self._wrist_roll_joint_tolerance)
+                    and (wrist_pitch_diff < self._wrist_pitch_joint_tolerance)
+                    and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
+                    print("Arm not moving, we are done")
+                    print("Arm joint velocities", joint_velocities)
+                    print(t1 - t0)
                     # Arm stopped moving but did not reach goal
                     return False
                 else:
@@ -976,8 +1001,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 )
             t0 = timeit.default_timer()
 
-    def blocking_spin_rerun(self):
-        while True:
+    def blocking_spin_rerun(self) -> None:
+        """Use the rerun server so that we can visualize what is going on as the robot takes actions in the world."""
+        while not self._finish:
             self._rerun.step(self._obs, self._servo)
             time.sleep(0.3)
 

@@ -28,7 +28,7 @@ from stretch.core.task import Task
 from stretch.mapping.instance import Instance
 
 
-class PickupManager(TaskManager):
+class MultiPickupManager(TaskManager):
     """Simple robot that will look around and pick up different objects"""
 
     def __init__(

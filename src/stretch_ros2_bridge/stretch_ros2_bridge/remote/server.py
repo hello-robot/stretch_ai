@@ -22,9 +22,12 @@ import rclpy
 import zmq
 
 import stretch.utils.compression as compression
+import stretch.utils.logger as logger
+from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
+from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 
 class ZmqServer(CommsNode):
@@ -46,6 +49,7 @@ class ZmqServer(CommsNode):
         ee_image_scaling: float = 0.5,  # 0.6,
         depth_scaling: float = 0.001,
         ee_depth_scaling: float = 0.001,
+        text_to_speech_engine: str = "gTTS",
     ):
         self.verbose = verbose
         self.client = StretchClient(d405=True)
@@ -67,6 +71,13 @@ class ZmqServer(CommsNode):
         # Subscriber for actions
         self.recv_socket, self.recv_address = self._make_sub_socket(recv_port, use_remote_computer)
         self._last_step = -1
+
+        # Extensions to the ROS server
+        # Text to speech engine - let's let the robot talk
+        self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+        # Map saver - write and load map information from SLAM
+        self.map_saver = MapSerializerDeserializer()
+
         print("Done!")
 
         # for the threads
@@ -204,7 +215,7 @@ class ZmqServer(CommsNode):
                             action["posture"],
                             "not recognized or supported.",
                         )
-                if "control_mode" in action:
+                elif "control_mode" in action:
                     if action["control_mode"] == "manipulation":
                         self.client.switch_to_manipulation_mode()
                         self.control_mode = "manipulation"
@@ -217,7 +228,10 @@ class ZmqServer(CommsNode):
                             action["control_mode"],
                             "not recognized or supported.",
                         )
-                if "xyt" in action:
+                elif "say" in action:
+                    # Text to speech from the robot, not the client/agent device
+                    self.text_to_speech.say_async(action["say"])
+                elif "xyt" in action:
                     if self.verbose:
                         print(
                             "Is robot in navigation mode?",
@@ -228,7 +242,7 @@ class ZmqServer(CommsNode):
                         action["xyt"],
                         relative=action["nav_relative"],
                     )
-                if "joint" in action:
+                elif "joint" in action:
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:
                         print(f"Moving arm to config={action['joint']}")
@@ -262,6 +276,9 @@ class ZmqServer(CommsNode):
                     if self.verbose or True:
                         print(f"Moving gripper to {action['gripper']}")
                     self.client.manip.move_gripper(action["gripper"])
+                else:
+                    logger.warning(" - action not recognized or supported.")
+                    logger.warning(action)
 
             # Finish with some speed info
             t1 = timeit.default_timer()

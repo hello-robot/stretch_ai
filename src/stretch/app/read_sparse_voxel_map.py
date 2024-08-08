@@ -81,6 +81,13 @@ def plan_to_deltas(xyt0, plan):
     default=False,
     help="test sampling instances and trying to plan to them.",
 )
+@click.option(
+    "--test-plan-to-frontier",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test the robot agent's plan to frontier function.",
+)
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
 @click.option("--query", "-q", type=str, default="")
@@ -91,6 +98,7 @@ def main(
     show_maps: bool = True,
     pkl_is_svm: bool = True,
     test_planning: bool = False,
+    test_plan_to_frontier: bool = False,
     test_sampling: bool = False,
     test_vlm: bool = False,
     frame: int = -1,
@@ -133,9 +141,9 @@ def main(
         voxel_map = SparseVoxelMap(resolution=voxel_size)
 
     # TODO: read this from file or something
-    # x0 = np.array([0, 0, 0])
-    x0 = np.array([1, 0, 0])
-    x0 = np.array([2.85963704, 0.77726015, 1.95671275])  # stretch_output_2024-05-24_13-28-26.pkl
+    x0 = np.array([0, 0, 0])
+    # x0 = np.array([1, 0, 0])
+    # x0 = np.array([2.85963704, 0.77726015, 1.95671275])  # stretch_output_2024-05-24_13-28-26.pkl
     # x0 = np.array([2.6091852, 3.2328937, 0.8379814])
     # x0 = np.array([3.1000001, 0.0, 4.2857614])
     # x0 = np.array([0.0, -0.0, 1.5707968])
@@ -186,8 +194,11 @@ def main(
         plt.show()
 
         if test_planning:
-
-            print("--- Sampling goals ---")
+            print("-" * 80)
+            print("Test planning.")
+            print("This is divided between sampling and planning.")
+            print("Sampling will find frontier points to plan to.")
+            print("Planning will try to plan to those points.")
             start_is_valid = space.is_valid(x0, verbose=True, debug=False)
             if not start_is_valid:
                 print("you need to manually set the start pose to be valid")
@@ -225,15 +236,41 @@ def main(
                             xyt=goal.cpu().numpy(),
                             footprint=footprint,
                         )
-
             print("... done sampling frontier points.")
+        if test_plan_to_frontier:
+            print("-" * 80)
+            print("Test planning to frontier.")
+            print("This version tests the agent's canned 'plan_to_frontier' function.")
+            print("It will try to plan to the closest frontier point.")
+            print("-" * 80)
+            res = agent.plan_to_frontier(x0)
+            print("... planning done. success =", res.success)
+            if res.success:
+                plan_to_deltas(x0, res)
+                goal = res.trajectory[-1].state
+                print("Plan found:")
+                print("start =", x0)
+                print("goal =", goal)
+                if show_svm:
+                    voxel_map.show(
+                        instances=show_instances,
+                        orig=start_xyz,
+                        xyt=goal,
+                        footprint=footprint,
+                    )
         if test_sampling:
+            print("-" * 80)
+            print("Test sampling.")
+            print("You will be asked to provide a query to find instances.")
+            print("The agent will then try to plan to the instance closest to that.")
+            print("-" * 80)
             # Plan to an instance
             # Query the instances by something first
             if len(query) == 0:
                 query = input("Enter a query: ")
             matches = agent.get_ranked_instances(query)
             print("Found", len(matches), "matches for query", query)
+            res = None
             for score, i, instance in matches:
                 print(f"Try to plan to instance {i} with score {score}")
                 res = agent.plan_to_instance(instance, x0, verbose=False, radius_m=0.3)

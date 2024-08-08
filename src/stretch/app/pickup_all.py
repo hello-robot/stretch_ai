@@ -70,10 +70,10 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    _, semantic_sensor = create_semantic_sensor(
+    semantic_sensor = create_semantic_sensor(
+        parameters,
         device_id=device_id,
         verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
     )
 
     # Start moving the robot around
