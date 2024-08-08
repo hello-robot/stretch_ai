@@ -11,7 +11,6 @@
 import logging
 import traceback
 from io import BytesIO
-from tempfile import NamedTemporaryFile
 from typing import Any, Optional
 
 # Third-party imports
