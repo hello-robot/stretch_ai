@@ -415,3 +415,14 @@ docker build -t stretch-ai_cuda-11.8:latest .
 ```
 
 See the [docker guide](docs/docker.md) for more information and troubleshooting advice.
+
+
+## Acknowledgements
+
+Parts of this codebase were derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project, and is licensed under the [MIT license](META_LICENSE). We thank the Meta team for their contributions.
+
+The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is based on the [OK robot](https://github.com/ok-robot/ok-robot) project's [Robot Controller](https://github.com/NYU-robot-learning/robot-controller/), and is licensed under the [Apache 2.0 license](src/stretch_ros2_bridge/LICENSE).
+
+## License
+
+This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information.

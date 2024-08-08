@@ -1,6 +1,6 @@
-# Contributing to Stretchpy
+# Contributing to Stretch AI
 
-We welcome contributions to Stretchpy! Please read the following guidelines before submitting a pull request.
+We welcome contributions to Stretch AI! Please read the following guidelines before submitting a pull request.
 
 This repository is in an early state of development. Guidelines are subject to change and tests will be by necessity incomplete.
 
