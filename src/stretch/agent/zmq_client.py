@@ -382,9 +382,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 wrist_yaw_diff = np.abs(
                     angle_difference(joint_state[HelloStretchIdx.WRIST_YAW], joint_angles[5])
                 )
-                print(
-                    f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
-                )
+                if verbose:
+                    print(
+                        f"{arm_diff=}, {lift_diff=}, {base_x_diff=}, {wrist_roll_diff=}, {wrist_pitch_diff=}, {wrist_yaw_diff=}"
+                    )
 
                 t1 = timeit.default_timer()
                 if (

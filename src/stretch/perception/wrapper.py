@@ -28,7 +28,6 @@ class OvmmPerception:
         gpu_device_id: int = 0,
         verbose: bool = False,
         confidence_threshold: float = 0.5,
-        module: str = "grounded_sam",
         module_kwargs: Dict[str, Any] = {},
     ):
         self.config = config
