@@ -9,16 +9,17 @@
 
 # Standard imports
 import logging
+import traceback
 from io import BytesIO
 from typing import Any, Optional
 
+# Third-party imports
 import simpleaudio
 import sounddevice  # suppress ALSA warnings # noqa: F401
-
-# Third-party imports
 from google.cloud import texttospeech
 from overrides import override
 from pydub import AudioSegment
+from pydub.exceptions import CouldntDecodeError
 
 # Local imports
 from ..base import AbstractTextToSpeech
@@ -67,7 +68,7 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
     @AbstractTextToSpeech.voice_id.setter  # type: ignore
     @override  # inherit the docstring from the parent class
     def voice_id(self, voice_id: str) -> None:
-        self._voice_id = voice_id
+        AbstractTextToSpeech.voice_id.fset(self, voice_id)
         self._voice_config = GoogleCloudTextToSpeech._get_voice_config(self.voice_id)
 
     @staticmethod
@@ -95,7 +96,7 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
     @AbstractTextToSpeech.is_slow.setter  # type: ignore
     @override  # inherit the docstring from the parent class
     def is_slow(self, is_slow: bool) -> None:
-        self._is_slow = is_slow
+        AbstractTextToSpeech.is_slow.fset(self, is_slow)
         self._audio_config = GoogleCloudTextToSpeech._get_audio_config(self.is_slow)
 
     @staticmethod
@@ -114,7 +115,7 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
             The audio configuration.
         """
         return texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+            audio_encoding=texttospeech.AudioEncoding.MP3,
             speaking_rate=0.7 if is_slow else 1.0,
         )
 
@@ -138,7 +139,7 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
         )
         return response.audio_content
 
-    def __play_text(self, audio_bytes: bytes) -> simpleaudio.PlayObject:
+    def __play_text(self, audio_bytes: bytes) -> None:
         """
         Play the given audio bytes.
 
@@ -146,23 +147,25 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
         ----------
         audio_bytes : bytes
             The audio bytes.
-
-        Returns
-        -------
-        simpleaudio.PlayObject
-            The playback object.
         """
         fp = BytesIO()
         fp.write(audio_bytes)
+        fp.flush()
         fp.seek(0)
-        audio = AudioSegment.from_file(fp, format="mp3")
+        try:
+            audio = AudioSegment.from_file(fp, format="mp3")
+        except CouldntDecodeError as err:
+            self._logger.error(traceback.format_exc())
+            self._playback = None
+            return
         self._playback = simpleaudio.play_buffer(
             audio.raw_data, audio.channels, audio.sample_width, audio.frame_rate
         )
 
     @override  # inherit the docstring from the parent class
     def say_async(self, text: str) -> None:
-        self.__synthesize_and_play_text(text)
+        audio_bytes = self.__synthesize_text(text)
+        self.__play_text(audio_bytes)
 
     @override  # inherit the docstring from the parent class
     def is_speaking(self) -> bool:
@@ -175,7 +178,8 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
 
     @override  # inherit the docstring from the parent class
     def say(self, text: str) -> None:
-        self.__synthesize_and_play_text(text)
+        audio_bytes = self.__synthesize_text(text)
+        self.__play_text(audio_bytes)
         self._playback.wait_done()
         self._playback = None
 
