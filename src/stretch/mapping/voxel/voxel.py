@@ -16,6 +16,7 @@ import open3d as open3d
 import scipy
 import skimage
 import torch
+import tqdm
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
@@ -573,7 +574,10 @@ class SparseVoxelMap(object):
         data["depth"] = []
         data["feats"] = []
         data["obs"] = []
-        for frame in self.observations:
+
+        for frame in tqdm.tqdm(
+            self.observations, desc="Aggregating data to write", unit="frame", ncols=80
+        ):
             # add it to pickle
             # TODO: switch to using just Obs struct?
             data["camera_poses"].append(frame.camera_pose)
@@ -595,6 +599,7 @@ class SparseVoxelMap(object):
             data["combined_weights"],
             data["combined_rgb"],
         ) = self.voxel_pcd.get_pointcloud()
+        print("Dumping to pickle...")
         with open(filename, "wb") as f:
             pickle.dump(data, f)
 

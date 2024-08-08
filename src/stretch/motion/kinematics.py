@@ -161,13 +161,11 @@ class HelloStretchKinematics:
         # return Footprint(width=0.2, length=0.2, width_offset=0.0, length_offset=0.1)
 
     def _create_ik_solvers(self, ik_type: str = "pinocchio", visualize: bool = False):
-        """Create ik solvers using physics backends such as pybullet or pinocchio."""
+        """Create ik solvers using physics backends such as pinocchio."""
         # You can set one of the visualize flags to true to debug IK issues
         # This is not exposed manually - only one though or it will fail
         assert ik_type in [
-            "pybullet",
             "pinocchio",
-            "pybullet_optimize",
             "pinocchio_optimize",
         ], f"Unknown ik type: {ik_type}"
 

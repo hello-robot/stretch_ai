@@ -26,13 +26,19 @@ class PickupManager(TaskManager):
         self,
         agent: RobotAgent,
         target_object: Optional[str] = None,
+        target_receptacle: Optional[str] = None,
         use_visual_servoing_for_grasp: bool = True,
+        matching: str = "feature",
     ) -> None:
         super().__init__(agent)
 
         # Task information
         self.target_object = target_object
+        self.target_receptacle = target_receptacle
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
+
+        assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
+        self.matching = matching
 
         # Sync these things
         self.robot = agent.robot
@@ -61,7 +67,7 @@ class PickupManager(TaskManager):
         """
 
         if mode == "one_shot":
-            return self.get_one_shot_task(add_rotate=add_rotate)
+            return self.get_one_shot_task(add_rotate=add_rotate, matching=self.matching)
         elif mode == "all":
             if not add_rotate:
                 logger.warning(
@@ -80,8 +86,9 @@ class PickupManager(TaskManager):
         Returns:
             Task: Executable task plan for the robot to pick up all objects in the environment.
         """
+        raise NotImplementedError("This method is not yet implemented.")
 
-    def get_one_shot_task(self, add_rotate: bool = False) -> Task:
+    def get_one_shot_task(self, add_rotate: bool = False, matching: str = "feature") -> Task:
         """Create a task plan that will pick up a single object in the environment. It will explore until it finds a single object, and will then pick it up and place it in a receptacle."""
 
         # Put the robot into navigation mode
@@ -101,15 +108,21 @@ class PickupManager(TaskManager):
             self,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
+            match_method=matching,
         )
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            "search_for_objects_on_floor", self, retry_on_failure=True
+            "search_for_objects_on_floor",
+            self,
+            retry_on_failure=True,
+            match_method=matching,
         )
         if self.target_object is not None:
             # Overwrite the default object to search for
             search_for_object.set_target_object_class(self.target_object)
+        if self.target_receptacle is not None:
+            search_for_receptacle.set_target_object_class(self.target_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(

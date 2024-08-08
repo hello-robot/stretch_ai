@@ -1,9 +1,11 @@
 import os
 
+path = os.path.expanduser("~/.stretch")
+
 
 def _ensure_path_exists() -> None:
     """Ensure that the ~/.stretch directory exists."""
-    path = os.path.expanduser("~/.stretch")
+
     if not os.path.exists(path):
         os.makedirs(path)
 
@@ -31,3 +33,24 @@ def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: boo
     else:
         recv_address = "tcp://127.0.0.1"
     return recv_address
+
+
+def get_path_to_map(name: str) -> str:
+    """Gets a map filename in the .stretch store directory"""
+    _ensure_path_exists()
+    os.makedirs(os.path.join(path, "maps"), exist_ok=True)
+    return os.path.join(path, "maps", name)
+
+
+def get_path_to_image(name: str) -> str:
+    """Gets an image filename in the .stretch store directory"""
+    _ensure_path_exists()
+    os.makedirs(os.path.join(path, "images"), exist_ok=True)
+    return os.path.join(path, "images", name)
+
+
+def get_path_to_debug(name: str) -> str:
+    """Gets a debug filename in the .stretch store directory"""
+    _ensure_path_exists()
+    os.makedirs(os.path.join(path, "debug"), exist_ok=True)
+    return os.path.join(path, "debug", name)

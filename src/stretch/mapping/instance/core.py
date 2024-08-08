@@ -178,6 +178,22 @@ class Instance:
             raise NotImplementedError(f"metric {metric} not supported")
         return best_view
 
+    def get_center(self) -> Tensor:
+        """Get the center of the instance in 3D space
+
+        Returns:
+            Tensor: [3,] tensor of the center of the instance
+        """
+        xyz = self.point_cloud.mean(dim=0)
+        # Find the point closest to the xy center
+        xy = xyz[:2]
+        dists = torch.norm(self.point_cloud[:, :2] - xy, dim=1)
+        idx = dists.argmin()
+        center_xyz = self.point_cloud[idx]
+        # use the actual mean z
+        center_xyz[2] = xyz[2]
+        return center_xyz
+
     def show_best_view(self, metric: str = "area", title: Optional[str] = None) -> None:
         """Show the best view of the instance"""
         best_view = self.get_best_view(metric=metric)
