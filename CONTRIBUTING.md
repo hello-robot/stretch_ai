@@ -1,15 +1,20 @@
-# Contributing to Stretchpy
+# Contributing to Stretch AI
 
-We welcome contributions to Stretchpy! Please read the following guidelines before submitting a pull request.
+We welcome contributions to Stretch AI! Please read the following guidelines before submitting a pull request.
 
 This repository is in an early state of development. Guidelines are subject to change and tests will be by necessity incomplete.
+
+Before contributing, you will need to sign a [Contributor License Agreement](https://gist.github.com/hello-cpaxton/8881ca0a05858dcaee4ebf0207d92f83). For more information, you can check out the [Stretch Contributor License Agreement](https://github.com/hello-robot/stretch_contributor_license_agreements) page for more information.
+
+We use the SAP [CLA Assistant bot](https://github.com/cla-assistant/cla-assistant), which will open a comment and give you instructions when you open a pull request.
 
 ### Setup
 
 Install the code and set up the pre-commit hooks:
 
 ```
-cd stretchpy/src
+git clone https://github.com/hello-robot/stretch_ai.git --recursive
+cd stretch_ai/src
 pip install -e .[dev]
 pre-commit install
 ```
@@ -17,24 +22,23 @@ pre-commit install
 ### Style
 
 We use [black](https://black.readthedocs.io/en/stable/) and [flake8](https://flake8.pycqa.org/en/latest/) to format our code.
-In addition, we use `isort` for sorting imports.
+In addition, we use [isort](https://pycqa.github.io/isort/) for sorting imports, [mypy](https://mypy-lang.org/) for static type checking, and [codespell](https://github.com/codespell-project/codespell) for spell checking, among other things.
 
-You can run them with:
-
-```
-# Make sure code is formatted correctly
-black .
-flake8
-
-# Make sure imports are organized and sorted for easy reading
-isort .
-```
-
-However, these should all be run automatically by the pre-commit hooks. You can force a run with:
+You can run the pre-commit hooks on all files with:
 
 ```
 pre-commit run --all-files
 ```
+
+Please make sure that all changes are made and that the pre-commit hooks pass before submitting a pull request.
+
+If you need to temporarily commit something that is not passing, use:
+
+```
+git commit --no-verify
+```
+
+However, pull requests with failing pre-commit hooks will not be merged.
 
 ### Pull Requests
 
