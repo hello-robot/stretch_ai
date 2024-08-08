@@ -403,7 +403,7 @@ class RobotAgent:
 
         if self.use_scene_graph:
             self._update_scene_graph()
-            self.scene_graph.get_relationships(debug=True)
+            self.scene_graph.get_relationships()
 
         # Add observation - helper function will unpack it
         if visualize_map:
