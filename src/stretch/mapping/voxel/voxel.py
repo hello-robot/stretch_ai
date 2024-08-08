@@ -573,8 +573,12 @@ class SparseVoxelMap(object):
         data["obs"] = []
         data["instance"] = []
 
-        # Add a print
+        # Add a print statement with use of this code
         logger.alert(f"Write pkl to {filename}...")
+        logger.alert(f"You may visualize this file with:")
+        logger.alert()
+        logger.alert(f"\tpython -m stretch.app.read_map -i {filename} --show-svm")
+        logger.alert()
 
         for frame in tqdm.tqdm(
             self.observations, desc="Aggregating data to write", unit="frame", ncols=80
@@ -589,7 +593,6 @@ class SparseVoxelMap(object):
             # Convert to numpy and correct formats for saving
             rgb = frame.rgb.byte().cpu().numpy()
             depth = (frame.depth * 1000).cpu().numpy().astype(np.uint16)
-            breakpoint()
 
             # Handle compression
             if compress:
