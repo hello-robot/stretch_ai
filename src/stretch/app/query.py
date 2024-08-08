@@ -120,7 +120,6 @@ def main(
 
         # Save out file
         if len(output_pkl_filename) > 0:
-            print(f"Write pkl to {output_pkl_filename}...")
             agent.voxel_map.write_to_pickle(output_pkl_filename)
     else:
         real_robot = False

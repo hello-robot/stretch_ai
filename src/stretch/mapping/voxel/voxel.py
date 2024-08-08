@@ -20,6 +20,7 @@ import tqdm
 from torch import Tensor
 
 import stretch.utils.compression as compression
+import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
@@ -575,6 +576,9 @@ class SparseVoxelMap(object):
         data["obs"] = []
         data["instance"] = []
 
+        # Add a print
+        logger.alert(f"Write pkl to {filename}...")
+
         for frame in tqdm.tqdm(
             self.observations, desc="Aggregating data to write", unit="frame", ncols=80
         ):
@@ -587,7 +591,8 @@ class SparseVoxelMap(object):
 
             # Convert to numpy and correct formats for saving
             rgb = frame.rgb.byte().cpu().numpy()
-            depth = (frame.depth * 1000).short().cpu().numpy()
+            depth = (frame.depth * 1000).cpu().numpy().astype(np.uint16)
+            breakpoint()
 
             # Handle compression
             if compress:
@@ -663,9 +668,8 @@ class SparseVoxelMap(object):
 
             camera_pose = self.fix_data_type(camera_pose)
             if compressed:
-                rgb = compression.from_jpeg(rgb)
+                rgb = compression.from_jpg(rgb).float()
                 depth = compression.from_jp2(depth) / 1000.0
-                breakpoint()
             rgb = self.fix_data_type(rgb)
             depth = self.fix_data_type(depth)
             if feats is not None:
