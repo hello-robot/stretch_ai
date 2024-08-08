@@ -25,6 +25,7 @@ We use [black](https://black.readthedocs.io/en/stable/) and [flake8](https://fla
 In addition, we use [isort](https://pycqa.github.io/isort/) for sorting imports, [mypy](https://mypy-lang.org/) for static type checking, and [codespell](https://github.com/codespell-project/codespell) for spell checking, among other things.
 
 You can run the pre-commit hooks on all files with:
+
 ```
 pre-commit run --all-files
 ```
@@ -32,6 +33,7 @@ pre-commit run --all-files
 Please make sure that all changes are made and that the pre-commit hooks pass before submitting a pull request.
 
 If you need to temporarily commit something that is not passing, use:
+
 ```
 git commit --no-verify
 ```

@@ -416,7 +416,6 @@ docker build -t stretch-ai_cuda-11.8:latest .
 
 See the [docker guide](docs/docker.md) for more information and troubleshooting advice.
 
-
 ## Acknowledgements
 
 Parts of this codebase were derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project, and is licensed under the [MIT license](META_LICENSE). We thank the Meta team for their contributions.
