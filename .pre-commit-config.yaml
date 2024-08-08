@@ -4,12 +4,12 @@ repos:
     hooks:
       - id: check-added-large-files
 
-  - repo: https://github.com/johannsdg/pre-commit-license-headers
-    rev: v0.1.0
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.1.12
     hooks:
-      - id: check-license-headers
-        args: [--template-file=docs/license_header.txt]
-        files: \.py$
+      - id: insert-license
+        args: ["--license-file", "docs/license_header.txt"]
+        types_or: [python]
 
   - repo: https://github.com/psf/black
     rev: 22.3.0
