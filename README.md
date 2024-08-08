@@ -5,7 +5,19 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
+*This repository is currently under active development and is subject to change.*
+
+It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in real homes. It contains code for:
+
+- grasping
+- manipulation
+- mapping
+- navigation
+- LLM agents
+- text to speech and speech to text
+- visualization and debugging
+
+This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
 ## Quickstart
 
@@ -403,3 +415,13 @@ docker build -t stretch-ai_cuda-11.8:latest .
 ```
 
 See the [docker guide](docs/docker.md) for more information and troubleshooting advice.
+
+## Acknowledgements
+
+Parts of this codebase were derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project, and is licensed under the [MIT license](META_LICENSE). We thank the Meta team for their contributions.
+
+The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is based on the [OK robot](https://github.com/ok-robot/ok-robot) project's [Robot Controller](https://github.com/NYU-robot-learning/robot-controller/), and is licensed under the [Apache 2.0 license](src/stretch_ros2_bridge/LICENSE).
+
+## License
+
+This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information.
