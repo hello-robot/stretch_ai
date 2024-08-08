@@ -60,7 +60,7 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
     @AbstractTextToSpeech.voice_id.setter  # type: ignore
     @override  # inherit the docstring from the parent class
     def voice_id(self, voice_id: str) -> None:
-        self._voice_id = voice_id
+        AbstractTextToSpeech.voice_id.fset(self, voice_id)
         self._voice_config = GoogleCloudTextToSpeech._get_voice_config(self.voice_id)
 
     @staticmethod
@@ -88,7 +88,7 @@ class GoogleCloudTextToSpeech(AbstractTextToSpeech):
     @AbstractTextToSpeech.is_slow.setter  # type: ignore
     @override  # inherit the docstring from the parent class
     def is_slow(self, is_slow: bool) -> None:
-        self._is_slow = is_slow
+        AbstractTextToSpeech.is_slow.fset(self, is_slow)
         self._audio_config = GoogleCloudTextToSpeech._get_audio_config(self.is_slow)
 
     @staticmethod

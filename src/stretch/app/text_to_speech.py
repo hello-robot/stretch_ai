@@ -28,7 +28,7 @@ class TextToSpeechComandLineInterface:
     A command-line interface to use text-to-speech.
     """
 
-    def __init__(self, engine: str = "gtts"):
+    def __init__(self, engine: str = "gtts", voice_id: str = ""):
         """
         Initialize the TextToSpeechComandLineInterface.
 
@@ -36,6 +36,8 @@ class TextToSpeechComandLineInterface:
         ----------
         engine : str, optional
             The text-to-speech engine to use. Default is "gtts".
+        voice_id : str, optional
+            The voice ID to use. Ignored if empty string.
         """
         if engine == "gtts":
             engine = GTTSTextToSpeech()
@@ -47,6 +49,8 @@ class TextToSpeechComandLineInterface:
             raise ValueError(
                 f"Unknown engine: {engine}. Must be one of 'gtts', 'google', or 'pyttsx3'."
             )
+        if len(voice_id) > 0:
+            engine.voice_id = voice_id
         self._executor = TextToSpeechExecutor(
             engine=engine,
         )
@@ -117,6 +121,15 @@ def get_args() -> argparse.Namespace:
         choices=["gtts", "google_cloud", "pyttsx3"],
         help="The text-to-speech engine to use. Default is gtts.",
     )
+    parser.add_argument(
+        "--voice_id",
+        type=str,
+        default="",
+        help=(
+            "The voice ID to use. To see the options for your engine, pass in "
+            "a gibberish string, and the error message will show the available voice IDs."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -136,7 +149,7 @@ def main():
     readline.set_completer_delims("")  # Match the entire string, not individual words
 
     # Initialize the text-to-speech command line interface
-    cli = TextToSpeechComandLineInterface(engine=args.engine)
+    cli = TextToSpeechComandLineInterface(engine=args.engine, voice_id=args.voice_id)
     cli.start()
 
     # Run the text-to-speech command line interface
