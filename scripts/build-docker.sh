@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=0.0.8
+VERSION=`python -m stretch.version`
 echo "Building docker image with tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
 SKIP_ASKING="false"
 for arg in "$@"

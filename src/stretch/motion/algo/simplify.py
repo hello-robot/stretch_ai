@@ -194,10 +194,12 @@ class SimplifyXYT(Planner):
 
             # Check to make sure things are spaced out enough
             if self._verify(new_nodes_cleaned):
-                print("!!!! DONE")
+                if verbose:
+                    print("[Simplify] !!!! DONE")
                 break
             else:
-                print("VERIFy FAILED")
+                if verbose:
+                    print("[Simplify] VERIFY FAILED")
                 new_nodes = None
 
         if new_nodes is not None:

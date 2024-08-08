@@ -1,7 +1,7 @@
 import setuptools
 
 __version__ = None
-with open("stretch/versions.py") as f:
+with open("stretch/version.py") as f:
     exec(f.read())  # overrides __version__
 
 with open("../README.md", "r") as fh:
@@ -21,6 +21,7 @@ setuptools.setup(
         # Machine learning code
         "torch",
         "torchvision",
+        # General utilities
         "pyyaml",
         "pyzmq",
         "numpy<2",
@@ -33,14 +34,15 @@ setuptools.setup(
         "yacs",
         "loguru",
         "scikit-image",
-        "pybullet",
         "sophuspy",
         "pin",  # Pinocchio IK solver
         "pynput",
-        "pyrealsense2",
-        "urchin",
         "pyusb",
         "schema",
+        "overrides",
+        # Hardware dependencies
+        "pyrealsense2",
+        "urchin",
         # Visualization
         "rerun-sdk",
         # For siglip encoder
@@ -62,7 +64,7 @@ setuptools.setup(
         "google-cloud-texttospeech",  # online TTS engine, requiring credentials.
         "gtts",  # online TTS engine, not requiring credentials.
         "librosa",  # audio analysis (e.g., spectral similarity)
-        "PyAudio==0.2.14",  # the version specification is necessary because apt has 0.2.12 which is incompatible with recent numpy
+        "PyAudio>=0.2.14",  # the version specification is necessary because apt has 0.2.12 which is incompatible with recent numpy
         "openai-whisper",
         "overrides",  # better inheritance of docstrings
         "pydub",  # playback audio
