@@ -79,21 +79,16 @@ def main(
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
-    for _ in range(5):
-        if reset:
-            robot.move_to_nav_posture()
-            robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
-            # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
-            robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
-            time.sleep(3.0)
-
-        task = get_task(robot, demo, target_object)
-        task.run()
-        robot.open_gripper()
-
     if reset:
         robot.move_to_nav_posture()
         robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
+        # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
+        robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
+        time.sleep(3.0)
+
+    task = get_task(robot, demo, target_object)
+    task.run()
+    robot.open_gripper()
 
     robot.stop()
 
