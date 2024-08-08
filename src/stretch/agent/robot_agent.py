@@ -294,7 +294,9 @@ class RobotAgent:
             return False
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
-    def rotate_in_place(self, steps: int = 12, visualize: bool = False) -> bool:
+    def rotate_in_place(
+        self, steps: int = 12, visualize: bool = False, verbose: bool = False
+    ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
         Args:
@@ -321,7 +323,8 @@ class RobotAgent:
                 i += 1
 
             # Add an observation after the move
-            print("---- UPDATE ----")
+            if verbose:
+                print(f"---- UPDATE {i+1} at {x}, {y}----")
             self.update()
 
             if visualize:
