@@ -62,7 +62,7 @@ Then, first try these apps to make sure connections are working properly:
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
-- [Gripper](#gripper-tool) - Open and close the gripper.
+- [Gripper](#use-the-gripper) - Open and close the gripper.
 - [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
 - [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
@@ -161,7 +161,9 @@ export ROBOT_IP=192.168.1.15
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
 ```
 
-### Keyboard Teleop
+### Debugging Tools
+
+#### Keyboard Teleop
 
 Use the WASD keys to move the robot around.
 
@@ -174,7 +176,7 @@ python -m stretch.app.keyboard_teleop --headless
 
 Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
 
-### Test Timing
+#### Test Timing
 
 Test the timing of the robot's control loop over the network. This will print out the time it takes to send a command to the robot and receive a response. It will show a histogram after a fixed number of iterations given by the `--iterations` flag (default is 500).
 
@@ -188,7 +190,7 @@ python -m stretch.app.timing --headless
 python -m stretch.app.timing --iterations 1000
 ```
 
-### Print Joint States
+#### Print Joint States
 
 To make sure the robot is  connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
 
@@ -202,7 +204,7 @@ You can also print out just one specific joint. For example, to just get arm ext
 python -m stretch.app.print_joint_states --joint arm
 ```
 
-### Camera Info
+#### Camera Info
 
 Print out information about the cameras on the robot for debugging purposes:
 
@@ -219,7 +221,7 @@ Servo EE RGB shape: (240, 320, 3) Servo EE Depth shape: (240, 320)
 Observation RGB shape: (640, 480, 3) Observation Depth shape: (640, 480)
 ```
 
-### Visualization and Streaming Video
+#### Visualization and Streaming Video
 
 Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
 
@@ -239,7 +241,7 @@ You can visualize gripper Aruco markers as well; the aruco markers can be used t
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
 ```
 
-### Show Point Cloud
+#### Show Point Cloud
 
 Show a joint point cloud from the end effector and head cameras. This will open an Open3d window with the point cloud, aggregated between the two cameras and displayed in world frame. It will additionally show the map's origin with a small coordinate axis; the blue arrow points up (z), the red arrow points right (x), and the green arrow points forward (y).
 
@@ -253,7 +255,7 @@ You can use the `--reset` flag to put the robot into its default manipulation po
 python -m stretch.app.show_point_cloud --reset
 ```
 
-### Gripper Tool
+#### Use the Gripper
 
 Open and close the gripper:
 
@@ -269,7 +271,7 @@ python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
 python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
 ```
 
-### Rerun Web Server
+#### Rerun Web Server
 
 We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
 
