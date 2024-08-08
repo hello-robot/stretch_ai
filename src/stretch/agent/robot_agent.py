@@ -6,6 +6,7 @@ import copy
 import datetime
 import os
 import pickle
+import random
 import time
 import timeit
 from pathlib import Path
@@ -18,6 +19,7 @@ from loguru import logger
 from PIL import Image
 from torchvision import transforms
 
+from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
@@ -26,6 +28,7 @@ from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace,
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
+from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference
 
 
@@ -38,7 +41,7 @@ class RobotAgent:
         self,
         robot: AbstractRobotClient,
         parameters: Dict[str, Any],
-        semantic_sensor: Optional = None,
+        semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
@@ -68,9 +71,20 @@ class RobotAgent:
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
+        self.tts = get_text_to_speech(parameters["tts_engine"])
+
+        # Parameters for feature matching and exploration
+        self._is_match_threshold = parameters["instance_memory"]["matching"][
+            "feature_match_threshold"
+        ]
 
         # Expanding frontier - how close to frontier are we allowed to go?
-        self.default_expand_frontier_size = parameters["default_expand_frontier_size"]
+        self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
+            "default_expand_frontier_size"
+        ]
+        self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
+        self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
+        self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -150,13 +164,11 @@ class RobotAgent:
             self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
-        self.path = os.path.expanduser(f"data/hw_exps/{self.parameters['name']}/{timestamp}")
-        print(f"Writing logs to {self.path}")
-        os.makedirs(self.path, exist_ok=True)
-        os.makedirs(f"{self.path}/viz_data", exist_ok=True)
 
-        self.openai_key = None
-        self.task = None
+    @property
+    def feature_match_threshold(self) -> float:
+        """Return the feature match threshold"""
+        return self._is_match_threshold
 
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
@@ -169,12 +181,6 @@ class RobotAgent:
     def encode_image(self, image: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         """Encode image using the encoder"""
         return self.encoder.encode_image(image)
-
-    def set_openai_key(self, key):
-        self.openai_key = key
-
-    def set_task(self, task):
-        self.task = task
 
     def get_instance_from_text(
         self,
@@ -269,7 +275,7 @@ class RobotAgent:
         """Returns reference to the navigation space."""
         return self.space
 
-    def place(self, object_goal: Optional[str] = None, **kwargs) -> bool:
+    def place_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
         """Try to place an object."""
         if not self.robot.in_manipulation_mode():
             self.robot.switch_to_manipulation_mode()
@@ -278,7 +284,7 @@ class RobotAgent:
             return False
         return self.grasp_client.try_placing(object_goal=object_goal, **kwargs)
 
-    def grasp(self, object_goal: Optional[str] = None, **kwargs) -> bool:
+    def grasp_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
         """Try to grasp a potentially specified object."""
         # Put the robot in manipulation mode
         if not self.robot.in_manipulation_mode():
@@ -288,7 +294,9 @@ class RobotAgent:
             return False
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
-    def rotate_in_place(self, steps: int = 12, visualize: bool = False) -> bool:
+    def rotate_in_place(
+        self, steps: int = 12, visualize: bool = False, verbose: bool = False
+    ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
         Args:
@@ -315,35 +323,9 @@ class RobotAgent:
                 i += 1
 
             # Add an observation after the move
-            print("---- UPDATE ----")
+            if verbose:
+                print(f"---- UPDATE {i+1} at {x}, {y}----")
             self.update()
-
-            if self.debug_instances:
-                if self.show_instances_detected:
-                    import matplotlib
-
-                    # TODO: why do we need to configure this every time
-                    matplotlib.use("TkAgg")
-                    import matplotlib.pyplot as plt
-
-                # Check to see if we have a receptacle in the map
-                instances = self.voxel_map.get_instances()
-                for ins, instance in enumerate(instances):
-                    name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
-                    print(
-                        f" - Found instance {ins} with name {name} and global id {instance.global_id}."
-                    )
-                    view = instance.get_best_view()
-                    if self.show_instances_detected:
-                        plt.imshow(view.get_image())
-                        plt.title(f"Instance {ins} with name {name}")
-                        plt.axis("off")
-                        plt.show()
-                    else:
-                        image = Image.fromarray(view.get_image())
-                        filename = f"{self.path}/viz_data/instance_{ins}_is_a_{name}.png"
-                        print(f"- Saving debug image to {filename}")
-                        image.save(filename)
 
             if visualize:
                 self.voxel_map.show(
@@ -353,30 +335,6 @@ class RobotAgent:
                 )
 
         return True
-
-    def save_svm(self, path, filename: Optional[str] = None):
-        """Debugging code for saving out an SVM"""
-        if filename is None:
-            filename = "debug_svm.pkl"
-        filename = os.path.join(path, filename)
-        with open(filename, "wb") as f:
-            pickle.dump(self.voxel_map, f)
-        print(f"SVM logged to {filename}")
-
-    def say(self, msg: str):
-        """Provide input either on the command line or via chat client"""
-        # if self.chat is not None:
-        #    self.chat.output(msg)
-        # TODO: support other ways of saying
-        print(msg)
-
-    def ask(self, msg: str) -> str:
-        """Receive input from the user either via the command line or something else"""
-        # if self.chat is not None:
-        #  return self.chat.input(msg)
-        # else:
-        # TODO: support other ways of saying
-        return input(msg)
 
     def get_command(self):
         if (
@@ -417,6 +375,7 @@ class RobotAgent:
 
         if self.use_scene_graph:
             self._update_scene_graph()
+            self.scene_graph.get_relationships()
 
         # Add observation - helper function will unpack it
         if visualize_map:
@@ -449,12 +408,42 @@ class RobotAgent:
             self.scene_graph.update(self.voxel_map.get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
-        self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+        # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def get_scene_graph(self) -> SceneGraph:
         """Return scene graph, such as it is."""
         self._update_scene_graph()
         return self.scene_graph
+
+    def plan_to_instance_for_manipulation(
+        self,
+        instance: Instance,
+        start: np.ndarray,
+        max_tries: int = 100,
+        verbose: bool = True,
+        use_cache: bool = True,
+    ) -> PlanResult:
+        """Move to a specific instance. Goes until a motion plan is found. This function is specifically for manipulation tasks: it plans to a rotation that's rotated 90 degrees from the default.
+
+        Args:
+            instance(Instance): an object in the world
+            start(np.ndarray): the start position
+            max_tries(int): the maximum number of tries to find a plan
+            verbose(bool): extra info is printed
+            use_cache(bool): whether to use cached plans
+
+        Returns:
+            PlanResult: the result of the motion planner
+        """
+        return self.plan_to_instance(
+            instance,
+            start=start,
+            rotation_offset=np.pi / 2,
+            radius_m=self._manipulation_radius,
+            max_tries=max_tries,
+            verbose=verbose,
+            use_cache=use_cache,
+        )
 
     def plan_to_instance(
         self,
@@ -581,18 +570,22 @@ class RobotAgent:
             bool: whether the robot went to the instance
         """
 
+        print("Moving to instance...")
+
         # Get the start position
         start = self.robot.get_base_pose()
 
         # Try to move to the instance
         # We will plan multiple times to see if we can get there
         for i in range(max_try_per_instance):
-            res = self.plan_to_instance(instance, start)
+            res = self.plan_to_instance(instance, start, verbose=True)
+            print("Plan result:", res.success)
             if res is not None and res.success:
                 for i, pt in enumerate(res.trajectory):
                     print("-", i, pt.state)
 
                 # Follow the planned trajectory
+                print("Executing trajectory...")
                 self.robot.execute_trajectory(
                     [pt.state for pt in res.trajectory],
                     pos_err_threshold=self.pos_err_threshold,
@@ -600,7 +593,8 @@ class RobotAgent:
                 )
 
                 # Check if the robot is stuck or if anything went wrong during motion execution
-                return self.robot.last_motion_failed()
+                # return self.robot.last_motion_failed() # TODO (hello-atharva): Fix this. This is not implemented
+                return True
         return False
 
     def move_to_any_instance(self, matches: List[Tuple[int, Instance]], max_try_per_instance=10):
@@ -705,7 +699,7 @@ class RobotAgent:
         visualize_map_at_start: bool = False,
         can_move: bool = True,
         verbose: bool = False,
-    ):
+    ) -> None:
 
         # Call the robot's own startup hooks
         started = self.robot.start()
@@ -729,10 +723,10 @@ class RobotAgent:
         self.robot.switch_to_navigation_mode()
         if verbose:
             print("- Update map after switching to navigation posture")
-        self.update(visualize_map=False)  # Append latest observations
 
         # Add some debugging stuff - show what 3d point clouds look like
         if visualize_map_at_start:
+            self.update(visualize_map=False)  # Append latest observations
             print("- Visualize map after updating")
             self.voxel_map.show(
                 orig=np.zeros(3),
@@ -740,9 +734,7 @@ class RobotAgent:
                 footprint=self.robot.get_robot_model().get_footprint(),
                 instances=True,
             )
-
-        self.print_found_classes(goal)
-        return self.get_found_instances_by_class(goal)
+            self.print_found_classes(goal)
 
     def encode_text(self, text: str):
         """Helper function for getting text embeddings"""
@@ -920,6 +912,7 @@ class RobotAgent:
         manual_wait: bool = False,
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
+        fix_random_seed: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
         start = self.robot.get_base_pose()
@@ -933,16 +926,27 @@ class RobotAgent:
         if random_goals:
             goal = next(self.space.sample_random_frontier()).cpu().numpy()
         else:
-            res = plan_to_frontier(
+            # Get frontier sampler
+            sampler = self.space.sample_closest_frontier(
                 start,
-                self.planner,
-                self.space,
-                self.voxel_map,
-                try_to_plan_iter=try_to_plan_iter,
-                visualize=False,  # visualize,
-                expand_frontier_size=self.default_expand_frontier_size,
+                verbose=False,
+                min_dist=self._frontier_min_dist,
+                step_dist=self._frontier_step_dist,
             )
-        return res
+            for i, goal in enumerate(sampler):
+                if goal is None:
+                    # No more positions to sample
+                    break
+
+                # For debugging, we can set the random seed to 0
+                if fix_random_seed:
+                    np.random.seed(0)
+                    random.seed(0)
+
+                res = self.planner.plan(start, goal.cpu().numpy())
+                if res.success:
+                    return res
+        return PlanResult(False, reason="no valid plans found")
 
     def run_exploration(
         self,
@@ -1145,3 +1149,139 @@ class RobotAgent:
                 if verbose:
                     print(f"Saving instance image {i} view {j} to {root / filename}")
                 image.save(root / filename)
+
+    # OVMM primitives
+    def go_to(self, object_goal: str, **kwargs) -> bool:
+        """Go to a specific object in the world."""
+        # Find closest instance
+        print(f"Going to {object_goal}")
+        _, instance = self.get_instance_from_text(object_goal)
+        instance.show_best_view(title=object_goal)
+
+        # Move to the instance
+        return self.move_to_instance(instance)
+
+    def pick(self, object_goal: str, **kwargs) -> bool:
+        """Pick up an object."""
+        # Find closest instance
+        instances = self.get_found_instances_by_class(object_goal)
+        if len(instances) == 0:
+            return False
+
+        # Move to the instance with the highest score
+        # Sort by score
+        instances.sort(key=lambda x: x[1].score, reverse=True)
+        instance = instances[0][1]
+
+        # Move to the instance
+        if not self.move_to_instance(instance):
+            return False
+
+        # Grasp the object
+        return self.grasp_object(object_goal)
+
+    def place(self, object_goal: str, **kwargs) -> bool:
+        """Place an object."""
+        # Find closest instance
+        instances = self.get_found_instances_by_class(object_goal)
+
+        if len(instances) == 0:
+            return False
+
+        # Move to the instance with the highest score
+        # Sort by score
+        instances.sort(key=lambda x: x[1].score, reverse=True)
+        instance = instances[0][1]
+
+        # Move to the instance
+        if not self.move_to_instance(instance):
+            return False
+
+        # Place the object
+        return self.place_object(object_goal)
+
+    def say(self, msg: str):
+        """Provide input either on the command line or via chat client"""
+        self.tts.say_async(msg)
+
+    def robot_say(self, msg: str):
+        """Hae the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
+        self.robot.say(msg)
+
+    def ask(self, msg: str) -> str:
+        """Receive input from the user either via the command line or something else"""
+        # if self.chat is not None:
+        #  return self.chat.input(msg)
+        # else:
+        # TODO: support other ways of saying
+        return input(msg)
+
+    def open_cabinet(self, object_goal: str, **kwargs) -> bool:
+        """Open a cabinet."""
+        print("Not implemented yet.")
+        return True
+
+    def close_cabinet(self, object_goal: str, **kwargs) -> bool:
+        """Close a cabinet."""
+        print("Not implemented yet.")
+        return True
+
+    def wave(self, **kwargs) -> bool:
+        """Wave."""
+        n_waves = 3
+        pitch = 0.2
+        yaw_amplitude = 0.25
+        roll_amplitude = 0.15
+        lift_height = 1.0
+        self.robot.switch_to_manipulation_mode()
+
+        first_pose = [0.0, lift_height, 0.05, 0.0, 0.0, 0.0]
+
+        # move to initial lift height
+        first_pose[1] = lift_height
+        self.robot.arm_to(first_pose, blocking=True)
+
+        # generate poses
+        wave_poses = np.zeros((n_waves * 2, 6))
+        for i in range(n_waves):
+            j = i * 2
+            wave_poses[j] = [0.0, lift_height, 0.05, -yaw_amplitude, pitch, -roll_amplitude]
+            wave_poses[j + 1] = [0.0, lift_height, 0.05, yaw_amplitude, pitch, roll_amplitude]
+
+        # move to poses w/o blocking to make smoother motions
+        for pose in wave_poses:
+            self.robot.arm_to(pose, blocking=False)
+            time.sleep(0.375)
+
+        self.robot.switch_to_navigation_mode()
+
+    def get_detections(self, **kwargs) -> List[Instance]:
+        """Get the current detections."""
+        instances = self.voxel_map.get_instances()
+
+        # Consider only instances close to the robot
+        robot_pose = self.robot.get_base_pose()
+        close_instances = []
+
+        for instance in instances:
+            instance_pose = instance.get_best_view().cam_to_world
+            distance = np.linalg.norm(robot_pose[:2] - instance_pose[:2])
+            if distance < 2.0:
+                close_instances.append(instance)
+
+        close_instances_names = [
+            self.semantic_sensor.get_class_name_for_id(instance.category_id)
+            for instance in close_instances
+        ]
+
+        return close_instances_names
+
+    def execute(self, plan: str) -> bool:
+        """Execute a plan function given as a string."""
+        try:
+            exec(plan)
+
+            return True
+        except Exception as e:
+            print(f"Failed to execute plan: {e}")
+            return False

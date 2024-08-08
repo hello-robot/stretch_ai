@@ -42,6 +42,10 @@ class Operation(abc.ABC):
         """Return the name of the operation."""
         return self._name
 
+    def configure(self, **kwargs) -> None:
+        """Configure the operation with the given keyword arguments. By default this just does nothing."""
+        pass
+
     @abc.abstractmethod
     def can_start(self) -> bool:
         """Returns true if the operation can begin or not."""
@@ -62,6 +66,15 @@ class Operation(abc.ABC):
     def was_successful(self) -> bool:
         """Return whether the operation was successful."""
         raise NotImplementedError
+
+    def __call__(self, **kwargs) -> bool:
+        """Run the operation."""
+        if self.can_start():
+            self.run()
+        else:
+            return False
+        self.run()
+        return self.was_successful()
 
 
 class Task:

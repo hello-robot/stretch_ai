@@ -28,14 +28,13 @@ class OpenaiClient(AbstractLLMClient):
         completion = self._openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": self.prompt},
+                {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": command},
             ],
         )
-        plan = self.parse(completion.choices[0].message.content)
+        plan = completion.choices[0].message.content
         if verbose:
-            print(completion.choices[0].message)
-            print(f"{plan=}")
+            print(f"plan={plan}")
         return plan
 
 

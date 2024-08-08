@@ -1,17 +1,69 @@
 from typing import Optional
 
 import numpy as np
+import torch
 from PIL import Image
 
 from stretch.agent.base import ManagedOperation
+from stretch.mapping.instance import Instance
 
 
-class SearchForReceptacleOperation(ManagedOperation):
-    """Find a place to put the objects we find on the floor. Will explore the map for a receptacle."""
+class ManagedSearchOperation(ManagedOperation):
 
     # For debugging
     show_map_so_far: bool = False
     show_instances_detected: bool = False
+
+    # Important parameters
+    _object_class: Optional[str] = None
+    _object_class_feature: Optional[torch.Tensor] = None
+
+    # How to choose the features from multiple views
+    aggregation_method: str = "mean"
+
+    @property
+    def object_class(self) -> str:
+        return self._object_class
+
+    def __init__(self, *args, match_method="feature", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.match_method = match_method
+
+    def set_target_object_class(self, object_class: str):
+        """Set the target object class for the search operation."""
+        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
+        self._object_class = object_class
+        self._object_class_feature = None
+
+    def is_match_by_feature(self, instance: Instance) -> bool:
+        # Compute the feature vector for the object if not saved
+        if self._object_class_feature is None:
+            self._object_class_feature = self.agent.encode_text(self.object_class)
+        emb = instance.get_image_embedding(
+            aggregation_method=self.aggregation_method, normalize=False
+        ).to(self._object_class_feature.device)
+        activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
+        print(
+            f" - Found instance {instance.global_id} with similarity {activation} to {self.object_class}."
+        )
+        return activation > self.agent.feature_match_threshold
+
+    def is_match(self, instance: Instance) -> bool:
+        if self.match_method == "feature":
+            return self.is_match_by_feature(instance)
+        elif self.match_method == "class":
+            # Lookup the class name and check if it matches our target
+            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(f" - Found instance {instance.global_id} of class {name}")
+            return self.is_name_match(name)
+
+    def is_name_match(self, name: str) -> bool:
+        """Check if the name of the object is a match for the target object class. By default, we check if the object class is in the name of the object."""
+        return self.object_class in name
+
+
+class SearchForReceptacleOperation(ManagedSearchOperation):
+    """Find a place to put the objects we find on the floor. Will explore the map for a receptacle."""
 
     def can_start(self) -> bool:
         self.attempt("will start searching for a receptacle on the floor.")
@@ -28,6 +80,8 @@ class SearchForReceptacleOperation(ManagedOperation):
         self.update()
 
         print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+        if self.object_class is None:
+            self.set_target_object_class("box")
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
@@ -51,14 +105,13 @@ class SearchForReceptacleOperation(ManagedOperation):
         instances = self.manager.instance_memory.get_instances()
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
-            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
-
+            # For debugging during exploration
             if self.show_instances_detected:
+                name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
                 self.show_instance(instance, f"Instance {i} with name {name}")
 
-            # Find a box
-            if "box" in name or "tray" in name:
+            # Find the object we care about
+            if self.is_match(instance):
                 # Check to see if we can motion plan to box or not
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
@@ -112,17 +165,10 @@ class SearchForReceptacleOperation(ManagedOperation):
         return res
 
 
-class SearchForObjectOnFloorOperation(ManagedOperation):
+class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     """Search for an object on the floor"""
 
-    show_map_so_far: bool = True
-    show_instances_detected: bool = False
     plan_for_manipulation: bool = True
-    object_class: Optional[str] = None
-
-    def set_target_object_class(self, object_class: str):
-        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
-        self.object_class = object_class
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
@@ -247,20 +293,11 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
         )
 
 
-class SearchForObjectOnFloorOperation(ManagedOperation):
+class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     """Search for an object on the floor"""
-
-    # Debugging visualization
-    show_map_so_far: bool = False
-    show_instances_detected: bool = False
 
     # Important parameters
     plan_for_manipulation: bool = True
-    object_class: Optional[str] = None
-
-    def set_target_object_class(self, object_class: str):
-        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
-        self.object_class = object_class
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
@@ -272,7 +309,7 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
 
         # Set the object class if not set
         if self.object_class is None:
-            self.object_class = self.manager.target_object
+            self.set_target_object_class(self.manager.target_object)
 
         # Clear the current object
         self.manager.current_object = None
@@ -328,16 +365,14 @@ class SearchForObjectOnFloorOperation(ManagedOperation):
             if self.show_instances_detected:
                 self.show_instance(instance, f"Instance {i} with name {name}")
 
-            if self.object_class in name:
+            if self.is_match(instance):
                 relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
                 if len(relations) > 0:
                     # We found a matching relation!
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.plan_to_instance_for_manipulation(
-                        instance, start=start, radius_m=0.5
-                    )
+                    plan = self.plan_to_instance_for_manipulation(instance, start=start)
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."

@@ -11,6 +11,7 @@ import torch
 from loguru import logger
 
 from stretch.core.interfaces import Observations
+from stretch.core.parameters import Parameters, get_parameters
 from stretch.perception.constants import RearrangeDETICCategories
 from stretch.utils.config import get_full_config_path, load_config
 
@@ -24,16 +25,15 @@ class OvmmPerception:
 
     def __init__(
         self,
-        config,
+        parameters: Parameters,
         gpu_device_id: int = 0,
         verbose: bool = False,
         confidence_threshold: float = 0.5,
-        module: str = "grounded_sam",
         module_kwargs: Dict[str, Any] = {},
     ):
-        self.config = config
-        self._use_detic_viz = config.ENVIRONMENT.use_detic_viz
-        self._detection_module = getattr(config.AGENT, "detection_module", "detic")
+        self.parameters = parameters
+        self._use_detic_viz = self.parameters.get("detection/use_detic_viz", False)
+        self._detection_module = self.parameters.get("detection/module", "detic")
         self._vocabularies: Dict[int, RearrangeDETICCategories] = {}
         self._current_vocabulary: RearrangeDETICCategories = None
         self._current_vocabulary_id: int = None
@@ -64,6 +64,15 @@ class OvmmPerception:
 
             self._segmentation = SAMPerception(
                 custom_vocabulary=".",
+                verbose=verbose,
+                **module_kwargs,
+            )
+        elif self._detection_module == "yolo":
+            from stretch.perception.detection.yolo.yolo_perception import YoloPerception
+
+            self._segmentation = YoloPerception(
+                custom_vocabulary=".",
+                sem_gpu_id=gpu_device_id,
                 verbose=verbose,
                 **module_kwargs,
             )
@@ -212,30 +221,29 @@ def build_vocab_from_category_map(
 
 
 def create_semantic_sensor(
-    config=None,
+    parameters: Optional[Parameters] = None,
     category_map_file: Optional[str] = None,
     device_id: int = 0,
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
-    config_path="default_perception.yaml",
+    config_path="default_planner.yaml",
     confidence_threshold: float = 0.5,
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
     if verbose:
         print("- Loading configuration")
-    if config is None:
-        config = load_config(visualize=False, config_path=config_path, **kwargs)
+    if parameters is None:
+        parameters = get_parameters(config_path)
     if category_map_file is None:
-        category_map_file = get_full_config_path(config.ENVIRONMENT.category_map_file)
+        category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
     if verbose:
         print("- Create and load vocabulary and perception model")
     semantic_sensor = OvmmPerception(
-        config=config,
+        parameters=parameters,
         gpu_device_id=device_id,
         verbose=verbose,
-        module="detic",
         confidence_threshold=confidence_threshold,
         module_kwargs=module_kwargs,
     )
@@ -243,4 +251,4 @@ def create_semantic_sensor(
     vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
     semantic_sensor.update_vocabulary_list(vocab, 0)
     semantic_sensor.set_vocabulary(0)
-    return config, semantic_sensor
+    return semantic_sensor

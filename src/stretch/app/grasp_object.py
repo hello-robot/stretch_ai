@@ -24,9 +24,7 @@ def get_task(robot, demo, target_object):
             "grasp_the_object",
             manager,
         )
-        grasp_object.show_object_to_grasp = True
-        grasp_object.servo_to_grasp = True
-        grasp_object.show_servo_gui = True
+        grasp_object.configure(show_object_to_grasp=True, servo_to_grasp=True, show_servo_gui=True)
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -65,10 +63,10 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    _, semantic_sensor = create_semantic_sensor(
+    semantic_sensor = create_semantic_sensor(
+        parameters,
         device_id=device_id,
         verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
         confidence_threshold=0.3,
     )
 
