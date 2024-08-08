@@ -47,3 +47,10 @@ def get_path_to_image(name: str) -> str:
     _ensure_path_exists()
     os.makedirs(os.path.join(path, "images"), exist_ok=True)
     return os.path.join(path, "images", name)
+
+
+def get_path_to_debug(name: str) -> str:
+    """Gets a debug filename in the .stretch store directory"""
+    _ensure_path_exists()
+    os.makedirs(os.path.join(path, "debug"), exist_ok=True)
+    return os.path.join(path, "debug", name)

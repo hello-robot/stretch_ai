@@ -5,7 +5,7 @@ import torch
 
 from stretch.core.parameters import Parameters
 from stretch.mapping.instance import Instance
-from stretch.utils.memory import get_path_to_image
+from stretch.utils.memory import get_path_to_debug
 
 
 class SceneGraph:
@@ -112,7 +112,7 @@ class SceneGraph:
                 plt.title("Instance B")
                 plt.axis("off")
                 # plt.show()
-                plt.savefig(get_path_to_image(f"scene_graph_{idx_a}_{idx_b}_{rel}.png"))
+                plt.savefig(get_path_to_debug(f"scene_graph_{idx_a}_{idx_b}_{rel}.png"))
 
         # Return the detected relationships in list form
         return self.relationships
