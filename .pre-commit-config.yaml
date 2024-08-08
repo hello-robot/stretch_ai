@@ -1,4 +1,9 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
@@ -29,6 +34,7 @@ repos:
           - --install-types
           - --non-interactive
           - --no-strict-optional
+          - --disable-error-code=override
           - --disable-error-code=attr-defined
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
@@ -56,4 +62,5 @@ repos:
           (?x)^( 
             | .*\.svg 
             | .*\.tsv
+            | ^src/test/audio/test_text_to_speech.py
           )$ 

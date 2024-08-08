@@ -28,16 +28,16 @@ jobs:
 
     # Use pre-built container for stretch AI
     container:
-      image: hellorobotinc/stretch-ai_cuda-11.8:0.0.5
+      image: hellorobotinc/stretch-ai_cuda-11.8:0.0.8
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          lfs: true
     - name: Configure Git to trust the directory
       run: git config --global --add safe.directory `pwd`
-    - name: Set up Python "3.11"
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+    - name: Get LFS objects
+      run: git lfs pull
     - name: Install dependencies and code
       run: |
         # ./install.sh -y --no-remove --no-submodules
