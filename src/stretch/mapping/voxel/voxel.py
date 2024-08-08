@@ -673,7 +673,6 @@ class SparseVoxelMap(object):
                 feats = self.fix_data_type(feats)
             base_pose = self.fix_data_type(base_pose)
             instance = self.fix_data_type(instance)
-            breakpoint()
             self.add(
                 camera_pose=camera_pose,
                 rgb=rgb,
