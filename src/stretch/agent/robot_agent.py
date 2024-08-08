@@ -164,10 +164,6 @@ class RobotAgent:
             self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
-        self.path = os.path.expanduser(f"data/hw_exps/{self.parameters['name']}/{timestamp}")
-        print(f"Writing logs to {self.path}")
-        os.makedirs(self.path, exist_ok=True)
-        os.makedirs(f"{self.path}/viz_data", exist_ok=True)
 
     @property
     def feature_match_threshold(self) -> float:
@@ -327,33 +323,6 @@ class RobotAgent:
             # Add an observation after the move
             print("---- UPDATE ----")
             self.update()
-
-            if self.debug_instances:
-                if self.show_instances_detected:
-                    import matplotlib
-
-                    # TODO: why do we need to configure this every time
-                    matplotlib.use("TkAgg")
-                    import matplotlib.pyplot as plt
-
-                # Check to see if we have a receptacle in the map
-                instances = self.voxel_map.get_instances()
-                for ins, instance in enumerate(instances):
-                    name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
-                    print(
-                        f" - Found instance {ins} with name {name} and global id {instance.global_id}."
-                    )
-                    view = instance.get_best_view()
-                    if self.show_instances_detected:
-                        plt.imshow(view.get_image())
-                        plt.title(f"Instance {ins} with name {name}")
-                        plt.axis("off")
-                        plt.show()
-                    else:
-                        image = Image.fromarray(view.get_image())
-                        filename = f"{self.path}/viz_data/instance_{ins}_is_a_{name}.png"
-                        print(f"- Saving debug image to {filename}")
-                        image.save(filename)
 
             if visualize:
                 self.voxel_map.show(

@@ -11,7 +11,7 @@ from stretch.mapping.instance import Instance
 class ManagedSearchOperation(ManagedOperation):
 
     # For debugging
-    show_map_so_far: bool = True
+    show_map_so_far: bool = False
     show_instances_detected: bool = False
 
     # Important parameters
