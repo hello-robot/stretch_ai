@@ -55,9 +55,6 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
-        "torch-cluster",
-        "torch-geometric",
-        "torch-scatter",
         # Compression tools
         "pyliblzfse",
         "webp",
