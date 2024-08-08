@@ -28,7 +28,11 @@ from stretch.perception import create_semantic_sensor, get_encoder
     help="Type of object to pick up from the floor and move",
 )
 @click.option(
-    "--receptacle", type=str, default="box", help="Type of receptacle to place the object in"
+    "--receptacle",
+    "--target_receptacle",
+    type=str,
+    default="box",
+    help="Type of receptacle to place the object in",
 )
 @click.option(
     "--force-rotate",

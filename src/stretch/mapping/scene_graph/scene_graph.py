@@ -5,6 +5,7 @@ import torch
 
 from stretch.core.parameters import Parameters
 from stretch.mapping.instance import Instance
+from stretch.utils.memory import get_path_to_image
 
 
 class SceneGraph:
@@ -76,7 +77,15 @@ class SceneGraph:
             .numpy()
         )
 
-    def get_relationships(self, debug: bool = True):
+    def get_relationships(self, debug: bool = True) -> List[Tuple[int, int, str]]:
+        """Return the relationships between instances.
+
+        Args:
+            debug: If True, show the relationships in a matplotlib window
+
+        Returns:
+            List of relationships in the form (idx_a, idx_b, relation)
+        """
         # show symbolic relationships
         if debug:
             for idx_a, idx_b, rel in self.relationships:
@@ -103,7 +112,8 @@ class SceneGraph:
                 plt.title("Instance B")
                 plt.axis("off")
                 # plt.show()
-                plt.savefig("/home/atharva/scene_graph.png")
+                plt.savefig(get_path_to_image("scene_graph.png"))
+
         # Return the detected relationships in list form
         return self.relationships
 
