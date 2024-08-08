@@ -11,7 +11,7 @@ import torch
 from loguru import logger
 
 from stretch.core.interfaces import Observations
-from stretch.core.parameters import Parameters
+from stretch.core.parameters import Parameters, get_parameters
 from stretch.perception.constants import RearrangeDETICCategories
 from stretch.utils.config import get_full_config_path, load_config
 
@@ -234,7 +234,7 @@ def create_semantic_sensor(
     if verbose:
         print("- Loading configuration")
     if parameters is None:
-        parameters = Parameters(config_path)
+        parameters = get_parameters(config_path)
     if category_map_file is None:
         category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
