@@ -409,7 +409,7 @@ class GraspObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
 
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
-        object_xyz = self.manager.current_object.point_cloud.median(axis=0)
+        object_xyz = self.manager.current_object.get_center()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
