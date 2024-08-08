@@ -36,6 +36,8 @@ If you need to temporarily commit something that is not passing, use:
 git commit --no-verify
 ```
 
+However, pull requests with failing pre-commit hooks will not be merged.
+
 ### Pull Requests
 
 We follow a squash-and-merge strategy for pull requests, which means that all commits in a PR are squashed into a single commit before merging. This keeps the git history clean and easy to read.
