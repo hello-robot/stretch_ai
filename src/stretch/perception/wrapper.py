@@ -221,27 +221,27 @@ def build_vocab_from_category_map(
 
 
 def create_semantic_sensor(
-    config=None,
+    parameters: Optional[Parameters] = None,
     category_map_file: Optional[str] = None,
     device_id: int = 0,
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
-    config_path="default_perception.yaml",
+    config_path="default_planner.yaml",
     confidence_threshold: float = 0.5,
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
     if verbose:
         print("- Loading configuration")
-    if config is None:
-        config = load_config(visualize=False, config_path=config_path, **kwargs)
+    if parameters is None:
+        parameters = Parameters(config_path)
     if category_map_file is None:
-        category_map_file = get_full_config_path(config.ENVIRONMENT.category_map_file)
+        category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
     if verbose:
         print("- Create and load vocabulary and perception model")
     semantic_sensor = OvmmPerception(
-        config=config,
+        parameters=parameters,
         gpu_device_id=device_id,
         verbose=verbose,
         module="detic",
@@ -252,4 +252,4 @@ def create_semantic_sensor(
     vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
     semantic_sensor.update_vocabulary_list(vocab, 0)
     semantic_sensor.set_vocabulary(0)
-    return config, semantic_sensor
+    return semantic_sensor

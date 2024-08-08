@@ -83,10 +83,10 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
-    _, semantic_sensor = create_semantic_sensor(
+    semantic_sensor = create_semantic_sensor(
+        parameters=parameters,
         device_id=device_id,
         verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
     )
 
     if len(input_file) == 0 or input_file is None:

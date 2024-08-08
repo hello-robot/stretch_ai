@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import stretch.utils.logger as logger
 from stretch.agent.operations import WaveOperation
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteManager
@@ -25,10 +26,10 @@ def main(
     # create robot agent
     demo = RobotAgent(robot, parameters=parameters)
 
-    # create task manager
-    manager = EmoteManager(demo)
-    task = manager.get_task(WaveOperation("emote", manager))
-    task.run()
+    wave = WaveOperation("emote")
+    res = wave()
+    if not res:
+        logger.error("Wave operation failed")
 
     # Turn off the robot at the end
     robot.stop()

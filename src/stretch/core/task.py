@@ -67,6 +67,15 @@ class Operation(abc.ABC):
         """Return whether the operation was successful."""
         raise NotImplementedError
 
+    def __call__(self, **kwargs) -> bool:
+        """Run the operation."""
+        if self.can_start():
+            self.run()
+        else:
+            return False
+        self.run()
+        return self.was_successful()
+
 
 class Task:
     """A task is a series of operations that are executed in sequence. At each step, we check validity."""
