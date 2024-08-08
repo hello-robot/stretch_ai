@@ -165,6 +165,7 @@ def main(
                 instances = agent.get_instances_from_text(text, threshold=threshold)
             else:
                 _, instance = agent.get_instance_from_text(text)
+                instances = [instance]
 
             if len(instances) == 0:
                 logger.error("No matches found for query")

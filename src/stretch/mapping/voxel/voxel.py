@@ -573,6 +573,7 @@ class SparseVoxelMap(object):
         data["depth"] = []
         data["feats"] = []
         data["obs"] = []
+        data["instance"] = []
 
         for frame in tqdm.tqdm(
             self.observations, desc="Aggregating data to write", unit="frame", ncols=80
@@ -582,19 +583,23 @@ class SparseVoxelMap(object):
             data["camera_poses"].append(frame.camera_pose)
             data["base_poses"].append(frame.base_pose)
             data["camera_K"].append(frame.camera_K)
+            data["instance"].append(frame.instance)
 
             # Convert to numpy and correct formats for saving
-            frame.rgb = frame.rgb.byte().cpu().numpy()
-            frame.depth = (frame.depth * 1000).short().cpu().numpy()
+            rgb = frame.rgb.byte().cpu().numpy()
+            depth = (frame.depth * 1000).short().cpu().numpy()
 
+            # Handle compression
             if compress:
-                data["rgb"].append(compression.to_jpeg(frame.rgb))
-                data["depth"].append(compression.to_jp2(frame.depth))
+                data["rgb"].append(compression.to_jpg(rgb))
+                data["depth"].append(compression.to_jp2(depth))
             else:
                 data["rgb"].append(frame.rgb)
                 data["depth"].append(frame.depth)
+
             data["feats"].append(frame.feats)
-            data["obs"].append(frame.obs)
+            # TODO: compression of Observations
+            # data["obs"].append(frame.obs)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -638,15 +643,18 @@ class SparseVoxelMap(object):
         if "compressed" in data:
             compressed = data["compressed"]
 
-        for i, (camera_pose, rgb, feats, depth, base_pose, obs, K) in enumerate(
+        for i, (camera_pose, rgb, feats, depth, base_pose, instance, K) in enumerate(
+            # TODO: compression of observations
+            # Right now we just do not support this
+            # data["obs"],  TODO: compression of Observations
             zip(
                 data["camera_poses"],
                 data["rgb"],
                 data["feats"],
                 data["depth"],
                 data["base_poses"],
-                data["obs"],
                 data["camera_K"],
+                data["instance"],
             )
         ):
             # Handle the case where we dont actually want to load everything
@@ -663,7 +671,7 @@ class SparseVoxelMap(object):
             if feats is not None:
                 feats = self.fix_data_type(feats)
             base_pose = self.fix_data_type(base_pose)
-            instance = self.fix_data_type(obs.instance)
+            instance = self.fix_data_type(instance)
             self.add(
                 camera_pose=camera_pose,
                 rgb=rgb,
@@ -671,7 +679,6 @@ class SparseVoxelMap(object):
                 depth=depth,
                 base_pose=base_pose,
                 instance_image=instance,
-                obs=obs,
                 camera_K=K,
             )
 
