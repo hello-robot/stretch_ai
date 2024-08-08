@@ -25,6 +25,12 @@ min_depth: 0.5
 # max_depth: 2.5
 max_depth: 2.0
 
+# Object detection parameters
+detection:
+  module: "detic"
+  category_map_file: example_cat_map.json
+  use_detic_viz: True
+
 # Point cloud cleanup
 filters:
   smooth_kernel_size: 2

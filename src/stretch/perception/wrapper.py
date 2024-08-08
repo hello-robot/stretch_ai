@@ -11,6 +11,7 @@ import torch
 from loguru import logger
 
 from stretch.core.interfaces import Observations
+from stretch.core.parameters import Parameters
 from stretch.perception.constants import RearrangeDETICCategories
 from stretch.utils.config import get_full_config_path, load_config
 
@@ -24,15 +25,15 @@ class OvmmPerception:
 
     def __init__(
         self,
-        config,
+        parameters: Parameters,
         gpu_device_id: int = 0,
         verbose: bool = False,
         confidence_threshold: float = 0.5,
         module_kwargs: Dict[str, Any] = {},
     ):
-        self.config = config
-        self._use_detic_viz = config.ENVIRONMENT.use_detic_viz
-        self._detection_module = getattr(config.AGENT, "detection_module", "detic")
+        self.parameters = parameters
+        self._use_detic_viz = self.parameters["detection"]["detic"]["use_detic_viz"]
+        self._detection_module = self.parameters["detection"]["module"]
         self._vocabularies: Dict[int, RearrangeDETICCategories] = {}
         self._current_vocabulary: RearrangeDETICCategories = None
         self._current_vocabulary_id: int = None
