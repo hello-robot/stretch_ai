@@ -19,6 +19,7 @@ import torch
 import tqdm
 from torch import Tensor
 
+import stretch.utils.compression as compression
 from stretch.core.interfaces import Observations
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
@@ -562,7 +563,7 @@ class SparseVoxelMap(object):
         assert y0 >= 0
         self._visited[x0:x1, y0:y1] += self._visited_disk
 
-    def write_to_pickle(self, filename: str):
+    def write_to_pickle(self, filename: str, compress: bool = True) -> None:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
         data = {}
         data["camera_poses"] = []
@@ -581,8 +582,17 @@ class SparseVoxelMap(object):
             data["camera_poses"].append(frame.camera_pose)
             data["base_poses"].append(frame.base_pose)
             data["camera_K"].append(frame.camera_K)
-            data["rgb"].append(frame.rgb)
-            data["depth"].append(frame.depth)
+
+            # Convert to numpy and correct formats for saving
+            frame.rgb = frame.rgb.byte().cpu().numpy()
+            frame.depth = (frame.depth * 1000).short().cpu().numpy()
+
+            if compress:
+                data["rgb"].append(compression.to_jpeg(frame.rgb))
+                data["depth"].append(compression.to_jp2(frame.depth))
+            else:
+                data["rgb"].append(frame.rgb)
+                data["depth"].append(frame.depth)
             data["feats"].append(frame.feats)
             data["obs"].append(frame.obs)
             for k, v in frame.info.items():
@@ -595,6 +605,7 @@ class SparseVoxelMap(object):
             data["combined_weights"],
             data["combined_rgb"],
         ) = self.voxel_pcd.get_pointcloud()
+        data["compressed"] = compress
         print("Dumping to pickle...")
         with open(filename, "wb") as f:
             pickle.dump(data, f)
@@ -621,6 +632,12 @@ class SparseVoxelMap(object):
         assert filename.exists(), f"No file found at {filename}"
         with filename.open("rb") as f:
             data = pickle.load(f)
+
+        # Flag for if the data is compressed
+        compressed = False
+        if "compressed" in data:
+            compressed = data["compressed"]
+
         for i, (camera_pose, rgb, feats, depth, base_pose, obs, K) in enumerate(
             zip(
                 data["camera_poses"],
@@ -637,6 +654,10 @@ class SparseVoxelMap(object):
                 break
 
             camera_pose = self.fix_data_type(camera_pose)
+            if compressed:
+                rgb = compression.from_jpeg(rgb)
+                depth = compression.from_jp2(depth) / 1000.0
+                breakpoint()
             rgb = self.fix_data_type(rgb)
             depth = self.fix_data_type(depth)
             if feats is not None:
