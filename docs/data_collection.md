@@ -11,6 +11,7 @@
 - Linux instructions: if using a Linux PC, run `install_dex_teleop.sh` to update `udev` rules
 
   ```bash
+  cd /path/to/stretch_ai/scripts
   ./install_dex_teleop.sh
   ```
 
