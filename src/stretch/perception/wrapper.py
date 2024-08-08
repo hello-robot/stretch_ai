@@ -32,8 +32,8 @@ class OvmmPerception:
         module_kwargs: Dict[str, Any] = {},
     ):
         self.parameters = parameters
-        self._use_detic_viz = self.parameters["detection"]["detic"]["use_detic_viz"]
-        self._detection_module = self.parameters["detection"]["module"]
+        self._use_detic_viz = self.parameters.get("detection/use_detic_viz", False)
+        self._detection_module = self.parameters.get("detection/module", "detic")
         self._vocabularies: Dict[int, RearrangeDETICCategories] = {}
         self._current_vocabulary: RearrangeDETICCategories = None
         self._current_vocabulary_id: int = None
@@ -244,7 +244,6 @@ def create_semantic_sensor(
         parameters=parameters,
         gpu_device_id=device_id,
         verbose=verbose,
-        module="detic",
         confidence_threshold=confidence_threshold,
         module_kwargs=module_kwargs,
     )
