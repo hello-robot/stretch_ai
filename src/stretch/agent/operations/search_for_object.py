@@ -372,9 +372,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.plan_to_instance_for_manipulation(
-                        instance, start=start, radius_m=0.5
-                    )
+                    plan = self.plan_to_instance_for_manipulation(instance, start=start)
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
