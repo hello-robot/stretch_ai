@@ -26,6 +26,7 @@ class PickupManager(TaskManager):
         self,
         agent: RobotAgent,
         target_object: Optional[str] = None,
+        target_receptacle: Optional[str] = None,
         use_visual_servoing_for_grasp: bool = True,
         matching: str = "feature",
     ) -> None:
@@ -33,6 +34,7 @@ class PickupManager(TaskManager):
 
         # Task information
         self.target_object = target_object
+        self.target_receptacle = target_receptacle
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
 
         assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
@@ -119,6 +121,8 @@ class PickupManager(TaskManager):
         if self.target_object is not None:
             # Overwrite the default object to search for
             search_for_object.set_target_object_class(self.target_object)
+        if self.target_receptacle is not None:
+            search_for_receptacle.set_target_object_class(self.target_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(

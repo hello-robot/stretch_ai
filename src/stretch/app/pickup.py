@@ -21,7 +21,15 @@ from stretch.perception import create_semantic_sensor, get_encoder
     help="Set if we are executing on the robot and not on a remote computer",
 )
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
-@click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
+@click.option(
+    "--target_object",
+    type=str,
+    default="toy",
+    help="Type of object to pick up from the floor and move",
+)
+@click.option(
+    "--receptacle", type=str, default="box", help="Type of receptacle to place the object in"
+)
 @click.option(
     "--force-rotate",
     "--force_rotate",
@@ -50,6 +58,7 @@ def main(
     show_intermediate_maps: bool = False,
     reset: bool = False,
     target_object: str = "shoe",
+    receptacle: str = "box",
     force_rotate: bool = False,
     mode: str = "one_shot",
     match_method: str = "feature",
@@ -79,7 +88,9 @@ def main(
 
     # After the robot has started...
     try:
-        manager = PickupManager(agent, target_object=target_object, matching=match_method)
+        manager = PickupManager(
+            agent, target_object=target_object, target_receptacle=receptacle, matching=match_method
+        )
         task = manager.get_task(add_rotate=force_rotate, mode=mode)
     except Exception as e:
         print(f"Error creating task: {e}")
