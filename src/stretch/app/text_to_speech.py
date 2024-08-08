@@ -134,7 +134,7 @@ def get_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--is_slow",
+        "--slow",
         action="store_true",
         help="Whether to speak slowly or not.",
     )
@@ -158,7 +158,7 @@ def main():
 
     # Initialize the text-to-speech command line interface
     cli = TextToSpeechComandLineInterface(
-        engine=args.engine, voice_id=args.voice_id, is_slow=args.is_slow
+        engine=args.engine, voice_id=args.voice_id, is_slow=args.slow
     )
     cli.start()
 
