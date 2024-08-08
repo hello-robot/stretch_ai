@@ -12,8 +12,12 @@ import argparse
 import os
 import readline  # Improve interactive input, e.g., up to access history, tab auto-completion.
 
-from stretch.audio.text_to_speech.executor import TextToSpeechExecutor
-from stretch.audio.text_to_speech.gtts_engine import GTTSTextToSpeech
+from stretch.audio.text_to_speech import (
+    GoogleCloudTextToSpeech,
+    GTTSTextToSpeech,
+    PyTTSx3TextToSpeech,
+    TextToSpeechExecutor,
+)
 
 # Local imports
 from stretch.audio.utils.cli import HistoryCompleter
@@ -24,12 +28,27 @@ class TextToSpeechComandLineInterface:
     A command-line interface to use text-to-speech.
     """
 
-    def __init__(self):
+    def __init__(self, engine: str = "gtts"):
         """
         Initialize the TextToSpeechComandLineInterface.
+
+        Parameters
+        ----------
+        engine : str, optional
+            The text-to-speech engine to use. Default is "gtts".
         """
+        if engine == "gtts":
+            engine = GTTSTextToSpeech()
+        elif engine == "google_cloud":
+            engine = GoogleCloudTextToSpeech()
+        elif engine == "pyttsx3":
+            engine = PyTTSx3TextToSpeech()
+        else:
+            raise ValueError(
+                f"Unknown engine: {engine}. Must be one of 'gtts', 'google', or 'pyttsx3'."
+            )
         self._executor = TextToSpeechExecutor(
-            engine=GTTSTextToSpeech(),
+            engine=engine,
         )
 
     def start(self) -> None:
@@ -91,6 +110,13 @@ def get_args() -> argparse.Namespace:
         default="",
         help="The history file to load and save.",
     )
+    parser.add_argument(
+        "--engine",
+        type=str,
+        default="gtts",
+        choices=["gtts", "google_cloud", "pyttsx3"],
+        help="The text-to-speech engine to use. Default is gtts.",
+    )
     return parser.parse_args()
 
 
@@ -110,7 +136,7 @@ def main():
     readline.set_completer_delims("")  # Match the entire string, not individual words
 
     # Initialize the text-to-speech command line interface
-    cli = TextToSpeechComandLineInterface()
+    cli = TextToSpeechComandLineInterface(engine=args.engine)
     cli.start()
 
     # Run the text-to-speech command line interface
