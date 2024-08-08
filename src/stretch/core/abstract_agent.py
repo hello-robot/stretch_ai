@@ -40,4 +40,3 @@ class Agent(ABC):
             action: stretch action
             info: additional information (e.g., for debugging, visualization)
         """
-        pass

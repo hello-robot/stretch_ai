@@ -7,8 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import copy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Union
 
 from openai import OpenAI
 

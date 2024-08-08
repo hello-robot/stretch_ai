@@ -15,10 +15,9 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
-import trimesh
 
 
 class GeneralTaskState(Enum):
@@ -31,8 +30,6 @@ class GeneralTaskState(Enum):
 
 class Action:
     """Controls."""
-
-    pass
 
 
 class DiscreteNavigationAction(Action, Enum):

@@ -19,7 +19,6 @@ import time
 from random import random
 from typing import Callable, List, Optional, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from stretch.motion.base import ConfigurationSpace, Node, Planner, PlanResult

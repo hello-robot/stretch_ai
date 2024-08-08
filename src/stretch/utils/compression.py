@@ -8,13 +8,11 @@
 # license information maybe found below, if so.
 
 import io
-import pickle
 from typing import Optional, Tuple, Union
 
 import cv2
 import liblzfse
 import numpy as np
-import webp
 from PIL import Image
 
 

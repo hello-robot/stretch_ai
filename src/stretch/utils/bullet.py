@@ -12,7 +12,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 from collections import namedtuple
-from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,7 +21,7 @@ import trimesh
 import trimesh.transformations as tra
 
 # Helpers
-from stretch.utils.image import T_CORRECTION, Camera, opengl_depth_to_xyz, z_from_opengl_depth
+from stretch.utils.image import Camera, opengl_depth_to_xyz, z_from_opengl_depth
 
 """
 This file contains simple tools for creating and loading objects in pybullet for easy simulation
@@ -377,7 +376,6 @@ class PbClient(object):
 
     def run_physics(self, t):
         raise NotImplementedError
-        pass
 
     def add_camera(self, pos, orn, camera_params):
         """todo: create a camera in the bullet scene"""

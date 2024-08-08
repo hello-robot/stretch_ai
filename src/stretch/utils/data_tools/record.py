@@ -8,7 +8,6 @@
 # license information maybe found below, if so.
 
 import datetime
-import glob
 import json
 import logging
 import shutil

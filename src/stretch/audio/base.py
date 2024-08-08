@@ -31,7 +31,6 @@ class AbstractSpeechToText(abc.ABC):
         Returns
             str: Transcribed text
         """
-        pass
 
     @abc.abstractmethod
     def transcribe_file(self, audio_file: str) -> str:
@@ -43,7 +42,6 @@ class AbstractSpeechToText(abc.ABC):
         Returns
             str: Transcribed text.
         """
-        pass
 
 
 class AbstractTextToSpeech(abc.ABC):

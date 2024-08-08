@@ -9,9 +9,6 @@
 
 from typing import Any, Dict
 
-import cv2
-import numpy as np
-
 from .comms import ClientCommsNode
 
 

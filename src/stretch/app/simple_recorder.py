@@ -15,7 +15,7 @@ import matplotlib
 import numpy as np
 
 from stretch.agent import HomeRobotZmqClient
-from stretch.core import Parameters, get_parameters
+from stretch.core import get_parameters
 
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt

@@ -13,7 +13,6 @@ import time
 
 import click
 import numpy as np
-import trimesh
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient

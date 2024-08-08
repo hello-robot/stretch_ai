@@ -13,12 +13,11 @@
 # LICENSE file in the root directory of this source tree.
 import copy
 import logging
-import math
 import pickle
 import timeit
 from collections import namedtuple
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import open3d as open3d
@@ -35,12 +34,7 @@ from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import (
-    create_visualization_geometries,
-    numpy_to_pcd,
-    pcd_to_numpy,
-    show_point_cloud,
-)
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
