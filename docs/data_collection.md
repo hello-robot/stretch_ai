@@ -8,6 +8,13 @@
 
   - Advanced installation is only needed if you also want to train/evaluate policies with GPU, pure data collection should be fine with [normal installation](data_collection.md#on-robot)
 
+- Linux instructions: if using a Linux PC, run `install_dex_teleop.sh` to update `udev` rules
+
+  ```bash
+  cd /path/to/stretch_ai/scripts
+  ./install_dex_teleop.sh
+  ```
+
 - [Camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
 - Install our fork of lerobot in the same conda environment as stretch_ai:
