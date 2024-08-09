@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # (c) 2024 Hello Robot by Chris Paxton
 #
 # This source code is licensed under the MIT license found in the
@@ -120,7 +129,6 @@ def main(
 
         # Save out file
         if len(output_pkl_filename) > 0:
-            print(f"Write pkl to {output_pkl_filename}...")
             agent.voxel_map.write_to_pickle(output_pkl_filename)
     else:
         real_robot = False
@@ -165,6 +173,7 @@ def main(
                 instances = agent.get_instances_from_text(text, threshold=threshold)
             else:
                 _, instance = agent.get_instance_from_text(text)
+                instances = [instance]
 
             if len(instances) == 0:
                 logger.error("No matches found for query")

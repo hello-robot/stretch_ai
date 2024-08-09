@@ -1,9 +1,17 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import copy
-import logging
 import math
 import pickle
 import timeit
@@ -19,6 +27,8 @@ import torch
 import tqdm
 from torch import Tensor
 
+import stretch.utils.compression as compression
+import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
@@ -57,8 +67,6 @@ Frame = namedtuple(
 )
 
 VALID_FRAMES = ["camera", "world"]
-
-logger = logging.getLogger(__name__)
 
 
 def ensure_tensor(arr):
@@ -562,18 +570,24 @@ class SparseVoxelMap(object):
         assert y0 >= 0
         self._visited[x0:x1, y0:y1] += self._visited_disk
 
-    def write_to_pickle(self, filename: str):
+    def write_to_pickle(self, filename: str, compress: bool = True) -> None:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
         data = {}
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []
-        data["xyz"] = []
-        data["world_xyz"] = []
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
         data["obs"] = []
+        data["instance"] = []
+
+        # Add a print statement with use of this code
+        logger.alert(f"Write pkl to {filename}...")
+        logger.alert(f"You may visualize this file with:")
+        logger.alert()
+        logger.alert(f"\tpython -m stretch.app.read_map -i {filename} --show-svm")
+        logger.alert()
 
         for frame in tqdm.tqdm(
             self.observations, desc="Aggregating data to write", unit="frame", ncols=80
@@ -583,48 +597,23 @@ class SparseVoxelMap(object):
             data["camera_poses"].append(frame.camera_pose)
             data["base_poses"].append(frame.base_pose)
             data["camera_K"].append(frame.camera_K)
-            data["xyz"].append(frame.xyz)
-            data["world_xyz"].append(frame.full_world_xyz)
-            data["rgb"].append(frame.rgb)
-            data["depth"].append(frame.depth)
-            data["feats"].append(frame.feats)
-            data["obs"].append(frame.obs)
-            for k, v in frame.info.items():
-                if k not in data:
-                    data[k] = []
-                data[k].append(v)
-        (
-            data["combined_xyz"],
-            data["combined_feats"],
-            data["combined_weights"],
-            data["combined_rgb"],
-        ) = self.voxel_pcd.get_pointcloud()
-        print("Dumping to pickle...")
-        with open(filename, "wb") as f:
-            pickle.dump(data, f)
+            data["instance"].append(frame.instance)
 
-    def write_to_pickle_add_data(self, filename: str, newdata: dict):
-        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
-        data = {}
-        data["camera_poses"] = []
-        data["base_poses"] = []
-        data["xyz"] = []
-        data["rgb"] = []
-        data["depth"] = []
-        data["feats"] = []
-        data["obs"] = []
-        for key, value in newdata.items():
-            data[key] = value
-        for frame in self.observations:
-            # add it to pickle
-            # TODO: switch to using just Obs struct?
-            data["camera_poses"].append(frame.camera_pose)
-            data["base_poses"].append(frame.base_pose)
-            data["xyz"].append(frame.xyz)
-            data["rgb"].append(frame.rgb)
-            data["depth"].append(frame.depth)
+            # Convert to numpy and correct formats for saving
+            rgb = frame.rgb.byte().cpu().numpy()
+            depth = (frame.depth * 1000).cpu().numpy().astype(np.uint16)
+
+            # Handle compression
+            if compress:
+                data["rgb"].append(compression.to_jpg(rgb))
+                data["depth"].append(compression.to_jp2(depth))
+            else:
+                data["rgb"].append(frame.rgb)
+                data["depth"].append(frame.depth)
+
             data["feats"].append(frame.feats)
-            data["obs"].append(frame.obs)
+            # TODO: compression of Observations
+            # data["obs"].append(frame.obs)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -635,6 +624,8 @@ class SparseVoxelMap(object):
             data["combined_weights"],
             data["combined_rgb"],
         ) = self.voxel_pcd.get_pointcloud()
+        data["compressed"] = compress
+        print("Dumping to pickle...")
         with open(filename, "wb") as f:
             pickle.dump(data, f)
 
@@ -660,17 +651,24 @@ class SparseVoxelMap(object):
         assert filename.exists(), f"No file found at {filename}"
         with filename.open("rb") as f:
             data = pickle.load(f)
-        for i, (camera_pose, xyz, rgb, feats, depth, base_pose, obs, K, world_xyz,) in enumerate(
+
+        # Flag for if the data is compressed
+        compressed = False
+        if "compressed" in data:
+            compressed = data["compressed"]
+
+        for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
+            # TODO: compression of observations
+            # Right now we just do not support this
+            # data["obs"],  TODO: compression of Observations
             zip(
                 data["camera_poses"],
-                data["xyz"],
+                data["camera_K"],
                 data["rgb"],
                 data["feats"],
                 data["depth"],
                 data["base_poses"],
-                data["obs"],
-                data["camera_K"],
-                data["world_xyz"],
+                data["instance"],
             )
         ):
             # Handle the case where we dont actually want to load everything
@@ -678,22 +676,22 @@ class SparseVoxelMap(object):
                 break
 
             camera_pose = self.fix_data_type(camera_pose)
-            xyz = self.fix_data_type(xyz)
-            rgb = self.fix_data_type(rgb)
-            depth = self.fix_data_type(depth)
+            if compressed:
+                rgb = compression.from_jpg(rgb)
+                depth = compression.from_jp2(depth) / 1000.0
+            rgb = self.fix_data_type(rgb).float()
+            depth = self.fix_data_type(depth).float()
             if feats is not None:
                 feats = self.fix_data_type(feats)
             base_pose = self.fix_data_type(base_pose)
-            instance = self.fix_data_type(obs.instance)
+            instance = self.fix_data_type(instance)
             self.add(
                 camera_pose=camera_pose,
-                xyz=xyz,
                 rgb=rgb,
                 feats=feats,
                 depth=depth,
                 base_pose=base_pose,
                 instance_image=instance,
-                obs=obs,
                 camera_K=K,
             )
 
