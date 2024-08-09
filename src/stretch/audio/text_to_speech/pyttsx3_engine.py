@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Standard imports
 import logging
 import time
@@ -59,13 +68,13 @@ class PyTTSx3TextToSpeech(AbstractTextToSpeech):
     @AbstractTextToSpeech.voice_id.setter  # type: ignore
     @override  # inherit the docstring from the parent class
     def voice_id(self, voice_id: str) -> None:
-        self._voice_id = voice_id
+        AbstractTextToSpeech.voice_id.fset(self, voice_id)
         self._engine.setProperty("voice", voice_id)
 
     @AbstractTextToSpeech.is_slow.setter  # type: ignore
     @override  # inherit the docstring from the parent class
     def is_slow(self, is_slow: bool) -> None:
-        self._is_slow = is_slow
+        AbstractTextToSpeech.is_slow.fset(self, is_slow)
         if is_slow:
             self._engine.setProperty("rate", self.slow_speed)
         else:

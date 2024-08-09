@@ -33,7 +33,7 @@ source $HOME/ament/install/setup.bash
 
 ### On the desktop
 
-Clone stretchpy and run the install script:
+Clone Stretch AI and run the install script:
 
 ```
 ./install.sh
@@ -71,14 +71,14 @@ python src/robot_hw_python/robot_hw_python/remote/server.py
 ### On the Desktop
 
 ```
-conda activate stretchpy
+conda activate stretch_ai
 python -m stretch.app.pickup.run
 ```
 
 Often it's useful to add the `--reset` flag, which will make the robot BLINDLY move back to (0, 0, 0) - the location from which you started the ros2 launch files above -- before running an experiment,.
 
 ```
-conda activate stretchpy
+conda activate stretch_ai
 python -m stretch.app.pickup.run --reset
 ```
 

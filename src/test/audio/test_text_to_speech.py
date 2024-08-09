@@ -1,4 +1,14 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Standard Imports
+import argparse
 import logging
 import os
 from tempfile import NamedTemporaryFile
@@ -118,13 +128,33 @@ def test_text_to_speech(
                             f"Similarity for {full_filename} was {similarity}, "
                             f"below the threshold of {similarity_threshold}"
                         )
-    logger.info("All tests passed!")
+    if save:
+        logger.info("Saved the ground truth audio files. Now run the tests without --save.")
+    else:
+        logger.info("All tests passed!")
 
 
 if __name__ == "__main__":
-    # # Run this one-time to generate the ground-truth files. This may need to
-    # # be re-run from time-to-time to update the ground-truth, (e.g., if Google
-    # # updates their TTS engine).
-    # test_text_to_speech(save=True)
+    # Configure the arguments
+    parser = argparse.ArgumentParser(description="Test the text-to-speech engines.")
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Whether to save the generated audio files. This only needs to be done once.",
+    )
+    parser.add_argument(
+        "--run_google_cloud_engine",
+        action="store_true",
+        help="Whether to run the test for the Google Cloud engine.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Whether to enable verbose logs.",
+    )
+    args = parser.parse_args()
 
-    test_text_to_speech()
+    # Run the tests
+    test_text_to_speech(
+        save=args.save, run_google_cloud_engine=args.run_google_cloud_engine, verbose=args.verbose
+    )

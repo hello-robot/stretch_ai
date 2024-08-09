@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Standard imports
 import abc
 import logging
@@ -100,7 +109,7 @@ class AbstractTextToSpeech(abc.ABC):
         if voice_id in self._voice_ids:
             self._voice_id = voice_id
         else:
-            self._logger.error(f"Invalid voice ID: {voice_id}")
+            self._logger.error(f"Invalid voice ID: {voice_id}. Options: {self._voice_ids}")
 
     @property
     def is_slow(self) -> bool:
