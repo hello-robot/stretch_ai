@@ -129,7 +129,6 @@ def main(
 
         # Save out file
         if len(output_pkl_filename) > 0:
-            print(f"Write pkl to {output_pkl_filename}...")
             agent.voxel_map.write_to_pickle(output_pkl_filename)
     else:
         real_robot = False
@@ -174,6 +173,7 @@ def main(
                 instances = agent.get_instances_from_text(text, threshold=threshold)
             else:
                 _, instance = agent.get_instance_from_text(text)
+                instances = [instance]
 
             if len(instances) == 0:
                 logger.error("No matches found for query")
