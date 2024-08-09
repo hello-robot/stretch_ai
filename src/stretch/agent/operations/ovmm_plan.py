@@ -50,8 +50,14 @@ class OvmmPlanOperation(ManagedOperation):
 
     def go_to(self, object_name: str) -> bool:
         """Go to an object."""
-        self.manager.go_to_object(object_name)
-        return True
+        print(f"Going to {object_name}")
+        _, instance = self.agent.get_instance_from_text(object_name)
+
+        if self.show_instance_best_view:
+            instance.show_best_view(title=object_name)
+
+        # Move to the instance
+        return self.agent.move_to_instance(instance)
 
     def say(self, text: str) -> bool:
         """Say something."""
