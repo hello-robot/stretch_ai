@@ -26,6 +26,7 @@ class PlaceObjectOperation(ManagedOperation):
     show_place_in_voxel_grid: bool = False
     place_step_size: float = 0.25
     use_pitch_from_vertical: bool = True
+    verbose: bool = True
 
     def configure(
         self,
@@ -63,7 +64,8 @@ class PlaceObjectOperation(ManagedOperation):
 
         target = self.get_target()
         center_xyz = self.get_target_center()
-        print(" - Placing object on receptacle at", center_xyz)
+        if self.verbose:
+            print(" - Placing object on receptacle at", center_xyz)
 
         # Get the point cloud of the object and find distances to robot
         distances = (target.point_cloud[:, :2] - xyt[:2]).norm(dim=1)
@@ -71,8 +73,9 @@ class PlaceObjectOperation(ManagedOperation):
         idx = distances.argmin()
         # Get the point
         point = target.point_cloud[idx].cpu().numpy()
-        print(" - Closest point to robot is", point)
-        print(" - Distance to robot is", distances[idx])
+        if self.verbose:
+            print(" - Closest point to robot is", point)
+            print(" - Distance to robot is", distances[idx])
         # Compute distance to the center of the object
         distance = np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy())
         # Take a step towards the center of the object
@@ -80,10 +83,12 @@ class PlaceObjectOperation(ManagedOperation):
         point[:2] = point[:2] + (
             dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
         )
-        print(" - After taking a step towards the center of the object, we are at", point)
-        print(
-            " - Distance to the center of the object is", np.linalg.norm(point[:2] - center_xyz[:2])
-        )
+        if self.verbose:
+            print(" - After taking a step towards the center of the object, we are at", point)
+            print(
+                " - Distance to the center of the object is",
+                np.linalg.norm(point[:2] - center_xyz[:2]),
+            )
         return point
 
     def can_start(self) -> bool:
