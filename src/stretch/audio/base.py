@@ -109,7 +109,7 @@ class AbstractTextToSpeech(abc.ABC):
         if voice_id in self._voice_ids:
             self._voice_id = voice_id
         else:
-            self._logger.error(f"Invalid voice ID: {voice_id}")
+            self._logger.error(f"Invalid voice ID: {voice_id}. Options: {self._voice_ids}")
 
     @property
     def is_slow(self) -> bool:
