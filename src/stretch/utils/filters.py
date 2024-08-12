@@ -101,6 +101,14 @@ class TemporalFilter:
         return retval
 
     def get_latest_observation(self) -> Any:
+        """
+        Get the latest observation from the observation history.
+
+        Returns:
+        --------
+        Any
+            The latest observation from the observation history.
+        """
         observations = self.get_observations_from_history()
         if len(observations) == 0:
             return None

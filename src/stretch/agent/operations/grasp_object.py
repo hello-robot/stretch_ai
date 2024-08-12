@@ -281,7 +281,6 @@ class GraspObjectOperation(ManagedOperation):
             center_depth = servo.ee_depth[center_y, center_x] / 1000
 
             # Compute the center of the mask in image coords
-            # TODO: update this to use the mask centroid
             mask_center = self.observations.get_latest_centroid()
             if mask_center is None:
                 # if not aligned_once:
@@ -417,6 +416,30 @@ class GraspObjectOperation(ManagedOperation):
 
                     # Force to reacquire the target mask if we moved the camera too much
                     prev_target_mask = None
+
+                # safety checks
+                q = [
+                    base_x,
+                    0.0,
+                    0.0,
+                    lift,
+                    arm,
+                    0.0,
+                    0.0,
+                    wrist_pitch,
+                    0.0,
+                    0.0,
+                    0.0,
+                ]  # 11 DOF: see HelloStretchIdx
+
+                q = np.array(q)
+
+                ee_pos, ee_quat = self.robot_model.manip_fk(q)
+
+                while ee_pos[2] < 0.03:
+                    lift += 0.01
+                    q[HelloStretchIdx.LIFT] = lift
+                    ee_pos, ee_quat = self.robot_model.manip_fk(q)
 
                 print("tgt x =", base_x)
                 print(" lift =", lift)
