@@ -34,7 +34,6 @@
 import errno
 import math
 import os
-import pathlib
 import time
 
 import numpy as np

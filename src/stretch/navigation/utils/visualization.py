@@ -7,7 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import sys
 import time
 
 from stretch.navigation.orbslam import OrbSlam

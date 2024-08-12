@@ -10,7 +10,6 @@
 # license information maybe found below, if so.
 
 import rclpy
-import tf2_geometry_msgs
 import tf2_ros
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry

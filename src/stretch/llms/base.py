@@ -21,7 +21,6 @@ class AbstractPromptBuilder(ABC):
 
     def configure(self, **kwargs) -> str:
         """Configure the prompt with the given parameters, then return the prompt string."""
-        pass
 
     def __str__(self) -> str:
         """Return the system prompt string for an LLM."""
@@ -94,7 +93,6 @@ class AbstractLLMClient(ABC):
     @abstractmethod
     def __call__(self, command: str, verbose: bool = False):
         """Interact with the language model to generate a plan."""
-        pass
 
     def parse(self, content: str) -> List[Tuple[str, str]]:
         """parse into list"""

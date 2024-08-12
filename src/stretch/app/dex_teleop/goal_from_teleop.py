@@ -8,14 +8,10 @@
 # license information maybe found below, if so.
 
 import os
-import pprint as pp
-from multiprocessing import shared_memory
 
 import numpy as np
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
-import stretch.app.dex_teleop.webcam_teleop_interface as wt
-import stretch.motion.simple_ik as si
 
 
 class GoalFromMarkers:

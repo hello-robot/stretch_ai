@@ -36,7 +36,6 @@ class DiffDriveVelocityController(abc.ABC):
         """Contain execution logic, predict velocities for the left and right wheels. Expected to
         return true/false if we have reached this goal and the controller will be moving no
         farther."""
-        pass
 
 
 class DDVelocityControlNoplan(DiffDriveVelocityController):

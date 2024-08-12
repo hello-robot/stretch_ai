@@ -15,13 +15,9 @@
 # Based on Caelan Garrett's code from here: https://github.com/caelan/motion-planners/blob/master/motion_planners/rrt_connect.py
 
 import time
-from random import random
-from typing import Callable, List
-
-import numpy as np
 
 from stretch.motion.algo.rrt import RRT, TreeNode
-from stretch.motion.base import ConfigurationSpace, Node, Planner, PlanResult
+from stretch.motion.base import PlanResult
 
 
 class RRTConnect(RRT):

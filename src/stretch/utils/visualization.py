@@ -11,12 +11,11 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import skimage.morphology
 import torch
 from PIL import Image, ImageDraw, ImageFont
 

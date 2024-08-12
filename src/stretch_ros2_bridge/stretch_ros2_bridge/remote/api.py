@@ -17,17 +17,10 @@ import numpy as np
 import torch
 import trimesh.transformations as tra
 
-import stretch.motion.conversions as conversions
 from stretch.core.interfaces import Observations
 from stretch.core.robot import AbstractRobotClient, ControlMode
 from stretch.motion import RobotModel
-from stretch.motion.constants import (
-    STRETCH_DEMO_PREGRASP_Q,
-    STRETCH_NAVIGATION_Q,
-    STRETCH_POSTNAV_Q,
-    STRETCH_PREDEMO_Q,
-    STRETCH_PREGRASP_Q,
-)
+from stretch.motion.constants import STRETCH_NAVIGATION_Q, STRETCH_PREGRASP_Q
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import xyt2sophus
 

@@ -16,7 +16,6 @@ from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
-import cv2
 import numpy as np
 import zmq
 from termcolor import colored

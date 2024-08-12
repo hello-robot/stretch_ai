@@ -15,7 +15,7 @@
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Union
 
 import cv2
 import numpy as np
@@ -274,7 +274,7 @@ class Instance:
             ptc_fig: Plotly visualization of pointcloud
         """
         from pytorch3d.structures import Pointclouds
-        from pytorch3d.vis.plotly_vis import AxisArgs, plot_scene
+        from pytorch3d.vis.plotly_vis import AxisArgs
 
         from stretch.utils.bboxes_3d_plotly import plot_scene_with_bboxes
         from stretch.utils.data_tools.dict import update
