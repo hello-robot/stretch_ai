@@ -66,7 +66,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Observation memory
     observations = MaskTemporalFilter(
-        observation_history_window_size_secs=10.0, observation_history_window_size_n=3
+        observation_history_window_size_secs=5.0, observation_history_window_size_n=3
     )
 
     def configure(
@@ -75,6 +75,7 @@ class GraspObjectOperation(ManagedOperation):
         servo_to_grasp: bool = False,
         show_servo_gui: bool = True,
         show_point_cloud: bool = False,
+        reset_observation: bool = False,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -88,6 +89,7 @@ class GraspObjectOperation(ManagedOperation):
         self.servo_to_grasp = servo_to_grasp
         self.show_servo_gui = show_servo_gui
         self.show_point_cloud = show_point_cloud
+        self.reset_observation = reset_observation
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
@@ -202,7 +204,9 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(lifted_joint_state, head=constants.look_at_ee, blocking=True)
         return True
 
-    def visual_servo_to_object(self, instance: Instance, max_duration: float = 120.0) -> bool:
+    def visual_servo_to_object(
+        self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 5
+    ) -> bool:
         """Use visual servoing to grasp the object."""
 
         self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
@@ -223,6 +227,8 @@ class GraspObjectOperation(ManagedOperation):
         # Track the last object location and the number of times we've failed to grasp
         current_xyz = None
         failed_counter = 0
+        not_moving_count = 0
+        q_last = np.array([0.0 for _ in range(11)])  # 11 DOF, HelloStretchIdx
 
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
@@ -335,7 +341,10 @@ class GraspObjectOperation(ManagedOperation):
                 self.pregrasp_open_loop(current_xyz, distance_from_object=0.05)
                 pregrasp_done = True
             else:
-
+                # check not moving threshold
+                if not_moving_count > max_not_moving_count:
+                    success = self._grasp()
+                    break
                 # If we have a target mask, compute the median depth of the object
                 # Otherwise we will just try to grasp if we are close enough - assume we lost track!
                 if target_mask is not None:
@@ -454,6 +463,14 @@ class GraspObjectOperation(ManagedOperation):
                 prev_lift = lift
                 time.sleep(self.expected_network_delay)
 
+                # check not moving
+                if np.linalg.norm(q - q_last) < 0.05:  # TODO: tune
+                    not_moving_count += 1
+                else:
+                    not_moving_count = 0
+
+                q_last = q
+
         if self.show_servo_gui:
             cv2.destroyAllWindows()
         return success
@@ -499,6 +516,14 @@ class GraspObjectOperation(ManagedOperation):
 
         if not self._success:
             self.grasp_open_loop(object_xyz)
+
+        # clear observations
+        if self.reset_observation:
+            self.observations.clear_history()
+            self.manager.reset_object_plans()
+            self.manager.instance_memory.pop_global_instance(
+                env_id=0, global_instance_id=self.manager.current_object.global_id
+            )
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.1):
         xyt = self.robot.get_base_pose()

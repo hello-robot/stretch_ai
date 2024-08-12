@@ -114,6 +114,9 @@ class TemporalFilter:
             return None
         return observations[-1]
 
+    def clear_history(self) -> None:
+        self._observation_history = []
+
 
 class MaskTemporalFilter(TemporalFilter):
     @staticmethod
