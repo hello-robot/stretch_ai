@@ -424,6 +424,11 @@ class RobotAgent:
         self._update_scene_graph()
         return self.scene_graph
 
+    @property
+    def manipulation_radius(self) -> float:
+        """Return the manipulation radius"""
+        return self._manipulation_radius
+
     def plan_to_instance_for_manipulation(
         self,
         instance: Instance,
