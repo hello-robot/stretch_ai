@@ -462,7 +462,7 @@ class GraspObjectOperation(ManagedOperation):
                 time.sleep(self.expected_network_delay)
 
                 # check not moving
-                if np.linalg.norm(q - q_last) < 0.05:  # TODO: tune
+                if np.linalg.norm(q - q_last) < 0.02:  # TODO: tune
                     not_moving_count += 1
                 else:
                     not_moving_count = 0
