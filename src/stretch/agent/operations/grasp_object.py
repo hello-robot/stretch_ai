@@ -203,7 +203,7 @@ class GraspObjectOperation(ManagedOperation):
         return True
 
     def visual_servo_to_object(
-        self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 5
+        self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 10
     ) -> bool:
         """Use visual servoing to grasp the object."""
 
