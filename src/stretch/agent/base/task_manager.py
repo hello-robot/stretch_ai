@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 import abc
-from typing import Optional, Union
+from typing import Union
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.mapping.instance import Instance

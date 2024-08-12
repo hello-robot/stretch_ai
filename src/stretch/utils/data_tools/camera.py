@@ -16,16 +16,6 @@
 Load data and visualize it
 """
 
-import json
-import os
-import pickle
-
-import numpy as np
-import open3d as o3d
-import torch
-import trimesh
-import trimesh.transformations as tra
-
 
 class Camera:
     """Camera object storing information about a single camera.

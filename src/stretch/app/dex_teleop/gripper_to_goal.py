@@ -12,8 +12,6 @@ import math
 import os
 import pprint as pp
 import time
-import timeit
-from functools import partial
 from multiprocessing import shared_memory
 from typing import Optional
 
@@ -21,7 +19,6 @@ import numpy as np
 import stretch_body.robot as rb
 import urchin as urdf_loader
 from scipy.spatial.transform import Rotation
-from stretch_body.robot_params import RobotParams
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.robot_move as rm

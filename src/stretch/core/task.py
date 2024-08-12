@@ -53,7 +53,6 @@ class Operation(abc.ABC):
 
     def configure(self, **kwargs) -> None:
         """Configure the operation with the given keyword arguments. By default this just does nothing."""
-        pass
 
     @abc.abstractmethod
     def can_start(self) -> bool:

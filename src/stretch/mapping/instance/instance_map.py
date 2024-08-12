@@ -12,37 +12,25 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import json
 import logging
 import os
 import shutil
 import timeit
-from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 import cv2
 import numpy as np
 import torch
-from PIL import Image
 from torch import Tensor
 
-from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance, InstanceView
-from stretch.mapping.instance.matching import (
-    Bbox3dOverlapMethodEnum,
-    ViewMatchingConfig,
-    dot_product_similarity,
-    get_bbox_similarity,
-    get_similarity,
-)
+from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
 from stretch.perception.encoders import ClipEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
     box3d_nms,
-    box3d_overlap_from_bounds,
     box3d_volume_from_bounds,
-    get_box_bounds_from_verts,
     get_box_verts_from_bounds,
 )
 from stretch.utils.image import dilate_or_erode_mask, interpolate_image
@@ -859,7 +847,7 @@ class InstanceMemory:
         return cropped_image
 
     def save(self, save_dir: Union[Path, str], env_id: int):
-        import shutil
+        pass
 
         # if self.debug_visualize:
         #     shutil.rmtree(self.log_dir, ignore_errors=True)

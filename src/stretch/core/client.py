@@ -9,12 +9,9 @@
 
 import argparse
 import sys
-import time
-from copy import deepcopy
 from typing import Optional
 
 import cv2
-import numpy as np
 import zmq
 
 import stretch.utils.loop_stats as lt

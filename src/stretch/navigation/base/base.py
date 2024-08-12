@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List
 
 import numpy as np

@@ -14,7 +14,6 @@ from datetime import datetime
 
 import cv2
 import cv2.aruco as aruco
-import numpy as np
 import webcam as wc
 import webcam_calibration_aruco_board as ab
 import yaml

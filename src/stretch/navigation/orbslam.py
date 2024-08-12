@@ -7,12 +7,10 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import copy
 import threading
 import time
-from typing import List, Tuple
+from typing import List
 
-import cv2
 import numpy as np
 import orbslam3
 

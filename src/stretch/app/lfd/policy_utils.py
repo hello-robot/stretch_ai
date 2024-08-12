@@ -15,8 +15,6 @@ from lerobot.common.policies.diffusion_depth.modeling_diffusion import Diffusion
 from lerobot.common.policies.vqbet.modeling_vqbet import VQBeTPolicy
 from torchvision.transforms import v2
 
-import stretch.app.dex_teleop.dex_teleop_parameters as dt
-
 SUPPORTED_POLICIES = ["act", "diffusion", "diffusion_depth", "vqbet"]
 
 

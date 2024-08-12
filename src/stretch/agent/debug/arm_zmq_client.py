@@ -13,9 +13,7 @@ import timeit
 
 import click
 import cv2
-import numpy as np
 from home_robot.agent.multitask.zmq_client import HomeRobotZmqClient
-from home_robot.utils.image import Camera
 
 
 class TestArmZmqClient(HomeRobotZmqClient):

@@ -7,9 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import zmq
 
-from stretch.llms.base import AbstractLLMClient, AbstractPrompt
+from stretch.llms.base import AbstractLLMClient
 
 
 class SelfHostedRemoteClient(AbstractLLMClient):

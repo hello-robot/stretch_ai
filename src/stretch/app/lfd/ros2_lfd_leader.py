@@ -266,7 +266,6 @@ class ROS2LfdLeader:
 
         finally:
             print("Exiting...")
-            pass
 
 
 if __name__ == "__main__":

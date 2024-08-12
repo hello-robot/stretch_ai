@@ -46,21 +46,15 @@ import math
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import warnings
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import plotly.graph_objects as go
 import torch
 from plotly.subplots import make_subplots
-from pytorch3d.renderer import (
-    HeterogeneousRayBundle,
-    RayBundle,
-    TexturesAtlas,
-    TexturesVertex,
-    ray_bundle_to_ray_points,
-)
+from pytorch3d.renderer import HeterogeneousRayBundle, RayBundle
 from pytorch3d.renderer.camera_utils import camera_to_eye_at_up
-from pytorch3d.renderer.cameras import CamerasBase, get_world_to_view_transform
-from pytorch3d.structures import Meshes, Pointclouds, join_meshes_as_scene
+from pytorch3d.renderer.cameras import CamerasBase
+from pytorch3d.structures import Meshes, Pointclouds
 from pytorch3d.vis.plotly_vis import (
     AxisArgs,
     Lighting,
@@ -71,7 +65,6 @@ from pytorch3d.vis.plotly_vis import (
     _is_ray_bundle,
     _scale_camera_to_bounds,
     _update_axes_bounds,
-    get_camera_wireframe,
 )
 from torch import Tensor
 

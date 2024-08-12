@@ -8,7 +8,6 @@
 # license information maybe found below, if so.
 
 import numpy as np
-import pyaudio
 import whisper
 
 from .base import AbstractSpeechToText

@@ -9,7 +9,6 @@
 
 from typing import Optional
 
-import numpy as np
 from termcolor import colored
 
 from stretch.agent.base.task_manager import TaskManager
