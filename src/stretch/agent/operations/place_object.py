@@ -95,7 +95,7 @@ class PlaceObjectOperation(ManagedOperation):
         object_xyz = self.sample_placement_position(self.robot.get_base_pose())
         start = self.robot.get_base_pose()
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
-        if dist > self.agent.manipulation_radius:
+        if dist > self.agent.manipulation_radius + self.place_step_size:
             self.error(f"Object is too far away to grasp: {dist}")
             return False
         self.cheer(f"Object is probably close enough to place upon: {dist}")
