@@ -137,20 +137,37 @@ def demo_main(
         show_paths(bool): display paths after planning
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
-    policy_path = f"/lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model"
+    cabinet_policy_path = f"/lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model"
+    pickup_policy_path = f"/lerobot/outputs/train/2024-08-07/18-55-17_stretch_real_diffusion_default/checkpoints/100000/pretrained_model"
 
-    leader = ROS2LfdLeader(
+    cabinet_leader = ROS2LfdLeader(
         robot=robot,
         verbose=False,
         data_dir="./data",
         user_name="Jensen",
-        task_name="navigate_and_open_cabinet",
+        task_name="open_cabinet",
         env_name="kitchen",
         save_images=False,
         teleop_mode="base_x",
         record_success=False,
         policy_name="diffusion",
-        policy_path=policy_path,
+        policy_path=cabinet_policy_path,
+        device="cuda",
+        force_execute=True,
+    )
+
+    pickup_leader = ROS2LfdLeader(
+        robot=robot,
+        verbose=False,
+        data_dir="./data",
+        user_name="Jensen",
+        task_name="pickup_all_purpose",
+        env_name="kitchen",
+        save_images=False,
+        teleop_mode="base_x",
+        record_success=False,
+        policy_name="diffusion",
+        policy_path=pickup_policy_path,
         device="cuda",
         force_execute=True,
     )
@@ -202,15 +219,20 @@ def demo_main(
 
     # Run the actual procedure
     try:
+
+        robot.switch_to_navigation_mode()
+        robot.move_to_nav_posture()
+
         demo.update()
         current = robot.get_base_pose()
-        task = np.array([0.70500136, 0.34254823, 0.85715184])
-
+        cabinet_task = np.array([0.70500136, 0.34254823, 0.85715184])
+        pickup_task = np.array([0.79377347, -0.15, 1.57324166])
         planner = demo.planner
-        res = planner.plan(current, task)
+        res = planner.plan(current, cabinet_task)
         print("RES: ", res.success)
 
         if res.success:
+            print("- Going to cabinet")
             for i, pt in enumerate(res.trajectory):
                 print("-", i, pt.state)
 
@@ -227,11 +249,38 @@ def demo_main(
         print("- Starting policy evaluation")
         robot.switch_to_manipulation_mode()
         robot.move_to_manip_posture()
-        leader.run(display_received_images=True)
+        cabinet_leader.run(display_received_images=True)
+        print("- Ending policy evaluation")
+
+        robot.switch_to_navigation_mode()
+        robot.move_to_nav_posture()
+        current = robot.get_base_pose()
+        res = planner.plan(current, pickup_task)
+        print("RES: ", res.success)
+
+        if res.success:
+            print("- Going to pickup location")
+            for i, pt in enumerate(res.trajectory):
+                print("-", i, pt.state)
+
+            # Follow the planned trajectory
+            robot.execute_trajectory(
+                [pt.state for pt in res.trajectory],
+                pos_err_threshold=pos_err_threshold,
+                rot_err_threshold=rot_err_threshold,
+            )
+        else:
+            print("[ERROR] NO PLAN COULD BE GENERATED")
+        demo.update()
+
+        print("- Starting policy evaluation")
+        robot.switch_to_manipulation_mode()
+        robot.move_to_manip_posture()
+        pickup_leader.run(display_received_images=True)
         print("- Ending policy evaluation")
 
         print("- Task finished, going home...")
-        demo.go_home()
+        # demo.go_home()
 
     except Exception as e:
         raise (e)

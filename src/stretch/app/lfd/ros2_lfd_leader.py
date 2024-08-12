@@ -247,10 +247,16 @@ class ROS2LfdLeader:
 
                 # Stop condition for forced execution
                 PITCH_STOP_THRESHOLD = -1.0
-                if self._force and (joint_actions["joint_wrist_pitch"] < PITCH_STOP_THRESHOLD):
-                    print(
-                        f"[LEADER] Stopping policy execution because wrist pitch {joint_actions['joint_wrist_pitch']} < {PITCH_STOP_THRESHOLD}"
-                    )
+
+                stop = False
+                PROGRESS_STOP_THRESHOLD = 0.95
+                if len(action) == 10:
+                    stop = action[9] > PROGRESS_STOP_THRESHOLD
+                else:
+                    stop = joint_actions["joint_wrist_pitch"] < PITCH_STOP_THRESHOLD
+
+                if self._force and stop:
+                    print(f"[LEADER] Stopping policy execution")
                     self._need_to_write = True
 
                 if self._need_to_write:
