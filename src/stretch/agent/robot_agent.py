@@ -211,20 +211,25 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        instances = self.voxel_map.instances.get_instances()
-        activations = []
-        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
-        for ins, instance in enumerate(instances):
+        encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
+        best_instance = None
+        best_activation = -1.0
+        for instance in self.voxel_map.get_instances():
+            ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
             activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
-            activations.append(activation.item())
-            if verbose:
+            if activation.item() > best_activation:
+                best_activation = activation.item()
+                best_instance = instance
+                if verbose:
+                    print(
+                        f" - Instance {ins} has activation {activation.item()} > {best_activation}"
+                    )
+            elif verbose:
                 print(f" - Instance {ins} has activation {activation.item()}")
-        idx = np.argmax(activations)
-        best_instance = instances[idx]
-        return activations[idx], best_instance
+        return best_activation, best_instance
 
     def get_instances_from_text(
         self,
@@ -254,13 +259,13 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        instances = self.voxel_map.instances.get_instances()
         activations = []
         matches = []
         # Encode the text query and move it to the same device as the instance embeddings
-        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
+        encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
         # Compute the cosine similarity between the text query and each instance embedding
-        for ins, instance in enumerate(instances):
+        for instance in self.voxel_map.get_instances():
+            ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
