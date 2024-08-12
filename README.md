@@ -78,14 +78,19 @@ Debug tools:
 
 Finally:
 
-- [Dex Teleop](#dex-teleop-for-data-collection) - Teleoperate the robot to collect demonstration data.
+- [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
+- [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 
 ## Installation
 
 On both your PC and your robot, clone and install the package:
 
-```basha
-git clone git@github.com:hello-robot/stretch_ai.git --recursive 
+```bash
+git clone git@github.com:hello-robot/stretch_ai.git --recursive
+
+# Install
+cd stretch_ai
+pip install ./src
 ```
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
@@ -190,7 +195,7 @@ python -m stretch.app.timing --iterations 1000
 
 ### Print Joint States
 
-To make sure the robot is  connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
+To make sure the robot is connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
 
 ```bash
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
@@ -294,26 +299,13 @@ python -m stretch.app.voice_chat
 
 ### Dex Teleop for Data Collection
 
-Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. It has two components:
-
-- `follower` runs on the robot, publishes video and state information, and receives goals from a large remote server
-- `leader` runs on a GPU enabled desktop or laptop, where you can run a larger neural network.
-
-To start it, on the robot, run:
+Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit).
 
 ```bash
-python -m stretch.app.dex_teleop.follower
-# You can run it in fast mode once you are comfortable with execution
-python -m stretch.app.dex_teleop.follower --fast
+python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
 ```
 
-On a remote, GPU-enabled laptop or workstation connected to the [dex telop setup](https://github.com/hello-robot/stretch_dex_teleop):
-
-```bash
-python -m stretch.app.dex_teleop.leader
-```
-
-[Read the Dex Teleop documentation](docs/dex_teleop.md) for more details.
+[Read the data collection documentation](docs/data_collection.md) for more details.
 
 ### Automatic 3d Mapping
 
@@ -366,7 +358,7 @@ python -m stretch.app.pickup --reset
 Clone this repo on your Stretch and PC, and install it locally using pip with the "editable" flag:
 
 ```
-cd stretchpy/src
+cd stretch_ai/src
 pip install -e .[dev]
 pre-commit install
 ```
@@ -378,7 +370,7 @@ Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for m
 The code is organized as follows. Inside the core package `src/stretch`:
 
 - [core](src/stretch/core) is basic tools and interfaces
-- [app](src/stretch/app)  contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
+- [app](src/stretch/app) contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
 - [motion](src/stretch/motion) contains motion planning tools, including [algorithms](src/stretch/motion/algo) like RRT.
 - [mapping](src/stretch/mapping) is broken up into tools for voxel (3d / ok-robot style), instance mapping
 - [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
@@ -396,7 +388,7 @@ See the [update guide](docs/update.md) for more information. There is an [update
 
 ### Docker
 
-Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you  can run the docker build process with:
+Docker build and other instructions are located in the [docker guide](docs/docker.md). Generally speaking, from the root of the project, you can run the docker build process with:
 
 ```
 docker build -t stretch-ai_cuda-11.8:latest .
