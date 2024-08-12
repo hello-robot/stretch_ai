@@ -13,7 +13,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 

@@ -16,7 +16,6 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 import open3d as o3d
-import torch
 import trimesh.transformations as tra
 
 

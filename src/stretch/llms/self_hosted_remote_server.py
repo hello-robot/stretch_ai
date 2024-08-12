@@ -9,7 +9,7 @@
 
 import zmq
 
-from stretch.llms.base import AbstractLLMClient, AbstractPrompt
+from stretch.llms.base import AbstractLLMClient
 
 
 class SelfHostedRemoteServer:

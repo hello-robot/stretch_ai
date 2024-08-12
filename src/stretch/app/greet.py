@@ -12,7 +12,6 @@
 import stretch.utils.logger as logger
 from stretch.agent.operations import WaveOperation
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.emote import EmoteManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 

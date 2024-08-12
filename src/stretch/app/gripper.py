@@ -12,7 +12,7 @@
 import click
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import Parameters, get_parameters
+from stretch.core import get_parameters
 
 
 @click.command()

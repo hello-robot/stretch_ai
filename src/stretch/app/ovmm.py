@@ -12,29 +12,16 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import datetime
-import pickle
-import sys
-import time
-import timeit
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 import click
-import matplotlib.pyplot as plt
-import numpy as np
 
 # Mapping and perception
-import stretch.utils.depth as du
-import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import AbstractRobotClient, Parameters, get_parameters
+from stretch.core import get_parameters
 from stretch.llms.openai_client import OpenaiClient
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
-from stretch.utils.dummy_stretch_client import DummyStretchClient
-
-from .keyboard_teleop import getch, key_pressed
 
 
 @click.command()

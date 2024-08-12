@@ -12,9 +12,7 @@ import tempfile
 import timeit
 
 import click
-import torch
 from termcolor import colored
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from stretch.audio import AudioRecorder
 from stretch.audio.speech_to_text import WhisperSpeechToText

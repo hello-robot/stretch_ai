@@ -13,7 +13,6 @@
 import threading
 import time
 import timeit
-from typing import Optional
 
 import click
 import cv2

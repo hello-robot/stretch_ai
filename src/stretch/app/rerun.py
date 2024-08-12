@@ -12,11 +12,8 @@
 import time
 
 import click
-import cv2
-import numpy as np
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.motion import HelloStretchIdx
 
 
 @click.command()

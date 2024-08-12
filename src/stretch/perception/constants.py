@@ -100,7 +100,6 @@ class SemanticCategoryMapping(ABC):
     @abstractmethod
     def reset_instance_id_to_category_id(self, env):
         """Reset instance id. Env should be a simulation environment."""
-        pass
 
     @property
     @abstractmethod
@@ -768,7 +767,6 @@ class HM3DtoHSSD28Indoor(SemanticCategoryMapping):
 
     def reset_instance_id_to_category_id(self, env):
         """Reset habitat instance ids. Env should be a simulation environment."""
-        pass
 
     @property
     def instance_id_to_category_id(self) -> np.ndarray:

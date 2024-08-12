@@ -13,10 +13,6 @@ import logging
 import os
 from tempfile import NamedTemporaryFile
 
-# Third-party imports
-import librosa
-import numpy as np
-
 # Local imports
 from stretch.audio.text_to_speech import (
     GoogleCloudTextToSpeech,

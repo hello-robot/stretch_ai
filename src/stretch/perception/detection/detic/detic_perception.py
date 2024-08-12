@@ -17,7 +17,7 @@ import argparse
 import pathlib
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import cv2
 import numpy as np

@@ -11,29 +11,24 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import copy
 import datetime
-import os
-import pickle
 import random
 import time
 import timeit
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import clip
 import numpy as np
 import torch
 from loguru import logger
 from PIL import Image
-from torchvision import transforms
 
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
-from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder

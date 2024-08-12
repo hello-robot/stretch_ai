@@ -13,8 +13,6 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
-from PIL import Image
-from scipy.spatial.transform import Rotation
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation

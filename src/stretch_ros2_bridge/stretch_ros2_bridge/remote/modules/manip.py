@@ -18,16 +18,10 @@ from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
 
 import stretch.motion.conversions as conversions
-from stretch.core.state import ManipulatorBaseParams
 from stretch.motion.constants import STRETCH_HOME_Q
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
-from stretch.utils.geometry import (
-    pose_global_to_base_xyt,
-    posquat2sophus,
-    sophus2posquat,
-    xyt2sophus,
-)
+from stretch.utils.geometry import pose_global_to_base_xyt, posquat2sophus, sophus2posquat
 
 from .abstract import AbstractControlModule, enforce_enabled
 
