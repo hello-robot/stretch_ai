@@ -87,7 +87,7 @@ class PlaceObjectOperation(ManagedOperation):
             print(" - After taking a step towards the center of the object, we are at", point)
             print(
                 " - Distance to the center of the object is",
-                np.linalg.norm(point[:2] - center_xyz[:2]),
+                np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy()),
             )
         return point
 
