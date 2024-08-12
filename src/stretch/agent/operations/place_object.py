@@ -81,6 +81,9 @@ class PlaceObjectOperation(ManagedOperation):
             dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
         )
         print(" - After taking a step towards the center of the object, we are at", point)
+        print(
+            " - Distance to the center of the object is", np.linalg.norm(point[:2] - center_xyz[:2])
+        )
         return point
 
     def can_start(self) -> bool:
