@@ -94,12 +94,13 @@ class RobotAgent:
         self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
+        self._voxel_size = parameters["voxel_size"]
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
         else:
             self.voxel_map = SparseVoxelMap(
-                resolution=parameters["voxel_size"],
+                resolution=self._voxel_size,
                 local_radius=parameters["local_radius"],
                 obs_min_height=parameters["obs_min_height"],
                 obs_max_height=parameters["obs_max_height"],
@@ -178,6 +179,11 @@ class RobotAgent:
     def feature_match_threshold(self) -> float:
         """Return the feature match threshold"""
         return self._is_match_threshold
+
+    @property
+    def voxel_size(self) -> float:
+        """Return the voxel size in meters"""
+        return self._voxel_size
 
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
