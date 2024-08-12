@@ -15,7 +15,6 @@
 
 import abc
 import threading
-from typing import Callable
 
 # import rospy
 
@@ -88,12 +87,10 @@ class AbstractControlModule(abc.ABC):
     @abc.abstractmethod
     def _enable_hook(self) -> bool:
         """Called when interface is enabled."""
-        pass
 
     @abc.abstractmethod
     def _disable_hook(self) -> bool:
         """Called when interface is disabled."""
-        pass
 
     def enable(self) -> bool:
         """Allows methods decorated with 'enforce_enabled' to be run."""

@@ -7,11 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import Optional, Union
+from typing import Optional
 
-import numpy as np
-
-import stretch.utils.logger as logger
 from stretch.agent.base import TaskManager
 from stretch.agent.operations import (
     GoToNavOperation,
@@ -25,7 +22,6 @@ from stretch.agent.operations import (
 )
 from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
-from stretch.mapping.instance import Instance
 
 
 class MultiPickupManager(TaskManager):

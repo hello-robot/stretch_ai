@@ -11,12 +11,10 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import os
 import random
 
 import numpy as np
 import pytest
-from scipy.spatial.transform import Rotation as R
 
 from stretch.motion.algo.rrt import RRT
 from stretch.motion.algo.rrt_connect import RRTConnect

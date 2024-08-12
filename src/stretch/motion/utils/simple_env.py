@@ -11,8 +11,6 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
