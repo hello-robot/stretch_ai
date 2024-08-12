@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # (c) 2024 Hello Robot by Atharva Pusalkar
 #
 # This source code is licensed under the MIT license found in the
@@ -6,18 +15,12 @@
 
 import argparse
 import os
-import pathlib
-import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import cv2
 import numpy as np
 import torch
-from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog
-from detectron2.engine.defaults import DefaultPredictor
-from detectron2.utils.visualizer import ColorMode, Visualizer
 from ultralytics import YOLO
 
 from stretch.core.abstract_perception import PerceptionModule

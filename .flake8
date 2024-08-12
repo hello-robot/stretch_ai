@@ -1,12 +1,9 @@
 [flake8]
-ignore = E203, E266, W503, F401
+count = True
+select = E9,F63,F7,F82,F401
+show_source = True
+statistics = True
 max-line-length = 100
 max-complexity = 25
-# select = B,C,E,F,W,T4,B9
-
-# Ignored rules
-#   E203: whitespace
-#   E266: too many ###
-#   E501: line too long
-#   F403: imported but not used
-#   F401: line breaks before binary operators
+per-file-ignores =
+    */__init__.py: F401

@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -17,8 +26,7 @@ import numpy as np
 
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
-from stretch.mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
-from stretch.mapping.voxel import plan_to_frontier
+from stretch.mapping import SparseVoxelMap
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 from stretch.utils.geometry import xyt_global_to_base
 

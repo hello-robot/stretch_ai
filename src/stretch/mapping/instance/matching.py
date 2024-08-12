@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List, Optional, Union
@@ -10,8 +19,6 @@ from stretch.utils.bboxes_3d import (
     box3d_overlap_from_bounds,
     box3d_volume_from_bounds,
 )
-
-from .core import Instance, InstanceView
 
 
 class Bbox3dOverlapMethodEnum(Enum):

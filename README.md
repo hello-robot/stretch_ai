@@ -5,7 +5,19 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-Tested with Python 3.9/3.10/3.11. **Development Notice**: The code in this repo is a work-in-progress. The code in this repo may be unstable, since we are actively conducting development. Since we have performed limited testing, you may encounter unexpected behaviors.
+*This repository is currently under active development and is subject to change.*
+
+It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in real homes. It contains code for:
+
+- grasping
+- manipulation
+- mapping
+- navigation
+- LLM agents
+- text to speech and speech to text
+- visualization and debugging
+
+This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
 ## Quickstart
 
@@ -62,7 +74,7 @@ Then, first try these apps to make sure connections are working properly:
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
-- [Gripper](#gripper-tool) - Open and close the gripper.
+- [Gripper](#use-the-gripper) - Open and close the gripper.
 - [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
 - [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
@@ -166,7 +178,9 @@ export ROBOT_IP=192.168.1.15
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
 ```
 
-### Keyboard Teleop
+### Debugging Tools
+
+#### Keyboard Teleop
 
 Use the WASD keys to move the robot around.
 
@@ -179,7 +193,7 @@ python -m stretch.app.keyboard_teleop --headless
 
 Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
 
-### Test Timing
+#### Test Timing
 
 Test the timing of the robot's control loop over the network. This will print out the time it takes to send a command to the robot and receive a response. It will show a histogram after a fixed number of iterations given by the `--iterations` flag (default is 500).
 
@@ -193,7 +207,7 @@ python -m stretch.app.timing --headless
 python -m stretch.app.timing --iterations 1000
 ```
 
-### Print Joint States
+#### Print Joint States
 
 To make sure the robot is connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
 
@@ -207,7 +221,7 @@ You can also print out just one specific joint. For example, to just get arm ext
 python -m stretch.app.print_joint_states --joint arm
 ```
 
-### Camera Info
+#### Camera Info
 
 Print out information about the cameras on the robot for debugging purposes:
 
@@ -224,7 +238,7 @@ Servo EE RGB shape: (240, 320, 3) Servo EE Depth shape: (240, 320)
 Observation RGB shape: (640, 480, 3) Observation Depth shape: (640, 480)
 ```
 
-### Visualization and Streaming Video
+#### Visualization and Streaming Video
 
 Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
 
@@ -244,7 +258,7 @@ You can visualize gripper Aruco markers as well; the aruco markers can be used t
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
 ```
 
-### Show Point Cloud
+#### Show Point Cloud
 
 Show a joint point cloud from the end effector and head cameras. This will open an Open3d window with the point cloud, aggregated between the two cameras and displayed in world frame. It will additionally show the map's origin with a small coordinate axis; the blue arrow points up (z), the red arrow points right (x), and the green arrow points forward (y).
 
@@ -258,7 +272,7 @@ You can use the `--reset` flag to put the robot into its default manipulation po
 python -m stretch.app.show_point_cloud --reset
 ```
 
-### Gripper Tool
+#### Use the Gripper
 
 Open and close the gripper:
 
@@ -274,7 +288,7 @@ python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
 python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
 ```
 
-### Rerun Web Server
+#### Rerun Web Server
 
 We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
 
@@ -321,7 +335,7 @@ python -m stretch.app.mapping --show-intermediate-maps --show-final-map
 
 The flag `--show-intermediate-maps` shows the 3d map after each large motion (waypoint reached), and `--show-final-map` shows the final map after exploration is done.
 
-It will record a PCD/PKL file which can be interpreted with the `read_sparse_voxel_map` script; see below.
+It will record a PCD/PKL file which can be interpreted with the `read_map` script; see below.
 
 Another useful flag when testing is the `--reset` flag, which will reset the robot to the starting position of (0, 0, 0). This is done blindly before any execution or mapping, so be careful!
 
@@ -330,13 +344,13 @@ Another useful flag when testing is the `--reset` flag, which will reset the rob
 You can test the voxel code on a captured pickle file:
 
 ```bash
-python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
 ```
 
 Optional open3d visualization of the scene:
 
 ```bash
-python -m stretch.app.read_sparse_voxel_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
 ### Pickup Objects
@@ -395,3 +409,13 @@ docker build -t stretch-ai_cuda-11.8:latest .
 ```
 
 See the [docker guide](docs/docker.md) for more information and troubleshooting advice.
+
+## Acknowledgements
+
+Parts of this codebase were derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project, and is licensed under the [MIT license](META_LICENSE). We thank the Meta team for their contributions.
+
+The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is based on the [OK robot](https://github.com/ok-robot/ok-robot) project's [Robot Controller](https://github.com/NYU-robot-learning/robot-controller/), and is licensed under the [Apache 2.0 license](src/stretch_ros2_bridge/LICENSE).
+
+## License
+
+This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information.

@@ -1,10 +1,17 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import errno
 import math
 import os
 import pprint as pp
 import time
-import timeit
-from functools import partial
 from multiprocessing import shared_memory
 from typing import Optional
 
@@ -12,7 +19,6 @@ import numpy as np
 import stretch_body.robot as rb
 import urchin as urdf_loader
 from scipy.spatial.transform import Rotation
-from stretch_body.robot_params import RobotParams
 
 import stretch.app.dex_teleop.dex_teleop_parameters as dt
 import stretch.app.dex_teleop.robot_move as rm

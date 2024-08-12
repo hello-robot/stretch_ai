@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -6,7 +15,6 @@
 
 import abc
 import threading
-from typing import Callable
 
 # import rospy
 
@@ -79,12 +87,10 @@ class AbstractControlModule(abc.ABC):
     @abc.abstractmethod
     def _enable_hook(self) -> bool:
         """Called when interface is enabled."""
-        pass
 
     @abc.abstractmethod
     def _disable_hook(self) -> bool:
         """Called when interface is disabled."""
-        pass
 
     def enable(self) -> bool:
         """Allows methods decorated with 'enforce_enabled' to be run."""

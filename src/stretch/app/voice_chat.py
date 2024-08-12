@@ -1,11 +1,18 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import os
 import tempfile
 import timeit
 
 import click
-import torch
 from termcolor import colored
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from stretch.audio import AudioRecorder
 from stretch.audio.speech_to_text import WhisperSpeechToText

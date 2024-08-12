@@ -1,10 +1,17 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 from typing import Tuple
 
-import cv2
 import numpy as np
 import pyrealsense2 as rs
 
-from stretch.drivers.d405_without_pyrealsense import get_depth_scale, pixel_from_3d, pixel_to_3d
 from stretch.drivers.realsense_base import Realsense
 
 exposure_keywords = ["low", "medium", "auto"]

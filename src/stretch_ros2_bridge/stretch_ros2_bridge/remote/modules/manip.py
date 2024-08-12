@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -9,16 +18,10 @@ from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
 
 import stretch.motion.conversions as conversions
-from stretch.core.state import ManipulatorBaseParams
 from stretch.motion.constants import STRETCH_HOME_Q
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
-from stretch.utils.geometry import (
-    pose_global_to_base_xyt,
-    posquat2sophus,
-    sophus2posquat,
-    xyt2sophus,
-)
+from stretch.utils.geometry import pose_global_to_base_xyt, posquat2sophus, sophus2posquat
 
 from .abstract import AbstractControlModule, enforce_enabled
 

@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import time
 
 import click
@@ -9,9 +18,9 @@ from stretch.agent.operations import GraspObjectOperation, UpdateOperation
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import Parameters, get_parameters
-from stretch.core.task import Operation, Task
-from stretch.perception import create_semantic_sensor, get_encoder
+from stretch.core import get_parameters
+from stretch.core.task import Task
+from stretch.perception import create_semantic_sensor
 
 
 def get_task(robot, demo, target_object):

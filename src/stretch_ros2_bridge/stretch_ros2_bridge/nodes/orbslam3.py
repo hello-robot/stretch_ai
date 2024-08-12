@@ -1,20 +1,25 @@
 #!/usr/bin/env python
 
-import math
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import os
 import sys
-import time
 from tempfile import NamedTemporaryFile
 
-import matplotlib.pyplot as plt
 import numpy as np
 import orbslam3
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
+from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
-from scipy.spatial.transform import Rotation as R
 from sensor_msgs.msg import CameraInfo, Image, Imu
 from tf2_ros import TransformBroadcaster
 from tf_transformations import quaternion_from_euler

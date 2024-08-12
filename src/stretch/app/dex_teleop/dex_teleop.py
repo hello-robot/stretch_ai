@@ -1,11 +1,18 @@
-import argparse
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import pprint as pp
 
 import dex_teleop_parameters as dt
 import goal_from_teleop as gt
 import gripper_to_goal as gg
 import loop_timer as lt
-import numpy as np
 import simple_ik as si
 import webcam_teleop_interface as wt
 

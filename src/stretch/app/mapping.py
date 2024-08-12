@@ -1,20 +1,22 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # (c) 2024 Hello Robot by Chris Paxton
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import datetime
-import sys
-import time
-import timeit
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 import click
-import matplotlib.pyplot as plt
-import numpy as np
 
 # Mapping and perception
-import stretch.utils.depth as du
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import AbstractRobotClient, Parameters, get_parameters

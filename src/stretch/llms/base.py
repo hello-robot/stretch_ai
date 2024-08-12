@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -12,7 +21,6 @@ class AbstractPromptBuilder(ABC):
 
     def configure(self, **kwargs) -> str:
         """Configure the prompt with the given parameters, then return the prompt string."""
-        pass
 
     def __str__(self) -> str:
         """Return the system prompt string for an LLM."""
@@ -85,7 +93,6 @@ class AbstractLLMClient(ABC):
     @abstractmethod
     def __call__(self, command: str, verbose: bool = False):
         """Interact with the language model to generate a plan."""
-        pass
 
     def parse(self, content: str) -> List[Tuple[str, str]]:
         """parse into list"""

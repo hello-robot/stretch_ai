@@ -1,5 +1,11 @@
-import logging
-from typing import Optional
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
 
 from .executor import AbstractTextToSpeech, TextToSpeechExecutor, TextToSpeechOverrideBehavior
 from .google_cloud_engine import GoogleCloudTextToSpeech
@@ -24,7 +30,7 @@ def get_text_to_speech(name: str) -> AbstractTextToSpeech:
         The text-to-speech engine.
     """
     name = name.lower()
-    if name == "google":
+    if name == "google_cloud":
         return GoogleCloudTextToSpeech()
     if name == "gtts":
         return GTTSTextToSpeech()

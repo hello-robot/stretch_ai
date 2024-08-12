@@ -8,6 +8,13 @@ Follow [instructions](../README.md#Installation) for installation of stretch_ai 
 
 - Advanced installation is needed if you also want to train/evaluate policies with [LfD](learning_from_demonstration.md), see [advanced installation](../README.md#advanced-installation-pc-only)
 
+- Linux instructions: if using a Linux PC, run `install_dex_teleop.sh` to update `udev` rules
+
+  ```bash
+  cd /path/to/stretch_ai/scripts
+  ./install_dex_teleop.sh
+  ```
+
 - [Camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
 ### On Robot:

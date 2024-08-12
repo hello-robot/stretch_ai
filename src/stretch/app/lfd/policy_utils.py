@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import numpy as np
 import torch
 from lerobot.common.policies.act.modeling_act import ACTPolicy
@@ -5,8 +14,6 @@ from lerobot.common.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from lerobot.common.policies.diffusion_depth.modeling_diffusion import DiffusionPolicy as DPdepth
 from lerobot.common.policies.vqbet.modeling_vqbet import VQBeTPolicy
 from torchvision.transforms import v2
-
-import stretch.app.dex_teleop.dex_teleop_parameters as dt
 
 SUPPORTED_POLICIES = ["act", "diffusion", "diffusion_depth", "vqbet"]
 

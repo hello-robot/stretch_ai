@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -91,7 +100,6 @@ class SemanticCategoryMapping(ABC):
     @abstractmethod
     def reset_instance_id_to_category_id(self, env):
         """Reset instance id. Env should be a simulation environment."""
-        pass
 
     @property
     @abstractmethod
@@ -759,7 +767,6 @@ class HM3DtoHSSD28Indoor(SemanticCategoryMapping):
 
     def reset_instance_id_to_category_id(self, env):
         """Reset habitat instance ids. Env should be a simulation environment."""
-        pass
 
     @property
     def instance_id_to_category_id(self) -> np.ndarray:

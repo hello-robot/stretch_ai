@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -9,7 +18,6 @@ This file contains versions of the helpers in point_cloud.py that use pytorch di
 to allow operations to be done on the GPU for speed.
 """
 
-import warnings
 from typing import List, Optional, Union
 
 import cv2
