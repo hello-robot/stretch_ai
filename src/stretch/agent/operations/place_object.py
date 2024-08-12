@@ -103,6 +103,11 @@ class PlaceObjectOperation(ManagedOperation):
         object_xyz = self.sample_placement_position(self.robot.get_base_pose())
         start = self.robot.get_base_pose()
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
+        # Check if the object is close enough to place upon
+        # We need to be within the manipulation radius + place_step_size + voxel_size
+        # Manipulation radius is the distance from the base to the end effector - this is what we actually plan for
+        # We take a step of size place_step_size towards the object center
+        # Base location sampling is often checked against voxel map - so we can have an error of up to voxel_size
         if dist > self.agent.manipulation_radius + self.place_step_size + self.agent.voxel_size:
             self.error(
                 f"Object is too far away to grasp: {dist} vs {self.agent.manipulation_radius + self.place_step_size}"
