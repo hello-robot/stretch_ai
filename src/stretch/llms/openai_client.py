@@ -22,10 +22,7 @@ class OpenaiClient(AbstractLLMClient):
 
     model_choices = [
         "gpt-3.5-turbo",
-        "gpt-3.5-turbo-davinci",
-        "gpt-4.0-turbo",
-        "gpt-4.0-mini",
-        "gpt-4o-turbo",
+        "gpt-4o",
         "gpt-4o-mini",
     ]
 

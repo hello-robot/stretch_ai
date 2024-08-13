@@ -91,6 +91,7 @@ class OkRobotPromptBuilder(AbstractPromptBuilder):
             specifics = copy.copy(PROMPT_SPECIFICS)
             specifics = specifics.replace("$OBJECTS", self.objects)
             specifics = specifics.replace("$LOCATIONS", self.locations)
-            self.prompt = PROMPT_INTRO + specifics + PROMPT_EXAMPLES
+            prompt_str = PROMPT_INTRO + specifics + PROMPT_EXAMPLES
         else:
-            self.prompt = PROMPT_INTRO + PROMPT_EXAMPLES
+            prompt_str = PROMPT_INTRO + PROMPT_EXAMPLES
+        return prompt_str
