@@ -21,6 +21,7 @@ import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
+from stretch.app.dex_teleop.hand_tracker import HandTracker
 from stretch.core import get_parameters
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
@@ -44,6 +45,7 @@ class ZmqRos2Leader:
         teleop_mode: str = "base_x",
         record_success: bool = False,
         platform: str = "linux",
+        use_clutch: bool = False,
     ):
         self.robot = robot
         self.camera = None
@@ -56,6 +58,7 @@ class ZmqRos2Leader:
         self.record_success = record_success
         self.platform = platform
         self.verbose = verbose
+        self.use_clutch = use_clutch
 
         self.left_handed = left_handed
 
@@ -374,6 +377,19 @@ class ZmqRos2Leader:
 
     def run(self, display_received_images):
         loop_timer = lt.LoopStats("dex_teleop_leader")
+
+        if self.use_clutch:
+            hand_tracker = HandTracker(left_clutch=(not self.left_handed))
+
+        clutched = False
+        clutch_debounce_threshold = 3
+        change_clutch_count = 0
+
+        # loop stuff
+        check_hand_frame_skip = 3
+        i = 0
+        max_i = 100  # arbitrary number of iterations
+
         try:
             while True:
                 loop_timer.mark_start()
@@ -443,10 +459,27 @@ class ZmqRos2Leader:
                     break
 
                 # Raw input from teleop
-                markers = self.webcam_aruco_detector.process_next_frame()
+                markers, color_image = self.webcam_aruco_detector.process_next_frame()
 
                 # Set up commands to be sent to the robot
                 goal_dict = self.goal_from_markers.get_goal_dict(markers)
+
+                if self.use_clutch:
+                    if i % check_hand_frame_skip == 0:
+                        hand_prediction = hand_tracker.run_detection(color_image)
+                        check_clutched = hand_tracker.check_clutched(hand_prediction)
+
+                        if check_clutched != clutched:
+                            change_clutch_count += 1
+                        else:
+                            change_clutch_count = 0
+
+                        if change_clutch_count >= clutch_debounce_threshold:
+                            clutched = not clutched
+                            change_clutch_count = 0
+
+                    i += 1
+                    i = i % max_i
 
                 if goal_dict is not None:
                     # Convert goal dict into a quaternion
@@ -457,7 +490,7 @@ class ZmqRos2Leader:
                     # Goal dict that is not worth processing
                     goal_dict = {"valid": False}
 
-                if goal_dict["valid"]:
+                if goal_dict["valid"] and not clutched:
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
 
                     # Format to standard action space
@@ -544,6 +577,7 @@ if __name__ == "__main__":
     parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
+    parser.add_argument("-c", "--clutch", action="store_true")
     args = parser.parse_args()
 
     # Parameters
@@ -572,6 +606,7 @@ if __name__ == "__main__":
         teleop_mode=args.teleop_mode,
         record_success=args.record_success,
         platform=args.platform,
+        use_clutch=args.clutch,
     )
 
     try:
