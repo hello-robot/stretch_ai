@@ -103,11 +103,6 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             else:
                 assert False, "Failed to find a plan to any acceptable instance for {query}"
 
-    assert navigation_space.is_valid(
-        start_pos, verbose=True
-    ), f"Start position is not valid: {start_pos}"
-    breakpoint()
-
     # Plan to the frontier
     print("Plan to the frontier")
     res = agent.plan_to_frontier(start_pos)

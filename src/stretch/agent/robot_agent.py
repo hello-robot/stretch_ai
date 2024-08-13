@@ -941,7 +941,6 @@ class RobotAgent:
         verbose: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
-        start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
         # if start is not valid move backwards a bit
         if not start_is_valid:
