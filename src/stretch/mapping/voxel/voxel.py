@@ -511,7 +511,6 @@ class SparseVoxelMap(object):
             t0 = timeit.default_timer()
             instance = instance_image.clone()
 
-            breakpoint()
             self.instances.process_instances_for_env(
                 env_id=0,
                 instance_seg=instance,
