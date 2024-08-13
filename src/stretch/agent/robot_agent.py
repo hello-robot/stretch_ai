@@ -619,7 +619,9 @@ class RobotAgent:
                 return True
         return False
 
-    def move_to_any_instance(self, matches: List[Tuple[int, Instance]], max_try_per_instance=10):
+    def move_to_any_instance(
+        self, matches: List[Tuple[int, Instance]], max_try_per_instance=10, verbose: bool = False
+    ) -> bool:
         """Check instances and find one we can move to"""
         self.current_state = "NAV_TO_INSTANCE"
         self.robot.move_to_nav_posture()
@@ -627,7 +629,8 @@ class RobotAgent:
         start_is_valid = self.space.is_valid(start, verbose=True)
         start_is_valid_retries = 5
         while not start_is_valid and start_is_valid_retries > 0:
-            print(f"Start {start} is not valid. back up a bit.")
+            if verbose:
+                print(f"Start {start} is not valid. back up a bit.")
             self.robot.navigate_to([-0.1, 0, 0], relative=True)
             # Get the current position in case we are still invalid
             start = self.robot.get_base_pose()
@@ -935,13 +938,15 @@ class RobotAgent:
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
+        verbose: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
         # if start is not valid move backwards a bit
         if not start_is_valid:
-            print("Start not valid. back up a bit.")
+            if verbose:
+                print("Start not valid. back up a bit.")
             return PlanResult(False, reason="invalid start state")
 
         # sample a goal

@@ -64,6 +64,15 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
     print("# Instances =", len(voxel_map.get_instances()))
     assert len(voxel_map.get_instances()) > 0, "No instances found in voxel map"
 
+    assert agent.get_navigation_space() is not None, "Failed to create navigation space"
+    navigation_space = agent.get_navigation_space()
+    assert navigation_space is not None, "Failed to create navigation space"
+    assert navigation_space.is_valid(start_pos), f"Start position is not valid: {start_pos}"
+
+    # Show the map
+    if debug:
+        voxel_map.show(orig=np.zeros(3), xyt=start_pos, footprint=dummy_robot.get_footprint())
+
     for query, expected_result in queries:
         instances = agent.get_ranked_instances(query)
         # Query the SVM - make sure we can find motion plan to a cardboard box
@@ -92,10 +101,6 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             else:
                 assert False, "Failed to find a plan to any acceptable instance for {query}"
 
-    # Show the map
-    if debug:
-        voxel_map.show(orig=np.zeros(3), xyt=start_pos, footprint=dummy_robot.get_footprint())
-
     # Plan to the frontier
     print("Plan to the frontier")
     res = agent.plan_to_frontier(start_pos)
@@ -123,4 +128,4 @@ def test_svm_large():
 if __name__ == "__main__":
     debug = True
     test_svm_small()
-    test_svm_large()
+    # test_svm_large()

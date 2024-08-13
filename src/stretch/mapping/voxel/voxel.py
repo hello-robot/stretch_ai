@@ -1102,12 +1102,10 @@ class SparseVoxelMap(object):
     ):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
 
-        print("get geometries")
         # get geometries so we can use them
         geoms = self._get_open3d_geometries(
             instances, orig, norm, xyt=xyt, footprint=footprint, add_planner_visuals=planner_visuals
         )
-        print("draw geometries")
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)
 
