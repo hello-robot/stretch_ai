@@ -24,6 +24,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+import stretch.utils.logger as logger
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
 from stretch.mapping import SparseVoxelMap
@@ -305,6 +306,23 @@ def main(
                         xyt=goal,
                         footprint=footprint,
                     )
+
+        if len(query) > 0:
+            print("-" * 80)
+            print(f"Querying instances that correspond with '{query}'")
+            score, instance_id, instance = agent.get_ranked_instances(query)[0]
+            print("Found instance:", instance.global_id, "with score", score)
+            if show_instances:
+                plt.imshow(instance.get_best_view().get_image())
+                plt.title(f"Instance {instance.global_id} = {query}")
+                plt.axis("off")
+                plt.show()
+
+        if show_instances and ((not test_sampling) and len(query) == 0):
+            logger.warning(
+                "show_instances is set but test_sampling is not set. Ignoring show_instances."
+            )
+
         if test_sampling:
             print("-" * 80)
             print("Test sampling.")
