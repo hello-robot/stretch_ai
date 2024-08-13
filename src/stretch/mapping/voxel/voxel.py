@@ -643,7 +643,7 @@ class SparseVoxelMap(object):
         else:
             raise NotImplementedError("unsupported data type for tensor:", tensor)
 
-    def read_from_pickle(self, filename: str, num_frames: int = -1):
+    def read_from_pickle(self, filename: str, num_frames: int = -1) -> bool:
         """Read from a pickle file as above. Will clear all currently stored data first."""
         self.reset_cache()
         if isinstance(filename, str):
@@ -658,6 +658,7 @@ class SparseVoxelMap(object):
             compressed = data["compressed"]
         read_observations = False
         if "obs" in data:
+            logger.warning("Reading old format with full observations")
             read_observations = True
 
         # Processing to handle older files that actually saved the whole observation object
@@ -665,6 +666,10 @@ class SparseVoxelMap(object):
             instance_data = data["obs"]
         else:
             instance_data = data["instance"]
+
+        if len(instance_data) == 0:
+            logger.error("No instance data found in file")
+            return False
 
         for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
             # TODO: compression of observations
@@ -683,6 +688,15 @@ class SparseVoxelMap(object):
             # Handle the case where we dont actually want to load everything
             if num_frames > 0 and i >= num_frames:
                 break
+            if camera_pose is None:
+                logger.warning(f"Skipping frame {i} with None camera pose")
+                continue
+            if K is None:
+                logger.warning(f"Skipping frame {i} with None intrinsics")
+                continue
+            if base_pose is None:
+                logger.warning(f"Skipping frame {i} with None base pose")
+                continue
 
             camera_pose = self.fix_data_type(camera_pose)
             if compressed:
@@ -705,6 +719,7 @@ class SparseVoxelMap(object):
                 instance_image=instance,
                 camera_K=K,
             )
+        return True
 
     def recompute_map(self):
         """Recompute the entire map from scratch instead of doing incremental updates.

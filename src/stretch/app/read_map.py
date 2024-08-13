@@ -134,7 +134,10 @@ def main(
         voxel_map = agent.voxel_map
         if not pkl_is_svm:
             print("Reading from pkl file of raw observations...")
-            voxel_map.read_from_pickle(input_path, num_frames=frame)
+            res = voxel_map.read_from_pickle(input_path, num_frames=frame)
+            if not res:
+                print("Failed to read from pickle file. Quitting.")
+                return
     else:
         agent = None
         voxel_map = SparseVoxelMap(resolution=voxel_size)
