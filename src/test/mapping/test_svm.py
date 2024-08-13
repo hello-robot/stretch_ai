@@ -21,8 +21,10 @@ TEST_PLANNER_FILENAME = "planner.yaml"
 SMALL_DATA_START = np.array([4.5, 1.4, 0.0])
 LARGE_DATA_START = np.array([4.5, 1.4, 0.0])
 
+easy_query = "cardboard box"
 
-def _eval_svm(filename: str, start_pos: np.ndarray) -> None:
+
+def _eval_svm(filename: str, start_pos: np.ndarray, query: str = "object description") -> None:
 
     print("==== SVM Evaluation ====")
     print(f"Loading voxel map from {filename}...")
@@ -56,13 +58,17 @@ def _eval_svm(filename: str, start_pos: np.ndarray) -> None:
     print("# Instances =", len(voxel_map.get_instances()))
     assert len(voxel_map.get_instances()) > 0, "No instances found in voxel map"
 
+    # Query the SVM - make sure we can find motion plan to a cardboard box
+    score, instance_id, instance = agent.get_ranked_instances(query)[0]
+    print(f"Query: {query} Score: {score} Instance ID: {instance_id}")
+
 
 def test_svm_small():
-    _eval_svm(SMALL_DATA_FILE, SMALL_DATA_START)
+    _eval_svm(SMALL_DATA_FILE, SMALL_DATA_START, easy_query)
 
 
 def test_svm_large():
-    _eval_svm(LARGE_DATA_FILE, LARGE_DATA_START)
+    _eval_svm(LARGE_DATA_FILE, LARGE_DATA_START, easy_query)
 
 
 if __name__ == "__main__":
