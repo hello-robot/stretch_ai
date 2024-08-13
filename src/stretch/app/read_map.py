@@ -168,6 +168,7 @@ def main(
             rpc_stub=None,
             grasp_client=None,
             voxel_map=loaded_voxel_map,
+            use_instance_memory=(run_segmentation or show_instances),
         )
         voxel_map = agent.voxel_map
         if not pkl_is_svm:
