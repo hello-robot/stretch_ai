@@ -7,6 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import numpy as np
+
 from stretch.agent import RobotAgent
 from stretch.core import Parameters
 from stretch.utils.config import Config
@@ -15,6 +17,8 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 SMALL_DATA_FILE = "hq_small.pkl"
 LARGE_DATA_FILE = "hq_large.pkl"
 TEST_PLANNER_FILENAME = "planner.yaml"
+
+SMALL_DATA_START = np.array([4.5, 1.4, 0.0])
 
 
 def _eval_svm(filename: str):

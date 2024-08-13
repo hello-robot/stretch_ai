@@ -373,6 +373,17 @@ You can also re-run perception with the `--run-segmentation` flag and provide a 
  python -m stretch.app.read_map -i hq_small.pkl --export hq_small_v2.pkl --run-segmentation
 ```
 
+You can test motion planning, frontier exploration, etc., as well. Use the `--start` flag to set the robot's starting position:
+
+```bash
+# Test motion planning
+python -m stretch.app.read_map -i hq_small.pkl --test-planning --start 4.5,1.3,2.1
+# Test planning to frontiers with current parameters file
+python -m stretch.app.read_map -i hq_small.pkl --test-plan-to-frontier --start 4.0,1.4,0.0
+# Test sampling movement to objects
+python -m stretch.app.read_map -i hq_small.pkl --test-sampling --start 4.5,1.4,0.0
+```
+
 ### Pickup Objects
 
 This will have the robot move around the room, explore, and pickup toys in order to put them in a box.

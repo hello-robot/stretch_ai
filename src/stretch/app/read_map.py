@@ -114,6 +114,13 @@ def plan_to_deltas(xyt0, plan):
     default=0,
     help="GPU device id for the semantic sensor",
 )
+@click.option(
+    "--start",
+    "-x",
+    type=str,
+    default="0,0,0",
+    help="start pose for planning as a tuple X,Y,Theta in meters and radians",
+)
 def main(
     input_path,
     config_path,
@@ -132,6 +139,7 @@ def main(
     export: str = "",
     run_segmentation: bool = False,
     device_id: int = 0,
+    start: str = "0,0,0",
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
@@ -185,14 +193,8 @@ def main(
             resolution=voxel_size, use_instance_memory=(run_segmentation or show_instances)
         )
 
-    # TODO: read this from file or something
-    x0 = np.array([0, 0, 0])
-    # x0 = np.array([1, 0, 0])
-    # x0 = np.array([2.85963704, 0.77726015, 1.95671275])  # stretch_output_2024-05-24_13-28-26.pkl
-    # x0 = np.array([2.6091852, 3.2328937, 0.8379814])
-    # x0 = np.array([3.1000001, 0.0, 4.2857614])
-    # x0 = np.array([0.0, -0.0, 1.5707968])
-    # x0 = np.array([1.1499997, -0.60000074, -1.4168407])
+    x0 = np.array([float(x) for x in start.split(",")])
+    assert len(x0) == 3, "start pose must be 3 values: x, y, theta"
     start_xyz = [x0[0], x0[1], 0]
 
     if agent is not None:
