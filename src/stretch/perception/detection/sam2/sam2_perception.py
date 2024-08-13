@@ -71,25 +71,8 @@ class SAM2Perception(PerceptionModule):
             checkpoint_file: path to model checkpoint
             verbose: whether to print out debug information
         """
-
-        # Building MobileSAM predictor
-        # checkpoint = torch.load(checkpoint_file)
-        # self.mobile_sam = setup_model()
-        # self.mobile_sam.load_state_dict(checkpoint, strict=True)
-        # device = gpu_device_id
-        # if device is None:
-        #     device = DEVICE
-        # self.mobile_sam.to(device=device)
-        # self.custom_vocabulary = custom_vocabulary
-        # self.sam_predictor = SamPredictor(self.mobile_sam)
-        # final_mask_generator_kwargs = copy.deepcopy(_DEFAULT_MASK_GENERATOR_KWARGS)
-        # final_mask_generator_kwargs = dict_update(
-        #     final_mask_generator_kwargs, mask_generator_kwargs
-        # )
-        # self.mask_generator = SamAutomaticMaskGenerator(
-        #     model=self.mobile_sam, **final_mask_generator_kwargs
-        # )
-
+        # TODO: set model arg in config
+        # Using the smallest model now.
         checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_tiny.pt"
         model_cfg = "sam2_hiera_t.yaml"
         self.sam2_predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
@@ -183,19 +166,9 @@ class SAM2Perception(PerceptionModule):
                 [filter_depth(mask, depth, depth_threshold) for mask in masks]
             )
         semantic_map, instance_map = overlay_masks(masks, np.zeros(len(masks)), (height, width))
-
-        # # detect open-vocab labels
-        # embedding = encoder.encode_image(cropped_image * instance_mask).to(
-        #     cropped_image.device
-        # )
-
-        # semantic = semantic_map.astype(int)
-        # instance = instance_map.astype(int)
-        # if obs.task_observations is None:
-        task_observations = dict()
         
+        task_observations = dict()
         task_observations["instance_map"] = instance_map
-
         # random filling object classes -- right now using cups
         task_observations["instance_classes"] = np.full(len(masks), 31)
         task_observations["instance_scores"] = np.ones(len(masks))

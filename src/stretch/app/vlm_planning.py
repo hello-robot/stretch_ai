@@ -133,7 +133,6 @@ def images_to_video(image_list, output_path, fps=30):
 @click.option("--show-svm", "-s", type=bool, is_flag=True, default=False)
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
-@click.option("--pkl-not-obs", type=bool, is_flag=True, default=False)
 def main(
     input_path,
     config_path,
