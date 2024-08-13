@@ -27,6 +27,7 @@ queries = [
 ]
 
 similarity_threshold = 0.05
+debug = False
 
 
 def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> None:
@@ -91,6 +92,10 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             else:
                 assert False, "Failed to find a plan to any acceptable instance for {query}"
 
+    # Show the map
+    if debug:
+        voxel_map.show(orig=np.zeros(3), xyt=start_pos, footprint=dummy_robot.get_footprint())
+
     # Plan to the frontier
     print("Plan to the frontier")
     res = agent.plan_to_frontier(start_pos)
@@ -116,5 +121,6 @@ def test_svm_large():
 
 
 if __name__ == "__main__":
+    debug = True
     test_svm_small()
     test_svm_large()
