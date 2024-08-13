@@ -41,8 +41,11 @@ jobs:
     - name: Install dependencies and code
       run: |
         # ./install.sh -y --no-remove --no-submodules
+        # Install the core package
         python -m pip install -e ./src[dev]
+        # Separate step to avoid some issues
         python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
+        # Install the tools for linting and testing
         python -m pip install mypy flake8 pytest 
     ## Run pre-commit and try to apply fixes
     - name: Set up pre-commit cache
