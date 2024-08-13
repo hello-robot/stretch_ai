@@ -27,11 +27,13 @@ import numpy as np
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
 from stretch.mapping import SparseVoxelMap
+from stretch.perception import create_semantic_sensor
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 from stretch.utils.geometry import xyt_global_to_base
 
 
 def plan_to_deltas(xyt0, plan):
+    """Print the deltas between each node in the generated motion plan."""
     tol = 1e-6
     for i, node in enumerate(plan.trajectory):
         xyt1 = node.state
@@ -90,6 +92,28 @@ def plan_to_deltas(xyt0, plan):
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
 @click.option("--query", "-q", type=str, default="")
+@click.option(
+    "--export",
+    "-e",
+    type=str,
+    default="",
+    help="export path to save a new compressed copy of the PKL file",
+)
+@click.option(
+    "--run-segmentation",
+    "-r",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="run segmentation on the saved input data and update the voxel map",
+)
+@click.option(
+    "--device-id",
+    "-d",
+    type=int,
+    default=0,
+    help="GPU device id for the semantic sensor",
+)
 def main(
     input_path,
     config_path,
@@ -105,6 +129,9 @@ def main(
     try_to_plan_iter: int = 10,
     show_instances: bool = False,
     query: str = "",
+    export: str = "",
+    run_segmentation: bool = False,
+    device_id: int = 0,
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
@@ -119,10 +146,21 @@ def main(
     else:
         loaded_voxel_map = None
 
+    print("- Load parameters")
+    parameters = get_parameters(config_path)
+
+    if run_segmentation:
+        print("- Preparing perception pipeline")
+        semantic_sensor = create_semantic_sensor(
+            parameters=parameters,
+            device_id=device_id,
+            verbose=False,
+        )
+    else:
+        semantic_sensor = None
+
     dummy_robot = DummyStretchClient()
     if len(config_path) > 0:
-        print("- Load parameters")
-        parameters = get_parameters(config_path)
         agent = RobotAgent(
             dummy_robot,
             parameters,
@@ -134,7 +172,9 @@ def main(
         voxel_map = agent.voxel_map
         if not pkl_is_svm:
             print("Reading from pkl file of raw observations...")
-            res = voxel_map.read_from_pickle(input_path, num_frames=frame)
+            res = voxel_map.read_from_pickle(
+                input_path, num_frames=frame, perception=semantic_sensor
+            )
             if not res:
                 print("Failed to read from pickle file. Quitting.")
                 return
@@ -310,6 +350,10 @@ def main(
                     agent.get_plan_from_vlm(current_pose=x0, show_plan=True)
                 except KeyboardInterrupt:
                     break
+
+        if len(export) > 0:
+            print("Exporting to", export)
+            voxel_map.write_to_pickle(export, compress=True)
 
 
 if __name__ == "__main__":

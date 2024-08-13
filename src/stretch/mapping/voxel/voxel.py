@@ -33,6 +33,7 @@ from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
+from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
@@ -579,7 +580,6 @@ class SparseVoxelMap(object):
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
-        data["obs"] = []
         data["instance"] = []
 
         # Add a print statement with use of this code
@@ -612,8 +612,6 @@ class SparseVoxelMap(object):
                 data["depth"].append(frame.depth)
 
             data["feats"].append(frame.feats)
-            # TODO: compression of Observations
-            # data["obs"].append(frame.obs)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -627,6 +625,7 @@ class SparseVoxelMap(object):
         data["compressed"] = compress
         print("Dumping to pickle...")
         with open(filename, "wb") as f:
+            print(data)
             pickle.dump(data, f)
 
     def fix_data_type(self, tensor) -> torch.Tensor:
@@ -643,7 +642,9 @@ class SparseVoxelMap(object):
         else:
             raise NotImplementedError("unsupported data type for tensor:", tensor)
 
-    def read_from_pickle(self, filename: str, num_frames: int = -1) -> bool:
+    def read_from_pickle(
+        self, filename: str, num_frames: int = -1, perception: Optional[OvmmPerception] = None
+    ) -> bool:
         """Read from a pickle file as above. Will clear all currently stored data first."""
         self.reset_cache()
         if isinstance(filename, str):
@@ -662,7 +663,8 @@ class SparseVoxelMap(object):
             read_observations = True
 
         # Processing to handle older files that actually saved the whole observation object
-        if read_observations:
+        if read_observations and len(data["obs"]) > 0:
+            breakpoint()
             instance_data = data["obs"]
         else:
             instance_data = data["instance"]
@@ -706,10 +708,20 @@ class SparseVoxelMap(object):
             depth = self.fix_data_type(depth).float()
             if feats is not None:
                 feats = self.fix_data_type(feats)
-            if read_observations:
-                instance = self.fix_data_type(instance.instance)
+
             base_pose = self.fix_data_type(base_pose)
+
+            # Handle instance processing - if we have a perception model we can use it to predict the instance image
+            # We can also just use the instance image if it was saved
+            if perception is not None:
+                _, instance = perception.predict_segmentation(
+                    rgb=rgb, depth=depth, base_pose=base_pose
+                )
+            elif read_observations:
+                instance = instance.instance
             instance = self.fix_data_type(instance)
+
+            # Add to the map
             self.add(
                 camera_pose=camera_pose,
                 rgb=rgb,
