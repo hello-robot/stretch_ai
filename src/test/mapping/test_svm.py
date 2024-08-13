@@ -79,7 +79,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             # plt.show()
             assert score < similarity_threshold, f"Found instance with positive score for {query}"
 
-        if expected_result:
+        if expected_result and possible:
             # Try motion planning to matching instances
             for i, (score, instance_id, instance) in enumerate(instances):
                 if score < similarity_threshold:
@@ -89,8 +89,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
                 if res.success:
                     break
             else:
-                if possible:
-                    assert False, "Failed to find a plan to any acceptable instance for {query}"
+                assert False, "Failed to find a plan to any acceptable instance for {query}"
 
 
 def test_svm_small():
