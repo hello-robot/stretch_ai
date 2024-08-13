@@ -49,6 +49,8 @@ class InstanceView:
     """ mask: mask of instance in the current (uncropped) image """
     image_instance_id: Optional[int] = None
     """ID of this instance in the image"""
+    visual_feat: Optional[Tensor] = None
+    """ visual_feat: features of instance capturing visual information only (e.g., dinov2) """
 
     # Detection info
     global_instance_id: Optional[int] = None
@@ -149,9 +151,12 @@ class Instance:
             return None
         return int(self.category_id)
 
-    def get_image_embedding(self, aggregation_method="max", normalize: bool = True):
+    def get_image_embedding(self, aggregation_method="max", normalize: bool = True, use_visual_feat: bool = False):
         """Get the combined image embedding across all views"""
-        view_embeddings = [view.embedding for view in self.instance_views]
+        if use_visual_feat:
+            view_embeddings = [view.visual_feat for view in self.instance_views]
+        else:
+            view_embeddings = [view.embedding for view in self.instance_views]
         if len(view_embeddings) > 0 and view_embeddings[0] is None:
             return [None] * len(view_embeddings)
         # Create one tensor for all of these

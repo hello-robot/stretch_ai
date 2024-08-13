@@ -59,23 +59,10 @@ class OvmmPerception:
                 confidence_threshold=confidence_threshold,
                 **module_kwargs,
             )
-        elif self._detection_module == "grounded_sam":
-            from home_robot.perception.detection.grounded_sam import GroundedSAMPerception
+        elif self._detection_module == "sam2":
+            from stretch.perception.detection.sam2 import SAM2Perception
 
-            self._segmentation = GroundedSAMPerception(
-                custom_vocabulary=".",
-                sem_gpu_id=gpu_device_id,
-                verbose=verbose,
-                **module_kwargs,
-            )
-        elif self._detection_module == "mobile_sam":
-            from home_robot.perception.detection.grounded_sam import SAMPerception
-
-            self._segmentation = SAMPerception(
-                custom_vocabulary=".",
-                verbose=verbose,
-                **module_kwargs,
-            )
+            self._segmentation = SAM2Perception()
         elif self._detection_module == "yolo":
             from stretch.perception.detection.yolo.yolo_perception import YoloPerception
 

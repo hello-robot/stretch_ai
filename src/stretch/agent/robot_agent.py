@@ -143,6 +143,7 @@ class RobotAgent:
                         "instance_memory/min_percent_for_instance_view", 0.2
                     ),
                     "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
+                    "use_visual_feat": parameters.get("use_visual_feat", False),
                 },
                 prune_detected_objects=parameters.get("prune_detected_objects", False),
             )
