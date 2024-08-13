@@ -49,7 +49,7 @@ from stretch.perception import create_semantic_sensor
 @click.option(
     "--match_method",
     type=click.Choice(["class", "feature"]),
-    default="feature",
+    default="class",
     help="Method to match objects to pick up. Options: class, feature.",
     show_default=True,
 )
