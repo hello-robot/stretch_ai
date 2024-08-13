@@ -95,7 +95,16 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
     print("Plan to the frontier")
     res = agent.plan_to_frontier(start_pos)
     print(f"Plan to the frontier = {res.success}")
-    assert res.success, "Failed to plan to the frontier"
+    assert res.success, f"Failed to plan to the frontier: {res.reason}"
+
+    # Test deletion
+    print("Test deletion")
+    for query, expected_result in queries:
+        if not expected_result:
+            continue
+
+        # Just get one instance
+        instances = agent.get_ranked_instances(query)[0]
 
 
 def test_svm_small():

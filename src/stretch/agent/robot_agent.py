@@ -942,7 +942,7 @@ class RobotAgent:
         # if start is not valid move backwards a bit
         if not start_is_valid:
             print("Start not valid. back up a bit.")
-            return False
+            return PlanResult(False, reason="invalid start state")
 
         # sample a goal
         if random_goals:
