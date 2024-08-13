@@ -882,24 +882,16 @@ class SparseVoxelMap(object):
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), rgb.detach().cpu().numpy())
         return open3d.geometry.KDTreeFlann(pcd)
 
-    def show(
-        self, instances: bool = True, backend: str = "open3d", **backend_kwargs
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def show(self, instances: bool = True, **backend_kwargs) -> Tuple[np.ndarray, np.ndarray]:
         """Display the aggregated point cloud."""
-        if backend == "open3d":
-            return self._show_open3d(instances, **backend_kwargs)
-        elif backend == "pytorch3d":
-            return self._show_pytorch3d(instances, **backend_kwargs)
-        else:
-            raise NotImplementedError(f"Unknown backend {backend}, must be 'open3d' or 'pytorch3d")
+        if instances:
+            assert self.use_instance_memory, "must have instance memory to show instances"
+        return self._show_open3d(instances, **backend_kwargs)
 
     def get_xyz_rgb(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return xyz and rgb of the current map"""
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
         return points, rgb
-
-    def _show_pytorch3d(self, instances: bool = True, mock_plot: bool = False, **plot_scene_kwargs):
-        print("SparseVoxelMap::_show_pytorch_3d: Warning! pytorch3d support deprecated!")
 
     def sample_explored(self) -> Optional[np.ndarray]:
         """Return obstacle-free xy point in explored space"""

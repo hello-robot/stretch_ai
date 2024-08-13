@@ -180,7 +180,9 @@ def main(
                 return
     else:
         agent = None
-        voxel_map = SparseVoxelMap(resolution=voxel_size)
+        voxel_map = SparseVoxelMap(
+            resolution=voxel_size, use_instance_memory=(run_segmentation or show_instances)
+        )
 
     # TODO: read this from file or something
     x0 = np.array([0, 0, 0])
