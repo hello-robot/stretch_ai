@@ -656,6 +656,15 @@ class SparseVoxelMap(object):
         compressed = False
         if "compressed" in data:
             compressed = data["compressed"]
+        read_observations = False
+        if "obs" in data:
+            read_observations = True
+
+        # Processing to handle older files that actually saved the whole observation object
+        if read_observations:
+            instance_data = data["obs"]
+        else:
+            instance_data = data["instance"]
 
         for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
             # TODO: compression of observations
@@ -668,7 +677,7 @@ class SparseVoxelMap(object):
                 data["feats"],
                 data["depth"],
                 data["base_poses"],
-                data["instance"],
+                instance_data,
             )
         ):
             # Handle the case where we dont actually want to load everything
@@ -683,6 +692,8 @@ class SparseVoxelMap(object):
             depth = self.fix_data_type(depth).float()
             if feats is not None:
                 feats = self.fix_data_type(feats)
+            if read_observations:
+                instance = self.fix_data_type(instance.instance)
             base_pose = self.fix_data_type(base_pose)
             instance = self.fix_data_type(instance)
             self.add(
