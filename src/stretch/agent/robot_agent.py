@@ -51,6 +51,7 @@ class RobotAgent:
         rpc_stub=None,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
+        use_instance_memory: bool = False,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -76,6 +77,7 @@ class RobotAgent:
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
+        self._use_instance_memory = use_instance_memory
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
@@ -116,7 +118,7 @@ class RobotAgent:
                 derivative_filter_threshold=parameters.get(
                     "filters/derivative_filter_threshold", 0.5
                 ),
-                use_instance_memory=(self.semantic_sensor is not None),
+                use_instance_memory=(self.semantic_sensor is not None or self._use_instance_memory),
                 instance_memory_kwargs={
                     "min_pixels_for_instance_view": parameters.get(
                         "min_pixels_for_instance_view", 100

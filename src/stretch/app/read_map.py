@@ -164,7 +164,7 @@ def main(
         agent = RobotAgent(
             dummy_robot,
             parameters,
-            None,
+            semantic_sensor=semantic_sensor,
             rpc_stub=None,
             grasp_client=None,
             voxel_map=loaded_voxel_map,
