@@ -581,6 +581,8 @@ class SparseVoxelMap(object):
         data["depth"] = []
         data["feats"] = []
         data["instance"] = []
+        data["instance_scores"] = []
+        data["instance_classes"] = []
 
         # Add a print statement with use of this code
         logger.alert(f"Write pkl to {filename}...")
@@ -598,6 +600,8 @@ class SparseVoxelMap(object):
             data["base_poses"].append(frame.base_pose)
             data["camera_K"].append(frame.camera_K)
             data["instance"].append(frame.instance)
+            data["instance_classes"].append(frame.instance_classes)
+            data["instance_scores"].append(frame.instance_scores)
 
             # Convert to numpy and correct formats for saving
             rgb = frame.rgb.byte().cpu().numpy()
@@ -723,6 +727,9 @@ class SparseVoxelMap(object):
                 instance = instance.instance
                 instance_classes = instance.task_observations["instance_classes"]
                 instance_scores = instance.task_observations["instance_scores"]
+            else:
+                instance_classes = self.fix_data_type(data["instance_classes"][i])
+                instance_scores = self.fix_data_type(data["instance_scores"][i])
             instance = self.fix_data_type(instance)
 
             # Add to the map
