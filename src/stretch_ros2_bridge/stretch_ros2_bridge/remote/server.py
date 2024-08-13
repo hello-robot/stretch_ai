@@ -227,6 +227,10 @@ class ZmqServer(CommsNode):
                             action["control_mode"],
                             "not recognized or supported.",
                         )
+                elif "save_map" in action:
+                    self.client.save_map(action["save_map"])
+                elif "load_map" in action:
+                    self.client.load_map(action["load_map"])
                 elif "say" in action:
                     # Text to speech from the robot, not the client/agent device
                     self.text_to_speech.say_async(action["say"])

@@ -726,6 +726,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 return False
             return self._state["at_goal"]
 
+    def save_map(self, filename: str):
+        next_action = {"save_map": filename}
+        self.send_action(next_action)
+
+    def load_map(self, filename: str):
+        next_action = {"load_map": filename}
+        self.send_action(next_action)
+
     def get_observation(self):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
         with self._obs_lock:
