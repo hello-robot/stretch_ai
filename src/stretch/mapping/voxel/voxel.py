@@ -625,7 +625,6 @@ class SparseVoxelMap(object):
         data["compressed"] = compress
         print("Dumping to pickle...")
         with open(filename, "wb") as f:
-            print(data)
             pickle.dump(data, f)
 
     def fix_data_type(self, tensor) -> torch.Tensor:

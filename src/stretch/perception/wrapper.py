@@ -162,7 +162,10 @@ class OvmmPerception:
         return self.forward(obs)
 
     def predict_segmentation(
-        self, rgb: torch.Tensor, depth: torch.Tensor, base_pose: torch.Tensor
+        self,
+        rgb: torch.Tensor,
+        depth: torch.Tensor,
+        base_pose: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Predict segmentation masks from RGB and depth images.
 
@@ -173,6 +176,8 @@ class OvmmPerception:
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: Tuple of semantic and instance segmentation masks
         """
+        if base_pose is None:
+            base_pose = torch.tensor([0.0, 0.0, 0.0])
         obs = Observations(rgb=rgb, depth=depth, gps=base_pose[0:2], compass=base_pose[2])
         obs = self.predict(obs)
         return obs.semantic, obs.instance
