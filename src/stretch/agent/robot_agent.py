@@ -44,7 +44,7 @@ class RobotAgent:
     def __init__(
         self,
         robot: AbstractRobotClient,
-        parameters: Dict[str, Any],
+        parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
