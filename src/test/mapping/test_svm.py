@@ -47,6 +47,10 @@ def _eval_svm(filename: str):
     print(f"Reading from pkl file of raw observations... {ok=}")
     assert ok, "Failed to read from pkl file of raw observations"
 
+    print("Evaluating SVM...")
+    print("# Instances =", len(voxel_map.get_instances()))
+    assert len(voxel_map.get_instances() > 0), "No instances found in voxel map"
+
 
 def test_svm_small():
     _eval_svm(SMALL_DATA_FILE)
