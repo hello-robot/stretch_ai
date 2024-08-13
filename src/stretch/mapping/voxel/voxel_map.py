@@ -765,7 +765,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 offset=xyt[:2],
             )
 
-        if instances:
+        if instances and len(self.voxel_map.instances) > 0:
             geoms.append(self.voxel_map._get_instances_open3d(geoms))
         return geoms
 

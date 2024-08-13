@@ -180,7 +180,7 @@ class OvmmPerception:
             base_pose = torch.tensor([0.0, 0.0, 0.0])
         obs = Observations(rgb=rgb, depth=depth, gps=base_pose[0:2], compass=base_pose[2])
         obs = self.predict(obs)
-        return obs.semantic, obs.instance
+        return obs.semantic, obs.instance, obs.task_observations
 
     def predict(
         self, obs: Observations, depth_threshold: Optional[float] = None, ee: bool = False

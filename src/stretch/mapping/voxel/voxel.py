@@ -711,12 +711,18 @@ class SparseVoxelMap(object):
 
             # Handle instance processing - if we have a perception model we can use it to predict the instance image
             # We can also just use the instance image if it was saved
+            instance_classes = None
+            instance_scores = None
             if perception is not None:
-                _, instance = perception.predict_segmentation(
+                _, instance, info = perception.predict_segmentation(
                     rgb=rgb, depth=depth, base_pose=base_pose
                 )
+                instance_classes = info["instance_classes"]
+                instance_scores = info["instance_scores"]
             elif read_observations:
                 instance = instance.instance
+                instance_classes = instance.task_observations["instance_classes"]
+                instance_scores = instance.task_observations["instance_scores"]
             instance = self.fix_data_type(instance)
 
             # Add to the map
@@ -727,6 +733,8 @@ class SparseVoxelMap(object):
                 depth=depth,
                 base_pose=base_pose,
                 instance_image=instance,
+                instance_classes=instance_classes,
+                instance_scores=instance_scores,
                 camera_K=K,
             )
         return True
@@ -1087,11 +1095,12 @@ class SparseVoxelMap(object):
     ):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
 
+        print("get geometries")
         # get geometries so we can use them
         geoms = self._get_open3d_geometries(
             instances, orig, norm, xyt=xyt, footprint=footprint, add_planner_visuals=planner_visuals
         )
-
+        print("draw geometries")
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)
 
