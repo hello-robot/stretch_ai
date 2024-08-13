@@ -19,9 +19,10 @@ LARGE_DATA_FILE = "hq_large.pkl"
 TEST_PLANNER_FILENAME = "planner.yaml"
 
 SMALL_DATA_START = np.array([4.5, 1.4, 0.0])
+LARGE_DATA_START = np.array([4.5, 1.4, 0.0])
 
 
-def _eval_svm(filename: str):
+def _eval_svm(filename: str, start_pos: np.ndarray) -> None:
 
     print("==== SVM Evaluation ====")
     print(f"Loading voxel map from {filename}...")
@@ -57,11 +58,11 @@ def _eval_svm(filename: str):
 
 
 def test_svm_small():
-    _eval_svm(SMALL_DATA_FILE)
+    _eval_svm(SMALL_DATA_FILE, SMALL_DATA_START)
 
 
 def test_svm_large():
-    _eval_svm(LARGE_DATA_FILE)
+    _eval_svm(LARGE_DATA_FILE, LARGE_DATA_START)
 
 
 if __name__ == "__main__":
