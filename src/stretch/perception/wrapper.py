@@ -173,8 +173,7 @@ class OvmmPerception:
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: Tuple of semantic and instance segmentation masks
         """
-        breakpoint()
-        obs = Observations(rgb=rgb, depth=depth)
+        obs = Observations(rgb=rgb, depth=depth, gps=base_pose[0:2], compass=base_pose[2])
         obs = self.predict(obs)
         return obs.semantic, obs.instance
 

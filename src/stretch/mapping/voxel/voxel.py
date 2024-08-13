@@ -664,7 +664,6 @@ class SparseVoxelMap(object):
 
         # Processing to handle older files that actually saved the whole observation object
         if read_observations and len(data["obs"]) > 0:
-            breakpoint()
             instance_data = data["obs"]
         else:
             instance_data = data["instance"]
