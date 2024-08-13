@@ -40,7 +40,6 @@ SOFTWARE.
 import sys
 
 import numpy as np
-from numpy.lib.stride_tricks import as_strided
 
 # from .registry import converts_from_numpy, converts_to_numpy
 from sensor_msgs.msg import Image

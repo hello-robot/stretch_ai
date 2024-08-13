@@ -16,7 +16,6 @@ from enum import Enum
 from typing import Iterable, List, Optional, Union
 
 import numpy as np
-import torch
 
 from stretch.core.interfaces import ContinuousNavigationAction
 from stretch.motion.robot import RobotModel

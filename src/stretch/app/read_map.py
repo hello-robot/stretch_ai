@@ -26,8 +26,7 @@ import numpy as np
 
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
-from stretch.mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
-from stretch.mapping.voxel import plan_to_frontier
+from stretch.mapping import SparseVoxelMap
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 from stretch.utils.geometry import xyt_global_to_base
 

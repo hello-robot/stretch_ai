@@ -517,7 +517,6 @@ class ZmqRos2Leader:
 
         finally:
             print("Exiting...")
-            pass
 
 
 if __name__ == "__main__":

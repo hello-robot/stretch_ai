@@ -9,14 +9,10 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import time
 
 import click
-import cv2
-import numpy as np
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.motion import HelloStretchIdx
 
 
 @click.command()

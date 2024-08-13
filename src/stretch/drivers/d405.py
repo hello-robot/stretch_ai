@@ -9,11 +9,9 @@
 
 from typing import Tuple
 
-import cv2
 import numpy as np
 import pyrealsense2 as rs
 
-from stretch.drivers.d405_without_pyrealsense import get_depth_scale, pixel_from_3d, pixel_to_3d
 from stretch.drivers.realsense_base import Realsense
 
 exposure_keywords = ["low", "medium", "auto"]

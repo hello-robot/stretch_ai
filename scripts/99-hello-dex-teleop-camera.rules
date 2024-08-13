@@ -1,0 +1,29 @@
+# INSTALLATION
+#
+# First, copy this rules file into the following directory:
+#
+# /etc/udev/rules.d/
+#
+# Second, run the following command to make the new rule files become
+# active and then disconnect and reconnect the device.
+#
+# sudo udevadm control --reload
+#
+# When writing udev rules, you can find relevant information about a
+# device by running commands like the following with the appropriate
+# device file name. You can often find the device file name by running
+# dmesg from the command line right after plugging in the device.
+#
+# udevadm info -a /dev/ttyUSB0
+#
+# REFERENCES
+#
+# http://www.linuxfromscratch.org/lfs/view/6.2/chapter07/symlinks.html
+#
+
+# This adds a Logitech Webcam C930e to the plugdev group, which
+# enables the camera to be reset with out sudo. Resetting the camera
+# each time is a workaround for low frame rates and incorrect camera
+# settings after the first time dexterous teleop is run.
+
+ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="0843", MODE="660", GROUP="plugdev"

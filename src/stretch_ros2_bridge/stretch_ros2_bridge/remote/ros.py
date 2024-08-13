@@ -13,7 +13,6 @@
 # LICENSE file in the root directory of this source tree.
 import sys
 import threading
-from threading import Event
 from typing import Dict, Optional
 
 import numpy as np
@@ -21,7 +20,6 @@ import numpy as np
 # from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 import rclpy
 import sophuspy as sp
-import tf2_ros
 from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import PointStamped, Pose, PoseStamped, Twist
 from hello_helpers.joint_qpos_conversion import get_Idx
