@@ -647,7 +647,6 @@ class InstanceMemory:
             # print (np.count_nonzero(instance_mask))
             category_id = None
             if instance_classes is not None:
-                print(f"{instance_id} {instance_classes}")
                 category_id = instance_classes[instance_id]
             elif semantic_seg is not None:
                 assert (

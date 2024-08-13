@@ -511,6 +511,7 @@ class SparseVoxelMap(object):
             t0 = timeit.default_timer()
             instance = instance_image.clone()
 
+            breakpoint()
             self.instances.process_instances_for_env(
                 env_id=0,
                 instance_seg=instance,
@@ -730,7 +731,7 @@ class SparseVoxelMap(object):
             else:
                 instance_classes = self.fix_data_type(data["instance_classes"][i])
                 instance_scores = self.fix_data_type(data["instance_scores"][i])
-            instance = self.fix_data_type(instance)
+            instance = self.fix_data_type(instance).long()
 
             # Add to the map
             self.add(
