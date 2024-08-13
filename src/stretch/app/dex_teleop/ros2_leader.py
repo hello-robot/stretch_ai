@@ -381,14 +381,16 @@ class ZmqRos2Leader:
         if self.use_clutch:
             hand_tracker = HandTracker(left_clutch=(not self.left_handed))
 
+        # loop stuff for clutch
         clutched = False
         clutch_debounce_threshold = 3
         change_clutch_count = 0
-
-        # loop stuff
         check_hand_frame_skip = 3
         i = 0
         max_i = 100  # arbitrary number of iterations
+
+        last_robot_pose = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        offset_pose = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         try:
             while True:
@@ -465,10 +467,12 @@ class ZmqRos2Leader:
                 goal_dict = self.goal_from_markers.get_goal_dict(markers)
 
                 if self.use_clutch:
+                    # check if n-th frame - if so, check clutch
                     if i % check_hand_frame_skip == 0:
                         hand_prediction = hand_tracker.run_detection(color_image)
                         check_clutched = hand_tracker.check_clutched(hand_prediction)
 
+                        # debounce
                         if check_clutched != clutched:
                             change_clutch_count += 1
                         else:
@@ -490,7 +494,8 @@ class ZmqRos2Leader:
                     # Goal dict that is not worth processing
                     goal_dict = {"valid": False}
 
-                if goal_dict["valid"] and not clutched:
+                if goal_dict["valid"]:
+                    # get robot configuration
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
 
                     # Format to standard action space
@@ -500,7 +505,7 @@ class ZmqRos2Leader:
                         print("[LEADER] goal_dict =")
                         pp.pprint(goal_configuration)
 
-                    self.robot.arm_to(
+                    robot_pose = np.array(
                         [
                             goal_configuration["base_x_joint"],
                             goal_configuration["joint_lift"],
@@ -508,29 +513,41 @@ class ZmqRos2Leader:
                             goal_configuration["joint_wrist_yaw"],
                             goal_configuration["joint_wrist_pitch"],
                             goal_configuration["joint_wrist_roll"],
-                        ],
-                        gripper=goal_configuration["stretch_gripper"],
-                        head=constants.look_at_ee,
+                        ]
                     )
 
-                    # Prep joint states as dict
-                    joint_states = {
-                        k: observation.joint[v] for k, v in HelloStretchIdx.name_to_idx.items()
-                    }
-                    if self._recording and self.prev_goal_dict is not None:
-                        self._recorder.add(
-                            ee_rgb=gripper_color_image,
-                            ee_depth=gripper_depth_image,
-                            xyz=goal_dict["relative_gripper_position"],
-                            quaternion=goal_dict["relative_gripper_orientation"],
-                            gripper=goal_dict["grip_width"],
-                            head_rgb=head_color_image,
-                            head_depth=head_depth_image,
-                            observations=joint_states,
-                            actions=goal_configuration,
-                            ee_pos=observation.ee_camera_pose,
-                            ee_rot=observation.ee_camera_pose,
+                    if not clutched:
+                        last_robot_pose = robot_pose
+
+                        # add clutch offset
+                        robot_pose += offset_pose
+
+                        self.robot.arm_to(
+                            robot_pose,
+                            gripper=goal_configuration["stretch_gripper"],
+                            head=constants.look_at_ee,
                         )
+
+                        # Prep joint states as dict
+                        joint_states = {
+                            k: observation.joint[v] for k, v in HelloStretchIdx.name_to_idx.items()
+                        }
+                        if self._recording and self.prev_goal_dict is not None:
+                            self._recorder.add(
+                                ee_rgb=gripper_color_image,
+                                ee_depth=gripper_depth_image,
+                                xyz=goal_dict["relative_gripper_position"],
+                                quaternion=goal_dict["relative_gripper_orientation"],
+                                gripper=goal_dict["grip_width"],
+                                head_rgb=head_color_image,
+                                head_depth=head_depth_image,
+                                observations=joint_states,
+                                actions=goal_configuration,
+                                ee_pos=observation.ee_camera_pose,
+                                ee_rot=observation.ee_camera_pose,
+                            )
+                    else:
+                        offset_pose = last_robot_pose - robot_pose
 
                 self.prev_goal_dict = goal_dict
 
