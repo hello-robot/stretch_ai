@@ -361,6 +361,18 @@ Optional open3d visualization of the scene:
 python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
 ```
 
+You can visualize instances in the voxel map with the `--show-instances` flag:
+
+```bash
+python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-instances
+```
+
+You can also re-run perception with the `--run-segmentation` flag and provide a new export file with the `--export` flag:
+
+```bash
+ python -m stretch.app.read_map -i hq_small.pkl --export hq_small_v2.pkl --run-segmentation
+```
+
 ### Pickup Objects
 
 This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
