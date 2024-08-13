@@ -91,6 +91,12 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             else:
                 assert False, "Failed to find a plan to any acceptable instance for {query}"
 
+    # Plan to the frontier
+    print("Plan to the frontier")
+    res = agent.plan_to_frontier(start_pos, verbose=False)
+    print(f"Plan to the frontier = {res.success}")
+    assert res.success, "Failed to plan to the frontier"
+
 
 def test_svm_small():
     _eval_svm(SMALL_DATA_FILE, SMALL_DATA_START, possible=False)
