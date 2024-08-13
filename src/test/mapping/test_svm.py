@@ -49,7 +49,7 @@ def _eval_svm(filename: str):
 
     print("Evaluating SVM...")
     print("# Instances =", len(voxel_map.get_instances()))
-    assert len(voxel_map.get_instances() > 0), "No instances found in voxel map"
+    assert len(voxel_map.get_instances()) > 0, "No instances found in voxel map"
 
 
 def test_svm_small():
