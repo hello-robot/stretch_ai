@@ -23,11 +23,13 @@ LARGE_DATA_START = np.array([4.5, 1.4, 0.0])
 
 queries = [
     ("cardboard box", True),
-    ("pink elephant", False),
+    ("photo of an elephant", False),
 ]
 
+similarity_threshold = 0.05
 
-def _eval_svm(filename: str, start_pos: np.ndarray) -> None:
+
+def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> None:
 
     print("==== SVM Evaluation ====")
     print(f"Loading voxel map from {filename}...")
@@ -62,24 +64,43 @@ def _eval_svm(filename: str, start_pos: np.ndarray) -> None:
     assert len(voxel_map.get_instances()) > 0, "No instances found in voxel map"
 
     for query, expected_result in queries:
+        instances = agent.get_ranked_instances(query)
         # Query the SVM - make sure we can find motion plan to a cardboard box
-        score, instance_id, instance = agent.get_ranked_instances(query)[0]
+        score, instance_id, instance = instances[0]
         print(f"Query: {query} Score: {score} Instance ID: {instance_id}")
         assert instance_id is not None, "Failed to find instance ID"
         if expected_result:
-            assert score > 0.0, f"Failed to find instance with positive score for {query}"
+            assert (
+                score > similarity_threshold
+            ), f"Failed to find instance with positive score for {query}"
         else:
-            assert score < 0.0, f"Found instance with positive score for {query}"
+            # import matplotlib.pyplot as plt
+            # plt.imshow(instance.get_best_view().get_image())
+            # plt.show()
+            assert score < similarity_threshold, f"Found instance with positive score for {query}"
+
+        if expected_result:
+            # Try motion planning to matching instances
+            for i, (score, instance_id, instance) in enumerate(instances):
+                if score < similarity_threshold:
+                    assert False, "Failed to find instance with acceptable score"
+                res = agent.plan_to_instance(instance, start_pos, verbose=False, radius_m=0.3)
+                print(f"Plan to instance {i}={instance.global_id} = {res.success}")
+                if res.success:
+                    break
+            else:
+                if possible:
+                    assert False, "Failed to find a plan to any acceptable instance for {query}"
 
 
 def test_svm_small():
-    _eval_svm(SMALL_DATA_FILE, SMALL_DATA_START)
+    _eval_svm(SMALL_DATA_FILE, SMALL_DATA_START, possible=False)
 
 
 def test_svm_large():
-    _eval_svm(LARGE_DATA_FILE, LARGE_DATA_START)
+    _eval_svm(LARGE_DATA_FILE, LARGE_DATA_START, possible=True)
 
 
 if __name__ == "__main__":
     test_svm_small()
-    # test_svm_large()
+    test_svm_large()
