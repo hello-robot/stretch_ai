@@ -88,6 +88,14 @@ class StretchClient(AbstractRobotClient):
     def model(self):
         return self._robot_model
 
+    @property
+    def is_homed(self) -> bool:
+        return self._ros_client.is_homed
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._ros_client.is_runstopped
+
     def at_goal(self) -> bool:
         """Returns true if we have up to date head info and are at goal position"""
         return self.nav.at_goal()

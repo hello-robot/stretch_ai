@@ -77,7 +77,7 @@ class ZmqServer(CommsNode):
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
 
-        print("Done!")
+        print("Done setting up connections! Server ready to start.")
 
         # for the threads
         self.control_mode = "none"
@@ -159,8 +159,10 @@ class ZmqServer(CommsNode):
                 "joint_velocities": dq,
                 "joint_efforts": eff,
                 "control_mode": self.get_control_mode(),
-                "at_goal": self.client.at_goal(),
+                "at_goal": self.client.at_goal,
+                "is_homed": self.client.is_homed,
             }
+            print(message)
             self.send_state_socket.send_pyobj(message)
 
             # Finish with some speed info

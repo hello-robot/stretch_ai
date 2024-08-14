@@ -133,12 +133,14 @@ class StretchRosInterface(Node):
         self.goal_visualizer = Visualizer("command_pose", rgba=[1.0, 0.0, 0.0, 0.5])
         self.curr_visualizer = Visualizer("current_pose", rgba=[0.0, 0.0, 1.0, 0.5])
 
+        self._is_homed = None
+        self._is_runstopped = None
+
         # Start the thread
         self._thread = threading.Thread(target=rclpy.spin, args=(self,), daemon=True)
         self._thread.start()
 
         # Initialize ros communication
-        # self._safety_check()
         self._create_pubs_subs()
         self._create_services()
 
@@ -318,26 +320,6 @@ class StretchRosInterface(Node):
         return trajectory_goal
 
     # Helper functions
-    # To be modified
-    # def _safety_check(self, max_time: float = 30.0):
-    #     """Make sure we can actually execute code on the robot as a quality of life measure"""
-    #     run_stopped = rospy.wait_for_message("is_runstopped", Bool, timeout=max_time)
-    #     if run_stopped is None:
-    #         rospy.logwarn("is_runstopped not received; you might have out of date stretch_ros")
-    #     elif run_stopped.data is True:
-    #         rospy.logerr("Runstop is pressed! Cannot execute!")
-    #         raise RuntimeError("Stretch is runstopped")
-    #     calibrated = rospy.wait_for_message("is_calibrated", Bool, timeout=max_time)
-    #     if calibrated is None:
-    #         rospy.logwarn("is_calibrated not received; you might have out of date stretch_ros")
-    #     elif calibrated.data is False:
-    #         rospy.logwarn("Robot is not calibrated!")
-    #     homed = rospy.wait_for_message("is_homed", Bool, timeout=max_time)
-    #     if homed is None:
-    #         rospy.logwarn("is_homed not received; you might have out of date stretch_ros")
-    #     elif homed.data is False:
-    #         rospy.logerr("Robot is not homed! Cannot execute! Run stretch_robot_home.py")
-    #         raise RuntimeError("Stretch is not homed!")
 
     def _create_services(self):
         """Create services to activate/deactivate robot modes"""
@@ -352,6 +334,22 @@ class StretchRosInterface(Node):
         self.set_yaw_service = self.create_client(SetBool, "goto_controller/set_yaw_tracking")
         print("Wait for mode service...")
         self.pos_mode_service.wait_for_service()
+
+    def _is_homed_cb(self, msg) -> None:
+        """Update this variable"""
+        self._is_homed = bool(msg.data)
+
+    @property
+    def is_homed(self) -> bool:
+        return self._is_homed
+
+    def _is_runstopped_cb(self, msg) -> None:
+        """Update this variable"""
+        self._is_runstopped = bool(msg.data)
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._is_runstopped
 
     def _create_pubs_subs(self):
         """create ROS publishers and subscribers - only call once"""
@@ -376,6 +374,12 @@ class StretchRosInterface(Node):
         self.grasp_result_sub = self.create_subscription(
             Float32, "grasp_point/result", self._grasp_result_callback, 10
         )  # Had to check qos_profile
+
+        # Check if robot is homed and runstopped
+        self._is_homed_sub = self.create_subscription(Bool, "/is_homed", self._is_homed_cb, 1)
+        self._is_runstopped_sub = self.create_subscription(
+            Bool, "/is_runstopped", self._is_runstopped, 1
+        )
 
         self.place_ready = None
         self.place_complete = None
