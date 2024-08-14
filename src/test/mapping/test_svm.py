@@ -86,6 +86,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
                 score > similarity_threshold
             ), f"Failed to find instance with positive score for {query}"
         else:
+            # TODO: remove debug code
             # import matplotlib.pyplot as plt
             # plt.imshow(instance.get_best_view().get_image())
             # plt.show()
@@ -116,7 +117,14 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             continue
 
         # Just get one instance
-        instances = agent.get_ranked_instances(query)[0]
+        instances = agent.get_ranked_instances(query)
+        score, instance_id, instance = instances[0]
+
+        # Delete the instance
+        voxel_map.delete_instance(instance)
+
+        # Try to find the instance again
+        instances = agent.get_ranked_instances(query)
 
 
 def test_svm_small():

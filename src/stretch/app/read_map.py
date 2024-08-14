@@ -122,6 +122,13 @@ def plan_to_deltas(xyt0, plan):
     default="0,0,0",
     help="start pose for planning as a tuple X,Y,Theta in meters and radians",
 )
+@click.option(
+    "--test-remove",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test the remove instance function - requires query",
+)
 def main(
     input_path,
     config_path,
@@ -141,6 +148,7 @@ def main(
     run_segmentation: bool = False,
     device_id: int = 0,
     start: str = "0,0,0",
+    test_remove: bool = False,
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
@@ -307,7 +315,7 @@ def main(
                         footprint=footprint,
                     )
 
-        if len(query) > 0:
+        if len(query) > 0 and not (test_sampling or test_remove):
             print("-" * 80)
             print(f"Querying instances that correspond with '{query}'")
             score, instance_id, instance = agent.get_ranked_instances(query)[0]
@@ -373,6 +381,38 @@ def main(
                     agent.get_plan_from_vlm(current_pose=x0, show_plan=True)
                 except KeyboardInterrupt:
                     break
+
+        if test_remove:
+            print("-" * 80)
+            print("Test remove instance.")
+            if len(query) == 0:
+                query = input("Enter a query: ")
+            else:
+                print("Query:", query)
+            matches = agent.get_ranked_instances(query)
+
+            # Just get one instance
+            instances = agent.get_ranked_instances(query)
+            print("Found", len(instances), "matches for query", query)
+            score, instance_id, instance = instances[0]
+
+            if show_instances:
+                plt.imshow(instance.get_best_view().get_image())
+                plt.title(f"Instance {instance.global_id} = {query}")
+                plt.axis("off")
+                plt.show()
+
+            # Delete the instance
+            voxel_map.delete_instance(instance)
+
+            # Try to find the instance again
+            instances = agent.get_ranked_instances(query)
+
+            if show_instances:
+                plt.imshow(instance.get_best_view().get_image())
+                plt.title(f"Instance {instance.global_id} = {query}")
+                plt.axis("off")
+                plt.show()
 
         if len(export) > 0:
             print("Exporting to", export)

@@ -1078,6 +1078,13 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
+    def delete_instance(self, instance: Instance) -> None:
+        """Remove an instance from the map"""
+        print("Deleting instance", instance.global_id)
+        print("Bounds: ", instance.bounds)
+        self.delete_obstacles(instance.bounds)
+        self.instances.pop_global_instance(env_id=0, global_instance_id=instance.global_id)
+
     def delete_obstacles(
         self,
         bounds: Optional[np.ndarray] = None,
