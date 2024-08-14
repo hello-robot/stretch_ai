@@ -163,9 +163,6 @@ class ZmqServer(CommsNode):
                 "is_homed": self.client.is_homed,
                 "is_runstopped": self.client.is_runstopped,
             }
-            print(message)
-            for k, v in message.items():
-                print(k, type(v))
             self.send_state_socket.send_pyobj(message)
 
             # Finish with some speed info
