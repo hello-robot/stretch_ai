@@ -12,13 +12,17 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import datetime
+from typing import List
 
 import click
 
 # Mapping and perception
+from stretch.agent.operations import GraspObjectOperation, UpdateOperation
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import get_parameters
+from stretch.core import AbstractRobotClient, get_parameters
+from stretch.core.task import Task
 from stretch.llms.openai_client import OpenaiClient
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
@@ -59,6 +63,67 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Don't move the robot to the instance, if using real robot instead of offline data",
 )
+class OVMM:
+    def __init__(self, agent: RobotAgent, robot: AbstractRobotClient):
+        self.agent = agent
+        self.robot = robot
+
+    def configure(
+        self,
+        plan: str = "",
+    ):
+        self.plan = plan
+
+    def go_to(self, object_name: str) -> bool:
+        self.agent.go_to(object_name)
+
+    def pick(self, object_name: str) -> bool:
+        manager = PickupManager(self.agent, target_object=object_name)
+        task = Task()
+        update = UpdateOperation("update_scene", manager, retry_on_failure=True)
+        grasp_object = GraspObjectOperation(
+            "grasp_the_object",
+            manager,
+        )
+        grasp_object.configure(show_object_to_grasp=True, servo_to_grasp=True, show_servo_gui=True)
+        task.add_operation(update)
+        task.add_operation(grasp_object)
+        task.run()
+
+    def place(self, object_name: str, receptacle_name: str) -> bool:
+        print(f"Placing {object_name} in {receptacle_name}")
+        print("Not implemented yet.")
+
+    def say(self, text: str) -> bool:
+        self.agent.say(text)
+
+    def ask(self, text: str) -> str:
+        return input(text)
+
+    def open_cabinet(self, cabinet_name: str) -> bool:
+        print(f"Opening cabinet {cabinet_name}")
+        print("Not implemented yet.")
+
+    def close_cabinet(self, cabinet_name: str) -> bool:
+        print(f"Closing cabinet {cabinet_name}")
+        print("Not implemented yet.")
+
+    def wave(self) -> bool:
+        """Wave the robot's arm."""
+        self.robot.wave()
+        return True
+
+    def get_detections(self) -> List[str]:
+        return self.agent.get_detections()
+
+    def execute_task(self, *args):
+        """Execute a task."""
+        try:
+            exec(self.plan)
+        except Exception as e:
+            print(f"Error in executing task: {e}")
+
+
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -83,7 +148,7 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
-    _, semantic_sensor = create_semantic_sensor(
+    semantic_sensor = create_semantic_sensor(
         device_id=device_id,
         verbose=verbose,
         category_map_file=parameters["open_vocab_category_map_file"],
@@ -137,7 +202,9 @@ def main(
             print("Exiting...")
             continue
 
-        agent.execute(plan)
+        ovmm = OVMM(agent, robot)
+        ovmm.configure(plan)
+        ovmm.execute_task()
 
     if write_instance_images:
         agent.save_instance_images(".", verbose=True)
