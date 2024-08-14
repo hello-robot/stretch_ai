@@ -382,6 +382,8 @@ python -m stretch.app.read_map -i hq_small.pkl --test-planning --start 4.5,1.3,2
 python -m stretch.app.read_map -i hq_small.pkl --test-plan-to-frontier --start 4.0,1.4,0.0
 # Test sampling movement to objects
 python -m stretch.app.read_map -i hq_small.pkl --test-sampling --start 4.5,1.4,0.0
+# Test removing an object from the map
+python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --query "cardboard box"
 ```
 
 ### Pickup Objects
