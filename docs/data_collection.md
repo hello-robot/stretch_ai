@@ -2,11 +2,11 @@
 
 ## Prerequisites:
 
+Follow [instructions](../README.md#Installation) for installation of stretch_ai with Python 3.10 for both PC and robot
+
 ### On PC:
 
-- Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10
-
-  - Advanced installation is only needed if you also want to train/evaluate policies with GPU, pure data collection should be fine with [normal installation](data_collection.md#on-robot)
+- Advanced installation is needed if you also want to train/evaluate policies with [LfD](learning_from_demonstration.md), see [advanced installation](../README.md#advanced-installation-pc-only)
 
 - Linux instructions: if using a Linux PC, run `install_dex_teleop.sh` to update `udev` rules
 
@@ -17,63 +17,33 @@
 
 - [Camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
 
-- Install our fork of lerobot in the same conda environment as stretch_ai:
-
-  ```bash
-  conda activate stretch_ai
-
-  git clone git@github.com:hello-yiche/lerobot.git
-  cd lerobot
-  git switch stretch-act
-
-  pip3 install -e .
-  ```
-
 ### On Robot:
 
-- Install normal installation of stretch_ai
-
-  ```bash
-    git clone git@github.com:hello-robot/stretch_ai.git
-    cd stretch_ai/src
-    pip3 install -e .
-  ```
-
-- Generate specialized URDFs and move URDFs to PC
+- Generate specialized URDFs
 
   ```bash
     cd stretch_ai
     python3 src/stretch/app/dex_teleop/prepare_specialized_urdfs.py
   ```
 
-  URDFs should now have been generated into stretch_ai folder on the robot. Using your preferred method, move the following URDF files to the stretch_ai folder on your PC
+- Move URDFs from robot to PC
+
+  URDFs should now have been generated into stretch_ai folder on the robot. Using your preferred method, move the following URDF files into the stretch_ai folder on your PC
 
   - stretch_base_rotation_ik_with_fixed_wrist.urdf
   - stretch_base_rotation_ik.urdf
   - stretch_base_translation_ik_with_fixed_wrist.urdf
   - stretch_base_translation_ik.urdf
 
-- Link stretch_ros2_bridge and build ament_ws
-
-  ```bash
-    cd stretch_ai
-    ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
-
-    cd ~/ament_ws
-    colcon build
-  ```
-
-- [Prepare URDFs for dex teleop](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs)
-
 ## Quickstart: Record Some Data
 
-On the robot run:
+### On the robot run:
 
 ```bash
 ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
-On the PC run:
+### On the PC run:
 
 ```bash
 python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
@@ -85,127 +55,50 @@ You can now record demonstrations by pressing `spacebar` to start and stop recor
 
 ## Recording demonstrations with Dex Teleop
 
-1. Launch dex teleop follower on robot
-
-   ```bash
-   ros2 launch stretch_ros2_bridge server.launch.py
-   ```
-
-1. Launch dex teleop leader on PC
-
-   Currently supported teleop modes include: `base_x`, `rotary_base`, and `stationary_base`.
-
-   ```bash
-   # Launch this command from the directory where URDFs are stored
-   # The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
-
-   python3 -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --task-name <name-of-task> --teleop-mode <teleop-mode> --record-success --save-images
-   ```
-
-   For example
-
-   ```bash
-   python3 -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --task-name default_task --teleop-mode base_x --record-success --save-images
-   ```
-
-1. Record episodes
-
-   - Press `spacebar` to start recording a demonstration, press `spacebar` again to end demonstration
-   - Demonstrations will be stored in stretch_ai/data/`name-of-task`/default_user/default_env
-
-## Format data and push to huggingface repo
-
-1. [Authenticate with huggingface-cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
-
-1. Process and push demonstration folder to huggingface repo
-
-   ```bash
-   # --raw-dir:  where the episodes for this task are stored
-   # --local-dir: where a local copy of the final huggingface dataset will be stored, last two layers of local_dir should be in same format as the repo-id
-   # --video: If true, dataset will only contain videos and no images
-   # --fps: FPS of demonstrations
-
-   python ./lerobot/scripts/push_dataset_to_hub.py \
-   --raw-dir /path/to/raw/dir \
-   --raw-format dobbe \
-   --local-dir ../data/default_task/default_user/hellorobotinc/<your-dataset-name> \
-   --video 0 \
-   --fps 6 \
-   --repo-id hellorobotinc/<your-dataset-name>
-   ```
-
-1. Visualizing dataset with Rerun.io
-
-   ```bash
-   # Sample command
-   python3 ./lerobot/scripts/visualize_dataset.py --repo-id hellorobotinc/my-dataset --episode-index 0 --root ../data/default_task/default_user
-   ```
-
-   ```bash
-   # Specify root if you wish to use local copy of the dataset, else dataset will be pulled from web
-   # --repo-id: Huggingface dataset repo
-   # --episode-index: Which episode to visualize
-   # --root: Where the local copy of the huggingface dataset is stored (e.g. local-dir in the previous step)
-   python ./lerobot/scripts/visualize_dataset.py \
-   --repo-id hellorobotinc/<your-dataset-name> \
-   --episode-index <episode-idx> \
-   --root ../data/default_task/default_user
-   ```
-
-## Train a policy
-
-`policy=stretch_diffusion` tells the script to use the configs found in ./lerobot/configs/policy/stretch_diffusion.yaml
-
-`env=stretch_real` indicates that we are using the stretch in a real world env, using configs in ./lerobot/configs/env/stretch_real.yaml
-
-Training configs defined in the policy yaml file can be overridden.
-If the config looks like below:
-
-```yaml
-training:
-  learning_rate: 0.001
-```
-
-At runtime we can override this by adding the snippet below. For more details see [Hydra docs](https://hydra.cc/docs/intro/) and [LeRobot](https://github.com/huggingface/lerobot?tab=readme-ov-file#train-your-own-policy).
-
-```bash
-training.learning_rate=0.00001
-```
-
-Sample training command:
-
-```bash
-python3 lerobot/scripts/train.py \
-policy=stretch_diffusion \
-env=stretch_real \
-wandb.enable=true \
-training.batch_size=64 \
-training.num_workers=16
-```
-
-## Evaluating a policy
-
-### On Robot:
+### Launch dex teleop follower on robot:
 
 ```bash
 ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
-### On PC:
+### Launch dex teleop leader on PC:
 
-Specify the policy name of the weights provided:
-
-- Available policies: `diffusion`,`diffusion_depth`,`act`,`vqbet`
-
-Specify the teleop mode according to the teleop mode used to train the policy
-
-- Available teleop modes: `base_x`,`stationary_base`,`old_stationary_base`
+Currently supported teleop modes include: `base_x`, `rotary_base`, and `stationary_base`.
+Launch this command from the directory where URDFs are stored (default is root of stretch_ai)
 
 ```bash
-python3 -m stretch.app.act.lfd_leader \
--i <robot-ip> \
---policy_name <name-of-policy> \
---policy_path <path-to-weights-folder> \
---teleop-mode <teleop-mode> \
---record-success
+# The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
+
+python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name <name-of-task> --teleop-mode <teleop-mode> --save-images
 ```
+
+For example:
+
+```bash
+python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name default_task --teleop-mode base_x --save-images
+```
+
+### Record episodes
+
+- Press `spacebar` to start recording a demonstration, press `spacebar` again to end demonstration
+- Demonstrations will be stored in stretch_ai/data/`name-of-task`/default_user/default_env
+
+## Tips for collecting effective demonstrations
+
+### 1. Task direction alignment
+
+Align the dex teleop webcam so that the `top of the webcam` is facing the same direction as the direction of `arm extension`. Also, in order to have a better view it is recommended to not have the dex teleop setup directly behind the robot, and instead be placed at a sideways displacement.
+
+### 2. Taping for reference
+
+For use in downstream LfD training, it is important to consider dataset distribution when collecting demonstrations. The policy is able to handle small offsets in starting configuration if such variation is also demonstrated in the training data.
+
+Therefore, it can be useful to tape out a reference position as a basis for varying starting positions you want to introduce in the dataset.
+
+### 3. Episode quality
+
+Episodes should reflect the way you want the robot to complete the task.
+
+|       Task direction alignment       |  Taping for positional reference  |
+| :----------------------------------: | :-------------------------------: |
+| ![](./images/dex_teleop_example.jpg) | ![](./images/robot_alignment.jpg) |
