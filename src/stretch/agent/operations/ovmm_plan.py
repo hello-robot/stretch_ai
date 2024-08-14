@@ -8,12 +8,15 @@
 # license information maybe found below, if so.
 
 import time
-import timeit
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 
 from stretch.agent.base import ManagedOperation
+from stretch.agent.operations import GraspObjectOperation, UpdateOperation
+from stretch.agent.task.pickup import PickupManager
+from stretch.audio.text_to_speech import get_text_to_speech
+from stretch.core.task import Task
 from stretch.mapping.instance import Instance
 
 
@@ -23,15 +26,19 @@ class OvmmPlanOperation(ManagedOperation):
     show_instance_best_view: bool = False
     verbose: bool = False
     plan: str = ""
+    tts = None
 
     def configure(
         self,
         plan: str = "",
+        tts_engine: Optional[str] = None,
         show_instance_best_view: bool = False,
         verbose: bool = False,
     ):
         """Configure the operation with the given keyword arguments."""
         self.plan = plan
+        if tts_engine is not None:
+            self.tts = get_text_to_speech(tts_engine)
         self.show_instance_best_view = show_instance_best_view
         self.verbose = verbose
 
@@ -40,7 +47,18 @@ class OvmmPlanOperation(ManagedOperation):
 
     def pick(self, object_name: str) -> bool:
         """Pick an object."""
-        self.manager.pick_object(object_name)
+        # Create a nested operation to pick the object
+        self.pickup_manager = PickupManager(self.demo, target_object=object_name)
+        task = Task()
+        update = UpdateOperation("update_scene", self.pickup_manager, retry_on_failure=True)
+        grasp_object = GraspObjectOperation("grasp_the_object", self.pickup_manager)
+        grasp_object.configure(show_object_to_grasp=True, servo_to_grasp=True, show_servo_gui=True)
+        task.add_operation(update)
+        task.add_operation(grasp_object)
+
+        # Execute the task
+        task.run()
+
         return True
 
     def place(self, object_name: str, receptacle_name: str) -> bool:
@@ -61,7 +79,10 @@ class OvmmPlanOperation(ManagedOperation):
 
     def say(self, text: str) -> bool:
         """Say something."""
-        self.manager.say(text)
+        if self.tts is not None:
+            self.tts.say(text)
+        else:
+            print(f"Text to speech engine not configured. Saying: {text}")
         return True
 
     def open_cabinet(self, cabinet_name: str) -> bool:
