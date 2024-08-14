@@ -90,7 +90,6 @@ class StretchClient(AbstractRobotClient):
 
     @property
     def is_homed(self) -> bool:
-        print(self._ros_client.is_homed)
         return self._ros_client.is_homed
 
     @property
