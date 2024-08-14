@@ -125,6 +125,14 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
 
         # Try to find the instance again
         instances = agent.get_ranked_instances(query)
+        new_score, new_instance_id, new_instance = instances[0]
+
+        assert (
+            new_score < score
+        ), f"Failed to delete instance or instances were not returned in the right order; {new_score} >= {score}"
+        assert (
+            new_instance_id != instance_id
+        ), f"Failed to delete instance; {new_instance_id} == {instance_id}"
 
 
 def test_svm_small():
