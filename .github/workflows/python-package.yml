@@ -42,7 +42,7 @@ jobs:
       run: |
         # ./install.sh -y --no-remove --no-submodules
         # Install torch
-        pip install torch==2.3.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        pip install torch==2.3.1+cpu torchvision==2.3.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
         # Install the core package
         python -m pip install -e ./src[dev]
         # Separate step to avoid some issues
