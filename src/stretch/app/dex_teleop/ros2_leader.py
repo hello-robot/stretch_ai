@@ -607,6 +607,7 @@ if __name__ == "__main__":
         send_port=args.send_port,
         parameters=parameters,
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
+        enable_rerun_server=False,
     )
     robot.switch_to_manipulation_mode()
     robot.move_to_manip_posture()

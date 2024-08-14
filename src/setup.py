@@ -52,6 +52,7 @@ setuptools.setup(
         # Hardware dependencies
         "pyrealsense2",
         "urchin",
+        "webcam",
         # Visualization
         "rerun-sdk",
         # For siglip encoder
