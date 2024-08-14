@@ -68,9 +68,6 @@ jobs:
       if: always()
     - name: Test with pytest
       run: |
-        mamba init
-        . $HOME/.bashrc
-        mamba activate stretch_ai_0.0.8
         python -m pip install pytest
-        mkdir -p ~/.stretch; printf "robots:\n  - ip_addr: 127.0.0.1\n    port: 20200\n" > ~/.stretch/config.yaml
+        # mkdir -p ~/.stretch; printf "robots:\n  - ip_addr: 127.0.0.1\n    port: 20200\n" > ~/.stretch/config.yaml
         cd src/; python -m pytest .
