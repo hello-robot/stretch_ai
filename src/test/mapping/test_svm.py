@@ -14,9 +14,9 @@ from stretch.core import Parameters
 from stretch.utils.config import Config
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 
-SMALL_DATA_FILE = "hq_small.pkl"
-LARGE_DATA_FILE = "hq_large.pkl"
-TEST_PLANNER_FILENAME = "planner.yaml"
+SMALL_DATA_FILE = "test/mapping/hq_small.pkl"
+LARGE_DATA_FILE = "test/mapping/hq_large.pkl"
+TEST_PLANNER_FILENAME = "test/mapping/planner.yaml"
 
 SMALL_DATA_START = np.array([4.5, 1.4, 0.0])
 LARGE_DATA_START = np.array([4.5, 1.4, 0.0])
