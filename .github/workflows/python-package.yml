@@ -44,7 +44,7 @@ jobs:
         # mamba init
         # source $HOME/.bashrc
         # mamba activate stretch_ai_0.0.8
-        ./install.sh -y --no-remove --no-submodules
+        # ./install.sh -y --no-remove --no-submodules
         # Install torch
         # pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
         # Install the core package
