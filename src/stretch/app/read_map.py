@@ -395,6 +395,7 @@ def main(
             instances = agent.get_ranked_instances(query)
             print("Found", len(instances), "matches for query", query)
             score, instance_id, instance = instances[0]
+            print("Found instance:", instance.global_id, "with score", score)
 
             if show_instances:
                 plt.imshow(instance.get_best_view().get_image())
@@ -407,10 +408,12 @@ def main(
 
             # Try to find the instance again
             instances = agent.get_ranked_instances(query)
+            new_score, new_instance_id, new_instance = instances[0]
+            print("Found instance:", new_instance.global_id, "with score", new_score)
 
             if show_instances:
-                plt.imshow(instance.get_best_view().get_image())
-                plt.title(f"Instance {instance.global_id} = {query}")
+                plt.imshow(new_instance.get_best_view().get_image())
+                plt.title(f"Instance {new_instance.global_id} = {query}")
                 plt.axis("off")
                 plt.show()
 
