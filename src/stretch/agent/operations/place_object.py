@@ -21,16 +21,15 @@ from stretch.utils.geometry import point_global_to_base
 class PlaceObjectOperation(ManagedOperation):
     """Place an object on top of the target receptacle, by just using the arm for now."""
 
-    place_distance_threshold: float = 0.8
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
     place_step_size: float = 0.25
     use_pitch_from_vertical: bool = True
+    verbose: bool = True
 
     def configure(
         self,
-        place_distance_threshold: float = 0.8,
         lift_distance: float = 0.2,
         place_height_margin: float = 0.1,
         show_place_in_voxel_grid: bool = False,
@@ -40,14 +39,12 @@ class PlaceObjectOperation(ManagedOperation):
         """Configure the place operation.
 
         Args:
-            place_distance_threshold: Distance threshold for placing object
             lift_distance: Distance to lift the object
             place_height_margin: Height margin for placing object
             show_place_in_voxel_grid: Show the place in voxel grid
             place_step_size: Step size for placing object. After finding closest point on target object to the robot, step this far towards object center.
             use_pitch_from_vertical: Use pitch from vertical
         """
-        self.place_distance_threshold = place_distance_threshold
         self.lift_distance = lift_distance
         self.place_height_margin = place_height_margin
         self.show_place_in_voxel_grid = show_place_in_voxel_grid
@@ -67,7 +64,8 @@ class PlaceObjectOperation(ManagedOperation):
 
         target = self.get_target()
         center_xyz = self.get_target_center()
-        print(" - Placing object on receptacle at", center_xyz)
+        if self.verbose:
+            print(" - Placing object on receptacle at", center_xyz)
 
         # Get the point cloud of the object and find distances to robot
         distances = (target.point_cloud[:, :2] - xyt[:2]).norm(dim=1)
@@ -75,8 +73,9 @@ class PlaceObjectOperation(ManagedOperation):
         idx = distances.argmin()
         # Get the point
         point = target.point_cloud[idx].cpu().numpy()
-        print(" - Closest point to robot is", point)
-        print(" - Distance to robot is", distances[idx])
+        if self.verbose:
+            print(" - Closest point to robot is", point)
+            print(" - Distance to robot is", distances[idx])
         # Compute distance to the center of the object
         distance = np.linalg.norm(point[:2] - center_xyz[:2].cpu().numpy())
         # Take a step towards the center of the object
@@ -84,7 +83,12 @@ class PlaceObjectOperation(ManagedOperation):
         point[:2] = point[:2] + (
             dxyz[:2] / np.linalg.norm(dxyz[:2]) * min(distance, self.place_step_size)
         )
-        print(" - After taking a step towards the center of the object, we are at", point)
+        if self.verbose:
+            print(" - After taking a step towards the center of the object, we are at", point)
+            print(
+                " - Distance to the center of the object is",
+                np.linalg.norm(point[:2] - xyt[:2]),
+            )
         return point
 
     def can_start(self) -> bool:
@@ -94,11 +98,20 @@ class PlaceObjectOperation(ManagedOperation):
         if self.manager.current_object is None or self.manager.current_receptacle is None:
             self.error("Object or receptacle not found.")
             return False
-        object_xyz = self.get_target_center()
+        # TODO: this should be deteriministic
+        # It currently is, but if you change this to something sampling-base dwe must update the test
+        object_xyz = self.sample_placement_position(self.robot.get_base_pose())
         start = self.robot.get_base_pose()
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
-        if dist > self.place_distance_threshold:
-            self.error(f"Object is too far away to grasp: {dist}")
+        # Check if the object is close enough to place upon
+        # We need to be within the manipulation radius + place_step_size + voxel_size
+        # Manipulation radius is the distance from the base to the end effector - this is what we actually plan for
+        # We take a step of size place_step_size towards the object center
+        # Base location sampling is often checked against voxel map - so we can have an error of up to voxel_size
+        if dist > self.agent.manipulation_radius + self.place_step_size + self.agent.voxel_size:
+            self.error(
+                f"Object is too far away to grasp: {dist} vs {self.agent.manipulation_radius + self.place_step_size}"
+            )
             return False
         self.cheer(f"Object is probably close enough to place upon: {dist}")
         return True

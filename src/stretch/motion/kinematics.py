@@ -88,6 +88,7 @@ class HelloStretchKinematics:
     DEFAULT_BASE_HEIGHT = 0
     GRIPPER_OPEN = 0.6
     GRIPPER_CLOSED = -0.3
+    GRIPPER_CLOSED_LOOSE = 0.0
 
     default_step = np.array(
         [
