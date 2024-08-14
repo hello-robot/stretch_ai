@@ -40,17 +40,21 @@ jobs:
       run: git lfs pull
     - name: Install dependencies and code
       run: |
-        # ./install.sh -y --no-remove --no-submodules
+        # Source mamba
+        # mamba init
+        # source $HOME/.bashrc
+        # mamba activate stretch_ai_0.0.8
+        ./install.sh -y --no-remove --no-submodules
         # Install torch
-        pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        # pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
         # Install the core package
-        python -m pip install -e ./src[dev]
+        # python -m pip install -e ./src[dev]
         # Separate step to avoid some issues
-        python -m pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-2.3.1+cpu.html
-        python -m pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-2.3.1+cpu.html
-        python -m pip install torch_geometric
+        # python -m pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-2.3.1+cpu.html
+        # python -m pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-2.3.1+cpu.html
+        # python -m pip install torch_geometric
         # Install the tools for linting and testing
-        python -m pip install mypy flake8 pytest 
+        # python -m pip install mypy flake8 pytest 
     ## Run pre-commit and try to apply fixes
     - name: Set up pre-commit cache
       uses: actions/cache@v3
@@ -64,6 +68,9 @@ jobs:
       if: always()
     - name: Test with pytest
       run: |
+        mamba init
+        source $HOME/.bashrc
+        mamba activate stretch_ai_0.0.8
         python -m pip install pytest
         mkdir -p ~/.stretch; printf "robots:\n  - ip_addr: 127.0.0.1\n    port: 20200\n" > ~/.stretch/config.yaml
         cd src/; python -m pytest .
