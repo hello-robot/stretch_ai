@@ -16,7 +16,7 @@ import git
 def get_git_repo() -> Optional[git.Repo]:
     path = str(Path(__file__).resolve().parent)
 
-    repo_names = ["stretch_ai", "stretchpy"]
+    repo_names = ["stretch_ai", "stretchpy", "app"]
 
     # Find the root of the repo given __file__
     for name in repo_names:
