@@ -52,7 +52,7 @@ jobs:
         # Separate step to avoid some issues
         python -m pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-2.0.0+cpu.html
         python -m pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-2.0.0+cpu.html
-        # python -m pip install torch_geometric
+        python -m pip install torch_geometric
         # Install the tools for linting and testing
         python -m pip install mypy flake8 pytest 
     ## Run pre-commit and try to apply fixes
