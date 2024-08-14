@@ -64,6 +64,7 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
+        "mediapipe",  # for hand tracking
         # Compression tools
         "pyliblzfse",
         "webp",
