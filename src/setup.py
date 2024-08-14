@@ -52,6 +52,7 @@ setuptools.setup(
         # Hardware dependencies
         "pyrealsense2",
         "urchin",
+        "webcam",
         # Visualization
         "rerun-sdk",
         # For siglip encoder
@@ -64,6 +65,7 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
+        "mediapipe",  # for hand tracking
         # Compression tools
         "pyliblzfse",
         "webp",

@@ -52,3 +52,7 @@ The robot will start as soon as the Dex Teleop tool is visible! However, it will
 
 - Press `space`: start/stop recording a demonstration. It will be written to a file based on the provided task, user, and environment, with a subfolder based on the date and time.
 - Press `esc`: quit the program.
+
+#### Pausing Motions during an Episode
+
+We provide the ability to pause the robot's motion during a recording. Running `stretch.app.dex_teleop.ros2_leader` with the `-c` flag adds the ability to "clutch" the robot's motion by holding up your other hand (the hand not holding the tongs) over the dex teleop camera. When the camera sees your other hand, it will pause tracking and allow you to adjust the pose of the tongs without moving the end effector. This is similar to lifting up and repositioning a computer mouse.
