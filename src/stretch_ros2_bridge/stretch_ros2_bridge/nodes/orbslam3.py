@@ -9,21 +9,17 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import math
 import os
 import sys
-import time
 from tempfile import NamedTemporaryFile
 
-import matplotlib.pyplot as plt
 import numpy as np
 import orbslam3
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
+from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
-from scipy.spatial.transform import Rotation as R
 from sensor_msgs.msg import CameraInfo, Image, Imu
 from tf2_ros import TransformBroadcaster
 from tf_transformations import quaternion_from_euler

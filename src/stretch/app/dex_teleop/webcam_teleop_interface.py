@@ -7,12 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import glob
 import math
-import subprocess
-import sys
 import time
-from copy import deepcopy
 
 import cv2
 import numpy as np
@@ -512,7 +508,7 @@ class WebcamArucoDetector:
             cv2.imshow("ArUco Detections", color_image)
             cv2.waitKey(1)
 
-        return markers
+        return markers, color_image
 
 
 if __name__ == "__main__":

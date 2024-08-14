@@ -7,16 +7,15 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import argparse
 import pprint as pp
 
 import dex_teleop_parameters as dt
 import goal_from_teleop as gt
 import gripper_to_goal as gg
 import loop_timer as lt
-import numpy as np
 import simple_ik as si
 import webcam_teleop_interface as wt
+from hand_tracker import HandTracker
 
 if __name__ == "__main__":
 
@@ -26,6 +25,7 @@ if __name__ == "__main__":
     left_handed = args.left
     using_stretch_2 = args.stretch_2
     slide_lift_range = args.slide_lift_range
+    check_clutch = args.clutch
 
     # The 'default', 'slow', 'fast', and 'max' options are defined by
     # Hello Robot. The 'fastest_stretch_2' option has been specially tuned for
@@ -73,11 +73,40 @@ if __name__ == "__main__":
     loop_timer = lt.LoopTimer()
     print_timing = False
     print_goal = False
+    clutched = False
+    clutch_debounce_threshold = 3
+    change_clutch_count = 0
+
+    # loop stuff
+    check_hand_frame_skip = 3
+    i = 0
+    max_i = 100  # arbitrary number of iterations
+
+    if check_clutch:
+        hand_tracker = HandTracker(left_clutch=(not left_handed))
 
     while True:
         loop_timer.start_of_iteration()
-        markers = webcam_aruco_detector.process_next_frame()
+        markers, color_image = webcam_aruco_detector.process_next_frame()
         goal_dict = goal_from_markers.get_goal_dict(markers)
+
+        if check_clutch:
+            if i % check_hand_frame_skip == 0:
+                hand_prediction = hand_tracker.run_detection(color_image)
+                check_clutched = hand_tracker.check_clutched(hand_prediction)
+
+                if check_clutched != clutched:
+                    change_clutch_count += 1
+                else:
+                    change_clutch_count = 0
+
+                if change_clutch_count >= clutch_debounce_threshold:
+                    clutched = not clutched
+                    change_clutch_count = 0
+
+            i += 1
+            i = i % max_i
+
         if goal_dict:
             if print_goal:
                 print("goal_dict =")

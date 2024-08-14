@@ -13,7 +13,6 @@
 # LICENSE file in the root directory of this source tree.
 import math
 import os
-from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -23,16 +22,12 @@ from stretch.core.interfaces import ContinuousFullBodyAction
 from stretch.motion.base import IKSolverBase
 from stretch.motion.constants import (
     MANIP_STRETCH_URDF,
-    PIN_CONTROLLED_JOINTS,
     PLANNER_STRETCH_URDF,
-    STRETCH_BASE_FRAME,
-    STRETCH_CAMERA_FRAME,
     STRETCH_GRASP_FRAME,
     STRETCH_HOME_Q,
 )
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint
-from stretch.utils.pose import to_matrix
 
 
 # used for mapping joint states in STRETCH_*_Q to match the sim/real joint action space
@@ -93,6 +88,7 @@ class HelloStretchKinematics:
     DEFAULT_BASE_HEIGHT = 0
     GRIPPER_OPEN = 0.6
     GRIPPER_CLOSED = -0.3
+    GRIPPER_CLOSED_LOOSE = 0.0
 
     default_step = np.array(
         [

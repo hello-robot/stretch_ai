@@ -18,9 +18,9 @@ from stretch.agent.operations import GraspObjectOperation, UpdateOperation
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.core import Parameters, get_parameters
-from stretch.core.task import Operation, Task
-from stretch.perception import create_semantic_sensor, get_encoder
+from stretch.core import get_parameters
+from stretch.core.task import Task
+from stretch.perception import create_semantic_sensor
 
 
 def get_task(robot, demo, target_object):
@@ -33,7 +33,12 @@ def get_task(robot, demo, target_object):
             "grasp_the_object",
             manager,
         )
-        grasp_object.configure(show_object_to_grasp=True, servo_to_grasp=True, show_servo_gui=True)
+        grasp_object.configure(
+            show_object_to_grasp=True,
+            servo_to_grasp=True,
+            show_servo_gui=True,
+            reset_observation=True,
+        )
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -55,6 +60,9 @@ def get_task(robot, demo, target_object):
 )
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
+@click.option(
+    "--repeat_count", type=int, default=1, help="Number of times to repeat the grasp - for testing"
+)
 def main(
     robot_ip: str = "",
     local: bool = False,
@@ -64,6 +72,7 @@ def main(
     show_intermediate_maps: bool = False,
     reset: bool = False,
     target_object: str = "toy",
+    repeat_count: int = 1,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -85,16 +94,23 @@ def main(
     # Agents wrap the robot high level planning interface for now
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
+
+    for _ in range(repeat_count):
+        if reset:
+            robot.move_to_nav_posture()
+            robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
+            # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
+            robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
+            time.sleep(3.0)
+
+        task = get_task(robot, demo, target_object)
+        task.run()
+        robot.open_gripper()
+
     if reset:
         robot.move_to_nav_posture()
         robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
-        # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
-        robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
-        time.sleep(3.0)
 
-    task = get_task(robot, demo, target_object)
-    task.run()
-    robot.open_gripper()
     robot.stop()
 
 

@@ -16,7 +16,6 @@ from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
-import cv2
 import numpy as np
 import zmq
 from termcolor import colored
@@ -469,9 +468,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return False
         return True
 
-    def close_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
+    def close_gripper(
+        self, loose: bool = False, blocking: bool = True, timeout: float = 10.0
+    ) -> bool:
         """Close the gripper based on hard-coded presets."""
-        gripper_target = self._robot_model.GRIPPER_CLOSED
+        gripper_target = (
+            self._robot_model.GRIPPER_CLOSED_LOOSE if loose else self._robot_model.GRIPPER_CLOSED
+        )
         print("[ZMQ CLIENT] Closing gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking=False)
         if blocking:

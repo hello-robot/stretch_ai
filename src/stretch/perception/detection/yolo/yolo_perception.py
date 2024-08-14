@@ -15,18 +15,12 @@
 
 import argparse
 import os
-import pathlib
-import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import cv2
 import numpy as np
 import torch
-from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog
-from detectron2.engine.defaults import DefaultPredictor
-from detectron2.utils.visualizer import ColorMode, Visualizer
 from ultralytics import YOLO
 
 from stretch.core.abstract_perception import PerceptionModule

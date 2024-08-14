@@ -11,7 +11,7 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Tuple
 
 from stretch.utils.config import get_config
 

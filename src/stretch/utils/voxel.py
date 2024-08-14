@@ -18,13 +18,12 @@
 """
 from typing import List, Optional, Tuple, Union
 
-import cv2
 import numpy as np
 import torch
 from torch import Tensor
 from torch_geometric.nn.pool.consecutive import consecutive_cluster
 from torch_geometric.nn.pool.voxel_grid import voxel_grid
-from torch_geometric.utils import add_self_loops, scatter
+from torch_geometric.utils import scatter
 
 
 class VoxelizedPointcloud:

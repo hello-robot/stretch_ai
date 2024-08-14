@@ -21,8 +21,6 @@ from stretch.utils.bboxes_3d import (
     box3d_volume_from_bounds,
 )
 
-from .core import Instance, InstanceView
-
 
 class Bbox3dOverlapMethodEnum(Enum):
     IOU = "IOU"

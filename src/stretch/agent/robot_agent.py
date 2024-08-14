@@ -11,29 +11,24 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import copy
 import datetime
-import os
-import pickle
 import random
 import time
 import timeit
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import clip
 import numpy as np
 import torch
 from loguru import logger
 from PIL import Image
-from torchvision import transforms
 
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
-from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, plan_to_frontier
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
@@ -94,12 +89,13 @@ class RobotAgent:
         self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
+        self._voxel_size = parameters["voxel_size"]
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
         else:
             self.voxel_map = SparseVoxelMap(
-                resolution=parameters["voxel_size"],
+                resolution=self._voxel_size,
                 local_radius=parameters["local_radius"],
                 obs_min_height=parameters["obs_min_height"],
                 obs_max_height=parameters["obs_max_height"],
@@ -179,6 +175,11 @@ class RobotAgent:
     def feature_match_threshold(self) -> float:
         """Return the feature match threshold"""
         return self._is_match_threshold
+
+    @property
+    def voxel_size(self) -> float:
+        """Return the voxel size in meters"""
+        return self._voxel_size
 
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
@@ -424,6 +425,11 @@ class RobotAgent:
         """Return scene graph, such as it is."""
         self._update_scene_graph()
         return self.scene_graph
+
+    @property
+    def manipulation_radius(self) -> float:
+        """Return the manipulation radius"""
+        return self._manipulation_radius
 
     def plan_to_instance_for_manipulation(
         self,

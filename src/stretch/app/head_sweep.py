@@ -10,12 +10,8 @@
 
 """Sweep the head around and create a 3d map, then visualize it."""
 
-import os
-import sys
-import time
 
 import click
-import cv2
 import numpy as np
 
 from stretch.agent import RobotAgent, RobotClient

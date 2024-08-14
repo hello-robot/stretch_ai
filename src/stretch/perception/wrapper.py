@@ -13,16 +13,14 @@
 # LICENSE file in the root directory of this source tree.
 
 import json
-import os
 from typing import Any, Dict, Optional, Tuple
 
 import torch
-from loguru import logger
 
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.perception.constants import RearrangeDETICCategories
-from stretch.utils.config import get_full_config_path, load_config
+from stretch.utils.config import get_full_config_path
 
 
 class OvmmPerception:

@@ -10,7 +10,6 @@
 import argparse
 import glob
 import subprocess
-import sys
 import time
 
 import cv2

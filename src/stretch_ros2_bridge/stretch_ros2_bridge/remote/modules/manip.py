@@ -18,16 +18,10 @@ from scipy.spatial.transform import Rotation as R
 from std_srvs.srv import Trigger
 
 import stretch.motion.conversions as conversions
-from stretch.core.state import ManipulatorBaseParams
 from stretch.motion.constants import STRETCH_HOME_Q
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
-from stretch.utils.geometry import (
-    pose_global_to_base_xyt,
-    posquat2sophus,
-    sophus2posquat,
-    xyt2sophus,
-)
+from stretch.utils.geometry import pose_global_to_base_xyt, posquat2sophus, sophus2posquat
 
 from .abstract import AbstractControlModule, enforce_enabled
 
@@ -364,8 +358,10 @@ class StretchManipulationClient(AbstractControlModule):
         self.move_gripper(gripper_target, blocking=blocking)
 
     @enforce_enabled
-    def close_gripper(self, blocking: bool = True):
+    def close_gripper(self, loose: bool = False, blocking: bool = True):
         gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][0]
+        if loose:
+            gripper_target += 0.3
         self.move_gripper(gripper_target, blocking=blocking)
 
     @enforce_enabled

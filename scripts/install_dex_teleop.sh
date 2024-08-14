@@ -1,5 +1,7 @@
 #!/bin/bash
 
+pip install mediapipe
+
 echo "Copy udev rule file for the Logitech Webcam C930e."
 echo "sudo cp ./99-hello-dex-teleop-camera.rules /etc/udev/rules.d/"
 sudo cp ./99-hello-dex-teleop-camera.rules /etc/udev/rules.d/

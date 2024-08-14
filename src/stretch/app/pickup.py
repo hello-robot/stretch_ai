@@ -10,15 +10,12 @@
 # license information maybe found below, if so.
 
 import click
-import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.core.task import Operation, Task
-from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
-from stretch.perception import create_semantic_sensor, get_encoder
+from stretch.perception import create_semantic_sensor
 
 
 @click.command()
@@ -52,7 +49,7 @@ from stretch.perception import create_semantic_sensor, get_encoder
 @click.option(
     "--match_method",
     type=click.Choice(["class", "feature"]),
-    default="feature",
+    default="class",
     help="Method to match objects to pick up. Options: class, feature.",
     show_default=True,
 )

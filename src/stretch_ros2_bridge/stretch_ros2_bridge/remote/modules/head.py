@@ -149,8 +149,6 @@ class StretchHeadClient(AbstractControlModule):
 
     def _enable_hook(self) -> bool:
         """Dummy override for abstract method"""
-        pass
 
     def _disable_hook(self) -> bool:
         """Dummy override for abstract method"""
-        pass
