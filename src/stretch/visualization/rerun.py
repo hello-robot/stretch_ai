@@ -197,6 +197,9 @@ class RerunVsualizer:
         """
         rr.set_time_seconds("realtime", time.time())
         points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
+        if rgb is None:
+            return
+
         rr.log(
             "world/point_cloud",
             rr.Points3D(positions=points, radii=np.ones(rgb.shape[0]) * 0.01, colors=np.int64(rgb)),
