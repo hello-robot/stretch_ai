@@ -155,18 +155,18 @@ class OrbSlam3(Node):
         if self.slam is not None:
             map_file = request.map_url
             self.slam.save_map(map_file)
-            response.success = True
+            response.result = True
         else:
-            response.success = False
+            response.result = False
         return response
 
     def load_map_callback(self, request, response):
         if self.slam is not None:
             map_file = request.map_url
             self.slam.load_map(map_file)
-            response.success = True
+            response.result = True
         else:
-            response.success = False
+            response.result = False
         return response
 
     def run(self):
