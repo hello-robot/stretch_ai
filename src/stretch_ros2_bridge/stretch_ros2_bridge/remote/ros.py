@@ -378,7 +378,7 @@ class StretchRosInterface(Node):
         # Check if robot is homed and runstopped
         self._is_homed_sub = self.create_subscription(Bool, "/is_homed", self._is_homed_cb, 1)
         self._is_runstopped_sub = self.create_subscription(
-            Bool, "/is_runstopped", self._is_runstopped, 1
+            Bool, "/is_runstopped", self._is_runstopped_cb, 1
         )
 
         self.place_ready = None
