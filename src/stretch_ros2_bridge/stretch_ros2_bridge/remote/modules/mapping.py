@@ -35,7 +35,7 @@ class StretchMappingClient(AbstractControlModule):
         req.map_url = filename
         result = self._ros_client.save_map_service.call(req)
 
-        self._is_saved = result.success
+        self._is_saved = result.result
 
         return self._is_saved
 
@@ -44,7 +44,7 @@ class StretchMappingClient(AbstractControlModule):
         req.map_url = filename
         result = self._ros_client.load_map_service.call(req)
 
-        self._is_loaded = result.success
+        self._is_loaded = result.result
 
         return self._is_loaded
 
