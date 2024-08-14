@@ -43,6 +43,7 @@ class ROS2LfdLeader:
         policy_name: str = None,
         device: str = "cuda",
         depth_filter_k=None,
+        disable_recording: bool = False,
     ):
         self.robot = robot
 
@@ -67,7 +68,8 @@ class ROS2LfdLeader:
         }
 
         self._force = force_execute
-        self._recording = False or self._force
+        self._disable_recording = disable_recording
+        self._recording = False or not self._disable_recording
         self._need_to_write = False
         self._recorder = FileDataRecorder(
             data_dir, task_name, user_name, env_name, save_images, self.metadata
@@ -267,6 +269,10 @@ class ROS2LfdLeader:
                 if self._force and stop:
                     print(f"[LEADER] Stopping policy execution")
                     self._need_to_write = True
+
+                    if self._disable_recording:
+                        self._need_to_write = False
+                        break
 
                 if self._need_to_write:
                     if self.record_success:

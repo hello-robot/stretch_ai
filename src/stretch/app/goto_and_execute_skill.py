@@ -1,23 +1,26 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # (c) 2024 Hello Robot by Chris Paxton
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import datetime
-import pickle
-import sys
-import time
-import timeit
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 import click
-import matplotlib.pyplot as plt
 import numpy as np
 
 import stretch.app.dex_teleop.dex_teleop_utils as dt_utils
 
 # Mapping and perception
-import stretch.utils.depth as du
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.app.lfd.ros2_lfd_leader import ROS2LfdLeader
@@ -154,6 +157,7 @@ def demo_main(
         policy_path=cabinet_policy_path,
         device="cuda",
         force_execute=True,
+        disable_recording=True,
     )
 
     pickup_leader = ROS2LfdLeader(
@@ -170,6 +174,7 @@ def demo_main(
         policy_path=pickup_policy_path,
         device="cuda",
         force_execute=True,
+        disable_recording=True,
     )
 
     current_datetime = datetime.datetime.now()
@@ -198,14 +203,14 @@ def demo_main(
     else:
         semantic_sensor = None
 
-    print("- Start robot agent with data collection")
+    print("- Start robot agent")
     grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
 
     pos_err_threshold = parameters["trajectory_pos_err_threshold"]
     rot_err_threshold = parameters["trajectory_rot_err_threshold"]
 
-    # input_path = "living_room_2024-07-31_15-39-07.pkl"
-    input_path = "kitchen_2024-08-01_21-40-13.pkl"
+    # input_path = "kitchen_2024-08-01_21-40-13.pkl"
+    input_path = "kitchen_2024-08-13_17-03-52.pkl"
     # Load map
     input_path = Path(input_path)
     print("Loading:", input_path)
@@ -223,12 +228,12 @@ def demo_main(
         robot.switch_to_navigation_mode()
         robot.move_to_nav_posture()
 
-        demo.update()
-        current = robot.get_base_pose()
+        start_location = robot.get_base_pose()
+
         cabinet_task = np.array([0.70500136, 0.34254823, 0.85715184])
-        pickup_task = np.array([0.79377347, -0.15, 1.57324166])
+        pickup_task = np.array([0.75, -0.18, 1.57324166])
         planner = demo.planner
-        res = planner.plan(current, cabinet_task)
+        res = planner.plan(start_location, cabinet_task)
         print("RES: ", res.success)
 
         if res.success:
@@ -244,14 +249,27 @@ def demo_main(
             )
         else:
             print("[ERROR] NO PLAN COULD BE GENERATED")
-        demo.update()
 
         print("- Starting policy evaluation")
         robot.switch_to_manipulation_mode()
         robot.move_to_manip_posture()
+        # good starting config for cabinet opening
+        robot.arm_to(
+            [
+                0.0,  # base_x
+                0.8,  # lift
+                0.02,  # arm
+                0.0,  # wrist yaw, pitch, roll
+                -0.8,
+                0.0,
+            ],
+            gripper=0.6,
+            blocking=True,
+        )
         cabinet_leader.run(display_received_images=True)
         print("- Ending policy evaluation")
 
+        # Plan and navigate to be in front of open cabinet for pickup
         robot.switch_to_navigation_mode()
         robot.move_to_nav_posture()
         current = robot.get_base_pose()
@@ -271,7 +289,6 @@ def demo_main(
             )
         else:
             print("[ERROR] NO PLAN COULD BE GENERATED")
-        demo.update()
 
         print("- Starting policy evaluation")
         robot.switch_to_manipulation_mode()
@@ -279,8 +296,55 @@ def demo_main(
         pickup_leader.run(display_received_images=True)
         print("- Ending policy evaluation")
 
+        # Close the cabinet door with hard coded routine
+        robot.arm_to(
+            [
+                0.0,  # base_x
+                0.9,  # lift
+                0.0,  # arm
+                0.0,  # wrist yaw, pitch, roll
+                0.0,
+                0.0,
+            ],
+            blocking=True,
+        )
+        robot.switch_to_navigation_mode()
+        robot.navigate_to([0.20, 0, 1.1], relative=True)
+
+        robot.switch_to_manipulation_mode()
+        robot.arm_to(
+            [
+                0.0,  # base_x
+                0.5,  # lift
+                0.03,  # arm
+                0.0,  # wrist yaw, pitch, roll
+                0.0,
+                0.0,
+            ],
+            blocking=True,
+        )
+        robot.switch_to_navigation_mode()
+        robot.navigate_to([0, 0, -1.5], relative=True)
+
         print("- Task finished, going home...")
-        # demo.go_home()
+        res = planner.plan(robot.get_base_pose(), start_location)
+        print("RES: ", res.success)
+
+        if res.success:
+            print("- Going back to starting location")
+            for i, pt in enumerate(res.trajectory):
+                print("-", i, pt.state)
+
+            # Follow the planned trajectory
+            robot.execute_trajectory(
+                [pt.state for pt in res.trajectory],
+                pos_err_threshold=pos_err_threshold,
+                rot_err_threshold=rot_err_threshold,
+            )
+        else:
+            print("[ERROR] NO PLAN COULD BE GENERATED")
+
+        print("Demo successful!")
 
     except Exception as e:
         raise (e)
