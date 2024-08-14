@@ -141,10 +141,10 @@ echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
 # If not using cpu only, install the following
-python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
-#pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
-#pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
-#pip install torch_geometric
+# python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
+pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
+pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
+pip install torch_geometric
 
 # This is no longer necessary but might be useful for some checks
 if [ "$INSTALL_PYTORCH3D" == "true" ]; then

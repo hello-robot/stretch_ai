@@ -41,10 +41,14 @@ jobs:
     - name: Install dependencies and code
       run: |
         # ./install.sh -y --no-remove --no-submodules
+        # Install torch
+        pip install torch==2.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
         # Install the core package
         python -m pip install -e ./src[dev]
         # Separate step to avoid some issues
-        python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
+        python -m pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-2.4.0+cpu.html
+        python -m pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-2.4.0+cpu.html
+        python -m pip install torch_geometric
         # Install the tools for linting and testing
         python -m pip install mypy flake8 pytest 
     ## Run pre-commit and try to apply fixes
