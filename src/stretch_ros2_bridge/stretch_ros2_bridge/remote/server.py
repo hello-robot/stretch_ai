@@ -159,10 +159,13 @@ class ZmqServer(CommsNode):
                 "joint_velocities": dq,
                 "joint_efforts": eff,
                 "control_mode": self.get_control_mode(),
-                "at_goal": self.client.at_goal,
+                "at_goal": self.client.at_goal(),
                 "is_homed": self.client.is_homed,
+                "is_runstopped": self.client.is_runstopped,
             }
             print(message)
+            for k, v in message.items():
+                print(k, type(v))
             self.send_state_socket.send_pyobj(message)
 
             # Finish with some speed info
