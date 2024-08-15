@@ -378,13 +378,7 @@ class GraspObjectOperation(ManagedOperation):
                 print(f"Center distance to object is {center_depth}.")
                 print("Center in mask?", center_in_mask)
                 print("Current XYZ:", current_xyz)
-                # if center_in_mask and (
-                #     center_depth < self.median_distance_when_grasping
-                #     or median_object_depth < self.median_distance_when_grasping
-                # ):
-                #     "If there's any chance the object is close enough, we should just try to grasp it." ""
-                #     success = self._grasp()
-                #     break
+
                 aligned = (
                     np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
                 )
