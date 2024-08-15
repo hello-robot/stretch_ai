@@ -35,7 +35,7 @@ class ROS2LfdLeader:
         task_name: str = "task",
         user_name: str = "default_user",
         env_name: str = "default_env",
-        force_record: bool = False,
+        force_execute: bool = False,
         save_images: bool = False,
         teleop_mode: str = "base_x",
         record_success: bool = False,
@@ -43,6 +43,7 @@ class ROS2LfdLeader:
         policy_name: str = None,
         device: str = "cuda",
         depth_filter_k=None,
+        disable_recording: bool = False,
     ):
         self.robot = robot
 
@@ -66,13 +67,14 @@ class ROS2LfdLeader:
             "backend": "ros2",
         }
 
-        self._force = force_record
-        self._recording = False or self._force
+        self._force = force_execute
+        self._disable_recording = disable_recording
+        self._recording = False or not self._disable_recording
         self._need_to_write = False
         self._recorder = FileDataRecorder(
             data_dir, task_name, user_name, env_name, save_images, self.metadata
         )
-        self._run_policy = False
+        self._run_policy = False or self._force
 
         self.policy = load_policy(policy_name, policy_path, device)
         self.policy.reset()
@@ -254,6 +256,24 @@ class ROS2LfdLeader:
                     loop_timer.mark_end()
                     loop_timer.pretty_print()
 
+                # Stop condition for forced execution
+                PITCH_STOP_THRESHOLD = -1.0
+
+                stop = False
+                PROGRESS_STOP_THRESHOLD = 0.95
+                if len(action) == 10:
+                    stop = action[9] > PROGRESS_STOP_THRESHOLD
+                else:
+                    stop = joint_actions["joint_wrist_pitch"] < PITCH_STOP_THRESHOLD
+
+                if self._force and stop:
+                    print(f"[LEADER] Stopping policy execution")
+                    self._need_to_write = True
+
+                    if self._disable_recording:
+                        self._need_to_write = False
+                        break
+
                 if self._need_to_write:
                     if self.record_success:
                         success = self.ask_for_success()
@@ -263,9 +283,11 @@ class ROS2LfdLeader:
                         print("[LEADER] Writing data to disk.")
                         self._recorder.write()
                     self._need_to_write = False
+                    if self._force:
+                        break
 
         finally:
-            print("Exiting...")
+            pass
 
 
 if __name__ == "__main__":
@@ -277,7 +299,9 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--user-name", type=str, default="default_user")
     parser.add_argument("-t", "--task-name", type=str, default="default_task")
     parser.add_argument("-e", "--env-name", type=str, default="default_env")
-    parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
+    parser.add_argument(
+        "-f", "--force", action="store_true", help="Force execute policy right away."
+    )
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
     parser.add_argument(
         "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
@@ -320,7 +344,7 @@ if __name__ == "__main__":
         user_name=args.user_name,
         task_name=args.task_name,
         env_name=args.env_name,
-        force_record=args.force,
+        force_execute=args.force,
         save_images=args.save_images,
         teleop_mode=args.teleop_mode,
         record_success=args.record_success,
