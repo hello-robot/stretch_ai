@@ -95,6 +95,23 @@ Finally:
 
 ## Installation
 
+### System Dependencies
+
+You need git-lfs:
+
+```bash
+sudo apt-get install git-lfs
+git lfs install
+```
+
+You also need some system audio dependencies. These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
+
+```bash
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+```
+
+### Install Stretch AI
+
 On both your PC and your robot, clone and install the package:
 
 ```bash
@@ -115,14 +132,6 @@ colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
-
-### Audio Dependencies
-
-These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
-
-```bash
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-```
 
 ### Using LLMs
 
