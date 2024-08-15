@@ -364,6 +364,8 @@ python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x -
 
 [Read the data collection documentation](docs/data_collection.md) for more details.
 
+After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
+
 ### Automatic 3d Mapping
 
 ```bash
