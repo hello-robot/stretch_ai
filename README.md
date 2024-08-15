@@ -341,22 +341,22 @@ Another useful flag when testing is the `--reset` flag, which will reset the rob
 
 ### Voxel Map Visualization
 
-You can test the voxel code on a captured pickle file:
+You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](src/test/mapping/hq_small.pkl)  or [hq_large](src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+python -m stretch.app.read_map -i hq_small.pkl
 ```
 
 Optional open3d visualization of the scene:
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+python -m stretch.app.read_map -i hq_small.pkl  --show-svm
 ```
 
 You can visualize instances in the voxel map with the `--show-instances` flag:
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-instances
+python -m stretch.app.read_map -i hq_small.pkl  --show-instances
 ```
 
 You can also re-run perception with the `--run-segmentation` flag and provide a new export file with the `--export` flag:
