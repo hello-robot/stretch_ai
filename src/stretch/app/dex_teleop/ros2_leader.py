@@ -21,6 +21,7 @@ import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
+from stretch.app.dex_teleop.hand_tracker import HandTracker
 from stretch.core import get_parameters
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
@@ -44,6 +45,7 @@ class ZmqRos2Leader:
         teleop_mode: str = "base_x",
         record_success: bool = False,
         platform: str = "linux",
+        use_clutch: bool = False,
     ):
         self.robot = robot
         self.camera = None
@@ -56,6 +58,7 @@ class ZmqRos2Leader:
         self.record_success = record_success
         self.platform = platform
         self.verbose = verbose
+        self.use_clutch = use_clutch
 
         self.left_handed = left_handed
 
@@ -374,6 +377,21 @@ class ZmqRos2Leader:
 
     def run(self, display_received_images):
         loop_timer = lt.LoopStats("dex_teleop_leader")
+
+        if self.use_clutch:
+            hand_tracker = HandTracker(left_clutch=(not self.left_handed))
+
+        # loop stuff for clutch
+        clutched = False
+        clutch_debounce_threshold = 3
+        change_clutch_count = 0
+        check_hand_frame_skip = 3
+        i = 0
+        max_i = 100  # arbitrary number of iterations
+
+        last_robot_pose = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        offset_pose = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
         try:
             while True:
                 loop_timer.mark_start()
@@ -443,10 +461,29 @@ class ZmqRos2Leader:
                     break
 
                 # Raw input from teleop
-                markers = self.webcam_aruco_detector.process_next_frame()
+                markers, color_image = self.webcam_aruco_detector.process_next_frame()
 
                 # Set up commands to be sent to the robot
                 goal_dict = self.goal_from_markers.get_goal_dict(markers)
+
+                if self.use_clutch:
+                    # check if n-th frame - if so, check clutch
+                    if i % check_hand_frame_skip == 0:
+                        hand_prediction = hand_tracker.run_detection(color_image)
+                        check_clutched = hand_tracker.check_clutched(hand_prediction)
+
+                        # debounce
+                        if check_clutched != clutched:
+                            change_clutch_count += 1
+                        else:
+                            change_clutch_count = 0
+
+                        if change_clutch_count >= clutch_debounce_threshold:
+                            clutched = not clutched
+                            change_clutch_count = 0
+
+                    i += 1
+                    i = i % max_i
 
                 if goal_dict is not None:
                     # Convert goal dict into a quaternion
@@ -458,6 +495,7 @@ class ZmqRos2Leader:
                     goal_dict = {"valid": False}
 
                 if goal_dict["valid"]:
+                    # get robot configuration
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
 
                     # Format to standard action space
@@ -467,7 +505,7 @@ class ZmqRos2Leader:
                         print("[LEADER] goal_dict =")
                         pp.pprint(goal_configuration)
 
-                    self.robot.arm_to(
+                    robot_pose = np.array(
                         [
                             goal_configuration["base_x_joint"],
                             goal_configuration["joint_lift"],
@@ -475,29 +513,41 @@ class ZmqRos2Leader:
                             goal_configuration["joint_wrist_yaw"],
                             goal_configuration["joint_wrist_pitch"],
                             goal_configuration["joint_wrist_roll"],
-                        ],
-                        gripper=goal_configuration["stretch_gripper"],
-                        head=constants.look_at_ee,
+                        ]
                     )
 
-                    # Prep joint states as dict
-                    joint_states = {
-                        k: observation.joint[v] for k, v in HelloStretchIdx.name_to_idx.items()
-                    }
-                    if self._recording and self.prev_goal_dict is not None:
-                        self._recorder.add(
-                            ee_rgb=gripper_color_image,
-                            ee_depth=gripper_depth_image,
-                            xyz=goal_dict["relative_gripper_position"],
-                            quaternion=goal_dict["relative_gripper_orientation"],
-                            gripper=goal_dict["grip_width"],
-                            head_rgb=head_color_image,
-                            head_depth=head_depth_image,
-                            observations=joint_states,
-                            actions=goal_configuration,
-                            ee_pos=observation.ee_camera_pose,
-                            ee_rot=observation.ee_camera_pose,
+                    if not clutched:
+                        last_robot_pose = robot_pose
+
+                        # add clutch offset
+                        robot_pose += offset_pose
+
+                        self.robot.arm_to(
+                            robot_pose,
+                            gripper=goal_configuration["stretch_gripper"],
+                            head=constants.look_at_ee,
                         )
+
+                        # Prep joint states as dict
+                        joint_states = {
+                            k: observation.joint[v] for k, v in HelloStretchIdx.name_to_idx.items()
+                        }
+                        if self._recording and self.prev_goal_dict is not None:
+                            self._recorder.add(
+                                ee_rgb=gripper_color_image,
+                                ee_depth=gripper_depth_image,
+                                xyz=goal_dict["relative_gripper_position"],
+                                quaternion=goal_dict["relative_gripper_orientation"],
+                                gripper=goal_dict["grip_width"],
+                                head_rgb=head_color_image,
+                                head_depth=head_depth_image,
+                                observations=joint_states,
+                                actions=goal_configuration,
+                                ee_pos=observation.ee_camera_pose,
+                                ee_rot=observation.ee_camera_pose,
+                            )
+                    else:
+                        offset_pose = last_robot_pose - robot_pose
 
                 self.prev_goal_dict = goal_dict
 
@@ -544,6 +594,7 @@ if __name__ == "__main__":
     parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
+    parser.add_argument("-c", "--clutch", action="store_true")
     args = parser.parse_args()
 
     # Parameters
@@ -556,6 +607,7 @@ if __name__ == "__main__":
         send_port=args.send_port,
         parameters=parameters,
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
+        enable_rerun_server=False,
     )
     robot.switch_to_manipulation_mode()
     robot.move_to_manip_posture()
@@ -572,6 +624,7 @@ if __name__ == "__main__":
         teleop_mode=args.teleop_mode,
         record_success=args.record_success,
         platform=args.platform,
+        use_clutch=args.clutch,
     )
 
     try:
