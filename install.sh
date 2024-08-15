@@ -7,7 +7,8 @@ export PYTHON_VERSION=3.10
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
-VERSION=_`python src/stretch/version.py`
+script_dir="$(dirname "$0")"
+VERSION="_`python $script_dir/src/stretch/version.py`"
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -148,7 +149,6 @@ echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
 # If not using cpu only, install the following
-# python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
 pip install torch_cluster -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_scatter -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html
 pip install torch_geometric
