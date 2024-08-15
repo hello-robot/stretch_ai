@@ -677,6 +677,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
+                if verbose:
+                    print("---> At goal")
                 break
 
             # Resend the action if we are not moving for some reason and it's been provided
@@ -885,7 +887,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 timeout=timeout,
                 # resend_action=current_action,
             )
-            time.sleep(0.1)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
