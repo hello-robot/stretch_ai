@@ -427,14 +427,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return True
 
     def navigate_to(
-        self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
+        self,
+        xyt: ContinuousNavigationAction,
+        relative=False,
+        blocking=False,
+        timeout: float = 10.0,
+        verbose: bool = False,
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
         assert len(xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
-        self.send_action(next_action, timeout=timeout)
+        self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
