@@ -103,6 +103,26 @@ Finally:
 
 ## Installation
 
+### Temporary Note on ROS2 Version
+
+On the robot, we are *temporarily* using a new version of the [stretch_ros2](https://github.com/hello-robot/stretch_ros2/tree/feature/streaming_position) ROS package: the `feature/streaming_position` branch. This allows us to send smoother commands to the robot.
+
+On your robot, go to your `ament_ws` directory and checkout the `feature/streaming_position` branch:
+
+```bash
+cd ~/ament_ws/src/stretch_ros2
+git checkout feature/streaming_position
+```
+
+Then, build the workspace:
+
+```bash
+cd ~/ament_ws
+colcon build --packages-select stretch_ros2
+```
+
+You can verify this has worked by running the `view_images` app. If the robot moves its arm, you are good to go!
+
 ### System Dependencies
 
 You need git-lfs:
