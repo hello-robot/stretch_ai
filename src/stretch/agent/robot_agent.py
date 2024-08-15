@@ -312,7 +312,7 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: int = 12, visualize: bool = False, verbose: bool = False
+        self, steps: int = 12, visualize: bool = False, verbose: bool = True
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -331,9 +331,11 @@ class RobotAgent:
         x, y, _ = self.robot.get_base_pose()
         print(f"==== ROTATE IN PLACE at {x}, {y} ====")
         while i < steps:
+            t0 = timeit.default_timer()
             self.robot.navigate_to(
-                [x, y, i * step_size], relative=False, blocking=True, verbose=True
+                [x, y, i * step_size], relative=False, blocking=True, verbose=verbose
             )
+            t1 = timeit.default_timer()
 
             if self.robot.last_motion_failed():
                 # We have a problem!
@@ -343,6 +345,7 @@ class RobotAgent:
 
             # Add an observation after the move
             if verbose:
+                print(" - Navigation took", t1 - t0, "seconds")
                 print(f"---- UPDATE {i+1} at {x}, {y}----")
             self.update()
 
