@@ -2,7 +2,13 @@
 
 ## Prerequisites:
 
-Follow [instructions](../README.md#Installation) for installation of stretch_ai with Python 3.10 for both PC and robot
+Follow the [instructions](../README.md#Installation) for installation of `stretch_ai` with Python 3.10 for both PC and robot.
+
+Make sure you have the optional dependencies installed for Dex Teleop:
+
+```bash
+python -m pip install webcam mediapipe
+```
 
 ### On PC:
 
