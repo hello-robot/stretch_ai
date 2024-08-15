@@ -17,7 +17,7 @@ with open("../README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="stretchpy",
+    name="stretch_ai",
     version=__version__,
     author="Hello Robot Inc.",
     author_email="support@hello-robot.com",
@@ -39,7 +39,6 @@ setuptools.setup(
         "scipy",
         "matplotlib",
         "trimesh",
-        "openai-clip",
         "yacs",
         "loguru",
         "scikit-image",
@@ -49,6 +48,9 @@ setuptools.setup(
         "pyusb",
         "schema",
         "overrides",
+        # From openai
+        "openai",
+        "openai-clip",
         # Hardware dependencies
         "pyrealsense2",
         "urchin",

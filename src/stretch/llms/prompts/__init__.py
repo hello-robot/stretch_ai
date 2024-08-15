@@ -8,6 +8,5 @@
 # license information maybe found below, if so.
 
 from .object_manip_nav_prompt import ObjectManipNavPromptBuilder
-
-# from .ok_robot_prompt import OkRobotPromptBuilder
+from .ok_robot_prompt import OkRobotPromptBuilder
 from .simple_prompt import SimpleStretchPromptBuilder

@@ -184,6 +184,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._rerun = RerunVsualizer()
         else:
             self._rerun = None
+            self._rerun_thread = None
 
         if start_immediately:
             self.start()
