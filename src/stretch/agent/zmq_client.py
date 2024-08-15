@@ -640,9 +640,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         close_to_goal = False
         while True:
+
+            # Minor delay at the end - give it time to get new messages
+            time.sleep(0.01)
+
             with self._obs_lock:
                 if self._obs is None:
                     continue
+
             xyt = self.get_base_pose()
             pos = xyt[:2]
             ang = xyt[2]
@@ -686,8 +691,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 # Resend the action
                 self.send_socket.send_pyobj(resend_action)
 
-            # Minor delay at the end - give it time to get new messages
-            time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
