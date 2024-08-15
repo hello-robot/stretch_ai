@@ -74,6 +74,7 @@ class GraspObjectOperation(ManagedOperation):
         show_servo_gui: bool = True,
         show_point_cloud: bool = False,
         reset_observation: bool = False,
+        grasp_loose: bool = False,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -88,6 +89,7 @@ class GraspObjectOperation(ManagedOperation):
         self.show_servo_gui = show_servo_gui
         self.show_point_cloud = show_point_cloud
         self.reset_observation = reset_observation
+        self.grasp_loose = grasp_loose
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
@@ -187,10 +189,10 @@ class GraspObjectOperation(ManagedOperation):
         else:
             return prev_mask
 
-    def _grasp(self, loose: bool = False) -> bool:
+    def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
-        self.robot.close_gripper(loose=loose, blocking=True)
+        self.robot.close_gripper(loose=self.grasp_loose, blocking=True)
         time.sleep(0.5)
 
         # Get a joint state for the object
@@ -336,7 +338,7 @@ class GraspObjectOperation(ManagedOperation):
                     break
 
             if not pregrasp_done and current_xyz is not None:
-                self.pregrasp_open_loop(current_xyz, distance_from_object=0.05)
+                self.pregrasp_open_loop(current_xyz, distance_from_object=0.075)
                 pregrasp_done = True
             else:
                 # check not moving threshold
@@ -376,13 +378,7 @@ class GraspObjectOperation(ManagedOperation):
                 print(f"Center distance to object is {center_depth}.")
                 print("Center in mask?", center_in_mask)
                 print("Current XYZ:", current_xyz)
-                if center_in_mask and (
-                    center_depth < self.median_distance_when_grasping
-                    or median_object_depth < self.median_distance_when_grasping
-                ):
-                    "If there's any chance the object is close enough, we should just try to grasp it." ""
-                    success = self._grasp()
-                    break
+
                 aligned = (
                     np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
                 )
@@ -462,7 +458,7 @@ class GraspObjectOperation(ManagedOperation):
                 time.sleep(self.expected_network_delay)
 
                 # check not moving
-                if np.linalg.norm(q - q_last) < 0.02:  # TODO: tune
+                if np.linalg.norm(q - q_last) < 0.05:  # TODO: tune
                     not_moving_count += 1
                 else:
                     not_moving_count = 0
