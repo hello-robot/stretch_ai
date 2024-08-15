@@ -84,7 +84,7 @@ pytest
 The code is organized as follows. Inside the core package `src/stretch`:
 
 - [core](src/stretch/core) is basic tools and interfaces
-- [app](src/stretch/app)  contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
+- [app](src/stretch/app) contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
 - [motion](src/stretch/motion) contains motion planning tools, including [algorithms](src/stretch/motion/algo) like RRT.
 - [mapping](src/stretch/mapping) is broken up into tools for voxel (3d / ok-robot style), instance mapping
 - [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.

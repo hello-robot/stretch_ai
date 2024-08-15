@@ -27,6 +27,14 @@ After following the [installation instructions](#installation), start the server
 ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
+Make sure the core test app runs:
+
+```python
+python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+You should see windows popping up with camera viers from the robot, and the arm should move into a default position. The head should also turn to face the robot hand. If this all happens, you are good to go! Press `q` to quit the app.
+
 Then, on your PC, you can easily send commands and stream data:
 
 ```python
@@ -324,6 +332,12 @@ python -m stretch.app.voice_chat
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit).
 
+You need to install mediapipe for hand tracking:
+
+```
+python -m pip install mediapipe
+```
+
 ```bash
 python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
 ```
@@ -412,23 +426,6 @@ pre-commit install
 ```
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
-
-### Code Overview
-
-The code is organized as follows. Inside the core package `src/stretch`:
-
-- [core](src/stretch/core) is basic tools and interfaces
-- [app](src/stretch/app) contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
-- [motion](src/stretch/motion) contains motion planning tools, including [algorithms](src/stretch/motion/algo) like RRT.
-- [mapping](src/stretch/mapping) is broken up into tools for voxel (3d / ok-robot style), instance mapping
-- [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
-  - In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
-  - [agent/robot_agent.py](src/stretch/agent/robot_agent.py) is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
-  - [agent/base](src/stretch/agent/base) contains base classes for creating tasks, such as the [TaskManager](src/stretch/agent/base/task_manager.py) class and the [ManagedOperation](src/stretch/agent/base/managed_operation.py) class.
-  - [agent/task](src/stretch/agent/task) contains task-specific code, such as for the `pickup` task. This is divided between "Managers" like [pickup_manager.py](src/stretch/agent/task/pickup_manager.py) which are composed of "Operations." Each operation is a composable state machine node with pre- and post-conditions.
-  - [agent/operations](src/stretch/agent/operations) contains the individual operations, such as `move_to_pose.py` which moves the robot to a given pose.
-
-The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
 
 ### Updating Code on the Robot
 
