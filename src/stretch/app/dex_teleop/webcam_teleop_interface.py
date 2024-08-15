@@ -508,7 +508,7 @@ class WebcamArucoDetector:
             cv2.imshow("ArUco Detections", color_image)
             cv2.waitKey(1)
 
-        return markers
+        return markers, color_image
 
 
 if __name__ == "__main__":
