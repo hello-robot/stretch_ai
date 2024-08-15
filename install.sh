@@ -111,6 +111,10 @@ set -e
 
 # Install git-lfs
 echo "Installing git-lfs..."
+echo "If this fails, install git-lfs with:"
+echo ""
+echo "     sudo apt-get install git-lfs"
+echo ""
 git lfs install
 
 # Only remove if NO_REMOVe is false
