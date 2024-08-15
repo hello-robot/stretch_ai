@@ -7,7 +7,7 @@ CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
-VERSION="_`python $script_dir/src/stretch/version.py`"
+VERSION=`python $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -55,11 +55,11 @@ if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu
     export CUDA_VERSION_NODOT=cpu
     export CUDA_HOME=""
-    ENV_NAME=stretch_ai_cpu$VERSION
+    ENV_NAME=stretch_ai_cpu_$VERSION
     export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-    ENV_NAME=stretch_ai_231$VERSION
+    ENV_NAME=stretch_ai_pt231_$VERSION
     export PYTORCH_VERSION=2.3.1
 fi
 
