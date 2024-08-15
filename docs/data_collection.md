@@ -78,14 +78,16 @@ If you have already ran an app with `--robot-ip` flag, such as the `view_images`
 # The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
 
 TASK_NAME=<name-of-task>
-python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --save-images
+python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --save-images --clutch
 ```
 
 For example:
 
 ```bash
-python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --save-images
+python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --save-images --clutch
 ```
+
+The optional `--clutch` flag enables the clutch. While your hand is over the dex teleop webcam, the robot will not move. This makes it easier to operate the robot and to collect data.
 
 #### Teleop Modes
 
