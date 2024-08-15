@@ -24,14 +24,17 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+import stretch.utils.logger as logger
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
 from stretch.mapping import SparseVoxelMap
+from stretch.perception import create_semantic_sensor
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 from stretch.utils.geometry import xyt_global_to_base
 
 
 def plan_to_deltas(xyt0, plan):
+    """Print the deltas between each node in the generated motion plan."""
     tol = 1e-6
     for i, node in enumerate(plan.trajectory):
         xyt1 = node.state
@@ -90,6 +93,42 @@ def plan_to_deltas(xyt0, plan):
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
 @click.option("--query", "-q", type=str, default="")
+@click.option(
+    "--export",
+    "-e",
+    type=str,
+    default="",
+    help="export path to save a new compressed copy of the PKL file",
+)
+@click.option(
+    "--run-segmentation",
+    "-r",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="run segmentation on the saved input data and update the voxel map",
+)
+@click.option(
+    "--device-id",
+    "-d",
+    type=int,
+    default=0,
+    help="GPU device id for the semantic sensor",
+)
+@click.option(
+    "--start",
+    "-x",
+    type=str,
+    default="0,0,0",
+    help="start pose for planning as a tuple X,Y,Theta in meters and radians",
+)
+@click.option(
+    "--test-remove",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="test the remove instance function - requires query",
+)
 def main(
     input_path,
     config_path,
@@ -105,6 +144,11 @@ def main(
     try_to_plan_iter: int = 10,
     show_instances: bool = False,
     query: str = "",
+    export: str = "",
+    run_segmentation: bool = False,
+    device_id: int = 0,
+    start: str = "0,0,0",
+    test_remove: bool = False,
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
@@ -119,34 +163,47 @@ def main(
     else:
         loaded_voxel_map = None
 
+    print("- Load parameters")
+    parameters = get_parameters(config_path)
+
+    if run_segmentation:
+        print("- Preparing perception pipeline")
+        semantic_sensor = create_semantic_sensor(
+            parameters=parameters,
+            device_id=device_id,
+            verbose=False,
+        )
+    else:
+        semantic_sensor = None
+
     dummy_robot = DummyStretchClient()
     if len(config_path) > 0:
-        print("- Load parameters")
-        parameters = get_parameters(config_path)
         agent = RobotAgent(
             dummy_robot,
             parameters,
-            None,
+            semantic_sensor=semantic_sensor,
             rpc_stub=None,
             grasp_client=None,
             voxel_map=loaded_voxel_map,
+            use_instance_memory=(run_segmentation or show_instances),
         )
         voxel_map = agent.voxel_map
         if not pkl_is_svm:
             print("Reading from pkl file of raw observations...")
-            voxel_map.read_from_pickle(input_path, num_frames=frame)
+            res = voxel_map.read_from_pickle(
+                input_path, num_frames=frame, perception=semantic_sensor
+            )
+            if not res:
+                print("Failed to read from pickle file. Quitting.")
+                return
     else:
         agent = None
-        voxel_map = SparseVoxelMap(resolution=voxel_size)
+        voxel_map = SparseVoxelMap(
+            resolution=voxel_size, use_instance_memory=(run_segmentation or show_instances)
+        )
 
-    # TODO: read this from file or something
-    x0 = np.array([0, 0, 0])
-    # x0 = np.array([1, 0, 0])
-    # x0 = np.array([2.85963704, 0.77726015, 1.95671275])  # stretch_output_2024-05-24_13-28-26.pkl
-    # x0 = np.array([2.6091852, 3.2328937, 0.8379814])
-    # x0 = np.array([3.1000001, 0.0, 4.2857614])
-    # x0 = np.array([0.0, -0.0, 1.5707968])
-    # x0 = np.array([1.1499997, -0.60000074, -1.4168407])
+    x0 = np.array([float(x) for x in start.split(",")])
+    assert len(x0) == 3, "start pose must be 3 values: x, y, theta"
     start_xyz = [x0[0], x0[1], 0]
 
     if agent is not None:
@@ -257,6 +314,23 @@ def main(
                         xyt=goal,
                         footprint=footprint,
                     )
+
+        if len(query) > 0 and not (test_sampling or test_remove):
+            print("-" * 80)
+            print(f"Querying instances that correspond with '{query}'")
+            score, instance_id, instance = agent.get_ranked_instances(query)[0]
+            print("Found instance:", instance.global_id, "with score", score)
+            if show_instances:
+                plt.imshow(instance.get_best_view().get_image())
+                plt.title(f"Instance {instance.global_id} = {query}")
+                plt.axis("off")
+                plt.show()
+
+        if show_instances and ((not test_sampling) and len(query) == 0):
+            logger.warning(
+                "show_instances is set but test_sampling is not set. Ignoring show_instances."
+            )
+
         if test_sampling:
             print("-" * 80)
             print("Test sampling.")
@@ -307,6 +381,45 @@ def main(
                     agent.get_plan_from_vlm(current_pose=x0, show_plan=True)
                 except KeyboardInterrupt:
                     break
+
+        if test_remove:
+            print("-" * 80)
+            print("Test remove instance.")
+            if len(query) == 0:
+                query = input("Enter a query: ")
+            else:
+                print("Query:", query)
+            matches = agent.get_ranked_instances(query)
+
+            # Just get one instance
+            instances = agent.get_ranked_instances(query)
+            print("Found", len(instances), "matches for query", query)
+            score, instance_id, instance = instances[0]
+            print("Found instance:", instance.global_id, "with score", score)
+
+            if show_instances:
+                plt.imshow(instance.get_best_view().get_image())
+                plt.title(f"Instance {instance.global_id} = {query}")
+                plt.axis("off")
+                plt.show()
+
+            # Delete the instance
+            voxel_map.delete_instance(instance)
+
+            # Try to find the instance again
+            instances = agent.get_ranked_instances(query)
+            new_score, new_instance_id, new_instance = instances[0]
+            print("Found instance:", new_instance.global_id, "with score", new_score)
+
+            if show_instances:
+                plt.imshow(new_instance.get_best_view().get_image())
+                plt.title(f"Instance {new_instance.global_id} = {query}")
+                plt.axis("off")
+                plt.show()
+
+        if len(export) > 0:
+            print("Exporting to", export)
+            voxel_map.write_to_pickle(export, compress=True)
 
 
 if __name__ == "__main__":
