@@ -108,8 +108,8 @@ def main(
     prompt = ObjectManipNavPromptBuilder()
     client = OpenaiClient(prompt)
 
-    print("Saving map")
-    robot.save_map("demo_map")
+    print("Loading map")
+    robot.load_map("demo_map")
 
 
 if __name__ == "__main__":
