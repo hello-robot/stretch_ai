@@ -33,6 +33,7 @@ from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
+from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
@@ -579,8 +580,9 @@ class SparseVoxelMap(object):
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
-        data["obs"] = []
         data["instance"] = []
+        data["instance_scores"] = []
+        data["instance_classes"] = []
 
         # Add a print statement with use of this code
         logger.alert(f"Write pkl to {filename}...")
@@ -598,6 +600,8 @@ class SparseVoxelMap(object):
             data["base_poses"].append(frame.base_pose)
             data["camera_K"].append(frame.camera_K)
             data["instance"].append(frame.instance)
+            data["instance_classes"].append(frame.instance_classes)
+            data["instance_scores"].append(frame.instance_scores)
 
             # Convert to numpy and correct formats for saving
             rgb = frame.rgb.byte().cpu().numpy()
@@ -612,8 +616,6 @@ class SparseVoxelMap(object):
                 data["depth"].append(frame.depth)
 
             data["feats"].append(frame.feats)
-            # TODO: compression of Observations
-            # data["obs"].append(frame.obs)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -643,7 +645,9 @@ class SparseVoxelMap(object):
         else:
             raise NotImplementedError("unsupported data type for tensor:", tensor)
 
-    def read_from_pickle(self, filename: str, num_frames: int = -1):
+    def read_from_pickle(
+        self, filename: str, num_frames: int = -1, perception: Optional[OvmmPerception] = None
+    ) -> bool:
         """Read from a pickle file as above. Will clear all currently stored data first."""
         self.reset_cache()
         if isinstance(filename, str):
@@ -656,6 +660,20 @@ class SparseVoxelMap(object):
         compressed = False
         if "compressed" in data:
             compressed = data["compressed"]
+        read_observations = False
+        if "obs" in data:
+            logger.warning("Reading old format with full observations")
+            read_observations = True
+
+        # Processing to handle older files that actually saved the whole observation object
+        if read_observations and len(data["obs"]) > 0:
+            instance_data = data["obs"]
+        else:
+            instance_data = data["instance"]
+
+        if len(instance_data) == 0:
+            logger.error("No instance data found in file")
+            return False
 
         for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
             # TODO: compression of observations
@@ -668,12 +686,21 @@ class SparseVoxelMap(object):
                 data["feats"],
                 data["depth"],
                 data["base_poses"],
-                data["instance"],
+                instance_data,
             )
         ):
             # Handle the case where we dont actually want to load everything
             if num_frames > 0 and i >= num_frames:
                 break
+            if camera_pose is None:
+                logger.warning(f"Skipping frame {i} with None camera pose")
+                continue
+            if K is None:
+                logger.warning(f"Skipping frame {i} with None intrinsics")
+                continue
+            if base_pose is None:
+                logger.warning(f"Skipping frame {i} with None base pose")
+                continue
 
             camera_pose = self.fix_data_type(camera_pose)
             if compressed:
@@ -683,8 +710,29 @@ class SparseVoxelMap(object):
             depth = self.fix_data_type(depth).float()
             if feats is not None:
                 feats = self.fix_data_type(feats)
+
             base_pose = self.fix_data_type(base_pose)
-            instance = self.fix_data_type(instance)
+
+            # Handle instance processing - if we have a perception model we can use it to predict the instance image
+            # We can also just use the instance image if it was saved
+            instance_classes = None
+            instance_scores = None
+            if perception is not None:
+                _, instance, info = perception.predict_segmentation(
+                    rgb=rgb, depth=depth, base_pose=base_pose
+                )
+                instance_classes = info["instance_classes"]
+                instance_scores = info["instance_scores"]
+            elif read_observations:
+                instance = instance.instance
+                instance_classes = instance.task_observations["instance_classes"]
+                instance_scores = instance.task_observations["instance_scores"]
+            else:
+                instance_classes = self.fix_data_type(data["instance_classes"][i])
+                instance_scores = self.fix_data_type(data["instance_scores"][i])
+            instance = self.fix_data_type(instance).long()
+
+            # Add to the map
             self.add(
                 camera_pose=camera_pose,
                 rgb=rgb,
@@ -692,8 +740,11 @@ class SparseVoxelMap(object):
                 depth=depth,
                 base_pose=base_pose,
                 instance_image=instance,
+                instance_classes=instance_classes,
+                instance_scores=instance_scores,
                 camera_K=K,
             )
+        return True
 
     def recompute_map(self):
         """Recompute the entire map from scratch instead of doing incremental updates.
@@ -846,24 +897,16 @@ class SparseVoxelMap(object):
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), rgb.detach().cpu().numpy())
         return open3d.geometry.KDTreeFlann(pcd)
 
-    def show(
-        self, instances: bool = True, backend: str = "open3d", **backend_kwargs
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def show(self, instances: bool = True, **backend_kwargs) -> Tuple[np.ndarray, np.ndarray]:
         """Display the aggregated point cloud."""
-        if backend == "open3d":
-            return self._show_open3d(instances, **backend_kwargs)
-        elif backend == "pytorch3d":
-            return self._show_pytorch3d(instances, **backend_kwargs)
-        else:
-            raise NotImplementedError(f"Unknown backend {backend}, must be 'open3d' or 'pytorch3d")
+        if instances:
+            assert self.use_instance_memory, "must have instance memory to show instances"
+        return self._show_open3d(instances, **backend_kwargs)
 
     def get_xyz_rgb(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return xyz and rgb of the current map"""
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
         return points, rgb
-
-    def _show_pytorch3d(self, instances: bool = True, mock_plot: bool = False, **plot_scene_kwargs):
-        print("SparseVoxelMap::_show_pytorch_3d: Warning! pytorch3d support deprecated!")
 
     def sample_explored(self) -> Optional[np.ndarray]:
         """Return obstacle-free xy point in explored space"""
@@ -1035,6 +1078,13 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
+    def delete_instance(self, instance: Instance) -> None:
+        """Remove an instance from the map"""
+        print("Deleting instance", instance.global_id)
+        print("Bounds: ", instance.bounds)
+        self.delete_obstacles(instance.bounds)
+        self.instances.pop_global_instance(env_id=0, global_instance_id=instance.global_id)
+
     def delete_obstacles(
         self,
         bounds: Optional[np.ndarray] = None,
@@ -1063,7 +1113,6 @@ class SparseVoxelMap(object):
         geoms = self._get_open3d_geometries(
             instances, orig, norm, xyt=xyt, footprint=footprint, add_planner_visuals=planner_visuals
         )
-
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)
 

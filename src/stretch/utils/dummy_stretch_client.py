@@ -42,7 +42,6 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
         https://github.com/hello-robot/stretch_ros/blob/master/hello_helpers/src/hello_helpers/hello_misc.py
         """
 
-        print("warning: dummy client not functional")
         """
         # Robot model
         self._robot_model = HelloStretchKinematics(

@@ -95,6 +95,23 @@ Finally:
 
 ## Installation
 
+### System Dependencies
+
+You need git-lfs:
+
+```bash
+sudo apt-get install git-lfs
+git lfs install
+```
+
+You also need some system audio dependencies. These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
+
+```bash
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+```
+
+### Install Stretch AI
+
 On both your PC and your robot, clone and install the package:
 
 ```bash
@@ -115,14 +132,6 @@ colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
-
-### Audio Dependencies
-
-These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
-
-```bash
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-```
 
 ### Using LLMs
 
@@ -341,16 +350,41 @@ Another useful flag when testing is the `--reset` flag, which will reset the rob
 
 ### Voxel Map Visualization
 
-You can test the voxel code on a captured pickle file:
+You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](src/test/mapping/hq_small.pkl)  or [hq_large](src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+python -m stretch.app.read_map -i hq_small.pkl
 ```
 
 Optional open3d visualization of the scene:
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+python -m stretch.app.read_map -i hq_small.pkl  --show-svm
+```
+
+You can visualize instances in the voxel map with the `--show-instances` flag:
+
+```bash
+python -m stretch.app.read_map -i hq_small.pkl  --show-instances
+```
+
+You can also re-run perception with the `--run-segmentation` flag and provide a new export file with the `--export` flag:
+
+```bash
+ python -m stretch.app.read_map -i hq_small.pkl --export hq_small_v2.pkl --run-segmentation
+```
+
+You can test motion planning, frontier exploration, etc., as well. Use the `--start` flag to set the robot's starting position:
+
+```bash
+# Test motion planning
+python -m stretch.app.read_map -i hq_small.pkl --test-planning --start 4.5,1.3,2.1
+# Test planning to frontiers with current parameters file
+python -m stretch.app.read_map -i hq_small.pkl --test-plan-to-frontier --start 4.0,1.4,0.0
+# Test sampling movement to objects
+python -m stretch.app.read_map -i hq_small.pkl --test-sampling --start 4.5,1.4,0.0
+# Test removing an object from the map
+python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --query "cardboard box"
 ```
 
 ### Pickup Objects

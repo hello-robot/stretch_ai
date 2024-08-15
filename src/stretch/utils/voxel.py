@@ -100,9 +100,14 @@ class VoxelizedPointcloud:
             self._rgb = self._rgb[mask]
 
         elif bounds is not None:
-            assert len(bounds) == 6, "Bounds must be 6D"
-            mask = torch.any(self._points > torch.tensor(bounds[:3]), dim=1) & torch.any(
-                self._points < torch.tensor(bounds[3:]), dim=1
+            if not isinstance(bounds, torch.Tensor):
+                _bounds = torch.tensor(bounds)
+            else:
+                _bounds = bounds
+            _bounds = _bounds.flatten()
+            assert len(_bounds) == 6, "Bounds must be 6D"
+            mask = torch.any(self._points > _bounds[:3], dim=1) & torch.any(
+                self._points < _bounds[3:], dim=1
             )
             self._points = self._points[mask]
             if self._features is not None:
@@ -110,8 +115,6 @@ class VoxelizedPointcloud:
             if self._weights is not None:
                 self._weights = self._weights[mask]
             self._rgb = self._rgb[mask]
-            breakpoint()
-            raise NotImplementedError("Bounds removal not yet implemented")
 
     def add(
         self,
