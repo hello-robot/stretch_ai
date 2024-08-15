@@ -44,13 +44,14 @@ class RobotAgent:
     def __init__(
         self,
         robot: AbstractRobotClient,
-        parameters: Dict[str, Any],
+        parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         rpc_stub=None,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
+        use_instance_memory: bool = False,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -76,6 +77,7 @@ class RobotAgent:
         self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
         self.use_scene_graph = parameters["plan_with_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
+        self._use_instance_memory = use_instance_memory
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
@@ -116,7 +118,7 @@ class RobotAgent:
                 derivative_filter_threshold=parameters.get(
                     "filters/derivative_filter_threshold", 0.5
                 ),
-                use_instance_memory=(self.semantic_sensor is not None),
+                use_instance_memory=(self.semantic_sensor is not None or self._use_instance_memory),
                 instance_memory_kwargs={
                     "min_pixels_for_instance_view": parameters.get(
                         "min_pixels_for_instance_view", 100
@@ -218,20 +220,25 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        instances = self.voxel_map.instances.get_instances()
-        activations = []
-        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
-        for ins, instance in enumerate(instances):
+        encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
+        best_instance = None
+        best_activation = -1.0
+        for instance in self.voxel_map.get_instances():
+            ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
             activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
-            activations.append(activation.item())
-            if verbose:
+            if activation.item() > best_activation:
+                best_activation = activation.item()
+                best_instance = instance
+                if verbose:
+                    print(
+                        f" - Instance {ins} has activation {activation.item()} > {best_activation}"
+                    )
+            elif verbose:
                 print(f" - Instance {ins} has activation {activation.item()}")
-        idx = np.argmax(activations)
-        best_instance = instances[idx]
-        return activations[idx], best_instance
+        return best_activation, best_instance
 
     def get_instances_from_text(
         self,
@@ -261,13 +268,13 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        instances = self.voxel_map.instances.get_instances()
         activations = []
         matches = []
         # Encode the text query and move it to the same device as the instance embeddings
-        encoded_text = self.encode_text(text_query).to(instances[0].get_image_embedding().device)
+        encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
         # Compute the cosine similarity between the text query and each instance embedding
-        for ins, instance in enumerate(instances):
+        for instance in self.voxel_map.get_instances():
+            ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
@@ -613,7 +620,9 @@ class RobotAgent:
                 return True
         return False
 
-    def move_to_any_instance(self, matches: List[Tuple[int, Instance]], max_try_per_instance=10):
+    def move_to_any_instance(
+        self, matches: List[Tuple[int, Instance]], max_try_per_instance=10, verbose: bool = False
+    ) -> bool:
         """Check instances and find one we can move to"""
         self.current_state = "NAV_TO_INSTANCE"
         self.robot.move_to_nav_posture()
@@ -621,7 +630,8 @@ class RobotAgent:
         start_is_valid = self.space.is_valid(start, verbose=True)
         start_is_valid_retries = 5
         while not start_is_valid and start_is_valid_retries > 0:
-            print(f"Start {start} is not valid. back up a bit.")
+            if verbose:
+                print(f"Start {start} is not valid. back up a bit.")
             self.robot.navigate_to([-0.1, 0, 0], relative=True)
             # Get the current position in case we are still invalid
             start = self.robot.get_base_pose()
@@ -929,14 +939,15 @@ class RobotAgent:
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
+        verbose: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
-        start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
         # if start is not valid move backwards a bit
         if not start_is_valid:
-            print("Start not valid. back up a bit.")
-            return False
+            if verbose:
+                print("Start not valid. back up a bit.")
+            return PlanResult(False, reason="invalid start state")
 
         # sample a goal
         if random_goals:

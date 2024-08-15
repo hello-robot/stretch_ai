@@ -7,7 +7,7 @@ export PYTHON_VERSION=3.10
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
-VERSION="_0.0.6c"
+VERSION=_`python src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -91,7 +91,6 @@ echo " - CUDA_HOME=$CUDA_HOME"
 echo " - python=`which python`"
 
 
-
 # if -y flag was passed in, do not bother asking
 #
 if [ "$SKIP_ASKING" == "true" ]; then
@@ -109,6 +108,14 @@ fi
 
 # Exit immediately if anything fails
 set -e
+
+# Install git-lfs
+echo "Installing git-lfs..."
+echo "If this fails, install git-lfs with:"
+echo ""
+echo "     sudo apt-get install git-lfs"
+echo ""
+git lfs install
 
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then

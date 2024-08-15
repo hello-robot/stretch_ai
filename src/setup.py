@@ -40,7 +40,6 @@ setuptools.setup(
         "scipy",
         "matplotlib",
         "trimesh",
-        "openai-clip",
         "yacs",
         "loguru",
         "scikit-image",
@@ -50,6 +49,9 @@ setuptools.setup(
         "pyusb",
         "schema",
         "overrides",
+        # From openai
+        "openai",
+        "openai-clip",
         # Hardware dependencies
         "pyrealsense2",
         "urchin",

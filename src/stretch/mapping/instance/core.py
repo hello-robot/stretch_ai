@@ -151,7 +151,9 @@ class Instance:
             return None
         return int(self.category_id)
 
-    def get_image_embedding(self, aggregation_method="max", normalize: bool = True, use_visual_feat: bool = False):
+    def get_image_embedding(
+        self, aggregation_method="max", normalize: bool = True, use_visual_feat: bool = False
+    ):
         """Get the combined image embedding across all views"""
         if use_visual_feat:
             view_embeddings = [view.visual_feat for view in self.instance_views]
@@ -191,6 +193,10 @@ class Instance:
         else:
             raise NotImplementedError(f"metric {metric} not supported")
         return best_view
+
+    def get_instance_id(self) -> int:
+        """Get the instance id - a unique identifier for the instance"""
+        return self.global_id
 
     def get_center(self) -> Tensor:
         """Get the center of the instance in 3D space

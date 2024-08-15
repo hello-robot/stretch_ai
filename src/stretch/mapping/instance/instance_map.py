@@ -129,9 +129,7 @@ class InstanceMemory:
         self.min_instance_thickness = min_instance_thickness
         self.min_instance_height = min_instance_height
         self.max_instance_height = max_instance_height
-        self.use_visual_feat = (
-            use_visual_feat  # whether use visual feat to merge instances
-        )
+        self.use_visual_feat = use_visual_feat  # whether use visual feat to merge instances
 
         if isinstance(view_matching_config, dict):
             view_matching_config = ViewMatchingConfig(**view_matching_config)
@@ -238,7 +236,9 @@ class InstanceMemory:
         Returns:
             Instance: The removed Instance object.
         """
+        print(len(self.instances[env_id]))
         instance = self.instances[env_id].pop(global_instance_id)
+        print(len(self.instances[env_id]))
         if not skip_reindex:
             self.reindex_global_instances(env_id=env_id)
         return instance
@@ -345,7 +345,9 @@ class InstanceMemory:
                 similarity = get_similarity(
                     instance_bounds1=instance_view.bounds.unsqueeze(0),
                     instance_bounds2=global_bounds,
-                    visual_embedding1=instance_view.visual_feat if self.use_visual_feat else instance_view.embedding,
+                    visual_embedding1=instance_view.visual_feat
+                    if self.use_visual_feat
+                    else instance_view.embedding,
                     visual_embedding2=global_embedding,
                     text_embedding1=None,
                     text_embedding2=None,
@@ -726,7 +728,7 @@ class InstanceMemory:
             if self.encoder is not None:
                 # option 1: encoder the original crop
                 embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
-                
+
                 # option 2: encode crop with applied mask
                 # embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
                 #     cropped_image.device
@@ -737,7 +739,7 @@ class InstanceMemory:
                         cropped_image.device
                     )
                 else:
-                    visual_feat = None                
+                    visual_feat = None
             else:
                 embedding = None
                 visual_feat = None

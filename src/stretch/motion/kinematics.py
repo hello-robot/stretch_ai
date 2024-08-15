@@ -16,7 +16,7 @@ import os
 from typing import List, Optional, Tuple
 
 import numpy as np
-from scipy.spatial.transform.rotation import Rotation
+from scipy.spatial.transform import Rotation
 
 from stretch.core.interfaces import ContinuousFullBodyAction
 from stretch.motion.base import IKSolverBase
