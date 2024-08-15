@@ -109,13 +109,9 @@ fi
 # Exit immediately if anything fails
 set -e
 
-# Apt install
-# Audio dependencies
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-
 # Install git-lfs
 echo "Installing git-lfs..."
-curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+git lfs install
 
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then
