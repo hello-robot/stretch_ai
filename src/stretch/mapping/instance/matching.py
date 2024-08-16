@@ -12,6 +12,7 @@ from enum import Enum, auto
 from typing import List, Optional, Union
 
 import torch
+import torch.nn as nn
 from torch import Tensor
 
 from stretch.utils.bboxes_3d import (
@@ -32,11 +33,11 @@ class ViewMatchingConfig:
 
     box_match_mode: Bbox3dOverlapMethodEnum = Bbox3dOverlapMethodEnum.ONE_SIDED_IOU
     box_overlap_eps: float = 1e-7
-    box_min_iou_thresh: float = 0.4
+    box_min_iou_thresh: float = 0.1  # TODO: pass it using a config file
     box_overlap_weight: float = 0.5  # High weight on bounding box overlap
 
     visual_similarity_weight: float = 0.5
-    min_similarity_thresh: float = 0.8
+    min_similarity_thresh: float = 0.5  # TODO: pass it using a config file
 
 
 def get_bbox_similarity(
@@ -179,13 +180,14 @@ def get_similarity(
         overlap_eps=view_matching_config.box_overlap_eps,
         mode=view_matching_config.box_match_mode,
     )
-    # print (f'bbox score: {overlap_similarity}')
+    print(f"geometric similarity score: {overlap_similarity}")
     similarity = overlap_similarity * view_matching_config.box_overlap_weight
 
     if view_matching_config.visual_similarity_weight > 0.0:
-        visual_similarity = dot_product_similarity(
-            visual_embedding1, visual_embedding2, normalize=False
-        )
+        visual_similarity = nn.CosineSimilarity(dim=1)(
+            visual_embedding1, torch.stack(visual_embedding2, dim=0)
+        ).unsqueeze(0)
+        print(f"visual similarity score: {visual_similarity}")
         # Handle the case where there is no embedding to examine
         # If we return visual similarity, only then do we use it
         if visual_similarity is not None:
