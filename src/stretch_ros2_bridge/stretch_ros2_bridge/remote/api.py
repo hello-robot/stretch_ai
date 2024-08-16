@@ -90,6 +90,14 @@ class StretchClient(AbstractRobotClient):
     def model(self):
         return self._robot_model
 
+    @property
+    def is_homed(self) -> bool:
+        return self._ros_client.is_homed
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._ros_client.is_runstopped
+
     def at_goal(self) -> bool:
         """Returns true if we have up to date head info and are at goal position"""
         return self.nav.at_goal()
@@ -166,7 +174,9 @@ class StretchClient(AbstractRobotClient):
 
     @property
     def ee_camera_pose(self):
-        p0 = self._ros_client.get_frame_pose(self.ee_camera_frame, base_frame=self.world_frame)
+        p0 = self._ros_client.get_frame_pose(
+            self.ee_camera_frame, base_frame=self.world_frame, timeout_s=5.0
+        )
         if p0 is not None:
             p0 = p0 @ tra.euler_matrix(0, 0, 0)
         return p0
