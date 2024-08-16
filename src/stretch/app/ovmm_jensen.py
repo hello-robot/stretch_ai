@@ -130,6 +130,7 @@ def main(
             "cabinet": np.array([0.70500136, 0.34254823, 0.85715184]),
             "bottle": np.array([0.75, -0.18, 1.57324166]),
             "home": np.array([0, 0, 0]),
+            "user": np.array([0, 0, 1.57]),
         }
         if object_goal not in landmarks:
             print(f"!!! '{object_goal}' INVALID LANDMARK TO GO TO !!!")
@@ -155,6 +156,64 @@ def main(
             print("[ERROR] NO PLAN COULD BE GENERATED")
             return False
 
+        return True
+
+    def pick(self, object_goal: str):
+        allowed_objects = {
+            "bottle": np.array([0.75, -0.18, 1.57324166]),
+        }
+        if object_goal not in allowed_objects:
+            print(f"!!! '{object_goal}' INVALID OBJECT TO PICK !!!")
+            return False
+
+        current = robot.get_base_pose()
+        res = self.planner.plan(current, allowed_objects[object_goal])
+        print("RES: ", res.success)
+
+        if res.success:
+            robot.switch_to_navigation_mode()
+            print(f"- Going to {object_goal}")
+            for i, pt in enumerate(res.trajectory):
+                print("-", i, pt.state)
+
+            # Follow the planned trajectory
+            robot.execute_trajectory(
+                [pt.state for pt in res.trajectory],
+                pos_err_threshold=pos_err_threshold,
+                rot_err_threshold=rot_err_threshold,
+            )
+        else:
+            print("[ERROR] NO PLAN COULD BE GENERATED")
+            return False
+
+        pickup_policy_path = f"/lerobot/outputs/train/2024-08-07/18-55-17_stretch_real_diffusion_default/checkpoints/100000/pretrained_model"
+        pickup_leader = ROS2LfdLeader(
+            robot=robot,
+            verbose=False,
+            data_dir="./data",
+            user_name="Jensen",
+            task_name="pickup_all_purpose",
+            env_name="kitchen",
+            save_images=False,
+            teleop_mode="base_x",
+            record_success=False,
+            policy_name="diffusion",
+            policy_path=pickup_policy_path,
+            device="cuda",
+            force_execute=True,
+            disable_recording=True,
+        )
+        try:
+            robot.switch_to_manipulation_mode()
+            robot.move_to_manip_posture()
+            pickup_leader.run()
+
+        except Exception as e:
+            print("[ERROR] Bottle pickup failed: ", e)
+            return False
+
+        robot.switch_to_navigation_mode()
+        robot.move_to_nav_posture()
         return True
 
     def open_cabinet(self):
@@ -205,8 +264,10 @@ def main(
         print("[STRETCH SAYS]: ", msg)
         return True
 
+    # Replace with custom methods
     agent.go_to = go_to_landmark.__get__(agent, RobotAgent)
     agent.open_cabinet = open_cabinet.__get__(agent, RobotAgent)
+    agent.pick = pick.__get__(agent, RobotAgent)
     agent.say = say.__get__(agent, RobotAgent)
 
     while True:
