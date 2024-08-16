@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # This script (c) 2024 Chris Paxton under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
-export PYTORCH_VERSION=2.1.2
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
-VERSION="_`python $script_dir/src/stretch/version.py`"
+VERSION=`python $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -56,10 +55,12 @@ if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu
     export CUDA_VERSION_NODOT=cpu
     export CUDA_HOME=""
-    ENV_NAME=stretch_ai_cpu$VERSION
+    ENV_NAME=stretch_ai_cpu_$VERSION
+    export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-    ENV_NAME=stretch_ai$VERSION
+    ENV_NAME=stretch_ai_$VERSION
+    export PYTORCH_VERSION=2.3.1
 fi
 
 echo "=============================================="
@@ -78,7 +79,6 @@ echo " - This script will remove the existing environment if it exists."
 echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
-echo "   - pyg"
 echo "   - torchvision"
 echo "   - python=$PYTHON_VERSION"
 echo " - This script will install the following packages from source:"
@@ -125,10 +125,10 @@ if [ "$NO_REMOVE" == "false" ]; then
 fi
 # If using cpu only, create a separate environment
 if [ "$CPU_ONLY" == "true" ]; then
-    $MAMBA create -n $ENV_NAME -c pyg -c pytorch pytorch=$PYTORCH_VERSION pyg torchvision cpuonly python=$PYTHON_VERSION -y
+    $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision cpuonly python=$PYTHON_VERSION -y
 else
     # Else, install the cuda version
-    $MAMBA create -n $ENV_NAME -c pyg -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION pyg torchvision python=$PYTHON_VERSION -y
+    $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision python=$PYTHON_VERSION -y
 fi
 
 source activate $ENV_NAME
@@ -149,7 +149,6 @@ echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
 # If not using cpu only, install the following
-# python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
 # It is important to use --no-cache-dir to avoid issues different versions of pytorch and cuda
 pip install torch_cluster torch_scatter torch_geometric -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html --no-cache-dir
 
