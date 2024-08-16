@@ -140,7 +140,22 @@ env=stretch_real \
 wandb.enable=true \
 training.batch_size=64 \
 training.num_workers=16
+dataset_repo_id <huggingface-id>/<your-dataset-name> 
 ```
+
+For example:
+
+```bash
+python3 lerobot/scripts/train.py \
+policy=stretch_diffusion \
+env=stretch_real \
+wandb.enable=true \
+training.batch_size=64 \
+training.num_workers=16
+dataset_repo_id hellorobotinc/kitchen_cabinet_diagonal
+```
+
+You can also set `dataset_repo_id` in the policy config file to avoid specifying it in the CLI.
 
 ### Sample loss curve for "two different tasks" trained with the same parameters
 
