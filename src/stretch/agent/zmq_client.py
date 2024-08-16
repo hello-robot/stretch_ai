@@ -735,7 +735,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Save the current map to a file.
 
         Args:
-            filename (str): the filename to save the map to       
+            filename (str): the filename to save the map to
         """
         next_action = {"save_map": filename}
         self.send_action(next_action)
