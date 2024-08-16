@@ -27,6 +27,14 @@ After following the [installation instructions](#installation), start the server
 ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
+Make sure the core test app runs:
+
+```python
+python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+You should see windows popping up with camera viers from the robot, and the arm should move into a default position. The head should also turn to face the robot hand. If this all happens, you are good to go! Press `q` to quit the app.
+
 Then, on your PC, you can easily send commands and stream data:
 
 ```python
@@ -95,6 +103,43 @@ Finally:
 
 ## Installation
 
+### Temporary Note on ROS2 Version
+
+On the robot, we are *temporarily* using a new version of the [stretch_ros2](https://github.com/hello-robot/stretch_ros2/tree/feature/streaming_position) ROS package: the `feature/streaming_position` branch. This allows us to send smoother commands to the robot.
+
+On your robot, go to your `ament_ws` directory and checkout the `feature/streaming_position` branch:
+
+```bash
+cd ~/ament_ws/src/stretch_ros2
+git checkout feature/streaming_position
+```
+
+Then, build the workspace:
+
+```bash
+cd ~/ament_ws
+colcon build --packages-select stretch_ros2
+```
+
+You can verify this has worked by running the `view_images` app. If the robot moves its arm, you are good to go!
+
+### System Dependencies
+
+You need git-lfs:
+
+```bash
+sudo apt-get install git-lfs
+git lfs install
+```
+
+You also need some system audio dependencies. These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
+
+```bash
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+```
+
+### Install Stretch AI
+
 On both your PC and your robot, clone and install the package:
 
 ```bash
@@ -115,14 +160,6 @@ colcon build --symlink-install --packages-select stretch_ros2_bridge
 ```
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
-
-### Audio Dependencies
-
-These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
-
-```bash
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-```
 
 ### Using LLMs
 
@@ -315,11 +352,19 @@ python -m stretch.app.voice_chat
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit).
 
+You need to install mediapipe for hand tracking:
+
+```
+python -m pip install mediapipe
+```
+
 ```bash
 python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
 ```
 
 [Read the data collection documentation](docs/data_collection.md) for more details.
+
+After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
 
 ### Automatic 3d Mapping
 
@@ -341,16 +386,41 @@ Another useful flag when testing is the `--reset` flag, which will reset the rob
 
 ### Voxel Map Visualization
 
-You can test the voxel code on a captured pickle file:
+You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](src/test/mapping/hq_small.pkl)  or [hq_large](src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl
+python -m stretch.app.read_map -i hq_small.pkl
 ```
 
 Optional open3d visualization of the scene:
 
 ```bash
-python -m stretch.app.read_map -i ~/Downloads/stretch\ output\ 2024-03-21/stretch_output_2024-03-21_13-44-19.pkl  --show-svm
+python -m stretch.app.read_map -i hq_small.pkl  --show-svm
+```
+
+You can visualize instances in the voxel map with the `--show-instances` flag:
+
+```bash
+python -m stretch.app.read_map -i hq_small.pkl  --show-instances
+```
+
+You can also re-run perception with the `--run-segmentation` flag and provide a new export file with the `--export` flag:
+
+```bash
+ python -m stretch.app.read_map -i hq_small.pkl --export hq_small_v2.pkl --run-segmentation
+```
+
+You can test motion planning, frontier exploration, etc., as well. Use the `--start` flag to set the robot's starting position:
+
+```bash
+# Test motion planning
+python -m stretch.app.read_map -i hq_small.pkl --test-planning --start 4.5,1.3,2.1
+# Test planning to frontiers with current parameters file
+python -m stretch.app.read_map -i hq_small.pkl --test-plan-to-frontier --start 4.0,1.4,0.0
+# Test sampling movement to objects
+python -m stretch.app.read_map -i hq_small.pkl --test-sampling --start 4.5,1.4,0.0
+# Test removing an object from the map
+python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --query "cardboard box"
 ```
 
 ### Pickup Objects
@@ -378,23 +448,6 @@ pre-commit install
 ```
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
-
-### Code Overview
-
-The code is organized as follows. Inside the core package `src/stretch`:
-
-- [core](src/stretch/core) is basic tools and interfaces
-- [app](src/stretch/app) contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
-- [motion](src/stretch/motion) contains motion planning tools, including [algorithms](src/stretch/motion/algo) like RRT.
-- [mapping](src/stretch/mapping) is broken up into tools for voxel (3d / ok-robot style), instance mapping
-- [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
-  - In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
-  - [agent/robot_agent.py](src/stretch/agent/robot_agent.py) is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
-  - [agent/base](src/stretch/agent/base) contains base classes for creating tasks, such as the [TaskManager](src/stretch/agent/base/task_manager.py) class and the [ManagedOperation](src/stretch/agent/base/managed_operation.py) class.
-  - [agent/task](src/stretch/agent/task) contains task-specific code, such as for the `pickup` task. This is divided between "Managers" like [pickup_manager.py](src/stretch/agent/task/pickup_manager.py) which are composed of "Operations." Each operation is a composable state machine node with pre- and post-conditions.
-  - [agent/operations](src/stretch/agent/operations) contains the individual operations, such as `move_to_pose.py` which moves the robot to a given pose.
-
-The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
 
 ### Updating Code on the Robot
 
