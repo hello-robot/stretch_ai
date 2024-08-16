@@ -7,6 +7,11 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+# Copyright (c) 2020 Matthias Fey <matthias.fey@tu-dortmund.de>
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the parent directory of this file.
+
 from typing import Optional
 
 import torch

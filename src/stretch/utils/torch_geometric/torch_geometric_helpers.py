@@ -7,6 +7,11 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+# Copyright (c) 2023 PyG Team <team@pyg.org>
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the parent directory of this file.
+
 import itertools
 import numbers
 import typing
