@@ -18,7 +18,10 @@ def grid_cluster(
     start: Optional[torch.Tensor] = None,
     end: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """A clustering algorithm, which overlays a regular grid of user-defined
+    """
+    NOTE: modified by Hello Robot, Inc., to replace a call to torch.ops
+
+    A clustering algorithm, which overlays a regular grid of user-defined
     size over a point cloud and clusters all points within a voxel.
 
     Args:
@@ -40,6 +43,22 @@ def grid_cluster(
         size = torch.Tensor([5, 5])
         cluster = grid_cluster(pos, size)
     """
+    pos = pos.view(pos.size(0), -1)
 
-    # TODO: fix me!
-    return torch.ops.torch_cluster.grid(pos, size, start, end)
+    start = torch.tensor([0.0])
+    end = torch.tensor([0.0])
+
+    pos = pos - start.unsqueeze(0)
+
+    num_voxels = ((end - start) / size).to(torch.long) + 1
+    num_voxels = num_voxels.cumprod(0)
+    num_voxels = torch.cat(
+        [torch.ones(1, dtype=num_voxels.dtype, device=num_voxels.device), num_voxels], 0
+    )
+    num_voxels = num_voxels.narrow(0, 0, size.size(0))
+
+    out = (pos / size.view(1, -1)).to(torch.long)
+    out *= num_voxels.view(1, -1)
+    out = out.sum(1)
+
+    return out
