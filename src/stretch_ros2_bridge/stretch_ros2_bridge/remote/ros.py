@@ -61,6 +61,7 @@ from stretch_ros2_bridge.constants import (
 )
 from stretch_ros2_bridge.ros.camera import RosCamera
 from stretch_ros2_bridge.ros.lidar import RosLidar
+from stretch_ros2_bridge.ros.streaming_activator import StreamingActivator
 from stretch_ros2_bridge.ros.utils import matrix_from_pose_msg
 from stretch_ros2_bridge.ros.visualizer import Visualizer
 
@@ -158,6 +159,14 @@ class StretchRosInterface(Node):
         self._ee_depth_topic = DEFAULT_EE_DEPTH_TOPIC if ee_depth_topic is None else ee_depth_topic
         self._lidar_topic = DEFAULT_LIDAR_TOPIC if lidar_topic is None else lidar_topic
         self._depth_buffer_size = depth_buffer_size
+
+        self._streaming_activator = StreamingActivator(self)
+        streaming_ok = self._streaming_activator.activate_streaming()
+        if not streaming_ok:
+            self.get_logger().error("Failed to activate streaming")
+            raise RuntimeError(
+                "Could not start joint state streaming service; make sure you have the correct and up-to-date version of stretch_ros2."
+            )
 
         self.rgb_cam: RosCamera = None
         self.dpt_cam: RosCamera = None
@@ -273,18 +282,9 @@ class StretchRosInterface(Node):
 
     def wait_for_trajectory_action(self):
         rate = self.create_rate(100)
-        # self.get_logger().info(
-        #     f"Entering while loop with as future done is - {self.goal_handle_future.done()}"
-        # )
         while self.goal_handle is None:
-            # self.get_logger().info(f"Sleeping for Goal handle future")
             rate.sleep()
-        # self.get_logger().info(f"Waiting for result")
         self.goal_handle.get_result()
-        # self.get_logger().info(f"Action is done")
-        # self.action_done_event.wait()
-        # rclpy.spin_until_future_complete(self, self.goal_handle_future)
-        # self.goal_handle.get_result()
 
     def recent_depth_image(self, seconds, print_delay_timers: bool = False):
         """Return true if we have up to date depth."""
