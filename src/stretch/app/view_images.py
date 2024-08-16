@@ -60,6 +60,7 @@ def main(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
         parameters=parameters,
+        enable_rerun_server=False,
     )
     if segment_ee:
         run_semantic_segmentation = True
