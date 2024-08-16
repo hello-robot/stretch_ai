@@ -15,8 +15,9 @@ from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
 from .clip_encoder import ClipEncoder, NormalizedClipEncoder
-from .siglip_encoder import SiglipEncoder
 from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
+from .siglip_encoder import SiglipEncoder
+
 
 def get_encoder(encoder_name, args: Any):
     if encoder_name == "clip":

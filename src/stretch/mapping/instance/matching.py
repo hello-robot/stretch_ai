@@ -37,7 +37,7 @@ class ViewMatchingConfig:
     box_overlap_weight: float = 0.5  # High weight on bounding box overlap
 
     visual_similarity_weight: float = 0.5
-    min_similarity_thresh: float = 0.5 # TODO: pass it using a config file
+    min_similarity_thresh: float = 0.5  # TODO: pass it using a config file
 
 
 def get_bbox_similarity(
@@ -180,7 +180,7 @@ def get_similarity(
         overlap_eps=view_matching_config.box_overlap_eps,
         mode=view_matching_config.box_match_mode,
     )
-    print (f'geometric similarity score: {overlap_similarity}')
+    print(f"geometric similarity score: {overlap_similarity}")
     similarity = overlap_similarity * view_matching_config.box_overlap_weight
 
     if view_matching_config.visual_similarity_weight > 0.0:

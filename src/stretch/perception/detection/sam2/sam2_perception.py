@@ -1,16 +1,24 @@
-import copy
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
+
 from stretch.core.abstract_perception import PerceptionModule
-from stretch.core.interfaces import Observations
 from stretch.perception.detection.utils import filter_depth, overlay_masks
-from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -20,9 +28,7 @@ GROUNDING_DINO_CONFIG_PATH = str(
     PARENT_DIR
     / "Grounded-Segment-Anything/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
 )
-GROUNDING_DINO_CHECKPOINT_PATH = str(
-    PARENT_DIR / "checkpoints" / "groundingdino_swint_ogc.pth"
-)
+GROUNDING_DINO_CHECKPOINT_PATH = str(PARENT_DIR / "checkpoints" / "groundingdino_swint_ogc.pth")
 MOBILE_SAM_CHECKPOINT_PATH = str(PARENT_DIR / "checkpoints" / "mobile_sam.pt")
 BOX_THRESHOLD = 0.25
 TEXT_THRESHOLD = 0.25
@@ -34,6 +40,7 @@ _DEFAULT_MASK_GENERATOR_KWARGS = dict(
     crop_n_layers=1,
     crop_n_points_downscale_factor=2,
 )
+
 
 def show_anns(anns):
     if len(anns) == 0:
@@ -77,7 +84,9 @@ class SAM2Perception(PerceptionModule):
         model_cfg = "sam2_hiera_t.yaml"
         self.sam2_predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
 
-        self.sam2_predictor = build_sam2(model_cfg, checkpoint, device=DEVICE, apply_postprocessing=False)
+        self.sam2_predictor = build_sam2(
+            model_cfg, checkpoint, device=DEVICE, apply_postprocessing=False
+        )
 
         self.mask_generator = SAM2AutomaticMaskGenerator(self.sam2_predictor)
 
@@ -90,9 +99,7 @@ class SAM2Perception(PerceptionModule):
         """
         self.custom_vocabulary = new_vocab
 
-    def generate(
-        self, image, min_area=500
-    ):  # TODO: figure out how to set min_area in config
+    def generate(self, image, min_area=500):  # TODO: figure out how to set min_area in config
         masks = self.mask_generator.generate(image)
         returned_masks = []
         for mask in masks:
@@ -114,17 +121,15 @@ class SAM2Perception(PerceptionModule):
         self.sam_predictor.set_image(image)
         result_masks = []
         for box in xyxy:
-            masks, scores, logits = self.sam_predictor.predict(
-                box=box, multimask_output=True
-            )
+            masks, scores, logits = self.sam_predictor.predict(box=box, multimask_output=True)
             index = np.argmax(scores)
             result_masks.append(masks[index])
         return np.array(result_masks)
 
     def predict(
         self,
-        rgb = None,
-        depth = None,
+        rgb=None,
+        depth=None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = False,
     ) -> np.ndarray:
@@ -135,7 +140,7 @@ class SAM2Perception(PerceptionModule):
         Returns:
             masks: masks of shape (N, H, W)
         """
-        print ("SAM2 is segmenting the image...")
+        print("SAM2 is segmenting the image...")
 
         height, width, _ = rgb.shape
         image = rgb
@@ -162,11 +167,9 @@ class SAM2Perception(PerceptionModule):
 
         masks = sorted(masks, key=lambda x: np.count_nonzero(x), reverse=True)
         if depth_threshold is not None and depth is not None:
-            masks = np.array(
-                [filter_depth(mask, depth, depth_threshold) for mask in masks]
-            )
+            masks = np.array([filter_depth(mask, depth, depth_threshold) for mask in masks])
         semantic_map, instance_map = overlay_masks(masks, np.zeros(len(masks)), (height, width))
-        
+
         task_observations = dict()
         task_observations["instance_map"] = instance_map
         # random filling object classes -- right now using cups

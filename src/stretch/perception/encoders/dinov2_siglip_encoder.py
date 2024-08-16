@@ -1,28 +1,26 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 from typing import Optional
 
-import clip
 import numpy as np
 import torch
 from PIL import Image
-from torchvision import transforms
+from transformers import AutoImageProcessor, AutoModel, AutoProcessor, AutoTokenizer, Dinov2Model
+
 from .base_encoder import BaseImageTextEncoder
-from transformers import (
-    AutoImageProcessor,
-    AutoModel,
-    AutoProcessor,
-    SiglipModel,
-    AutoTokenizer,
-    Dinov2Model,
-)
-import requests
 
 
 class Dinov2SigLIPEncoder(BaseImageTextEncoder):
     """Simple wrapper for encoding different things as text."""
 
-    def __init__(
-        self, version="google/siglip-base-patch16-224", device: Optional[str] = None
-    ):
+    def __init__(self, version="google/siglip-base-patch16-224", device: Optional[str] = None):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
@@ -32,12 +30,8 @@ class Dinov2SigLIPEncoder(BaseImageTextEncoder):
         # self.visual_feat_encoder = DINOv2()
         self.tokenizer = AutoTokenizer.from_pretrained(version)
 
-        self.visual_feat_processor = AutoImageProcessor.from_pretrained(
-            "facebook/dinov2-base"
-        )
-        self.visual_feat_model = Dinov2Model.from_pretrained("facebook/dinov2-base").to(
-            device
-        )
+        self.visual_feat_processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
+        self.visual_feat_model = Dinov2Model.from_pretrained("facebook/dinov2-base").to(device)
 
     def encode_image(self, image: np.ndarray):
         """Encode this input image to a sigclip vector"""
@@ -52,9 +46,7 @@ class Dinov2SigLIPEncoder(BaseImageTextEncoder):
 
     def encode_text(self, text: str):
         """Return clip vector for text"""
-        inputs = self.tokenizer([text], padding="max_length", return_tensors="pt").to(
-            self.device
-        )
+        inputs = self.tokenizer([text], padding="max_length", return_tensors="pt").to(self.device)
         with torch.no_grad():
             text_features = self.model.get_text_features(**inputs)
         return text_features.float()
@@ -64,9 +56,7 @@ class Dinov2SigLIPEncoder(BaseImageTextEncoder):
             image = image.cpu().numpy() * 255
         image = image.astype(np.uint8)
         pil_image = Image.fromarray(image)
-        inputs = self.visual_feat_processor(images=pil_image, return_tensors="pt").to(
-            self.device
-        )
+        inputs = self.visual_feat_processor(images=pil_image, return_tensors="pt").to(self.device)
 
         with torch.no_grad():
             outputs = self.visual_feat_model(**inputs)

@@ -13,34 +13,28 @@
 # LICENSE file in the root directory of this source tree.
 
 import pickle
-import random
 from pathlib import Path
-import cv2
 
 import click
+import cv2
 import matplotlib
 
 matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
 import numpy as np
 
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
-from stretch.mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
-from stretch.mapping.voxel import plan_to_frontier
-from stretch.utils.dummy_stretch_client import DummyStretchClient
-from stretch.utils.geometry import xyt_global_to_base
-from stretch.perception import create_semantic_sensor
 from stretch.core.interfaces import Observations
+from stretch.perception import create_semantic_sensor
+from stretch.utils.dummy_stretch_client import DummyStretchClient
 
-def add_raw_obs_to_voxel_map(
-    obs_history, voxel_map, semantic_sensor, num_frames, frame_skip
-):
+
+def add_raw_obs_to_voxel_map(obs_history, voxel_map, semantic_sensor, num_frames, frame_skip):
     key_obs = []
     num_obs = len(obs_history["rgb"])
     video_frames = []
 
-    print ("converting raw data to observations...")
+    print("converting raw data to observations...")
     for obs_id in range(num_obs):
         pose = obs_history["camera_poses"][obs_id]
         pose[2, 3] += 1.2  # for room1 and room2, room4, room5
@@ -59,7 +53,7 @@ def add_raw_obs_to_voxel_map(
             )
         )
         video_frames.append(obs_history["rgb"][obs_id].numpy())
-    
+
     images_to_video(
         video_frames[: min(frame_skip * num_frames, len(video_frames))],
         "output_video.mp4",
@@ -81,19 +75,19 @@ def images_to_video(image_list, output_path, fps=30):
     """
     Convert a list of numpy arrays (images) into a video.
     """
-    print ("Generating an video for visualizing the data...")
+    print("Generating an video for visualizing the data...")
     if not image_list:
         raise ValueError("The image list is empty")
 
     height, width, channels = image_list[0].shape
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v") 
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     for image in image_list:
         if image.shape != (height, width, channels):
             raise ValueError("All images must have the same dimensions")
-        if image.shape[2] == 3: 
+        if image.shape[2] == 3:
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         out.write(image)
 
@@ -149,16 +143,16 @@ def main(
     loaded_voxel_map = None
 
     dummy_robot = DummyStretchClient()
-    
+
     print("- Load parameters")
     parameters = get_parameters(config_path)
 
     obs_history = pickle.load(input_path.open("rb"))
 
-    print ("Creating semantic sensors...")
+    print("Creating semantic sensors...")
     semantic_sensor = create_semantic_sensor(config_path=config_path)
-    
-    print ("Creating robot agent...")
+
+    print("Creating robot agent...")
     agent = RobotAgent(
         dummy_robot,
         parameters,
@@ -189,9 +183,7 @@ def main(
     if show_svm:
         footprint = dummy_robot.get_robot_model().get_footprint()
         print(f"{x0} valid = {space.is_valid(x0)}")
-        voxel_map.show(
-            instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint
-        )
+        voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
 
     if test_vlm:
         start_is_valid = space.is_valid(x0, verbose=True, debug=False)
