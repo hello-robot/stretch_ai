@@ -32,6 +32,16 @@
 
 ### [Authenticate with huggingface-cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
 
+### Optional: login to weights and biases (wandb)
+
+Use the [weights and biases CLI](https://docs.wandb.ai/ref/cli/wandb-login) to login:
+
+```bash
+wandb login
+```
+
+You will then be able to track progress on training runs with [wandb](https://wandb.ai/).
+
 ### Process and push demonstration folder to HuggingFace repo
 
 ```bash
