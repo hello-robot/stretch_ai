@@ -81,10 +81,6 @@ echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - pyg"
 echo "   - torchvision"
 echo "   - python=$PYTHON_VERSION"
-echo " - This script will install the following packages from source:"
-echo "   - pytorch3d"
-echo "   - torch_scatter"
-echo "   - torch_cluster"
 echo " - Python version 3.12 is not supported by Open3d."
 echo "---------------------------------------------"
 echo "Currently:"
@@ -140,18 +136,13 @@ source activate $ENV_NAME
 # Now install pytorch3d a bit faster
 $MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
 
-echo "Install a version of setuptools for which pytorch3d and clip work."
+echo "Install a version of setuptools for which clip works."
 pip install setuptools==69.5.1
 
 echo ""
 echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
-
-# If not using cpu only, install the following
-# python -m pip install torch-cluster torch-scatter torch-sparse torch-geometric
-# It is important to use --no-cache-dir to avoid issues different versions of pytorch and cuda
-pip install torch_cluster torch_scatter torch_geometric -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html --no-cache-dir
 
 # This is no longer necessary but might be useful for some checks
 if [ "$INSTALL_PYTORCH3D" == "true" ]; then

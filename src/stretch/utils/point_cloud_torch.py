@@ -24,9 +24,9 @@ import cv2
 import numpy as np
 import torch
 from torch import Tensor
-from torch_geometric.nn.pool.voxel_grid import voxel_grid
 
 from stretch.utils.image import Camera
+from stretch.utils.torch_geometric.torch_geometric_helpers import voxel_grid
 
 
 def depth_to_xyz(depth: torch.Tensor, camera: Camera):
