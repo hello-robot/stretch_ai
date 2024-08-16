@@ -86,6 +86,7 @@ class GraspObjectOperation(ManagedOperation):
             show_servo_gui (bool, optional): Show the servo GUI. Defaults to True.
             show_point_cloud (bool, optional): Show the point cloud. Defaults to False.
             reset_observation (bool, optional): Reset the observation. Defaults to False.
+            grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
         """
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
