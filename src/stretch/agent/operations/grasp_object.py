@@ -41,6 +41,8 @@ class GraspObjectOperation(ManagedOperation):
     # Thresholds for centering on object
     align_x_threshold: int = 10
     align_y_threshold: int = 7
+    grasp_loose: bool = False
+    reset_observation: bool = False
 
     # Visual servoing config
     track_image_center: bool = False
@@ -83,6 +85,8 @@ class GraspObjectOperation(ManagedOperation):
             servo_to_grasp (bool, optional): Use visual servoing to grasp. Defaults to False.
             show_servo_gui (bool, optional): Show the servo GUI. Defaults to True.
             show_point_cloud (bool, optional): Show the point cloud. Defaults to False.
+            reset_observation (bool, optional): Reset the observation. Defaults to False.
+            grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
         """
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
