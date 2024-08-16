@@ -98,6 +98,14 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
     def get_base_pose(self):
         """Return the current pose of the robot."""
         return np.array([0.0, 0.0, 0.0])
+    
+    def load_map(self, filename: str):
+        """Load a map from a file."""
+        return True
+
+    def save_map(self, filename: str):
+        """Save a map to a file."""
+        return True
 
     def execute_trajectory(
         self,
