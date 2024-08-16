@@ -37,7 +37,8 @@ def get_task(robot, demo, target_object):
             show_object_to_grasp=True,
             servo_to_grasp=True,
             show_servo_gui=True,
-            reset_observation=True,
+            reset_observation=False,
+            grasp_loose=(target_object == "cup"),
         )
         task.add_operation(update)
         task.add_operation(grasp_object)
@@ -95,7 +96,10 @@ def main(
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
-    for _ in range(repeat_count):
+    targets = ["cup", "hand_towel", "screwdriver"]
+
+    # for _ in range(repeat_count):
+    for target_object in targets:
         if reset:
             robot.move_to_nav_posture()
             robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
