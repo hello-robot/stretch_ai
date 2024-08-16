@@ -646,6 +646,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             with self._obs_lock:
                 if self._obs is None:
+                    print("waiting for obs")
                     continue
 
             xyt = self.get_base_pose()
@@ -653,6 +654,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             ang = xyt[2]
 
             if not self.at_goal():
+                print("not at goal")
                 t0 = timeit.default_timer()
                 continue
 
@@ -672,6 +674,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 not_moving_count += 1
             else:
                 not_moving_count = 0
+
+            # Check if we are at the goal
+            # If we are at the goal, we can stop if we are not moving
             last_pos = pos
             last_ang = ang
             close_to_goal = at_goal
