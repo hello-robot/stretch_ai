@@ -20,21 +20,32 @@ class OpenaiClient(AbstractLLMClient):
     Parameters:
         use_specific_objects(bool): override list of objects and have the AI only return those."""
 
+    model_choices = [
+        "gpt-3.5-turbo",
+        "gpt-4o",
+        "gpt-4o-mini",
+    ]
+
     def __init__(
         self,
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
+        model: str = "gpt-4o-mini",
     ):
         super().__init__(prompt, prompt_kwargs)
+        self.model = model
+        assert (
+            self.model in self.model_choices
+        ), f"model must be one of {self.model_choices}, got {self.model}"
         self._openai = OpenAI()
 
     def __call__(self, command: str, verbose: bool = False):
         # prompt = copy.copy(self.prompt)
         # prompt = prompt.replace("$COMMAND", command)
         if verbose:
-            print(f"{self.prompt=}")
+            print(f"{self.system_prompt=}")
         completion = self._openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=self.model,
             messages=[
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": command},
@@ -47,10 +58,10 @@ class OpenaiClient(AbstractLLMClient):
 
 
 if __name__ == "__main__":
-    from stretch.llms.prompts.ok_robot_prompt import OkRobotPrompt
+    from stretch.llms.prompts.ok_robot_prompt import OkRobotPromptBuilder
 
-    prompt = OkRobotPrompt(use_specific_objects=True)
-    client = OpenaiClient(prompt)
+    prompt = OkRobotPromptBuilder(use_specific_objects=True)
+    client = OpenaiClient(prompt, model="gpt-4o-mini")
     plan = client("this room is a mess, could you put away the dirty towel?", verbose=True)
     print("\n\n")
     print("OpenAI client returned this plan:", plan)
