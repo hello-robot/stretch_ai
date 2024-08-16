@@ -122,7 +122,7 @@ Therefore, it can be useful to tape out a reference position as a basis for vary
 
 ### 3. Episode quality
 
-Episodes should reflect the way you want the robot to complete the task.
+Episodes should reflect the way you want the robot to complete the task. Your first couple of runs doing the task will not be consistent, but will improve as you learn the feel for the teleoperation. It is recommended to start collecting demonstrations used for training only after sufficient practice with the task.
 
 |       Task direction alignment       |  Taping for positional reference  |
 | :----------------------------------: | :-------------------------------: |
