@@ -2,7 +2,13 @@
 
 ## Prerequisites:
 
-Follow [instructions](../README.md#Installation) for installation of stretch_ai with Python 3.10 for both PC and robot
+Follow the [instructions](../README.md#Installation) for installation of `stretch_ai` with Python 3.10 for both PC and robot.
+
+Make sure you have the optional dependencies installed for Dex Teleop:
+
+```bash
+python -m pip install webcam mediapipe
+```
 
 ### On PC:
 
@@ -66,16 +72,35 @@ ros2 launch stretch_ros2_bridge server.launch.py
 Currently supported teleop modes include: `base_x`, `rotary_base`, and `stationary_base`.
 Launch this command from the directory where URDFs are stored (default is root of stretch_ai)
 
+If you have already ran an app with `--robot-ip` flag, such as the `view_images` test app, you can omit the flag in subsequent runs.
+
 ```bash
 # The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
 
-python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name <name-of-task> --teleop-mode <teleop-mode> --save-images
+TASK_NAME=<name-of-task>
+python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --save-images --clutch
 ```
 
 For example:
 
 ```bash
-python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name default_task --teleop-mode base_x --save-images
+python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --save-images --clutch
+```
+
+The optional `--clutch` flag enables the clutch. While your hand is over the dex teleop webcam, the robot will not move. This makes it easier to operate the robot and to collect data.
+
+#### Teleop Modes
+
+There are three teleop modes available:
+
+- `base_x`: Allows for translation of the robot base in the x direction
+- `rotary_base`: Allows for rotation of the robot base
+- `stationary_base`: Allows for no movement of the robot base
+
+The default is `base_x`. So, if you want to use `base_x`, you can omit the `--teleop-mode` flag:
+
+```bash
+python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --save-images
 ```
 
 ### Record episodes
