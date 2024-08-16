@@ -21,9 +21,9 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
 from torch import Tensor
-from torch_geometric.nn.pool.consecutive import consecutive_cluster
-from torch_geometric.nn.pool.voxel_grid import voxel_grid
-from torch_geometric.utils import scatter
+
+from stretch.utils.torch_geometric.torch_geometric_helpers import consecutive_cluster, voxel_grid
+from stretch.utils.torch_scatter.torch_scatter_helpers import scatter
 
 
 class VoxelizedPointcloud:
