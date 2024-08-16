@@ -42,6 +42,7 @@ class GraspObjectOperation(ManagedOperation):
     align_x_threshold: int = 10
     align_y_threshold: int = 7
     grasp_loose: bool = False
+    reset_observation: bool = False
 
     # Visual servoing config
     track_image_center: bool = False
