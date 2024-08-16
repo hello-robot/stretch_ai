@@ -151,6 +151,7 @@ wandb.enable=true \
 training.batch_size=64 \
 training.num_workers=16
 dataset_repo_id <huggingface-id>/<your-dataset-name> 
+wandb.project=<wandb-project-name>
 ```
 
 For example:
@@ -163,9 +164,10 @@ wandb.enable=true \
 training.batch_size=64 \
 training.num_workers=16
 dataset_repo_id hellorobotinc/kitchen_cabinet_diagonal
+wandb.project=diffusion-kitchen-diagonal
 ```
 
-You can also set `dataset_repo_id` in the policy config file to avoid specifying it in the CLI.
+You can also set `dataset_repo_id` and `wandb.project` in the policy config file to avoid specifying it in the CLI.
 
 ### Sample loss curve for "two different tasks" trained with the same parameters
 
