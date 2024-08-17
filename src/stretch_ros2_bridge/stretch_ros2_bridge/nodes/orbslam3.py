@@ -19,6 +19,7 @@ import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import TransformStamped
+from nav2_msgs.srv import LoadMap, SaveMap
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, Imu
 from tf2_ros import TransformBroadcaster
@@ -85,6 +86,12 @@ class OrbSlam3(Node):
             CameraInfo, "/camera/color/camera_info", self.camera_info_callback, 1
         )
 
+        # Create a service to save the map
+        self.save_map_service = self.create_service(SaveMap, "/save_map", self.save_map_callback)
+
+        # Create a service to load the map
+        self.load_map_service = self.create_service(LoadMap, "/load_map", self.load_map_callback)
+
     def camera_info_callback(self, msg):
         if self.slam is None:
             fx = msg.k[0]
@@ -143,6 +150,24 @@ class OrbSlam3(Node):
 
     def gyro_callback(self, msg):
         self.gyro_data = msg
+
+    def save_map_callback(self, request, response):
+        if self.slam is not None:
+            map_file = request.map_url
+            self.slam.save_map(map_file)
+            response.result = True
+        else:
+            response.result = False
+        return response
+
+    def load_map_callback(self, request, response):
+        if self.slam is not None:
+            map_file = request.map_url
+            self.slam.load_map(map_file)
+            response.result = True
+        else:
+            response.result = False
+        return response
 
     def run(self):
         while True:
