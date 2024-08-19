@@ -1096,6 +1096,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     )
                 )
 
+        if not self.is_homed:
+            self.stop()
+            raise RuntimeError(
+                "Robot is not homed; please home the robot before running. You can do so by shutting down the server and running ./stretch_robot_home.py on the robot."
+            )
+        if self.is_runstopped:
+            self.stop()
+            raise RuntimeError(
+                "Robot is runstopped; please release the runstop before running. You can do so by pressing and briefly holding the runstop button on the robot."
+            )
+
         self._started = True
         return True
 
