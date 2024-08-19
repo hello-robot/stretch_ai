@@ -13,6 +13,7 @@ NO_REMOVE="false"
 NO_SUBMODULES="false"
 INSTALL_PYTORCH3D="false"
 INSTALL_TORCH_GEOMETRIC="false"
+breakpoint()
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
 # One more: --conda for conda
@@ -158,6 +159,13 @@ echo "Will be installed via pip into env: $ENV_NAME"
 if [ "$INSTALL_PYTORCH3D" == "true" ]; then
     echo "Installing pytorch3d from source"
     pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+fi
+
+if [ "$INSTALL_TORCH_GEOMETRIC" == "true" ]; then
+    echo "Installing torch-geometric"
+    # If not using cpu only, install the following
+    # It is important to use --no-cache-dir to avoid issues different versions of pytorch and cuda
+    pip install torch_cluster torch_scatter torch_geometric -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html --no-cache-dir
 fi
 
 pip install -e ./src[dev]
