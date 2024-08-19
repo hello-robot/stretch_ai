@@ -26,6 +26,7 @@ from stretch.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
 from .modules.manip import StretchManipulationClient
+from .modules.mapping import StretchMappingClient
 from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
@@ -77,6 +78,7 @@ class StretchClient(AbstractRobotClient):
         self.nav = StretchNavigationClient(self._ros_client, self._robot_model)
         self.manip = StretchManipulationClient(self._ros_client, self._robot_model)
         self.head = StretchHeadClient(self._ros_client, self._robot_model)
+        self.mapping = StretchMappingClient(self._ros_client)
 
         # Init control mode
         self._base_control_mode = ControlMode.IDLE
@@ -239,6 +241,12 @@ class StretchClient(AbstractRobotClient):
     def get_base_pose(self) -> np.ndarray:
         """Get the robot's base pose as XYT."""
         return self.nav.get_base_pose()
+
+    def load_map(self, filename: str):
+        self.mapping.load_map(filename)
+
+    def save_map(self, filename: str):
+        self.mapping.save_map(filename)
 
     def execute_trajectory(self, *args, **kwargs):
         """Open-loop trajectory execution wrapper. Executes a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
