@@ -30,7 +30,7 @@ class MoonbeamCaptioner(BaseCaptioner):
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
 
-    def caption_image(self, image: Union[ndarray, Tensor]):
+    def caption_image(self, image: Union[ndarray, Tensor, Image.Image]):
         if isinstance(image, Image.Image):
             pil_image = image
         else:

@@ -11,6 +11,7 @@ import abc
 from typing import Union
 
 from numpy import ndarray
+from PIL import Image
 from torch import Tensor
 
 
@@ -18,6 +19,6 @@ class BaseCaptioner(abc.ABC):
     """Base class for image captioning models."""
 
     @abc.abstractmethod
-    def caption_image(self, image: Union[ndarray, Tensor]):
+    def caption_image(self, image: Union[ndarray, Tensor, Image.Image]) -> str:
         """Generate a caption for an image."""
         raise NotImplementedError

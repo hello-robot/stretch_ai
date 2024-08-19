@@ -106,5 +106,10 @@ The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is a ROS2 bridge that
 You can try the captioners with:
 
 ```bash
+# Moonbeam captioner
+# Gives: "A plush toy resembling a spotted animal is lying on its back on a wooden floor, with its head and front paws raised."
 python -m stretch.perception.captioners.moonbeam_captioner --image_path <path_to_image>
+
+# ViT + GPT2 captioner
+python -m stretch.perception.captioners.vit_gpt2_captioner --image_path <path_to_image>
 ```
