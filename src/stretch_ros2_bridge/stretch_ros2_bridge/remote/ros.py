@@ -23,7 +23,8 @@ import sophuspy as sp
 from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import PointStamped, Pose, PoseStamped, Twist
 from hello_helpers.joint_qpos_conversion import get_Idx
-from nav2_msgs.srv import LoadMap, SaveMap
+
+# from nav2_msgs.srv import LoadMap, SaveMap
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -327,8 +328,8 @@ class StretchRosInterface(Node):
         self.nav_mode_service = self.create_client(Trigger, "switch_to_navigation_mode")
         self.pos_mode_service = self.create_client(Trigger, "switch_to_position_mode")
 
-        self.save_map_service = self.create_client(SaveMap, "save_map")
-        self.load_map_service = self.create_client(LoadMap, "load_map")
+        # self.save_map_service = self.create_client(SaveMap, "save_map")
+        # self.load_map_service = self.create_client(LoadMap, "load_map")
 
         self.goto_on_service = self.create_client(
             Trigger,
@@ -340,8 +341,8 @@ class StretchRosInterface(Node):
         self.pos_mode_service.wait_for_service()
 
         print("Wait for map services...")
-        self.save_map_service.wait_for_service()
-        self.load_map_service.wait_for_service()
+        # self.save_map_service.wait_for_service()
+        # self.load_map_service.wait_for_service()
 
     def _is_homed_cb(self, msg) -> None:
         """Update this variable"""
