@@ -22,7 +22,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-USE_TORCH_GEOMETRIC = True
+USE_TORCH_GEOMETRIC = False
 if USE_TORCH_GEOMETRIC:
     from torch_geometric.nn.pool.consecutive import consecutive_cluster
     from torch_geometric.nn.pool.voxel_grid import voxel_grid

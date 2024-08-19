@@ -20,7 +20,15 @@ from typing import Any, List, Optional, Union
 import torch
 from torch import Tensor
 
-from stretch.utils.torch_cluster.torch_cluster_helpers import grid_cluster
+USE_TORCH_CLUSTER = True
+if USE_TORCH_CLUSTER:
+    try:
+        from torch_cluster import grid_cluster
+    except ImportError:
+        print("torch_cluster not found. Using custom implementation.")
+        grid_cluster = None
+if not USE_TORCH_CLUSTER or grid_cluster is None:
+    from stretch.utils.torch_cluster.torch_cluster_helpers import grid_cluster
 
 
 def consecutive_cluster(src):
