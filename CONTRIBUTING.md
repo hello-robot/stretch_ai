@@ -103,14 +103,33 @@ The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is a ROS2 bridge that
 
 ##### Perception
 
+The perception package contains tools for perception, such as object detection and pose estimation.
+
+Here are some images you can use to test the perception tools:
+
+| Object Image | Receptacle Image |
+|--------------|------------------|
+| [![object.png](docs/object.png)](docs/object.png) | [![receptacle.png](docs/receptacle.png)](docs/receptacle.png) |
+
 You can try the captioners with:
 
 ```bash
 # Moonbeam captioner
 # Gives: "A plush toy resembling a spotted animal is lying on its back on a wooden floor, with its head and front paws raised."
-python -m stretch.perception.captioners.moonbeam_captioner --image_path <path_to_image>
+python -m stretch.perception.captioners.moonbeam_captioner --image_path object.png
+# Gives: "An open cardboard box rests on a wooden floor, with a stuffed animal lying next to it."
+python -m stretch.perception.captioners.moonbeam_captioner --image_path receptacle.png
 
 # ViT + GPT2 captioner
 # Gives: "a cat laying on the floor next to a door"
-python -m stretch.perception.captioners.vit_gpt2_captioner --image_path <path_to_image>
+python -m stretch.perception.captioners.vit_gpt2_captioner --image_path object.png
+# Gives: "a box with a cat laying on top of it"
+python -m stretch.perception.captioners.vit_gpt2_captioner --image_path receptacle.png
+
+# Blip Captioner
+# Gives: "a stuffed dog on the floor"
+python -m stretch.perception.captioners.blip_captioner --image_path object.png
+# Gives: "a dog laying on the floor next to a cardboard box"
+python -m stretch.perception.captioners.blip_captioner --image_path receptacle.png
+
 ```
