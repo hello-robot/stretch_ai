@@ -111,5 +111,6 @@ You can try the captioners with:
 python -m stretch.perception.captioners.moonbeam_captioner --image_path <path_to_image>
 
 # ViT + GPT2 captioner
+# Gives: "a cat laying on the floor next to a door"
 python -m stretch.perception.captioners.vit_gpt2_captioner --image_path <path_to_image>
 ```
