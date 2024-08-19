@@ -14,7 +14,7 @@ from numpy import ndarray
 from torch import Tensor
 
 
-class BaseImageCaptioner(abc.ABC):
+class BaseCaptioner(abc.ABC):
     """Base class for image captioning models."""
 
     @abc.abstractmethod

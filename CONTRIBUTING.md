@@ -87,6 +87,9 @@ The code is organized as follows. Inside the core package `src/stretch`:
 - [app](src/stretch/app) contains individual endpoints, runnable as `python -m stretch.app.<app_name>`, such as mapping, discussed above.
 - [motion](src/stretch/motion) contains motion planning tools, including [algorithms](src/stretch/motion/algo) like RRT.
 - [mapping](src/stretch/mapping) is broken up into tools for voxel (3d / ok-robot style), instance mapping
+- [perception](src/stretch/perception) contains tools for perception, such as object detection and pose estimation.
+  - [perception/encoders](src/stretch/perception/encoders) contains tools for encoding vision and language features, such as the [SiglipEncoder](src/stretch/perception/encoders/siglip_encoder.py) class.
+  - [perception/captioners](src/stretch/perception/captioners) contains tools for generating captions from images, such as the [MoonbeamCaptioner](src/stretch/perception/captioners/moonbeam_captioner.py) class.
 - [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
   - In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
   - [agent/robot_agent.py](src/stretch/agent/robot_agent.py) is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
@@ -95,3 +98,13 @@ The code is organized as follows. Inside the core package `src/stretch`:
   - [agent/operations](src/stretch/agent/operations) contains the individual operations, such as `move_to_pose.py` which moves the robot to a given pose.
 
 The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is a ROS2 bridge that allows the Stretch AI code to communicate with the ROS2 ecosystem. It is a separate package that is symlinked into the `ament_ws` workspace on the robot.
+
+#### Trying individual components
+
+##### Perception
+
+You can try the captioners with:
+
+```bash
+python -m stretch.perception.captioners.moonbeam_captioner --image_path <path_to_image>
+```
