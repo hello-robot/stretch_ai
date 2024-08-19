@@ -85,7 +85,7 @@ class GoogleDriveUploader:
             media = MediaInMemoryUpload(open(file_path, "rb").read(), resumable=True)
             file = (
                 self.drive_service.files()
-                .create(body=file_metadata, media_body=media, fields="id")
+                .create(body=file_metadata, media_body=media, fields="id", supportsAllDrives=True)
                 .execute()
             )
             print(f'File uploaded successfully. File ID: {file.get("id")}')
@@ -123,7 +123,7 @@ class GoogleDriveUploader:
             )
             file = (
                 self.drive_service.files()
-                .create(body=file_metadata, media_body=media, fields="id")
+                .create(body=file_metadata, media_body=media, fields="id", supportsAllDrives=True)
                 .execute()
             )
             print(f'NumPy image uploaded successfully. File ID: {file.get("id")}')
@@ -151,7 +151,11 @@ class GoogleDriveUploader:
         if parent_folder_id:
             folder_metadata["parents"] = [parent_folder_id]
 
-        folder = self.drive_service.files().create(body=folder_metadata, fields="id").execute()
+        folder = (
+            self.drive_service.files()
+            .create(body=folder_metadata, fields="id", supportsAllDrives=True)
+            .execute()
+        )
         print(f'Folder created. ID: "{folder.get("id")}"')
         return folder.get("id")
 
@@ -198,6 +202,7 @@ class GoogleDriveUploader:
                 fields="files(id, name)",
                 pageSize=1,
                 supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
             )
             .execute()
         )
@@ -494,3 +499,6 @@ if __name__ == "__main__":
         print("  Web link:", link)
 
     uploader.download_folder_contents(local_path="downloads")
+
+    # TODO: do you really want to do this?
+    # uploader.delete_folder(uploader.folder_id, permanent=False)
