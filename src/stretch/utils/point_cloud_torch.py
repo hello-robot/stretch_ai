@@ -26,7 +26,12 @@ import torch
 from torch import Tensor
 
 from stretch.utils.image import Camera
-from stretch.utils.torch_geometric.torch_geometric_helpers import voxel_grid
+
+USE_TORCH_GEOMETRIC = True
+if USE_TORCH_GEOMETRIC:
+    from torch_geometric.nn.pool.voxel_grid import voxel_grid
+else:
+    from stretch.utils.torch_geometric.torch_geometric_helpers import voxel_grid
 
 
 def depth_to_xyz(depth: torch.Tensor, camera: Camera):

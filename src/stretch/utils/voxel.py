@@ -22,8 +22,17 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from stretch.utils.torch_geometric.torch_geometric_helpers import consecutive_cluster, voxel_grid
-from stretch.utils.torch_scatter.torch_scatter_helpers import scatter
+USE_TORCH_GEOMETRIC = True
+if USE_TORCH_GEOMETRIC:
+    from torch_geometric.nn.pool.consecutive import consecutive_cluster
+    from torch_geometric.nn.pool.voxel_grid import voxel_grid
+    from torch_geometric.utils import scatter
+else:
+    from stretch.utils.torch_geometric.torch_geometric_helpers import (
+        consecutive_cluster,
+        voxel_grid,
+    )
+    from stretch.utils.torch_scatter.torch_scatter_helpers import scatter
 
 
 class VoxelizedPointcloud:
