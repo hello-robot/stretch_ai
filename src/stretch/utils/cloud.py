@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaInMemoryUpload, MediaIoBaseDownload
 from PIL import Image
 
@@ -191,7 +192,13 @@ class GoogleDriveUploader:
 
         results = (
             self.drive_service.files()
-            .list(q=query, spaces="drive", fields="files(id, name)", pageSize=1)
+            .list(
+                q=query,
+                spaces="drive",
+                fields="files(id, name)",
+                pageSize=1,
+                supportsAllDrives=True,
+            )
             .execute()
         )
 
@@ -403,6 +410,58 @@ class GoogleDriveUploader:
             print(f"File downloaded: {local_path}")
         except Exception as e:
             print(f"Error downloading file {file_id}: {e}")
+
+    def delete_folder(self, folder_id: str, permanent: bool = False) -> Optional[bool]:
+        """
+        Delete a folder from Google Drive.
+
+        This function attempts to delete a folder with the given ID from Google Drive.
+        It can either permanently delete the folder or move it to trash.
+
+        Args:
+            folder_id (str): The ID of the folder to be deleted.
+            permanent (bool, optional): If True, permanently delete the folder.
+                                        If False, move to trash. Defaults to True.
+
+        Returns:
+            Optional[bool]: True if deletion was successful, False if moved to trash,
+                            None if an error occurred.
+
+        Raises:
+            HttpError: If an HTTP error occurs during the API call.
+
+        Example:
+            >>> result = delete_folder("1234567890abcdef")
+            >>> if result is True:
+            ...     print("Folder deleted permanently.")
+            >>> elif result is False:
+            ...     print("Folder moved to trash.")
+            >>> else:
+            ...     print("An error occurred.")
+        """
+        try:
+            if permanent:
+                self.drive_service.files().delete(
+                    fileId=folder_id, supportsAllDrives=True
+                ).execute()
+                print(f"Folder with ID {folder_id} deleted permanently.")
+                return True
+            else:
+                file_metadata = {"trashed": True}
+                self.drive_service.files().update(
+                    fileId=folder_id, body=file_metadata, supportsAllDrives=True
+                ).execute()
+                print(f"Folder with ID {folder_id} moved to trash.")
+                return False
+        except HttpError as e:
+            if e.resp.status == 404:
+                print(f"Folder with ID {folder_id} not found.")
+            else:
+                print(f"An HTTP error occurred: {e}")
+            return None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
 
 
 # Example usage
