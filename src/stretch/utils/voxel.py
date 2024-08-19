@@ -28,11 +28,8 @@ if USE_TORCH_GEOMETRIC:
     from torch_geometric.nn.pool.voxel_grid import voxel_grid
     from torch_geometric.utils import scatter
 else:
-    from stretch.utils.torch_geometric.torch_geometric_helpers import (
-        consecutive_cluster,
-        voxel_grid,
-    )
-    from stretch.utils.torch_scatter.torch_scatter_helpers import scatter
+    from stretch.utils.torch_geometric import consecutive_cluster, voxel_grid
+    from stretch.utils.torch_scatter import scatter
 
 
 class VoxelizedPointcloud:

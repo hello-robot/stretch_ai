@@ -20,7 +20,7 @@ from typing import Any, List, Optional, Union
 import torch
 from torch import Tensor
 
-USE_TORCH_CLUSTER = True
+USE_TORCH_CLUSTER = False
 if USE_TORCH_CLUSTER:
     try:
         from torch_cluster import grid_cluster

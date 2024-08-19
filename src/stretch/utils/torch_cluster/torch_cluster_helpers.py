@@ -37,22 +37,46 @@ def grid_cluster(
         end (Tensor, optional): End position of the grid (in each
             dimension). (default: :obj:`None`)
     """
-    pos = pos.view(pos.size(0), -1)
+    # Ensure pos is a 2D tensor
+    if pos.dim() != 2:
+        raise ValueError("pos must be a 2D tensor")
 
-    start = torch.tensor([0.0])
-    end = torch.tensor([0.0])
+    # Get number of points and dimensions
+    num_points, num_dims = pos.size()
 
-    pos = pos - start.unsqueeze(0)
+    # If start or end are not provided, compute them from pos
+    if start is None:
+        start = pos.min(dim=0)[0]
+    if end is None:
+        end = pos.max(dim=0)[0]
 
-    num_voxels = ((end - start) / size).to(torch.long) + 1
-    num_voxels = num_voxels.cumprod(0)
-    num_voxels = torch.cat(
-        [torch.ones(1, dtype=num_voxels.dtype, device=num_voxels.device), num_voxels], 0
-    )
-    num_voxels = num_voxels.narrow(0, 0, size.size(0))
+    # Ensure start, end, and size have the correct shape
+    start = start.to(pos.device).to(pos.dtype)
+    end = end.to(pos.device).to(pos.dtype)
+    size = size.to(pos.device).to(pos.dtype)
 
-    out = (pos / size.view(1, -1)).to(torch.long)
-    out *= num_voxels.view(1, -1)
-    out = out.sum(1)
+    if start.dim() == 0:
+        start = start.repeat(num_dims)
+    if end.dim() == 0:
+        end = end.repeat(num_dims)
+    if size.dim() == 0:
+        size = size.repeat(num_dims)
 
-    return out
+    # Compute the number of voxels in each dimension
+    num_voxels = ((end - start) / size).ceil().long()
+
+    # Num voxels must be at least 1 in each dimension
+    num_voxels = torch.max(num_voxels, torch.ones_like(num_voxels))
+
+    # Compute voxel indices for each point
+    voxel_indices = ((pos - start) / size).long()
+
+    # Clamp indices to ensure they're within bounds
+    voxel_indices = torch.clamp(voxel_indices, min=torch.zeros_like(num_voxels), max=num_voxels - 1)
+
+    # Compute unique voxel identifier for each point
+    voxel_id = voxel_indices[:, 0]
+    for i in range(1, num_dims):
+        voxel_id = voxel_id * num_voxels[i] + voxel_indices[:, i]
+
+    return voxel_id
