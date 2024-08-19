@@ -654,7 +654,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             ang = xyt[2]
 
             if not self.at_goal():
-                print("not at goal")
                 t0 = timeit.default_timer()
                 continue
 
@@ -1025,6 +1024,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._rerun.step(self._obs, self._servo)
             time.sleep(0.3)
 
+    @property
+    def is_homed(self) -> bool:
+        return self._state is not None and self._state["is_homed"]
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._state is not None and self._state["is_runstopped"]
+
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         if self._started:
@@ -1058,6 +1065,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 )
                 logger.info("Robot IP:", self.send_address)
                 return False
+
+        # Separately wait for state messages
+        while self._state is None:
+            time.sleep(0.1)
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10.0:
+                logger.error(
+                    colored(
+                        "Timeout waiting for state information; are you connected to the robot? Check the network.",
+                        "red",
+                    )
+                )
+
         self._started = True
         return True
 
