@@ -27,7 +27,7 @@ from torch import Tensor
 
 from stretch.utils.image import Camera
 
-USE_TORCH_GEOMETRIC = True
+USE_TORCH_GEOMETRIC = False
 if USE_TORCH_GEOMETRIC:
     from torch_geometric.nn.pool.voxel_grid import voxel_grid
 else:
