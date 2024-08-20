@@ -241,6 +241,10 @@ class ZmqServer(CommsNode):
                         action["xyt"],
                         relative=action["nav_relative"],
                     )
+                elif "v" in action and "w" in action:
+                    if self.verbose:
+                        print("Setting navigation velocities v and w!")
+                    self.client.nav.set_velocity(v = float(action['v']), w = float(action['w']))
                 elif "joint" in action:
                     # This allows for executing motor commands on the robot relatively quickly
                     if self.verbose:

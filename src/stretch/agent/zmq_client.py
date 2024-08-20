@@ -35,6 +35,9 @@ from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
 from stretch.visualization.rerun import RerunVsualizer
 
+from scipy.spatial.transform import Rotation
+from stretch.utils.geometry import posquat2sophus, sophus2posquat
+
 # TODO: debug code - remove later if necessary
 # import faulthandler
 # faulthandler.enable()
@@ -219,6 +222,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             joint_positions = self._state["joint_positions"]
         return joint_positions
 
+    def get_six_joints(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the six major joint positions"""
+        joint_positions = self.get_joint_positions(timeout = timeout)
+        return  np.array(self._extract_joint_pos(joint_positions))
+
     def get_joint_velocities(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current joint velocities"""
         t0 = timeit.default_timer()
@@ -266,6 +274,94 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
+    def get_pan_tilt(self):
+        joint_positions, _, _ = self.get_joint_state()
+        return joint_positions[HelloStretchIdx.HEAD_PAN], joint_positions[HelloStretchIdx.HEAD_TILT]
+
+    def get_gripper_position(self):
+        joint_state = self.get_joint_positions()
+        return joint_state[HelloStretchIdx.GRIPPER]
+
+    def get_ee_pose(self, matrix=False):
+        q = self.get_joint_positions()
+        pos, quat = self._robot_model.manip_fk(q)
+        pos[0] += q[HelloStretchIdx.BASE_X]
+
+        if matrix:
+            pose = posquat2sophus(pos, quat)
+            return pose.matrix()
+        else:
+            return pos, quat
+
+    def get_frame_pose(self, q: np.ndarray, node_a: str, node_b: str):
+        return self._robot_model.manip_ik_solver.get_frame_pose(q, node_a, node_b)
+
+    def solve_ik(
+        self,
+        pos: List[float],
+        quat: Optional[List[float]] = None,
+        relative: bool = False,
+        initial_cfg: np.ndarray = None,
+        debug: bool = False,
+    ) -> Optional[np.ndarray]:
+        """Solve inverse kinematics appropriately (or at least try to) and get the joint position
+        that we will be moving to.
+
+        Note: When relative==True, the delta orientation is still defined in the world frame
+
+        Returns None if no solution is found, else returns an executable solution
+        """
+
+        pos_ee_curr, quat_ee_curr = self.get_ee_pose()
+        if quat is None:
+            quat = [0, 0, 0, 1] if relative else quat_ee_curr
+
+        # Compute IK goal: pose relative to base
+        pose_desired = posquat2sophus(np.array(pos), np.array(quat))
+
+        if relative:
+            pose_base2ee_curr = posquat2sophus(pos_ee_curr, quat_ee_curr)
+
+            pos_desired = pos_ee_curr + pose_input.translation()
+            so3_desired = pose_input.so3() * pose_base2ee_curr.so3()
+            quat_desired = R.from_matrix(so3_desired.matrix()).as_quat()
+
+            pose_base2ee_desired = posquat2sophus(pos_desired, quat_desired)
+
+        else:
+            pose_base2ee_desired = pose_desired
+
+        pos_ik_goal, quat_ik_goal = sophus2posquat(pose_base2ee_desired)
+
+        # Execute joint command
+        if debug:
+            print("=== EE goto command ===")
+            print(f"Initial EE pose: pos={pos_ee_curr}; quat={quat_ee_curr}")
+            print(f"Input EE pose: pos={np.array(pos)}; quat={np.array(quat)}")
+            print(f"Desired EE pose: pos={pos_ik_goal}; quat={quat_ik_goal}")
+
+        # Perform IK
+        full_body_cfg, ik_success, ik_debug_info = self._robot_model.manip_ik(
+            (pos_ik_goal, quat_ik_goal), q0=initial_cfg
+        )
+
+        # Expected to return None if we did not get a solution
+        if not ik_success or full_body_cfg is None:
+            return None
+        # Return a valid solution to the IK problem here
+        return full_body_cfg
+
+    def _extract_joint_pos(self, q):
+        """Helper to convert from the general-purpose config including full robot state, into the command space used in just the manip controller. Extracts just lift/arm/wrist information."""
+        return [
+            q[HelloStretchIdx.BASE_X],
+            q[HelloStretchIdx.LIFT],
+            q[HelloStretchIdx.ARM],
+            q[HelloStretchIdx.WRIST_YAW],
+            q[HelloStretchIdx.WRIST_PITCH],
+            q[HelloStretchIdx.WRIST_ROLL],
+        ]
+
     def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
         """Move the robot to a particular joint configuration."""
         next_action = {"joint": joint_angles, "manip_blocking": blocking}
@@ -293,6 +389,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
             self._wait_for_head(whole_body_q)
+
+    def look_front(self, blocking: bool = True, timeout: float = 10.0):
+        """Let robot look to its front."""
+        self.head_to(constants.look_front[0], constants.look_front[1], blocking = blocking, timeout = timeout)
+
+    def look_at_ee(self, blocking: bool = True, timeout: float = 10.0):
+        """Let robot look to its arm."""
+        self.head_to(constants.look_at_ee[0], constants.look_at_ee[1], blocking = blocking, timeout = timeout)
 
     def arm_to(
         self,
@@ -435,6 +539,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert len(xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
         self.send_action(next_action, timeout=timeout)
+
+    def set_velocity(
+        self, v: float, w: float
+    ):
+        """Move to xyt in global coordinates or relative coordinates."""
+        next_action = {"v": v, "w": w}
+        self.send_action(next_action)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -749,6 +860,21 @@ class HomeRobotZmqClient(AbstractRobotClient):
             observation.camera_pose = self._obs.get("camera_pose", None)
             observation.seq_id = self._seq_id
         return observation
+ 
+    def get_images(self, compute_xyz = False):
+        obs = self.get_observation()
+        if compute_xyz:
+            return obs.rgb, obs.depth, obs.xyz
+        else:
+            return obs.rgb, obs.depth
+
+    def get_camera_K(self):
+        obs = self.get_observation()
+        return obs.camera_K
+
+    def get_head_pose(self):
+        obs = self.get_observation()
+        return obs.camera_pose
 
     def execute_trajectory(
         self,
