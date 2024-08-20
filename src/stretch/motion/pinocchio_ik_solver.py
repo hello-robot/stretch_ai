@@ -139,6 +139,23 @@ class PinocchioIKSolver(IKSolverBase):
 
         return q_out
 
+    def get_frame_pose(self, config: Union[np.ndarray, dict], node_a: str, node_b: str, ignore_missing_joints: bool = False):
+        '''
+            Get a transformation matrix transforming from node_a frame to node_b frame
+        '''
+        q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
+        print('q_model', q_model)
+        pinocchio.forwardKinematics(self.model, self.data, q_model)
+        frame_idx1 = [f.name for f in self.model.frames].index(node_a)
+        frame_idx2 = [f.name for f in self.model.frames].index(node_b)
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx1)
+        placement_frame1 = self.data.oMf[frame_idx1]
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx2)
+        placement_frame2 = self.data.oMf[frame_idx2]
+        print('pin 1', placement_frame1)
+        print('pin 2', placement_frame2)
+        return placement_frame2.inverse() * placement_frame1
+
     def compute_fk(
         self, config: np.ndarray, link_name: str = None, ignore_missing_joints: bool = False
     ) -> Tuple[np.ndarray, np.ndarray]:

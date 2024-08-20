@@ -133,7 +133,8 @@ class HelloStretchKinematics:
     default_ee_link_name = "link_grasp_center"
 
     default_manip_mode_controlled_joints = [
-        "base_x_joint",
+        # "base_x_joint",
+        "joint_fake",
         "joint_lift",
         "joint_arm_l3",
         "joint_arm_l2",
@@ -419,14 +420,14 @@ class HelloStretchKinematics:
         for qi, ai in self.interpolate_arm(qi, qg, step):
             yield qi, ai
 
-    def manip_fk(self, q: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
+    def manip_fk(self, q: np.ndarray = None, node: str = None) -> Tuple[np.ndarray, np.ndarray]:
         """manipulator specific forward kinematics; uses separate URDF than the full-body fk() method"""
         assert q.shape == (self.dof,)
 
         if "pinocchio" in self._ik_type:
             q = self._ros_pose_to_pinocchio(q)
 
-        ee_pos, ee_quat = self.manip_ik_solver.compute_fk(q)
+        ee_pos, ee_quat = self.manip_ik_solver.compute_fk(q, node)
         return ee_pos.copy(), ee_quat.copy()
 
     def update_head(self, qi: np.ndarray, look_at) -> np.ndarray:
