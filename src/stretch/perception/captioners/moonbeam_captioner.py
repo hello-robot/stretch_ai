@@ -11,6 +11,7 @@ from typing import Union
 
 import click
 from numpy import ndarray
+from overrides import override
 from PIL import Image
 from torch import Tensor
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -30,7 +31,16 @@ class MoonbeamCaptioner(BaseCaptioner):
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
 
-    def caption_image(self, image: Union[ndarray, Tensor, Image.Image]):
+    @override
+    def caption_image(self, image: Union[ndarray, Tensor, Image.Image]) -> str:
+        """Generate a caption for the given image.
+
+        Args:
+            image (Union[ndarray, Tensor, Image.Image]): Image to generate caption for.
+
+        Returns:
+            str: Generated caption.
+        """
         if isinstance(image, Image.Image):
             pil_image = image
         else:

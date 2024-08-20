@@ -20,5 +20,12 @@ class BaseCaptioner(abc.ABC):
 
     @abc.abstractmethod
     def caption_image(self, image: Union[ndarray, Tensor, Image.Image]) -> str:
-        """Generate a caption for an image."""
+        """Generate a caption for an image.
+
+        Args:
+            image (Union[ndarray, Tensor, Image.Image]): Image to generate caption for.
+
+        Returns:
+            str: Generated caption.
+        """
         raise NotImplementedError

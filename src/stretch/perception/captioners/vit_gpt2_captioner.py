@@ -12,6 +12,7 @@ from typing import Optional, Union
 import click
 import torch
 from numpy import ndarray
+from overrides import override
 from PIL import Image
 from torch import Tensor
 from transformers import AutoTokenizer, VisionEncoderDecoderModel, ViTImageProcessor
@@ -49,7 +50,17 @@ class VitGpt2Captioner(BaseCaptioner):
         )
         self.tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
 
-    def caption_image(self, image: Union[ndarray, Tensor]):
+    @override
+    def caption_image(self, image: Union[ndarray, Tensor, Image.Image]) -> str:
+        """Generate a caption for the given image.
+
+        Args:
+            image (Union[ndarray, Tensor]): Image to generate caption for.
+
+        Returns:
+            str: Generated caption.
+
+        """
         if isinstance(image, Image.Image):
             pil_image = image
         else:
