@@ -41,6 +41,21 @@ class ZmqServer(BaseZmqServer):
         return self.client.is_running() and rclpy.ok()
 
     @override
+    def get_control_mode(self) -> str:
+        """Get the current control mode of the robot. Can be navigation, manipulation, or none.
+
+        Returns:
+            str: The current control mode of the robot.
+        """
+        if self.client.in_manipulation_mode():
+            control_mode = "manipulation"
+        elif self.client.in_navigation_mode():
+            control_mode = "navigation"
+        else:
+            control_mode = "none"
+        return control_mode
+
+    @override
     def get_full_observation_message(self) -> Dict[str, Any]:
         # get information
         # Still about 0.01 seconds to get observations

@@ -33,16 +33,23 @@ class MujocoZmqServer(BaseZmqServer):
             scene_path = get_data_path("scene.xml")
         self.robot_sim = StretchMujocoSimulator(scene_path)
 
+        self.report_steps = 1000
+        self.fast_report_steps = 1000
+
     def base_controller_at_goal(self):
         """Check if the base controller is at goal."""
         return True
 
     def get_joint_state(self):
         """Get the joint state of the robot."""
-        status = self.robot_sim.get_status()
+        status = self.robot_sim.pull_status()
+
         positions = np.zeros(constants.stretch_degrees_of_freedom)
         velocities = np.zeros(constants.stretch_degrees_of_freedom)
         efforts = np.zeros(constants.stretch_degrees_of_freedom)
+
+        if status is None:
+            return positions, velocities, efforts
 
         # Lift joint
         positions[HelloStretchIdx.LIFT] = status["lift"]["pos"]
@@ -87,6 +94,11 @@ class MujocoZmqServer(BaseZmqServer):
         return self.robot_sim.get_ee_pose()
 
     @override
+    def get_control_mode(self) -> str:
+        """Get the control mode of the robot."""
+        return self.control_mode
+
+    @override
     def start(self):
         self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
         super().start()
@@ -104,7 +116,7 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def get_state_message(self) -> Dict[str, Any]:
         """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
-        q, dq, eff = self.client.get_joint_state()
+        q, dq, eff = self.get_joint_state()
         message = {
             "base_pose": self.get_base_pose(),
             "ee_pose": self.get_ee_pose(),

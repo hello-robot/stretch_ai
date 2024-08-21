@@ -47,6 +47,7 @@ class StretchMujocoSimulator:
             "wrist_roll": {"pos": None, "vel": None},
             "gripper": {"pos": None, "vel": None},
         }
+        self._running = False
 
     def home(self) -> None:
         """
@@ -90,15 +91,15 @@ class StretchMujocoSimulator:
 
     def get_base_pose(self) -> np.ndarray:
         """Get the se(2) base pose: x, y, and theta"""
-        xyz = self.mjdata.get_body_xpos("base_link")
-        rotation = self.mjdata.get_body_xmat("base_link").reshape(3, 3)
+        xyz = self.mjdata.body("base_link").xpos
+        rotation = self.mjdata.body("base_link").xmat.reshape(3, 3)
         theta = np.arctan2(rotation[1, 0], rotation[0, 0])
         return np.array([xyz[0], xyz[1], theta])
 
     def get_ee_pose(self) -> np.ndarray:
         """Get end effector pose as a 4x4 matrix"""
-        xyz = self.mjdata.get_body_xpos("gripper_link")
-        rotation = self.mjdata.get_body_xmat("gripper_link").reshape(3, 3)
+        xyz = self.mjdata.body("link_grasp_center").xpos
+        rotation = self.mjdata.body("link_grasp_center").xmat.reshape(3, 3)
         pose = np.eye(4)
         pose[:3, :3] = rotation
         pose[:3, 3] = xyz
@@ -219,7 +220,7 @@ class StretchMujocoSimulator:
         """
         Check if the simulator is running
         """
-        return mujoco.viewer.is_active()
+        return self._running
 
     def start(self) -> None:
         """
@@ -229,6 +230,7 @@ class StretchMujocoSimulator:
         """
         threading.Thread(target=self.__run).start()
         time.sleep(0.5)
+        self._running = True
         self.home()
 
 

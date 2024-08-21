@@ -82,20 +82,6 @@ class BaseZmqServer(CommsNode, ABC):
         """Check if the server is running."""
         return not self.done
 
-    def get_control_mode(self) -> str:
-        """Get the current control mode of the robot. Can be navigation, manipulation, or none.
-
-        Returns:
-            str: The current control mode of the robot.
-        """
-        if self.client.in_manipulation_mode():
-            control_mode = "manipulation"
-        elif self.client.in_navigation_mode():
-            control_mode = "navigation"
-        else:
-            control_mode = "none"
-        return control_mode
-
     def _rescale_color_and_depth(
         self, color_image, depth_image, scaling: float = 0.5
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -137,6 +123,11 @@ class BaseZmqServer(CommsNode, ABC):
 
     # ==================================================================
     # BEGIN: Implement the following methods
+
+    @abstractmethod
+    def get_control_mode(self) -> str:
+        """Get the control mode of the robot."""
+        pass
 
     @abstractmethod
     def handle_action(self, action: Dict[str, Any]):
