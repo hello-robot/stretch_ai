@@ -97,6 +97,9 @@ setuptools.setup(
             "flake8",
             "black",
             "mypy",
-        ]
+        ],
+        "sim": [
+            "mujoco",
+        ],
     },
 )

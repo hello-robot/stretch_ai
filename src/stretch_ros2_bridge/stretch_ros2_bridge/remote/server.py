@@ -10,87 +10,35 @@
 
 # (c) 2024 chris paxton for Hello Robot, under MIT license
 
-import threading
 import time
 import timeit
 from typing import Any, Dict
 
 import click
-import cv2
 import numpy as np
 import rclpy
 import zmq
+from overrides import override
 
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.audio.text_to_speech import get_text_to_speech
-from stretch.core.comms import CommsNode
+from stretch.core.server import BaseZmqServer
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
 from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 
-class ZmqServer(CommsNode):
+class ZmqServer(BaseZmqServer):
+    @override
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    # How often should we print out info about our performance
-    report_steps = 100
-    fast_report_steps = 10000
-
-    def __init__(
-        self,
-        send_port: int = 4401,
-        recv_port: int = 4402,
-        send_state_port: int = 4403,
-        send_servo_port: int = 4404,
-        use_remote_computer: bool = True,
-        verbose: bool = False,
-        image_scaling: float = 0.5,
-        ee_image_scaling: float = 0.5,  # 0.6,
-        depth_scaling: float = 0.001,
-        ee_depth_scaling: float = 0.001,
-        text_to_speech_engine: str = "gTTS",
-    ):
-        self.verbose = verbose
+        # ROS2 client interface
         self.client = StretchClient(d405=True)
-        self.context = zmq.Context()
-        self.image_scaling = image_scaling
-        self.ee_image_scaling = ee_image_scaling
-        self.depth_scaling = depth_scaling
-        self.ee_depth_scaling = ee_depth_scaling
 
-        # Set up the publisher socket using ZMQ
-        self.send_socket = self._make_pub_socket(send_port, use_remote_computer)
-
-        # Publisher for state-only messages (FAST spin rate)
-        self.send_state_socket = self._make_pub_socket(send_state_port, use_remote_computer)
-
-        # Publisher for visual servoing images (lower size, faster publishing rate)
-        self.send_servo_socket = self._make_pub_socket(send_servo_port, use_remote_computer)
-
-        # Subscriber for actions
-        self.recv_socket, self.recv_address = self._make_sub_socket(recv_port, use_remote_computer)
-        self._last_step = -1
-
-        # Extensions to the ROS server
-        # Text to speech engine - let's let the robot talk
-        self.text_to_speech = get_text_to_speech(text_to_speech_engine)
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
-
-        print("Done setting up connections! Server ready to start.")
-
-        # for the threads
-        self.control_mode = "none"
-        self._done = False
-
-    def get_control_mode(self):
-        if self.client.in_manipulation_mode():
-            control_mode = "manipulation"
-        elif self.client.in_navigation_mode():
-            control_mode = "navigation"
-        else:
-            control_mode = "none"
-        return control_mode
 
     def spin_send(self):
 
@@ -298,23 +246,6 @@ class ZmqServer(CommsNode):
             time.sleep(1e-4)
             t0 = timeit.default_timer()
 
-    def _rescale_color_and_depth(self, color_image, depth_image, scaling: float = 0.5):
-        color_image = cv2.resize(
-            color_image,
-            (0, 0),
-            fx=scaling,
-            fy=scaling,
-            interpolation=cv2.INTER_AREA,
-        )
-        depth_image = cv2.resize(
-            depth_image,
-            (0, 0),
-            fx=scaling,
-            fy=scaling,
-            interpolation=cv2.INTER_NEAREST,
-        )
-        return color_image, depth_image
-
     def _get_ee_cam_message(self) -> Dict[str, Any]:
         # Read images from the end effector and head cameras
         ee_depth_image = self.client.ee_dpt_cam.get()
@@ -408,42 +339,6 @@ class ZmqServer(CommsNode):
 
             time.sleep(1e-5)
             t0 = timeit.default_timer()
-
-    def start(self):
-        """Starts both threads spinning separately for efficiency."""
-        print("==========================================")
-        print("Starting up threads:")
-        print(" - Starting send thread")
-        self._send_thread = threading.Thread(target=self.spin_send)
-        print(" - Starting recv thread")
-        self._recv_thread = threading.Thread(target=self.spin_recv)
-        print(" - Sending state information")
-        self._send_state_thread = threading.Thread(target=self.spin_send_state)
-        print(" - Sending servo information")
-        self._send_servo_thread = threading.Thread(target=self.spin_send_servo)
-        self._done = False
-        print("Running all...")
-        self._send_thread.start()
-        self._recv_thread.start()
-        self._send_state_thread.start()
-        self._send_servo_thread.start()
-
-    def __del__(self):
-        self._done = True
-        # Wait for the threads to finish
-        time.sleep(0.15)
-
-        # Close threads
-        self._send_thread.join()
-        self._recv_thread.join()
-        self._send_state_thread.join()
-        self._send_servo_thread.join()
-
-        # Close sockets
-        self.recv_socket.close()
-        self.send_socket.close()
-        self.send_state_socket.close()
-        self.context.term()
 
 
 @click.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
