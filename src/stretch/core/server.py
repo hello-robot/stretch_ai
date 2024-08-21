@@ -170,6 +170,9 @@ class BaseZmqServer(CommsNode, ABC):
         t0 = timeit.default_timer()
         while self.is_running():
             data = self.get_full_observation_message()
+            if steps == 0:
+                logger.info(f"[SEND LARGE IMAGE STATE] message keys: {data.keys()}")
+
             self.send_socket.send_pyobj(data)
 
             # Finish with some speed info
@@ -230,6 +233,9 @@ class BaseZmqServer(CommsNode, ABC):
         t0 = timeit.default_timer()
         while self.is_running():
             message = self.get_state_message()
+            if steps == 0:
+                logger.info(f"[SEND MINIMAL STATE] message keys: {message.keys()}")
+
             self.send_state_socket.send_pyobj(message)
 
             # Finish with some speed info
@@ -252,6 +258,9 @@ class BaseZmqServer(CommsNode, ABC):
 
         while not self._done:
             message = self.get_servo_message()
+            if steps == 0:
+                logger.info(f"[SEND SERVO STATE] message keys: {message.keys()}")
+
             self.send_servo_socket.send_pyobj(message)
 
             # Finish with some speed info

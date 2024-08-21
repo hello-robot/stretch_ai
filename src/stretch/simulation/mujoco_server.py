@@ -36,8 +36,8 @@ class MujocoZmqServer(BaseZmqServer):
         self.robot_sim = StretchMujocoSimulator(scene_path)
 
         self.report_steps = 1000
-        self.fast_report_steps = 100
-        self.servo_report_steps = 100
+        self.fast_report_steps = 10000
+        self.servo_report_steps = 1000
 
     def base_controller_at_goal(self):
         """Check if the base controller is at goal."""
