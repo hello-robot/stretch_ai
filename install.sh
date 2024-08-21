@@ -132,10 +132,6 @@ else
 fi
 
 source activate $ENV_NAME
-# conda activate $ENV_NAME
-#echo "Activating environment... `$MAMBA info --base`/envs/$ENV_NAME/bin/activate"
-#source `$MAMBA info --base`/envs/$ENV_NAME/bin/activate
-#echo "activated"
 
 echo ""
 echo "---------------------------------------------"
