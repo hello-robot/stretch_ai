@@ -8,13 +8,14 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import click
 from overrides import override
 
 from stretch.core.server import BaseZmqServer
 from stretch.simulation.stretch_mujoco import StretchMujocoSimulator
+from stretch.utils.config import get_data_path
 
 
 class MujocoZmqServer(BaseZmqServer):
@@ -23,9 +24,11 @@ class MujocoZmqServer(BaseZmqServer):
     - Stretch_mujoco installation: https://github.com/hello-robot/stretch_mujoco/
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, scene_path: Optional[str] = None, **kwargs):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
-        self.robot_sim = StretchMujocoSimulator("./scene.xml")
+        if scene_path is None:
+            scene_path = get_data_path("scene.xml")
+        self.robot_sim = StretchMujocoSimulator(scene_path)
         self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
 
     @override

@@ -27,6 +27,13 @@ import stretch
 CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "config")
 CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
 
+DATA_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "../data")
+
+
+def get_data_path(ext: str) -> str:
+    """Returns full path to a particular file in the data directory"""
+    return os.path.join(DATA_ROOT, ext)
+
 
 class Config(yacs.config.CfgNode):
     """store a yaml config"""
