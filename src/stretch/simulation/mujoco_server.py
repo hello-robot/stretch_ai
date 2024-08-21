@@ -93,6 +93,18 @@ class MujocoZmqServer(BaseZmqServer):
         positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["pos"]
         velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["vel"]
 
+        print(
+            status["lift"]["pos"],
+            status["arm"]["pos"],
+            status["wrist"]["pos"],
+            status["wrist_yaw"]["pos"],
+            status["wrist_pitch"]["pos"],
+            status["wrist_roll"]["pos"],
+            status["gripper"]["pos"],
+            status["head_pan"]["pos"],
+            status["head_tilt"]["pos"],
+        )
+
         return positions, velocities, efforts
 
     def get_base_pose(self) -> np.ndarray:
@@ -103,7 +115,7 @@ class MujocoZmqServer(BaseZmqServer):
         """EE pose is the 4x4 matrix of the end effector location in world coords"""
         return self.robot_sim.get_ee_pose()
 
-    def get_camera_pose(self) -> np.ndarray:
+    def get_head_camera_pose(self) -> np.ndarray:
         """Get the camera pose in world coords"""
         return self.robot_sim.get_link_pose("realsense")
 
@@ -157,8 +169,8 @@ class MujocoZmqServer(BaseZmqServer):
         message = {
             "rgb": rgb,
             "depth": depth,
-            "camera_K": None,
-            "camera_pose": self.get_camera_pose(),
+            "camera_K": compute_pinhole_K(height, width, 69.4),
+            "camera_pose": self.get_head_camera_pose(),
             "ee_pose": self.get_ee_pose(),
             "joint": positions,
             "gps": xyt[:2],
@@ -235,9 +247,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         message = {
             "ee_cam/color_camera_K": scale_camera_matrix(ee_rgb_K, self.ee_image_scaling),
-            "ee_cam/depth_camera_K": scale_camera_matrix(
-                self.client.ee_dpt_K, self.ee_image_scaling
-            ),
+            "ee_cam/depth_camera_K": scale_camera_matrix(ee_dpt_K, self.ee_image_scaling),
             "ee_cam/color_image": compressed_ee_color_image,
             "ee_cam/depth_image": compressed_ee_depth_image,
             "ee_cam/color_image/shape": ee_color_image.shape,
