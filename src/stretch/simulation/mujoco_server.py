@@ -8,6 +8,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import time
 from typing import Any, Dict, Optional
 
 import click
@@ -17,10 +18,10 @@ from overrides import override
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 from stretch.core.server import BaseZmqServer
-from stretch.motion import STRETCH_CAMERA_FRAME, HelloStretchIdx
+from stretch.motion import HelloStretchIdx
 from stretch.simulation.stretch_mujoco import StretchMujocoSimulator
 from stretch.utils.config import get_data_path
-from stretch.utils.image import scale_camera_matrix
+from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
 
 
 class MujocoZmqServer(BaseZmqServer):
@@ -29,15 +30,21 @@ class MujocoZmqServer(BaseZmqServer):
     - Stretch_mujoco installation: https://github.com/hello-robot/stretch_mujoco/
     """
 
-    def __init__(self, *args, scene_path: Optional[str] = None, **kwargs):
+    def __init__(
+        self, *args, scene_path: Optional[str] = None, simulation_rate: int = 200, **kwargs
+    ):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
         if scene_path is None:
             scene_path = get_data_path("scene.xml")
         self.robot_sim = StretchMujocoSimulator(scene_path)
+        self.simulation_rate = simulation_rate
 
+        # Hard coded printout rates
         self.report_steps = 1000
         self.fast_report_steps = 10000
         self.servo_report_steps = 1000
+
+        self._camera_data = None
 
     def base_controller_at_goal(self):
         """Check if the base controller is at goal."""
@@ -98,7 +105,11 @@ class MujocoZmqServer(BaseZmqServer):
 
     def get_camera_pose(self) -> np.ndarray:
         """Get the camera pose in world coords"""
-        return self.robot_sim.get_link_pose(STRETCH_CAMERA_FRAME)
+        return self.robot_sim.get_link_pose("realsense")
+
+    def get_ee_camera_pose(self) -> np.ndarray:
+        """Get the end effector camera pose in world coords"""
+        return self.robot_sim.get_link_pose("d405_cam")
 
     @override
     def get_control_mode(self) -> str:
@@ -109,6 +120,9 @@ class MujocoZmqServer(BaseZmqServer):
     def start(self):
         self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
         super().start()
+        while self.is_running():
+            self._camera_data = self.robot_sim.pull_camera_data()
+            time.sleep(1 / self.simulation_rate)
 
     @override
     def handle_action(self, action: Dict[str, Any]):
@@ -118,7 +132,10 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
         """Get the full observation message for the robot. This includes the full state of the robot, including images and depth images."""
-        cam_data = self.robot_sim.pull_camera_data()
+        cam_data = self._camera_data
+        if cam_data is None:
+            return {}
+
         rgb = cam_data["cam_d435i_rgb"]
         depth = cam_data["cam_d435i_depth"]
         width, height = rgb.shape[:2]
@@ -177,7 +194,10 @@ class MujocoZmqServer(BaseZmqServer):
     def get_servo_message(self) -> Dict[str, Any]:
         """Get messages for e2e policy learning and visual servoing. These are images and depth images, but lower resolution than the large full state observations, and they include the end effector camera."""
 
-        cam_data = self.robot_sim.pull_camera_data()
+        cam_data = self._camera_data
+        if cam_data is None:
+            return {}
+
         head_color_image = cam_data["cam_d435i_rgb"]
         head_depth_image = cam_data["cam_d435i_depth"]
         ee_color_image = cam_data["cam_d405_rgb"]
@@ -208,10 +228,10 @@ class MujocoZmqServer(BaseZmqServer):
         positions, _, _ = self.get_joint_state()
 
         # Get the camera matrices
-        head_rgb_K = None
-        head_dpt_K = None
-        ee_rgb_K = None
-        ee_dpt_K = None
+        head_rgb_K = compute_pinhole_K(head_color_image.shape[0], head_color_image.shape[1], 69.4)
+        head_dpt_K = compute_pinhole_K(head_depth_image.shape[0], head_depth_image.shape[1], 69.4)
+        ee_rgb_K = compute_pinhole_K(ee_color_image.shape[0], ee_color_image.shape[1], 87.0)
+        ee_dpt_K = compute_pinhole_K(ee_depth_image.shape[0], ee_depth_image.shape[1], 87.0)
 
         message = {
             "ee_cam/color_camera_K": scale_camera_matrix(ee_rgb_K, self.ee_image_scaling),

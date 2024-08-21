@@ -168,6 +168,7 @@ class BaseZmqServer(CommsNode, ABC):
         sum_time: float = 0
         steps: int = 0
         t0 = timeit.default_timer()
+        print("Starting to send full state")
         while self.is_running():
             data = self.get_full_observation_message()
             if steps == 0:
