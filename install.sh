@@ -11,7 +11,6 @@ VERSION=`python $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
-INSTALL_PYTORCH3D="false"
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
 # One more: --conda for conda
@@ -29,10 +28,6 @@ do
             ;;
         --conda)
             MAMBA=conda
-            shift
-            ;;
-        --pytorch3d)
-            INSTALL_PYTORCH3D="true"
             shift
             ;;
         --no-remove)
