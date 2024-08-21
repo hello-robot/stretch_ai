@@ -198,6 +198,12 @@ class StretchMujocoSimulator:
         mujoco.set_mjcb_control(self.__ctrl_callback)
         mujoco.viewer.launch(self.mjmodel)
 
+    def is_running(self) -> bool:
+        """
+        Check if the simulator is running
+        """
+        return mujoco.viewer.is_active()
+
     def start(self) -> None:
         """
         Start the simulator in a using blocking Managed-vieiwer for precise timing. And user code
@@ -213,7 +219,7 @@ if __name__ == "__main__":
     robot_sim = StretchMujocoSimulator()
     robot_sim.start()
     # display camera feeds
-    while True:
+    while robot_sim.is_running():
         camera_data = robot_sim.pull_camera_data()
         cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
         cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
