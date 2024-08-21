@@ -278,6 +278,9 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--image_scaling", default=0.5, help="Scaling factor for images")
 @click.option("--ee_image_scaling", default=0.5, help="Scaling factor for end-effector images")
 @click.option("--depth_scaling", default=0.001, help="Scaling factor for depth images")
+@click.option(
+    "--scene_path", default=None, help="Provide a path to mujoco scene file with stretch.xml"
+)
 def main(
     send_port: int,
     recv_port: int,
@@ -288,6 +291,7 @@ def main(
     image_scaling: float,
     ee_image_scaling: float,
     depth_scaling: float,
+    scene_path: str,
 ):
     server = MujocoZmqServer(
         send_port,
@@ -299,6 +303,7 @@ def main(
         image_scaling,
         ee_image_scaling,
         depth_scaling,
+        scene_path=scene_path,
     )
     server.start()
 
