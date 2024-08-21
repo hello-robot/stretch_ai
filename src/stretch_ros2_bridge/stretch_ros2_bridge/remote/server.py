@@ -38,7 +38,7 @@ class ZmqServer(BaseZmqServer):
 
     @override
     def is_running(self) -> bool:
-        return self.client.is_running() and rclpy.ok()
+        return self.is_running and rclpy.ok()
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
