@@ -11,9 +11,12 @@
 from typing import Any, Dict, Optional
 
 import click
+import numpy as np
 from overrides import override
 
+import stretch.motion.constants as constants
 from stretch.core.server import BaseZmqServer
+from stretch.motion import HelloStretchIdx
 from stretch.simulation.stretch_mujoco import StretchMujocoSimulator
 from stretch.utils.config import get_data_path
 
@@ -29,6 +32,59 @@ class MujocoZmqServer(BaseZmqServer):
         if scene_path is None:
             scene_path = get_data_path("scene.xml")
         self.robot_sim = StretchMujocoSimulator(scene_path)
+
+    def base_controller_at_goal(self):
+        """Check if the base controller is at goal."""
+        return True
+
+    def get_joint_state(self):
+        """Get the joint state of the robot."""
+        status = self.robot_sim.get_status()
+        positions = np.zeros(constants.stretch_degrees_of_freedom)
+        velocities = np.zeros(constants.stretch_degrees_of_freedom)
+        efforts = np.zeros(constants.stretch_degrees_of_freedom)
+
+        # Lift joint
+        positions[HelloStretchIdx.LIFT] = status["lift"]["pos"]
+        velocities[HelloStretchIdx.LIFT] = status["lift"]["vel"]
+
+        # Arm joints
+        positions[HelloStretchIdx.ARM] = status["arm"]["pos"]
+        velocities[HelloStretchIdx.ARM] = status["arm"]["vel"]
+
+        # Wrist roll joint
+        positions[HelloStretchIdx.WRIST_ROLL] = status["wrist"]["pos"]
+        velocities[HelloStretchIdx.WRIST_ROLL] = status["wrist"]["vel"]
+
+        # Wrist yaw joint
+        positions[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"]["pos"]
+        velocities[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"]["vel"]
+
+        # Wrist pitch joint
+        positions[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["pos"]
+        velocities[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["vel"]
+
+        # Gripper joint
+        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"]
+        velocities[HelloStretchIdx.GRIPPER] = status["gripper"]["vel"]
+
+        # Head pan joint
+        positions[HelloStretchIdx.HEAD_PAN] = status["head"]["pos"]
+        velocities[HelloStretchIdx.HEAD_PAN] = status["head"]["vel"]
+
+        # Head tilt joint
+        positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["pos"]
+        velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["vel"]
+
+        return positions, velocities, efforts
+
+    def get_base_pose(self) -> np.ndarray:
+        """Base pose is the SE(2) pose of the base in world coords (x, y, theta)"""
+        return self.robot_sim.get_base_pose()
+
+    def get_ee_pose(self) -> np.ndarray:
+        """EE pose is the 4x4 matrix of the end effector location in world coords"""
+        return self.robot_sim.get_ee_pose()
 
     @override
     def start(self):
@@ -48,7 +104,19 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def get_state_message(self) -> Dict[str, Any]:
         """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
-        pass
+        q, dq, eff = self.client.get_joint_state()
+        message = {
+            "base_pose": self.get_base_pose(),
+            "ee_pose": self.get_ee_pose(),
+            "joint_positions": q,
+            "joint_velocities": dq,
+            "joint_efforts": eff,
+            "control_mode": self.get_control_mode(),
+            "at_goal": self.base_controller_at_goal(),
+            "is_homed": True,
+            "is_runstopped": False,
+        }
+        return message
 
     @override
     def get_servo_message(self) -> Dict[str, Any]:

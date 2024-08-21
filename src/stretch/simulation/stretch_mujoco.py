@@ -17,6 +17,7 @@ import time
 import cv2
 import mujoco
 import mujoco.viewer
+import numpy as np
 from mujoco import MjData, MjModel
 
 
@@ -86,6 +87,22 @@ class StretchMujocoSimulator:
         # TODO: Implement this method by ether moving to an integrated velocity acuators or have
         # separate robot xml configured by replacing position with velocity ctrl actuators
         raise NotImplementedError
+
+    def get_base_pose(self) -> np.ndarray:
+        """Get the se(2) base pose: x, y, and theta"""
+        xyz = self.mjdata.get_body_xpos("base_link")
+        rotation = self.mjdata.get_body_xmat("base_link").reshape(3, 3)
+        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
+        return np.array([xyz[0], xyz[1], theta])
+
+    def get_ee_pose(self) -> np.ndarray:
+        """Get end effector pose as a 4x4 matrix"""
+        xyz = self.mjdata.get_body_xpos("gripper_link")
+        rotation = self.mjdata.get_body_xmat("gripper_link").reshape(3, 3)
+        pose = np.eye(4)
+        pose[:3, :3] = rotation
+        pose[:3, 3] = xyz
+        return pose
 
     def pull_status(self) -> None:
         """
