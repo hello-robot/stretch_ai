@@ -97,9 +97,12 @@ class StretchMujocoSimulator:
         return np.array([xyz[0], xyz[1], theta])
 
     def get_ee_pose(self) -> np.ndarray:
+        return self.get_link_pose("link_grasp_center")
+
+    def get_link_pose(self, link_name: str) -> np.ndarray:
         """Get end effector pose as a 4x4 matrix"""
-        xyz = self.mjdata.body("link_grasp_center").xpos
-        rotation = self.mjdata.body("link_grasp_center").xmat.reshape(3, 3)
+        xyz = self.mjdata.body(link_name).xpos
+        rotation = self.mjdata.body(link_name).xmat.reshape(3, 3)
         pose = np.eye(4)
         pose[:3, :3] = rotation
         pose[:3, 3] = xyz

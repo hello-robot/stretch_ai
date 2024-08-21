@@ -15,10 +15,12 @@ import numpy as np
 from overrides import override
 
 import stretch.motion.constants as constants
+import stretch.utils.compression as compression
 from stretch.core.server import BaseZmqServer
-from stretch.motion import HelloStretchIdx
+from stretch.motion import STRETCH_CAMERA_FRAME, HelloStretchIdx
 from stretch.simulation.stretch_mujoco import StretchMujocoSimulator
 from stretch.utils.config import get_data_path
+from stretch.utils.image import scale_camera_matrix
 
 
 class MujocoZmqServer(BaseZmqServer):
@@ -34,7 +36,8 @@ class MujocoZmqServer(BaseZmqServer):
         self.robot_sim = StretchMujocoSimulator(scene_path)
 
         self.report_steps = 1000
-        self.fast_report_steps = 1000
+        self.fast_report_steps = 100
+        self.servo_report_steps = 100
 
     def base_controller_at_goal(self):
         """Check if the base controller is at goal."""
@@ -93,6 +96,10 @@ class MujocoZmqServer(BaseZmqServer):
         """EE pose is the 4x4 matrix of the end effector location in world coords"""
         return self.robot_sim.get_ee_pose()
 
+    def get_camera_pose(self) -> np.ndarray:
+        """Get the camera pose in world coords"""
+        return self.robot_sim.get_link_pose(STRETCH_CAMERA_FRAME)
+
     @override
     def get_control_mode(self) -> str:
         """Get the control mode of the robot."""
@@ -111,7 +118,43 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
         """Get the full observation message for the robot. This includes the full state of the robot, including images and depth images."""
-        pass
+        cam_data = self.robot_sim.pull_camera_data()
+        rgb = cam_data["cam_d435i_rgb"]
+        depth = cam_data["cam_d435i_depth"]
+        width, height = rgb.shape[:2]
+
+        # Convert depth into int format
+        depth = (depth * 1000).astype(np.uint16)
+
+        # Get the joint state
+        positions, _, _ = self.get_joint_state()
+
+        # Make both into jpegs
+        rgb = compression.to_jpg(rgb)
+        depth = compression.to_jp2(depth)
+
+        xyt = self.get_base_pose()
+
+        # Get the other fields from an observation
+        # rgb = compression.to_webp(rgb)
+        message = {
+            "rgb": rgb,
+            "depth": depth,
+            "camera_K": None,
+            "camera_pose": self.get_camera_pose(),
+            "ee_pose": self.get_ee_pose(),
+            "joint": positions,
+            "gps": xyt[:2],
+            "compass": xyt[2],
+            "rgb_width": width,
+            "rgb_height": height,
+            "control_mode": self.get_control_mode(),
+            "last_motion_failed": False,
+            "recv_address": self.recv_address,
+            "step": self._last_step,
+            "at_goal": self.base_controller_at_goal(),
+        }
+        return message
 
     @override
     def get_state_message(self) -> Dict[str, Any]:
@@ -133,7 +176,68 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def get_servo_message(self) -> Dict[str, Any]:
         """Get messages for e2e policy learning and visual servoing. These are images and depth images, but lower resolution than the large full state observations, and they include the end effector camera."""
-        pass
+
+        cam_data = self.robot_sim.pull_camera_data()
+        head_color_image = cam_data["cam_d435i_rgb"]
+        head_depth_image = cam_data["cam_d435i_depth"]
+        ee_color_image = cam_data["cam_d405_rgb"]
+        ee_depth_image = cam_data["cam_d405_depth"]
+
+        # Adapt color so we can use higher shutter speed
+        # TODO: do we need this? Probably not.
+        # ee_color_image = adjust_gamma(ee_color_image, 2.5)
+
+        ee_color_image, ee_depth_image = self._rescale_color_and_depth(
+            ee_color_image, ee_depth_image, self.ee_image_scaling
+        )
+        head_color_image, head_depth_image = self._rescale_color_and_depth(
+            head_color_image, head_depth_image, self.image_scaling
+        )
+
+        # Conversion
+        ee_depth_image = (ee_depth_image * 1000).astype(np.uint16)
+        head_depth_image = (head_depth_image * 1000).astype(np.uint16)
+
+        # Compress the images
+        compressed_ee_depth_image = compression.to_jp2(ee_depth_image)
+        compressed_ee_color_image = compression.to_jpg(ee_color_image)
+        compressed_head_depth_image = compression.to_jp2(head_depth_image)
+        compressed_head_color_image = compression.to_jpg(head_color_image)
+
+        # Get position info
+        positions, _, _ = self.get_joint_state()
+
+        # Get the camera matrices
+        head_rgb_K = None
+        head_dpt_K = None
+        ee_rgb_K = None
+        ee_dpt_K = None
+
+        message = {
+            "ee_cam/color_camera_K": scale_camera_matrix(ee_rgb_K, self.ee_image_scaling),
+            "ee_cam/depth_camera_K": scale_camera_matrix(
+                self.client.ee_dpt_K, self.ee_image_scaling
+            ),
+            "ee_cam/color_image": compressed_ee_color_image,
+            "ee_cam/depth_image": compressed_ee_depth_image,
+            "ee_cam/color_image/shape": ee_color_image.shape,
+            "ee_cam/depth_image/shape": ee_depth_image.shape,
+            "ee_cam/image_scaling": self.ee_image_scaling,
+            "ee_cam/depth_scaling": self.ee_depth_scaling,
+            "ee_cam/pose": self.get_ee_camera_pose(),
+            "ee/pose": self.get_ee_pose(),
+            "head_cam/color_camera_K": scale_camera_matrix(head_rgb_K, self.image_scaling),
+            "head_cam/depth_camera_K": scale_camera_matrix(head_dpt_K, self.image_scaling),
+            "head_cam/color_image": compressed_head_color_image,
+            "head_cam/depth_image": compressed_head_depth_image,
+            "head_cam/color_image/shape": head_color_image.shape,
+            "head_cam/depth_image/shape": head_depth_image.shape,
+            "head_cam/image_scaling": self.image_scaling,
+            "head_cam/depth_scaling": self.depth_scaling,
+            "head_cam/pose": self.get_head_camera_pose(),
+            "robot/config": positions,
+        }
+        return message
 
     @override
     def is_running(self) -> bool:

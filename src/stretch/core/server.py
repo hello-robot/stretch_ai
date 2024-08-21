@@ -25,8 +25,9 @@ from stretch.core.comms import CommsNode
 class BaseZmqServer(CommsNode, ABC):
 
     # How often should we print out info about our performance
-    report_steps = 100
+    report_steps = 1000
     fast_report_steps = 10000
+    servo_report_steps = 1000
 
     def __init__(
         self,
@@ -259,8 +260,7 @@ class BaseZmqServer(CommsNode, ABC):
             sum_time += dt
             steps += 1
             t0 = t1
-            # if self.verbose or steps % self.fast_report_steps == 1:
-            if self.verbose or steps % 100 == 1:
+            if self.verbose or steps % self.servo_report_steps == 1:
                 logger.info(
                     f"[SEND SERVO STATE] time taken = {dt} avg = {sum_time/steps} rate={1/(sum_time/steps)}"
                 )
