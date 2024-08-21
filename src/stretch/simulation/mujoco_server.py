@@ -29,7 +29,11 @@ class MujocoZmqServer(BaseZmqServer):
         if scene_path is None:
             scene_path = get_data_path("scene.xml")
         self.robot_sim = StretchMujocoSimulator(scene_path)
+
+    @override
+    def start(self):
         self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
+        super().start()
 
     @override
     def handle_action(self, action: Dict[str, Any]):
@@ -92,7 +96,7 @@ def main(
         ee_image_scaling,
         depth_scaling,
     )
-    server.run()
+    server.start()
 
 
 if __name__ == "__main__":
