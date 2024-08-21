@@ -16,7 +16,6 @@ from typing import Any, Dict, Tuple
 import cv2
 import numpy as np
 import zmq
-from overrides import override
 
 import stretch.utils.logger as logger
 from stretch.audio.text_to_speech import get_text_to_speech
@@ -73,6 +72,16 @@ class BaseZmqServer(CommsNode, ABC):
         self.control_mode = "none"
         self._done = False
 
+    @property
+    def done(self) -> bool:
+        """Check if the server is done."""
+        return self._done
+
+    @property
+    def running(self) -> bool:
+        """Check if the server is running."""
+        return not self.done
+
     def get_control_mode(self) -> str:
         """Get the current control mode of the robot. Can be navigation, manipulation, or none.
 
@@ -127,24 +136,140 @@ class BaseZmqServer(CommsNode, ABC):
         self._send_servo_thread.start()
 
     @abstractmethod
+    def handle_action(self, action: Dict[str, Any]):
+        """Handle the action received from the client."""
+        pass
+
+    @abstractmethod
+    def get_full_observation_message(self) -> Dict[str, Any]:
+        """Get the full observation message for the robot. This includes the full state of the robot, including images and depth images."""
+        pass
+
     def spin_send(self):
-        """Spin the send thread."""
+        """Send the full state of the robot to the client."""
+
+        # Create a stretch client to get information
+        sum_time: float = 0
+        steps: int = 0
+        t0 = timeit.default_timer()
+        while self.is_running():
+            data = self.get_full_observation_message()
+            self.send_socket.send_pyobj(data)
+
+            # Finish with some speed info
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            t0 = t1
+            if self.verbose or steps % self.report_steps == 0:
+                print(f"[SEND FULL STATE] time taken = {dt} avg = {sum_time/steps}")
+
+            time.sleep(1e-4)
+            t0 = timeit.default_timer()
+
+    @abstractmethod
+    def get_state_message(self) -> Dict[str, Any]:
+        """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
         pass
 
     @abstractmethod
+    def get_servo_message(self) -> Dict[str, Any]:
+        """Get messages for e2e policy learning and visual servoing. These are images and depth images, but lower resolution than the large full state observations, and they include the end effector camera."""
+        pass
+
     def spin_recv(self):
-        """Spin the receive thread."""
-        pass
+        """Receive actions from the client and handle them."""
+        sum_time: float = 0
+        steps = 0
+        t0 = timeit.default_timer()
+        while self.is_running():
+            try:
+                action = self.recv_socket.recv_pyobj(flags=zmq.NOBLOCK)
+            except zmq.Again:
+                if self.verbose:
+                    logger.warning(" - no action received")
+                action = None
+            if self.verbose:
+                logger.info(f" - {self.control_mode=}")
+                logger.info(f" - prev action step: {self._last_step}")
+            if action is not None:
+                if self.verbose:
+                    logger.info(f" - Action received: {action}")
+                self._last_step = action.get("step", -1)
+                logger.info(
+                    f"Action #{self._last_step} received:",
+                    [str(key) for key in action.keys()],
+                )
+                if self.verbose:
+                    logger.info(f" - last action step: {self._last_step}")
+                self.handle_action(action)
+            # Finish with some speed info
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            t0 = t1
+            if self.verbose or steps % self.fast_report_steps == 0:
+                logger.info(f"[RECV] time taken = {dt} avg = {sum_time/steps}")
 
-    @abstractmethod
+            time.sleep(1e-4)
+            t0 = timeit.default_timer()
+
     def spin_send_state(self):
-        """Spin the send state thread."""
-        pass
+        """Send a faster version of the state for tracking joint states and robot base"""
+        # Create a stretch client to get information
+        sum_time: float = 0
+        steps: int = 0
+        t0 = timeit.default_timer()
+        while self.is_running():
+            message = self.get_state_message()
+            self.send_state_socket.send_pyobj(message)
+
+            # Finish with some speed info
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            t0 = t1
+            if self.verbose or steps % self.fast_report_steps == 0:
+                logger.info(f"[SEND FAST STATE] time taken = {dt} avg = {sum_time/steps}")
+
+            time.sleep(1e-4)
+            t0 = timeit.default_timer()
 
     @abstractmethod
-    def spin_send_servo(self):
-        """Spin the send servo thread."""
+    def is_running(self) -> bool:
+        """Check if the server is running. Will be used to make sure inner loops terminate.
+
+        Returns:
+            bool: True if the server is running, False otherwise."""
         pass
+
+    def spin_send_servo(self):
+        """Send the images here as well; smaller versions designed for better performance."""
+        sum_time: float = 0
+        steps: int = 0
+        t0 = timeit.default_timer()
+
+        while not self._done:
+            message = self.get_servo_message()
+            self.send_servo_socket.send_pyobj(message)
+
+            # Finish with some speed info
+            t1 = timeit.default_timer()
+            dt = t1 - t0
+            sum_time += dt
+            steps += 1
+            t0 = t1
+            # if self.verbose or steps % self.fast_report_steps == 1:
+            if self.verbose or steps % 100 == 1:
+                logger.info(
+                    f"[SEND SERVO STATE] time taken = {dt} avg = {sum_time/steps} rate={1/(sum_time/steps)}"
+                )
+
+            time.sleep(1e-5)
+            t0 = timeit.default_timer()
 
     def __del__(self):
         self._done = True
