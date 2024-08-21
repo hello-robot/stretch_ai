@@ -45,6 +45,7 @@ class MujocoZmqServer(BaseZmqServer):
         self.servo_report_steps = 1000
 
         self._camera_data = None
+        self._status = None
 
     def base_controller_at_goal(self):
         """Check if the base controller is at goal."""
@@ -52,13 +53,14 @@ class MujocoZmqServer(BaseZmqServer):
 
     def get_joint_state(self):
         """Get the joint state of the robot."""
-        status = self.robot_sim.pull_status()
+        status = self._status
 
         positions = np.zeros(constants.stretch_degrees_of_freedom)
         velocities = np.zeros(constants.stretch_degrees_of_freedom)
         efforts = np.zeros(constants.stretch_degrees_of_freedom)
 
         if status is None:
+            print("!! No status received")
             return positions, velocities, efforts
 
         # Lift joint
@@ -134,6 +136,7 @@ class MujocoZmqServer(BaseZmqServer):
         super().start()
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
+            self._status = self.robot_sim.pull_status()
             time.sleep(1 / self.simulation_rate)
 
     @override
@@ -189,6 +192,7 @@ class MujocoZmqServer(BaseZmqServer):
     def get_state_message(self) -> Dict[str, Any]:
         """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
         q, dq, eff = self.get_joint_state()
+        print(q)
         message = {
             "base_pose": self.get_base_pose(),
             "ee_pose": self.get_ee_pose(),
