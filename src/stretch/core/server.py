@@ -135,6 +135,9 @@ class BaseZmqServer(CommsNode, ABC):
         self._send_state_thread.start()
         self._send_servo_thread.start()
 
+    # ==================================================================
+    # BEGIN: Implement the following methods
+
     @abstractmethod
     def handle_action(self, action: Dict[str, Any]):
         """Handle the action received from the client."""
@@ -144,6 +147,27 @@ class BaseZmqServer(CommsNode, ABC):
     def get_full_observation_message(self) -> Dict[str, Any]:
         """Get the full observation message for the robot. This includes the full state of the robot, including images and depth images."""
         pass
+
+    @abstractmethod
+    def get_state_message(self) -> Dict[str, Any]:
+        """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
+        pass
+
+    @abstractmethod
+    def get_servo_message(self) -> Dict[str, Any]:
+        """Get messages for e2e policy learning and visual servoing. These are images and depth images, but lower resolution than the large full state observations, and they include the end effector camera."""
+        pass
+
+    @abstractmethod
+    def is_running(self) -> bool:
+        """Check if the server is running. Will be used to make sure inner loops terminate.
+
+        Returns:
+            bool: True if the server is running, False otherwise."""
+        pass
+
+    # DONE: Implement the following methods
+    # ==================================================================
 
     def spin_send(self):
         """Send the full state of the robot to the client."""
@@ -167,16 +191,6 @@ class BaseZmqServer(CommsNode, ABC):
 
             time.sleep(1e-4)
             t0 = timeit.default_timer()
-
-    @abstractmethod
-    def get_state_message(self) -> Dict[str, Any]:
-        """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
-        pass
-
-    @abstractmethod
-    def get_servo_message(self) -> Dict[str, Any]:
-        """Get messages for e2e policy learning and visual servoing. These are images and depth images, but lower resolution than the large full state observations, and they include the end effector camera."""
-        pass
 
     def spin_recv(self):
         """Receive actions from the client and handle them."""
@@ -237,14 +251,6 @@ class BaseZmqServer(CommsNode, ABC):
 
             time.sleep(1e-4)
             t0 = timeit.default_timer()
-
-    @abstractmethod
-    def is_running(self) -> bool:
-        """Check if the server is running. Will be used to make sure inner loops terminate.
-
-        Returns:
-            bool: True if the server is running, False otherwise."""
-        pass
 
     def spin_send_servo(self):
         """Send the images here as well; smaller versions designed for better performance."""
