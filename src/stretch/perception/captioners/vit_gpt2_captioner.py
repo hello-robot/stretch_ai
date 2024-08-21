@@ -20,7 +20,7 @@ from transformers import AutoTokenizer, VisionEncoderDecoderModel, ViTImageProce
 from .base_captioner import BaseCaptioner
 
 
-class VitGpt2Captioner(BaseCaptioner):
+class VitGPT2Captioner(BaseCaptioner):
     """Image captioner using Vision Transformer and GPT-2 model."""
 
     def __init__(self, max_length: int = 16, num_beams: int = 4, device: Optional[str] = None):
@@ -30,7 +30,7 @@ class VitGpt2Captioner(BaseCaptioner):
             max_length (int, optional): Maximum length of the generated caption. Defaults to 16.
             num_beams (int, optional): Number of beams for beam search. Defaults to 4.
         """
-        super(VitGpt2Captioner, self).__init__()
+        super(VitGPT2Captioner, self).__init__()
         self.max_length = max_length
         self.num_beams = num_beams
         if device is None:
@@ -94,7 +94,7 @@ class VitGpt2Captioner(BaseCaptioner):
 @click.command()
 @click.option("--image_path", default="object.png", help="Path to image file")
 def main(image_path: str):
-    captioner = VitGpt2Captioner()
+    captioner = VitGPT2Captioner()
 
     # Load image from file
     image = Image.open(image_path)
