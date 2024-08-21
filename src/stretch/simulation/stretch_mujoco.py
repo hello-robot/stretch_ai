@@ -13,6 +13,7 @@ Python sample script for interfacing with the Stretch Mujoco simulator
 
 import threading
 import time
+from typing import Any, Dict
 
 import cv2
 import mujoco
@@ -108,7 +109,7 @@ class StretchMujocoSimulator:
         pose[:3, 3] = xyz
         return pose
 
-    def pull_status(self) -> None:
+    def pull_status(self) -> Dict[str, Any]:
         """
         Pull joints status of the robot from the simulator
         """
@@ -143,6 +144,8 @@ class StretchMujocoSimulator:
             self.status["base"]["x_vel"],
             self.status["base"]["theta_vel"],
         ) = self.diff_drive_fwd_kinematics(left_wheel_vel, right_wheel_vel)
+
+        return self.status
 
     def pull_camera_data(self) -> dict:
         """

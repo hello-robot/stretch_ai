@@ -60,7 +60,6 @@ class MujocoZmqServer(BaseZmqServer):
         efforts = np.zeros(constants.stretch_degrees_of_freedom)
 
         if status is None:
-            print("!! No status received")
             return positions, velocities, efforts
 
         # Lift joint
@@ -72,8 +71,8 @@ class MujocoZmqServer(BaseZmqServer):
         velocities[HelloStretchIdx.ARM] = status["arm"]["vel"]
 
         # Wrist roll joint
-        positions[HelloStretchIdx.WRIST_ROLL] = status["wrist"]["pos"]
-        velocities[HelloStretchIdx.WRIST_ROLL] = status["wrist"]["vel"]
+        positions[HelloStretchIdx.WRIST_ROLL] = status["wrist_roll"]["pos"]
+        velocities[HelloStretchIdx.WRIST_ROLL] = status["wrist_roll"]["vel"]
 
         # Wrist yaw joint
         positions[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"]["pos"]
@@ -88,24 +87,12 @@ class MujocoZmqServer(BaseZmqServer):
         velocities[HelloStretchIdx.GRIPPER] = status["gripper"]["vel"]
 
         # Head pan joint
-        positions[HelloStretchIdx.HEAD_PAN] = status["head"]["pos"]
-        velocities[HelloStretchIdx.HEAD_PAN] = status["head"]["vel"]
+        positions[HelloStretchIdx.HEAD_PAN] = status["head_pan"]["pos"]
+        velocities[HelloStretchIdx.HEAD_PAN] = status["head_pan"]["vel"]
 
         # Head tilt joint
         positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["pos"]
         velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["vel"]
-
-        print(
-            status["lift"]["pos"],
-            status["arm"]["pos"],
-            status["wrist"]["pos"],
-            status["wrist_yaw"]["pos"],
-            status["wrist_pitch"]["pos"],
-            status["wrist_roll"]["pos"],
-            status["gripper"]["pos"],
-            status["head_pan"]["pos"],
-            status["head_tilt"]["pos"],
-        )
 
         return positions, velocities, efforts
 
@@ -192,7 +179,6 @@ class MujocoZmqServer(BaseZmqServer):
     def get_state_message(self) -> Dict[str, Any]:
         """Get the state message for the robot. This is a smalll message that includes floating point information and booleans like if the robot is homed."""
         q, dq, eff = self.get_joint_state()
-        print(q)
         message = {
             "base_pose": self.get_base_pose(),
             "ee_pose": self.get_ee_pose(),
