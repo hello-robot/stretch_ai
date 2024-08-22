@@ -32,8 +32,8 @@ mujoco_actuators = {
     HelloStretchIdx.ARM: "arm",
     HelloStretchIdx.GRIPPER: "gripper",
     HelloStretchIdx.WRIST_ROLL: "wrist_roll",
-    HelloStretchIdx.WRIST_YAW: "wrist_yaw",
     HelloStretchIdx.WRIST_PITCH: "wrist_pitch",
+    HelloStretchIdx.WRIST_YAW: "wrist_yaw",
     HelloStretchIdx.HEAD_PAN: "head_pan",
     HelloStretchIdx.HEAD_TILT: "head_tilt",
 }
@@ -45,8 +45,8 @@ manip_idx = [
     HelloStretchIdx.LIFT,
     HelloStretchIdx.ARM,
     HelloStretchIdx.WRIST_ROLL,
-    HelloStretchIdx.WRIST_YAW,
     HelloStretchIdx.WRIST_PITCH,
+    HelloStretchIdx.WRIST_YAW,
 ]
 
 
@@ -151,7 +151,7 @@ class MujocoZmqServer(BaseZmqServer):
         self.control_mode = posture
         return True
 
-    def manip_to(self, q: np.ndarray, all_joints: bool = False) -> None:
+    def manip_to(self, q: np.ndarray, all_joints: bool = False, skip_gripper: bool = False) -> None:
         """Move the robot to a given joint configuration. q should be of size 11.
 
         Args:
@@ -164,6 +164,8 @@ class MujocoZmqServer(BaseZmqServer):
             assert len(q) == stretch_dof, f"q should be of size {stretch_dof}"
             # Move the robot to the given joint configuration
             for idx in range(3, stretch_dof):
+                if idx == HelloStretchIdx.GRIPPER and skip_gripper:
+                    continue
                 self.robot_sim.move_to(mujoco_actuators[idx], q[idx])
         else:
             assert len(q) == len(manip_idx), f"q should be of size {len(manip_idx)}"
