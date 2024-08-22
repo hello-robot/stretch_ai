@@ -14,7 +14,7 @@ from typing import List
 import numpy as np
 import orbslam3
 
-import stretch.comms.recv_realsense as recv_realsense
+from stretch.drivers.d435 import D435i
 from stretch.navigation.base import Pose, Slam
 from stretch.navigation.utils.geometry import transformation_matrix_to_pose
 
@@ -53,7 +53,7 @@ class OrbSlam(Slam):
 
         self.slam_system = orbslam3.System(self.vocab_path, self.config_path, orbslam3.Sensor.RGBD)
         self.slam_system.set_use_viewer(False)
-        _, self.camera_sock = recv_realsense.initialize(camera_ip_addr, base_port, base_port + 1)
+        self.camera = D435i()
 
         self.color_image = None
         self.depth_image = None
@@ -106,7 +106,7 @@ class OrbSlam(Slam):
         Camera listener thread.
         """
         while True:
-            msg = recv_realsense.recv_compressed_msg(self.camera_sock)
+            msg = self.camera.get_message()
             self.color_image = msg["color_image"]
             self.depth_image = msg["depth_image"]
             self.timestamp = time.time()

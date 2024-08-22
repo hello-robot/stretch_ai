@@ -7,6 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import abc
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -17,13 +19,15 @@ from numpy import ndarray
 from torch import Tensor
 
 
-class BaseImageTextEncoder:
+class BaseImageTextEncoder(abc.ABC):
     """
     Encodes images, encodes text, and allows comparisons between the two encoding.
     """
 
+    @abc.abstractmethod
     def encode_image(self, image: Union[ndarray, Tensor]):
         raise NotImplementedError
 
+    @abc.abstractmethod
     def encode_text(self, text: str):
         raise NotImplementedError

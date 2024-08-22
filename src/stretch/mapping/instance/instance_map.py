@@ -92,6 +92,7 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
+        use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[ClipEncoder] = None,
     ):
@@ -128,6 +129,7 @@ class InstanceMemory:
         self.min_instance_thickness = min_instance_thickness
         self.min_instance_height = min_instance_height
         self.max_instance_height = max_instance_height
+        self.use_visual_feat = use_visual_feat  # whether use visual feat to merge instances
 
         if isinstance(view_matching_config, dict):
             view_matching_config = ViewMatchingConfig(**view_matching_config)
@@ -329,7 +331,11 @@ class InstanceMemory:
                         (
                             inst_id,
                             instance.bounds,
-                            instance.get_image_embedding(aggregation_method="mean"),
+                            instance.get_image_embedding(
+                                aggregation_method="mean",
+                                use_visual_feat=self.use_visual_feat,
+                                normalize=False,
+                            ),
                         )  # Slow since we concatenate all global vectors each time for each image instance
                         for inst_id, instance in global_ids_to_instances.items()
                     ]
@@ -339,7 +345,9 @@ class InstanceMemory:
                 similarity = get_similarity(
                     instance_bounds1=instance_view.bounds.unsqueeze(0),
                     instance_bounds2=global_bounds,
-                    visual_embedding1=instance_view.embedding,
+                    visual_embedding1=instance_view.visual_feat
+                    if self.use_visual_feat
+                    else instance_view.embedding,
                     visual_embedding2=global_embedding,
                     text_embedding1=None,
                     text_embedding2=None,
@@ -718,12 +726,23 @@ class InstanceMemory:
 
             # get embedding
             if self.encoder is not None:
-                # embedding = encoder.encode_image(cropped_image).to(cropped_image.device)
-                embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
-                    cropped_image.device
-                )
+                # option 1: encoder the original crop
+                embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
+
+                # option 2: encode crop with applied mask
+                # embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
+                #     cropped_image.device
+                # )
+
+                if hasattr(self.encoder, "get_visual_feat"):
+                    visual_feat = self.encoder.get_visual_feat(cropped_image).to(
+                        cropped_image.device
+                    )
+                else:
+                    visual_feat = None
             else:
                 embedding = None
+                visual_feat = None
 
             # get point cloud
             point_mask_downsampled = instance_mask_downsampled & valid_points_downsampled
@@ -786,6 +805,7 @@ class InstanceMemory:
                         timestep=self.timesteps[env_id],
                         cropped_image=cropped_image,  # .cpu().numpy(),
                         embedding=embedding,
+                        visual_feat=visual_feat,
                         mask=instance_mask,  # cpu().numpy().astype(bool),
                         point_cloud=point_cloud_instance,  # .cpu().numpy(),
                         point_cloud_rgb=point_cloud_rgb_instance,

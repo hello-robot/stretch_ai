@@ -23,6 +23,8 @@ import sophuspy as sp
 from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import PointStamped, Pose, PoseStamped, Twist
 from hello_helpers.joint_qpos_conversion import get_Idx
+
+# from nav2_msgs.srv import LoadMap, SaveMap
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -61,6 +63,7 @@ from stretch_ros2_bridge.constants import (
 )
 from stretch_ros2_bridge.ros.camera import RosCamera
 from stretch_ros2_bridge.ros.lidar import RosLidar
+from stretch_ros2_bridge.ros.streaming_activator import StreamingActivator
 from stretch_ros2_bridge.ros.utils import matrix_from_pose_msg
 from stretch_ros2_bridge.ros.visualizer import Visualizer
 
@@ -133,12 +136,14 @@ class StretchRosInterface(Node):
         self.goal_visualizer = Visualizer("command_pose", rgba=[1.0, 0.0, 0.0, 0.5])
         self.curr_visualizer = Visualizer("current_pose", rgba=[0.0, 0.0, 1.0, 0.5])
 
+        self._is_homed = None
+        self._is_runstopped = None
+
         # Start the thread
         self._thread = threading.Thread(target=rclpy.spin, args=(self,), daemon=True)
         self._thread.start()
 
         # Initialize ros communication
-        # self._safety_check()
         self._create_pubs_subs()
         self._create_services()
 
@@ -156,6 +161,14 @@ class StretchRosInterface(Node):
         self._ee_depth_topic = DEFAULT_EE_DEPTH_TOPIC if ee_depth_topic is None else ee_depth_topic
         self._lidar_topic = DEFAULT_LIDAR_TOPIC if lidar_topic is None else lidar_topic
         self._depth_buffer_size = depth_buffer_size
+
+        self._streaming_activator = StreamingActivator(self)
+        streaming_ok = self._streaming_activator.activate_streaming()
+        if not streaming_ok:
+            self.get_logger().error("Failed to activate streaming")
+            raise RuntimeError(
+                "Could not start joint state streaming service; make sure you have the correct and up-to-date version of stretch_ros2."
+            )
 
         self.rgb_cam: RosCamera = None
         self.dpt_cam: RosCamera = None
@@ -271,18 +284,9 @@ class StretchRosInterface(Node):
 
     def wait_for_trajectory_action(self):
         rate = self.create_rate(100)
-        # self.get_logger().info(
-        #     f"Entering while loop with as future done is - {self.goal_handle_future.done()}"
-        # )
         while self.goal_handle is None:
-            # self.get_logger().info(f"Sleeping for Goal handle future")
             rate.sleep()
-        # self.get_logger().info(f"Waiting for result")
         self.goal_handle.get_result()
-        # self.get_logger().info(f"Action is done")
-        # self.action_done_event.wait()
-        # rclpy.spin_until_future_complete(self, self.goal_handle_future)
-        # self.goal_handle.get_result()
 
     def recent_depth_image(self, seconds, print_delay_timers: bool = False):
         """Return true if we have up to date depth."""
@@ -318,31 +322,14 @@ class StretchRosInterface(Node):
         return trajectory_goal
 
     # Helper functions
-    # To be modified
-    # def _safety_check(self, max_time: float = 30.0):
-    #     """Make sure we can actually execute code on the robot as a quality of life measure"""
-    #     run_stopped = rospy.wait_for_message("is_runstopped", Bool, timeout=max_time)
-    #     if run_stopped is None:
-    #         rospy.logwarn("is_runstopped not received; you might have out of date stretch_ros")
-    #     elif run_stopped.data is True:
-    #         rospy.logerr("Runstop is pressed! Cannot execute!")
-    #         raise RuntimeError("Stretch is runstopped")
-    #     calibrated = rospy.wait_for_message("is_calibrated", Bool, timeout=max_time)
-    #     if calibrated is None:
-    #         rospy.logwarn("is_calibrated not received; you might have out of date stretch_ros")
-    #     elif calibrated.data is False:
-    #         rospy.logwarn("Robot is not calibrated!")
-    #     homed = rospy.wait_for_message("is_homed", Bool, timeout=max_time)
-    #     if homed is None:
-    #         rospy.logwarn("is_homed not received; you might have out of date stretch_ros")
-    #     elif homed.data is False:
-    #         rospy.logerr("Robot is not homed! Cannot execute! Run stretch_robot_home.py")
-    #         raise RuntimeError("Stretch is not homed!")
 
     def _create_services(self):
         """Create services to activate/deactivate robot modes"""
         self.nav_mode_service = self.create_client(Trigger, "switch_to_navigation_mode")
         self.pos_mode_service = self.create_client(Trigger, "switch_to_position_mode")
+
+        # self.save_map_service = self.create_client(SaveMap, "save_map")
+        # self.load_map_service = self.create_client(LoadMap, "load_map")
 
         self.goto_on_service = self.create_client(
             Trigger,
@@ -352,6 +339,26 @@ class StretchRosInterface(Node):
         self.set_yaw_service = self.create_client(SetBool, "goto_controller/set_yaw_tracking")
         print("Wait for mode service...")
         self.pos_mode_service.wait_for_service()
+
+        print("Wait for map services...")
+        # self.save_map_service.wait_for_service()
+        # self.load_map_service.wait_for_service()
+
+    def _is_homed_cb(self, msg) -> None:
+        """Update this variable"""
+        self._is_homed = bool(msg.data)
+
+    @property
+    def is_homed(self) -> bool:
+        return self._is_homed
+
+    def _is_runstopped_cb(self, msg) -> None:
+        """Update this variable"""
+        self._is_runstopped = bool(msg.data)
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._is_runstopped
 
     def _create_pubs_subs(self):
         """create ROS publishers and subscribers - only call once"""
@@ -376,6 +383,12 @@ class StretchRosInterface(Node):
         self.grasp_result_sub = self.create_subscription(
             Float32, "grasp_point/result", self._grasp_result_callback, 10
         )  # Had to check qos_profile
+
+        # Check if robot is homed and runstopped
+        self._is_homed_sub = self.create_subscription(Bool, "/is_homed", self._is_homed_cb, 1)
+        self._is_runstopped_sub = self.create_subscription(
+            Bool, "/is_runstopped", self._is_runstopped_cb, 1
+        )
 
         self.place_ready = None
         self.place_complete = None
@@ -606,141 +619,6 @@ class StretchRosInterface(Node):
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
         return trajectory_goal
 
-    def goto_x(self, x, wait=False, verbose=True):
-        trajectory_goal = self._construct_single_joint_ros_goal("translate_mobile_base", x)
-        if wait:
-            self.trajectory_client.send_goal(trajectory_goal)
-        else:
-            self.trajectory_client.send_goal_async(trajectory_goal)
-        # if wait:
-        #     #  Waiting for result seems to hang
-        #     self.trajectory_client.wait_for_result()
-        #     # self.wait(q, max_wait_t, True, verbose)
-        #     # print("-- TODO: wait for xy")
-        return True
-
-    def goto_theta(self, theta, wait=False, verbose=True):
-        trajectory_goal = self._construct_single_joint_ros_goal("rotate_mobile_base", theta)
-        if wait:
-            self.trajectory_client.send_goal(trajectory_goal)
-        else:
-            self.trajectory_client.send_goal_async(trajectory_goal)
-        # self.trajectory_client.send_goal(trajectory_goal)
-        # if wait:
-        #     self.trajectory_client.wait_for_result()
-        #     # self.wait(q, max_wait_t, True, verbose)
-        #     # print("-- TODO: wait for theta")
-        return True
-
-    def goto_lift_position(self, delta_position, wait=False):
-        # TODO spowers: utilize config_to_ros_trajectory_goal?
-        success = False
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.LIFT]:
-            position = self.pos[HelloStretchIdx.LIFT] + delta_position
-            if position > 0.1 and position < 1:
-                trajectory_goal = self._construct_single_joint_ros_goal("joint_lift", position)
-                if wait:
-                    self.trajectory_client.send_goal(trajectory_goal)
-                else:
-                    self.trajectory_client.send_goal_async(trajectory_goal)
-                # self.trajectory_client.send_goal(trajectory_goal)
-                # if wait:
-                #     self.trajectory_client.wait_for_result()
-                #     # self.wait(q, max_wait_t, True, verbose)
-                #     # print("-- TODO: wait for theta")
-                success = True
-        return success
-
-    def goto_arm_position(self, delta_position, wait=False):
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.ARM]:
-            position = self.pos[HelloStretchIdx.ARM] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal("wrist_extension", position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
-        return True
-
-    def goto_wrist_yaw_position(self, delta_position, wait=False):
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.WRIST_YAW]:
-            position = self.pos[HelloStretchIdx.WRIST_YAW] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal("joint_wrist_yaw", position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
-        return True
-
-    def goto_wrist_roll_position(self, delta_position, wait=False):
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.WRIST_ROLL]:
-            position = self.pos[HelloStretchIdx.WRIST_ROLL] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal("joint_wrist_roll", position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
-        return True
-
-    def goto_wrist_pitch_position(self, delta_position, wait=False):
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.WRIST_PITCH]:
-            position = self.pos[HelloStretchIdx.WRIST_PITCH] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal("joint_wrist_pitch", position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
-        return True
-
-    def goto_gripper_position(self, delta_position, wait=False):
-        if (
-            abs(delta_position) > 0
-        ):  # TODO controller seems to be commanding 0.05s.... self.exec_tol[HelloStretchIdx.GRIPPER]:  #0: #0.01:  # TODO: this is ...really high? (5?) self.exec_tol[HelloStretchIdx.GRIPPER]:
-            position = self.pos[HelloStretchIdx.GRIPPER] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal(self.GRIPPER_FINGER, position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-        return True
-
-    def goto_head_pan_position(self, delta_position, wait=False):
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.HEAD_PAN]:
-            position = self.pos[HelloStretchIdx.HEAD_PAN] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal("joint_head_pan", position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
-        return True
-
-    def goto_head_tilt_position(self, delta_position, wait=False):
-        if abs(delta_position) > 0:  # self.exec_tol[HelloStretchIdx.HEAD_TILT]:
-            position = self.pos[HelloStretchIdx.HEAD_TILT] + delta_position
-            trajectory_goal = self._construct_single_joint_ros_goal("joint_head_tilt", position)
-            if wait:
-                self.trajectory_client.send_goal(trajectory_goal)
-            else:
-                self.trajectory_client.send_goal_async(trajectory_goal)
-            # self.trajectory_client.send_goal(trajectory_goal)
-            # if wait:
-            #     self.trajectory_client.wait_for_result()
-        return True
-
     def _interp(self, x1, x2, num_steps=10):
         diff = x2 - x1
         rng = np.arange(num_steps + 1) / num_steps
@@ -748,37 +626,6 @@ class StretchRosInterface(Node):
         diff = diff[None].repeat(num_steps + 1, axis=0)
         x1 = x1[None].repeat(num_steps + 1, axis=0)
         return x1 + (rng * diff)
-
-    def goto_wrist(self, roll, pitch, yaw, verbose=False, wait=False):
-        """Separate out wrist commands from everything else"""
-        q = self.pos
-        r0, p0, y0 = (
-            q[HelloStretchIdx.WRIST_ROLL],
-            q[HelloStretchIdx.WRIST_PITCH],
-            q[HelloStretchIdx.WRIST_YAW],
-        )
-        print("--------")
-        print("roll", roll, "curr =", r0)
-        print("pitch", pitch, "curr =", p0)
-        print("yaw", yaw, "curr =", y0)
-        trajectory_goal = FollowJointTrajectory.Goal()
-        trajectory_goal.goal_time_tolerance = Duration(seconds=1)
-        trajectory_goal.trajectory.joint_names = [
-            ROS_WRIST_ROLL,
-            ROS_WRIST_PITCH,
-            ROS_WRIST_YAW,
-        ]
-        pt = JointTrajectoryPoint()
-        pt.positions = [roll, pitch, yaw]
-        trajectory_goal.trajectory.points = [pt]
-        trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        if wait:
-            self.trajectory_client.send_goal(trajectory_goal)
-        else:
-            self.trajectory_client.send_goal_async(trajectory_goal)
-        # self.trajectory_client.send_goal(trajectory_goal)
-        # if wait:
-        #     self.trajectory_client.wait_for_result()
 
     def goto(self, q, move_base=False, wait=False, max_wait_t=10.0, verbose=False):
         """some of these params are unsupported"""

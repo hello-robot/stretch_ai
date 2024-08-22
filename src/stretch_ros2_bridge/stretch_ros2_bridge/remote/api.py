@@ -26,6 +26,7 @@ from stretch.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
 from .modules.manip import StretchManipulationClient
+from .modules.mapping import StretchMappingClient
 from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
@@ -77,6 +78,7 @@ class StretchClient(AbstractRobotClient):
         self.nav = StretchNavigationClient(self._ros_client, self._robot_model)
         self.manip = StretchManipulationClient(self._ros_client, self._robot_model)
         self.head = StretchHeadClient(self._ros_client, self._robot_model)
+        self.mapping = StretchMappingClient(self._ros_client)
 
         # Init control mode
         self._base_control_mode = ControlMode.IDLE
@@ -87,6 +89,14 @@ class StretchClient(AbstractRobotClient):
     @property
     def model(self):
         return self._robot_model
+
+    @property
+    def is_homed(self) -> bool:
+        return self._ros_client.is_homed
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._ros_client.is_runstopped
 
     def at_goal(self) -> bool:
         """Returns true if we have up to date head info and are at goal position"""
@@ -164,7 +174,9 @@ class StretchClient(AbstractRobotClient):
 
     @property
     def ee_camera_pose(self):
-        p0 = self._ros_client.get_frame_pose(self.ee_camera_frame, base_frame=self.world_frame)
+        p0 = self._ros_client.get_frame_pose(
+            self.ee_camera_frame, base_frame=self.world_frame, timeout_s=5.0
+        )
         if p0 is not None:
             p0 = p0 @ tra.euler_matrix(0, 0, 0)
         return p0
@@ -229,6 +241,12 @@ class StretchClient(AbstractRobotClient):
     def get_base_pose(self) -> np.ndarray:
         """Get the robot's base pose as XYT."""
         return self.nav.get_base_pose()
+
+    def load_map(self, filename: str):
+        self.mapping.load_map(filename)
+
+    def save_map(self, filename: str):
+        self.mapping.save_map(filename)
 
     def execute_trajectory(self, *args, **kwargs):
         """Open-loop trajectory execution wrapper. Executes a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
