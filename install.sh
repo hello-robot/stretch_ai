@@ -13,7 +13,6 @@ NO_REMOVE="false"
 NO_SUBMODULES="false"
 INSTALL_PYTORCH3D="false"
 INSTALL_TORCH_GEOMETRIC="false"
-breakpoint()
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
 # One more: --conda for conda
