@@ -11,6 +11,8 @@ VERSION=`python $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
+INSTALL_PYTORCH3D="false"
+INSTALL_TORCH_GEOMETRIC="false"
 MAMBA=mamba
 # Two cases: -y for yes, --cpu for cpu only
 # One more: --conda for conda
@@ -36,6 +38,10 @@ do
             ;;
         --no-submodules)
             NO_SUBMODULES="true"
+            shift
+            ;;
+        --torch-geometric)
+            INSTALL_TORCH_GEOMETRIC="true"
             shift
             ;;
         *)
@@ -75,11 +81,12 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
+if [ $INSTALL_TORCH_GEOMETRIC == "true" ]; then
+    echo "   - torch-geometric"
+    echo "   - torch-cluster"
+    echo "   - torch-scatter"
+fi
 echo "   - python=$PYTHON_VERSION"
-echo " - This script will install the following packages from source:"
-echo "   - pytorch3d"
-echo "   - torch_scatter"
-echo "   - torch_cluster"
 echo " - Python version 3.12 is not supported by Open3d."
 echo "---------------------------------------------"
 echo "Currently:"
@@ -128,14 +135,26 @@ fi
 
 source activate $ENV_NAME
 
+echo "Install a version of setuptools for which clip works."
+pip install setuptools==69.5.1
+
 echo ""
 echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
-# If not using cpu only, install the following
-# It is important to use --no-cache-dir to avoid issues different versions of pytorch and cuda
-pip install torch_cluster torch_scatter torch_geometric -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html --no-cache-dir
+# This is no longer necessary but might be useful for some checks
+if [ "$INSTALL_PYTORCH3D" == "true" ]; then
+    echo "Installing pytorch3d from source"
+    pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+fi
+
+if [ "$INSTALL_TORCH_GEOMETRIC" == "true" ]; then
+    echo "Installing torch-geometric"
+    # If not using cpu only, install the following
+    # It is important to use --no-cache-dir to avoid issues different versions of pytorch and cuda
+    pip install torch_cluster torch_scatter torch_geometric -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html --no-cache-dir
+fi
 
 pip install -e ./src[dev]
 

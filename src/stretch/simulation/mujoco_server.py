@@ -18,9 +18,27 @@ from stretch_mujoco import StretchMujocoSimulator
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
+import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
 from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
+
+# Maps HelloStretchIdx to actuators
+mujoco_actuators = {
+    HelloStretchIdx.BASE_X: "base_x_joint",
+    HelloStretchIdx.BASE_Y: "base_y_joint",
+    HelloStretchIdx.BASE_THETA: "base_theta_joint",
+    HelloStretchIdx.LIFT: "lift",
+    HelloStretchIdx.ARM: "arm",
+    HelloStretchIdx.GRIPPER: "gripper",
+    HelloStretchIdx.WRIST_ROLL: "wrist_roll",
+    HelloStretchIdx.WRIST_YAW: "wrist_yaw",
+    HelloStretchIdx.WRIST_PITCH: "wrist_pitch",
+    HelloStretchIdx.HEAD_PAN: "head_pan",
+    HelloStretchIdx.HEAD_TILT: "head_tilt",
+}
+
+stretch_dof = constants.stretch_degrees_of_freedom
 
 
 class MujocoZmqServer(BaseZmqServer):
@@ -109,6 +127,35 @@ class MujocoZmqServer(BaseZmqServer):
         """Get the end effector camera pose in world coords"""
         return self.robot_sim.get_link_pose("gripper_camera_color_optical_frame")
 
+    def set_posture(self, posture: str) -> bool:
+        """Set the posture of the robot."""
+
+        # Assert posture in ["manipulation", "navigation"]
+        if posture not in ["manipulation", "navigation"]:
+            logger.error(
+                f"Posture {posture} not supported. Must be in ['manipulation', 'navigation']"
+            )
+            return False
+
+        # Set the posture
+        self.manip_to(constants.STRETCH_PREGRASP_Q)
+        self.control_mode = posture
+        return True
+
+    def manip_to(self, q: np.ndarray) -> None:
+        """Move the robot to a given joint configuration. q should be of size 11.
+
+        Args:
+            q (np.ndarray): Joint configuration to move the robot to.
+        """
+
+        # Check size
+        assert len(q) == stretch_dof, f"q should be of size {stretch_dof}"
+
+        # Move the robot to the given joint configuration
+        for idx in range(3, stretch_dof):
+            self.robot_sim.move_to(mujoco_actuators[idx], q[idx])
+
     @override
     def get_control_mode(self) -> str:
         """Get the control mode of the robot."""
@@ -126,7 +173,11 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def handle_action(self, action: Dict[str, Any]):
         """Handle the action received from the client."""
-        pass
+        print(action)
+        if "control_mode" in action:
+            self.control_mode = action["control_mode"]
+        if "posture" in action:
+            self.set_posture(action["posture"])
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
