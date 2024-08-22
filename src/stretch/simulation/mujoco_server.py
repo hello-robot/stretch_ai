@@ -14,13 +14,12 @@ from typing import Any, Dict, Optional
 import click
 import numpy as np
 from overrides import override
+from stretch_mujoco import StretchMujocoSimulator
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
-from stretch.simulation.stretch_mujoco import StretchMujocoSimulator
-from stretch.utils.config import get_data_path
 from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
 
 
@@ -34,8 +33,6 @@ class MujocoZmqServer(BaseZmqServer):
         self, *args, scene_path: Optional[str] = None, simulation_rate: int = 200, **kwargs
     ):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
-        if scene_path is None:
-            scene_path = get_data_path("scene.xml")
         self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
 
@@ -106,11 +103,11 @@ class MujocoZmqServer(BaseZmqServer):
 
     def get_head_camera_pose(self) -> np.ndarray:
         """Get the camera pose in world coords"""
-        return self.robot_sim.get_link_pose("realsense")
+        return self.robot_sim.get_link_pose("camera_color_optical_frame")
 
     def get_ee_camera_pose(self) -> np.ndarray:
         """Get the end effector camera pose in world coords"""
-        return self.robot_sim.get_link_pose("d405_cam")
+        return self.robot_sim.get_link_pose("gripper_camera_color_optical_frame")
 
     @override
     def get_control_mode(self) -> str:
@@ -305,7 +302,10 @@ def main(
         depth_scaling,
         scene_path=scene_path,
     )
-    server.start()
+    try:
+        server.start()
+    except KeyboardInterrupt:
+        server.robot_sim.stop()
 
 
 if __name__ == "__main__":
