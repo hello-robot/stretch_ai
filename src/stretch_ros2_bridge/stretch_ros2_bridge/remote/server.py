@@ -13,6 +13,7 @@
 import threading
 import time
 import timeit
+from typing import Any, Dict
 
 import click
 import cv2
@@ -34,7 +35,6 @@ class ZmqServer(CommsNode):
     # How often should we print out info about our performance
     report_steps = 100
     fast_report_steps = 10000
-    debug_compression: bool = False
 
     def __init__(
         self,
@@ -77,7 +77,7 @@ class ZmqServer(CommsNode):
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
 
-        print("Done!")
+        print("Done setting up connections! Server ready to start.")
 
         # for the threads
         self.control_mode = "none"
@@ -155,11 +155,14 @@ class ZmqServer(CommsNode):
             q, dq, eff = self.client.get_joint_state()
             message = {
                 "base_pose": self.client.get_base_pose(),
+                "ee_pose": self.client.ee_pose,
                 "joint_positions": q,
                 "joint_velocities": dq,
                 "joint_efforts": eff,
                 "control_mode": self.get_control_mode(),
                 "at_goal": self.client.at_goal(),
+                "is_homed": self.client.is_homed,
+                "is_runstopped": self.client.is_runstopped,
             }
             self.send_state_socket.send_pyobj(message)
 
@@ -227,6 +230,10 @@ class ZmqServer(CommsNode):
                             action["control_mode"],
                             "not recognized or supported.",
                         )
+                elif "save_map" in action:
+                    self.client.save_map(action["save_map"])
+                elif "load_map" in action:
+                    self.client.load_map(action["load_map"])
                 elif "say" in action:
                     # Text to speech from the robot, not the client/agent device
                     self.text_to_speech.say_async(action["say"])
@@ -312,6 +319,43 @@ class ZmqServer(CommsNode):
         )
         return color_image, depth_image
 
+    def _get_ee_cam_message(self) -> Dict[str, Any]:
+        # Read images from the end effector and head cameras
+        ee_depth_image = self.client.ee_dpt_cam.get()
+        ee_color_image = self.client.ee_rgb_cam.get()
+        ee_color_image, ee_depth_image = self._rescale_color_and_depth(
+            ee_color_image, ee_depth_image, self.ee_image_scaling
+        )
+
+        # Adapt color so we can use higher shutter speed
+        ee_color_image = adjust_gamma(ee_color_image, 2.5)
+
+        # Conversion
+        ee_depth_image = (ee_depth_image * 1000).astype(np.uint16)
+
+        # Compress the images
+        compressed_ee_depth_image = compression.to_jp2(ee_depth_image)
+        compressed_ee_color_image = compression.to_jpg(ee_color_image)
+
+        ee_camera_pose = self.client.ee_camera_pose
+
+        d405_output = {
+            "ee_cam/color_camera_K": scale_camera_matrix(
+                self.client.ee_rgb_cam.get_K(), self.ee_image_scaling
+            ),
+            "ee_cam/depth_camera_K": scale_camera_matrix(
+                self.client.ee_dpt_cam.get_K(), self.ee_image_scaling
+            ),
+            "ee_cam/color_image": compressed_ee_color_image,
+            "ee_cam/depth_image": compressed_ee_depth_image,
+            "ee_cam/color_image/shape": ee_color_image.shape,
+            "ee_cam/depth_image/shape": ee_depth_image.shape,
+            "ee_cam/image_scaling": self.ee_image_scaling,
+            "ee_cam/depth_scaling": self.ee_depth_scaling,
+            "ee_cam/pose": ee_camera_pose,
+        }
+        return d405_output
+
     def spin_send_servo(self):
         """Send the images here as well"""
         sum_time: float = 0
@@ -324,55 +368,17 @@ class ZmqServer(CommsNode):
         # head_depth_scale = self.head_cam.get_depth_scale()
 
         while not self._done:
-            # Read images from the end effector and head cameras
+            d405_output = self._get_ee_cam_message()
+
             obs = self.client.get_observation(compute_xyz=False)
             head_color_image, head_depth_image = self._rescale_color_and_depth(
                 obs.rgb, obs.depth, self.image_scaling
             )
-            ee_depth_image = self.client.ee_dpt_cam.get()
-            ee_color_image = self.client.ee_rgb_cam.get()
-            ee_color_image, ee_depth_image = self._rescale_color_and_depth(
-                ee_color_image, ee_depth_image, self.ee_image_scaling
-            )
-            ee_color_image = adjust_gamma(ee_color_image, 2.5)
-            # depth_image, color_image = self._get_images(from_head=False, verbose=verbose)
-
-            if self.debug_compression:
-                ct0 = timeit.default_timer()
-            # Conversion
-            ee_depth_image = (ee_depth_image * 1000).astype(np.uint16)
             head_depth_image = (head_depth_image * 1000).astype(np.uint16)
-
-            # Compress the images
-            compressed_ee_depth_image = compression.to_jp2(ee_depth_image)
             compressed_head_depth_image = compression.to_jp2(head_depth_image)
-            if self.debug_compression:
-                ct1 = timeit.default_timer()
-            compressed_ee_color_image = compression.to_jpg(ee_color_image)
             compressed_head_color_image = compression.to_jpg(head_color_image)
-            if self.debug_compression:
-                ct2 = timeit.default_timer()
-                print(
-                    ct1 - ct0,
-                    f"{len(compressed_head_depth_image)=}",
-                    ct2 - ct1,
-                    f"{len(compressed_head_color_image)=}",
-                )
 
-            d405_output = {
-                "ee_cam/color_camera_K": scale_camera_matrix(
-                    self.client.ee_rgb_cam.get_K(), self.ee_image_scaling
-                ),
-                "ee_cam/depth_camera_K": scale_camera_matrix(
-                    self.client.ee_dpt_cam.get_K(), self.ee_image_scaling
-                ),
-                "ee_cam/color_image": compressed_ee_color_image,
-                "ee_cam/depth_image": compressed_ee_depth_image,
-                "ee_cam/color_image/shape": ee_color_image.shape,
-                "ee_cam/depth_image/shape": ee_depth_image.shape,
-                "ee_cam/image_scaling": self.ee_image_scaling,
-                "ee_cam/depth_scaling": self.ee_depth_scaling,
-                "ee_cam/pose": self.client.ee_camera_pose,
+            message = {
                 "ee/pose": self.client.ee_pose,
                 "head_cam/color_camera_K": scale_camera_matrix(
                     self.client.rgb_cam.get_K(), self.image_scaling
@@ -389,7 +395,8 @@ class ZmqServer(CommsNode):
                 "head_cam/pose": self.client.head.get_pose(rotated=False),
                 "robot/config": obs.joint,
             }
-            self.send_servo_socket.send_pyobj(d405_output)
+            message.update(d405_output)
+            self.send_servo_socket.send_pyobj(message)
 
             # Finish with some speed info
             t1 = timeit.default_timer()
