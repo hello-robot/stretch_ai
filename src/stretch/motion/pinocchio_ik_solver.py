@@ -16,9 +16,9 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pinocchio
-from loguru import logger
 from scipy.spatial.transform import Rotation as R
 
+import stretch.utils.logger as logger
 from stretch.motion.base.ik_solver_base import IKSolverBase
 
 # --DEFAULTS--

@@ -41,7 +41,6 @@ setuptools.setup(
         "matplotlib",
         "trimesh",
         "yacs",
-        "loguru",
         "scikit-image",
         "sophuspy",
         "pin",  # Pinocchio IK solver
