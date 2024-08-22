@@ -210,7 +210,7 @@ class OrbSlam3(Node):
         transform = TransformStamped()
         transform.header.stamp = self.get_clock().now().to_msg()
         transform.header.frame_id = "map"
-        transform.child_frame_id = "base_link"
+        transform.child_frame_id = "base_link_orbslam"
         transform.transform.translation.x = z
         transform.transform.translation.y = y
         transform.transform.translation.z = 0.0

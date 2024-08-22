@@ -66,6 +66,56 @@ class NavStateEstimator(Node):
         self._t_odom_prev: Optional[Duration] = None
         self._pose_odom_prev = sp.SE3()
 
+        # Kalman filter parameters
+        self.x = np.zeros(6)
+        self.P = np.eye(6) * 1e-2
+        self.Q = np.eye(6) * 1e-5
+        self.R = np.eye(6) * 1e-3
+        self.H = np.eye(6)
+
+        dt = 0.1 # TODO: get from odom message
+        self.F = np.eye(8)
+        # self.F[0, 3] = dt
+        # self.F[1, 4] = dt
+        # self.F[2, 5] = dt
+        # self.F[6, 7] = dt
+
+        self.measurement1 = None
+        self.measurement2 = None
+
+    def predict_kalman(self):
+        self.x = self.F @ self.x
+        self.P = self.F @ self.P @ self.F.T + self.Q
+
+    def update_kalman(self, z):
+        y = z - (self.H @ self.x)
+        S = self.H @ self.P @ self.H.T + self.R
+        K = self.P @ self.H.T @ np.linalg.inv(S)
+        
+        self.x = self.x + K @ y
+        self.P = (np.eye(8) - K @ self.H) @ self.P
+
+    def fuse_measurements(self, measurement1, measurement2):
+        combined_measurement = (np.array(measurement1) + np.array(measurement2)) / 2
+        self.update_kalman(combined_measurement)
+        self.publish_kf_state()
+
+    def publish_kf_state(self):
+        pose_msg = PoseStamped()
+        pose_msg.pose.position.x = self.x[0]
+        pose_msg.pose.position.y = self.x[1]
+        pose_msg.pose.position.z = self.x[2]
+        pose_msg.pose.orientation.x = self.x[3]
+        pose_msg.pose.orientation.y = self.x[4]
+        pose_msg.pose.orientation.z = self.x[5]
+        pose_msg.pose.orientation.w = 1
+
+        pose_out = PoseStamped()
+        pose_out.header.stamp = self.get_clock().now().to_msg()
+        pose_out.pose = pose_msg
+
+        self._estimator_kf_pub.publish(pose_out)
+
     def _publish_filtered_state(self, timestamp):
         if self._trust_slam:
             pose_msg = matrix_to_pose_msg(self._slam_pose_sp.matrix())
@@ -171,12 +221,24 @@ class NavStateEstimator(Node):
         self._pose_odom_prev = pose_odom
         self._t_odom_prev = t_curr
 
+        self.measurement1 = [pose_odom.pose.position.x, pose_odom.pose.position.y, pose_odom.pose.position.z,
+                            pose_odom.pose.orientation.x, pose_odom.pose.orientation.y, pose_odom.pose.orientation.z]
+
+        if self.measurement2 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2)
+
     def _slam_pose_callback(self, pose: PoseWithCovarianceStamped) -> None:
         """Update slam pose for filtering"""
         self.get_logger().info(f"received pose {pose}")
         with self._slam_inject_lock:
             self._slam_pose_prev = self._slam_pose_sp
             self._slam_pose_sp = sp.SE3(matrix_from_pose_msg(pose.pose.pose))
+
+        self.measurement2 = [pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z,
+                            pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
+        
+        if self.measurement1 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2)
 
     def get_pose(self):
         try:
@@ -197,6 +259,9 @@ class NavStateEstimator(Node):
         # Create publishers and subscribers
         self._estimator_pub = self.create_publisher(
             PoseStamped, "/state_estimator/pose_filtered", 1
+        )
+        self._estimator_kf_pub = self.create_publisher(
+            PoseStamped, "/state_estimator/pose_kf", 1
         )
         self._world_frame_id = "map"
         # TODO: if we need to debug this vs. the scan matcher
