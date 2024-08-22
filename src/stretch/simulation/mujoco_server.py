@@ -14,13 +14,12 @@ from typing import Any, Dict, Optional
 import click
 import numpy as np
 from overrides import override
+from stretch_mujoco import StretchMujocoSimulator
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
-from stretch_mujoco import StretchMujocoSimulator
-from stretch.utils.config import get_data_path
 from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
 
 
