@@ -100,6 +100,7 @@ setuptools.setup(
         ],
         "sim": [
             "mujoco",
+            "hello-robot-stretch-urdf",
         ],
     },
 )
