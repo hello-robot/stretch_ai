@@ -29,7 +29,7 @@ setuptools.setup(
     package_data={"stretch": ["stretch/perception/*.tsv"]},
     install_requires=[
         # Machine learning code
-        "torch",
+        "torch<2.4",
         "torchvision",
         # General utilities
         "pyyaml",
@@ -98,6 +98,7 @@ setuptools.setup(
         "sim": [
             "mujoco",
             "hello-robot-stretch-urdf",
+            "grpcio",
         ],
         "hand_tracking": [
             "mediapipe",

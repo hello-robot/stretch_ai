@@ -40,6 +40,15 @@ mujoco_actuators = {
 
 stretch_dof = constants.stretch_degrees_of_freedom
 
+manip_idx = [
+    HelloStretchIdx.BASE_X,
+    HelloStretchIdx.LIFT,
+    HelloStretchIdx.ARM,
+    HelloStretchIdx.WRIST_ROLL,
+    HelloStretchIdx.WRIST_YAW,
+    HelloStretchIdx.WRIST_PITCH,
+]
+
 
 class MujocoZmqServer(BaseZmqServer):
     """Server for Mujoco simulation with ZMQ communication. This allows us to run the Mujoco simulation in the exact same way as we would run a remote ROS server on the robot, including potentially running it on a different machine or on the cloud. It requires:
@@ -138,11 +147,11 @@ class MujocoZmqServer(BaseZmqServer):
             return False
 
         # Set the posture
-        self.manip_to(constants.STRETCH_PREGRASP_Q)
+        self.manip_to(constants.STRETCH_PREGRASP_Q, all_joints=True)
         self.control_mode = posture
         return True
 
-    def manip_to(self, q: np.ndarray) -> None:
+    def manip_to(self, q: np.ndarray, all_joints: bool = False) -> None:
         """Move the robot to a given joint configuration. q should be of size 11.
 
         Args:
@@ -150,11 +159,20 @@ class MujocoZmqServer(BaseZmqServer):
         """
 
         # Check size
-        assert len(q) == stretch_dof, f"q should be of size {stretch_dof}"
 
-        # Move the robot to the given joint configuration
-        for idx in range(3, stretch_dof):
-            self.robot_sim.move_to(mujoco_actuators[idx], q[idx])
+        if all_joints:
+            assert len(q) == stretch_dof, f"q should be of size {stretch_dof}"
+            # Move the robot to the given joint configuration
+            for idx in range(3, stretch_dof):
+                self.robot_sim.move_to(mujoco_actuators[idx], q[idx])
+        else:
+            assert len(q) == len(manip_idx), f"q should be of size {len(manip_idx)}"
+            # Just read the manipulator joints
+            for idx in manip_idx:
+                if idx == HelloStretchIdx.BASE_X:
+                    # TODO: Implement base_x
+                    continue
+                self.robot_sim.move_to(mujoco_actuators[idx], q[idx])
 
     @override
     def get_control_mode(self) -> str:
@@ -178,6 +196,21 @@ class MujocoZmqServer(BaseZmqServer):
             self.control_mode = action["control_mode"]
         if "posture" in action:
             self.set_posture(action["posture"])
+        if "gripper" in action:
+            self.robot_sim.move_to("gripper", action["gripper"])
+        if "save_map" in action:
+            logger.warning("Saving map not supported in Mujoco simulation")
+        elif "load_map" in action:
+            logger.warning("Loading map not supported in Mujoco simulation")
+        elif "say" in action:
+            self.text_to_speech.say_async(action["say"])
+        if "joint" in action:
+            # Move the robot to the given joint configuration
+            # Only send the manipulator joints, not gripper or head
+            self.manip_to(action["joint"], all_joints=False)
+        if "head_to" in action:
+            self.robot_sim.move_to("head_pan", action["head"][0])
+            self.robot_sim.move_to("head_tilt", action["head"][1])
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
