@@ -168,11 +168,11 @@ class MujocoZmqServer(BaseZmqServer):
         else:
             assert len(q) == len(manip_idx), f"q should be of size {len(manip_idx)}"
             # Just read the manipulator joints
-            for idx in manip_idx:
+            for i, idx in enumerate(manip_idx):
                 if idx == HelloStretchIdx.BASE_X:
                     # TODO: Implement base_x
                     continue
-                self.robot_sim.move_to(mujoco_actuators[idx], q[idx])
+                self.robot_sim.move_to(mujoco_actuators[idx], q[i])
 
     @override
     def get_control_mode(self) -> str:
@@ -209,8 +209,8 @@ class MujocoZmqServer(BaseZmqServer):
             # Only send the manipulator joints, not gripper or head
             self.manip_to(action["joint"], all_joints=False)
         if "head_to" in action:
-            self.robot_sim.move_to("head_pan", action["head"][0])
-            self.robot_sim.move_to("head_tilt", action["head"][1])
+            self.robot_sim.move_to("head_pan", action["head_to"][0])
+            self.robot_sim.move_to("head_tilt", action["head_to"][1])
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
