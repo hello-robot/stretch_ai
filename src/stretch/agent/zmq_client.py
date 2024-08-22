@@ -427,14 +427,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return True
 
     def navigate_to(
-        self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
+        self,
+        xyt: ContinuousNavigationAction,
+        relative=False,
+        blocking=False,
+        timeout: float = 10.0,
+        verbose: bool = False,
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
         assert len(xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
-        self.send_action(next_action, timeout=timeout)
+        self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -635,9 +640,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         close_to_goal = False
         while True:
+
+            # Minor delay at the end - give it time to get new messages
+            time.sleep(0.01)
+
             with self._obs_lock:
                 if self._obs is None:
+                    print("waiting for obs")
                     continue
+
             xyt = self.get_base_pose()
             pos = xyt[:2]
             ang = xyt[2]
@@ -662,6 +673,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 not_moving_count += 1
             else:
                 not_moving_count = 0
+
+            # Check if we are at the goal
+            # If we are at the goal, we can stop if we are not moving
             last_pos = pos
             last_ang = ang
             close_to_goal = at_goal
@@ -672,6 +686,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
+                if verbose:
+                    print("---> At goal")
                 break
 
             # Resend the action if we are not moving for some reason and it's been provided
@@ -679,8 +695,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 # Resend the action
                 self.send_socket.send_pyobj(resend_action)
 
-            # Minor delay at the end - give it time to get new messages
-            time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
@@ -898,7 +912,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 timeout=timeout,
                 # resend_action=current_action,
             )
-            time.sleep(0.1)
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
@@ -1029,6 +1042,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._rerun.step(self._obs, self._servo)
             time.sleep(0.3)
 
+    @property
+    def is_homed(self) -> bool:
+        return self._state is not None and self._state["is_homed"]
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._state is not None and self._state["is_runstopped"]
+
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         if self._started:
@@ -1062,6 +1083,30 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 )
                 logger.info("Robot IP:", self.send_address)
                 return False
+
+        # Separately wait for state messages
+        while self._state is None:
+            time.sleep(0.1)
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10.0:
+                logger.error(
+                    colored(
+                        "Timeout waiting for state information; are you connected to the robot? Check the network.",
+                        "red",
+                    )
+                )
+
+        if not self.is_homed:
+            self.stop()
+            raise RuntimeError(
+                "Robot is not homed; please home the robot before running. You can do so by shutting down the server and running ./stretch_robot_home.py on the robot."
+            )
+        if self.is_runstopped:
+            self.stop()
+            raise RuntimeError(
+                "Robot is runstopped; please release the runstop before running. You can do so by pressing and briefly holding the runstop button on the robot."
+            )
+
         self._started = True
         return True
 
