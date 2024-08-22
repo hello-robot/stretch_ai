@@ -103,11 +103,11 @@ class MujocoZmqServer(BaseZmqServer):
 
     def get_head_camera_pose(self) -> np.ndarray:
         """Get the camera pose in world coords"""
-        return self.robot_sim.get_link_pose("realsense")
+        return self.robot_sim.get_link_pose("camera_color_optical_frame")
 
     def get_ee_camera_pose(self) -> np.ndarray:
         """Get the end effector camera pose in world coords"""
-        return self.robot_sim.get_link_pose("d405_cam")
+        return self.robot_sim.get_link_pose("gripper_camera_color_optical_frame")
 
     @override
     def get_control_mode(self) -> str:
