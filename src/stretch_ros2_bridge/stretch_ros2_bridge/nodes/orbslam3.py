@@ -18,7 +18,7 @@ import orbslam3
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, PoseStamped
 from nav2_msgs.srv import LoadMap, SaveMap
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, Imu
@@ -91,6 +91,9 @@ class OrbSlam3(Node):
 
         # Create a service to load the map
         self.load_map_service = self.create_service(LoadMap, "/load_map", self.load_map_callback)
+
+        # Publish PoseStamped
+        self.pose_pub = self.create_publisher(PoseStamped, "/orb_slam3/pose", 1)
 
     def camera_info_callback(self, msg):
         if self.slam is None:
@@ -195,6 +198,7 @@ class OrbSlam3(Node):
             Twc = np.linalg.inv(Tcw)
             pose = transformation_matrix_to_pose(Twc)
             self.publish_tf(pose)
+            self.publish_pose(pose)
             rclpy.spin_once(self, timeout_sec=0.1)
 
     def publish_tf(self, pose):
@@ -210,7 +214,7 @@ class OrbSlam3(Node):
         transform = TransformStamped()
         transform.header.stamp = self.get_clock().now().to_msg()
         transform.header.frame_id = "map"
-        transform.child_frame_id = "base_link_orbslam"
+        transform.child_frame_id = "base_link"
         transform.transform.translation.x = z
         transform.transform.translation.y = y
         transform.transform.translation.z = 0.0
@@ -219,6 +223,26 @@ class OrbSlam3(Node):
         transform.transform.rotation.z = q[2]
         transform.transform.rotation.w = q[3]
         self.tf_broadcaster.sendTransform(transform)
+
+    def publish_pose(self, pose):
+        msg = PoseStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "base_link"
+        msg.pose.position.x = pose.get_x()
+        msg.pose.position.y = pose.get_y()
+        msg.pose.position.z = pose.get_z()
+
+        roll = pose.get_roll()
+        pitch = pose.get_pitch()
+        yaw = pose.get_yaw()
+        q = quaternion_from_euler(yaw, pitch, -roll)
+
+        msg.pose.orientation.x = q[0]
+        msg.pose.orientation.y = q[1]
+        msg.pose.orientation.z = q[2]
+        msg.pose.orientation.w = q[3]
+
+        self.pose_pub.publish(msg)
 
 
 def main(args=None):

@@ -20,7 +20,7 @@ import numpy as np
 import rclpy
 import sophuspy as sp
 import tf2_ros
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, TransformStamped
+from geometry_msgs.msg import Pose, PoseStamped, PoseWithCovarianceStamped, TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -75,13 +75,10 @@ class NavStateEstimator(Node):
 
         dt = 0.1 # TODO: get from odom message
         self.F = np.eye(8)
-        # self.F[0, 3] = dt
-        # self.F[1, 4] = dt
-        # self.F[2, 5] = dt
-        # self.F[6, 7] = dt
 
         self.measurement1 = None
         self.measurement2 = None
+        self.measurement3 = None
 
     def predict_kalman(self):
         self.x = self.F @ self.x
@@ -93,25 +90,33 @@ class NavStateEstimator(Node):
         K = self.P @ self.H.T @ np.linalg.inv(S)
         
         self.x = self.x + K @ y
-        self.P = (np.eye(8) - K @ self.H) @ self.P
+        self.P = (np.eye(6) - K @ self.H) @ self.P
 
-    def fuse_measurements(self, measurement1, measurement2):
-        combined_measurement = (np.array(measurement1) + np.array(measurement2)) / 2
+    def fuse_measurements(self, wheel_measurement, slam_measurement, vio_measurement = None):
+        if vio_measurement is not None:
+            combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement) + np.array(vio_measurement))
+        else:
+            combined_measurement = (np.array(measurement1) + np.array(measurement2) + np.array(measurement3)) / 2
         self.update_kalman(combined_measurement)
         self.publish_kf_state()
 
+        self.measurement1 = None
+        self.measurement2 = None
+        self.measurement3 = None
+
     def publish_kf_state(self):
-        pose_msg = PoseStamped()
-        pose_msg.pose.position.x = self.x[0]
-        pose_msg.pose.position.y = self.x[1]
-        pose_msg.pose.position.z = self.x[2]
-        pose_msg.pose.orientation.x = self.x[3]
-        pose_msg.pose.orientation.y = self.x[4]
-        pose_msg.pose.orientation.z = self.x[5]
-        pose_msg.pose.orientation.w = 1
+        pose_msg = Pose()
+        pose_msg.position.x = self.x[0]
+        pose_msg.position.y = self.x[1]
+        pose_msg.position.z = self.x[2]
+        pose_msg.orientation.x = self.x[3]
+        pose_msg.orientation.y = self.x[4]
+        pose_msg.orientation.z = self.x[5]
+        pose_msg.orientation.w = 1.0
 
         pose_out = PoseStamped()
         pose_out.header.stamp = self.get_clock().now().to_msg()
+        pose_out.header.frame_id = "base_link"
         pose_out.pose = pose_msg
 
         self._estimator_kf_pub.publish(pose_out)
@@ -125,6 +130,7 @@ class NavStateEstimator(Node):
         # Publish pose msg
         pose_out = PoseStamped()
         pose_out.header.stamp = timestamp
+        pose_out.header.frame_id = "base_link"
         pose_out.pose = pose_msg
 
         self._estimator_pub.publish(pose_out)
@@ -201,7 +207,33 @@ class NavStateEstimator(Node):
         pose_diff_log = coeff * pose_diff_odom.log() + (1 - coeff) * pose_diff_slam.log()
         return slam_pose * sp.SE3.exp(pose_diff_log)
 
-    def _odom_callback(self, pose: Odometry):
+    def _vio_odom_callback(self, pose: PoseStamped):
+        # self.get_clock().now() alternative for rospy.Time().now()
+        t_curr = self.get_clock().now()
+
+        # Compute injected signals into filtered pose
+        pose_odom = sp.SE3(matrix_from_pose_msg(pose.pose))
+
+        # Update filtered pose
+        if self._t_odom_prev is None:
+            self._t_odom_prev = t_curr
+        #
+        t_interval_secs = (t_curr - self._t_odom_prev).nanoseconds * 1e-9
+
+        self._filtered_pose = self._filter_signals(self._slam_pose_sp, pose_odom, t_interval_secs)
+        self._publish_filtered_state(pose.header.stamp)
+
+        # Update variables
+        self._pose_odom_prev = pose_odom
+        self._t_odom_prev = t_curr
+
+        self.measurement3 = [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z,
+                            pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z]
+
+        if self.measurement2 is not None and self.measurement1 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+
+    def _wheel_odom_callback(self, pose: Odometry):
         # self.get_clock().now() alternative for rospy.Time().now()
         t_curr = self.get_clock().now()
 
@@ -221,11 +253,11 @@ class NavStateEstimator(Node):
         self._pose_odom_prev = pose_odom
         self._t_odom_prev = t_curr
 
-        self.measurement1 = [pose_odom.pose.position.x, pose_odom.pose.position.y, pose_odom.pose.position.z,
-                            pose_odom.pose.orientation.x, pose_odom.pose.orientation.y, pose_odom.pose.orientation.z]
+        self.measurement1 = [pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z,
+                            pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
 
-        if self.measurement2 is not None:
-            self.fuse_measurements(self.measurement1, self.measurement2)
+        if self.measurement2 is not None and self.measurement3 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def _slam_pose_callback(self, pose: PoseWithCovarianceStamped) -> None:
         """Update slam pose for filtering"""
@@ -237,8 +269,8 @@ class NavStateEstimator(Node):
         self.measurement2 = [pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z,
                             pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
         
-        if self.measurement1 is not None:
-            self.fuse_measurements(self.measurement1, self.measurement2)
+        if self.measurement1 is not None and self.measurement3 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def get_pose(self):
         try:
@@ -251,6 +283,12 @@ class NavStateEstimator(Node):
             with self._slam_inject_lock:
                 self._slam_pose_prev = self._slam_pose_sp
                 self._slam_pose_sp = sp.SE3(matrix)
+
+            self.measurement2 = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
+
+            if self.measurement1 is not None and self.measurement3 is not None:
+                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+
 
         except TransformException as ex:
             self.get_logger().info(f"Could not transform the base pose {ex}")
@@ -278,15 +316,19 @@ class NavStateEstimator(Node):
         # you can verify this with:
         #   rosrun tf tf_echo map base_link
         # Which will show the same output as this topic.
-        # self.pose_subscriber = self.create_subscription(
-        #     PoseWithCovarianceStamped,
-        #     "/pose",
-        #     self._slam_pose_callback,
-        #     10,
-        # )
+        self.pose_subscriber = self.create_subscription(
+            PoseWithCovarianceStamped,
+            "/pose",
+            self._slam_pose_callback,
+            10,
+        )
         self.create_timer(1 / 10, self.get_pose)
+        
         # This pose update comes from wheel odometry
-        self.odom_subcriber = self.create_subscription(Odometry, "/odom", self._odom_callback, 1)
+        self.wheel_odom_subcriber = self.create_subscription(Odometry, "/odom", self._wheel_odom_callback, 1)
+
+        # VIO odometry
+        self.vio_odom_subcriber = self.create_subscription(PoseStamped, "/orb_slam3/pose", self._vio_odom_callback, 1)
 
         # Run
         log.info("State Estimator launched.")
