@@ -66,6 +66,10 @@ class MujocoZmqServer(BaseZmqServer):
     - Stretch_mujoco installation: https://github.com/hello-robot/stretch_mujoco/
     """
 
+    hz = CONTROL_HZ
+    # How long should the controller report done before we're actually confident that we're done?
+    done_t = 0.1
+
     def __init__(
         self,
         *args,
@@ -104,6 +108,7 @@ class MujocoZmqServer(BaseZmqServer):
         self._base_controller_at_goal = False
         self.control_mode = "navigation"
         self.controller_finished = True
+        self.active = False
 
         # Control module
         controller_cfg = get_control_config(config_name)
@@ -116,11 +121,6 @@ class MujocoZmqServer(BaseZmqServer):
             controller_cfg.acc_ang,
         )
 
-    @property
-    def active(self):
-        """Is the velocity controller active?"""
-        return self.control_mode == "navigation"
-
     def set_goal_pose(self, xyt_goal: np.ndarray):
         """Set the goal pose for the robot. The controller will then try to reach this goal pose.
 
@@ -130,6 +130,7 @@ class MujocoZmqServer(BaseZmqServer):
         assert len(xyt_goal) == 3, "Goal pose should be of size 3 (x, y, theta)"
         self.controller.update_goal(xyt_goal)
         self.xyt_goal = self.controller.xyt_goal
+        self.active = True
 
         self.is_done = False
         self.goal_set_t = timeit.default_timer()
@@ -138,12 +139,18 @@ class MujocoZmqServer(BaseZmqServer):
 
     def _control_loop_thread(self):
         """Control loop thread for the velocity controller"""
-        while self.is_runnning():
+        while self.is_running():
             self.control_loop_callback()
             time.sleep(1 / self.hz)
 
     def control_loop_callback(self):
         """Actual controller timer callback"""
+
+        if self._status is None:
+            vel_odom = [0, 0]
+        else:
+            vel_odom = self._status["base"]["x_vel"], self._status["base"]["theta_vel"]
+        print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
 
         if self.active and self.xyt_goal is not None:
             # Compute control
@@ -159,8 +166,8 @@ class MujocoZmqServer(BaseZmqServer):
                 v_cmd, w_cmd = 0, 0
 
             # Check if actually done (velocity = 0)
-            if done and self.vel_odom is not None:
-                if self.vel_odom[0] < VEL_THRESHOlD and self.vel_odom[1] < RVEL_THRESHOLD:
+            if done and vel_odom is not None:
+                if vel_odom[0] < VEL_THRESHOlD and vel_odom[1] < RVEL_THRESHOLD:
                     if not self.controller_finished:
                         self.controller_finished = True
                         self.done_since = timeit.default_timer()
@@ -174,8 +181,9 @@ class MujocoZmqServer(BaseZmqServer):
                     self.done_since = timeit.default_timer()
 
             # Command robot
+            print(f"Commanding robot with {v_cmd} and {w_cmd}")
             self.robot_sim.set_base_velocity(v_linear=v_cmd, omega=w_cmd)
-            self.base_controller_at_goal = True
+            self._base_controller_at_goal = True
 
             if self.is_done:
                 self.active = False
@@ -307,6 +315,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         # Create a thread for the control loop
         self._control_thread = threading.Thread(target=self._control_loop_thread)
+        self._control_thread.start()
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
@@ -340,6 +349,8 @@ class MujocoZmqServer(BaseZmqServer):
             self.robot_sim.set_base_velocity(
                 v_linear=action["base_velocity"]["v"], omega=action["base_velocity"]["w"]
             )
+        elif "xyt" in action:
+            self.set_goal_pose(action["xyt"])
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
