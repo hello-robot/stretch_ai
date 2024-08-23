@@ -166,6 +166,8 @@ class MujocoZmqServer(BaseZmqServer):
         if self.debug_control_loop:
             print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
 
+        self.controller.update_pose_feedback(self.get_base_pose())
+
         if self.active and self.xyt_goal is not None:
             # Compute control
             self.is_done = False
