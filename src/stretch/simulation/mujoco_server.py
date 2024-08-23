@@ -23,10 +23,9 @@ import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
-from stretch.utils.image import scale_camera_matrix
 from stretch.motion.control.goto_controller import GotoVelocityController
 from stretch.utils.config import get_control_config
-from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
+from stretch.utils.image import scale_camera_matrix
 
 # Maps HelloStretchIdx to actuators
 mujoco_actuators = {
@@ -70,6 +69,9 @@ class MujocoZmqServer(BaseZmqServer):
     hz = CONTROL_HZ
     # How long should the controller report done before we're actually confident that we're done?
     done_t = 0.1
+
+    # Print debug messages for control loop
+    debug_control_loop = False
 
     def __init__(
         self,
@@ -151,7 +153,9 @@ class MujocoZmqServer(BaseZmqServer):
             vel_odom = [0, 0]
         else:
             vel_odom = self._status["base"]["x_vel"], self._status["base"]["theta_vel"]
-        print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
+
+        if self.debug_control_loop:
+            print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
 
         if self.active and self.xyt_goal is not None:
             # Compute control
