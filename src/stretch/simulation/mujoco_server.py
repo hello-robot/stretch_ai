@@ -174,7 +174,7 @@ class MujocoZmqServer(BaseZmqServer):
                     self.done_since = timeit.default_timer()
 
             # Command robot
-            self._set_velocity(v_cmd * 1.0, w_cmd * 1.0)
+            self.robot_sim.set_base_velocity(v_linear=v_cmd, omega=w_cmd)
             self.base_controller_at_goal = True
 
             if self.is_done:
