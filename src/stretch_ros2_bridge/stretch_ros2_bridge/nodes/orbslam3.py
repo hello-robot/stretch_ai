@@ -40,6 +40,7 @@ class OrbSlam3(Node):
         self.config = None
         with open(CONFIG_FILE, "r") as file:
             self.config = yaml.safe_load(file)
+            pass
 
         # Check if ORBvocab.txt exists
         if not os.path.exists(self.VOCABULARY_FILE):
@@ -127,14 +128,21 @@ class OrbSlam3(Node):
             content = None
             with open(file.name, "r") as f:
                 content = f.read()
+
+            # Add IMU extrinsics to the end of the file. These values are for Intel RealSense D435i
+            content += """\n"""
+            """# Transformation from body-frame (imu) to left camera\n"""
+            """IMU.T_b_c1: !!opencv-matrix\n"""
+            """   rows: 4\n"""
+            """   cols: 4\n"""
+            """   dt: f\n"""
+            """   data: [0.999903, -0.0138036, -0.00208099, -0.0202141,\n"""
+            """         0.0137985, 0.999902, -0.00243498, 0.00505961,\n"""
+            """         0.0021144, 0.00240603, 0.999995, 0.0114047,\n"""
+            """         0.0, 0.0, 0.0, 1.0]\n"""
+
             with open(file.name, "w") as f:
                 f.write("%YAML:1.0\n" + content)
-
-            file.close()
-
-            self.get_logger().info(
-                f"Using {self.VOCABULARY_FILE} and {file.name} for ORB-SLAM3 initialization"
-            )
 
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
             self.slam.set_use_viewer(True)
