@@ -23,6 +23,7 @@ import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
+from stretch.utils.image import scale_camera_matrix
 from stretch.motion.control.goto_controller import GotoVelocityController
 from stretch.utils.config import get_control_config
 from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
@@ -369,7 +370,7 @@ class MujocoZmqServer(BaseZmqServer):
         message = {
             "rgb": rgb,
             "depth": depth,
-            "camera_K": compute_pinhole_K(height, width, 69.4),
+            "camera_K": cam_data["cam_d435i_K"],
             "camera_pose": self.get_head_camera_pose(),
             "ee_pose": self.get_ee_pose(),
             "joint": positions,
@@ -382,6 +383,7 @@ class MujocoZmqServer(BaseZmqServer):
             "recv_address": self.recv_address,
             "step": self._last_step,
             "at_goal": self.base_controller_at_goal(),
+            "is_simulation": True,
         }
         return message
 
@@ -440,10 +442,10 @@ class MujocoZmqServer(BaseZmqServer):
         positions, _, _ = self.get_joint_state()
 
         # Get the camera matrices
-        head_rgb_K = compute_pinhole_K(head_color_image.shape[0], head_color_image.shape[1], 69.4)
-        head_dpt_K = compute_pinhole_K(head_depth_image.shape[0], head_depth_image.shape[1], 69.4)
-        ee_rgb_K = compute_pinhole_K(ee_color_image.shape[0], ee_color_image.shape[1], 87.0)
-        ee_dpt_K = compute_pinhole_K(ee_depth_image.shape[0], ee_depth_image.shape[1], 87.0)
+        head_rgb_K = cam_data["cam_d435i_K"]
+        head_dpt_K = cam_data["cam_d435i_K"]
+        ee_rgb_K = cam_data["cam_d405_K"]
+        ee_dpt_K = cam_data["cam_d405_K"]
 
         message = {
             "ee_cam/color_camera_K": scale_camera_matrix(ee_rgb_K, self.ee_image_scaling),
@@ -466,6 +468,7 @@ class MujocoZmqServer(BaseZmqServer):
             "head_cam/depth_scaling": self.depth_scaling,
             "head_cam/pose": self.get_head_camera_pose(),
             "robot/config": positions,
+            "is_simulation": True,
         }
         return message
 
