@@ -20,16 +20,5 @@
   <worldbody>
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="floor"/>
-    <body name="table" pos="0 -1 .24">
-      <geom type="box" size=".6 .5 .24" mass="1" material="wood"/>
-    </body>
-    <body name="object1" pos="-.02 -0.55 .6">
-      <freejoint/>
-      <geom type="box" size=".02 .04 .04" mass=".5" rgba=".2 .2 .5 1"/>
-    </body>
-    <body name="object2" pos=".08 -0.55 .6">
-      <freejoint/>
-      <geom type="cylinder" size=".02 .04 .04" mass=".5" rgba=".8 .2 .2 1"/>
-    </body>
   </worldbody>
 </mujoco>
