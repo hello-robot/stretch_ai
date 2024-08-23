@@ -459,15 +459,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
+                self.gripper_to(gripper_target, blocking=False)
                 joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
+                print("Opening gripper:", joint_state[HelloStretchIdx.GRIPPER])
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
                 if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
-                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to open")
                     break
                 self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)

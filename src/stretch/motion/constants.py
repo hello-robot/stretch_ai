@@ -177,7 +177,6 @@ PIN_CONTROLLED_JOINTS = [
     "joint_wrist_roll",
 ]
 
-
 ROS_ARM_JOINTS = ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
 ROS_LIFT_JOINT = "joint_lift"
 ROS_GRIPPER_FINGER = "joint_gripper_finger_left"
@@ -189,3 +188,4 @@ ROS_WRIST_PITCH = "joint_wrist_pitch"
 ROS_WRIST_ROLL = "joint_wrist_roll"
 
 stretch_degrees_of_freedom = 3 + 2 + 4 + 2
+default_gripper_open_threshold: float = 0.3
