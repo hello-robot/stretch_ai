@@ -171,11 +171,7 @@ class RerunVsualizer:
         rr.set_time_seconds("realtime", time.time())
         # EE Camera
         rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
-        # Note: The Depth image received through servo is in mm unint8 with Mujoco server
-        if servo.is_simulation:
-            rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth / 1000))
-        else:
-            rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
+        rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
         rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
         rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
         rr.log(
