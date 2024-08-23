@@ -215,11 +215,16 @@ class StretchRosInterface(Node):
             joint_pose = self._process_joint_status(self.joint_status)
 
         # Use Idx to convert
-        joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
-        joint_pose[self.Idx.ARM] = joint_goals[self.ARM_JOINT]
-        joint_pose[self.Idx.WRIST_ROLL] = joint_goals[self.WRIST_ROLL]
-        joint_pose[self.Idx.WRIST_PITCH] = joint_goals[self.WRIST_PITCH]
-        joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
+        if self.LIFT_JOINT in joint_goals:
+            joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
+        if self.ARM_JOINT in joint_goals:
+            joint_pose[self.Idx.ARM] = joint_goals[self.ARM_JOINT]
+        if self.WRIST_ROLL in joint_goals:
+            joint_pose[self.Idx.WRIST_ROLL] = joint_goals[self.WRIST_ROLL]
+        if self.WRIST_PITCH in joint_goals:
+            joint_pose[self.Idx.WRIST_PITCH] = joint_goals[self.WRIST_PITCH]
+        if self.WRIST_YAW in joint_goals:
+            joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
         if self.GRIPPER_FINGER in joint_goals:
             joint_pose[self.Idx.GRIPPER] = joint_goals[self.GRIPPER_FINGER]
         if self.HEAD_PAN in joint_goals:
