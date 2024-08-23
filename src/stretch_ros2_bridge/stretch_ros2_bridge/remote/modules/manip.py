@@ -366,14 +366,14 @@ class StretchManipulationClient(AbstractControlModule):
 
     @enforce_enabled
     def move_gripper(self, target, blocking: bool = True):
-        joint_goals = {
-            self._ros_client.GRIPPER_FINGER: target,
-        }
-        self._ros_client.send_trajectory_goals(joint_goals)
+
+        joint_goals = {self._ros_client.GRIPPER_FINGER: target}
 
         def wait_for_gripper():
             rate = self._ros_client.create_rate(1 / GRIPPER_MOTION_SECS)
             rate.sleep()
+
+        self._ros_client.send_joint_goals(joint_goals)
 
         self._register_wait(wait_for_gripper)
         if blocking:
