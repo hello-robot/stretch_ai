@@ -218,8 +218,6 @@ class ZmqServer(CommsNode):
                             "not recognized or supported.",
                         )
                 elif "base_velocity" in action:
-                    print("!!!!!!!")
-                    print("base vel", action["base_velocity"])
                     base_velocity_action = action["base_velocity"]
                     if "v" in base_velocity_action:
                         v = base_velocity_action["v"]
