@@ -25,6 +25,7 @@ from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
 from stretch.motion.control.goto_controller import GotoVelocityController
 from stretch.utils.config import get_control_config
+from stretch.utils.geometry import xyt_base_to_global
 from stretch.utils.image import scale_camera_matrix
 
 # Maps HelloStretchIdx to actuators
@@ -124,13 +125,21 @@ class MujocoZmqServer(BaseZmqServer):
             controller_cfg.acc_ang,
         )
 
-    def set_goal_pose(self, xyt_goal: np.ndarray):
+    def set_goal_pose(self, xyt_goal: np.ndarray, relative: bool = False):
         """Set the goal pose for the robot. The controller will then try to reach this goal pose.
 
         Args:
             xyt_goal (np.ndarray): Goal pose for the robot in world coordinates (x, y, theta).
         """
         assert len(xyt_goal) == 3, "Goal pose should be of size 3 (x, y, theta)"
+
+        # Compute absolute goal
+        if relative:
+            xyt_base = self.get_base_pose()
+            xyt_goal = xyt_base_to_global(xyt_goal, xyt_base)
+        else:
+            xyt_goal = xyt_goal
+
         self.controller.update_goal(xyt_goal)
         self.xyt_goal = self.controller.xyt_goal
         self.active = True
