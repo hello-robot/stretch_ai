@@ -258,23 +258,6 @@ You can also print out just one specific joint. For example, to just get arm ext
 python -m stretch.app.print_joint_states --joint arm
 ```
 
-#### Camera Info
-
-Print out information about the cameras on the robot for debugging purposes:
-
-```bash
-python -m stretch.app.camera_info --robot_ip $ROBOT_IP
-```
-
-This will print out information about the resolutions of different images sent by the robot's cameras, and should show something like this:
-
-```
----------------------- Camera Info ----------------------
-Servo Head RGB shape: (320, 240, 3) Servo Head Depth shape: (320, 240)
-Servo EE RGB shape: (240, 320, 3) Servo EE Depth shape: (240, 320)
-Observation RGB shape: (640, 480, 3) Observation Depth shape: (640, 480)
-```
-
 #### Visualization and Streaming Video
 
 Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
