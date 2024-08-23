@@ -122,7 +122,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
                 image_from_camera=obs["camera_K"],
-                image_plane_distance=0.5,
+                image_plane_distance=0.35,
             ),
         )
 
