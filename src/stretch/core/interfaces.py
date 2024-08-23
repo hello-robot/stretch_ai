@@ -263,6 +263,9 @@ class Observations:
     # Sequence number - which message was this?
     seq_id: int = -1
 
+    # True if in simulation
+    is_simulation: bool = False
+
     def compute_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
         """Compute xyz from depth and camera intrinsics."""
         if self.depth is not None and self.camera_K is not None:

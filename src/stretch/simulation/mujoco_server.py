@@ -255,6 +255,7 @@ class MujocoZmqServer(BaseZmqServer):
             "recv_address": self.recv_address,
             "step": self._last_step,
             "at_goal": self.base_controller_at_goal(),
+            "is_simulation": True,
         }
         return message
 
@@ -339,6 +340,7 @@ class MujocoZmqServer(BaseZmqServer):
             "head_cam/depth_scaling": self.depth_scaling,
             "head_cam/pose": self.get_head_camera_pose(),
             "robot/config": positions,
+            "is_simulation": True,
         }
         return message
 

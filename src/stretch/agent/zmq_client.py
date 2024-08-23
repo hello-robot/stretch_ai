@@ -989,6 +989,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             observation.ee_pose = message["ee/pose"]
             observation.depth_scaling = message["head_cam/depth_scaling"]
             observation.ee_depth_scaling = message["ee_cam/image_scaling"]
+            observation.is_simulation = message["is_simulation"]
             self._servo = observation
 
     def get_servo_observation(self):
