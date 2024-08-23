@@ -217,6 +217,8 @@ class ZmqServer(CommsNode):
                             action["posture"],
                             "not recognized or supported.",
                         )
+                elif "base_velocity" in action:
+                    self.client.nav.base_velocity(action["base_velocity"])
                 elif "control_mode" in action:
                     if action["control_mode"] == "manipulation":
                         self.client.switch_to_manipulation_mode()
