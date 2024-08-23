@@ -50,6 +50,9 @@ manip_idx = [
 ]
 
 
+from stretch.utils.config import get_scene_by_name, get_scene_path
+
+
 class MujocoZmqServer(BaseZmqServer):
     """Server for Mujoco simulation with ZMQ communication. This allows us to run the Mujoco simulation in the exact same way as we would run a remote ROS server on the robot, including potentially running it on a different machine or on the cloud. It requires:
     - Mujoco installation
@@ -60,6 +63,11 @@ class MujocoZmqServer(BaseZmqServer):
         self, *args, scene_path: Optional[str] = None, simulation_rate: int = 200, **kwargs
     ):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
+        if scene_path is None:
+            scene_path = get_scene_path("default_scene.xml")
+        elif not scene_path.endswith(".xml"):
+            scene_path = get_scene_by_name(scene_path)
+        print(f"Using scene: {scene_path}")
         self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
 
