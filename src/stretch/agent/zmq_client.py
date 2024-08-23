@@ -871,7 +871,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
-    def set_velocity(self, forward: float, rotational: float) -> None:
+    def set_base_velocity(self, forward: float, rotational: float) -> None:
         """Set the velocity of the robot base.
 
         Args:
