@@ -297,8 +297,11 @@ class Observations:
             return self.transform_points(self.ee_xyz, self.ee_camera_pose)
         return None
 
-    def get_xyz_in_world_frame(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
-        """Get the xyz in world frame."""
+    def get_xyz_in_world_frame(self, scaling: float = 1.0) -> Optional[np.ndarray]:
+        """Get the xyz in world frame.
+
+        Args:
+            scaling: scaling factor for xyz"""
         if self.xyz is None:
             self.compute_xyz(scaling=scaling)
         if self.xyz is not None and self.camera_pose is not None:
@@ -306,5 +309,11 @@ class Observations:
         return None
 
     def transform_points(self, points: np.ndarray, pose: np.ndarray):
-        """Transform points to world frame."""
+        """Transform points to world frame.
+
+        Args:
+            points: points in camera frame
+            pose: pose of the camera"""
+        assert points.shape[-1] == 3, "Points should be in 3D"
+        assert pose.shape == (4, 4), "Pose should be a 4x4 matrix"
         return np.dot(points, pose[:3, :3].T) + pose[:3, 3]
