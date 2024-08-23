@@ -35,6 +35,16 @@ def get_data_path(ext: str) -> str:
     return os.path.join(DATA_ROOT, ext)
 
 
+def get_scene_path(ext: str) -> str:
+    """Returns full path to a particular file in the scene directory"""
+    return os.path.join(DATA_ROOT, "scenes", ext)
+
+
+def get_scene_by_name(name: str) -> str:
+    """Returns full path to a particular file in the scene directory"""
+    return get_scene_path(f"{name}.xml")
+
+
 class Config(yacs.config.CfgNode):
     """store a yaml config"""
 

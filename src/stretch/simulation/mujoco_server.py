@@ -8,7 +8,9 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import threading
 import time
+import timeit
 from typing import Any, Dict, Optional
 
 import click
@@ -22,6 +24,9 @@ import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
 from stretch.utils.image import scale_camera_matrix
+from stretch.motion.control.goto_controller import GotoVelocityController
+from stretch.utils.config import get_control_config
+from stretch.utils.image import compute_pinhole_K, scale_camera_matrix
 
 # Maps HelloStretchIdx to actuators
 mujoco_actuators = {
@@ -50,6 +55,12 @@ manip_idx = [
 ]
 
 
+# Constants for the controller
+CONTROL_HZ = 20
+VEL_THRESHOlD = 0.001
+RVEL_THRESHOLD = 0.005
+
+
 class MujocoZmqServer(BaseZmqServer):
     """Server for Mujoco simulation with ZMQ communication. This allows us to run the Mujoco simulation in the exact same way as we would run a remote ROS server on the robot, including potentially running it on a different machine or on the cloud. It requires:
     - Mujoco installation
@@ -57,9 +68,20 @@ class MujocoZmqServer(BaseZmqServer):
     """
 
     def __init__(
-        self, *args, scene_path: Optional[str] = None, simulation_rate: int = 200, **kwargs
+        self,
+        *args,
+        scene_path: Optional[str] = None,
+        simulation_rate: int = 200,
+        config_name: str = "noplan_velocity_sim",
+        **kwargs,
     ):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
+        # TODO: decide how we want to save scenes, if they should be here in stretch_ai or in stretch_mujoco
+        # They should probably stay in stretch mujoco
+        # if scene_path is None:
+        #     scene_path = get_scene_path("default_scene.xml")
+        # elif not scene_path.endswith(".xml"):
+        #     scene_path = get_scene_by_name(scene_path)
         self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
 
@@ -71,9 +93,98 @@ class MujocoZmqServer(BaseZmqServer):
         self._camera_data = None
         self._status = None
 
+        # Controller stuff
+        # Is the velocity controller active?
+        # TODO: not sure if we want this
+        # self.active = False
+        # Is it done?
+        self.is_done = False
+        # Goal set time
+        self.goal_set_t: Optional[float] = None
+        self.xyt_goal: Optional[np.ndarray] = None
+        self._base_controller_at_goal = False
+        self.control_mode = "navigation"
+        self.controller_finished = True
+
+        # Control module
+        controller_cfg = get_control_config(config_name)
+        self.controller = GotoVelocityController(controller_cfg)
+        # Update the velocity and acceleration configs from the file
+        self.controller.update_velocity_profile(
+            controller_cfg.v_max,
+            controller_cfg.w_max,
+            controller_cfg.acc_lin,
+            controller_cfg.acc_ang,
+        )
+
+    @property
+    def active(self):
+        """Is the velocity controller active?"""
+        return self.control_mode == "navigation"
+
+    def set_goal_pose(self, xyt_goal: np.ndarray):
+        """Set the goal pose for the robot. The controller will then try to reach this goal pose.
+
+        Args:
+            xyt_goal (np.ndarray): Goal pose for the robot in world coordinates (x, y, theta).
+        """
+        assert len(xyt_goal) == 3, "Goal pose should be of size 3 (x, y, theta)"
+        self.controller.update_goal(xyt_goal)
+        self.xyt_goal = self.controller.xyt_goal
+
+        self.is_done = False
+        self.goal_set_t = timeit.default_timer()
+        self.controller_finished = False
+        self._base_controller_at_goal = False
+
+    def _control_loop_thread(self):
+        """Control loop thread for the velocity controller"""
+        while self.is_runnning():
+            self.control_loop_callback()
+            time.sleep(1 / self.hz)
+
+    def control_loop_callback(self):
+        """Actual controller timer callback"""
+
+        if self.active and self.xyt_goal is not None:
+            # Compute control
+            self.is_done = False
+            v_cmd, w_cmd = self.controller.compute_control()
+            done = self.controller.is_done()
+
+            # self.get_logger().info(f"veclocities {v_cmd} and {w_cmd}")
+            # Compute timeout
+            time_since_goal_set = timeit.default_timer() - self.goal_set_t
+            if self.controller.timeout(time_since_goal_set):
+                done = True
+                v_cmd, w_cmd = 0, 0
+
+            # Check if actually done (velocity = 0)
+            if done and self.vel_odom is not None:
+                if self.vel_odom[0] < VEL_THRESHOlD and self.vel_odom[1] < RVEL_THRESHOLD:
+                    if not self.controller_finished:
+                        self.controller_finished = True
+                        self.done_since = timeit.default_timer()
+                    elif (
+                        self.controller_finished
+                        and (timeit.default_timer() - self.done_since) > self.done_t
+                    ):
+                        self.is_done = True
+                else:
+                    self.controller_finished = False
+                    self.done_since = timeit.default_timer()
+
+            # Command robot
+            self.robot_sim.set_base_velocity(v_linear=v_cmd, omega=w_cmd)
+            self.base_controller_at_goal = True
+
+            if self.is_done:
+                self.active = False
+                self.xyt_goal = None
+
     def base_controller_at_goal(self):
         """Check if the base controller is at goal."""
-        return True
+        return self._base_controller_at_goal
 
     def get_joint_state(self):
         """Get the joint state of the robot."""
@@ -176,6 +287,15 @@ class MujocoZmqServer(BaseZmqServer):
                     continue
                 self.robot_sim.move_to(mujoco_actuators[idx], q[i])
 
+    def __del__(self):
+        self.stop()
+
+    def stop(self):
+        """Stop the server and the robot."""
+        self.running = False
+        self.robot_sim.stop()
+        self._control_thread.join()
+
     @override
     def get_control_mode(self) -> str:
         """Get the control mode of the robot."""
@@ -185,6 +305,10 @@ class MujocoZmqServer(BaseZmqServer):
     def start(self):
         self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
         super().start()
+
+        # Create a thread for the control loop
+        self._control_thread = threading.Thread(target=self._control_loop_thread)
+
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
             self._status = self.robot_sim.pull_status()
@@ -213,6 +337,10 @@ class MujocoZmqServer(BaseZmqServer):
         if "head_to" in action:
             self.robot_sim.move_to("head_pan", action["head_to"][0])
             self.robot_sim.move_to("head_tilt", action["head_to"][1])
+        if "base_velocity" in action:
+            self.robot_sim.set_base_velocity(
+                v_linear=action["base_velocity"]["v"], omega=action["base_velocity"]["w"]
+            )
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
