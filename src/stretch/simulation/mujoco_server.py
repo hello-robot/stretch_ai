@@ -186,7 +186,8 @@ class MujocoZmqServer(BaseZmqServer):
                     self.done_since = timeit.default_timer()
 
             # Command robot
-            print(f"Commanding robot with {v_cmd} and {w_cmd}")
+            if self.debug_control_loop:
+                print(f"Commanding robot with {v_cmd} and {w_cmd}")
             self.robot_sim.set_base_velocity(v_linear=v_cmd, omega=w_cmd)
             self._base_controller_at_goal = True
 
