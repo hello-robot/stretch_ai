@@ -930,8 +930,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._seq_id += 1
             output["rgb"] = compression.from_jpg(output["rgb"])
             compressed_depth = output["depth"]
-            depth = compression.from_jp2(compressed_depth)
-            output["depth"] = depth / 1000.0
+            depth = compression.from_jp2(compressed_depth) / 1000
+            output["depth"] = depth
 
             if camera is None:
                 camera = Camera.from_K(
@@ -962,12 +962,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # color_image = compression.from_webp(message["ee_cam/color_image"])
         color_image = compression.from_jpg(message["ee_cam/color_image"])
-        depth_image = compression.from_jp2(message["ee_cam/depth_image"])
+        depth_image = compression.from_jp2(message["ee_cam/depth_image"]) / 1000
         image_scaling = message["ee_cam/image_scaling"]
 
         # Get head information from the message as well
         head_color_image = compression.from_jpg(message["head_cam/color_image"])
-        head_depth_image = compression.from_jp2(message["head_cam/depth_image"])
+        head_depth_image = compression.from_jp2(message["head_cam/depth_image"]) / 1000
         head_image_scaling = message["head_cam/image_scaling"]
         joint = message["robot/config"]
         with self._servo_lock and self._state_lock:
