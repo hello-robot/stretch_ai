@@ -289,7 +289,7 @@ class Observations:
         y = (y - cy) * depth / fy
         return np.stack([x, y, depth], axis=-1)
 
-    def get_ee_xyz_in_world_frame(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
+    def get_ee_xyz_in_world_frame(self, scaling: float = 1.0) -> Optional[np.ndarray]:
         """Get the end effector xyz in world frame."""
         if self.ee_xyz is None:
             self.compute_ee_xyz(scaling=scaling)

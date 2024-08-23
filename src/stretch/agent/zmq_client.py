@@ -962,7 +962,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # color_image = compression.from_webp(message["ee_cam/color_image"])
         color_image = compression.from_jpg(message["ee_cam/color_image"])
-        depth_image = compression.from_jp2(message["ee_cam/depth_image"]) / 1000
+        depth_image = compression.from_jp2(message["ee_cam/depth_image"])
+        depth_image = depth_image / 1000
         image_scaling = message["ee_cam/image_scaling"]
 
         # Get head information from the message as well

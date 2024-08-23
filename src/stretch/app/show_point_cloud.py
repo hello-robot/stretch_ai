@@ -38,6 +38,7 @@ def main(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
         parameters=parameters,
+        enable_rerun_server=False,
     )
     if reset:
         demo = RobotAgent(robot, parameters, None)
@@ -55,8 +56,8 @@ def main(
         obs = robot.get_observation()
 
         if servo is not None:
-            head_xyz = servo.get_xyz_in_world_frame(scaling=1e-3).reshape(-1, 3)
-            ee_xyz = servo.get_ee_xyz_in_world_frame(scaling=1e-3).reshape(-1, 3)
+            head_xyz = servo.get_xyz_in_world_frame().reshape(-1, 3)
+            ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
 
             xyz = np.concatenate([head_xyz, ee_xyz], axis=0)
             rgb = (
