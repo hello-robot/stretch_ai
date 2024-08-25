@@ -36,18 +36,11 @@ RGBD.DepthMapFactor: 1000.0
 # Do not insert KFs when recently lost
 IMU.InsertKFsWhenLost: 0
 
-# IMU noise (Use those from VINS-mono)
-IMU.NoiseGyro: 1e-2 # 3 # 2.44e-4 #1e-3 # rad/s^0.5
-IMU.NoiseAcc: 1e-1 #2 # 1.47e-3 #1e-2 # m/s^1.5
-IMU.GyroWalk: 1e-6 # rad/s^1.5
-IMU.AccWalk: 1e-4 # m/s^2.5
-IMU.Frequency: 200.0
-
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 1250
+ORBextractor.nFeatures: 1000
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
 ORBextractor.scaleFactor: 1.2
