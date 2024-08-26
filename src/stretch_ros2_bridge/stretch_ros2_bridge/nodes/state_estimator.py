@@ -28,6 +28,8 @@ from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
+import orbslam3
+
 from stretch.motion import STRETCH_BASE_FRAME
 from stretch.utils.pose import to_matrix, transform_to_list
 from stretch_ros2_bridge.ros.utils import matrix_from_pose_msg, matrix_to_pose_msg
@@ -96,7 +98,7 @@ class NavStateEstimator(Node):
         if vio_measurement is not None:
             combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement) + np.array(vio_measurement))
         else:
-            combined_measurement = (np.array(measurement1) + np.array(measurement2) + np.array(measurement3)) / 2
+            combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement)) / 2
         self.update_kalman(combined_measurement)
         self.publish_kf_state()
 
@@ -231,7 +233,8 @@ class NavStateEstimator(Node):
                             pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z]
 
         if self.measurement2 is not None and self.measurement1 is not None:
-            self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def _wheel_odom_callback(self, pose: Odometry):
         # self.get_clock().now() alternative for rospy.Time().now()
@@ -257,7 +260,8 @@ class NavStateEstimator(Node):
                             pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
 
         if self.measurement2 is not None and self.measurement3 is not None:
-            self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def _slam_pose_callback(self, pose: PoseWithCovarianceStamped) -> None:
         """Update slam pose for filtering"""
@@ -270,7 +274,8 @@ class NavStateEstimator(Node):
                             pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
         
         if self.measurement1 is not None and self.measurement3 is not None:
-            self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def get_pose(self):
         try:
@@ -287,7 +292,8 @@ class NavStateEstimator(Node):
             self.measurement2 = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
 
             if self.measurement1 is not None and self.measurement3 is not None:
-                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+                if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                    self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
 
         except TransformException as ex:
