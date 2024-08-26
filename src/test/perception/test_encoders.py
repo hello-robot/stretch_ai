@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 import pytest
 
-images = ["../../../docs/object.png", "../../../docs/receptacle.png"]
+images = ["../../docs/object.png", "../../docs/receptacle.png"]
 
 from PIL import Image
 

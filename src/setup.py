@@ -97,6 +97,7 @@ setuptools.setup(
             "flake8",
             "black",
             "mypy",
+            "lark",
         ],
         "hand_tracking": [
             "mediapipe",
