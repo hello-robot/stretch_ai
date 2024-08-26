@@ -79,6 +79,7 @@ class MujocoZmqServer(BaseZmqServer):
         self,
         *args,
         scene_path: Optional[str] = None,
+        scene_model: Optional[str] = None,
         simulation_rate: int = 200,
         config_name: str = "noplan_velocity_sim",
         **kwargs,
@@ -90,7 +91,12 @@ class MujocoZmqServer(BaseZmqServer):
         #     scene_path = get_scene_path("default_scene.xml")
         # elif not scene_path.endswith(".xml"):
         #     scene_path = get_scene_by_name(scene_path)
-        self.robot_sim = StretchMujocoSimulator(scene_path)
+        if scene_model is not None:
+            if scene_path is not None:
+                logger.warning("Both scene model and scene path provided. Using scene model.")
+            self.robot_sim = StretchMujocoSimulator(scene_model=scene_model)
+        else:
+            self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
 
         # Hard coded printout rates
@@ -114,6 +120,9 @@ class MujocoZmqServer(BaseZmqServer):
         self.control_mode = "navigation"
         self.controller_finished = True
         self.active = False
+
+        # Other
+        self.verbose = True
 
         # Control module
         controller_cfg = get_control_config(config_name)
