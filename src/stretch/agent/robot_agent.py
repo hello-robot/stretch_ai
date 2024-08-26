@@ -141,6 +141,7 @@ class RobotAgent:
                         "instance_memory/min_percent_for_instance_view", 0.2
                     ),
                     "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
+                    "use_visual_feat": parameters.get("use_visual_feat", False),
                 },
                 prune_detected_objects=parameters.get("prune_detected_objects", False),
             )
@@ -331,7 +332,11 @@ class RobotAgent:
         x, y, _ = self.robot.get_base_pose()
         print(f"==== ROTATE IN PLACE at {x}, {y} ====")
         while i < steps:
-            self.robot.navigate_to([x, y, i * step_size], relative=False, blocking=True)
+            t0 = timeit.default_timer()
+            self.robot.navigate_to(
+                [x, y, i * step_size], relative=False, blocking=True, verbose=verbose
+            )
+            t1 = timeit.default_timer()
 
             if self.robot.last_motion_failed():
                 # We have a problem!
@@ -341,6 +346,7 @@ class RobotAgent:
 
             # Add an observation after the move
             if verbose:
+                print(" - Navigation took", t1 - t0, "seconds")
                 print(f"---- UPDATE {i+1} at {x}, {y}----")
             self.update()
 
