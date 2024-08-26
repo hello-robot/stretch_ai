@@ -24,8 +24,8 @@ import yaml
 
 import stretch
 
-CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "config")
-CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
+CONFIG_ROOT = str(Path(stretch.__path__[0]).resolve() / "config")
+CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).resolve() / "config" / "control")
 
 DATA_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "../data")
 

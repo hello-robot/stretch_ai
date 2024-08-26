@@ -26,7 +26,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
-    package_data={"stretch": ["stretch/perception/*.tsv"]},
+    include_package_data=True,
+    package_data={"stretch": ["config/**/*.yaml", "perception/*.tsv"]},
     install_requires=[
         # Machine learning code
         "torch<2.4",
