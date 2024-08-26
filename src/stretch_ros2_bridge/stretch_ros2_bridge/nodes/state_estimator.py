@@ -17,6 +17,7 @@ import threading
 from typing import Optional
 
 import numpy as np
+import orbslam3
 import rclpy
 import sophuspy as sp
 import tf2_ros
@@ -27,8 +28,6 @@ from rclpy.node import Node
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
-
-import orbslam3
 
 from stretch.motion import STRETCH_BASE_FRAME
 from stretch.utils.pose import to_matrix, transform_to_list
@@ -75,28 +74,47 @@ class NavStateEstimator(Node):
         self.R = np.eye(6) * 1e-3
         self.H = np.eye(6)
 
-        dt = 0.1 # TODO: get from odom message
+        dt = 0.1  # TODO: get from odom message
         self.F = np.eye(8)
 
-        self.measurement1 = None
-        self.measurement2 = None
-        self.measurement3 = None
+        self.measurement1 = None  # wheel odometry
+        self.measurement2 = None  # 2D SLAM (Hector)
+        self.measurement3 = None  # vio (ORB-SLAM3)
 
     def predict_kalman(self):
+        """
+        Predict the state of the Kalman filter.
+        """
         self.x = self.F @ self.x
         self.P = self.F @ self.P @ self.F.T + self.Q
 
     def update_kalman(self, z):
+        """
+        Update the state of the Kalman filter.
+
+        Parameters:
+        z (np.array): Measurement vector.
+        """
         y = z - (self.H @ self.x)
         S = self.H @ self.P @ self.H.T + self.R
         K = self.P @ self.H.T @ np.linalg.inv(S)
-        
+
         self.x = self.x + K @ y
         self.P = (np.eye(6) - K @ self.H) @ self.P
 
-    def fuse_measurements(self, wheel_measurement, slam_measurement, vio_measurement = None):
+    def fuse_measurements(self, wheel_measurement, slam_measurement, vio_measurement=None):
+        """
+        Fuse the measurements from wheel odometry, 2D SLAM, and VIO.
+
+        Parameters:
+        wheel_measurement (list): Wheel odometry measurement.
+        slam_measurement (list): 2D SLAM measurement.
+        vio_measurement (list): VIO measurement.
+        """
         if vio_measurement is not None:
-            combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement) + np.array(vio_measurement))
+            combined_measurement = (
+                np.array(wheel_measurement) + np.array(slam_measurement) + np.array(vio_measurement)
+            )
         else:
             combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement)) / 2
         self.update_kalman(combined_measurement)
@@ -107,6 +125,9 @@ class NavStateEstimator(Node):
         self.measurement3 = None
 
     def publish_kf_state(self):
+        """
+        Publish the state of the Kalman filter.
+        """
         pose_msg = Pose()
         pose_msg.position.x = self.x[0]
         pose_msg.position.y = self.x[1]
@@ -124,6 +145,12 @@ class NavStateEstimator(Node):
         self._estimator_kf_pub.publish(pose_out)
 
     def _publish_filtered_state(self, timestamp):
+        """
+        Publish the filtered state of the robot.
+
+        Parameters:
+        timestamp (rclpy.time.Time): Timestamp of the message.
+        """
         if self._trust_slam:
             pose_msg = matrix_to_pose_msg(self._slam_pose_sp.matrix())
         else:
@@ -210,6 +237,12 @@ class NavStateEstimator(Node):
         return slam_pose * sp.SE3.exp(pose_diff_log)
 
     def _vio_odom_callback(self, pose: PoseStamped):
+        """
+        Callback for VIO odometry.
+
+        Parameters:
+        pose (PoseStamped): VIO odometry pose.
+        """
         # self.get_clock().now() alternative for rospy.Time().now()
         t_curr = self.get_clock().now()
 
@@ -229,14 +262,26 @@ class NavStateEstimator(Node):
         self._pose_odom_prev = pose_odom
         self._t_odom_prev = t_curr
 
-        self.measurement3 = [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z,
-                            pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z]
+        self.measurement3 = [
+            pose.pose.position.x,
+            pose.pose.position.y,
+            pose.pose.position.z,
+            pose.pose.orientation.x,
+            pose.pose.orientation.y,
+            pose.pose.orientation.z,
+        ]
 
         if self.measurement2 is not None and self.measurement1 is not None:
             if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
                 self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def _wheel_odom_callback(self, pose: Odometry):
+        """
+        Callback for wheel odometry.
+
+        Parameters:
+        pose (Odometry): Wheel odometry pose.
+        """
         # self.get_clock().now() alternative for rospy.Time().now()
         t_curr = self.get_clock().now()
 
@@ -256,28 +301,47 @@ class NavStateEstimator(Node):
         self._pose_odom_prev = pose_odom
         self._t_odom_prev = t_curr
 
-        self.measurement1 = [pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z,
-                            pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
+        self.measurement1 = [
+            pose.pose.pose.position.x,
+            pose.pose.pose.position.y,
+            pose.pose.pose.position.z,
+            pose.pose.pose.orientation.x,
+            pose.pose.pose.orientation.y,
+            pose.pose.pose.orientation.z,
+        ]
 
         if self.measurement2 is not None and self.measurement3 is not None:
             if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
                 self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def _slam_pose_callback(self, pose: PoseWithCovarianceStamped) -> None:
-        """Update slam pose for filtering"""
+        """Update slam pose for filtering
+
+        Parameters:
+        pose (PoseWithCovarianceStamped): Slam pose
+        """
         self.get_logger().info(f"received pose {pose}")
         with self._slam_inject_lock:
             self._slam_pose_prev = self._slam_pose_sp
             self._slam_pose_sp = sp.SE3(matrix_from_pose_msg(pose.pose.pose))
 
-        self.measurement2 = [pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z,
-                            pose.pose.pose.orientation.x, pose.pose.pose.orientation.y, pose.pose.pose.orientation.z]
-        
+        self.measurement2 = [
+            pose.pose.pose.position.x,
+            pose.pose.pose.position.y,
+            pose.pose.pose.position.z,
+            pose.pose.pose.orientation.x,
+            pose.pose.pose.orientation.y,
+            pose.pose.pose.orientation.z,
+        ]
+
         if self.measurement1 is not None and self.measurement3 is not None:
             if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
                 self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
     def get_pose(self):
+        """
+        Get the pose of the robot in the map frame and update the filtered pose.
+        """
         try:
             # Added transform_to_list function to handle change in return type of tf2 lookup_transform
             trans, rot = transform_to_list(
@@ -295,18 +359,18 @@ class NavStateEstimator(Node):
                 if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
                     self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
 
-
         except TransformException as ex:
             self.get_logger().info(f"Could not transform the base pose {ex}")
 
     def create_pubs_and_subs(self):
+        """
+        Create publishers and subscribers.
+        """
         # Create publishers and subscribers
         self._estimator_pub = self.create_publisher(
             PoseStamped, "/state_estimator/pose_filtered", 1
         )
-        self._estimator_kf_pub = self.create_publisher(
-            PoseStamped, "/state_estimator/pose_kf", 1
-        )
+        self._estimator_kf_pub = self.create_publisher(PoseStamped, "/state_estimator/pose_kf", 1)
         self._world_frame_id = "map"
         # TODO: if we need to debug this vs. the scan matcher
         # self._base_frame_id = "base_link_estimator"
@@ -329,12 +393,16 @@ class NavStateEstimator(Node):
             10,
         )
         self.create_timer(1 / 10, self.get_pose)
-        
+
         # This pose update comes from wheel odometry
-        self.wheel_odom_subcriber = self.create_subscription(Odometry, "/odom", self._wheel_odom_callback, 1)
+        self.wheel_odom_subcriber = self.create_subscription(
+            Odometry, "/odom", self._wheel_odom_callback, 1
+        )
 
         # VIO odometry
-        self.vio_odom_subcriber = self.create_subscription(PoseStamped, "/orb_slam3/pose", self._vio_odom_callback, 1)
+        self.vio_odom_subcriber = self.create_subscription(
+            PoseStamped, "/orb_slam3/pose", self._vio_odom_callback, 1
+        )
 
         # Run
         log.info("State Estimator launched.")

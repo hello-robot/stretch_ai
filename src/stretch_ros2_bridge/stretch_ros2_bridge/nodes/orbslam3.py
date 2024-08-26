@@ -18,7 +18,7 @@ import orbslam3
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import TransformStamped, PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from nav2_msgs.srv import LoadMap, SaveMap
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, Imu
@@ -97,6 +97,13 @@ class OrbSlam3(Node):
         self.pose_pub = self.create_publisher(PoseStamped, "/orb_slam3/pose", 1)
 
     def camera_info_callback(self, msg):
+        """
+        Callback function for CameraInfo message.
+        Initializes ORB-SLAM3 with camera intrinsics and image resolution.
+
+        Parameters:
+        msg (CameraInfo): CameraInfo message.
+        """
         if self.slam is None:
             fx = msg.k[0]
             fy = msg.k[4]
@@ -137,19 +144,53 @@ class OrbSlam3(Node):
             print("ORB-SLAM3 initialized")
 
     def rgb_callback(self, msg):
+        """
+        Callback function for RGB Image message.
+
+        Parameters:
+        msg (Image): RGB Image message
+        """
         self.rgb_image = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
 
     def depth_callback(self, msg):
+        """
+        Callback function for Depth Image message.
+
+        Parameters:
+        msg (Image): Depth Image message
+        """
         self.depth_image = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.width)
         self.timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
     def accel_callback(self, msg):
+        """
+        Callback function for Accelerometer message.
+
+        Parameters:
+        msg (Imu): Accelerometer message
+        """
         self.accel_data = msg
 
     def gyro_callback(self, msg):
+        """
+        Callback function for Gyroscope message.
+
+        Parameters:
+        msg (Imu): Gyroscope message
+        """
         self.gyro_data = msg
 
     def save_map_callback(self, request, response):
+        """
+        Callback function for SaveMap service.
+
+        Parameters:
+        request (SaveMap.Request): SaveMap request
+        response (SaveMap.Response): SaveMap response
+
+        Returns:
+        SaveMap.Response: SaveMap response
+        """
         if self.slam is not None:
             map_file = request.map_url
             self.slam.save_map(map_file)
@@ -159,6 +200,16 @@ class OrbSlam3(Node):
         return response
 
     def load_map_callback(self, request, response):
+        """
+        Callback function for LoadMap service.
+
+        Parameters:
+        request (LoadMap.Request): LoadMap request
+        response (LoadMap.Response): LoadMap response
+
+        Returns:
+        LoadMap.Response: LoadMap response
+        """
         if self.slam is not None:
             map_file = request.map_url
             self.slam.load_map(map_file)
@@ -197,6 +248,12 @@ class OrbSlam3(Node):
             rclpy.spin_once(self, timeout_sec=0.1)
 
     def publish_tf(self, pose):
+        """
+        Publish camera pose as a TF message.
+
+        Parameters:
+        pose (Pose): Camera pose in the camera frame.
+        """
         x = pose.get_x()
         y = pose.get_y()
         z = pose.get_z()
@@ -220,6 +277,12 @@ class OrbSlam3(Node):
         self.tf_broadcaster.sendTransform(transform)
 
     def publish_pose(self, pose):
+        """
+        Publish camera pose as a PoseStamped message.
+
+        Parameters:
+        pose (Pose): Camera pose in the camera frame.
+        """
         msg = PoseStamped()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "base_link"
