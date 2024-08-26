@@ -46,6 +46,7 @@ class ZmqRos2Leader:
         record_success: bool = False,
         platform: str = "linux",
         use_clutch: bool = False,
+        teach_grasping: bool = False,
     ):
         self.robot = robot
         self.camera = None
@@ -459,6 +460,18 @@ class ZmqRos2Leader:
                     self._recording = False
                     print("[LEADER] Recording stopped. Terminating.")
                     break
+                else:
+                    for i in range(10):
+                        if key == ord(str(i)):
+                            if self.teach_grasping and i >= 1 and i <= 3:
+                                if i == 1:
+                                    print(f"[LEADER] Key {i} pressed. Teaching PREGRASP.")
+                                elif i == 2:
+                                    print(f"[LEADER] Key {i} pressed. Teaching GRASP.")
+                                elif i == 3:
+                                    print(f"[LEADER] Key {i} pressed. Teaching POSTGRASP.")
+                            else:
+                                print(f"[LEADER] Key {i} pressed. Recording waypoint {i}.")
 
                 # Raw input from teleop
                 markers, color_image = self.webcam_aruco_detector.process_next_frame()
@@ -595,6 +608,7 @@ if __name__ == "__main__":
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
     parser.add_argument("-c", "--clutch", action="store_true")
+    parser.add_argument("--teach-grasping", action="store_true")
     args = parser.parse_args()
 
     # Parameters
@@ -625,6 +639,7 @@ if __name__ == "__main__":
         record_success=args.record_success,
         platform=args.platform,
         use_clutch=args.clutch,
+        teach_grasping=args.teach_grasping,
     )
 
     try:
