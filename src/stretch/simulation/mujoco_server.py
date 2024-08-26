@@ -17,6 +17,7 @@ import click
 import numpy as np
 from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.robocasa_gen import model_generation_wizard
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
@@ -533,6 +534,13 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option(
     "--scene_path", default=None, help="Provide a path to mujoco scene file with stretch.xml"
 )
+@click.option("--use-robocasa", default=False, help="Use robocasa for generating a scene")
+@click.option("--robocasa-task", default="PnPCounterToCab", help="Robocasa task to generate")
+@click.option("--robocasa-style", type=int, default=1, help="Robocasa style to generate")
+@click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
+@click.option(
+    "--robocasa-write-to-xml", default=False, help="Write the generated scene to an xml file"
+)
 def main(
     send_port: int,
     recv_port: int,
@@ -544,7 +552,22 @@ def main(
     ee_image_scaling: float,
     depth_scaling: float,
     scene_path: str,
+    use_robocasa: bool,
+    robocasa_task: str,
+    robocasa_style: int,
+    robocasa_layout: int,
+    robocasa_write_to_xml: bool,
 ):
+
+    scene_model = None
+    if use_robocasa:
+        scene_model, scene_xml = model_generation_wizard(
+            task=robocasa_task,
+            style=robocasa_style,
+            layout=robocasa_layout,
+            write_to_xml=robocasa_write_to_xml,
+        )
+
     server = MujocoZmqServer(
         send_port,
         recv_port,
@@ -556,6 +579,7 @@ def main(
         ee_image_scaling,
         depth_scaling,
         scene_path=scene_path,
+        scene_model=scene_model,
     )
     try:
         server.start()
