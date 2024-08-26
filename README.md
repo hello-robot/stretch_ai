@@ -78,7 +78,6 @@ ros2 launch stretch_ros2_bridge server.launch.py
 Then, first try these apps to make sure connections are working properly:
 
 - [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
-- [Test Timing](#test-timing) - Test the timing of the robot's control loop over the network.
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
@@ -92,14 +91,12 @@ Advanced:
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
 
-Debug tools:
-
-- [Camera Info](#camera-info) - Print out camera information.
-
 Finally:
 
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
+
+There are also some apps for [debugging](docs/debug.md).
 
 ## Installation
 
@@ -230,20 +227,6 @@ python -m stretch.app.keyboard_teleop --headless
 
 Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
 
-#### Test Timing
-
-Test the timing of the robot's control loop over the network. This will print out the time it takes to send a command to the robot and receive a response. It will show a histogram after a fixed number of iterations given by the `--iterations` flag (default is 500).
-
-```bash
-python -m stretch.app.timing --robot_ip $ROBOT_IP
-
-# Headless mode - no display
-python -m stretch.app.timing --headless
-
-# Set the number of iterations per histogram to 1000
-python -m stretch.app.timing --iterations 1000
-```
-
 #### Print Joint States
 
 To make sure the robot is connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
@@ -256,23 +239,6 @@ You can also print out just one specific joint. For example, to just get arm ext
 
 ```
 python -m stretch.app.print_joint_states --joint arm
-```
-
-#### Camera Info
-
-Print out information about the cameras on the robot for debugging purposes:
-
-```bash
-python -m stretch.app.camera_info --robot_ip $ROBOT_IP
-```
-
-This will print out information about the resolutions of different images sent by the robot's cameras, and should show something like this:
-
-```
----------------------- Camera Info ----------------------
-Servo Head RGB shape: (320, 240, 3) Servo Head Depth shape: (320, 240)
-Servo EE RGB shape: (240, 320, 3) Servo EE Depth shape: (240, 320)
-Observation RGB shape: (640, 480, 3) Observation Depth shape: (640, 480)
 ```
 
 #### Visualization and Streaming Video
