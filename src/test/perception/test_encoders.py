@@ -6,11 +6,12 @@
 #
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
+import numpy as np
 import pytest
+import torch
+from PIL import Image
 
 images = ["../../docs/object.png", "../../docs/receptacle.png"]
-
-from PIL import Image
 
 from stretch.perception.encoders import encoders, get_encoder
 
@@ -38,6 +39,7 @@ def test_get_encoder():
 
 @pytest.mark.parametrize("encoder_name", encoders)
 def test_get_encoder_all(encoder_name):
+    print(f"Testing encoder: {encoder_name}")
     encoder = get_encoder(encoder_name, {})
     assert encoder is not None
 
@@ -45,17 +47,22 @@ def test_get_encoder_all(encoder_name):
         get_encoder("invalid_encoder", {})
 
     for image_path in images:
+        print(f"Testing encoder: {encoder_name} with image: {image_path}")
         encoder = get_encoder(encoder_name, {})
         assert encoder is not None
 
         image = Image.open(image_path)
-        encoded = encoder.encode_image(image)
+        np_image = np.asarray(image)
+        encoded = encoder.encode_image(np_image)
         assert encoded is not None
-        assert isinstance(encoded, dict)
+        assert isinstance(encoded, torch.Tensor)
         assert len(encoded) > 0
         print(f"Encoded: {encoded}")
 
 
 if __name__ == "__main__":
     test_get_encoder()
-    test_get_encoder_all()
+    test_get_encoder_all("clip")
+    test_get_encoder_all("normalized_clip")
+    test_get_encoder_all("siglip")
+    test_get_encoder_all("dinov2siglip")

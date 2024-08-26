@@ -29,6 +29,6 @@ def get_encoder(encoder_name, args: Any):
     elif encoder_name == "siglip":
         return SiglipEncoder(**args)
     elif encoder_name == "dinov2siglip":
-        return Dinov2SigLIPEncoder(args)
+        return Dinov2SigLIPEncoder(**args)
     else:
         raise ValueError(f"Encoder {encoder_name} not implemented or not supported.")
