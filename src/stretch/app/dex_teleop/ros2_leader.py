@@ -402,6 +402,8 @@ class ZmqRos2Leader:
 
         try:
             while True:
+                waypoint_key = None
+
                 loop_timer.mark_start()
 
                 # Get observation
@@ -479,6 +481,8 @@ class ZmqRos2Leader:
                                     print(f"[LEADER] Key {i} pressed. Teaching POSTGRASP.")
                             else:
                                 print(f"[LEADER] Key {i} pressed. Recording waypoint {i}.")
+                            waypoint_key = i
+                            break
 
                 # Raw input from teleop
                 markers, color_image = self.webcam_aruco_detector.process_next_frame()
@@ -536,6 +540,18 @@ class ZmqRos2Leader:
                         ]
                     )
 
+                    if waypoint_key is not None:
+                        print("[LEADER] Recording waypoint.")
+                        ok = self._recorder.add_waypoint(
+                            waypoint_key,
+                            robot_pose,
+                            goal_configuration["stretch_gripper"],
+                        )
+                        if not ok:
+                            logger.warning(
+                                f"[LEADER] WARNING: overwriting previous waypoint {waypoint_key}."
+                            )
+
                     if not clutched:
                         last_robot_pose = robot_pose
 
@@ -568,6 +584,8 @@ class ZmqRos2Leader:
                             )
                     else:
                         offset_pose = last_robot_pose - robot_pose
+                elif waypoint_key is not None:
+                    print("[LEADER] Recording waypoint failed. Commanded goal_dict was invalid.")
 
                 self.prev_goal_dict = goal_dict
 
