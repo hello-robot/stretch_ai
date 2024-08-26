@@ -68,6 +68,7 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
+        "einops",
         # Compression tools
         "pyliblzfse",
         "webp",
