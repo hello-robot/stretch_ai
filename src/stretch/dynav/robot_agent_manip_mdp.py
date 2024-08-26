@@ -43,8 +43,8 @@ class RobotAgentMDP:
         robot: RobotClient,
         parameters: Dict[str, Any],
         ip: str,
-        image_port: int = 5560,
-        text_port: int = 5561,
+        image_port: int = 5555,
+        text_port: int = 5556,
         manip_port: int = 5557,
         re: int = 1,
     ):
@@ -90,8 +90,15 @@ class RobotAgentMDP:
         for pan in [0.5, -0.5, -1.5]:
             for tilt in [-0.55]:
                 self.robot.head_to(pan, tilt, blocking = True)
-                time.sleep(0.3)
                 self.update()
+
+    def rotate_in_place(self):
+        logger.info("Rotate in place")
+        xyt = self.robot.get_base_pose()
+        for i in range(8):
+            xyt[2] += 2 * np.pi / 8
+            self.robot.navigate_to(xyt, blocking = True)
+            self.update()
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
@@ -108,9 +115,9 @@ class RobotAgentMDP:
     ):
         start_time = time.time()
 
-        self.robot.look_front()
+        # self.robot.look_front()
         self.look_around()
-        self.robot.look_front()
+        # self.robot.look_front()
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
@@ -127,12 +134,12 @@ class RobotAgentMDP:
         if len(res) > 0:
             print("Plan successful!")
             if len(res) > 2 and np.isnan(res[-2]).all():
-                blocking = text != ''
+                # blocking = text != ''
                 self.robot.execute_trajectory(
                     res[:-2],
                     pos_err_threshold=self.pos_err_threshold,
                     rot_err_threshold=self.rot_err_threshold,
-                    blocking = blocking
+                    blocking = True
                 )
 
                 execution_finish = time.time()
@@ -148,7 +155,7 @@ class RobotAgentMDP:
                     res,
                     pos_err_threshold=self.pos_err_threshold,
                     rot_err_threshold=self.rot_err_threshold,
-                    blocking = False
+                    blocking = True
                 )
 
                 execution_finish = time.time()
@@ -206,7 +213,7 @@ class RobotAgentMDP:
             head_tilt=init_tilt)
         camera = RealSenseCamera(self.robot)
 
-        time.sleep(2)
+        # time.sleep(2)
         rotation, translation = capture_and_process_image(
             camera = camera,
             mode = 'place',
@@ -220,28 +227,25 @@ class RobotAgentMDP:
 
         # lift arm to the top before the robot extends the arm, prepare the pre-placing gripper pose
         self.manip_wrapper.move_to_position(lift_pos=1.05)
-        time.sleep(1.5)
         self.manip_wrapper.move_to_position(wrist_yaw=0,
                                  wrist_pitch=0)
-        time.sleep(1.5)
 
         # Placing the object
         move_to_point(self.manip_wrapper, translation, base_node, self.transform_node, move_mode=0)
-        time.sleep(1.5)
-        self.manip_wrapper.move_to_position(gripper_pos=1)
+        self.manip_wrapper.move_to_position(gripper_pos=1, blocking = False)
+        time.sleep(0.1)
 
         # Lift the arm a little bit, and rotate the wrist roll of the robot in case the object attached on the gripper
         self.manip_wrapper.move_to_position(lift_pos = self.manip_wrapper.robot.get_six_joints()[1] + 0.3)
-        self.manip_wrapper.move_to_position(wrist_roll = 3.)
-        time.sleep(0.8)
-        self.manip_wrapper.move_to_position(wrist_roll = -3.)
-        time.sleep(0.8)
+        self.manip_wrapper.move_to_position(wrist_roll = 3., blocking = False)
+        time.sleep(0.5)
+        self.manip_wrapper.move_to_position(wrist_roll = -3., blocking = False)
+        time.sleep(0.5)
 
         # Wait for some time and shrink the arm back
         self.manip_wrapper.move_to_position(gripper_pos=1, 
                                 lift_pos = 1.05,
                                 arm_pos = 0)
-        time.sleep(2)
         self.manip_wrapper.move_to_position(wrist_pitch=-1.57)
 
         # Shift the base back to the original point as we are certain that orginal point is navigable in navigation obstacle map

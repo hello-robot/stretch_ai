@@ -82,6 +82,16 @@ def main(
         robot, parameters, ip = ip, re = re
     )
 
+    demo.rotate_in_place()
+
+    # def keep_looking_around():
+    #     while True:
+    #         demo.look_around()
+
+    # img_thread = threading.Thread(target=keep_looking_around)
+    # img_thread.daemon = True
+    # img_thread.start()
+
     while True:
         mode = input('select mode? E/N/S')
         if mode == 'S':

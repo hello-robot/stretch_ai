@@ -794,7 +794,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
-                raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
+                print(f"Timeout waiting for block with step id = {block_id}")
+                break
+                # raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
@@ -886,6 +888,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         per_waypoint_timeout: float = 10.0,
         final_timeout: float = 10.0,
         relative: bool = False,
+        blocking: bool = False
     ):
         """Execute a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
 
