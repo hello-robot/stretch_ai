@@ -140,10 +140,14 @@ class MujocoZmqServer(BaseZmqServer):
         else:
             xyt_goal = xyt_goal
 
-        print("Currently at:", self.get_base_pose())
-        print("Setting goal to:", xyt_goal)
-        print("Passed goal was: ", xyt_goal)
-        print("Relative: ", relative)
+        if self.debug_control_loop:
+            print("-" * 20)
+            print("Control loop callback: ", self.active, self.xyt_goal)
+            print("Currently at:", self.get_base_pose())
+            print("Setting goal to:", xyt_goal)
+            print("Passed goal was: ", xyt_goal)
+            print("Relative: ", relative)
+            print("-" * 20)
 
         self.controller.update_goal(xyt_goal)
         self.xyt_goal = self.controller.xyt_goal
