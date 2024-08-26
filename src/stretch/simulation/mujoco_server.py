@@ -140,6 +140,11 @@ class MujocoZmqServer(BaseZmqServer):
         else:
             xyt_goal = xyt_goal
 
+        print("Currently at:", self.get_base_pose())
+        print("Setting goal to:", xyt_goal)
+        print("Passed goal was: ", xyt_goal)
+        print("Relative: ", relative)
+
         self.controller.update_goal(xyt_goal)
         self.xyt_goal = self.controller.xyt_goal
         self.active = True
@@ -367,7 +372,11 @@ class MujocoZmqServer(BaseZmqServer):
                 v_linear=action["base_velocity"]["v"], omega=action["base_velocity"]["w"]
             )
         elif "xyt" in action:
-            self.set_goal_pose(action["xyt"])
+            # Set the goal pose for the simulated velocity controller
+            # If relative motion is set, the goal is relative to the current pose
+            relative_motion = action.get("nav_relative", False)
+            # We pass goals and let the control thread compute velocities
+            self.set_goal_pose(action["xyt"], relative=relative_motion)
 
     @override
     def get_full_observation_message(self) -> Dict[str, Any]:
