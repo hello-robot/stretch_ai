@@ -56,11 +56,11 @@ if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu
     export CUDA_VERSION_NODOT=cpu
     export CUDA_HOME=""
-    ENV_NAME=stretch_ai_cpu_$VERSION
+    ENV_NAME=stretch_ai_cpu_${VERSION}
     export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-    ENV_NAME=stretch_ai_$VERSION
+    ENV_NAME=stretch_ai_${VERSION}
     export PYTORCH_VERSION=2.3.1
 fi
 
