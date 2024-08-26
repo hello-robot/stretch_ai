@@ -251,7 +251,7 @@ class MujocoZmqServer(BaseZmqServer):
         velocities[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["vel"]
 
         # Gripper joint
-        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"]
+        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"] + 0.5
         velocities[HelloStretchIdx.GRIPPER] = status["gripper"]["vel"]
 
         # Head pan joint
@@ -406,7 +406,6 @@ class MujocoZmqServer(BaseZmqServer):
         xyt = self.get_base_pose()
 
         # Get the other fields from an observation
-        # rgb = compression.to_webp(rgb)
         message = {
             "rgb": rgb,
             "depth": depth,
@@ -415,7 +414,7 @@ class MujocoZmqServer(BaseZmqServer):
             "ee_pose": self.get_ee_pose(),
             "joint": positions,
             "gps": xyt[:2],
-            "compass": xyt[2],
+            "compass": np.array([xyt[2]]),
             "rgb_width": width,
             "rgb_height": height,
             "control_mode": self.get_control_mode(),
