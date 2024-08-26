@@ -13,6 +13,8 @@ import os
 from stretch.dynav.ok_robot_hw.utils import kdl_tree_from_urdf_model
 from stretch.dynav.ok_robot_hw.global_parameters import *
 
+# from stretch.utils.geometry import angle_difference
+# import timeit
 
 OVERRIDE_STATES = {}
 
@@ -104,7 +106,8 @@ class HelloRobot:
         gripper_pos = None, 
         base_theta = None, 
         head_tilt = None, 
-        head_pan = None
+        head_pan = None,
+        blocking = True,
     ):
         """
             Moves the robots, base, arm, lift, wrist and head to a desired position.
@@ -117,7 +120,7 @@ class HelloRobot:
         target_state = self.robot.get_six_joints()
         if not gripper_pos is None:
             self.CURRENT_STATE = gripper_pos*(self.STRETCH_GRIPPER_MAX-self.STRETCH_GRIPPER_MIN)+self.STRETCH_GRIPPER_MIN
-            self.robot.gripper_to(self.CURRENT_STATE, blocking = True)
+            self.robot.gripper_to(self.CURRENT_STATE, blocking = blocking)
         if not arm_pos is None:
             target_state[2] = arm_pos
         if not lift_pos is None:
@@ -136,7 +139,7 @@ class HelloRobot:
         
         # Actual Movement
         print('Target Position', target_state)
-        self.robot.arm_to(target_state, blocking = True)
+        self.robot.arm_to(target_state, blocking = blocking)
         print('Actual location', self.robot.get_six_joints())
 
         # Head state update and Movement
@@ -145,7 +148,7 @@ class HelloRobot:
             target_head_tilt = head_tilt
         if not head_pan is None:
             target_head_pan = head_pan
-        self.robot.head_to(head_tilt = target_head_tilt, head_pan = target_head_pan, blocking = True)
+        self.robot.head_to(head_tilt = target_head_tilt, head_pan = target_head_pan, blocking = blocking)
         #time.sleep(0.7)
 
     def pickup(self, width):
@@ -155,15 +158,15 @@ class HelloRobot:
         """
         next_gripper_pos = width
         while True:
-            self.robot.gripper_to(max(next_gripper_pos * self.STRETCH_GRIPPER_MAX, -0.25), blocking = True)
+            self.robot.gripper_to(max(next_gripper_pos * self.STRETCH_GRIPPER_MAX, -0.2), blocking = True)
             curr_gripper_pose = self.robot.get_gripper_position()
             # print('Robot means to move gripper to', next_gripper_pos * self.STRETCH_GRIPPER_MAX)
             # print('Robot actually moves gripper to', curr_gripper_pose)
-            if next_gripper_pos == -1 or (curr_gripper_pose > max(next_gripper_pos * self.STRETCH_GRIPPER_MAX, -0.25) + 0.015):
+            if next_gripper_pos == -1 or (curr_gripper_pose > max(next_gripper_pos * self.STRETCH_GRIPPER_MAX, -0.2) + 0.1):
                 break
             
             if next_gripper_pos > 0:
-                next_gripper_pos -= 0.25
+                next_gripper_pos -= 0.4
             else: 
                 next_gripper_pos = -1
 
@@ -222,7 +225,6 @@ class HelloRobot:
             target1 = state
             target1[1] = target_state[1]
             self.robot.arm_to(target1, blocking = True)
-            # time.sleep(1)
 
         # self.robot.arm_to(target_state, velocities = velocities, blocking = True)
         self.robot.arm_to(target_state, blocking = True)

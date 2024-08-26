@@ -34,8 +34,10 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
         
         elif (retry_flag !=0 and side_retries == 3):
             print("Tried in all angles but couldn't succed")
-            # time.sleep(2)
-            return None, None, None
+            if mode == 'pick':
+                return None, None, None, None
+            else:
+                return None, None
 
         elif (side_retries == 2 and tilt_retries == 3):
             hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
@@ -55,7 +57,6 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
                 hello_robot.move_to_position(head_pan=head_pan,
                                         head_tilt=head_tilt + head_tilt_angles[tilt_retries])
                 tilt_retries += 1
-                time.sleep(1)
 
     if mode == "place":
         translation = PyKDL.Vector(-translation[1], -translation[0], -translation[2])
@@ -127,7 +128,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     transformed_frame = cam2gripper_transform * dest_frame
 
     # Lifting the arm to high position as part of pregrasping position
-    robot.move_to_position(lift_pos = 1.05, head_pan = None, head_tilt = None)
+    robot.move_to_position(lift_pos = 1.05, gripper_pos = gripper_width, head_pan = None, head_tilt = None)
     # time.sleep(2)
 
     # Rotation for aligning Robot gripper frame to Model gripper frame
@@ -136,7 +137,6 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # final Rotation of gripper to hold the objet
     final_rotation = transformed_frame.M * rotation2_top
     # print(f"final rotation - {final_rotation.GetRPY()}")
-    robot.move_to_position(gripper_pos = gripper_width)
     robot.move_to_pose(
             [0, 0, 0],
             [final_rotation.GetRPY()[0], final_rotation.GetRPY()[1], final_rotation.GetRPY()[2]],
@@ -188,7 +188,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
             [1]
         )
         # time.sleep(2)
-        base2gripper_transform, _, _ = robot.get_joint_transform('base_link', gripper_node)
+        # base2gripper_transform, _, _ = robot.get_joint_transform('base_link', gripper_node)
         # print(f"transformed point3 : {base2gripper_transform * base_point}")
         diff = diff - dist
         
@@ -202,7 +202,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
             velocities=velocities
         )
         # time.sleep(2)
-        base2gripper_transform, _, _ = robot.get_joint_transform('base_link', gripper_node)
+        # base2gripper_transform, _, _ = robot.get_joint_transform('base_link', gripper_node)
         # print(f"transformed point3 : {base2gripper_transform * base_point}")
         diff = diff - dist
     
@@ -218,17 +218,18 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # time.sleep(1)
     robot.move_to_position(wrist_pitch = 0.0)
     # time.sleep(1)
-    robot.move_to_position(wrist_yaw = 2.0)
+    robot.move_to_position(lift_pos = min(robot.robot.get_six_joints()[1], 0.9), wrist_yaw = 2.5)
+    robot.move_to_position(lift_pos = min(robot.robot.get_six_joints()[1], 0.6))
     # time.sleep(1)
 
     # rotate the arm wrist onto the base
-    if abs(robot.robot.get_six_joints()[3] - 2.0) > 0.1:
-        robot.move_to_position(wrist_yaw  = -2.0)
-        # time.sleep(1)
+    # if abs(robot.robot.get_six_joints()[3] - 2.0) > 0.1:
+    #     robot.move_to_position(wrist_yaw  = -2.0)
+    #     # time.sleep(1)
 
-    # Put down the arm    
-    robot.move_to_position(lift_pos = 0.85)
-    if abs(robot.robot.get_six_joints()[3] - 2.0) < 0.1:
-        robot.move_to_position(wrist_yaw = 2.5)
-    robot.move_to_position(lift_pos = 0.6)
+    # # Put down the arm    
+    # robot.move_to_position(lift_pos = 0.85)
+    # if abs(robot.robot.get_six_joints()[3] - 2.0) < 0.1:
+    #     robot.move_to_position(wrist_yaw = 2.5)
+    # robot.move_to_position(lift_pos = 0.6)
     # time.sleep(1)
