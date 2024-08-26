@@ -17,7 +17,7 @@ with open("../README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="stretchpy",
+    name="stretch_ai",
     version=__version__,
     author="Hello Robot Inc.",
     author_email="support@hello-robot.com",
@@ -26,6 +26,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/hello-robot/stretchpy",
     packages=setuptools.find_packages(),
+    package_data={"stretch": ["stretch/perception/*.tsv"]},
     install_requires=[
         # Machine learning code
         "torch",
@@ -54,7 +55,6 @@ setuptools.setup(
         # Hardware dependencies
         "pyrealsense2",
         "urchin",
-        "webcam",
         # Visualization
         "rerun-sdk",
         # For siglip encoder
@@ -67,7 +67,6 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
-        "mediapipe",  # for hand tracking
         # Compression tools
         "pyliblzfse",
         "webp",
@@ -96,6 +95,10 @@ setuptools.setup(
             "flake8",
             "black",
             "mypy",
-        ]
+        ],
+        "hand_tracking": [
+            "mediapipe",
+            "webcam",
+        ],
     },
 )

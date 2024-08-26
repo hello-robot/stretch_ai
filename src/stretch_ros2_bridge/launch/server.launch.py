@@ -34,6 +34,7 @@ def generate_launch_description():
             )
         )
     )
+
     ld = LaunchDescription(
         [
             base_slam_launch,
