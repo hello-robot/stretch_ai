@@ -350,10 +350,6 @@ class ZmqRos2Leader:
                 new_goal_configuration["joint_wrist_pitch"] = self.filtered_wrist_orientation[1]
                 new_goal_configuration["joint_wrist_roll"] = self.filtered_wrist_orientation[2]
 
-                # new_goal_configuration["joint_wrist_yaw"] = wrist_yaw
-                # new_goal_configuration["joint_wrist_pitch"] = wrist_pitch
-                # new_goal_configuration["joint_wrist_roll"] = wrist_roll
-
                 self.prev_commanded_wrist_orientation = {
                     "joint_wrist_yaw": self.filtered_wrist_orientation[0],
                     "joint_wrist_pitch": self.filtered_wrist_orientation[1],
@@ -381,6 +377,17 @@ class ZmqRos2Leader:
 
         if self.use_clutch:
             hand_tracker = HandTracker(left_clutch=(not self.left_handed))
+
+        print("=== Starting Dex Teleop Leader ===")
+        print("Press spacebar to start/stop recording.")
+        if self.teach_grasping:
+            print("Press 1, 2, or 3 to teach PREGRASP, GRASP, or POSTGRASP.")
+        print("Press 0-9 to record waypoints.")
+        if self.record_success:
+            print("Press y/n to record success/failure of episode after each episode.")
+        if self.use_clutch:
+            print("Clutch mode enabled. Place an empty hand over the webcam to clutch.")
+        print("Press ESC to exit.")
 
         # loop stuff for clutch
         clutched = False
