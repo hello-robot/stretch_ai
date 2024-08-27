@@ -39,7 +39,9 @@ from stretch.utils.geometry import angle_difference
 class RobotAgent:
     """Basic demo code. Collects everything that we need to make this work."""
 
-    _retry_on_fail = False
+    _retry_on_fail: bool = False
+    debug_update_timing: bool = False
+    update_rerun_every_time: bool = False
 
     def __init__(
         self,
@@ -397,22 +399,31 @@ class RobotAgent:
                 logger.error("Failed to get observation")
                 return
 
+        t1 = timeit.default_timer()
         self.obs_history.append(obs)
         self.obs_count += 1
         # Optionally do this
         if self.semantic_sensor is not None:
             # Semantic prediction
             obs = self.semantic_sensor.predict(obs)
+
+        t2 = timeit.default_timer()
         self.voxel_map.add_obs(obs)
+
+        t3 = timeit.default_timer()
 
         if self.use_scene_graph:
             self._update_scene_graph()
             self.scene_graph.get_relationships()
 
+        t4 = timeit.default_timer()
+
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show what was happening
             self.voxel_map.get_2d_map(debug=True)
+
+        t5 = timeit.default_timer()
 
         if debug_instances:
             # We need to load and configure matplotlib here
@@ -429,8 +440,28 @@ class RobotAgent:
                 plt.axis("off")
                 plt.show()
 
+        t6 = timeit.default_timer()
+
+        if self.robot._rerun and self.update_rerun_every_time:
+            self.update_rerun()
+
+        t7 = timeit.default_timer()
+        if self.debug_update_timing:
+            print("Update timing:")
+            print("Time to get observation:", t1 - t0, "seconds, % =", (t1 - t0) / (t7 - t0))
+            print("Time to predict:", t2 - t1, "seconds, % =", (t2 - t1) / (t7 - t0))
+            print("Time to add obs:", t3 - t2, "seconds, % =", (t3 - t2) / (t7 - t0))
+            print("Time to update scene graph:", t4 - t3, "seconds, % =", (t4 - t3) / (t7 - t0))
+            print("Time to get 2d map:", t5 - t4, "seconds, % =", (t5 - t4) / (t7 - t0))
+            print("Time to debug instances:", t6 - t5, "seconds, % =", (t6 - t5) / (t7 - t0))
+            print("Time to update rerun:", t7 - t6, "seconds, % =", (t7 - t6) / (t7 - t0))
+
+    def update_rerun(self):
+        """Update the rerun server with the latest observations."""
         if self.robot._rerun:
             self.robot._rerun.update_voxel_map(self.space)
+        else:
+            logger.error("No rerun server available!")
 
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
