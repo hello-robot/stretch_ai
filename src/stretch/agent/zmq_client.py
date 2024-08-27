@@ -902,11 +902,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # Send it
             next_action["step"] = block_id
             self._iter += 1
+
+            # TODO: fix all of this - why do we need to do this?
             print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
             time.sleep(0.01)
-            print("SENDING THIS ACTION:", next_action)
-            self.send_socket.send_pyobj(next_action)
             print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 

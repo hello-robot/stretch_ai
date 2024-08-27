@@ -209,7 +209,6 @@ class BaseZmqServer(CommsNode, ABC):
                 logger.info(f" - {self.control_mode=}")
                 logger.info(f" - prev action step: {self._last_step}")
             if action is not None:
-                print(action)
                 if self.verbose:
                     logger.info(f" - Action received: {action}")
                 # Tracking step number -- should never go backwards
