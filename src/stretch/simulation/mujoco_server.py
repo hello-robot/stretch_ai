@@ -364,13 +364,19 @@ class MujocoZmqServer(BaseZmqServer):
         return self.control_mode
 
     @override
-    def start(self):
+    def start(self, robocasa: bool = False):
         self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
         super().start()
 
         # Create a thread for the control loop
         self._control_thread = threading.Thread(target=self._control_loop_thread)
         self._control_thread.start()
+
+        if robocasa:
+            # When you start, move the agent back a bit
+            # This is a hack!
+            time.sleep(1.0)
+            self.set_goal_pose(np.array([-0.5, 0, 0]), relative=True)
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
@@ -615,10 +621,7 @@ def main(
         scene_model=scene_model,
     )
     try:
-        server.start()
-
-        # When you start, move the agent back a bit
-        server.set_goal_pose(np.array([-0.5, 0, 0]), relative=True)
+        server.start(robocasa=use_robocasa)
 
     except KeyboardInterrupt:
         server.robot_sim.stop()
