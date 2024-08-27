@@ -616,6 +616,10 @@ def main(
     )
     try:
         server.start()
+
+        # When you start, move the agent back a bit
+        server.set_goal_pose(np.array([-0.5, 0, 0]), relative=True)
+
     except KeyboardInterrupt:
         server.robot_sim.stop()
 
