@@ -730,7 +730,8 @@ class SparseVoxelMap(object):
             else:
                 instance_classes = self.fix_data_type(data["instance_classes"][i])
                 instance_scores = self.fix_data_type(data["instance_scores"][i])
-            instance = self.fix_data_type(instance).long()
+            if instance is not None:
+                instance = self.fix_data_type(instance).long()
 
             # Add to the map
             self.add(
