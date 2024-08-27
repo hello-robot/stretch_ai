@@ -403,7 +403,7 @@ class MujocoZmqServer(BaseZmqServer):
         """Get the full observation message for the robot. This includes the full state of the robot, including images and depth images."""
         cam_data = self._camera_data
         if cam_data is None:
-            return {}
+            return None
 
         rgb = cam_data["cam_d435i_rgb"]
         depth = cam_data["cam_d435i_depth"]
@@ -465,7 +465,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         cam_data = self._camera_data
         if cam_data is None:
-            return {}
+            return None
 
         head_color_image = cam_data["cam_d435i_rgb"]
         head_depth_image = cam_data["cam_d435i_depth"]

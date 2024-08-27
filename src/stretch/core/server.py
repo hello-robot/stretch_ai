@@ -171,6 +171,11 @@ class BaseZmqServer(CommsNode, ABC):
         print("Starting to send full state")
         while self.is_running():
             data = self.get_full_observation_message()
+
+            # Skip if no data - could not access camera yet
+            if data is None:
+                continue
+
             if steps == 0:
                 logger.info(f"[SEND LARGE IMAGE STATE] message keys: {data.keys()}")
 
@@ -204,6 +209,7 @@ class BaseZmqServer(CommsNode, ABC):
                 logger.info(f" - {self.control_mode=}")
                 logger.info(f" - prev action step: {self._last_step}")
             if action is not None:
+                print(action)
                 if self.verbose:
                     logger.info(f" - Action received: {action}")
                 # Tracking step number -- should never go backwards
@@ -235,6 +241,11 @@ class BaseZmqServer(CommsNode, ABC):
         t0 = timeit.default_timer()
         while self.is_running():
             message = self.get_state_message()
+
+            # Skip if no message - could not access or other core information yet
+            if message is None:
+                continue
+
             if steps == 0:
                 logger.info(f"[SEND MINIMAL STATE] message keys: {message.keys()}")
 
@@ -260,6 +271,11 @@ class BaseZmqServer(CommsNode, ABC):
 
         while not self._done:
             message = self.get_servo_message()
+
+            # Skip if no message - could not access camera yet
+            if message is None:
+                continue
+
             if steps == 0:
                 logger.info(f"[SEND SERVO STATE] message keys: {message.keys()}")
 

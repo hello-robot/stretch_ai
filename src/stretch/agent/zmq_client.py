@@ -904,6 +904,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._iter += 1
             print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
+            time.sleep(0.01)
+            print("SENDING THIS ACTION:", next_action)
+            self.send_socket.send_pyobj(next_action)
+            print("SENDING THIS ACTION:", next_action)
+            self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
             if "xyt" in next_action:
@@ -915,7 +920,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             current_action = next_action
 
         # Make sure we had time to read
-        time.sleep(0.1)
+        # time.sleep(0.1)
         if blocking:
             # Wait for the command to finish
             self._wait_for_action(
