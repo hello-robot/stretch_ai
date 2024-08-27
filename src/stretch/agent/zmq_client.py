@@ -893,7 +893,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def send_action(
         self,
         next_action: Dict[str, Any],
-        timeout: float = 10.0,
+        timeout: float = 5.0,
         verbose: bool = False,
     ) -> Dict[str, Any]:
         """Send the next action to the robot"""

@@ -226,7 +226,7 @@ class MujocoZmqServer(BaseZmqServer):
             if self.debug_control_loop:
                 print(f"Commanding robot with {v_cmd} and {w_cmd}")
             self.robot_sim.set_base_velocity(v_linear=v_cmd, omega=w_cmd)
-            self._base_controller_at_goal = True
+            self._base_controller_at_goal = self.controller_finished and self.is_done
 
             if self.is_done:
                 self.active = False
