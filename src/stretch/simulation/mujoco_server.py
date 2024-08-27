@@ -549,19 +549,24 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--send_state_port", default=4403, help="Port to send state-only messages to clients")
 @click.option("--send_servo_port", default=4404, help="Port to send images for visual servoing")
 @click.option("--use_remote_computer", default=True, help="Whether to use a remote computer")
-@click.option("--verbose", default=False, help="Whether to print verbose messages")
+@click.option("--verbose", default=False, help="Whether to print verbose messages", is_flag=True)
 @click.option("--image_scaling", default=0.5, help="Scaling factor for images")
 @click.option("--ee_image_scaling", default=0.5, help="Scaling factor for end-effector images")
 @click.option("--depth_scaling", default=0.001, help="Scaling factor for depth images")
 @click.option(
     "--scene_path", default=None, help="Provide a path to mujoco scene file with stretch.xml"
 )
-@click.option("--use-robocasa", default=False, help="Use robocasa for generating a scene")
+@click.option(
+    "--use-robocasa", default=False, help="Use robocasa for generating a scene", is_flag=True
+)
 @click.option("--robocasa-task", default="PnPCounterToCab", help="Robocasa task to generate")
 @click.option("--robocasa-style", type=int, default=1, help="Robocasa style to generate")
 @click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
 @click.option(
-    "--robocasa-write-to-xml", default=False, help="Write the generated scene to an xml file"
+    "--robocasa-write-to-xml",
+    default=False,
+    help="Write the generated scene to an xml file",
+    is_flag=True,
 )
 def main(
     send_port: int,
