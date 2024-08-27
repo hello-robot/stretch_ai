@@ -308,7 +308,13 @@ class MujocoZmqServer(BaseZmqServer):
             return False
 
         # Set the posture
-        self.manip_to(constants.STRETCH_PREGRASP_Q, all_joints=True)
+        if posture == "navigation":
+            self.manip_to(constants.NAVIGATION_Q, all_joints=True)
+        elif posture == "manipulation":
+            self.manip_to(constants.STRETCH_PREGRASP_Q, all_joints=True)
+        else:
+            logger.error(f"Posture {posture} not supported")
+            return False
         self.control_mode = posture
         return True
 
@@ -383,6 +389,7 @@ class MujocoZmqServer(BaseZmqServer):
         if "joint" in action:
             # Move the robot to the given joint configuration
             # Only send the manipulator joints, not gripper or head
+            print("[ROBOT] Moving to joint configuration", action["joint"])
             self.manip_to(action["joint"], all_joints=False)
         if "head_to" in action:
             self.robot_sim.move_to("head_pan", action["head_to"][0])
