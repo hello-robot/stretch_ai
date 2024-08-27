@@ -127,6 +127,8 @@ def images_to_video(image_list, output_path, fps=30):
 @click.option("--show-svm", "-s", type=bool, is_flag=True, default=False)
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
+@click.option("--api-key", type=str, default=None, help="your openai api key")
+# @click.option("--query", type=str, default=None)
 def main(
     input_path,
     config_path,
@@ -135,6 +137,8 @@ def main(
     frame_skip: int = 1,
     show_svm: bool = False,
     show_instances: bool = False,
+    api_key: str = None,
+    # query: str = None,
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
@@ -171,7 +175,8 @@ def main(
     )
 
     # TODO: read this from file
-    x0 = np.array([0, -0.5, 0])  # for room1, room4
+    x0 = np.array([0, 0, 0])
+    # x0 = np.array([0, -0.5, 0])  # for room1, room4
     # x0 = np.array([-1.9, -0.8, 0])  # for room2
     # x0 = np.array([0, 0.5, 0])  # for room3, room5
     start_xyz = [x0[0], x0[1], 0]
@@ -192,7 +197,7 @@ def main(
             return
         while True:
             try:
-                agent.get_plan_from_vlm(current_pose=x0, show_plan=True)
+                agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
             except KeyboardInterrupt:
                 break
 
