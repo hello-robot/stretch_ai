@@ -352,7 +352,11 @@ class RobotAgent:
             if verbose:
                 print(" - Navigation took", t1 - t0, "seconds")
                 print(f"---- UPDATE {i+1} at {x}, {y}----")
+            t0 = timeit.default_timer()
             self.update()
+            t1 = timeit.default_timer()
+            if verbose:
+                print("Update took", t1 - t0, "seconds")
 
             if visualize:
                 self.voxel_map.show(
@@ -996,7 +1000,6 @@ class RobotAgent:
         visualize: bool = False,
         task_goal: str = None,
         go_home_at_end: bool = False,
-        go_to_start_pose: bool = True,
         show_goal: bool = False,
     ) -> Optional[Instance]:
         """Go through exploration. We use the voxel_grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
@@ -1005,19 +1008,6 @@ class RobotAgent:
             visualize(bool): true if we should do intermediate debug visualizations"""
         self.current_state = "EXPLORE"
         self.robot.move_to_nav_posture()
-
-        if go_to_start_pose:
-            print("Go to (0, 0, 0) to start with...")
-            self.robot.navigate_to([0, 0, 0])
-            self.update()
-            if visualize:
-                self.voxel_map.show(
-                    orig=np.zeros(3),
-                    xyt=self.robot.get_base_pose(),
-                    footprint=self.robot.get_robot_model().get_footprint(),
-                    instances=self.semantic_sensor is not None,
-                )
-
         all_starts = []
         all_goals = []
 
