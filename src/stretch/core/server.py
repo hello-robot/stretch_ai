@@ -25,8 +25,9 @@ from stretch.core.comms import CommsNode
 class BaseZmqServer(CommsNode, ABC):
 
     # How often should we print out info about our performance
-    report_steps = 100
+    report_steps = 1000
     fast_report_steps = 10000
+    servo_report_steps = 1000
 
     def __init__(
         self,
@@ -82,20 +83,6 @@ class BaseZmqServer(CommsNode, ABC):
         """Check if the server is running."""
         return not self.done
 
-    def get_control_mode(self) -> str:
-        """Get the current control mode of the robot. Can be navigation, manipulation, or none.
-
-        Returns:
-            str: The current control mode of the robot.
-        """
-        if self.client.in_manipulation_mode():
-            control_mode = "manipulation"
-        elif self.client.in_navigation_mode():
-            control_mode = "navigation"
-        else:
-            control_mode = "none"
-        return control_mode
-
     def _rescale_color_and_depth(
         self, color_image, depth_image, scaling: float = 0.5
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -139,6 +126,11 @@ class BaseZmqServer(CommsNode, ABC):
     # BEGIN: Implement the following methods
 
     @abstractmethod
+    def get_control_mode(self) -> str:
+        """Get the control mode of the robot."""
+        pass
+
+    @abstractmethod
     def handle_action(self, action: Dict[str, Any]):
         """Handle the action received from the client."""
         pass
@@ -176,8 +168,12 @@ class BaseZmqServer(CommsNode, ABC):
         sum_time: float = 0
         steps: int = 0
         t0 = timeit.default_timer()
+        print("Starting to send full state")
         while self.is_running():
             data = self.get_full_observation_message()
+            if steps == 0:
+                logger.info(f"[SEND LARGE IMAGE STATE] message keys: {data.keys()}")
+
             self.send_socket.send_pyobj(data)
 
             # Finish with some speed info
@@ -238,6 +234,9 @@ class BaseZmqServer(CommsNode, ABC):
         t0 = timeit.default_timer()
         while self.is_running():
             message = self.get_state_message()
+            if steps == 0:
+                logger.info(f"[SEND MINIMAL STATE] message keys: {message.keys()}")
+
             self.send_state_socket.send_pyobj(message)
 
             # Finish with some speed info
@@ -260,6 +259,9 @@ class BaseZmqServer(CommsNode, ABC):
 
         while not self._done:
             message = self.get_servo_message()
+            if steps == 0:
+                logger.info(f"[SEND SERVO STATE] message keys: {message.keys()}")
+
             self.send_servo_socket.send_pyobj(message)
 
             # Finish with some speed info
@@ -268,8 +270,7 @@ class BaseZmqServer(CommsNode, ABC):
             sum_time += dt
             steps += 1
             t0 = t1
-            # if self.verbose or steps % self.fast_report_steps == 1:
-            if self.verbose or steps % 100 == 1:
+            if self.verbose or steps % self.servo_report_steps == 1:
                 logger.info(
                     f"[SEND SERVO STATE] time taken = {dt} avg = {sum_time/steps} rate={1/(sum_time/steps)}"
                 )

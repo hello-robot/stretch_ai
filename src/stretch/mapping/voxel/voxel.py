@@ -897,7 +897,7 @@ class SparseVoxelMap(object):
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), rgb.detach().cpu().numpy())
         return open3d.geometry.KDTreeFlann(pcd)
 
-    def show(self, instances: bool = True, **backend_kwargs) -> Tuple[np.ndarray, np.ndarray]:
+    def show(self, instances: bool = False, **backend_kwargs) -> Tuple[np.ndarray, np.ndarray]:
         """Display the aggregated point cloud."""
         if instances:
             assert self.use_instance_memory, "must have instance memory to show instances"

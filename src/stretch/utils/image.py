@@ -23,6 +23,28 @@ import trimesh.transformations as tra
 from torch import Tensor
 
 
+def compute_pinhole_K(width, height, fov_degrees) -> np.ndarray:
+    """Create a simple pinhole camera given minimal information only. Fov is in degrees.
+
+    Args:
+        width (float): width of image
+        height (float): height of image
+        fov_degrees (float): field of view in degrees
+
+    Returns:
+        np.ndarray: 3x3 camera intrinsics matrix
+    """
+    horizontal_fov_rad = np.radians(fov_degrees)
+    h_focal_length = width / (2 * np.tan(horizontal_fov_rad / 2))
+    v_focal_length = width / (2 * np.tan(horizontal_fov_rad / 2) * float(height) / width)
+    principal_point_x = (width - 1.0) / 2
+    principal_point_y = (height - 1.0) / 2
+    K = np.array(
+        [[v_focal_length, 0, principal_point_x], [0, h_focal_length, principal_point_y], [0, 0, 1]]
+    )
+    return K
+
+
 class Camera(object):
     """
     Simple pinhole camera model. Contains parameters for projecting from depth to xyz, and saving information about camera position for planning.

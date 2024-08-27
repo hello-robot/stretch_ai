@@ -24,8 +24,25 @@ import yaml
 
 import stretch
 
-CONFIG_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "config")
-CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).parent.resolve() / "config" / "control")
+CONFIG_ROOT = str(Path(stretch.__path__[0]).resolve() / "config")
+CONTROL_CONFIG_DIR = str(Path(stretch.__path__[0]).resolve() / "config" / "control")
+
+DATA_ROOT = str(Path(stretch.__path__[0]).parent.resolve() / "../data")
+
+
+def get_data_path(ext: str) -> str:
+    """Returns full path to a particular file in the data directory"""
+    return os.path.join(DATA_ROOT, ext)
+
+
+def get_scene_path(ext: str) -> str:
+    """Returns full path to a particular file in the scene directory"""
+    return os.path.join(DATA_ROOT, "scenes", ext)
+
+
+def get_scene_by_name(name: str) -> str:
+    """Returns full path to a particular file in the scene directory"""
+    return get_scene_path(f"{name}.xml")
 
 
 class Config(yacs.config.CfgNode):

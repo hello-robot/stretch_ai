@@ -59,6 +59,7 @@ motion:
     head_tilt: 0.01
   joint_thresholds:
     head_not_moving_tolerance: 1.0e-4
+    gripper_open_threshold: 0.3
 
 # Exploration
 in_place_rotation_steps: 8

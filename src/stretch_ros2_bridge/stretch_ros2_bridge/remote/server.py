@@ -41,6 +41,21 @@ class ZmqServer(BaseZmqServer):
         return self.is_running and rclpy.ok()
 
     @override
+    def get_control_mode(self) -> str:
+        """Get the current control mode of the robot. Can be navigation, manipulation, or none.
+
+        Returns:
+            str: The current control mode of the robot.
+        """
+        if self.client.in_manipulation_mode():
+            control_mode = "manipulation"
+        elif self.client.in_navigation_mode():
+            control_mode = "navigation"
+        else:
+            control_mode = "none"
+        return control_mode
+
+    @override
     def get_full_observation_message(self) -> Dict[str, Any]:
         # get information
         # Still about 0.01 seconds to get observations
@@ -142,11 +157,21 @@ class ZmqServer(BaseZmqServer):
                 action["xyt"],
                 relative=action["nav_relative"],
             )
+        elif "base_velocity" in action:
+            base_velocity_action = action["base_velocity"]
+            if self.verbose:
+                print(
+                    f"Setting base velocity to translation={base_velocity_action['v']} and rotation={base_velocity_action['w']}"
+                )
+            if "v" in base_velocity_action:
+                v = base_velocity_action["v"]
+            if "w" in base_velocity_action:
+                w = action["base_velocity"]["w"]
+            self.client.nav.set_velocity(v, w)
         elif "joint" in action:
             # This allows for executing motor commands on the robot relatively quickly
             if self.verbose:
                 print(f"Moving arm to config={action['joint']}")
-
             if "gripper" in action:
                 gripper_cmd = action["gripper"]
             else:

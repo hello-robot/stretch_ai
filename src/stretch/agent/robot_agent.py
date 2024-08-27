@@ -20,9 +20,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from loguru import logger
 from PIL import Image
 
+import stretch.utils.logger as logger
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
@@ -355,6 +355,7 @@ class RobotAgent:
                     orig=np.zeros(3),
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
+                    instances=self.semantic_sensor is not None,
                 )
 
         return True
@@ -373,7 +374,7 @@ class RobotAgent:
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
             footprint=self.robot.get_robot_model().get_footprint(),
-            instances=True,
+            instances=self.semantic_sensor is not None,
         )
 
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
@@ -763,7 +764,7 @@ class RobotAgent:
                 orig=np.zeros(3),
                 xyt=self.robot.get_base_pose(),
                 footprint=self.robot.get_robot_model().get_footprint(),
-                instances=True,
+                instances=self.semantic_sensor is not None,
             )
             self.print_found_classes(goal)
 
@@ -1010,6 +1011,7 @@ class RobotAgent:
                     orig=np.zeros(3),
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
+                    instances=self.semantic_sensor is not None,
                 )
 
         all_starts = []
@@ -1053,6 +1055,7 @@ class RobotAgent:
                         orig=robot_center,
                         xyt=res.trajectory[-1].state,
                         footprint=self.robot.get_robot_model().get_footprint(),
+                        instances=self.semantic_sensor is not None,
                     )
                 if not dry_run:
                     self.robot.execute_trajectory(
