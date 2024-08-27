@@ -1148,7 +1148,6 @@ class RobotAgent:
             if self.robot.last_motion_failed():
                 return False
             position = self.robot.get_base_pose()
-            print("Current position:", position)
             if (
                 np.linalg.norm(position[:2] - goal[:2]) < 0.1
                 and angle_difference(position[2], goal[2]) < 0.1

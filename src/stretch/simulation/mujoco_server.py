@@ -309,7 +309,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         # Set the posture
         if posture == "navigation":
-            self.manip_to(constants.NAVIGATION_Q, all_joints=True)
+            self.manip_to(constants.STRETCH_NAVIGATION_Q, all_joints=True)
         elif posture == "manipulation":
             self.manip_to(constants.STRETCH_PREGRASP_Q, all_joints=True)
         else:
