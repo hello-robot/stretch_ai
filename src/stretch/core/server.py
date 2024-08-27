@@ -206,7 +206,8 @@ class BaseZmqServer(CommsNode, ABC):
             if action is not None:
                 if self.verbose:
                     logger.info(f" - Action received: {action}")
-                self._last_step = action.get("step", -1)
+                # Tracking step number -- should never go backwards
+                self._last_step = max(action.get("step", -1), self._last_step)
                 logger.info(
                     f"Action #{self._last_step} received:",
                     [str(key) for key in action.keys()],

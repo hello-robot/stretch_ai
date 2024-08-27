@@ -108,7 +108,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.reset()
 
         # Variables we set here should not change
-        self._iter = 0  # Tracks number of actions set, never reset this
+        self._iter = -1  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
         self._started = False
 
@@ -533,14 +533,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
-        next_action = {"posture": "navigation"}
+        next_action = {"posture": "navigation", "step": self._iter}
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
-        next_action = {"posture": "manipulation"}
+        next_action = {"posture": "manipulation", "step": self._iter}
         self.send_action(next_action)
         time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
@@ -723,7 +723,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._obs = obs
             self._last_step = obs["step"]
             if self._iter <= 0:
-                self._iter = self._last_step
+                self._iter = max(self._last_step, self._iter)
 
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
@@ -902,6 +902,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # Send it
             next_action["step"] = block_id
             self._iter += 1
+            print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 
             # For tracking goal

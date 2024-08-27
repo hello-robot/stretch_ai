@@ -17,7 +17,14 @@ import click
 import numpy as np
 from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.robocasa_gen import model_generation_wizard
+
+try:
+    from stretch_mujoco.robocasa_gen import model_generation_wizard
+except:
+    from stretch.utils.logger import error
+
+    error("Could not import robocasa!")
+    error("Install robosuite and robocasa in order to use model generation wizard.")
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
@@ -122,7 +129,7 @@ class MujocoZmqServer(BaseZmqServer):
         self.active = False
 
         # Other
-        self.verbose = True
+        # self.verbose = True
 
         # Control module
         controller_cfg = get_control_config(config_name)
@@ -361,7 +368,6 @@ class MujocoZmqServer(BaseZmqServer):
     @override
     def handle_action(self, action: Dict[str, Any]):
         """Handle the action received from the client."""
-        print(action)
         if "control_mode" in action:
             self.control_mode = action["control_mode"]
         if "posture" in action:
