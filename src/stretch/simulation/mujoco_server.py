@@ -81,6 +81,7 @@ class MujocoZmqServer(BaseZmqServer):
 
     # Print debug messages for control loop
     debug_control_loop = False
+    debug_set_goal_pose = True
 
     def __init__(
         self,
@@ -147,6 +148,11 @@ class MujocoZmqServer(BaseZmqServer):
 
         Args:
             xyt_goal (np.ndarray): Goal pose for the robot in world coordinates (x, y, theta).
+            me/cpaxton/miniforge3/envs/stretch_ai_0.0.10/lib/python3.10/threading.py", line 1016, in _bootstrap_inner
+                self.run()
+                  File "/home/cpaxton/miniforge3/envs/stretch_ai_0.0.10/lib/python3.10/threading.py", line 953, in run
+                      self._target(*self._args, **self._kwargs)
+
         """
         assert len(xyt_goal) == 3, "Goal pose should be of size 3 (x, y, theta)"
 
@@ -157,7 +163,7 @@ class MujocoZmqServer(BaseZmqServer):
         else:
             xyt_goal = xyt_goal
 
-        if self.debug_control_loop:
+        if self.debug_control_loop or self.debug_set_goal_pose:
             print("-" * 20)
             print("Control loop callback: ", self.active, self.xyt_goal)
             print("Currently at:", self.get_base_pose())

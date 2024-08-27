@@ -329,13 +329,16 @@ class RobotAgent:
 
         step_size = 2 * np.pi / steps
         i = 0
-        x, y, _ = self.robot.get_base_pose()
+        x, y, theta = self.robot.get_base_pose()
         if verbose:
             print(f"==== ROTATE IN PLACE at {x}, {y} ====")
-        while i < steps:
+        while i < steps - 1:
             t0 = timeit.default_timer()
             self.robot.navigate_to(
-                [x, y, i * step_size], relative=False, blocking=True, verbose=verbose
+                [x, y, theta + ((i + 1) * step_size)],
+                relative=False,
+                blocking=True,
+                verbose=verbose,
             )
             t1 = timeit.default_timer()
 
