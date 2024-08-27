@@ -94,7 +94,7 @@ class MujocoZmqServer(BaseZmqServer):
         if scene_model is not None:
             if scene_path is not None:
                 logger.warning("Both scene model and scene path provided. Using scene model.")
-            self.robot_sim = StretchMujocoSimulator(scene_model=scene_model)
+            self.robot_sim = StretchMujocoSimulator(model=scene_model)
         else:
             self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
@@ -574,7 +574,7 @@ def main(
             task=robocasa_task,
             style=robocasa_style,
             layout=robocasa_layout,
-            write_to_xml=robocasa_write_to_xml,
+            write_to_file=robocasa_write_to_xml,
         )
 
     server = MujocoZmqServer(
