@@ -66,6 +66,7 @@ class HelloStretchIdx:
         "lift": LIFT,
         "arm": ARM,
         "gripper_finger_right": GRIPPER,
+        "gripper": GRIPPER,
         "wrist_roll": WRIST_ROLL,
         "wrist_pitch": WRIST_PITCH,
         "wrist_yaw": WRIST_YAW,
