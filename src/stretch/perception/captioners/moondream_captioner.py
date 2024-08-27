@@ -22,9 +22,9 @@ model_id = "vikhyatk/moondream2"
 revision = "2024-07-23"
 
 
-class MoonbeamCaptioner(BaseCaptioner):
+class MoondreamCaptioner(BaseCaptioner):
     def __init__(self):
-        super(MoonbeamCaptioner, self).__init__()
+        super(MoondreamCaptioner, self).__init__()
 
         self.model = AutoModelForCausalLM.from_pretrained(
             model_id, trust_remote_code=True, revision=revision
@@ -56,7 +56,7 @@ class MoonbeamCaptioner(BaseCaptioner):
 @click.command()
 @click.option("--image_path", default="object.png", help="Path to image file")
 def main(image_path: str):
-    captioner = MoonbeamCaptioner()
+    captioner = MoondreamCaptioner()
 
     # Load image from file
     image = Image.open(image_path)

@@ -11,14 +11,13 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import sys
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pinocchio
-from loguru import logger
 from scipy.spatial.transform import Rotation as R
 
+import stretch.utils.logger as logger
 from stretch.motion.base.ik_solver_base import IKSolverBase
 
 # --DEFAULTS--
@@ -39,10 +38,6 @@ def level_filter(levels):
         return record["level"].name in levels
 
     return is_level
-
-
-logger.remove(0)
-logger.add(sys.stderr, filter=level_filter(levels=["WARNING", "ERROR"]))
 
 
 class PinocchioIKSolver(IKSolverBase):
