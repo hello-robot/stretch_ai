@@ -150,10 +150,9 @@ python3 lerobot/scripts/train.py \
 policy=stretch_diffusion \
 env=stretch_real \
 wandb.enable=true \
-wandb.project=diffusion_test_project \
 training.batch_size=64 \
 training.num_workers=16 \
-dataset_repo_id <huggingface-id>/<your-dataset-name>  \
+dataset_repo_id=<huggingface-id>/<your-dataset-name>  \
 wandb.project=<wandb-project-name>
 ```
 
@@ -167,7 +166,7 @@ wandb.enable=true \
 wandb.project=diffusion_test_project \
 training.batch_size=64 \
 training.num_workers=16 \
-dataset_repo_id hellorobotinc/kitchen_cabinet_diagonal
+dataset_repo_id=hellorobotinc/kitchen_cabinet_diagonal
 wandb.project=diffusion-kitchen-diagonal
 ```
 
