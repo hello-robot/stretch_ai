@@ -139,7 +139,7 @@ class OrbSlam3(Node):
                 f.write("%YAML:1.0\n" + content)
 
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
-            self.slam.set_use_viewer(True)
+            self.slam.set_use_viewer(False)
             self.slam.initialize()
             print("ORB-SLAM3 initialized")
 
