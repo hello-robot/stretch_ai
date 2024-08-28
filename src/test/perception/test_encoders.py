@@ -11,7 +11,7 @@ import pytest
 import torch
 from PIL import Image
 
-images = ["../../docs/object.png", "../../docs/receptacle.png"]
+images = ["../docs/object.png", "../docs/receptacle.png"]
 
 from stretch.perception.encoders import encoders, get_encoder
 

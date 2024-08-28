@@ -13,7 +13,7 @@ from PIL import Image
 from stretch.perception.captioners import captioners, get_captioner
 
 # With these two images from docs:
-images = ["../../docs/object.png", "../../docs/receptacle.png"]
+images = ["../docs/object.png", "../docs/receptacle.png"]
 
 
 def test_get_captioner():
