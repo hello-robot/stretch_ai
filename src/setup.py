@@ -101,7 +101,7 @@ setuptools.setup(
             "hello-robot-stretch-urdf",
             "grpcio",
         ],
-        "hand_tracking": [
+        "hand_tracker": [
             "mediapipe",
             "webcam",
         ],

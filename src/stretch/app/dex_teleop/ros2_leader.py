@@ -21,7 +21,18 @@ import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.app.dex_teleop.hand_tracker import HandTracker
+
+try:
+    from stretch.app.dex_teleop.hand_tracker import HandTracker
+except ImportError as e:
+    print("Hand tracker not available. Please install its dependencies.")
+    print()
+    print("\tpip install mediapipe webcam")
+    print()
+    print("Or run the following command to install all dependencies:")
+    print()
+    print("\tpython -m pip install .[hand_tracker]")
+    print()
 from stretch.core import get_parameters
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder

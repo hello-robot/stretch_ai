@@ -10,7 +10,7 @@
    # Install in same conda environment as stretch_ai
    conda activate stretch_ai
 
-   git clone git@github.com:hello-yiche/lerobot.git
+   git clone https://github.com/hello-robot/lerobot
    cd lerobot
 
    # Support for Stretch is currently implemented on this branch
@@ -19,6 +19,8 @@
    # Editable install makes editing configs useful, though configs can also be specified via cli
    pip install -e .
    ```
+
+For reference the [original fork](github.com/hello-yiche/lerobot) and the [original repo](https://github.com/huggingface/lerobot) are available.
 
 ## Overview of LfD process
 
