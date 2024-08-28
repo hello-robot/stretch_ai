@@ -435,6 +435,8 @@ Parts of this codebase were derived from the Meta [HomeRobot](https://github.com
 
 The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is based on the [OK robot](https://github.com/ok-robot/ok-robot) project's [Robot Controller](https://github.com/NYU-robot-learning/robot-controller/), and is licensed under the [Apache 2.0 license](src/stretch_ros2_bridge/LICENSE).
 
+We use [LeRobot from HuggingFace](https://github.com/huggingface/lerobot) for imitation learning, though we use [our own fork](https://github.com/hello-robot/lerobot).
+
 ## License
 
 This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information.
