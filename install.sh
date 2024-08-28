@@ -32,10 +32,6 @@ do
             MAMBA=conda
             shift
             ;;
-        --pytorch3d)
-            INSTALL_PYTORCH3D="true"
-            shift
-            ;;
         --no-remove)
             NO_REMOVE="true"
             shift
@@ -60,11 +56,11 @@ if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu
     export CUDA_VERSION_NODOT=cpu
     export CUDA_HOME=""
-    ENV_NAME=stretch_ai_cpu_$VERSION
+    ENV_NAME=stretch_ai_cpu_${VERSION}
     export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-    ENV_NAME=stretch_ai_$VERSION
+    ENV_NAME=stretch_ai_${VERSION}
     export PYTORCH_VERSION=2.3.1
 fi
 
@@ -131,20 +127,13 @@ if [ "$NO_REMOVE" == "false" ]; then
 fi
 # If using cpu only, create a separate environment
 if [ "$CPU_ONLY" == "true" ]; then
-    $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision cpuonly python=$PYTHON_VERSION -y
+    $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision torchaudio cpuonly python=$PYTHON_VERSION -y
 else
     # Else, install the cuda version
-    $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision python=$PYTHON_VERSION -y
+    $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
 source activate $ENV_NAME
-# conda activate $ENV_NAME
-#echo "Activating environment... `$MAMBA info --base`/envs/$ENV_NAME/bin/activate"
-#source `$MAMBA info --base`/envs/$ENV_NAME/bin/activate
-#echo "activated"
-
-# Now install pytorch3d a bit faster
-$MAMBA install -c fvcore -c iopath -c conda-forge fvcore iopath -y
 
 echo "Install a version of setuptools for which clip works."
 pip install setuptools==69.5.1

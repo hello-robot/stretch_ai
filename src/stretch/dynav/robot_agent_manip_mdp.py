@@ -232,14 +232,13 @@ class RobotAgentMDP:
 
         # Placing the object
         move_to_point(self.manip_wrapper, translation, base_node, self.transform_node, move_mode=0)
-        self.manip_wrapper.move_to_position(gripper_pos=1, blocking = False)
-        time.sleep(0.1)
+        self.manip_wrapper.move_to_position(gripper_pos=1, blocking = True)
 
         # Lift the arm a little bit, and rotate the wrist roll of the robot in case the object attached on the gripper
         self.manip_wrapper.move_to_position(lift_pos = self.manip_wrapper.robot.get_six_joints()[1] + 0.3)
-        self.manip_wrapper.move_to_position(wrist_roll = 3., blocking = False)
+        self.manip_wrapper.move_to_position(wrist_roll = 3., blocking = True)
         time.sleep(0.5)
-        self.manip_wrapper.move_to_position(wrist_roll = -3., blocking = False)
+        self.manip_wrapper.move_to_position(wrist_roll = -3., blocking = True)
         time.sleep(0.5)
 
         # Wait for some time and shrink the arm back

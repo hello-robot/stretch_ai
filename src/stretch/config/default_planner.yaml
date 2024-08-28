@@ -65,6 +65,7 @@ motion:
     head_tilt: 0.01
   joint_thresholds:
     head_not_moving_tolerance: 1.0e-4
+    gripper_open_threshold: 0.3
 
 # Exploration
 in_place_rotation_steps: 8
@@ -128,9 +129,10 @@ vlm_context_length: 20  # How long messages sent to the vlm server can be if we 
 limited_obs_publish_sleep: 0.5
 
 # High level stuff: commands to execute 
-command: "pick up a bottle and put it on the chair"
-name: "stretch"
 exploration_steps: 50
-# object_to_find: "bottle"
-object_to_find: "toy_vehicle"
-location_to_place: "chair"
+name: "stretch"
+task:
+  command: "pick up a bottle and put it on the chair"
+  # object_to_find: "bottle"
+  # object_to_find: "toy_vehicle"
+  # location_to_place: "chair"
