@@ -29,6 +29,9 @@ from stretch.navigation.utils.geometry import transformation_matrix_to_pose
 
 
 class OrbSlam3(Node):
+
+    use_pangolin_viewer: bool = False
+
     def __init__(self):
         super().__init__("stretch_orbslam3")
 
@@ -139,7 +142,7 @@ class OrbSlam3(Node):
                 f.write("%YAML:1.0\n" + content)
 
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
-            self.slam.set_use_viewer(False)
+            self.slam.set_use_viewer(self.use_pangolin_viewer)
             self.slam.initialize()
             print("ORB-SLAM3 initialized")
 
