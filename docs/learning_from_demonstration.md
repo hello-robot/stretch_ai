@@ -1,7 +1,5 @@
 # Learning from Demonstration (LfD)
 
-print()
-
 ## Prerequisites:
 
 1. Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10
