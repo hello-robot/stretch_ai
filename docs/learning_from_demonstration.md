@@ -1,5 +1,7 @@
 # Learning from Demonstration (LfD)
 
+print()
+
 ## Prerequisites:
 
 1. Follow [instructions](../README.md#advanced-installation) for advanced installation of stretch_ai with Python 3.10
@@ -10,7 +12,7 @@
    # Install in same conda environment as stretch_ai
    conda activate stretch_ai
 
-   git clone git@github.com:hello-yiche/lerobot.git
+   git clone git@github.com:hello-robot/lerobot.git
    cd lerobot
 
    # Support for Stretch is currently implemented on this branch
@@ -19,6 +21,8 @@
    # Editable install makes editing configs useful, though configs can also be specified via cli
    pip install -e .
    ```
+
+Our LfD code is a [fork of LeRobot](https://github.com/hello-robot/lerobot). The original LeRobot repo can be found [here](https://github.com/huggingface/lerobot).
 
 ## Overview of LfD process
 
