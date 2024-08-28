@@ -11,14 +11,13 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import sys
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pinocchio
-from loguru import logger
 from scipy.spatial.transform import Rotation as R
 
+import stretch.utils.logger as logger
 from stretch.motion.base.ik_solver_base import IKSolverBase
 
 # --DEFAULTS--
@@ -39,10 +38,6 @@ def level_filter(levels):
         return record["level"].name in levels
 
     return is_level
-
-
-logger.remove(0)
-logger.add(sys.stderr, filter=level_filter(levels=["WARNING", "ERROR"]))
 
 
 class PinocchioIKSolver(IKSolverBase):
@@ -144,16 +139,22 @@ class PinocchioIKSolver(IKSolverBase):
             Get a transformation matrix transforming from node_a frame to node_b frame
         '''
         q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
-        print('q_model', q_model)
+        # print('q_model', q_model)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
         frame_idx1 = [f.name for f in self.model.frames].index(node_a)
         frame_idx2 = [f.name for f in self.model.frames].index(node_b)
+        # print(frame_idx1)
+        # print(frame_idx2)
+        # print(self.model.getFrameId(node_a))
+        # print(self.model.getFrameId(node_b))
+        # frame_idx1 = self.model.getFrameId(node_a)
+        # frame_idx2 = self.model.getFrameId(node_b)
         pinocchio.updateFramePlacement(self.model, self.data, frame_idx1)
         placement_frame1 = self.data.oMf[frame_idx1]
         pinocchio.updateFramePlacement(self.model, self.data, frame_idx2)
         placement_frame2 = self.data.oMf[frame_idx2]
-        print('pin 1', placement_frame1)
-        print('pin 2', placement_frame2)
+        # print('pin 1', placement_frame1)
+        # print('pin 2', placement_frame2)
         return placement_frame2.inverse() * placement_frame1
 
     def compute_fk(
@@ -193,6 +194,7 @@ class PinocchioIKSolver(IKSolverBase):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
+        node_name = None
     ) -> Tuple[np.ndarray, bool, dict]:
         """given end-effector position and quaternion, return joint values.
 
@@ -218,9 +220,13 @@ class PinocchioIKSolver(IKSolverBase):
         desired_ee_pose = pinocchio.SE3(R.from_quat(quat_desired).as_matrix(), pos_desired)
         while True:
             pinocchio.forwardKinematics(self.model, self.data, q)
-            pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
+            if node_name is not None:
+                frame_idx = [f.name for f in self.model.frames].index(node_name) 
+            else:
+                frame_idx = self.ee_frame_idx
+            pinocchio.updateFramePlacement(self.model, self.data, frame_idx)
 
-            dMi = desired_ee_pose.actInv(self.data.oMf[self.ee_frame_idx])
+            dMi = desired_ee_pose.actInv(self.data.oMf[frame_idx])
             err = pinocchio.log(dMi).vector
             if verbose:
                 print(f"[pinocchio_ik_solver] iter={i}; error={err}")
@@ -234,7 +240,7 @@ class PinocchioIKSolver(IKSolverBase):
                 self.model,
                 self.data,
                 q,
-                self.ee_frame_idx,
+                frame_idx,
                 pinocchio.ReferenceFrame.LOCAL,
             )
             v = -J.T.dot(np.linalg.solve(J.dot(J.T) + self.DAMP * np.eye(6), err))
