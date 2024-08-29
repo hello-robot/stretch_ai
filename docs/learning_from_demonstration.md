@@ -232,6 +232,18 @@ python3 -m stretch.app.lfd.ros2_lfd_leader \
 
 Where `--policy_path` is the path to the weights folder and `--policy_name` is the name of the policy used to train the weights, e.g. `diffusion` for Diffusion Policy.
 
+#### Troubleshooting
+
+##### Repo id must be in the form 'repo_name' or 'namespace/repo_name'
+
+This error can be a bit hard to interpret, and manifests like this:
+
+```
+huggingface_hub.errors.HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': 'src/lerobot/outputs/train/2024-08-28/16-22-19_stretch_real_diffusion_default/checkpoints/030000/pretrained_model'. Use `repo_type` argument if needed.
+```
+
+This means that the `--policy_path` argument is not pointing to the correct folder. Make sure that the path is correct and that the folder contains the weights.
+
 ### Skill in action:
 
 [![LfD integrated demo full video](https://img.youtube.com/vi/FeASJ-EmCqQ/0.jpg)](https://www.youtube.com/watch?v=FeASJ-EmCqQ)
