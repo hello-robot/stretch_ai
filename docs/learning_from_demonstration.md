@@ -209,8 +209,7 @@ python3 -m stretch.app.lfd.ros2_lfd_leader \
 --robot_ip $ROBOT_IP \
 --policy_name <name-of-policy> \
 --policy_path <path-to-weights-folder> \
---teleop-mode <teleop-mode> \
---record-success
+--teleop-mode <teleop-mode>
 ```
 
 Sample command:
@@ -221,7 +220,6 @@ python3 -m stretch.app.lfd.ros2_lfd_leader \
 --policy_path lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model \
 --policy_name diffusion \
 --teleop-mode base_x
---record-success
 ```
 
 ### Skill in action:
