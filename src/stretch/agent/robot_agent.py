@@ -98,55 +98,7 @@ class RobotAgent:
         if voxel_map is not None:
             self.voxel_map = voxel_map
         else:
-            self.voxel_map = SparseVoxelMap(
-                resolution=self._voxel_size,
-                local_radius=parameters["local_radius"],
-                obs_min_height=parameters["obs_min_height"],
-                obs_max_height=parameters["obs_max_height"],
-                min_depth=parameters["min_depth"],
-                max_depth=parameters["max_depth"],
-                pad_obstacles=parameters["pad_obstacles"],
-                add_local_radius_points=parameters.get("add_local_radius_points", default=True),
-                remove_visited_from_obstacles=parameters.get(
-                    "remove_visited_from_obstacles", default=False
-                ),
-                obs_min_density=parameters["obs_min_density"],
-                encoder=self.encoder,
-                smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
-                use_median_filter=parameters.get("filters/use_median_filter", False),
-                median_filter_size=parameters.get("filters/median_filter_size", 5),
-                median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
-                use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
-                derivative_filter_threshold=parameters.get(
-                    "filters/derivative_filter_threshold", 0.5
-                ),
-                use_instance_memory=(self.semantic_sensor is not None or self._use_instance_memory),
-                instance_memory_kwargs={
-                    "min_pixels_for_instance_view": parameters.get(
-                        "min_pixels_for_instance_view", 100
-                    ),
-                    "min_instance_thickness": parameters.get(
-                        "instance_memory/min_instance_thickness", 0.01
-                    ),
-                    "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
-                    "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
-                    "min_instance_height": parameters.get(
-                        "instance_memory/min_instance_height", 0.1
-                    ),
-                    "max_instance_height": parameters.get(
-                        "instance_memory/max_instance_height", 1.8
-                    ),
-                    "min_pixels_for_instance_view": parameters.get(
-                        "instance_memory/min_pixels_for_instance_view", 100
-                    ),
-                    "min_percent_for_instance_view": parameters.get(
-                        "instance_memory/min_percent_for_instance_view", 0.2
-                    ),
-                    "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
-                    "use_visual_feat": parameters.get("use_visual_feat", False),
-                },
-                prune_detected_objects=parameters.get("prune_detected_objects", False),
-            )
+            self.voxel_map = self._create_voxel_map(parameters)
 
         # Create planning space
         self.space = SparseVoxelMapNavigationSpace(
@@ -174,6 +126,57 @@ class RobotAgent:
             self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
+
+    def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
+        """Create a voxel map from parameters.
+
+        Args:
+            parameters(Parameters): the parameters for the voxel map
+
+        Returns:
+            SparseVoxelMap: the voxel map
+        """
+        return SparseVoxelMap(
+            resolution=self._voxel_size,
+            local_radius=parameters["local_radius"],
+            obs_min_height=parameters["obs_min_height"],
+            obs_max_height=parameters["obs_max_height"],
+            min_depth=parameters["min_depth"],
+            max_depth=parameters["max_depth"],
+            pad_obstacles=parameters["pad_obstacles"],
+            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
+            remove_visited_from_obstacles=parameters.get(
+                "remove_visited_from_obstacles", default=False
+            ),
+            obs_min_density=parameters["obs_min_density"],
+            encoder=self.encoder,
+            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
+            use_median_filter=parameters.get("filters/use_median_filter", False),
+            median_filter_size=parameters.get("filters/median_filter_size", 5),
+            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
+            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            use_instance_memory=(self.semantic_sensor is not None or self._use_instance_memory),
+            instance_memory_kwargs={
+                "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
+                "min_instance_thickness": parameters.get(
+                    "instance_memory/min_instance_thickness", 0.01
+                ),
+                "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
+                "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
+                "min_instance_height": parameters.get("instance_memory/min_instance_height", 0.1),
+                "max_instance_height": parameters.get("instance_memory/max_instance_height", 1.8),
+                "min_pixels_for_instance_view": parameters.get(
+                    "instance_memory/min_pixels_for_instance_view", 100
+                ),
+                "min_percent_for_instance_view": parameters.get(
+                    "instance_memory/min_percent_for_instance_view", 0.2
+                ),
+                "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
+                "use_visual_feat": parameters.get("use_visual_feat", False),
+            },
+            prune_detected_objects=parameters.get("prune_detected_objects", False),
+        )
 
     @property
     def feature_match_threshold(self) -> float:
@@ -1314,6 +1317,20 @@ class RobotAgent:
             time.sleep(0.375)
 
         self.robot.switch_to_navigation_mode()
+
+    def load_map(self, filename: str) -> None:
+        """Load a map from a PKL file. Creates a new voxel map and loads the data from the file into this map. Then uses RANSAC to figure out where the current map and the loaded map overlap, computes a transform, and applies this transform to the loaded map to align it with the current map.
+
+        Args:
+            filename(str): the name of the file to load the map from
+        """
+
+        # Load the map from the file
+        loaded_voxel_map = self._create_voxel_map(self.parameters)
+        loaded_voxel_map.read_from_pickel(filename, perception=self.semantic_sensor)
+
+        # Align the loaded map with the current map
+        raise NotImplementedError("This function is not implemented yet.")
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""
