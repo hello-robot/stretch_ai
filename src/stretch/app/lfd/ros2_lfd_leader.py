@@ -294,7 +294,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--robot_ip", type=str, default="192.168.1.15")
+    parser.add_argument("-i", "--robot_ip", type=str, default="", help="Robot IP address")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-u", "--user-name", type=str, default="default_user")
     parser.add_argument("-t", "--task-name", type=str, default="default_task")
