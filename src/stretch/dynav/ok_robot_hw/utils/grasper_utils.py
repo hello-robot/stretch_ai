@@ -36,7 +36,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
         elif (retry_flag !=0 and side_retries == 3):
             print("Tried in all angles but couldn't succed")
             time.sleep(2)
-            return None, None, None
+            return None, None, None, None
 
         elif (side_retries == 2 and tilt_retries == 3):
             hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
@@ -108,54 +108,54 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
         3. Move the base such gripper in line with the grasp
         4. Gradually Move the gripper to the desired position
     """
-    import PyKDL
+    # import PyKDL
     # Transforming the final point from Model camera frame to robot camera frame
-    point = PyKDL.Vector(-translation[1], -translation[0], translation[2])
+    # point = PyKDL.Vector(-translation[1], -translation[0], translation[2])
     pin_point = np.array([-translation[1], -translation[0], translation[2]])
 
     # Rotation from Camera frame to Model frame
-    rotation1_bottom = PyKDL.Rotation(0.0000000, -1.0000000,  0.0000000,
-                                -1.0000000,  0.0000000,  0.0000000, 
-                                0.0000000,  0.0000000, 1.0000000)
+    # rotation1_bottom = PyKDL.Rotation(0.0000000, -1.0000000,  0.0000000,
+    #                             -1.0000000,  0.0000000,  0.0000000, 
+    #                             0.0000000,  0.0000000, 1.0000000)
     rotation1_bottom_mat = np.array([[0.0000000, -1.0000000,  0.0000000],
                                  [-1.0000000,  0.0000000,  0.0000000],
                                  [0.0000000,  0.0000000, 1.0000000]])
 
     # Rotation from model frame to pose frame
-    rotation1 = PyKDL.Rotation(rotation[0][0], rotation[0][1], rotation[0][2],
-                            rotation[1][0],  rotation[1][1], rotation[1][2],
-                                rotation[2][0],  rotation[2][1], rotation[2][2])
+    # rotation1 = PyKDL.Rotation(rotation[0][0], rotation[0][1], rotation[0][2],
+    #                         rotation[1][0],  rotation[1][1], rotation[1][2],
+    #                             rotation[2][0],  rotation[2][1], rotation[2][2])
     rotation1_mat = np.array([[rotation[0][0], rotation[0][1], rotation[0][2]],
                             [rotation[1][0],  rotation[1][1], rotation[1][2]],
                             [rotation[2][0],  rotation[2][1], rotation[2][2]]])
 
     # Rotation from camera frame to pose frame
-    rotation =  rotation1_bottom * rotation1
+    # rotation =  rotation1_bottom * rotation1
     pin_rotation = np.dot(rotation1_bottom_mat, rotation1_mat)
-    print(f"rotation {rotation}")
+    # print(f"rotation {rotation}")
     print(f"pin rotation{pin_rotation}")
 
     # Relative rotation and translation of grasping point relative to camera
-    dest_frame = PyKDL.Frame(rotation, point) 
+    # dest_frame = PyKDL.Frame(rotation, point) 
     pin_dest_frame = pin.SE3(np.array(pin_rotation), np.array(pin_point))
-    print(f"dest frame {dest_frame}")
+    # print(f"dest frame {dest_frame}")
     print(f"pin dest frame {pin_dest_frame}")
 
     # Camera to gripper frame transformation
     # cam2gripper_transform, pin_cam2gripper_transform, _, _ = robot.get_joint_transform(base_node, gripper_node)
     pin_cam2gripper_transform = robot.get_joint_transform(base_node, gripper_node)
 
-    del_pose = PyKDL.Frame()
-    del_rot = PyKDL.Rotation(PyKDL.Vector(pin_cam2gripper_transform.rotation[0][0], pin_cam2gripper_transform.rotation[1][0], pin_cam2gripper_transform.rotation[2][0]),
-                                PyKDL.Vector(pin_cam2gripper_transform.rotation[0][1], pin_cam2gripper_transform.rotation[1][1], pin_cam2gripper_transform.rotation[2][1]),
-                                PyKDL.Vector(pin_cam2gripper_transform.rotation[0][2], pin_cam2gripper_transform.rotation[1][2], pin_cam2gripper_transform.rotation[2][2]))
-    del_trans = PyKDL.Vector(pin_cam2gripper_transform.translation[0], pin_cam2gripper_transform.translation[1], pin_cam2gripper_transform.translation[2])
-    del_pose.M = del_rot
-    del_pose.p = del_trans
+    # del_pose = PyKDL.Frame()
+    # del_rot = PyKDL.Rotation(PyKDL.Vector(pin_cam2gripper_transform.rotation[0][0], pin_cam2gripper_transform.rotation[1][0], pin_cam2gripper_transform.rotation[2][0]),
+    #                             PyKDL.Vector(pin_cam2gripper_transform.rotation[0][1], pin_cam2gripper_transform.rotation[1][1], pin_cam2gripper_transform.rotation[2][1]),
+    #                             PyKDL.Vector(pin_cam2gripper_transform.rotation[0][2], pin_cam2gripper_transform.rotation[1][2], pin_cam2gripper_transform.rotation[2][2]))
+    # del_trans = PyKDL.Vector(pin_cam2gripper_transform.translation[0], pin_cam2gripper_transform.translation[1], pin_cam2gripper_transform.translation[2])
+    # del_pose.M = del_rot
+    # del_pose.p = del_trans
 
-    transformed_frame = del_pose * dest_frame
+    # transformed_frame = del_pose * dest_frame
     pin_transformed_frame = pin_cam2gripper_transform * pin_dest_frame
-    print(f"transformed frame {transformed_frame}")
+    # print(f"transformed frame {transformed_frame}")
     print(f"pin_transformed frame {pin_transformed_frame}")
 
 
@@ -164,16 +164,16 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # time.sleep(2)
 
     # Rotation for aligning Robot gripper frame to Model gripper frame
-    rotation2_top = PyKDL.Rotation(0, 0, 1, 1, 0, 0, 0, -1, 0)
+    # rotation2_top = PyKDL.Rotation(0, 0, 1, 1, 0, 0, 0, -1, 0)
     rotation2_top_mat = np.array([[0, 0, 1], 
                                 [1, 0, 0],
                                 [0, -1, 0]])
 
 
     # final Rotation of gripper to hold the objet
-    final_rotation = transformed_frame.M * rotation2_top
+    # final_rotation = transformed_frame.M * rotation2_top
     pin_final_rotation = np.dot(pin_transformed_frame.rotation, rotation2_top_mat)
-    print(f"final rotation - {final_rotation}")
+    # print(f"final rotation - {final_rotation}")
     print(f"pin final rotation {pin_final_rotation}")
 
     print("Rotation wrist with sleep of 2s")
@@ -183,44 +183,44 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     #         [1],
     #     )
     rpy_angles = pin.rpy.matrixToRpy(pin_final_rotation)
-    print(f"rpy angles {final_rotation.GetRPY}")
-    print(f"pin rpy angles {rpy_angles}")
-    robot.move_to_position(gripper_pos = gripper_width)
+    # print(f"rpy angles {final_rotation.GetRPY}")
+    # print(f"pin rpy angles {rpy_angles}")
+    # robot.move_to_position(gripper_pos = gripper_width)
     robot.move_to_pose(
             [0, 0, 0],
             [rpy_angles[0], rpy_angles[1], rpy_angles[2]],
             [1],
         )
-    time.sleep(1)
+    # time.sleep(1)
 
     # Final grasping point relative to camera
     # cam2gripper_transform, pin_cam2gripper_transform, _, _ = robot.get_joint_transform(base_node, gripper_node)
     pin_cam2gripper_transform = robot.get_joint_transform(base_node, gripper_node)
-    del_pose = PyKDL.Frame()
-    del_rot = PyKDL.Rotation(PyKDL.Vector(pin_cam2gripper_transform.rotation[0][0], pin_cam2gripper_transform.rotation[1][0], pin_cam2gripper_transform.rotation[2][0]),
-                                PyKDL.Vector(pin_cam2gripper_transform.rotation[0][1], pin_cam2gripper_transform.rotation[1][1], pin_cam2gripper_transform.rotation[2][1]),
-                                PyKDL.Vector(pin_cam2gripper_transform.rotation[0][2], pin_cam2gripper_transform.rotation[1][2], pin_cam2gripper_transform.rotation[2][2]))
-    del_trans = PyKDL.Vector(pin_cam2gripper_transform.translation[0], pin_cam2gripper_transform.translation[1], pin_cam2gripper_transform.translation[2])
-    del_pose.M = del_rot
-    del_pose.p = del_trans
-    transformed_point1 = del_pose * point
+    # del_pose = PyKDL.Frame()
+    # del_rot = PyKDL.Rotation(PyKDL.Vector(pin_cam2gripper_transform.rotation[0][0], pin_cam2gripper_transform.rotation[1][0], pin_cam2gripper_transform.rotation[2][0]),
+    #                             PyKDL.Vector(pin_cam2gripper_transform.rotation[0][1], pin_cam2gripper_transform.rotation[1][1], pin_cam2gripper_transform.rotation[2][1]),
+    #                             PyKDL.Vector(pin_cam2gripper_transform.rotation[0][2], pin_cam2gripper_transform.rotation[1][2], pin_cam2gripper_transform.rotation[2][2]))
+    # del_trans = PyKDL.Vector(pin_cam2gripper_transform.translation[0], pin_cam2gripper_transform.translation[1], pin_cam2gripper_transform.translation[2])
+    # del_pose.M = del_rot
+    # del_pose.p = del_trans
+    # transformed_point1 = del_pose * point
     pin_transformed_point1 = apply_se3_transform(pin_cam2gripper_transform, pin_point)
-    print(f"transformed point1 {transformed_point1}")
+    # print(f"transformed point1 {transformed_point1}")
     print(f"pin transformed point1 {pin_transformed_point1}")
 
     # Final grasping point relative to base
     # cam2base_transform, pin_cam2base_transform, _, _ = robot.get_joint_transform(base_node, 'base_link')
     pin_cam2base_transform = robot.get_joint_transform(base_node, 'base_link')
-    del_pose = PyKDL.Frame()
-    del_rot = PyKDL.Rotation(PyKDL.Vector(pin_cam2base_transform.rotation[0][0], pin_cam2base_transform.rotation[1][0], pin_cam2base_transform.rotation[2][0]),
-                                PyKDL.Vector(pin_cam2base_transform.rotation[0][1], pin_cam2base_transform.rotation[1][1], pin_cam2base_transform.rotation[2][1]),
-                                PyKDL.Vector(pin_cam2base_transform.rotation[0][2], pin_cam2base_transform.rotation[1][2], pin_cam2base_transform.rotation[2][2]))
-    del_trans = PyKDL.Vector(pin_cam2base_transform.translation[0], pin_cam2base_transform.translation[1], pin_cam2base_transform.translation[2])
-    del_pose.M = del_rot
-    del_pose.p = del_trans
-    base_point = del_pose * point
+    # del_pose = PyKDL.Frame()
+    # del_rot = PyKDL.Rotation(PyKDL.Vector(pin_cam2base_transform.rotation[0][0], pin_cam2base_transform.rotation[1][0], pin_cam2base_transform.rotation[2][0]),
+    #                             PyKDL.Vector(pin_cam2base_transform.rotation[0][1], pin_cam2base_transform.rotation[1][1], pin_cam2base_transform.rotation[2][1]),
+    #                             PyKDL.Vector(pin_cam2base_transform.rotation[0][2], pin_cam2base_transform.rotation[1][2], pin_cam2base_transform.rotation[2][2]))
+    # del_trans = PyKDL.Vector(pin_cam2base_transform.translation[0], pin_cam2base_transform.translation[1], pin_cam2base_transform.translation[2])
+    # del_pose.M = del_rot
+    # del_pose.p = del_trans
+    # base_point = del_pose * point
     pin_base_point = apply_se3_transform(pin_cam2base_transform, pin_point)
-    print(f"base point {base_point}")
+    # print(f"base point {base_point}")
     print(f"pin base point {pin_base_point}")
 
     diff_value = (0.228 - gripper_depth - gripper_height) # 0.228 is the distance between link_Straight_gripper node and the gripper tip
@@ -250,7 +250,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # transformed_point2 = base2gripper_transform * base_point
     pin_transformed_point2 = apply_se3_transform(pin_base2gripper_transform, pin_base_point)
     # print(f"transformed point2 : {transformed_point2}")
-    print(f"pin transformed point2 : {pin_transformed_point2}")
+    # print(f"pin transformed point2 : {pin_transformed_point2}")
     # curr_diff = transformed_point2.z()
     curr_diff = pin_transformed_point2[2]
 
@@ -260,9 +260,8 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     velocities = [1.0]*8
     velocities[5:] = [0.03, 0.03, 0.03, 0.03]
     velocities[0] = 0.03
-    if diff > 0.08:
-        dist = diff - 0.08
-        print("Move to intermediate point with sleep 2s")
+    if diff > 0.06:
+        dist = diff - 0.06
         robot.move_to_pose(
             [0, 0, dist],
             [0, 0, 0],

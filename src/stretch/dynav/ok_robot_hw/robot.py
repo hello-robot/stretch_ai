@@ -33,6 +33,7 @@ class HelloRobot:
         self.STRETCH_GRIPPER_MAX = stretch_gripper_max
         self.STRETCH_GRIPPER_MIN = stretch_gripper_min
         self.urdf_path = os.path.join(stretch_client_urdf_file, 'stretch.urdf')
+        self.joints_pin = {'joint_fake':0}
         
         self.GRIPPER_THRESHOLD = gripper_threshold
 
@@ -54,30 +55,29 @@ class HelloRobot:
         self.clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
 
         # Joint dictionary for Kinematics
-        self.setup_kdl()
+        # self.setup_kdl()
 
 
-    def setup_kdl(self):
-        """
-            Kdl Setup for forward and Inverse Kinematics
-        """
-        import PyKDL
-        from urdf_parser_py.urdf import URDF
-        self.joints = {'joint_fake':0}
-        self.head_joints = {'joint_fake':0}
-        self.joints_pin = {'joint_fake':0}
+    # def setup_kdl(self):
+    #     """
+    #         Kdl Setup for forward and Inverse Kinematics
+    #     """
+    #     import PyKDL
+    #     from urdf_parser_py.urdf import URDF
+    #     self.joints = {'joint_fake':0}
+    #     self.head_joints = {'joint_fake':0}
         
-        # Loading URDF and listing the internediate joints from base to gripper
-        robot_model = URDF.from_xml_file(self.urdf_path)
-        self.kdl_tree = kdl_tree_from_urdf_model(robot_model)
-        self.arm_chain = self.kdl_tree.getChain('base_link', self.end_link)
-        self.joint_array = PyKDL.JntArray(self.arm_chain.getNrOfJoints())
+    #     # Loading URDF and listing the internediate joints from base to gripper
+    #     robot_model = URDF.from_xml_file(self.urdf_path)
+    #     self.kdl_tree = kdl_tree_from_urdf_model(robot_model)
+    #     self.arm_chain = self.kdl_tree.getChain('base_link', self.end_link)
+    #     self.joint_array = PyKDL.JntArray(self.arm_chain.getNrOfJoints())
 
-        # Forward kinematics
-        self.fk_p_kdl = PyKDL.ChainFkSolverPos_recursive(self.arm_chain)
-        # Inverse Kinematics
-        self.ik_v_kdl = PyKDL.ChainIkSolverVel_pinv(self.arm_chain)
-        self.ik_p_kdl = PyKDL.ChainIkSolverPos_NR(self.arm_chain, self.fk_p_kdl, self.ik_v_kdl) 
+    #     # Forward kinematics
+    #     self.fk_p_kdl = PyKDL.ChainFkSolverPos_recursive(self.arm_chain)
+    #     # Inverse Kinematics
+    #     self.ik_v_kdl = PyKDL.ChainIkSolverVel_pinv(self.arm_chain)
+    #     self.ik_p_kdl = PyKDL.ChainIkSolverPos_NR(self.arm_chain, self.fk_p_kdl, self.ik_v_kdl) 
     
 
     def set_end_link(self, link):
@@ -183,22 +183,22 @@ class HelloRobot:
         # Head Joints
         pan, tilt = self.robot.get_pan_tilt()
 
-        self.joints['joint_fake'] = origin_dist
-        self.joints['joint_lift'] = state[1]
-        armPos = state[2]
-        self.joints['3'] = armPos / 4.0
-        self.joints['2'] = armPos / 4.0
-        self.joints['1'] = armPos / 4.0
-        self.joints['0'] = armPos / 4.0
-        self.joints['joint_wrist_yaw'] = state[3]
-        self.joints['joint_wrist_roll'] = state[5]
-        self.joints['joint_wrist_pitch'] = OVERRIDE_STATES.get('wrist_pitch', state[4])
+        # self.joints['joint_fake'] = origin_dist
+        # self.joints['joint_lift'] = state[1]
+        # armPos = state[2]
+        # self.joints['3'] = armPos / 4.0
+        # self.joints['2'] = armPos / 4.0
+        # self.joints['1'] = armPos / 4.0
+        # self.joints['0'] = armPos / 4.0
+        # self.joints['joint_wrist_yaw'] = state[3]
+        # self.joints['joint_wrist_roll'] = state[5]
+        # self.joints['joint_wrist_pitch'] = OVERRIDE_STATES.get('wrist_pitch', state[4])
 
-        self.joints['joint_gripper_finger_left'] = 0
+        # self.joints['joint_gripper_finger_left'] = 0
 
-        self.head_joints['joint_fake'] = origin_dist
-        self.head_joints['joint_head_pan'] = pan
-        self.head_joints['joint_head_tilt'] = tilt
+        # self.head_joints['joint_fake'] = origin_dist
+        # self.head_joints['joint_head_pan'] = pan
+        # self.head_joints['joint_head_tilt'] = tilt
         
         self.joints_pin['joint_fake'] = origin_dist
         self.joints_pin['joint_lift'] = state[1]
@@ -266,65 +266,65 @@ class HelloRobot:
         print('joints pin', self.joints_pin)
         frame_pin = self.robot.get_frame_pose(self.joints_pin, node1, node2)
 
-        import PyKDL
+        # import PyKDL
 
-        # Intializing chain -> maintains list of nodes from base link to corresponding nodes
-        chain1 = self.kdl_tree.getChain('base_link', node1)
-        chain2 = self.kdl_tree.getChain('base_link', node2)
+        # # Intializing chain -> maintains list of nodes from base link to corresponding nodes
+        # chain1 = self.kdl_tree.getChain('base_link', node1)
+        # chain2 = self.kdl_tree.getChain('base_link', node2)
 
-        # Intializing corresponding joint array and forward chain solvers
-        joint_array1 = PyKDL.JntArray(chain1.getNrOfJoints())
-        joint_array2 = PyKDL.JntArray(chain2.getNrOfJoints())
+        # # Intializing corresponding joint array and forward chain solvers
+        # joint_array1 = PyKDL.JntArray(chain1.getNrOfJoints())
+        # joint_array2 = PyKDL.JntArray(chain2.getNrOfJoints())
 
-        fk_p_kdl1 = PyKDL.ChainFkSolverPos_recursive(chain1)
-        fk_p_kdl2 = PyKDL.ChainFkSolverPos_recursive(chain2)
+        # fk_p_kdl1 = PyKDL.ChainFkSolverPos_recursive(chain1)
+        # fk_p_kdl2 = PyKDL.ChainFkSolverPos_recursive(chain2)
 
-        if node1 == TOP_CAMERA_NODE:
-            ref_joints1 = self.head_joints
-            ref_joint1_list = self.head_joint_list
-        else:
-            ref_joints1 = self.joints
-            ref_joint1_list = self.joint_list
+        # if node1 == TOP_CAMERA_NODE:
+        #     ref_joints1 = self.head_joints
+        #     ref_joint1_list = self.head_joint_list
+        # else:
+        #     ref_joints1 = self.joints
+        #     ref_joint1_list = self.joint_list
             
-        # Updating the joint arrays from self.joints
-        for joint_index in range(joint_array1.rows()):
-            joint_array1[joint_index] = ref_joints1[ref_joint1_list[joint_index]]
+        # # Updating the joint arrays from self.joints
+        # for joint_index in range(joint_array1.rows()):
+        #     joint_array1[joint_index] = ref_joints1[ref_joint1_list[joint_index]]
 
-        for joint_index in range(joint_array2.rows()):
-            joint_array2[joint_index] = self.joints[self.joint_list[joint_index]]
+        # for joint_index in range(joint_array2.rows()):
+        #     joint_array2[joint_index] = self.joints[self.joint_list[joint_index]]
             
-        # Intializing frames corresponding to nodes
-        frame1 = PyKDL.Frame()
-        frame2 = PyKDL.Frame()
+        # # Intializing frames corresponding to nodes
+        # frame1 = PyKDL.Frame()
+        # frame2 = PyKDL.Frame()
 
-        # Calculating current frames of nodes
-        print('joint_array1', joint_array1)
-        print('joint_array2', joint_array2)
-        print('self.joints', self.joints)
-        print('self.head_joints', self.head_joints)
-        fk_p_kdl1.JntToCart(joint_array1, frame1)
-        fk_p_kdl2.JntToCart(joint_array2, frame2)
+        # # Calculating current frames of nodes
+        # print('joint_array1', joint_array1)
+        # print('joint_array2', joint_array2)
+        # print('self.joints', self.joints)
+        # print('self.head_joints', self.head_joints)
+        # fk_p_kdl1.JntToCart(joint_array1, frame1)
+        # fk_p_kdl2.JntToCart(joint_array2, frame2)
         
-        # This allows to transform a point in frame1 to frame2
-        frame_transform = frame2.Inverse() * frame1
-        print('pin', frame_pin)
-        print('pykdl', frame_transform)
+        # # This allows to transform a point in frame1 to frame2
+        # frame_transform = frame2.Inverse() * frame1
+        # print('pin', frame_pin)
+        # print('pykdl', frame_transform)
         return frame_pin
 
-    def debug_pose(self):
-        import PyKDL
-        self.updateJoints()
-        print(self.joints)
-        for joint_index in range(self.joint_array.rows()):
-            self.joint_array[joint_index] = self.joints[self.joint_list[joint_index]]
-        print(self.joint_array)
-        curr_pose = PyKDL.Frame() # Current pose of gripper in base frame
-        self.fk_p_kdl.JntToCart(self.joint_array, curr_pose)
-        print(f"cur pose {curr_pose}")
-        pin_pose = self.robot.get_ee_pose(matrix=True, link_name=self.end_link)
-        pin_rotation, pin_translation = pin_pose[:3, :3], pin_pose[:3, 3]
-        pin_curr_pose = pin.SE3(pin_rotation, pin_translation)
-        print(f"pin curr pose {pin_curr_pose}")
+    # def debug_pose(self):
+    #     import PyKDL
+    #     self.updateJoints()
+    #     print(self.joints)
+    #     for joint_index in range(self.joint_array.rows()):
+    #         self.joint_array[joint_index] = self.joints[self.joint_list[joint_index]]
+    #     print(self.joint_array)
+    #     curr_pose = PyKDL.Frame() # Current pose of gripper in base frame
+    #     self.fk_p_kdl.JntToCart(self.joint_array, curr_pose)
+    #     print(f"cur pose {curr_pose}")
+    #     pin_pose = self.robot.get_ee_pose(matrix=True, link_name=self.end_link)
+    #     pin_rotation, pin_translation = pin_pose[:3, :3], pin_pose[:3, 3]
+    #     pin_curr_pose = pin.SE3(pin_rotation, pin_translation)
+    #     print(f"pin curr pose {pin_curr_pose}")
     
     def move_to_pose(self, translation_tensor, rotational_tensor, gripper, move_mode=0, velocities=None):
         """
@@ -336,39 +336,39 @@ class HelloRobot:
         # print('translation and rotation', translation_tensor, rotational_tensor)
         
         self.updateJoints()
-        for joint_index in range(self.joint_array.rows()):
-            self.joint_array[joint_index] = self.joints[self.joint_list[joint_index]]
-        print('self.joints', self.joints)
-        print('self.joint_array', self.joint_array)
+        # for joint_index in range(self.joint_array.rows()):
+        #     self.joint_array[joint_index] = self.joints[self.joint_list[joint_index]]
+        # print('self.joints', self.joints)
+        # print('self.joint_array', self.joint_array)
 
-        curr_pose = PyKDL.Frame() # Current pose of gripper in base frame
-        del_pose = PyKDL.Frame() # Relative Movement of gripper 
-        self.fk_p_kdl.JntToCart(self.joint_array, curr_pose)
+        # curr_pose = PyKDL.Frame() # Current pose of gripper in base frame
+        # del_pose = PyKDL.Frame() # Relative Movement of gripper 
+        # self.fk_p_kdl.JntToCart(self.joint_array, curr_pose)
 
         q = self.robot.get_joint_positions()
         q[HelloStretchIdx.WRIST_PITCH] = OVERRIDE_STATES.get('wrist_pitch', q[HelloStretchIdx.WRIST_PITCH])
         pin_pose = self.robot.get_ee_pose(matrix=True, link_name=self.end_link, q = q)
         pin_rotation, pin_translation = pin_pose[:3, :3], pin_pose[:3, 3]
         pin_curr_pose = pin.SE3(pin_rotation, pin_translation)
-        print(f"pykdl curr pose {curr_pose}")
-        print(f"pin curr pose {pin_curr_pose}")
+        # print(f"pykdl curr pose {curr_pose}")
+        # print(f"pin curr pose {pin_curr_pose}")
 
         rot_matrix = R.from_euler('xyz', rotation, degrees=False).as_matrix()
 
-        del_rot = PyKDL.Rotation(PyKDL.Vector(rot_matrix[0][0], rot_matrix[1][0], rot_matrix[2][0]),
-                                  PyKDL.Vector(rot_matrix[0][1], rot_matrix[1][1], rot_matrix[2][1]),
-                                  PyKDL.Vector(rot_matrix[0][2], rot_matrix[1][2], rot_matrix[2][2]))
-        del_trans = PyKDL.Vector(translation[0], translation[1], translation[2])
-        del_pose.M = del_rot
-        del_pose.p = del_trans
-        goal_pose_new = curr_pose*del_pose
+        # del_rot = PyKDL.Rotation(PyKDL.Vector(rot_matrix[0][0], rot_matrix[1][0], rot_matrix[2][0]),
+        #                           PyKDL.Vector(rot_matrix[0][1], rot_matrix[1][1], rot_matrix[2][1]),
+        #                           PyKDL.Vector(rot_matrix[0][2], rot_matrix[1][2], rot_matrix[2][2]))
+        # del_trans = PyKDL.Vector(translation[0], translation[1], translation[2])
+        # del_pose.M = del_rot
+        # del_pose.p = del_trans
+        # goal_pose_new = curr_pose*del_pose
 
         pin_del_pose = pin.SE3(np.array(rot_matrix), np.array(translation))
         pin_goal_pose_new = pin_curr_pose * pin_del_pose
-        print(f"pykdl del psoe {del_pose}")
-        print(f"pykdl goal pose new {goal_pose_new}")
-        print(f"pin del psoe {pin_del_pose}")
-        print(f"pin goal pose new {pin_goal_pose_new}")
+        # print(f"pykdl del psoe {del_pose}")
+        # print(f"pykdl goal pose new {goal_pose_new}")
+        # print(f"pin del psoe {pin_del_pose}")
+        # print(f"pin goal pose new {pin_goal_pose_new}")
 
         final_pos = pin_goal_pose_new.translation.tolist()
         final_quat = pin.Quaternion(pin_goal_pose_new.rotation).coeffs().tolist()
@@ -385,13 +385,13 @@ class HelloRobot:
         transform_joint_pos = transform_joint_array(pin_joint_pos)
 
         # Ik to calculate the required joint movements to move the gripper to desired pose
-        seed_array = PyKDL.JntArray(self.arm_chain.getNrOfJoints())
-        self.ik_p_kdl.CartToJnt(seed_array, goal_pose_new, self.joint_array) 
+        # seed_array = PyKDL.JntArray(self.arm_chain.getNrOfJoints())
+        # self.ik_p_kdl.CartToJnt(seed_array, goal_pose_new, self.joint_array) 
 
         self.joint_array1 = transform_joint_pos
-        print(f"joint array {self.joint_array}")
-        print(f"pin joint pos {pin_joint_pos}")
-        print(f"transformed joint pos {transform_joint_pos}")
+        # print(f"joint array {self.joint_array}")
+        # print(f"pin joint pos {pin_joint_pos}")
+        # print(f"transformed joint pos {transform_joint_pos}")
 
         ik_joints = {}
         # for joint_index in range(self.joint_array.rows()):
@@ -401,7 +401,7 @@ class HelloRobot:
         # Actual Movement of joints
         self.move_to_joints(ik_joints, gripper, move_mode, velocities)
 
-        self.updateJoints()
-        # for joint_index in range(self.joint_array.rows()):
-        for joint_index in range(len(self.joint_array1)):
-            self.joint_array[joint_index] = self.joints[self.joint_list[joint_index]]
+        # self.updateJoints()
+        # # for joint_index in range(self.joint_array.rows()):
+        # for joint_index in range(len(self.joint_array1)):
+        #     self.joint_array[joint_index] = self.joints[self.joint_list[joint_index]]
