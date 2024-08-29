@@ -282,8 +282,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         joint_state = self.get_joint_positions()
         return joint_state[HelloStretchIdx.GRIPPER]
 
-    def get_ee_pose(self, matrix=False, link_name=None):
-        q = self.get_joint_positions()
+    def get_ee_pose(self, matrix=False, link_name=None, q = None):
+        if q is None:
+            q = self.get_joint_positions()
         pos, quat = self._robot_model.manip_fk(q, node = link_name)
 
         if matrix:
