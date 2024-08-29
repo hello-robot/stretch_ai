@@ -321,6 +321,9 @@ if __name__ == "__main__":
     parser.add_argument("--policy_name", type=str, required=True)
     parser.add_argument("--depth-filter-k", type=int, default=None)
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument(
+        "--rerun", action="store_true", help="Enable rerun server for visualization."
+    )
     args = parser.parse_args()
 
     # Parameters
@@ -333,7 +336,7 @@ if __name__ == "__main__":
         send_port=args.send_port,
         parameters=parameters,
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
-        enable_rerun_server=False,
+        enable_rerun_server=args.rerun,
     )
     robot.switch_to_manipulation_mode()
     robot.move_to_manip_posture()
