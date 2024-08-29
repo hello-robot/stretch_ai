@@ -222,6 +222,16 @@ python3 -m stretch.app.lfd.ros2_lfd_leader \
 --teleop-mode base_x
 ```
 
+The default teleop mode is `base_x` which is the most common teleop mode used for training; you can omit the `--teleop-mode` argument if you used this mode. As with other apps, `--robot_ip` is also saved. A more common command would look like:
+
+```bash
+python3 -m stretch.app.lfd.ros2_lfd_leader \
+--policy_path lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model \
+--policy_name diffusion
+```
+
+Where `--policy_path` is the path to the weights folder and `--policy_name` is the name of the policy used to train the weights, e.g. `diffusion` for Diffusion Policy.
+
 ### Skill in action:
 
 [![LfD integrated demo full video](https://img.youtube.com/vi/FeASJ-EmCqQ/0.jpg)](https://www.youtube.com/watch?v=FeASJ-EmCqQ)
