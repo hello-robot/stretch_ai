@@ -418,3 +418,85 @@ def dropout_random_ellipses(depth_img, dropout_mean, gamma_shape=10000, gamma_sc
         depth_img[mask == 1] = 0
 
     return depth_img
+
+
+import numpy as np
+from scipy.spatial import cKDTree
+
+
+def find_se3_transform(
+    cloud1, cloud2, rgb1, rgb2, color_weight=0.5, max_iterations=50, tolerance=1e-5
+):
+    """
+    Find the SE(3) transformation between two colorized point clouds.
+
+    Parameters:
+    cloud1, cloud2: Nx3 numpy arrays containing XYZ coordinates
+    rgb1, rgb2: Nx3 numpy arrays containing RGB values (0-255)
+    color_weight: Weight given to color difference (0-1)
+    max_iterations: Maximum number of ICP iterations
+    tolerance: Convergence tolerance for transformation change
+
+    Returns:
+    R: 3x3 rotation matrix
+    t: 3x1 translation vector
+    """
+
+    # Example usage:
+    # cloud1 = np.random.rand(1000, 3)  # XYZ coordinates for cloud 1
+    # cloud2 = np.random.rand(1000, 3)  # XYZ coordinates for cloud 2
+    # rgb1 = np.random.randint(0, 256, (1000, 3))  # RGB values for cloud 1
+    # rgb2 = np.random.randint(0, 256, (1000, 3))  # RGB values for cloud 2
+    #
+    # R, t = find_se3_transform(cloud1, cloud2, rgb1, rgb2)
+
+    def best_fit_transform(A, B):
+        """
+        Calculates the least-squares best-fit transform between corresponding 3D points A->B
+        """
+        centroid_A = np.mean(A, axis=0)
+        centroid_B = np.mean(B, axis=0)
+        AA = A - centroid_A
+        BB = B - centroid_B
+        H = np.dot(AA.T, BB)
+        U, S, Vt = np.linalg.svd(H)
+        R = np.dot(Vt.T, U.T)
+        if np.linalg.det(R) < 0:
+            Vt[2, :] *= -1
+            R = np.dot(Vt.T, U.T)
+        t = centroid_B.T - np.dot(R, centroid_A.T)
+        return R, t
+
+    # Normalize RGB values
+    rgb1_norm = rgb1 / 255.0
+    rgb2_norm = rgb2 / 255.0
+
+    # Combine spatial and color information
+    combined1 = np.hstack((cloud1, rgb1_norm * color_weight))
+    combined2 = np.hstack((cloud2, rgb2_norm * color_weight))
+
+    # Initial transformation
+    R = np.eye(3)
+    t = np.zeros(3)
+
+    for iteration in range(max_iterations):
+        # Find nearest neighbors
+        tree = cKDTree(combined2)
+        distances, indices = tree.query(combined1, k=1)
+
+        # Estimate transformation
+        R_new, t_new = best_fit_transform(cloud1, cloud2[indices])
+
+        # Update transformation
+        t = t_new + np.dot(R_new, t)
+        R = np.dot(R_new, R)
+
+        # Apply transformation
+        cloud1 = np.dot(cloud1, R_new.T) + t_new
+        combined1[:, :3] = cloud1
+
+        # Check for convergence
+        if np.sum(np.abs(R_new - np.eye(3))) < tolerance and np.sum(np.abs(t_new)) < tolerance:
+            break
+
+    return R, t

@@ -34,6 +34,7 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference
+from stretch.utils.point_cloud import find_se3_transform
 
 
 class RobotAgent:
@@ -1318,7 +1319,7 @@ class RobotAgent:
 
         self.robot.switch_to_navigation_mode()
 
-    def load_map(self, filename: str) -> None:
+    def load_map(self, filename: str, color_weight: float = 0.5) -> None:
         """Load a map from a PKL file. Creates a new voxel map and loads the data from the file into this map. Then uses RANSAC to figure out where the current map and the loaded map overlap, computes a transform, and applies this transform to the loaded map to align it with the current map.
 
         Args:
@@ -1327,10 +1328,13 @@ class RobotAgent:
 
         # Load the map from the file
         loaded_voxel_map = self._create_voxel_map(self.parameters)
-        loaded_voxel_map.read_from_pickel(filename, perception=self.semantic_sensor)
+        loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
 
-        # Align the loaded map with the current map
-        raise NotImplementedError("This function is not implemented yet.")
+        xyz1, rgb1, _, _ = self.voxel_pcd.get_pointcloud()
+        xyz2, rgb2, _, _ = loaded_voxel_map.get_pointcloud()
+
+        tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
+        breakpoint()
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""
