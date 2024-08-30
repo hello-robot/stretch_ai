@@ -155,7 +155,7 @@ This is particularly an issue for scikit-fmm, which is used for motion planning.
 pip install ./src
 ```
 
-Then, [set up the ROS2 bridge](#set-up-ament-workspace).
+Then, [set up the ROS2 bridge](#set-up-ament-workspace-on-the-robot).
 
 ##### Option 2: Link Conda Environment into ROS (Advanced).
 
