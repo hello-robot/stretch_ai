@@ -213,7 +213,6 @@ class RobotAgentMDP:
             head_tilt=init_tilt)
         camera = RealSenseCamera(self.robot)
 
-        # time.sleep(2)
         rotation, translation = capture_and_process_image(
             camera = camera,
             mode = 'place',
@@ -223,7 +222,6 @@ class RobotAgentMDP:
 
         if rotation is None:
             return False
-        print(rotation)
 
         # lift arm to the top before the robot extends the arm, prepare the pre-placing gripper pose
         self.manip_wrapper.move_to_position(lift_pos=1.05)
@@ -235,7 +233,7 @@ class RobotAgentMDP:
         self.manip_wrapper.move_to_position(gripper_pos=1, blocking = True)
 
         # Lift the arm a little bit, and rotate the wrist roll of the robot in case the object attached on the gripper
-        self.manip_wrapper.move_to_position(lift_pos = self.manip_wrapper.robot.get_six_joints()[1] + 0.3)
+        self.manip_wrapper.move_to_position(lift_pos = min(self.manip_wrapper.robot.get_six_joints()[1] + 0.3, 1.1))
         self.manip_wrapper.move_to_position(wrist_roll = 2.5, blocking = True)
         self.manip_wrapper.move_to_position(wrist_roll = -2.5, blocking = True)
 
