@@ -123,7 +123,7 @@ On both your PC and your robot, clone and install the package:
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
 ```
 
-##### On PC
+#### Install On PC
 
 The installation script will install the package and its dependencies, as well as (optionally) some perception modules.
 
@@ -132,7 +132,7 @@ cd stretch_ai
 ./install.sh
 ```
 
-##### On the Robot
+#### Install On the Robot
 
 Robot installation can be tricky, because we use some features from [ROS2](https://docs.ros.org/en/humble/index.html), specifically the [Nav2](https://github.com/ros-navigation/navigation2) package for LIDAR slam.
 
@@ -140,7 +140,9 @@ You will need to link Stretch AI into your ROS workspace. There are two ways to 
 
 *Why all this complexity?* We run a set of ROS2 nodes based on the [HomeRobot](https://github.com/facebookresearch/home-robot) and [OK-Robot](https://ok-robot.github.io/) codebases for mobile manipulation and localization. In particular, this allows us to use [Nav2](https://docs.nav2.org/), a very well-tested ROS2 navigation stack, for localization, which makes it easier to build complex applications. You do not need to understand ROS2 to use this stack.
 
-*Option 1: Install Stretch AI in Base Python Environment.* To install in the base python environment, you need to make sure build tools are up to date:
+##### Option 1: Install Stretch AI in Base Python Environment
+
+To install in the base python environment, you need to make sure build tools are up to date:
 
 ```bash
 conda deactivate  # only if you are in a conda environment
@@ -155,7 +157,9 @@ pip install ./src
 
 Then, [set up the ROS2 bridge](#set-up-ament-workspace).
 
-*Option 2: Link Conda Environment into ROS (Advanced).* If you are using a conda environment, you can link the conda environment into ROS. This is a bit more advanced, but can be useful if you want to keep your ROS and conda environments separate.
+##### Option 2: Link Conda Environment into ROS (Advanced).
+
+If you are using a conda environment, you can link the conda environment into ROS. This is a bit more advanced, but can be useful if you want to keep your ROS and conda environments separate.
 
 Install using the installation script, but using the `--cpu` flag for a CPU-only installation:
 
@@ -181,7 +185,7 @@ Some ROS python repositories might be missing - specifically `empy` and `catkin_
 python -m pip install empy catkin_pkg
 ```
 
-##### Set Up Ament Workspace
+##### Set Up Ament Workspace on the Robot
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
 
