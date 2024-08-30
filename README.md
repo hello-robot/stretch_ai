@@ -173,7 +173,7 @@ Then, activate the conda environment:
 conda activate stretch_ai_$VERSION_cpu
 ```
 
-Then, [link the package into your ament workspace](#set-up-ament-workspace) and install the package:
+Then, [link the package into your ament workspace](#set-up-ament-workspace-on-the-robot) and install the package:
 
 ```bash
 colcon build --cmake-args -DPYTHON_EXECUTABLE=$(which python)
