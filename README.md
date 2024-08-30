@@ -185,7 +185,7 @@ Some ROS python repositories might be missing - specifically `empy` and `catkin_
 python -m pip install empy catkin_pkg
 ```
 
-##### Set Up Ament Workspace on the Robot
+#### Set Up Ament Workspace on the Robot
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
 
