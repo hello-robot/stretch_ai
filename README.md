@@ -145,6 +145,7 @@ You will need to link Stretch AI into your ROS workspace. There are two ways to 
 To install in the base python environment, you need to make sure build tools are up to date:
 
 ```bash
+conda deactivate  # only if you are in a conda environment
 pip install --upgrade pip setuptools packaging build meson ninja
 ```
 
