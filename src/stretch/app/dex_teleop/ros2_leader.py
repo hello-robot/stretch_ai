@@ -548,18 +548,6 @@ class ZmqRos2Leader:
                         ]
                     )
 
-                    if waypoint_key is not None:
-                        print("[LEADER] Recording waypoint.")
-                        ok = self._recorder.add_waypoint(
-                            waypoint_key,
-                            robot_pose,
-                            goal_configuration["stretch_gripper"],
-                        )
-                        if not ok:
-                            logger.warning(
-                                f"[LEADER] WARNING: overwriting previous waypoint {waypoint_key}."
-                            )
-
                     if not clutched:
                         last_robot_pose = robot_pose
 
@@ -590,6 +578,19 @@ class ZmqRos2Leader:
                                 ee_pos=observation.ee_camera_pose,
                                 ee_rot=observation.ee_camera_pose,
                             )
+
+                            # Record waypoint
+                            if waypoint_key is not None:
+                                print("[LEADER] Recording waypoint.")
+                                ok = self._recorder.add_waypoint(
+                                    waypoint_key,
+                                    robot_pose,
+                                    goal_configuration["stretch_gripper"],
+                                )
+                                if not ok:
+                                    logger.warning(
+                                        f"[LEADER] WARNING: overwriting previous waypoint {waypoint_key}."
+                                    )
                     else:
                         offset_pose = last_robot_pose - robot_pose
                 elif waypoint_key is not None:
