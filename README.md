@@ -121,10 +121,15 @@ On both your PC and your robot, clone and install the package:
 
 ```bash
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
+```
 
-# Install
+#### On PC
+
+The installation script will install the package and its dependencies, as well as (optionally) some perception modules.
+
+```bash
 cd stretch_ai
-pip install ./src
+./install.sh
 ```
 
 #### On the Robot
