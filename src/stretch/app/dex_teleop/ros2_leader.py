@@ -25,11 +25,7 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 try:
     from stretch.app.dex_teleop.hand_tracker import HandTracker
 except ImportError as e:
-    print("Hand tracker not available. Please install its dependencies.")
-    print()
-    print("\tpip install mediapipe webcam")
-    print()
-    print("Or run the following command to install all dependencies:")
+    print("Hand tracker not available. Please install its dependencies if you want to use it.")
     print()
     print("\tpython -m pip install .[hand_tracker]")
     print()
@@ -71,6 +67,7 @@ class ZmqRos2Leader:
         self.platform = platform
         self.verbose = verbose
         self.use_clutch = use_clutch
+        self.teach_grasping = teach_grasping
 
         self.left_handed = left_handed
 
