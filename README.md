@@ -176,7 +176,7 @@ conda activate stretch_ai_$VERSION_cpu
 Then, [link the package into your ament workspace](#set-up-ament-workspace) and install the package:
 
 ```bash
-colcon build --symlink-install --cmake-args -DPYTHON_EXECUTABLE=$(which python)
+colcon build --cmake-args -DPYTHON_EXECUTABLE=$(which python)
 ```
 
 Some ROS python repositories might be missing - specifically `empy` and `catkin_pkg`. You can install these with:
@@ -193,10 +193,17 @@ On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament works
 cd stretch_ai
 ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
 cd ~/ament_ws
-colcon build --symlink-install --packages-select stretch_ros2_bridge
+colcon build --packages-select stretch_ros2_bridge
 ```
 
 More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
+
+Unfortunately, you need to rebuild the ROS2 bridge every time you update the codebase. You can do this with:
+
+```bash
+cd ~/ament_ws
+colcon build --packages-select stretch_ros2_bridge
+```
 
 ### Using LLMs
 
