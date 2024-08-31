@@ -55,6 +55,7 @@ ros2 launch stretch_ros2_bridge server.launch.py
 
 ### On the PC run:
 
+Click this thumbnail to see data collection teleop in action:
 [![Dex Teleop with Clutch and Base X motion](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://www.youtube.com/watch?v=ZQQWOkSkw5o)
 
 ```bash
