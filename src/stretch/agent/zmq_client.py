@@ -911,10 +911,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._iter += 1
 
             # TODO: fix all of this - why do we need to do this?
-            print("SENDING THIS ACTION:", next_action)
+            # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
             time.sleep(0.01)
-            print("SENDING THIS ACTION:", next_action)
+            # TODO: why do we send the action twice?
+            # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
