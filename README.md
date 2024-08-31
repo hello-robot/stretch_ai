@@ -196,8 +196,6 @@ cd ~/ament_ws
 colcon build --packages-select stretch_ros2_bridge
 ```
 
-More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
-
 You need to rebuild the ROS2 bridge every time you update the codebase. You can do this with:
 
 ```bash
