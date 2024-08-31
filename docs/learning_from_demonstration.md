@@ -20,7 +20,7 @@
    pip install -e .
    ```
 
-For reference the [original fork](github.com/hello-yiche/lerobot) and the [original repo](https://github.com/huggingface/lerobot) are available.
+Our LfD code is a [fork of LeRobot](https://github.com/hello-robot/lerobot). The original LeRobot repo can be found [here](https://github.com/huggingface/lerobot).
 
 ## Overview of LfD process
 
