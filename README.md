@@ -155,7 +155,7 @@ This is particularly an issue for scikit-fmm, which is used for motion planning.
 pip install ./src
 ```
 
-Then, [set up the ROS2 bridge](#set-up-ament-workspace).
+Then, [set up the ROS2 bridge](#set-up-ament-workspace-on-the-robot).
 
 ##### Option 2: Link Conda Environment into ROS (Advanced).
 
@@ -173,7 +173,7 @@ Then, activate the conda environment:
 conda activate stretch_ai_$VERSION_cpu
 ```
 
-Then, [link the package into your ament workspace](#set-up-ament-workspace) and install the package:
+Then, [link the package into your ament workspace](#set-up-ament-workspace-on-the-robot) and install the package:
 
 ```bash
 colcon build --cmake-args -DPYTHON_EXECUTABLE=$(which python)
@@ -185,7 +185,7 @@ Some ROS python repositories might be missing - specifically `empy` and `catkin_
 python -m pip install empy catkin_pkg
 ```
 
-##### Set Up Ament Workspace on the Robot
+#### Set Up Ament Workspace on the Robot
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
 
