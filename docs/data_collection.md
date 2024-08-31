@@ -29,21 +29,23 @@ python -m pip install webcam mediapipe
 
 ### On Robot:
 
-- Generate specialized URDFs
+*First, generate specialized URDFs.* These are special versions of the robot model that are needed to run the dex teleop app. You generate them by running:
 
-  ```bash
-    cd stretch_ai
-    python3 src/stretch/app/dex_teleop/prepare_specialized_urdfs.py
-  ```
+```bash
+cd stretch_ai
+python3 src/stretch/app/dex_teleop/prepare_specialized_urdfs.py
+```
 
-- Move URDFs from robot to PC
+*Then, move URDFs from robot to PC.* URDFs should now have been generated into the `stretch_ai` folder on the robot:
 
-  URDFs should now have been generated into stretch_ai folder on the robot. Using your preferred method, move the following URDF files into the stretch_ai folder on your PC
+```bash
+stretch_base_rotation_ik_with_fixed_wrist.urdf
+stretch_base_rotation_ik.urdf
+stretch_base_translation_ik_with_fixed_wrist.urdf
+stretch_base_translation_ik.urdf
+```
 
-  - stretch_base_rotation_ik_with_fixed_wrist.urdf
-  - stretch_base_rotation_ik.urdf
-  - stretch_base_translation_ik_with_fixed_wrist.urdf
-  - stretch_base_translation_ik.urdf
+Using your preferred method, move the following URDF files into the `stretch_ai` folder on your PC (or wherever you intend to run the dex teleop app from).
 
 ## Quickstart: Record Some Data
 
@@ -56,6 +58,7 @@ ros2 launch stretch_ros2_bridge server.launch.py
 ### On the PC run:
 
 Click this thumbnail to see data collection teleop in action:
+
 [![Dex Teleop with Clutch and Base X motion](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://www.youtube.com/watch?v=ZQQWOkSkw5o)
 
 ```bash
