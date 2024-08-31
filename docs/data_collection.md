@@ -1,5 +1,9 @@
 # Data Collection for Stretch
 
+![Teleop using Stretch Dex Teleop](https://github.com/hello-robot/stretch_dex_teleop/blob/main/gifs/single_arm_dishes_short_318x360.gif)
+
+Our data collection system is based on a low-cost teleoperation framework called [Dex Teleop](https://github.com/hello-robot/stretch_dex_teleop). You use a webcam to track a unique tool with AR markers, and the robot follows the tool. This system is designed to be easy to use and it allows us to collect high-quality data for training robot learning algorithms.
+
 ## Prerequisites:
 
 Follow the [instructions](../README.md#Installation) for installation of `stretch_ai` with Python 3.10 for both PC and robot.
@@ -50,6 +54,8 @@ ros2 launch stretch_ros2_bridge server.launch.py
 ```
 
 ### On the PC run:
+
+[![Dex Teleop with Clutch and Base X motion](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://www.youtube.com/watch?v=ZQQWOkSkw5o)
 
 ```bash
 python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
