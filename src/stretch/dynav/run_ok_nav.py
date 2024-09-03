@@ -2,18 +2,9 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import datetime
-import sys
-import time
-import timeit
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
 import click
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d
-import torch
 from PIL import Image
 
 # Mapping and perception
@@ -25,9 +16,6 @@ from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.agent import RobotClient
 
 import cv2
-import threading
-
-import os
 
 def compute_tilt(camera_xyz, target_xyz):
     '''
@@ -66,7 +54,7 @@ def main(
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = RobotClient(robot_ip = "127.0.0.1")
+    robot = RobotClient(robot_ip = "100.79.44.11")
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
@@ -82,7 +70,10 @@ def main(
         robot, parameters, ip = ip, re = re
     )
 
-    demo.rotate_in_place()
+    if input_path is None:
+        demo.rotate_in_place()
+    else:
+        demo.image_processor.read_from_pickle(input_path)
 
     # def keep_looking_around():
     #     while True:

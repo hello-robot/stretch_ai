@@ -122,7 +122,6 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # print(f"pin rotation{pin_rotation}")
 
     # Relative rotation and translation of grasping point relative to camera
-    # dest_frame = PyKDL.Frame(rotation, point) 
     pin_dest_frame = pin.SE3(np.array(pin_rotation), np.array(pin_point))
     # print(f"pin dest frame {pin_dest_frame}")
 

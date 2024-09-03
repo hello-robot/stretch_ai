@@ -1,5 +1,4 @@
 import numpy as np
-# import PyKDL
 import sys
 import os
 
@@ -225,7 +224,6 @@ class HelloRobot:
         """
             Function to move the gripper to a desired translation and rotation
         """
-        import PyKDL
         translation = [translation_tensor[0], translation_tensor[1], translation_tensor[2]]
         rotation = rotational_tensor
         

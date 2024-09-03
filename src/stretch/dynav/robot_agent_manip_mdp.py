@@ -10,10 +10,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import clip
 import numpy as np
 import torch
-from loguru import logger
 
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.agent import RobotClient
@@ -27,6 +25,7 @@ from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import pickup, move_to_point, capture_and_process_image
 from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array
+from stretch.dynav.voxel_map_server import ImageProcessor
 
 import cv2
 
@@ -77,6 +76,7 @@ class RobotAgentMDP:
         )
 
         self.image_sender = ImageSender(ip = ip, image_port = image_port, text_port = text_port, manip_port = manip_port)
+        self.image_processor = ImageProcessor(rerun = True, static = False)
 
         self.look_around_times = []
         self.execute_times = []
@@ -86,15 +86,20 @@ class RobotAgentMDP:
         # self.head_lock = threading.Lock()
 
     def look_around(self):
-        logger.info("Look around to check")
+        print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.5, -0.5, -1.5]:
-            for tilt in [-0.55]:
+            for tilt in [-0.6]:
+                start_time = time.time()
                 self.robot.head_to(pan, tilt, blocking = True)
+                end_time = time.time()
+                print('moving head takes ', end_time - start_time, 'seconds.')
                 self.update()
+        self.robot.look_front()
 
     def rotate_in_place(self):
-        logger.info("Rotate in place")
+        print("*" * 10, "Rotate in place", "*" * 10)
         xyt = self.robot.get_base_pose()
+        self.robot.head_to(head_pan = 0, head_tilt = -0.6, blocking = True)
         for i in range(8):
             xyt[2] += 2 * np.pi / 8
             self.robot.navigate_to(xyt, blocking = True)
@@ -106,8 +111,11 @@ class RobotAgentMDP:
         # self.image_sender.send_images(obs)
         self.obs_history.append(obs)
         self.obs_count += 1
-        self.image_sender.send_images(obs)
-
+        rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
+        start_time = time.time()
+        self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        end_time = time.time()
+        print('Image processing takes', end_time - start_time, 'seconds.')
 
     def execute_action(
         self,
@@ -122,7 +130,8 @@ class RobotAgentMDP:
 
         start = self.robot.get_base_pose()
         print("       Start:", start)
-        res = self.image_sender.query_text(text, start)  
+        # res = self.image_sender.query_text(text, start)  
+        res = self.image_processor.process_text(text, start)
 
         look_around_finish = time.time()
         look_around_take = look_around_finish - start_time
@@ -155,7 +164,7 @@ class RobotAgentMDP:
                     res,
                     pos_err_threshold=self.pos_err_threshold,
                     rot_err_threshold=self.rot_err_threshold,
-                    blocking = True
+                    blocking = False
                 )
 
                 execution_finish = time.time()
@@ -183,7 +192,7 @@ class RobotAgentMDP:
             return False
         return True
 
-    def navigate(self, text, max_step = 15):
+    def navigate(self, text, max_step = 10):
         finished = False
         step = 0
         end_point = None

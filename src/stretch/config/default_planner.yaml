@@ -61,8 +61,8 @@ motion:
     # wrist_roll: 0.25
     # wrist_pitch: 0.25
     # wrist_yaw: 0.05
-    head_pan: 0.01
-    head_tilt: 0.01
+    head_pan: 0.1
+    head_tilt: 0.1
   joint_thresholds:
     head_not_moving_tolerance: 1.0e-4
     gripper_open_threshold: 0.3
