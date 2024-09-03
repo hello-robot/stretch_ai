@@ -10,7 +10,9 @@
 import pytest
 from PIL import Image
 
-from stretch.perception.captioners import captioners, get_captioner
+from stretch.perception.captioners import get_captioner
+
+captioners = ["blip", "git", "vit_gpt2"]
 
 # With these two images from docs:
 images = ["../docs/object.png", "../docs/receptacle.png"]
