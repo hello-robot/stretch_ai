@@ -380,7 +380,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             logger.warning(
                 f"Head tilt is restricted to be between {self._head_tilt_min} and {self._head_tilt_max} for safety: was{head_tilt}"
             )
-        head_pan = np.clip(head_pan, -np.pi, 0)
+        head_pan = np.clip(head_pan, self._head_pan_min, self._head_pan_max)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
         self.send_action(next_action, timeout=timeout)
