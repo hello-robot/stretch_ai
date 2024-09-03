@@ -14,7 +14,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
     image_publisher = ImagePublisher(camera, socket)
 
     # Centering the object
-    head_tilt_angles = [0, -0.1, 0.1]
+    head_tilt_angles = [0, -0.1]
     tilt_retries, side_retries = 1, 0
     retry_flag = True
     head_tilt = INIT_HEAD_TILT
@@ -43,7 +43,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             side_retries = 3
 
         elif retry_flag == 2:
-            if (tilt_retries == 3):
+            if (tilt_retries == 2):
                 if (side_retries == 0):
                     hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
                     side_retries = 1
@@ -162,7 +162,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     pin_base_point = apply_se3_transform(pin_cam2base_transform, pin_point)
     # print(f"pin base point {pin_base_point}")
 
-    diff_value = (0.228 - gripper_depth - gripper_height) # 0.228 is the distance between link_Straight_gripper node and the gripper tip
+    diff_value = (0.227 - gripper_depth - gripper_height) # 0.228 is the distance between link_Straight_gripper node and the gripper tip
     pin_transformed_point1[2] -= (diff_value)
     ref_diff = (diff_value)
 
