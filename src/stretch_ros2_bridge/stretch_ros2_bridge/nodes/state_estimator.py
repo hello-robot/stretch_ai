@@ -22,6 +22,7 @@ import rclpy
 import sophuspy as sp
 import tf2_ros
 from geometry_msgs.msg import Pose, PoseStamped, PoseWithCovarianceStamped, TransformStamped
+from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -83,6 +84,9 @@ class NavStateEstimator(Node):
         self.measurement2 = None  # 2D SLAM (Hector)
         self.measurement3 = None  # vio (ORB-SLAM3)
 
+        # ORB-SLAM3 tracking state
+        self.orb_slam3_tracking_ok = True
+
     def predict_kalman(self):
         """
         Predict the state of the Kalman filter.
@@ -127,7 +131,7 @@ class NavStateEstimator(Node):
         if vio_measurement is not None:
             combined_measurement = (
                 np.array(wheel_measurement) + np.array(slam_measurement) + np.array(vio_measurement)
-            )
+            ) / 3
         else:
             combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement)) / 2
         self.update_kalman(combined_measurement)
@@ -285,8 +289,10 @@ class NavStateEstimator(Node):
         ]
 
         if self.measurement2 is not None and self.measurement1 is not None:
-            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+            if self.orb_slam3_tracking_ok:
                 self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+            else:
+                self.fuse_measurements(self.measurement1, self.measurement2)
 
     def _wheel_odom_callback(self, pose: Odometry):
         """
@@ -324,8 +330,10 @@ class NavStateEstimator(Node):
         ]
 
         if self.measurement2 is not None and self.measurement3 is not None:
-            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+            if self.orb_slam3_tracking_ok:
                 self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+            else:
+                self.fuse_measurements(self.measurement1, self.measurement2)
 
     def _slam_pose_callback(self, pose: PoseWithCovarianceStamped) -> None:
         """Update slam pose for filtering
@@ -348,8 +356,20 @@ class NavStateEstimator(Node):
         ]
 
         if self.measurement1 is not None and self.measurement3 is not None:
-            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+            if self.orb_slam3_tracking_ok:
                 self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+            else:
+                self.fuse_measurements(self.measurement1, self.measurement2)
+
+    def _vio_status_callback(self, status: Bool):
+        """
+        Callback for VIO status.
+
+        Parameters:
+        status (Bool): VIO status.
+        True if ORB_SLAM3 is tracking landmarks well, False otherwise.
+        """
+        self.orb_slam3_tracking_ok = status.data
 
     def get_pose(self):
         """
@@ -369,8 +389,10 @@ class NavStateEstimator(Node):
             self.measurement2 = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
 
             if self.measurement1 is not None and self.measurement3 is not None:
-                if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                if self.orb_slam3_tracking_ok:
                     self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
+                else:
+                    self.fuse_measurements(self.measurement1, self.measurement2)
 
         except TransformException as ex:
             self.get_logger().info(f"Could not transform the base pose {ex}")
@@ -415,6 +437,11 @@ class NavStateEstimator(Node):
         # VIO odometry
         self.vio_odom_subcriber = self.create_subscription(
             PoseStamped, "/orb_slam3/pose", self._vio_odom_callback, 1
+        )
+
+        # VIO status
+        self.vio_status_subcriber = self.create_subscription(
+            Bool, "/orb_slam3/tracking_status", self._vio_status_callback, 1
         )
 
         # Run

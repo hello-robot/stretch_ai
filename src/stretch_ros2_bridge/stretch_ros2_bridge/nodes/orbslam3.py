@@ -22,6 +22,7 @@ from geometry_msgs.msg import PoseStamped, TransformStamped
 from nav2_msgs.srv import LoadMap, SaveMap
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, Imu
+from std_msgs.msg import Bool
 from tf2_ros import TransformBroadcaster
 from tf_transformations import quaternion_from_euler
 
@@ -98,6 +99,9 @@ class OrbSlam3(Node):
 
         # Publish PoseStamped
         self.pose_pub = self.create_publisher(PoseStamped, "/orb_slam3/pose", 1)
+
+        # ORB_SLAM3 tracking status publisher
+        self.tracking_status_pub = self.create_publisher(Bool, "/orb_slam3/tracking_status", 1)
 
     def camera_info_callback(self, msg):
         """
@@ -248,7 +252,24 @@ class OrbSlam3(Node):
             pose = transformation_matrix_to_pose(Twc)
             self.publish_tf(pose)
             self.publish_pose(pose)
+
+            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                self.publish_tracking_status(True)
+            else:
+                self.publish_tracking_status(False)
+
             rclpy.spin_once(self, timeout_sec=0.1)
+
+    def publish_tracking_status(self, is_tracking):
+        """
+        Publish tracking status as a Bool message.
+
+        Parameters:
+        is_tracking (bool): True if tracking is successful, False otherwise.
+        """
+        msg = Bool()
+        msg.data = is_tracking
+        self.tracking_status_pub.publish(msg)
 
     def publish_tf(self, pose):
         """
