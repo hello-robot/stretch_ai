@@ -2,6 +2,8 @@
 
 You can use ORB_SLAM3 as a backend in `stretch_ai`. It internally uses Stretch's D435i's RGBD and IMU (accelerometer and gyroscope) streams to build a map. `stretch_ros2_bridge` should automatically use ORB_SLAM's pose estimates and fuse them with Hector SLAM and wheel odometry. Please note that for ORB_SLAM3 to work reliably, it should always have sufficient texture and features visible in camera view.
 
+We use our own version of [ORBSLAM3](https://github.com/hello-atharva/ORB_SLAM3) and associated [python bindings](https://github.com/hello-atharva/ORB_SLAM3-PythonBindings). The following steps will guide you through the installation process.
+
 ## Installation
 
 To set up ORB_SLAM3 on your robot, execute the following commands in your terminal:
@@ -43,6 +45,11 @@ sudo make install
 ```
 
 ### Build and Install ORB_SLAM3
+
+There are two build scripts that you can run on the robot as well:
+
+- [ORBSLAM3 build script](https://github.com/hello-atharva/ORB_SLAM3/blob/main/build.sh)
+- [ORBSLAM3 ROS build script](https://github.com/hello-atharva/ORB_SLAM3/blob/main/build_ros.sh)
 
 Execute these commands:
 
