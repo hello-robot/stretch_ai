@@ -8,4 +8,3 @@
 # license information maybe found below, if so.
 
 from .geometry import *
-from .visualization import OrbSlamVisualizer

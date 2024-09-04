@@ -18,10 +18,11 @@ import orbslam3
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from nav2_msgs.srv import LoadMap, SaveMap
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, Imu
+from std_msgs.msg import Bool
 from tf2_ros import TransformBroadcaster
 from tf_transformations import quaternion_from_euler
 
@@ -29,6 +30,9 @@ from stretch.navigation.utils.geometry import transformation_matrix_to_pose
 
 
 class OrbSlam3(Node):
+
+    use_pangolin_viewer: bool = False
+
     def __init__(self):
         super().__init__("stretch_orbslam3")
 
@@ -40,6 +44,7 @@ class OrbSlam3(Node):
         self.config = None
         with open(CONFIG_FILE, "r") as file:
             self.config = yaml.safe_load(file)
+            pass
 
         # Check if ORBvocab.txt exists
         if not os.path.exists(self.VOCABULARY_FILE):
@@ -92,7 +97,20 @@ class OrbSlam3(Node):
         # Create a service to load the map
         self.load_map_service = self.create_service(LoadMap, "/load_map", self.load_map_callback)
 
+        # Publish PoseStamped
+        self.pose_pub = self.create_publisher(PoseStamped, "/orb_slam3/pose", 1)
+
+        # ORB_SLAM3 tracking status publisher
+        self.tracking_status_pub = self.create_publisher(Bool, "/orb_slam3/tracking_status", 1)
+
     def camera_info_callback(self, msg):
+        """
+        Callback function for CameraInfo message.
+        Initializes ORB-SLAM3 with camera intrinsics and image resolution.
+
+        Parameters:
+        msg (CameraInfo): CameraInfo message.
+        """
         if self.slam is None:
             fx = msg.k[0]
             fy = msg.k[4]
@@ -127,31 +145,59 @@ class OrbSlam3(Node):
             with open(file.name, "w") as f:
                 f.write("%YAML:1.0\n" + content)
 
-            file.close()
-
-            self.get_logger().info(
-                f"Using {self.VOCABULARY_FILE} and {file.name} for ORB-SLAM3 initialization"
-            )
-
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
-            self.slam.set_use_viewer(True)
+            self.slam.set_use_viewer(self.use_pangolin_viewer)
             self.slam.initialize()
             print("ORB-SLAM3 initialized")
 
     def rgb_callback(self, msg):
+        """
+        Callback function for RGB Image message.
+
+        Parameters:
+        msg (Image): RGB Image message
+        """
         self.rgb_image = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
 
     def depth_callback(self, msg):
+        """
+        Callback function for Depth Image message.
+
+        Parameters:
+        msg (Image): Depth Image message
+        """
         self.depth_image = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.width)
         self.timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
     def accel_callback(self, msg):
+        """
+        Callback function for Accelerometer message.
+
+        Parameters:
+        msg (Imu): Accelerometer message
+        """
         self.accel_data = msg
 
     def gyro_callback(self, msg):
+        """
+        Callback function for Gyroscope message.
+
+        Parameters:
+        msg (Imu): Gyroscope message
+        """
         self.gyro_data = msg
 
     def save_map_callback(self, request, response):
+        """
+        Callback function for SaveMap service.
+
+        Parameters:
+        request (SaveMap.Request): SaveMap request
+        response (SaveMap.Response): SaveMap response
+
+        Returns:
+        SaveMap.Response: SaveMap response
+        """
         if self.slam is not None:
             map_file = request.map_url
             self.slam.save_map(map_file)
@@ -161,6 +207,16 @@ class OrbSlam3(Node):
         return response
 
     def load_map_callback(self, request, response):
+        """
+        Callback function for LoadMap service.
+
+        Parameters:
+        request (LoadMap.Request): LoadMap request
+        response (LoadMap.Response): LoadMap response
+
+        Returns:
+        LoadMap.Response: LoadMap response
+        """
         if self.slam is not None:
             map_file = request.map_url
             self.slam.load_map(map_file)
@@ -195,9 +251,33 @@ class OrbSlam3(Node):
             Twc = np.linalg.inv(Tcw)
             pose = transformation_matrix_to_pose(Twc)
             self.publish_tf(pose)
+            self.publish_pose(pose)
+
+            if self.slam.get_tracking_state() == orbslam3.TrackingState.OK:
+                self.publish_tracking_status(True)
+            else:
+                self.publish_tracking_status(False)
+
             rclpy.spin_once(self, timeout_sec=0.1)
 
+    def publish_tracking_status(self, is_tracking):
+        """
+        Publish tracking status as a Bool message.
+
+        Parameters:
+        is_tracking (bool): True if tracking is successful, False otherwise.
+        """
+        msg = Bool()
+        msg.data = is_tracking
+        self.tracking_status_pub.publish(msg)
+
     def publish_tf(self, pose):
+        """
+        Publish camera pose as a TF message.
+
+        Parameters:
+        pose (Pose): Camera pose in the camera frame.
+        """
         x = pose.get_x()
         y = pose.get_y()
         z = pose.get_z()
@@ -219,6 +299,32 @@ class OrbSlam3(Node):
         transform.transform.rotation.z = q[2]
         transform.transform.rotation.w = q[3]
         self.tf_broadcaster.sendTransform(transform)
+
+    def publish_pose(self, pose):
+        """
+        Publish camera pose as a PoseStamped message.
+
+        Parameters:
+        pose (Pose): Camera pose in the camera frame.
+        """
+        msg = PoseStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "base_link"
+        msg.pose.position.x = pose.get_x()
+        msg.pose.position.y = pose.get_y()
+        msg.pose.position.z = pose.get_z()
+
+        roll = pose.get_roll()
+        pitch = pose.get_pitch()
+        yaw = pose.get_yaw()
+        q = quaternion_from_euler(yaw, pitch, -roll)
+
+        msg.pose.orientation.x = q[0]
+        msg.pose.orientation.y = q[1]
+        msg.pose.orientation.z = q[2]
+        msg.pose.orientation.w = q[3]
+
+        self.pose_pub.publish(msg)
 
 
 def main(args=None):
