@@ -267,7 +267,7 @@ class ZmqServer(BaseZmqServer):
             "head_cam/depth_image/shape": head_depth_image.shape,
             "head_cam/image_scaling": self.image_scaling,
             "head_cam/depth_scaling": self.depth_scaling,
-            "head_cam/pose": self.head_camera_pose,
+            "head_cam/pose": self.client.head_camera_pose,
             "robot/config": obs.joint,
         }
         message.update(d405_output)
