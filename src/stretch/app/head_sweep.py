@@ -47,6 +47,7 @@ def main(
             parameters=robot.parameters,
             device_id=device_id,
             verbose=verbose,
+            enable_rerun_server=(not show_open3d),
         )
     else:
         semantic_sensor = None
@@ -58,14 +59,22 @@ def main(
     # Wait and then...
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
     agent.update()
-    robot.head_to(head_pan=-np.pi / 2, head_tilt=0, blocking=True)
+
+    robot.head_to(head_pan=0, head_tilt=-np.pi / 4, blocking=True)
     agent.update()
-    robot.head_to(head_pan=-np.pi, head_tilt=0, blocking=True)
+
+    robot.head_to(head_pan=-np.pi / 4, head_tilt=-np.pi / 4, blocking=True)
     agent.update()
-    robot.head_to(head_pan=0, head_tilt=0, blocking=True)
+
+    robot.head_to(head_pan=-np.pi / 2, head_tilt=-np.pi / 4, blocking=True)
     agent.update()
-    robot.head_to(head_pan=0, head_tilt=-np.pi / 2, blocking=True)
+
+    robot.head_to(head_pan=-3 * np.pi / 4, head_tilt=-np.pi / 4, blocking=True)
     agent.update()
+
+    robot.head_to(head_pan=-np.pi, head_tilt=-np.pi / 4, blocking=True)
+    agent.update()
+
     robot.head_to(head_pan=0, head_tilt=0, blocking=True)
     agent.update()
 

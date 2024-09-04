@@ -557,7 +557,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
     ) -> None:
         """Wait for the head to move to a particular configuration."""
         t0 = timeit.default_timer()
-        while True:
+        at_goal = False
+
+        # Wait for the head to move
+        # If the head is not moving, we are done
+        # Head must be stationary for at least min_wait_time
+        while not self._finish:
             joint_positions, joint_velocities, _ = self.get_joint_state()
             if joint_positions is None:
                 continue
@@ -573,9 +578,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if verbose:
                 print("Waiting for head to move", pan_err, tilt_err, "head speed =", head_speed)
             if pan_err < self._head_pan_tolerance and tilt_err < self._head_tilt_tolerance:
-                break
+                at_goal = True
+                at_goal_t = timeit.default_timer()
             elif resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
+            else:
+                at_goal = False
+
+            if at_goal and timeit.default_timer() - at_goal_t > min_wait_time:
+                break
 
             t1 = timeit.default_timer()
             if t1 - t0 > min_wait_time and head_speed < self._head_not_moving_tolerance:
@@ -587,8 +598,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 print("Timeout waiting for head to move")
                 break
             time.sleep(0.01)
-        # Tiny pause after head rotation
-        time.sleep(0.2)
 
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
