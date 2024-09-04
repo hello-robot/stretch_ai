@@ -129,6 +129,7 @@ class SparseVoxelMap(object):
         voxel_kwargs: Dict[str, Any] = {},
         encoder: Optional[BaseImageTextEncoder] = None,
         map_2d_device: str = "cpu",
+        device: Optional[str] = None,
         use_instance_memory: bool = False,
         use_median_filter: bool = False,
         median_filter_size: int = 5,
@@ -208,6 +209,12 @@ class SparseVoxelMap(object):
         self.voxel_kwargs = voxel_kwargs
         self.encoder = encoder
         self.map_2d_device = map_2d_device
+
+        # Set the device we use for things here
+        if device is not None:
+            self.device = device
+        else:
+            self.device = self.map_2d_device
 
         # Create kernel(s) for obstacle dilation over 2d/3d maps
         if self.pad_obstacles > 0:
