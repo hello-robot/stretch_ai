@@ -77,6 +77,8 @@ class NavStateEstimator(Node):
         dt = 0.1  # TODO: get from odom message
         self.F = np.eye(8)
 
+        self.slam = None
+
         self.measurement1 = None  # wheel odometry
         self.measurement2 = None  # 2D SLAM (Hector)
         self.measurement3 = None  # vio (ORB-SLAM3)
