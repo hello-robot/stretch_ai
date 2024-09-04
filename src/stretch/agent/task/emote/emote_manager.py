@@ -7,14 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from stretch.agent.base import TaskManager
 from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Operation, Task
 
 
-class EmoteManager(TaskManager):
+class EmoteManager:
     """
-    Provides a minimal interface with the TaskManager class.
+    Creates a task queue with a given emote operation.
     """
 
     def __init__(self, agent: RobotAgent):

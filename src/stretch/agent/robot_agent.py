@@ -55,6 +55,7 @@ class RobotAgent:
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
     ):
+        self.reset_object_plans()
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
         elif isinstance(parameters, Parameters):
@@ -80,6 +81,11 @@ class RobotAgent:
         self.use_scene_graph = parameters["plan_with_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
+
+        # Grasping parameters
+        self.current_receptacle = None
+        self.current_object = None
+        self.target_object = None
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
@@ -184,6 +190,31 @@ class RobotAgent:
     def voxel_size(self) -> float:
         """Return the voxel size in meters"""
         return self._voxel_size
+
+    def reset_object_plans(self):
+        """Clear stored object planning information."""
+        self.plans = {}
+        self.unreachable_instances = set()
+
+    def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
+        """Mark an instance as unreachable."""
+        if isinstance(instance, Instance):
+            instance_id = instance.id
+        elif isinstance(instance, int):
+            instance_id = instance
+        else:
+            raise ValueError("Instance must be an Instance object or an int")
+        self.unreachable_instances.add(instance_id)
+
+    def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
+        """Check if an instance is unreachable."""
+        if isinstance(instance, Instance):
+            instance_id = instance.id
+        elif isinstance(instance, int):
+            instance_id = instance
+        else:
+            raise ValueError("Instance must be an Instance object or an int")
+        return instance_id in self.unreachable_instances
 
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
