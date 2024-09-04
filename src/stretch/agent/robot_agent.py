@@ -411,10 +411,10 @@ class RobotAgent:
                 logger.error("Failed to get observation")
                 return
 
+        tilt = -1 * np.pi / 4
         for i in range(num_steps):
             if self._sweep_head_on_update:
                 pan = -1 * i * np.pi / 4
-                tilt = -1 * np.pi / 4
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
                 obs = self.robot.get_observation()
@@ -433,6 +433,9 @@ class RobotAgent:
 
             if not self._sweep_head_on_update:
                 break
+
+        if self._sweep_head_on_update:
+            self.robot.head_to(0, tilt, blocking=True)
 
         if self.use_scene_graph:
             self._update_scene_graph()
