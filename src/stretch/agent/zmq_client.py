@@ -511,7 +511,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     return True
-                elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
+                elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.005:
                     print("Arm not moving, we are done")
                     print("Arm joint velocities", joint_velocities)
                     print(t1 - t0)
