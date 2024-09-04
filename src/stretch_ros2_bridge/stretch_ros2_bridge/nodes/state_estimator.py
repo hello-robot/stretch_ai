@@ -84,6 +84,11 @@ class NavStateEstimator(Node):
     def predict_kalman(self):
         """
         Predict the state of the Kalman filter.
+        Propagates the state vector through the state transition matrix F.
+        Covariance matrix is updated using the process noise covariance matrix Q.
+
+        x = F @ x              # This step predicts the next state
+        P = F @ P @ F.T + Q    # This step predicts the next covariance
         """
         self.x = self.F @ self.x
         self.P = self.F @ self.P @ self.F.T + self.Q
@@ -94,6 +99,12 @@ class NavStateEstimator(Node):
 
         Parameters:
         z (np.array): Measurement vector.
+
+        y = z - H @ x         # This step computes the innovation or measurement residual
+        S = H @ P @ H.T + R   # This step computes the innovation covariance
+        K = P @ H.T @ inv(S)  # This step computes the Kalman gain
+        x = x + K @ y         # This step updates the state estimate (posterior)
+        P = (I - K @ H) @ P   # This step updates the covariance estimate (posterior)
         """
         y = z - (self.H @ self.x)
         S = self.H @ self.P @ self.H.T + self.R
