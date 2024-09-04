@@ -30,7 +30,7 @@ setuptools.setup(
     package_data={"stretch": ["config/**/*.yaml", "perception/*.tsv"]},
     install_requires=[
         # Machine learning code
-        "torch",
+        "torch<2.4",
         "torchvision",
         # General utilities
         "pyyaml",
@@ -42,7 +42,6 @@ setuptools.setup(
         "matplotlib",
         "trimesh",
         "yacs",
-        "loguru",
         "scikit-image",
         "sophuspy",
         "pin",  # Pinocchio IK solver
@@ -99,7 +98,12 @@ setuptools.setup(
             "mypy",
             "lark",
         ],
-        "hand_tracking": [
+        "sim": [
+            "mujoco",
+            "hello-robot-stretch-urdf",
+            "grpcio",
+        ],
+        "hand_tracker": [
             "mediapipe",
             "webcam",
         ],

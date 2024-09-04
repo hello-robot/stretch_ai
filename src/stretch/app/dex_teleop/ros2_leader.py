@@ -21,7 +21,14 @@ import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.app.dex_teleop.hand_tracker import HandTracker
+
+try:
+    from stretch.app.dex_teleop.hand_tracker import HandTracker
+except ImportError as e:
+    print("Hand tracker not available. Please install its dependencies if you want to use it.")
+    print()
+    print("\tpython -m pip install .[hand_tracker]")
+    print()
 from stretch.core import get_parameters
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
@@ -46,6 +53,7 @@ class ZmqRos2Leader:
         record_success: bool = False,
         platform: str = "linux",
         use_clutch: bool = False,
+        teach_grasping: bool = False,
     ):
         self.robot = robot
         self.camera = None
@@ -59,6 +67,7 @@ class ZmqRos2Leader:
         self.platform = platform
         self.verbose = verbose
         self.use_clutch = use_clutch
+        self.teach_grasping = teach_grasping
 
         self.left_handed = left_handed
 
@@ -349,10 +358,6 @@ class ZmqRos2Leader:
                 new_goal_configuration["joint_wrist_pitch"] = self.filtered_wrist_orientation[1]
                 new_goal_configuration["joint_wrist_roll"] = self.filtered_wrist_orientation[2]
 
-                # new_goal_configuration["joint_wrist_yaw"] = wrist_yaw
-                # new_goal_configuration["joint_wrist_pitch"] = wrist_pitch
-                # new_goal_configuration["joint_wrist_roll"] = wrist_roll
-
                 self.prev_commanded_wrist_orientation = {
                     "joint_wrist_yaw": self.filtered_wrist_orientation[0],
                     "joint_wrist_pitch": self.filtered_wrist_orientation[1],
@@ -381,6 +386,17 @@ class ZmqRos2Leader:
         if self.use_clutch:
             hand_tracker = HandTracker(left_clutch=(not self.left_handed))
 
+        print("=== Starting Dex Teleop Leader ===")
+        print("Press spacebar to start/stop recording.")
+        if self.teach_grasping:
+            print("Press 1, 2, or 3 to teach PREGRASP, GRASP, or POSTGRASP.")
+        print("Press 0-9 to record waypoints.")
+        if self.record_success:
+            print("Press y/n to record success/failure of episode after each episode.")
+        if self.use_clutch:
+            print("Clutch mode enabled. Place an empty hand over the webcam to clutch.")
+        print("Press ESC to exit.")
+
         # loop stuff for clutch
         clutched = False
         clutch_debounce_threshold = 3
@@ -394,6 +410,8 @@ class ZmqRos2Leader:
 
         try:
             while True:
+                waypoint_key = None
+
                 loop_timer.mark_start()
 
                 # Get observation
@@ -459,6 +477,20 @@ class ZmqRos2Leader:
                     self._recording = False
                     print("[LEADER] Recording stopped. Terminating.")
                     break
+                else:
+                    for i in range(10):
+                        if key == ord(str(i)):
+                            if self.teach_grasping and i >= 1 and i <= 3:
+                                if i == 1:
+                                    print(f"[LEADER] Key {i} pressed. Teaching PREGRASP.")
+                                elif i == 2:
+                                    print(f"[LEADER] Key {i} pressed. Teaching GRASP.")
+                                elif i == 3:
+                                    print(f"[LEADER] Key {i} pressed. Teaching POSTGRASP.")
+                            else:
+                                print(f"[LEADER] Key {i} pressed. Recording waypoint {i}.")
+                            waypoint_key = i
+                            break
 
                 # Raw input from teleop
                 markers, color_image = self.webcam_aruco_detector.process_next_frame()
@@ -546,8 +578,23 @@ class ZmqRos2Leader:
                                 ee_pos=observation.ee_camera_pose,
                                 ee_rot=observation.ee_camera_pose,
                             )
+
+                            # Record waypoint
+                            if waypoint_key is not None:
+                                print("[LEADER] Recording waypoint.")
+                                ok = self._recorder.add_waypoint(
+                                    waypoint_key,
+                                    robot_pose,
+                                    goal_configuration["stretch_gripper"],
+                                )
+                                if not ok:
+                                    logger.warning(
+                                        f"[LEADER] WARNING: overwriting previous waypoint {waypoint_key}."
+                                    )
                     else:
                         offset_pose = last_robot_pose - robot_pose
+                elif waypoint_key is not None:
+                    print("[LEADER] Recording waypoint failed. Commanded goal_dict was invalid.")
 
                 self.prev_goal_dict = goal_dict
 
@@ -595,6 +642,7 @@ if __name__ == "__main__":
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
     parser.add_argument("-c", "--clutch", action="store_true")
+    parser.add_argument("--teach-grasping", action="store_true")
     args = parser.parse_args()
 
     # Parameters
@@ -625,6 +673,7 @@ if __name__ == "__main__":
         record_success=args.record_success,
         platform=args.platform,
         use_clutch=args.clutch,
+        teach_grasping=args.teach_grasping,
     )
 
     try:

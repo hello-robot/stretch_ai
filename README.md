@@ -100,26 +100,6 @@ There are also some apps for [debugging](docs/debug.md).
 
 ## Installation
 
-### Temporary Note on ROS2 Version
-
-On the robot, we are *temporarily* using a new version of the [stretch_ros2](https://github.com/hello-robot/stretch_ros2/tree/feature/streaming_position) ROS package: the `feature/streaming_position` branch. This allows us to send smoother commands to the robot.
-
-On your robot, go to your `ament_ws` directory and checkout the `feature/streaming_position` branch:
-
-```bash
-cd ~/ament_ws/src/stretch_ros2
-git checkout feature/streaming_position
-```
-
-Then, build the workspace:
-
-```bash
-cd ~/ament_ws
-colcon build --packages-select stretch_ros2
-```
-
-You can verify this has worked by running the `view_images` app. If the robot moves its arm, you are good to go!
-
 ### System Dependencies
 
 You need git-lfs:
@@ -141,11 +121,71 @@ On both your PC and your robot, clone and install the package:
 
 ```bash
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
+```
 
-# Install
+#### Install On PC
+
+The installation script will install the package and its dependencies, as well as (optionally) some perception modules.
+
+```bash
 cd stretch_ai
+./install.sh
+```
+
+#### Install On the Robot
+
+Robot installation can be tricky, because we use some features from [ROS2](https://docs.ros.org/en/humble/index.html), specifically the [Nav2](https://github.com/ros-navigation/navigation2) package for LIDAR slam.
+
+You will need to link Stretch AI into your ROS workspace. There are two ways to do this; either install stretch AI in your base python environment, or link the conda environment into ROS (advanced). Either way, you will then need to [set up the ROS2 bridge](#set-up-ament-workspace) in your Ament workspace.
+
+*Why all this complexity?* We run a set of ROS2 nodes based on the [HomeRobot](https://github.com/facebookresearch/home-robot) and [OK-Robot](https://ok-robot.github.io/) codebases for mobile manipulation and localization. In particular, this allows us to use [Nav2](https://docs.nav2.org/), a very well-tested ROS2 navigation stack, for localization, which makes it easier to build complex applications. You do not need to understand ROS2 to use this stack.
+
+##### Option 1: Install Stretch AI in Base Python Environment
+
+To install in the base python environment, you need to make sure build tools are up to date:
+
+```bash
+conda deactivate  # only if you are in a conda environment
+pip install --upgrade pip setuptools packaging build meson ninja
+```
+
+This is particularly an issue for scikit-fmm, which is used for motion planning. After this is done, you can install the package as normal:
+
+```bash
 pip install ./src
 ```
+
+Then, [set up the ROS2 bridge](#set-up-ament-workspace-on-the-robot).
+
+##### Option 2: Link Conda Environment into ROS (Advanced).
+
+If you are using a conda environment, you can link the conda environment into ROS. This is a bit more advanced, but can be useful if you want to keep your ROS and conda environments separate.
+
+Install using the installation script, but using the `--cpu` flag for a CPU-only installation:
+
+```bash
+./install.sh --cpu
+```
+
+Then, activate the conda environment:
+
+```bash
+conda activate stretch_ai_$VERSION_cpu
+```
+
+Then, [link the package into your ament workspace](#set-up-ament-workspace-on-the-robot) and install the package:
+
+```bash
+colcon build --cmake-args -DPYTHON_EXECUTABLE=$(which python)
+```
+
+Some ROS python repositories might be missing - specifically `empy` and `catkin_pkg`. You can install these with:
+
+```bash
+python -m pip install empy catkin_pkg
+```
+
+#### Set Up Ament Workspace on the Robot
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
 
@@ -153,10 +193,15 @@ On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament works
 cd stretch_ai
 ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
 cd ~/ament_ws
-colcon build --symlink-install --packages-select stretch_ros2_bridge
+colcon build --packages-select stretch_ros2_bridge
 ```
 
-More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
+You need to rebuild the ROS2 bridge every time you update the codebase. You can do this with:
+
+```bash
+cd ~/ament_ws
+colcon build --packages-select stretch_ros2_bridge
+```
 
 ### Using LLMs
 
@@ -434,6 +479,8 @@ See the [docker guide](docs/docker.md) for more information and troubleshooting 
 Parts of this codebase were derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project, and is licensed under the [MIT license](META_LICENSE). We thank the Meta team for their contributions.
 
 The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is based on the [OK robot](https://github.com/ok-robot/ok-robot) project's [Robot Controller](https://github.com/NYU-robot-learning/robot-controller/), and is licensed under the [Apache 2.0 license](src/stretch_ros2_bridge/LICENSE).
+
+We use [LeRobot from HuggingFace](https://github.com/huggingface/lerobot) for imitation learning, though we use [our own fork](https://github.com/hello-robot/lerobot).
 
 ## License
 

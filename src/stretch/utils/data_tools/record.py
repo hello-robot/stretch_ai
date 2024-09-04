@@ -116,6 +116,7 @@ class FileDataRecorder:
             "ee_rot": ee_rot.tolist(),
             "observations": observations,
             "actions": actions,
+            "waypoints": {},
         }
         self.step += 1
 
@@ -276,6 +277,29 @@ class FileDataRecorder:
 
         end_time = time.perf_counter()
         logger.info(f"Saved RGB video to {episode_dir} in {end_time - start_time}s")
+
+    def add_waypoint(self, idx: int, robot_pose: np.ndarray, gripper: float) -> bool:
+        """
+        Add a waypoint to the data recorder. This is used for recording waypoints in a trajectory.
+
+        Args:
+            idx: The index of the waypoint.
+            robot_pose: The pose of the robot.
+            gripper: The gripper value.
+
+        Returns:
+            bool: True if the waypoint was added for the first time, False if it was overwritten.
+        """
+
+        overwrite = False
+        if idx in self.data_dicts[self.step]["waypoints"]:
+            overwrite = True
+
+        self.data_dicts[self.step]["waypoints"][idx] = {
+            "robot_pose": robot_pose.tolist(),
+            "gripper_width": gripper,
+        }
+        return not overwrite
 
     def process_depth_to_bin(self, episode_dir: Path, head: bool = False) -> None:
         if head:
