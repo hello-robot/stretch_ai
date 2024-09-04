@@ -412,15 +412,13 @@ class RobotAgent:
                 return
 
         for i in range(num_steps):
-            if obs is None:
-                obs = self.robot.get_observation()
-
-            if i > 0:
+            if self._sweep_head_on_update:
                 pan = -1 * i * np.pi / 4
                 tilt = -1 * np.pi / 4
                 print(f"Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
                 input("Press enter to continue...")
+                obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
             self.obs_history.append(obs)
@@ -434,8 +432,8 @@ class RobotAgent:
             self.voxel_map.add_obs(obs)
             t3 = timeit.default_timer()
 
-            # Clear it out
-            obs = None
+            if not self._sweep_head_on_update:
+                break
 
         if self.use_scene_graph:
             self._update_scene_graph()
