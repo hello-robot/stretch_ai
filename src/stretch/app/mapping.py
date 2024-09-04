@@ -177,9 +177,9 @@ def demo_main(
         matches = []
 
     # Rotate in place
-    if parameters["in_place_rotation_steps"] > 0:
+    if parameters["agent"]["in_place_rotation_steps"] > 0:
         demo.rotate_in_place(
-            steps=parameters["in_place_rotation_steps"],
+            steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
         )
 

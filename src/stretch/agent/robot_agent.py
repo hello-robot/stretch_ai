@@ -82,6 +82,8 @@ class RobotAgent:
         self.tts = get_text_to_speech(parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
 
+        self._sweep_head_on_update = parameters["agent"]["sweep_head_on_update"]
+
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
             "feature_match_threshold"
@@ -338,10 +340,10 @@ class RobotAgent:
         x, y, theta = self.robot.get_base_pose()
         if verbose:
             print(f"==== ROTATE IN PLACE at {x}, {y} ====")
-        while i < steps - 1:
+        while i < steps:
             t0 = timeit.default_timer()
             self.robot.navigate_to(
-                [x, y, theta + ((i + 1) * step_size)],
+                [x, y, theta + (i * step_size)],
                 relative=False,
                 blocking=True,
                 verbose=verbose,
@@ -396,6 +398,12 @@ class RobotAgent:
         obs = None
         t0 = timeit.default_timer()
 
+        steps = 0
+        if self._sweep_head_on_update:
+            num_steps = 5
+        else:
+            num_steps = 1
+
         while obs is None:
             obs = self.robot.get_observation()
             t1 = timeit.default_timer()
@@ -403,18 +411,31 @@ class RobotAgent:
                 logger.error("Failed to get observation")
                 return
 
-        t1 = timeit.default_timer()
-        self.obs_history.append(obs)
-        self.obs_count += 1
-        # Optionally do this
-        if self.semantic_sensor is not None:
-            # Semantic prediction
-            obs = self.semantic_sensor.predict(obs)
+        for i in range(num_steps):
+            if obs is None:
+                obs = self.robot.get_observation()
 
-        t2 = timeit.default_timer()
-        self.voxel_map.add_obs(obs)
+            if i > 0:
+                pan = -1 * i * np.pi / 4
+                tilt = -1 * np.pi / 4
+                print(f"Head sweep {i} at {pan}, {tilt}")
+                self.robot.head_to(pan, tilt, blocking=True)
+                input("Press enter to continue...")
 
-        t3 = timeit.default_timer()
+            t1 = timeit.default_timer()
+            self.obs_history.append(obs)
+            self.obs_count += 1
+            # Optionally do this
+            if self.semantic_sensor is not None:
+                # Semantic prediction
+                obs = self.semantic_sensor.predict(obs)
+
+            t2 = timeit.default_timer()
+            self.voxel_map.add_obs(obs)
+            t3 = timeit.default_timer()
+
+            # Clear it out
+            obs = None
 
         if self.use_scene_graph:
             self._update_scene_graph()

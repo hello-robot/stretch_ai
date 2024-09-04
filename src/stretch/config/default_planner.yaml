@@ -62,7 +62,10 @@ motion:
     gripper_open_threshold: 0.3
 
 # Exploration
-in_place_rotation_steps: 8
+agent:
+  # in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
+  in_place_rotation_steps: 2
+  sweep_head_on_update: True
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
