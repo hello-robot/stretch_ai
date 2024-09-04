@@ -113,9 +113,10 @@ class HelloRobot:
             target_state[5] = wrist_roll    
         
         # Actual Movement
-        print('Target Position', target_state)
         self.robot.arm_to(target_state, blocking = blocking)
-        print('Actual location', self.robot.get_six_joints())
+        print('Expected', target_state)
+        print('Actual', self.robot.get_six_joints())
+        print('Error', target_state - self.robot.get_six_joints())
 
         # Head state update and Movement
         target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
@@ -202,6 +203,7 @@ class HelloRobot:
         self.robot.arm_to(target_state, blocking = True)
         print(f"current state {self.robot.get_six_joints()}")
         print(f"target state {target_state}")
+        print(f"error {target_state - self.robot.get_six_joints()}")
         # time.sleep(1)
 
         #NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
