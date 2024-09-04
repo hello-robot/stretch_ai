@@ -17,15 +17,14 @@ import threading
 from typing import Optional
 
 import numpy as np
-import orbslam3
 import rclpy
 import sophuspy as sp
 import tf2_ros
 from geometry_msgs.msg import Pose, PoseStamped, PoseWithCovarianceStamped, TransformStamped
-from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.node import Node
+from std_msgs.msg import Bool
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
