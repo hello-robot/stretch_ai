@@ -23,7 +23,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
 
 
-class MultiPickupManager:
+class MultiPickupTask:
     """Simple robot that will look around and pick up different objects"""
 
     def __init__(

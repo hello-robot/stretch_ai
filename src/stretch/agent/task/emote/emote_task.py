@@ -11,7 +11,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Operation, Task
 
 
-class EmoteManager:
+class EmoteTask:
     """
     Creates a task queue with a given emote operation.
     """
