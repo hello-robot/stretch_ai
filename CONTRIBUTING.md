@@ -138,3 +138,23 @@ python -m stretch.perception.captioners.git_captioner --image_path object.png
 # Gives: "a cardboard box on the floor"
 python -m stretch.perception.captioners.git_captioner --image_path receptacle.png
 ```
+
+### Developing on the Robot
+
+You can run the server and ROS nodes separately on the robot. Run the server itself with:
+
+```
+ros2 run stretch_ros2_bridge server
+```
+
+You can then run the SLAM and other ROS nodes:
+
+```
+ros2 launch stretch_ros2_bridge startup_stretch_hector_slam.launch.py
+```
+
+Or, if you are using [ORB-SLAM3](docs/orbslam.md):
+
+```
+ros2 launch stretch_ros2_bridge startup_stretch_orbslam.launch.py
+```

@@ -18,6 +18,8 @@ from .clip_encoder import ClipEncoder, NormalizedClipEncoder
 from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
 from .siglip_encoder import SiglipEncoder
 
+encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
+
 
 def get_encoder(encoder_name, args: Any):
     if encoder_name == "clip":
@@ -27,6 +29,6 @@ def get_encoder(encoder_name, args: Any):
     elif encoder_name == "siglip":
         return SiglipEncoder(**args)
     elif encoder_name == "dinov2siglip":
-        return Dinov2SigLIPEncoder(args)
+        return Dinov2SigLIPEncoder(**args)
     else:
         raise ValueError(f"Encoder {encoder_name} not implemented or not supported.")
