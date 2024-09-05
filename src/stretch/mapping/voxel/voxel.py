@@ -1133,7 +1133,6 @@ class SparseVoxelMap(object):
 
     @staticmethod
     def from_parameters(
-        cls,
         parameters: Parameters,
         encoder: BaseImageTextEncoder,
         voxel_size: float = 0.05,
