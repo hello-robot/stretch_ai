@@ -29,6 +29,7 @@ from torch import Tensor
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
+from stretch.core.parameters import Parameters
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
 from stretch.motion import Footprint, PlanResult, RobotModel
@@ -118,6 +119,7 @@ class SparseVoxelMap(object):
         obs_max_height: float = 1.8,
         obs_min_density: float = 10,
         smooth_kernel_size: int = 2,
+        neg_obs_height: float = 0.0,
         add_local_radius_points: bool = True,
         remove_visited_from_obstacles: bool = False,
         local_radius: float = 0.15,
@@ -171,6 +173,7 @@ class SparseVoxelMap(object):
         self.feature_dim = feature_dim
         self.obs_min_height = obs_min_height
         self.obs_max_height = obs_max_height
+        self.neg_obs_height = neg_obs_height
         self.obs_min_density = obs_min_density
         self.prune_detected_objects = prune_detected_objects
 
@@ -1127,3 +1130,59 @@ class SparseVoxelMap(object):
         # Returns xyz and rgb for further inspection
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
         return points, rgb
+
+    @staticmethod
+    def from_parameters(
+        cls,
+        parameters: Parameters,
+        encoder: BaseImageTextEncoder,
+        voxel_size: float = 0.05,
+        use_instance_memory: bool = True,
+        **kwargs,
+    ) -> "SparseVoxelMap":
+        return SparseVoxelMap(
+            resolution=voxel_size,
+            local_radius=parameters["local_radius"],
+            obs_min_height=parameters["obs_min_height"],
+            obs_max_height=parameters["obs_max_height"],
+            neg_obs_height=parameters["neg_obs_height"],
+            min_depth=parameters["min_depth"],
+            max_depth=parameters["max_depth"],
+            pad_obstacles=parameters["pad_obstacles"],
+            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
+            remove_visited_from_obstacles=parameters.get(
+                "remove_visited_from_obstacles", default=False
+            ),
+            obs_min_density=parameters["obs_min_density"],
+            encoder=encoder,
+            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
+            use_median_filter=parameters.get("filters/use_median_filter", False),
+            median_filter_size=parameters.get("filters/median_filter_size", 5),
+            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
+            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            use_instance_memory=use_instance_memory,
+            instance_memory_kwargs={
+                "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
+                "min_instance_thickness": parameters.get(
+                    "instance_memory/min_instance_thickness", 0.01
+                ),
+                "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
+                "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
+                "min_instance_height": parameters.get("instance_memory/min_instance_height", 0.1),
+                "max_instance_height": parameters.get("instance_memory/max_instance_height", 1.8),
+                "min_pixels_for_instance_view": parameters.get(
+                    "instance_memory/min_pixels_for_instance_view", 100
+                ),
+                "min_percent_for_instance_view": parameters.get(
+                    "instance_memory/min_percent_for_instance_view", 0.2
+                ),
+                "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
+                "use_visual_feat": parameters.get("use_visual_feat", False),
+            },
+            prune_detected_objects=parameters.get("prune_detected_objects", False),
+        )
+
+    def _get_instance_color(instance_id: int) -> List[float]:
+        """Get a color for an instance"""
+        return [np.random.random() for _ in range(3)]

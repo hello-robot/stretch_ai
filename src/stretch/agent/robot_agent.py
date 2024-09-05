@@ -139,46 +139,11 @@ class RobotAgent:
         Returns:
             SparseVoxelMap: the voxel map
         """
-        return SparseVoxelMap(
-            resolution=self._voxel_size,
-            local_radius=parameters["local_radius"],
-            obs_min_height=parameters["obs_min_height"],
-            obs_max_height=parameters["obs_max_height"],
-            min_depth=parameters["min_depth"],
-            max_depth=parameters["max_depth"],
-            pad_obstacles=parameters["pad_obstacles"],
-            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
-            remove_visited_from_obstacles=parameters.get(
-                "remove_visited_from_obstacles", default=False
-            ),
-            obs_min_density=parameters["obs_min_density"],
-            encoder=self.encoder,
-            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
-            use_median_filter=parameters.get("filters/use_median_filter", False),
-            median_filter_size=parameters.get("filters/median_filter_size", 5),
-            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
-            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
-            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
-            use_instance_memory=(self.semantic_sensor is not None or self._use_instance_memory),
-            instance_memory_kwargs={
-                "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
-                "min_instance_thickness": parameters.get(
-                    "instance_memory/min_instance_thickness", 0.01
-                ),
-                "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
-                "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
-                "min_instance_height": parameters.get("instance_memory/min_instance_height", 0.1),
-                "max_instance_height": parameters.get("instance_memory/max_instance_height", 1.8),
-                "min_pixels_for_instance_view": parameters.get(
-                    "instance_memory/min_pixels_for_instance_view", 100
-                ),
-                "min_percent_for_instance_view": parameters.get(
-                    "instance_memory/min_percent_for_instance_view", 0.2
-                ),
-                "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
-                "use_visual_feat": parameters.get("use_visual_feat", False),
-            },
-            prune_detected_objects=parameters.get("prune_detected_objects", False),
+        return SparseVoxelMap.from_parameters(
+            parameters,
+            self.encoder,
+            voxel_size=self._voxel_size,
+            use_instance_memory=self._use_instance_memory or self.semantic_sensor is not None,
         )
 
     @property
