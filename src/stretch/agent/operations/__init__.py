@@ -22,5 +22,6 @@ from .place_object import PlaceObjectOperation
 from .pregrasp import PreGraspObjectOperation
 from .rotate_in_place import RotateInPlaceOperation
 from .search_for_object import SearchForObjectOnFloorOperation, SearchForReceptacleOperation
+from .speak import SpeakOperation
 from .switch_mode import GoToNavOperation
 from .update import UpdateOperation

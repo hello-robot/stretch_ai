@@ -12,11 +12,13 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import datetime
+import pprint
 
 import click
 
 # Mapping and perception
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.llm_plan import LLMPlanTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms.openai_client import OpenaiClient
@@ -83,7 +85,7 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
-    _, semantic_sensor = create_semantic_sensor(
+    semantic_sensor = create_semantic_sensor(
         device_id=device_id,
         verbose=verbose,
         category_map_file=parameters["open_vocab_category_map_file"],
@@ -110,14 +112,15 @@ def main(
 
     print("Starting robot exploration...")
 
-    agent.run_exploration(
-        rate=10,
-        manual_wait=False,
-        explore_iter=20,
-        task_goal="sky",
-        go_home_at_end=True,
-        visualize=False,
-    )
+    # agent.run_exploration(
+    #     rate=10,
+    #     manual_wait=False,
+    #     explore_iter=20,
+    #     task_goal="sky", # arbitrary object to collect
+    #                      # as many instances as possible
+    #     go_home_at_end=True,
+    #     visualize=False,
+    # )
 
     while True:
         text = input("Enter a long horizon task: ")
@@ -131,16 +134,16 @@ def main(
         if plan.endswith("```"):
             plan = plan.rsplit("\n", 1)[0]
 
-        plan += "\nexecute_task(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave, self.get_detections)"
+        llm_plan_task = LLMPlanTask(agent, plan)
+        plan = llm_plan_task.get_task()
+        pprint.pprint(plan)
 
         if proceed != "y":
             print("Exiting...")
             continue
 
-        agent.execute(plan)
-
-    if write_instance_images:
-        agent.save_instance_images(".", verbose=True)
+        # agent.execute(plan)
+        break
 
 
 if __name__ == "__main__":
