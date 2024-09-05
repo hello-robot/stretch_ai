@@ -112,15 +112,15 @@ def main(
 
     print("Starting robot exploration...")
 
-    # agent.run_exploration(
-    #     rate=10,
-    #     manual_wait=False,
-    #     explore_iter=20,
-    #     task_goal="sky", # arbitrary object to collect
-    #                      # as many instances as possible
-    #     go_home_at_end=True,
-    #     visualize=False,
-    # )
+    agent.run_exploration(
+        rate=10,
+        manual_wait=False,
+        explore_iter=20,
+        task_goal="sky",  # arbitrary object to collect
+        # as many instances as possible
+        go_home_at_end=True,
+        visualize=False,
+    )
 
     while True:
         text = input("Enter a long horizon task: ")
@@ -142,7 +142,7 @@ def main(
             print("Exiting...")
             continue
 
-        # agent.execute(plan)
+        plan.run()
         break
 
 

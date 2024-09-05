@@ -14,17 +14,21 @@ import numpy as np
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
 
+
 class SpeakOperation(ManagedOperation):
     """
     Speaks a message given by the user.
     """
+
     _success = True
 
     def can_start(self) -> bool:
         return True
-    
-    def configure(self,
-                  message: str = "Hello, world!",):
+
+    def configure(
+        self,
+        message: str = "Hello, world!",
+    ):
         """Configure the operation given a message to speak."""
         self.message = message
 
@@ -45,9 +49,6 @@ class SpeakOperation(ManagedOperation):
             self._success = False
             self._error = e
 
-
     def was_successful(self) -> bool:
         """Return true if successful"""
         return self._success
-
-    

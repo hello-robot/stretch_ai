@@ -10,15 +10,15 @@
 import ast
 
 from stretch.agent.base import TaskManager
-from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     SpeakOperation,
-    WaveOperation
+    WaveOperation,
 )
-
+from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
+
 
 class TreeNode:
     def __init__(self, function_call, success=None, failure=None):
@@ -26,11 +26,9 @@ class TreeNode:
         self.success = success
         self.failure = failure
 
+
 class LLMPlanCompiler(ast.NodeVisitor):
-    def __init__(self,
-                 agent: RobotAgent,
-                 manager: TaskManager,
-                 llm_plan: str):
+    def __init__(self, agent: RobotAgent, manager: TaskManager, llm_plan: str):
         self.agent = agent
         self.manager = manager
         self.llm_plan = llm_plan
@@ -43,7 +41,9 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
-        self.task.add_operation(GraspObjectOperation(name="pick_" + object_name, object_name=object_name))
+        self.task.add_operation(
+            GraspObjectOperation(name="pick_" + object_name, object_name=object_name)
+        )
         return "pick_" + object_name
 
     def place(self, object_name: str):
@@ -118,21 +118,20 @@ class LLMPlanCompiler(ast.NodeVisitor):
             # Start processing the body of the module
             if len(node.body) > 0:
                 return self.build_tree(node.body[0])
-            
+
         elif isinstance(node, ast.FunctionDef):
             if len(node.body) > 0:
                 return self.build_tree(node.body[0])
 
         raise ValueError("Unexpected AST node")
-    
-    def convert_to_task(self,
-                        root: TreeNode,
-                        parent_operation_name: str = None,
-                        success: bool = True):
+
+    def convert_to_task(
+        self, root: TreeNode, parent_operation_name: str = None, success: bool = True
+    ):
         """Recursively convert the tree into a task by adding operations and connecting them"""
         if root is None:
             return
-        
+
         # Create the operation
         root_operation_name = eval("self." + root.function_call)
 
@@ -154,4 +153,3 @@ class LLMPlanCompiler(ast.NodeVisitor):
         self.convert_to_task(root)
 
         return self.task
-

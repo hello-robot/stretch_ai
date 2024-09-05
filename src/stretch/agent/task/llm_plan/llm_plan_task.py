@@ -14,10 +14,9 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
 from stretch.utils.llm_plan_compiler import LLMPlanCompiler
 
+
 class LLMPlanTask(TaskManager):
-    def __init__(self,
-                 agent: RobotAgent,
-                 llm_plan: Optional[str] = None):
+    def __init__(self, agent: RobotAgent, llm_plan: Optional[str] = None):
         # Sync these things
         self.agent = agent
         self.robot = agent.robot
@@ -32,21 +31,16 @@ class LLMPlanTask(TaskManager):
         self.task = None
 
         if llm_plan is not None:
-            self.llm_plan_compiler = LLMPlanCompiler(agent,
-                                                     self,
-                                                     self.llm_plan)
+            self.llm_plan_compiler = LLMPlanCompiler(agent, self, self.llm_plan)
             self.task = self.llm_plan_compiler.compile()
 
-    def configure(self,
-                  llm_plan: Optional[str] = None):
+    def configure(self, llm_plan: Optional[str] = None):
         """Configure the task given a LLM plan."""
         self.llm_plan = llm_plan
 
     def get_task(self) -> Task:
         if self.llm_plan is not None:
-            self.llm_plan_compiler = LLMPlanCompiler(self.agent,
-                                                        self,
-                                                        self.llm_plan)
+            self.llm_plan_compiler = LLMPlanCompiler(self.agent, self, self.llm_plan)
             self.task = self.llm_plan_compiler.compile()
 
         return self.task
