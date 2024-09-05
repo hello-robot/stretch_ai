@@ -49,6 +49,7 @@ class HelloRobot:
 
         # Constraining the robots movement
         self.clamp = lambda n, minn, maxn: max(min(maxn, n), minn) 
+        self.pan, self.tilt = self.robot.get_pan_tilt()
     
 
     def set_end_link(self, link):
@@ -112,17 +113,24 @@ class HelloRobot:
             target_state[5] = wrist_roll    
         
         # Actual Movement
-        print('Target Position', target_state)
-        self.robot.arm_to(target_state, blocking = blocking)
-        print('Actual location', self.robot.get_six_joints())
+        # print('Target Position', target_state)
+        # print('pan tilt before', self.robot.get_pan_tilt())
+        self.robot.arm_to(target_state, blocking = blocking, head = np.array([self.pan, self.tilt]))
+        # print('pan tilt after', self.robot.get_pan_tilt())
+        # print('Actual location', self.robot.get_six_joints())
 
         # Head state update and Movement
-        target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
+        # target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
+        target_head_pan = self.pan
+        target_head_tilt = self.tilt
         if not head_tilt is None:
             target_head_tilt = head_tilt
+            self.tilt = head_tilt
         if not head_pan is None:
             target_head_pan = head_pan
+            self.pan = head_pan
         self.robot.head_to(head_tilt = target_head_tilt, head_pan = target_head_pan, blocking = blocking)
+        # self.pan, self.tilt = self.robot.get_pan_tilt()
         #time.sleep(0.7)
 
     def pickup(self, width):
@@ -140,7 +148,7 @@ class HelloRobot:
                 break
             
             if next_gripper_pos > 0:
-                next_gripper_pos -= 0.4
+                next_gripper_pos -= 0.35
             else: 
                 next_gripper_pos = -1
 
@@ -196,11 +204,13 @@ class HelloRobot:
         if mode == 1:
             target1 = state
             target1[1] = target_state[1]
-            self.robot.arm_to(target1, blocking = True)
+            self.robot.arm_to(target1, blocking = True, head = np.array([self.pan, self.tilt]))
 
-        self.robot.arm_to(target_state, blocking = True)
-        print(f"current state {self.robot.get_six_joints()}")
-        print(f"target state {target_state}")
+        # print('pan tilt before', self.robot.get_pan_tilt())
+        self.robot.arm_to(target_state, blocking = True, head = np.array([self.pan, self.tilt]))
+        # print('pan tilt after', self.robot.get_pan_tilt())
+        # print(f"current state {self.robot.get_six_joints()}")
+        # print(f"target state {target_state}")
         # time.sleep(1)
 
         #NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue

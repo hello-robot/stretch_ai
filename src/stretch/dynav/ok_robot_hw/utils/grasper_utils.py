@@ -31,7 +31,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             hello_robot.move_to_position(base_trans=base_trans,
                                     head_pan=head_pan,
                                     head_tilt=head_tilt)
-            time.sleep(4)
+            # time.sleep(4)
         
         elif (retry_flag !=0 and side_retries == 3):
             print("Tried in all angles but couldn't succed")
@@ -133,7 +133,9 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # print(f"pin_transformed frame {pin_transformed_frame}")
 
     # Lifting the arm to high position as part of pregrasping position
+    print('pan, tilt before', robot.robot.get_pan_tilt())
     robot.move_to_position(lift_pos = 1.05, gripper_pos = gripper_width, head_pan = None, head_tilt = None)
+    print('pan, tilt after', robot.robot.get_pan_tilt())
 
     # Rotation for aligning Robot gripper frame to Model gripper frame
     rotation2_top_mat = np.array([[0, 0, 1], 
@@ -146,11 +148,13 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     print(f"pin final rotation {pin_final_rotation}")
 
     rpy_angles = pin.rpy.matrixToRpy(pin_final_rotation)
+    print('pan, tilt before', robot.robot.get_pan_tilt())
     robot.move_to_pose(
             [0, 0, 0],
             [rpy_angles[0], rpy_angles[1], rpy_angles[2]],
             [1],
         )
+    print('pan, tilt after', robot.robot.get_pan_tilt())
 
     # Final grasping point relative to camera
     pin_cam2gripper_transform = robot.get_joint_transform(base_node, gripper_node)
@@ -167,12 +171,14 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     ref_diff = (diff_value)
 
     # Moving gripper to a point that is 0.2m away from the pose center in the line of gripper
+    print('pan, tilt before', robot.robot.get_pan_tilt())
     robot.move_to_pose(
         [pin_transformed_point1[0], pin_transformed_point1[1], pin_transformed_point1[2] - 0.2],
         [0, 0, 0],
         [1],
         move_mode = 1
     )
+    print('pan, tilt after', robot.robot.get_pan_tilt())
 
     # Z-Axis of link_straight_gripper points in line of gripper
     # So, the z co-ordiante of point w.r.t gripper gives the distance of point from gripper
