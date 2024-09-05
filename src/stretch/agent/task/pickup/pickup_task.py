@@ -167,6 +167,7 @@ class PickupTask:
             on_cannot_start=go_to_object,
             retry_on_failure=False,
         )
+        grasp_object.set_target_object_class(self.target_object)
         grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
         place_object_on_receptacle = PlaceObjectOperation(
             "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle

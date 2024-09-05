@@ -33,6 +33,9 @@ class GraspObjectOperation(ManagedOperation):
     servo_to_grasp: bool = False
     _success: bool = False
 
+    # Task information
+    target_object: Optional[str] = None
+
     # Debugging UI elements
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
@@ -71,6 +74,7 @@ class GraspObjectOperation(ManagedOperation):
 
     def configure(
         self,
+        target_object: str,
         show_object_to_grasp: bool = False,
         servo_to_grasp: bool = False,
         show_servo_gui: bool = True,
@@ -88,6 +92,7 @@ class GraspObjectOperation(ManagedOperation):
             reset_observation (bool, optional): Reset the observation. Defaults to False.
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
         """
+        self.target_object = target_object
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
         self.show_servo_gui = show_servo_gui
@@ -126,9 +131,17 @@ class GraspObjectOperation(ManagedOperation):
         mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
         for iid in np.unique(servo.semantic):
             name = self.agent.semantic_sensor.get_class_name_for_id(iid)
-            if name is not None and self.agent.target_object in name:
+            if name is not None and self.target_object in name:
                 mask = np.bitwise_or(mask, servo.semantic == iid)
         return mask
+
+    def set_target_object_class(self, target_object: str):
+        """Set the target object class.
+
+        Args:
+            target_object (str): Target object class
+        """
+        self.target_object = target_object
 
     def get_target_mask(
         self,
