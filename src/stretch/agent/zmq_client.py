@@ -464,6 +464,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # If head is not specified, we need to set it to the right head position
             # In this case, we assume if moving arm you should look at ee
             _next_action["head_to"] = constants.look_at_ee
+            # cur_pan, cur_tilt = self.get_pan_tilt()
+            # _next_action["head_to"] = np.array([cur_pan, cur_tilt])
         _next_action["manip_blocking"] = blocking
         self.send_action(_next_action)
 
