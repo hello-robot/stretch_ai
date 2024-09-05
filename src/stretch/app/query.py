@@ -48,6 +48,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--frame", default=-1, help="Final frame to read from input file")
 @click.option("--text", default="", help="Text to encode")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
+@click.option("-l", "--load", type=str, default="", help="Load a saved voxel map")
 @click.option(
     "--all-matches",
     is_flag=True,
