@@ -59,7 +59,7 @@ class PickupTask:
 
         self.current_object = None
         self.current_receptacle = None
-        self.reset_object_plans()
+        self.agent.reset_object_plans()
 
     def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
         """Create a task plan with loopbacks and recovery from failure. The robot will explore the environment, find objects, and pick them up
