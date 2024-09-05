@@ -94,7 +94,6 @@ class RobotAgentMDP:
                 end_time = time.time()
                 print('moving head takes ', end_time - start_time, 'seconds.')
                 self.update()
-        self.robot.look_front()
 
     def rotate_in_place(self):
         print("*" * 10, "Rotate in place", "*" * 10)
@@ -112,19 +111,19 @@ class RobotAgentMDP:
         self.obs_history.append(obs)
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        start_time = time.time()
+        # start_time = time.time()
         self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
-        end_time = time.time()
-        print('Image processing takes', end_time - start_time, 'seconds.')
+        # end_time = time.time()
+        # print('Image processing takes', end_time - start_time, 'seconds.')
 
     def execute_action(
         self,
         text: str,
     ):
-        start_time = time.time()
+        # start_time = time.time()
 
-        # self.robot.look_front()
-        self.look_around()
+        self.robot.look_front()
+        # self.look_around()
         # self.robot.look_front()
         self.robot.switch_to_navigation_mode()
 
@@ -134,11 +133,11 @@ class RobotAgentMDP:
         res = self.image_processor.process_text(text, start)
 
         look_around_finish = time.time()
-        look_around_take = look_around_finish - start_time
-        print('Looking around takes ', look_around_take, ' seconds.')
-        self.look_around_times.append(look_around_take)
-        print(self.look_around_times)
-        print(sum(self.look_around_times) / len(self.look_around_times))
+        # look_around_take = look_around_finish - start_time
+        # print('Looking around takes ', look_around_take, ' seconds.')
+        # self.look_around_times.append(look_around_take)
+        # print(self.look_around_times)
+        # print(sum(self.look_around_times) / len(self.look_around_times))
 
         if len(res) > 0:
             print("Plan successful!")
