@@ -117,6 +117,9 @@ class GraspObjectOperation(ManagedOperation):
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
+        if self.target_object is None:
+            self.error("No target object set.")
+            return False
         return self.agent.current_object is not None and self.robot.in_manipulation_mode()
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
@@ -491,6 +494,8 @@ class GraspObjectOperation(ManagedOperation):
         self._success = False
         if self.show_object_to_grasp:
             self.show_instance(self.agent.current_object)
+
+        assert self.target_object is not None, "Target object must be set before running."
 
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
