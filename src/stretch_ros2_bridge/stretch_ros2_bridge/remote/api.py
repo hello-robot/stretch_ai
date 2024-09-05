@@ -34,7 +34,7 @@ from .ros import StretchRosInterface
 class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
-    camera_frame = "camera_color_optical_frame"
+    head_camera_frame = "camera_color_optical_frame"
     ee_camera_frame = "gripper_camera_color_optical_frame"
     ee_frame = "link_grasp_center"
     world_frame = "map"
@@ -170,15 +170,22 @@ class StretchClient(AbstractRobotClient):
 
     @property
     def camera_pose(self):
-        return self.head.get_pose_in_base_coords(rotated=False)
+        return self.head_camera_pose
+
+    @property
+    def head_camera_pose(self):
+        p0 = self._ros_client.get_frame_pose(
+            self.head_camera_frame, base_frame=self.world_frame, timeout_s=5.0
+        )
+        if p0 is not None:
+            p0 = p0 @ tra.euler_matrix(0, 0, -np.pi / 2)
+        return p0
 
     @property
     def ee_camera_pose(self):
         p0 = self._ros_client.get_frame_pose(
             self.ee_camera_frame, base_frame=self.world_frame, timeout_s=5.0
         )
-        if p0 is not None:
-            p0 = p0 @ tra.euler_matrix(0, 0, 0)
         return p0
 
     @property
@@ -305,8 +312,7 @@ class StretchClient(AbstractRobotClient):
             xyz=xyz,
             gps=gps,
             compass=np.array([theta]),
-            camera_pose=self.head.get_pose(rotated=rotate_head_pts),
-            # joint=self.model.config_to_hab(joint_positions),
+            camera_pose=self.head_camera_pose,
             joint=joint_positions,
             camera_K=self.get_camera_intrinsics(),
         )
