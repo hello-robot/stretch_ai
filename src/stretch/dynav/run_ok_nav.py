@@ -16,6 +16,8 @@ from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.agent import RobotClient
 
 import cv2
+import threading
+import time
 
 def compute_tilt(camera_xyz, target_xyz):
     '''
@@ -75,13 +77,17 @@ def main(
     else:
         demo.image_processor.read_from_pickle(input_path)
 
-    # def keep_looking_around():
-    #     while True:
-    #         demo.look_around()
+    def keep_looking_around():
+        while True:
+            time.sleep(0.3)
+            if robot.get_six_joints()[2] > 0.7 or not robot.in_navigation_mode():
+                continue
+            demo.update()
+            demo.image_processor.compute_path(robot.get_base_pose())
 
-    # img_thread = threading.Thread(target=keep_looking_around)
-    # img_thread.daemon = True
-    # img_thread.start()
+    img_thread = threading.Thread(target=keep_looking_around)
+    img_thread.daemon = True
+    img_thread.start()
 
     while True:
         mode = input('select mode? E/N/S')
