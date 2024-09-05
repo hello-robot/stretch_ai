@@ -790,12 +790,8 @@ class SparseVoxelMap(object):
 
         device = xyz.device
         xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
-        xyz[xyz[:, -1] < 0, -1] = 0
-
-        # from stretch.utils.point_cloud import show_point_cloud
-        # show_point_cloud(xyz, rgb, orig=np.zeros(3))
-        xyz[xyz[:, -1] < 0, -1] = 0
-        # show_point_cloud(xyz, rgb, orig=np.zeros(3))
+        # xyz[xyz[:, -1] < 0, -1] = 0
+        negative_obstacles = xyz[:, -1] < self.neg_obs_height
 
         # Crop to robot height
         min_height = int(self.obs_min_height / self.grid_resolution)
@@ -805,6 +801,7 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
+        obs_mask = obs_mask & negative_obstacles
         xyz = xyz[obs_mask, :]
         counts = counts[obs_mask][:, None]
 
