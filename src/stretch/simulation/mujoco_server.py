@@ -380,7 +380,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
-            self._status = self.robot_sim.pull_status()
+            self._status = self.robot_sim.status
             time.sleep(1 / self.simulation_rate)
 
     @override
