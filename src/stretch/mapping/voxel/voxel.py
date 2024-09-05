@@ -801,7 +801,7 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
-        obs_mask = obs_mask & negative_obstacles
+        obs_mask = obs_mask | negative_obstacles
         xyz = xyz[obs_mask, :]
         counts = counts[obs_mask][:, None]
 
