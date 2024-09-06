@@ -777,6 +777,10 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
+    def get_pointcloud(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Get the current point cloud"""
+        return self.voxel_pcd.get_pointcloud()
+
     def get_2d_map(self, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
 
