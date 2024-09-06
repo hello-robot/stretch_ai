@@ -200,14 +200,20 @@ class HelloRobot:
             joints['joint_wrist_pitch'],
             joints['joint_wrist_roll']]
         
+        # print('pan tilt before', self.robot.get_pan_tilt())
+
         # Moving only the lift first
         if mode == 1:
             target1 = state
             target1[1] = target_state[1]
             self.robot.arm_to(target1, blocking = True, head = np.array([self.pan, self.tilt]))
 
+        # print('pan tilt after', self.robot.get_pan_tilt())
         # print('pan tilt before', self.robot.get_pan_tilt())
+
         self.robot.arm_to(target_state, blocking = True, head = np.array([self.pan, self.tilt]))
+        self.robot.head_to(head_tilt = self.tilt, head_pan = self.pan, blocking = True)
+
         # print('pan tilt after', self.robot.get_pan_tilt())
         # print(f"current state {self.robot.get_six_joints()}")
         # print(f"target state {target_state}")

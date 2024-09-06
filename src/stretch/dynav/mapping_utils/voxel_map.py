@@ -388,8 +388,8 @@ class SparseVoxelMapNavigationSpace(XYT):
             if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) < 0.4:
                 continue
             elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
-                print('OBSTACLE AVOIDANCE')
-                print(selected_target[0].int(), selected_target[1].int())
+                # print('OBSTACLE AVOIDANCE')
+                # print(selected_target[0].int(), selected_target[1].int())
                 i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])
                 j = (point[1] - selected_target[1]) // abs(point[1] - selected_target[1])
                 index_i = int(selected_target[0].int() + i)
@@ -678,7 +678,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         time_heuristics = 1 / (1 + np.exp(-time_smooth * (time_heuristics - time_threshold)))
         index = np.unravel_index(np.argmax(time_heuristics), history_soft.shape)
         # return index
-        debug = True
+        # debug = True
         if debug:
             # plt.clf()
             plt.title('time')

@@ -25,7 +25,8 @@ from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import pickup, move_to_point, capture_and_process_image
 from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array
-from stretch.dynav.voxel_map_server import ImageProcessor
+# from stretch.dynav.voxel_map_server import ImageProcessor
+from stretch.dynav.llm_server import ImageProcessor
 
 import cv2
 
@@ -112,10 +113,10 @@ class RobotAgentMDP:
         self.obs_history.append(obs)
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        start_time = time.time()
+        # start_time = time.time()
         self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
-        end_time = time.time()
-        print('Image processing takes', end_time - start_time, 'seconds.')
+        # end_time = time.time()
+        # print('Image processing takes', end_time - start_time, 'seconds.')
 
     def execute_action(
         self,
@@ -123,22 +124,22 @@ class RobotAgentMDP:
     ):
         start_time = time.time()
 
-        # self.robot.look_front()
-        self.look_around()
+        self.robot.look_front()
+        # self.look_around()
         # self.robot.look_front()
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
-        print("       Start:", start)
+        # print("       Start:", start)
         # res = self.image_sender.query_text(text, start)  
         res = self.image_processor.process_text(text, start)
 
         look_around_finish = time.time()
         look_around_take = look_around_finish - start_time
-        print('Looking around takes ', look_around_take, ' seconds.')
-        self.look_around_times.append(look_around_take)
-        print(self.look_around_times)
-        print(sum(self.look_around_times) / len(self.look_around_times))
+        print('Path planning takes ', look_around_take, ' seconds.')
+        # self.look_around_times.append(look_around_take)
+        # print(self.look_around_times)
+        # print(sum(self.look_around_times) / len(self.look_around_times))
 
         if len(res) > 0:
             print("Plan successful!")
