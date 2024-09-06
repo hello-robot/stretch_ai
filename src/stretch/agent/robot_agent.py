@@ -324,19 +324,20 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: int = 12, visualize: bool = False, verbose: bool = True
+        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = True
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
         Args:
-            steps(int): number of steps to rotate (each step is 360 degrees / steps). Default is 12.
+            steps(int): number of steps to rotate (each step is 360 degrees / steps). If steps <= 0, use the default number of steps from the parameters.
             visualize(bool): show the map as we rotate. Default is False.
 
         Returns:
             executed(bool): false if we did not actually do any rotations"""
         logger.info("Rotate in place")
-        if steps <= 0:
-            return False
+        if steps is None or steps <= 0:
+            # Read the number of steps from the parameters
+            steps = self.parameters["agent"]["in_place_rotation_steps"]
 
         step_size = 2 * np.pi / steps
         i = 0
@@ -1356,7 +1357,7 @@ class RobotAgent:
         loaded_voxel_map = self._create_voxel_map(self.parameters)
         loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
 
-        xyz1, rgb1, _, _ = self.voxel_pcd.get_pointcloud()
+        xyz1, rgb1, _, _ = self.voxel_map.get_pointcloud()
         xyz2, rgb2, _, _ = loaded_voxel_map.get_pointcloud()
 
         tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
