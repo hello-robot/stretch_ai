@@ -1357,11 +1357,11 @@ class RobotAgent:
         loaded_voxel_map = self._create_voxel_map(self.parameters)
         loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
 
-        xyz1, rgb1, _, _ = self.voxel_map.get_pointcloud()
-        xyz2, rgb2, _, _ = loaded_voxel_map.get_pointcloud()
+        xyz1, _, _, rgb1 = self.voxel_map.get_pointcloud()
+        xyz2, _, _, rgb2 = loaded_voxel_map.get_pointcloud()
 
-        breakpoint()
         tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
+        breakpoint()
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""
