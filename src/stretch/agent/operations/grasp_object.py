@@ -33,6 +33,9 @@ class GraspObjectOperation(ManagedOperation):
     servo_to_grasp: bool = False
     _success: bool = False
 
+    # Task information
+    target_object: Optional[str] = None
+
     # Debugging UI elements
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
@@ -71,6 +74,7 @@ class GraspObjectOperation(ManagedOperation):
 
     def configure(
         self,
+        target_object: str,
         show_object_to_grasp: bool = False,
         servo_to_grasp: bool = False,
         show_servo_gui: bool = True,
@@ -88,6 +92,7 @@ class GraspObjectOperation(ManagedOperation):
             reset_observation (bool, optional): Reset the observation. Defaults to False.
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
         """
+        self.target_object = target_object
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
         self.show_servo_gui = show_servo_gui
@@ -112,7 +117,10 @@ class GraspObjectOperation(ManagedOperation):
 
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
-        return self.manager.current_object is not None and self.robot.in_manipulation_mode()
+        if self.target_object is None:
+            self.error("No target object set.")
+            return False
+        return self.agent.current_object is not None and self.robot.in_manipulation_mode()
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
         """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
@@ -125,10 +133,18 @@ class GraspObjectOperation(ManagedOperation):
         """
         mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
         for iid in np.unique(servo.semantic):
-            name = self.manager.semantic_sensor.get_class_name_for_id(iid)
-            if name is not None and self.manager.target_object in name:
+            name = self.agent.semantic_sensor.get_class_name_for_id(iid)
+            if name is not None and self.target_object in name:
                 mask = np.bitwise_or(mask, servo.semantic == iid)
         return mask
+
+    def set_target_object_class(self, target_object: str):
+        """Set the target object class.
+
+        Args:
+            target_object (str): Target object class
+        """
+        self.target_object = target_object
 
     def get_target_mask(
         self,
@@ -477,7 +493,9 @@ class GraspObjectOperation(ManagedOperation):
         self.intro("Grasping the object.")
         self._success = False
         if self.show_object_to_grasp:
-            self.show_instance(self.manager.current_object)
+            self.show_instance(self.agent.current_object)
+
+        assert self.target_object is not None, "Target object must be set before running."
 
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
@@ -492,7 +510,7 @@ class GraspObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
 
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
-        object_xyz = self.manager.current_object.get_center()
+        object_xyz = self.agent.current_object.get_center()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
@@ -510,7 +528,7 @@ class GraspObjectOperation(ManagedOperation):
 
         if self.servo_to_grasp:
             # If we try to servo, then do this
-            self._success = self.visual_servo_to_object(self.manager.current_object)
+            self._success = self.visual_servo_to_object(self.agent.current_object)
 
         if not self._success:
             self.grasp_open_loop(object_xyz)
@@ -518,9 +536,9 @@ class GraspObjectOperation(ManagedOperation):
         # clear observations
         if self.reset_observation:
             self.observations.clear_history()
-            self.manager.reset_object_plans()
-            self.manager.instance_memory.pop_global_instance(
-                env_id=0, global_instance_id=self.manager.current_object.global_id
+            self.agent.reset_object_plans()
+            self.agent.voxel_map.instances.pop_global_instance(
+                env_id=0, global_instance_id=self.agent.current_object.global_id
             )
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.1):
