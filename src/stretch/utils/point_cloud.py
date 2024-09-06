@@ -11,11 +11,12 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np
 import open3d as o3d
+import torch
 import trimesh.transformations as tra
 
 
@@ -425,7 +426,13 @@ from scipy.spatial import cKDTree
 
 
 def find_se3_transform(
-    cloud1, cloud2, rgb1, rgb2, color_weight=0.5, max_iterations=50, tolerance=1e-5
+    cloud1: Union[torch.Tensor, np.ndarray],
+    cloud2: Union[torch.Tensor, np.ndarray],
+    rgb1: Union[torch.Tensor, np.ndarray],
+    rgb2: Union[torch.Tensor, np.ndarray],
+    color_weight=0.5,
+    max_iterations=50,
+    tolerance=1e-5,
 ):
     """
     Find the SE(3) transformation between two colorized point clouds.
@@ -449,6 +456,15 @@ def find_se3_transform(
     # rgb2 = np.random.randint(0, 256, (1000, 3))  # RGB values for cloud 2
     #
     # R, t = find_se3_transform(cloud1, cloud2, rgb1, rgb2)
+
+    if isinstance(cloud1, torch.Tensor):
+        cloud1 = cloud1.cpu().numpy()
+    if isinstance(cloud2, torch.Tensor):
+        cloud2 = cloud2.cpu().numpy
+    if isinstance(rgb1, torch.Tensor):
+        rgb1 = rgb1.cpu().numpy()
+    if isinstance(rgb2, torch.Tensor):
+        rgb2 = rgb2.cpu().numpy()
 
     def best_fit_transform(A, B):
         """
