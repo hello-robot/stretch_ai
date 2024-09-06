@@ -39,8 +39,8 @@ class PickupTask:
         self.agent = agent
 
         # Task information
-        self.target_object = target_object
-        self.target_receptacle = target_receptacle
+        self.agent.target_object = target_object
+        self.agent.target_receptacle = target_receptacle
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
 
         assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
@@ -124,11 +124,11 @@ class PickupTask:
             retry_on_failure=True,
             match_method=matching,
         )
-        if self.target_object is not None:
+        if self.agent.target_object is not None:
             # Overwrite the default object to search for
-            search_for_object.set_target_object_class(self.target_object)
-        if self.target_receptacle is not None:
-            search_for_receptacle.set_target_object_class(self.target_receptacle)
+            search_for_object.set_target_object_class(self.agent.target_object)
+        if self.agent.target_receptacle is not None:
+            search_for_receptacle.set_target_object_class(self.agent.target_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
@@ -167,7 +167,7 @@ class PickupTask:
             on_cannot_start=go_to_object,
             retry_on_failure=False,
         )
-        grasp_object.set_target_object_class(self.target_object)
+        grasp_object.set_target_object_class(self.agent.target_object)
         grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
         place_object_on_receptacle = PlaceObjectOperation(
             "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle

@@ -37,7 +37,7 @@ class MultiPickupTask:
         self.agent = agent
 
         # Task information
-        self.target_object = target_object
+        self.agent.target_object = target_object
         self.destination = destination
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
 
@@ -68,14 +68,14 @@ class MultiPickupTask:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            f"search_for_{self.target_object}_on_floor",
+            f"search_for_{self.agent.target_object}_on_floor",
             self.agent,
             retry_on_failure=True,
-            object_description=self.target_object,
+            object_description=self.agent.target_object,
         )
-        if self.target_object is not None:
+        if self.agent.target_object is not None:
             # Overwrite the default object to search for
-            search_for_object.set_target_object_class(self.target_object)
+            search_for_object.set_target_object_class(self.agent.target_object)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
@@ -84,7 +84,7 @@ class MultiPickupTask:
             parent=search_for_object,
             on_cannot_start=search_for_object,
             to_receptacle=False,
-            object_description=self.target_object,
+            object_description=self.agent.target_object,
         )
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.

@@ -86,6 +86,7 @@ class RobotAgent:
         self.current_receptacle = None
         self.current_object = None
         self.target_object = None
+        self.target_receptacle = None
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][

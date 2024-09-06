@@ -38,6 +38,7 @@ def get_task(robot, demo, target_object):
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
         )
+        grasp_object.set_target_object_class(target_object)
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
