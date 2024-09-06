@@ -551,7 +551,7 @@ class SparseVoxelMap(object):
         if world_xyz.nelement() > 0:
             self.voxel_pcd.add(world_xyz, features=feats, rgb=rgb, weights=None)
 
-        if self._add_local_radius_points and len(self.observations) == 0:
+        if self._add_local_radius_points and len(self.observations) < 2:
             # Only do this at the first step, never after it.
             # TODO: just get this from camera_pose?
             # Add local radius points to the map around base
