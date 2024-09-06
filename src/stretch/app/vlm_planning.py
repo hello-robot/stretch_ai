@@ -166,13 +166,14 @@ def main(
         semantic_sensor=semantic_sensor,
     )
     voxel_map = agent.voxel_map
-    voxel_map = add_raw_obs_to_voxel_map(
-        obs_history,
-        voxel_map,
-        semantic_sensor,
-        num_frames=frame,
-        frame_skip=frame_skip,
-    )
+    voxel_map.read_from_pickle(input_path, num_frames=frame, perception=semantic_sensor)
+    # voxel_map = add_raw_obs_to_voxel_map(
+    #     obs_history,
+    #     voxel_map,
+    #     semantic_sensor,
+    #     num_frames=frame,
+    #     frame_skip=frame_skip,
+    # )
 
     # TODO: read this from file
     x0 = np.array([0, 0, 0])
@@ -186,7 +187,7 @@ def main(
     space = agent.get_navigation_space()
 
     if show_svm:
-        footprint = dummy_robot.get_robot_model().get_footprint()
+        footprint = dummy_robot.get_footprint()
         print(f"{x0} valid = {space.is_valid(x0)}")
         voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
 

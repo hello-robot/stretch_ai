@@ -821,7 +821,7 @@ class InstanceMemory:
                     added = True
             else:
                 logger.info(
-                    f"Skipping a small instance with {n_mask} pixels",
+                    f"Skipping a small instance with {n_mask} pixels and {n_points} points",
                 )
 
             t1 = timeit.default_timer()
