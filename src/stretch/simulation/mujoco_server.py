@@ -600,7 +600,7 @@ def main(
 
     scene_model = None
     if use_robocasa:
-        scene_model, scene_xml = model_generation_wizard(
+        scene_model, scene_xml, objects_info = model_generation_wizard(
             task=robocasa_task,
             style=robocasa_style,
             layout=robocasa_layout,
