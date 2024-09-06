@@ -460,7 +460,7 @@ def find_se3_transform(
     if isinstance(cloud1, torch.Tensor):
         cloud1 = cloud1.cpu().numpy()
     if isinstance(cloud2, torch.Tensor):
-        cloud2 = cloud2.cpu().numpy
+        cloud2 = cloud2.cpu().numpy()
     if isinstance(rgb1, torch.Tensor):
         rgb1 = rgb1.cpu().numpy()
     if isinstance(rgb2, torch.Tensor):
