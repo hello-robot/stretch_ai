@@ -1360,8 +1360,8 @@ class RobotAgent:
         xyz1, rgb1, _, _ = self.voxel_map.get_pointcloud()
         xyz2, rgb2, _, _ = loaded_voxel_map.get_pointcloud()
 
-        tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
         breakpoint()
+        tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""
