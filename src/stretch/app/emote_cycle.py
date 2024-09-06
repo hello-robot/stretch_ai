@@ -16,7 +16,7 @@ from stretch.agent.operations import (
     WaveOperation,
 )
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.emote import EmoteManager
+from stretch.agent.task.emote import EmoteTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 
@@ -39,22 +39,22 @@ def main(
     # create robot agent
     demo = RobotAgent(robot, parameters=parameters)
 
-    # create task manager
-    manager = EmoteManager(demo)
-    task = manager.get_task(NodHeadOperation("emote", manager))
+    # create emote task
+    emote_task = EmoteTask(demo)
+    task = emote_task.get_task(NodHeadOperation("emote", demo))
 
     # run task
     task.run()
 
-    task = manager.get_task(ShakeHeadOperation("emote", manager))
+    task = emote_task.get_task(ShakeHeadOperation("emote", demo))
 
     task.run()
 
-    task = manager.get_task(WaveOperation("emote", manager))
+    task = emote_task.get_task(WaveOperation("emote", demo))
 
     task.run()
 
-    task = manager.get_task(AvertGazeOperation("emote", manager))
+    task = emote_task.get_task(AvertGazeOperation("emote", demo))
 
     task.run()
 

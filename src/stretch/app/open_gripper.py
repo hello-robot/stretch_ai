@@ -39,7 +39,6 @@ def main(
         parameters=parameters,
     )
     robot.start()
-    robot.switch_to_manipulation_mode()
     robot.open_gripper(blocking=True)
     robot.stop()
 

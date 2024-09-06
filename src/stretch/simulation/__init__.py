@@ -6,5 +6,3 @@
 #
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
-
-from .emote_task import EmoteTask

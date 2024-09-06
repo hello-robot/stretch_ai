@@ -20,9 +20,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from loguru import logger
 from PIL import Image
 
+import stretch.utils.logger as logger
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
@@ -39,7 +39,9 @@ from stretch.utils.geometry import angle_difference
 class RobotAgent:
     """Basic demo code. Collects everything that we need to make this work."""
 
-    _retry_on_fail = False
+    _retry_on_fail: bool = False
+    debug_update_timing: bool = False
+    update_rerun_every_time: bool = False
 
     def __init__(
         self,
@@ -53,6 +55,7 @@ class RobotAgent:
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
     ):
+        self.reset_object_plans()
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
         elif isinstance(parameters, Parameters):
@@ -78,6 +81,12 @@ class RobotAgent:
         self.use_scene_graph = parameters["plan_with_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
+
+        # Grasping parameters
+        self.current_receptacle = None
+        self.current_object = None
+        self.target_object = None
+        self.target_receptacle = None
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters["instance_memory"]["matching"][
@@ -182,6 +191,31 @@ class RobotAgent:
     def voxel_size(self) -> float:
         """Return the voxel size in meters"""
         return self._voxel_size
+
+    def reset_object_plans(self):
+        """Clear stored object planning information."""
+        self.plans = {}
+        self.unreachable_instances = set()
+
+    def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
+        """Mark an instance as unreachable."""
+        if isinstance(instance, Instance):
+            instance_id = instance.id
+        elif isinstance(instance, int):
+            instance_id = instance
+        else:
+            raise ValueError("Instance must be an Instance object or an int")
+        self.unreachable_instances.add(instance_id)
+
+    def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
+        """Check if an instance is unreachable."""
+        if isinstance(instance, Instance):
+            instance_id = instance.id
+        elif isinstance(instance, int):
+            instance_id = instance
+        else:
+            raise ValueError("Instance must be an Instance object or an int")
+        return instance_id in self.unreachable_instances
 
     def get_encoder(self) -> BaseImageTextEncoder:
         """Return the encoder in use by this model"""
@@ -313,7 +347,7 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: int = 12, visualize: bool = False, verbose: bool = False
+        self, steps: int = 12, visualize: bool = False, verbose: bool = True
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -329,12 +363,16 @@ class RobotAgent:
 
         step_size = 2 * np.pi / steps
         i = 0
-        x, y, _ = self.robot.get_base_pose()
-        print(f"==== ROTATE IN PLACE at {x}, {y} ====")
-        while i < steps:
+        x, y, theta = self.robot.get_base_pose()
+        if verbose:
+            print(f"==== ROTATE IN PLACE at {x}, {y} ====")
+        while i < steps - 1:
             t0 = timeit.default_timer()
             self.robot.navigate_to(
-                [x, y, i * step_size], relative=False, blocking=True, verbose=verbose
+                [x, y, theta + ((i + 1) * step_size)],
+                relative=False,
+                blocking=True,
+                verbose=verbose,
             )
             t1 = timeit.default_timer()
 
@@ -348,13 +386,18 @@ class RobotAgent:
             if verbose:
                 print(" - Navigation took", t1 - t0, "seconds")
                 print(f"---- UPDATE {i+1} at {x}, {y}----")
+            t0 = timeit.default_timer()
             self.update()
+            t1 = timeit.default_timer()
+            if verbose:
+                print("Update took", t1 - t0, "seconds")
 
             if visualize:
                 self.voxel_map.show(
                     orig=np.zeros(3),
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
+                    instances=self.semantic_sensor is not None,
                 )
 
         return True
@@ -373,7 +416,7 @@ class RobotAgent:
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
             footprint=self.robot.get_robot_model().get_footprint(),
-            instances=True,
+            instances=self.semantic_sensor is not None,
         )
 
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
@@ -388,22 +431,31 @@ class RobotAgent:
                 logger.error("Failed to get observation")
                 return
 
+        t1 = timeit.default_timer()
         self.obs_history.append(obs)
         self.obs_count += 1
         # Optionally do this
         if self.semantic_sensor is not None:
             # Semantic prediction
             obs = self.semantic_sensor.predict(obs)
+
+        t2 = timeit.default_timer()
         self.voxel_map.add_obs(obs)
+
+        t3 = timeit.default_timer()
 
         if self.use_scene_graph:
             self._update_scene_graph()
             self.scene_graph.get_relationships()
 
+        t4 = timeit.default_timer()
+
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show what was happening
             self.voxel_map.get_2d_map(debug=True)
+
+        t5 = timeit.default_timer()
 
         if debug_instances:
             # We need to load and configure matplotlib here
@@ -420,8 +472,28 @@ class RobotAgent:
                 plt.axis("off")
                 plt.show()
 
+        t6 = timeit.default_timer()
+
+        if self.robot._rerun and self.update_rerun_every_time:
+            self.update_rerun()
+
+        t7 = timeit.default_timer()
+        if self.debug_update_timing:
+            print("Update timing:")
+            print("Time to get observation:", t1 - t0, "seconds, % =", (t1 - t0) / (t7 - t0))
+            print("Time to predict:", t2 - t1, "seconds, % =", (t2 - t1) / (t7 - t0))
+            print("Time to add obs:", t3 - t2, "seconds, % =", (t3 - t2) / (t7 - t0))
+            print("Time to update scene graph:", t4 - t3, "seconds, % =", (t4 - t3) / (t7 - t0))
+            print("Time to get 2d map:", t5 - t4, "seconds, % =", (t5 - t4) / (t7 - t0))
+            print("Time to debug instances:", t6 - t5, "seconds, % =", (t6 - t5) / (t7 - t0))
+            print("Time to update rerun:", t7 - t6, "seconds, % =", (t7 - t6) / (t7 - t0))
+
+    def update_rerun(self):
+        """Update the rerun server with the latest observations."""
         if self.robot._rerun:
             self.robot._rerun.update_voxel_map(self.space)
+        else:
+            logger.error("No rerun server available!")
 
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
@@ -763,7 +835,7 @@ class RobotAgent:
                 orig=np.zeros(3),
                 xyt=self.robot.get_base_pose(),
                 footprint=self.robot.get_robot_model().get_footprint(),
-                instances=True,
+                instances=self.semantic_sensor is not None,
             )
             self.print_found_classes(goal)
 
@@ -991,7 +1063,6 @@ class RobotAgent:
         visualize: bool = False,
         task_goal: str = None,
         go_home_at_end: bool = False,
-        go_to_start_pose: bool = True,
         show_goal: bool = False,
     ) -> Optional[Instance]:
         """Go through exploration. We use the voxel_grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
@@ -1000,18 +1071,6 @@ class RobotAgent:
             visualize(bool): true if we should do intermediate debug visualizations"""
         self.current_state = "EXPLORE"
         self.robot.move_to_nav_posture()
-
-        if go_to_start_pose:
-            print("Go to (0, 0, 0) to start with...")
-            self.robot.navigate_to([0, 0, 0])
-            self.update()
-            if visualize:
-                self.voxel_map.show(
-                    orig=np.zeros(3),
-                    xyt=self.robot.get_base_pose(),
-                    footprint=self.robot.get_robot_model().get_footprint(),
-                )
-
         all_starts = []
         all_goals = []
 
@@ -1053,6 +1112,7 @@ class RobotAgent:
                         orig=robot_center,
                         xyt=res.trajectory[-1].state,
                         footprint=self.robot.get_robot_model().get_footprint(),
+                        instances=self.semantic_sensor is not None,
                     )
                 if not dry_run:
                     self.robot.execute_trajectory(

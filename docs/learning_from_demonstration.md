@@ -10,7 +10,7 @@
    # Install in same conda environment as stretch_ai
    conda activate stretch_ai
 
-   git clone git@github.com:hello-yiche/lerobot.git
+   git clone https://github.com/hello-robot/lerobot
    cd lerobot
 
    # Support for Stretch is currently implemented on this branch
@@ -19,6 +19,8 @@
    # Editable install makes editing configs useful, though configs can also be specified via cli
    pip install -e .
    ```
+
+Our LfD code is a [fork of LeRobot](https://github.com/hello-robot/lerobot). The original LeRobot repo can be found [here](https://github.com/huggingface/lerobot).
 
 ## Overview of LfD process
 
@@ -148,10 +150,9 @@ python3 lerobot/scripts/train.py \
 policy=stretch_diffusion \
 env=stretch_real \
 wandb.enable=true \
-wandb.project=diffusion_test_project \
 training.batch_size=64 \
 training.num_workers=16 \
-dataset_repo_id <huggingface-id>/<your-dataset-name>  \
+dataset_repo_id=<huggingface-id>/<your-dataset-name>  \
 wandb.project=<wandb-project-name>
 ```
 
@@ -165,7 +166,7 @@ wandb.enable=true \
 wandb.project=diffusion_test_project \
 training.batch_size=64 \
 training.num_workers=16 \
-dataset_repo_id hellorobotinc/kitchen_cabinet_diagonal
+dataset_repo_id=hellorobotinc/kitchen_cabinet_diagonal
 wandb.project=diffusion-kitchen-diagonal
 ```
 
@@ -208,8 +209,7 @@ python3 -m stretch.app.lfd.ros2_lfd_leader \
 --robot_ip $ROBOT_IP \
 --policy_name <name-of-policy> \
 --policy_path <path-to-weights-folder> \
---teleop-mode <teleop-mode> \
---record-success
+--teleop-mode <teleop-mode>
 ```
 
 Sample command:
@@ -220,8 +220,29 @@ python3 -m stretch.app.lfd.ros2_lfd_leader \
 --policy_path lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model \
 --policy_name diffusion \
 --teleop-mode base_x
---record-success
 ```
+
+The default teleop mode is `base_x` which is the most common teleop mode used for training; you can omit the `--teleop-mode` argument if you used this mode. As with other apps, `--robot_ip` is also saved. A more common command would look like:
+
+```bash
+python3 -m stretch.app.lfd.ros2_lfd_leader \
+--policy_path lerobot/outputs/train/2024-07-28/17-34-36_stretch_real_diffusion_default/checkpoints/100000/pretrained_model \
+--policy_name diffusion
+```
+
+Where `--policy_path` is the path to the weights folder and `--policy_name` is the name of the policy used to train the weights, e.g. `diffusion` for Diffusion Policy.
+
+#### Troubleshooting
+
+##### Repo id must be in the form 'repo_name' or 'namespace/repo_name'
+
+This error can be a bit hard to interpret, and manifests like this:
+
+```
+huggingface_hub.errors.HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': 'src/lerobot/outputs/train/2024-08-28/16-22-19_stretch_real_diffusion_default/checkpoints/030000/pretrained_model'. Use `repo_type` argument if needed.
+```
+
+This means that the `--policy_path` argument is not pointing to the correct folder. Make sure that the path is correct and that the folder contains the weights.
 
 ### Skill in action:
 
