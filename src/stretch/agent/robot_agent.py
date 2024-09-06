@@ -439,6 +439,8 @@ class RobotAgent:
 
         if self._sweep_head_on_update:
             self.robot.head_to(0, tilt, blocking=True)
+            x, y, theta = self.robot.get_base_pose()
+            self.voxel_map.delete_obstacles(radius=0.3, point=np.array([x, y]))
 
         if self.use_scene_graph:
             self._update_scene_graph()

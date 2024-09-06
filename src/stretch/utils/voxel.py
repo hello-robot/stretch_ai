@@ -121,6 +121,8 @@ class VoxelizedPointcloud:
             if self._weights is not None:
                 self._weights = self._weights[mask]
             self._rgb = self._rgb[mask]
+        else:
+            raise ValueError("Must specify either bounds or both point and radius to remove points")
 
     def add(
         self,

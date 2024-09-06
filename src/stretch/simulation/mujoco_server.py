@@ -113,6 +113,7 @@ class MujocoZmqServer(BaseZmqServer):
         self.servo_report_steps = 1000
 
         self._camera_data = None
+        self._status = None
 
         # Controller stuff
         # Is the velocity controller active?
@@ -189,10 +190,10 @@ class MujocoZmqServer(BaseZmqServer):
     def control_loop_callback(self):
         """Actual controller timer callback"""
 
-        if self.robot_status is None:
+        if self._status is None:
             vel_odom = [0, 0]
         else:
-            vel_odom = self.robot_status["base"]["x_vel"], self.robot_status["base"]["theta_vel"]
+            vel_odom = self._status["base"]["x_vel"], self._status["base"]["theta_vel"]
 
         if self.debug_control_loop:
             print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
@@ -243,7 +244,7 @@ class MujocoZmqServer(BaseZmqServer):
 
     def get_joint_state(self):
         """Get the joint state of the robot."""
-        status = self.robot_status
+        status = self._status
 
         positions = np.zeros(constants.stretch_degrees_of_freedom)
         velocities = np.zeros(constants.stretch_degrees_of_freedom)
@@ -379,11 +380,8 @@ class MujocoZmqServer(BaseZmqServer):
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
+            self._status = self.robot_sim._pull_status()
             time.sleep(1 / self.simulation_rate)
-
-    @property
-    def robot_status(self) -> Dict[str, Any]:
-        return self.robot_sim.status
 
     @override
     def handle_action(self, action: Dict[str, Any]):
@@ -602,7 +600,7 @@ def main(
 
     scene_model = None
     if use_robocasa:
-        scene_model, scene_xml, objects_info = model_generation_wizard(
+        scene_model, scene_xml = model_generation_wizard(
             task=robocasa_task,
             style=robocasa_style,
             layout=robocasa_layout,
