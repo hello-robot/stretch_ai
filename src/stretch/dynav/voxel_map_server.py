@@ -288,6 +288,8 @@ class ImageProcessor:
         if obs is not None and mode == 'navigation':
             rgb = self.voxel_map.observations[obs - 1].rgb
             if not self.rerun:
+                if isinstance(rgb, torch.Tensor):
+                    rgb = np.array(rgb)
                 cv2.imwrite(self.log + '/debug_' + text + '.png', rgb[:, :, [2, 1, 0]])
             else:
                 rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
@@ -302,9 +304,6 @@ class ImageProcessor:
                 waypoints = [pt.state for pt in res.trajectory]
                 # If we are navigating to some object of interst, send (x, y, z) of 
                 # the object so that we can make sure the robot looks at the object after navigation
-                print(waypoints)
-                # finished = (len(waypoints) <= 4 or torch.linalg.norm(torch.Tensor(point)[:2] - torch.Tensor(start_pose[:2])) > 0.8) and mode == 'navigation'
-                # finished = mode == 'navigation'
                 finished = len(waypoints) <= 5 and mode == 'navigation'
                 if not finished:
                     waypoints = waypoints[:8]
@@ -831,22 +830,19 @@ class ImageProcessor:
             pickle.dump(data, f)
 
 # @hydra.main(version_base="1.2", config_path=".", config_name="config.yaml")
-def main(cfg):
-    torch.manual_seed(1)
-    imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
-    # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
-    # if not cfg.pickle_file_name is None:
-    #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
-    # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
-    # if cfg.open_communication:
-    #     while True:
-    #         imageProcessor.recv_text()
-    for i in range(8, 47):
-        imageProcessor.read_from_pickle('debug/debug_2024-09-05_18-13-12.pkl', i)
-        obs, exp = imageProcessor.voxel_map.get_2d_map()
-        plt.imshow(obs + exp)
-        # plt.imshow(exp)
-        imageProcessor.space.sample_exploration(xyt = [0, 0, 0], planner = imageProcessor.planner, text = None)
+# def main(cfg):
+#     torch.manual_seed(1)
+#     imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
+#     # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
+#     # if not cfg.pickle_file_name is None:
+#     #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
+#     # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
+#     # if cfg.open_communication:
+#     #     while True:
+#     #         imageProcessor.recv_text()
+#     for i in range(10, 20):
+#         imageProcessor.read_from_pickle('debug/debug_2024-09-05_18-13-12.pkl', i)
+#         imageProcessor.space.sample_exploration(xyt = [0, 0, 0], planner = imageProcessor.planner, text = None)
 
-if __name__ == "__main__":
-    main(None)
+# if __name__ == "__main__":
+#     main(None)

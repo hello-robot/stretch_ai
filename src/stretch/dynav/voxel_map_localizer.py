@@ -184,18 +184,12 @@ class VoxelMapLocalizer():
         
             tl_x, tl_y, br_x, br_y = bbox
             w, h = depth.shape
-            # if w > h:
-            #     tl_x, br_x = tl_x * w / h, br_x * w / h
-            # else:
-            #     tl_y, br_y = tl_y * h / w, br_y * h / w
             tl_x, tl_y, br_x, br_y = int(max(0, tl_x.item())), int(max(0, tl_y.item())), int(min(h, br_x.item())), int(min(w, br_y.item()))
             pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
             K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
             xyzs = get_xyz(depth, pose, K)[0]
             if torch.median(depth[tl_y: br_y, tl_x: br_x].reshape(-1)) < 3:
                 return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
-            # if depth[(tl_y + br_y) // 2, (tl_x + br_x) // 2] < 3.:
-            #     return xyzs[(tl_y + br_y) // 2, (tl_x + br_x) // 2]
         return None
 
     def localize_A(self, A, debug = True, return_debug = False):
