@@ -1106,9 +1106,10 @@ class SparseVoxelMap(object):
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
+        min_height: Optional[float] = None,
     ) -> None:
         """Delete obstacles from the map"""
-        self.voxel_pcd.remove(bounds, point, radius)
+        self.voxel_pcd.remove(bounds, point, radius, min_height=min_height)
 
         # Force recompute of 2d map
         self.get_2d_map()

@@ -86,8 +86,13 @@ class VoxelizedPointcloud:
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
+        min_height: Optional[float] = None,
     ):
         """Deletes points within a certain radius of a point, or optionally within certain bounds."""
+
+        if min_height is None:
+            min_height = -np.inf
+
         if point is not None and radius is not None:
             # We will do a radius removal
             assert bounds is None, "Cannot do both radius and bounds removal"
@@ -97,7 +102,9 @@ class VoxelizedPointcloud:
                 dists = torch.norm(self._points[:, :2] - torch.tensor(point[:2]), dim=1)
             else:
                 dists = torch.norm(self._points - torch.tensor(point), dim=1)
-            mask = dists > radius
+            radius_mask = dists > radius
+            height_ok = self._points[:, 2] < min_height
+            mask = radius_mask | height_ok
             self._points = self._points[mask]
             if self._features is not None:
                 self._features = self._features[mask]
