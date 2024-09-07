@@ -133,6 +133,8 @@ class RobotAgentMDP:
         # print("       Start:", start)
         # res = self.image_sender.query_text(text, start)  
         res = self.image_processor.process_text(text, start)
+        if len(res) == 0 and text != '' and text is not None:
+            res = self.image_processor.process_text('', start)
 
         look_around_finish = time.time()
         look_around_take = look_around_finish - start_time
