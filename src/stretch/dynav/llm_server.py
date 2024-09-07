@@ -233,6 +233,9 @@ class ImageProcessor:
         
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
+            
+        if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
+            return [[np.nan, np.nan, np.nan], localized_point]
 
         point = self.sample_navigation(start_pose, localized_point)
 
@@ -391,7 +394,7 @@ class ImageProcessor:
         )
         
         with self.voxel_map_lock:
-            self.voxel_map_localizer.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
+            self.voxel_map_localizer.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear = 20)
             self.voxel_map.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
         
         if '_owl' in self.vision_method:
@@ -420,6 +423,66 @@ class ImageProcessor:
         if len(valid_xyz) != 0:
             self.add_to_voxel_pcd(valid_xyz, None, valid_rgb)
     
+    def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
+        if isinstance(pickle_file_name, str):
+            pickle_file_name = Path(pickle_file_name)
+        assert pickle_file_name.exists(), f"No file found at {pickle_file_name}"
+        with pickle_file_name.open("rb") as f:
+            data = pickle.load(f)
+        for i, (
+            camera_pose,
+            xyz,
+            rgb,
+            feats,
+            depth,
+            base_pose,
+            K,
+            world_xyz,
+        ) in enumerate(
+            zip(
+                data["camera_poses"],
+                data["xyz"],
+                data["rgb"],
+                data["feats"],
+                data["depth"],
+                data["base_poses"],
+                data["camera_K"],
+                data["world_xyz"],
+            )
+        ):
+            # Handle the case where we dont actually want to load everything
+            if num_frames > 0 and i >= num_frames:
+                break
+
+            if rgb is None:
+                continue
+
+            camera_pose = self.voxel_map.fix_data_type(camera_pose)
+            xyz = self.voxel_map.fix_data_type(xyz)
+            rgb = self.voxel_map.fix_data_type(rgb)
+            depth = self.voxel_map.fix_data_type(depth)
+            if feats is not None:
+                feats = self.voxel_map.fix_data_type(feats)
+            base_pose = self.voxel_map.fix_data_type(base_pose)
+            self.voxel_map.add(
+                camera_pose=camera_pose,
+                xyz=xyz,
+                rgb=rgb,
+                feats=feats,
+                depth=depth,
+                base_pose=base_pose,
+                camera_K=K,
+            )
+            self.obs_count += 1
+        self.voxel_map_localizer.voxel_pcd._points = data["combined_xyz"]
+        self.voxel_map_localizer.voxel_pcd._features = data["combined_feats"]
+        self.voxel_map_localizer.voxel_pcd._weights = data["combined_weights"]
+        self.voxel_map_localizer.voxel_pcd._rgb = data["combined_rgb"]
+        self.voxel_map_localizer.voxel_pcd._obs_counts = data["obs_id"]
+        self.voxel_map_localizer.voxel_pcd._entity_ids = data["entity_id"]
+        self.voxel_map_localizer.voxel_pcd.obs_count = max(self.voxel_map_localizer.voxel_pcd._obs_counts).item()
+        self.voxel_map.voxel_pcd.obs_count = max(self.voxel_map_localizer.voxel_pcd._obs_counts).item()
+
     def write_to_pickle(self):
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
         if not os.path.exists('debug'):
@@ -434,17 +497,31 @@ class ImageProcessor:
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
-        for frame in self.voxel_map.observations:
+
+        image_ids = torch.unique(self.voxel_map.voxel_pcd._obs_counts).tolist()
+
+        for idx, frame in enumerate(self.voxel_map.observations):
             # add it to pickle
             # TODO: switch to using just Obs struct?
-            data["camera_poses"].append(frame.camera_pose)
-            data["base_poses"].append(frame.base_pose)
-            data["camera_K"].append(frame.camera_K)
-            data["xyz"].append(frame.xyz)
-            data["world_xyz"].append(frame.full_world_xyz)
-            data["rgb"].append(frame.rgb)
-            data["depth"].append(frame.depth)
-            data["feats"].append(frame.feats)
+            if idx in image_ids:
+                data["camera_poses"].append(frame.camera_pose)
+                data["camera_K"].append(frame.camera_K)
+                data["rgb"].append(frame.rgb)
+                data["depth"].append(frame.depth)
+            else:
+                data["camera_poses"].append(None)
+                data["camera_K"].append(None)
+                data["rgb"].append(None)
+                data["depth"].append(None)
+            # We might not need this
+            # data["xyz"].append(frame.xyz)
+            # data["world_xyz"].append(frame.full_world_xyz)
+            # data["feats"].append(frame.feats)
+            # data["base_poses"].append(frame.base_pose)
+            data["xyz"].append(None)
+            data["world_xyz"].append(None)
+            data["feats"].append(None)
+            data["base_poses"].append(None)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -459,3 +536,4 @@ class ImageProcessor:
         data["entity_id"] = self.voxel_map_localizer.voxel_pcd._entity_ids
         with open(filename, "wb") as f:
             pickle.dump(data, f)
+        print('write all data to', filename)

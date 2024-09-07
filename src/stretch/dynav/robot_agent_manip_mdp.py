@@ -145,14 +145,15 @@ class RobotAgentMDP:
 
         if len(res) > 0:
             print("Plan successful!")
-            if len(res) > 2 and np.isnan(res[-2]).all():
+            if len(res) >= 2 and np.isnan(res[-2]).all():
                 # blocking = text != ''
-                self.robot.execute_trajectory(
-                    res[:-2],
-                    pos_err_threshold=self.pos_err_threshold,
-                    rot_err_threshold=self.rot_err_threshold,
-                    blocking = True
-                )
+                if len(res) > 2:
+                    self.robot.execute_trajectory(
+                        res[:-2],
+                        pos_err_threshold=self.pos_err_threshold,
+                        rot_err_threshold=self.rot_err_threshold,
+                        blocking = True
+                    )
 
                 execution_finish = time.time()
                 execution_take = execution_finish - look_around_finish
@@ -312,6 +313,10 @@ class RobotAgentMDP:
         self.manip_wrapper.move_to_position(base_trans = -self.manip_wrapper.robot.get_six_joints()[0])
 
         return True
+
+    def save(self):
+        with self.image_sender.voxel_map_lock:
+            self.image_sender.write_to_pickle()
 
 def send_array(socket, A, flags=0, copy=True, track=False):
     """send a numpy array with metadata"""

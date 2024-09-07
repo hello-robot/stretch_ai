@@ -254,6 +254,9 @@ class ImageProcessor:
         
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
+            
+        if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
+            return [[np.nan, np.nan, np.nan], localized_point]
 
         point = self.sample_navigation(start_pose, localized_point)
         # if mode == 'navigation' and torch.linalg.norm(torch.Tensor(point)[:2] - torch.linalg.norm(localized_point[:2])) > 2.0:
@@ -703,7 +706,11 @@ class ImageProcessor:
         )
         
         with self.voxel_map_lock:
-            self.voxel_map_localizer.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
+            if self.vision_method == 'mask&*lip':
+                min_samples_clear = 5
+            else:
+                min_samples_clear = 10
+            self.voxel_map_localizer.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear = min_samples_clear)
             self.voxel_map.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
         
         if self.vision_method == 'mask&*lip':
@@ -765,6 +772,9 @@ class ImageProcessor:
             if num_frames > 0 and i >= num_frames:
                 break
 
+            if rgb is None:
+                continue
+
             camera_pose = self.voxel_map.fix_data_type(camera_pose)
             xyz = self.voxel_map.fix_data_type(xyz)
             rgb = self.voxel_map.fix_data_type(rgb)
@@ -788,6 +798,8 @@ class ImageProcessor:
         self.voxel_map_localizer.voxel_pcd._rgb = data["combined_rgb"]
         self.voxel_map_localizer.voxel_pcd._obs_counts = data["obs_id"]
         self.voxel_map_localizer.voxel_pcd._entity_ids = data["entity_id"]
+        self.voxel_map_localizer.voxel_pcd.obs_count = max(self.voxel_map_localizer.voxel_pcd._obs_counts).item()
+        self.voxel_map.voxel_pcd.obs_count = max(self.voxel_map_localizer.voxel_pcd._obs_counts).item()
 
     def write_to_pickle(self):
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
@@ -803,17 +815,31 @@ class ImageProcessor:
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
-        for frame in self.voxel_map.observations:
+
+        image_ids = torch.unique(self.voxel_map.voxel_pcd._obs_counts).tolist()
+
+        for idx, frame in enumerate(self.voxel_map.observations):
             # add it to pickle
             # TODO: switch to using just Obs struct?
-            data["camera_poses"].append(frame.camera_pose)
-            data["base_poses"].append(frame.base_pose)
-            data["camera_K"].append(frame.camera_K)
-            data["xyz"].append(frame.xyz)
-            data["world_xyz"].append(frame.full_world_xyz)
-            data["rgb"].append(frame.rgb)
-            data["depth"].append(frame.depth)
-            data["feats"].append(frame.feats)
+            if idx in image_ids:
+                data["camera_poses"].append(frame.camera_pose)
+                data["camera_K"].append(frame.camera_K)
+                data["rgb"].append(frame.rgb)
+                data["depth"].append(frame.depth)
+            else:
+                data["camera_poses"].append(None)
+                data["camera_K"].append(None)
+                data["rgb"].append(None)
+                data["depth"].append(None)
+            # We might not need this
+            # data["xyz"].append(frame.xyz)
+            # data["world_xyz"].append(frame.full_world_xyz)
+            # data["feats"].append(frame.feats)
+            # data["base_poses"].append(frame.base_pose)
+            data["xyz"].append(None)
+            data["world_xyz"].append(None)
+            data["feats"].append(None)
+            data["base_poses"].append(None)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -828,21 +854,21 @@ class ImageProcessor:
         data["entity_id"] = self.voxel_map_localizer.voxel_pcd._entity_ids
         with open(filename, "wb") as f:
             pickle.dump(data, f)
+        print('write all data to', filename)
 
 # @hydra.main(version_base="1.2", config_path=".", config_name="config.yaml")
-# def main(cfg):
-#     torch.manual_seed(1)
-#     imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
-#     # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
-#     # if not cfg.pickle_file_name is None:
-#     #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
-#     # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
-#     # if cfg.open_communication:
-#     #     while True:
-#     #         imageProcessor.recv_text()
-#     for i in range(10, 20):
-#         imageProcessor.read_from_pickle('debug/debug_2024-09-05_18-13-12.pkl', i)
-#         imageProcessor.space.sample_exploration(xyt = [0, 0, 0], planner = imageProcessor.planner, text = None)
+def main(cfg):
+    torch.manual_seed(1)
+    imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
+    # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
+    # if not cfg.pickle_file_name is None:
+    #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
+    # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
+    # if cfg.open_communication:
+    #     while True:
+    #         imageProcessor.recv_text()
+    imageProcessor.read_from_pickle('debug/debug_2024-09-07_18-15-08.pkl', -1)
+    imageProcessor.write_to_pickle()
 
-# if __name__ == "__main__":
-#     main(None)
+if __name__ == "__main__":
+    main(None)
