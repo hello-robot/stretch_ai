@@ -211,9 +211,6 @@ class ImageProcessor:
             rr.log('/Past_observation_most_similar_to_text', rr.Clear(recursive = True), static = self.static)
             if not self.static:
                 rr.connect('100.108.67.79:9876')
-        
-        start_time = time.time()
-
         debug_text = ''
         mode = 'navigation'
         obs = None
@@ -234,16 +231,10 @@ class ImageProcessor:
         if localized_point is None:
             return []
         
-        breakpoint1 = time.time()
-        print('Determining localized point', breakpoint1 - start_time)
-        
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
 
         point = self.sample_navigation(start_pose, localized_point)
-
-        breakpoint2 = time.time()
-        print('Determining target point', breakpoint2 - start_time)
 
         if self.rerun:
             buf = BytesIO()
@@ -279,9 +270,6 @@ class ImageProcessor:
         traj = []
         waypoints = None
 
-        breakpoint3 = time.time()
-        print('Start planning', breakpoint3 - start_time)
-
         if point is None:
             print('Unable to find any target point, some exception might happen')
         else:
@@ -304,9 +292,6 @@ class ImageProcessor:
                 print('Planned trajectory:', traj)
             else:
                 print('[FAILURE]', res.reason)
-
-        breakpoint4 = time.time()
-        print('Planning stops', breakpoint4 - start_time)
             
         if traj is not None:
             origins = []
@@ -317,15 +302,8 @@ class ImageProcessor:
                     vectors.append([traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0])
             rr.log("/direction", rr.Arrows3D(origins = origins, vectors = vectors, colors=torch.Tensor([0, 1, 0]), radii=0.05), static = self.static)
             rr.log("/robot_start_pose", rr.Points3D([start_pose[0], start_pose[1], 1.5], colors=torch.Tensor([0, 0, 1]), radii=0.1), static = self.static)
-        
-        breakpoint5 = time.time()
-        print('Logging', breakpoint5 - start_time)
 
         # self.write_to_pickle()
-
-        # breakpoint6 = time.time()
-        # print('Writing to pickle', breakpoint6 - start_time)
-
         return traj
 
     def sample_navigation(self, start, point):
