@@ -171,35 +171,11 @@ class LLM_Localizer():
     def owl_locater(self, A, encoded_image, timestamps_lst):
         for i in timestamps_lst:
             image_info = encoded_image[i][-1]
-            res = self.compute_coord(A, image_info)
+            res = self.compute_coord(A, image_info, threshold=0.2)
             if res is not None:
-                debug_text = '#### - Obejct is detected in observations where instance ' + str(i + 1) + ' comes from. **😃** Directly navigate to it.\n'
+                debug_text = '#### - Obejct is detected in observations where instance' + str(i + 1) + ' comes from. **😃** Directly navigate to it.\n'
                 return res, debug_text, i, None
-            # image = image_info['image']
-
-            # box = None
                 
-            # inputs = self.exist_processor(text= 'a photo of ' + A, images=image, return_tensors="pt").to(self.device)
-
-            # with torch.no_grad():
-            #     outputs = self.exist_model(**inputs)
-
-            # target_sizes = torch.tensor([image.size[::-1]])
-            # results = self.exist_processor.post_process_object_detection(outputs=outputs, target_sizes=target_sizes, threshold=0.2)[0]
-
-            # if len(results["scores"]) > 0:
-            #     cur_score = torch.max(results["scores"]).item()
-            #     max_score_index = torch.argmax(results["scores"])
-            #     box = results["boxes"][max_score_index].tolist()
-            # if box is not None:
-            #     xmin, ymin, xmax, ymax = map(int, box)
-            #     mask = np.zeros(image_info['depth'].shape, dtype=np.uint8)
-            #     mask[ymin:ymax, xmin:xmax] = 255
-            #     xyz = image_info['xyz']        
-            #     masked_xyz = xyz[mask.flatten() > 0]
-            #     centroid = np.stack([torch.mean(masked_xyz[:, 0]), torch.mean(masked_xyz[:, 1]), torch.mean(masked_xyz[:, 2])]).T
-            #     debug_text = '#### - Obejct is detected in observations where instance' + str(i + 1) + ' comes from. **😃** Directly navigate to it.\n'
-            #     return centroid, debug_text, i, masked_xyz
         debug_text = '#### - All instances are not the target! Maybe target object has not been observed yet. **😭**\n'
         return None, debug_text, None, None
     
@@ -222,7 +198,7 @@ class LLM_Localizer():
                     return list(map(int, timestamps.replace(' ', '').split(':')[1].split(',')))
             except Exception as e:
                 print(f"Error: {e}")
-                time.sleep(15)
+                time.sleep(10)
         return "Execution Failed"
 
     def gemini_chunk(self, chunk, sys_prompt, user_prompt):
@@ -255,23 +231,18 @@ class LLM_Localizer():
         
         Example:
         Input:
-        cat
+        The object you need to find are cat, car
 
         Output: 
         cat: 1,4,6,9
-
-        Input: 
-        car
-
-        Output:
         car: None
         """
 
-        user_prompt = f"""The object you need to find is {A}"""
+        user_prompt = f"""The object you need to find are {A}, car, bottle, shoes, watch, clothes, desk, chair, shoes, cup"""
         if 'gpt' in self.existence_checking_model:
-            content = [item for sublist in list(encoded_image.values()) for item in sublist[:2]][-100:] # adjust to [-60:] for taking only the last 30 and have faster speed
+            content = [item for sublist in list(encoded_image.values()) for item in sublist[:2]][-120:] # adjust to [-60:] for taking only the last 30 and have faster speed
         elif 'gemini' in self.existence_checking_model:
-            content = [item for sublist in list(encoded_image.values()) for item in sublist[0]][-100:]
+            content = [item for sublist in list(encoded_image.values()) for item in sublist[0]][-120:]
         content_chunks = [content[i:i + 2 * context_length] for i in range(0, len(content), 2 * context_length)]
         
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -289,8 +260,8 @@ class LLM_Localizer():
         # print(A, timestamps_lst)
         return self.owl_locater(A, encoded_image, timestamps_lst)
 
-    def localize_A(self, A, debug = True, return_debug = False, count_threshold = 5):
-        encoded_image = {}
+    def localize_A(self, A, debug = True, return_debug = False, count_threshold = 3):
+        encoded_image = OrderedDict()
 
         counts = torch.bincount(self.voxel_pcd._obs_counts)
         cur_obs = max(self.voxel_pcd._obs_counts)
@@ -309,10 +280,11 @@ class LLM_Localizer():
             context_length = 30
 
         for obs_id in filtered_obs: 
-            rgb = self.voxel_map_wrapper.observations[obs_id - 1].rgb.numpy()
-            depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
-            camera_pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
-            camera_K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
+            obs_id -= 1
+            rgb = self.voxel_map_wrapper.observations[obs_id].rgb.numpy()
+            depth = self.voxel_map_wrapper.observations[obs_id].depth
+            camera_pose = self.voxel_map_wrapper.observations[obs_id].camera_pose
+            camera_K = self.voxel_map_wrapper.observations[obs_id].camera_K
 
             # full_world_xyz = unproject_masked_depth_to_xyz_coordinates(  # Batchable!
             #     depth=depth.unsqueeze(0).unsqueeze(1),

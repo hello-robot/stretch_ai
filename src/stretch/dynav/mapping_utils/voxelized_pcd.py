@@ -136,7 +136,7 @@ class VoxelizedPointcloud:
         self._maxs = self.dim_maxs
         self.obs_count = 1
 
-    def clear_points(self, depth, intrinsics, pose, depth_is_valid = None):
+    def clear_points(self, depth, intrinsics, pose, depth_is_valid = None, min_samples_clear = None):
         if self._points is not None:
             xys = project_points(self._points.detach().cpu(), intrinsics, pose).int()
             xys = xys[:, [1, 0]]
@@ -192,8 +192,8 @@ class VoxelizedPointcloud:
             if self._entity_ids is not None:
                 self._entity_ids = self._entity_ids[indices]
 
-            if self._entity_ids is not None:
-                dbscan = DBSCAN(eps=self.voxel_size * 4, min_samples=10)
+            if self._entity_ids is not None and min_samples_clear is not None:
+                dbscan = DBSCAN(eps=self.voxel_size * 4, min_samples=min_samples_clear)
                 cluster_vertices = torch.cat((self._points.detach().cpu(), self._entity_ids.detach().cpu().reshape(-1,1) * 1000), -1).numpy()
                 clusters = dbscan.fit(cluster_vertices)
                 labels = clusters.labels_

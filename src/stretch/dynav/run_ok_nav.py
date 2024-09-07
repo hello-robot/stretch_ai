@@ -79,7 +79,8 @@ def main(
 
     def keep_looking_around():
         while True:
-            time.sleep(0.5)
+            # We don't want too many images in our memory
+            time.sleep(0.8)
             if robot.get_six_joints()[2] > 0.7 or not robot.in_navigation_mode():
                 continue
             demo.update()
@@ -119,6 +120,9 @@ def main(
             camera_xyz = robot.get_head_pose()[:3, 3]
             theta = compute_tilt(camera_xyz, point)
             demo.manipulate(text, theta)
+            xyt = robot.get_base_pose()
+            xyt[2] = xyt[2] - np.pi / 2
+            robot.navigate_to(xyt, blocking = True)
             
             robot.switch_to_navigation_mode()
             if input('You want to run placing: y/n') == 'n':
@@ -139,6 +143,11 @@ def main(
             camera_xyz = robot.get_head_pose()[:3, 3]
             theta = compute_tilt(camera_xyz, point)
             demo.place(text, theta)
+            xyt = robot.get_base_pose()
+            xyt[2] = xyt[2] - np.pi / 2
+            robot.navigate_to(xyt, blocking = True)
+
+            demo.save()
 
 
 if __name__ == "__main__":
