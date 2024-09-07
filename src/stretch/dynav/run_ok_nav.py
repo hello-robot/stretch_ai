@@ -16,8 +16,8 @@ from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.agent import RobotClient
 
 import cv2
-import threading
 import time
+import threading
 
 def compute_tilt(camera_xyz, target_xyz):
     '''
@@ -79,11 +79,11 @@ def main(
 
     def keep_looking_around():
         while True:
-            time.sleep(0.3)
+            # We don't want too many images in our memory
+            time.sleep(0.8)
             if robot.get_six_joints()[2] > 0.7 or not robot.in_navigation_mode():
                 continue
             demo.update()
-            demo.image_processor.compute_path(robot.get_base_pose())
 
     img_thread = threading.Thread(target=keep_looking_around)
     img_thread.daemon = True
@@ -92,6 +92,7 @@ def main(
     while True:
         mode = input('select mode? E/N/S')
         if mode == 'S':
+            demo.image_processor.write_to_pickle()
             break
         if mode == 'E':
             robot.switch_to_navigation_mode()
@@ -99,7 +100,7 @@ def main(
                 print('\n', 'Exploration epoch ', epoch, '\n')
                 if not demo.run_exploration():
                     print('Exploration failed! Quitting!')
-                    break
+                    continue
         else:
             robot.move_to_nav_posture()
             robot.switch_to_navigation_mode()
@@ -119,6 +120,9 @@ def main(
             camera_xyz = robot.get_head_pose()[:3, 3]
             theta = compute_tilt(camera_xyz, point)
             demo.manipulate(text, theta)
+            xyt = robot.get_base_pose()
+            xyt[2] = xyt[2] - np.pi / 2
+            robot.navigate_to(xyt, blocking = True)
             
             robot.switch_to_navigation_mode()
             if input('You want to run placing: y/n') == 'n':
@@ -139,6 +143,11 @@ def main(
             camera_xyz = robot.get_head_pose()[:3, 3]
             theta = compute_tilt(camera_xyz, point)
             demo.place(text, theta)
+            xyt = robot.get_base_pose()
+            xyt[2] = xyt[2] - np.pi / 2
+            robot.navigate_to(xyt, blocking = True)
+
+            demo.save()
 
 
 if __name__ == "__main__":

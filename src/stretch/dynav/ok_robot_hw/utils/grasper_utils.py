@@ -31,7 +31,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             hello_robot.move_to_position(base_trans=base_trans,
                                     head_pan=head_pan,
                                     head_tilt=head_tilt)
-            # time.sleep(4)
+            time.sleep(2)
         
         elif (retry_flag !=0 and side_retries == 3):
             print("Tried in all angles but couldn't succed")
