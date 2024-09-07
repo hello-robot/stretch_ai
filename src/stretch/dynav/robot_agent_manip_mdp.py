@@ -25,7 +25,8 @@ from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import pickup, move_to_point, capture_and_process_image
 from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array
-from stretch.dynav.voxel_map_server import ImageProcessor
+# from stretch.dynav.voxel_map_server import ImageProcessor
+from stretch.dynav.llm_server import ImageProcessor
 
 import cv2
 
@@ -128,27 +129,30 @@ class RobotAgentMDP:
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
-        print("       Start:", start)
+        # print("       Start:", start)
         # res = self.image_sender.query_text(text, start)  
         res = self.image_processor.process_text(text, start)
+        if len(res) == 0 and text != '' and text is not None:
+            res = self.image_processor.process_text('', start)
 
         look_around_finish = time.time()
-        # look_around_take = look_around_finish - start_time
-        # print('Looking around takes ', look_around_take, ' seconds.')
+        look_around_take = look_around_finish - start_time
+        print('Path planning takes ', look_around_take, ' seconds.')
         # self.look_around_times.append(look_around_take)
         # print(self.look_around_times)
         # print(sum(self.look_around_times) / len(self.look_around_times))
 
         if len(res) > 0:
             print("Plan successful!")
-            if len(res) > 2 and np.isnan(res[-2]).all():
+            if len(res) >= 2 and np.isnan(res[-2]).all():
                 # blocking = text != ''
-                self.robot.execute_trajectory(
-                    res[:-2],
-                    pos_err_threshold=self.pos_err_threshold,
-                    rot_err_threshold=self.rot_err_threshold,
-                    blocking = True
-                )
+                if len(res) > 2:
+                    self.robot.execute_trajectory(
+                        res[:-2],
+                        pos_err_threshold=self.pos_err_threshold,
+                        rot_err_threshold=self.rot_err_threshold,
+                        blocking = True
+                    )
 
                 execution_finish = time.time()
                 execution_take = execution_finish - look_around_finish
@@ -308,6 +312,10 @@ class RobotAgentMDP:
         self.manip_wrapper.move_to_position(base_trans = -self.manip_wrapper.robot.get_six_joints()[0])
 
         return True
+
+    def save(self):
+        with self.image_sender.voxel_map_lock:
+            self.image_sender.write_to_pickle()
 
 def send_array(socket, A, flags=0, copy=True, track=False):
     """send a numpy array with metadata"""

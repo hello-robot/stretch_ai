@@ -717,7 +717,6 @@ class SparseVoxelMap(object):
             #     ),
             #     self.smooth_kernel,
             # )[0, 0].bool()
-
         if debug:
             import matplotlib.pyplot as plt
 

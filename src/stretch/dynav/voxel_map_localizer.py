@@ -16,8 +16,6 @@ from torch import Tensor
 
 from transformers import AutoProcessor, AutoModel
 
-from sklearn.cluster import DBSCAN
-
 # from ultralytics import YOLOWorld
 from transformers import Owlv2Processor, Owlv2ForObjectDetection
 
@@ -163,10 +161,14 @@ class VoxelMapLocalizer():
         alignments = self.find_alignment_over_model(A).cpu()
         return obs_counts[alignments.argmax(dim = -1)].detach().cpu()
 
-    def compute_coord(self, text, obs_id, threshold = 0.2):
+    def compute_coord(self, text, obs_id, threshold = 0.25):
         if obs_id <= 0:
             return None
         rgb = self.voxel_map_wrapper.observations[obs_id - 1].rgb
+        pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
+        depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
+        K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
+        xyzs = get_xyz(depth, pose, K)[0]
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
         inputs = self.exist_processor(text=[['a photo of a ' + text]], images=rgb, return_tensors="pt")
         for input in inputs:
@@ -179,23 +181,14 @@ class VoxelMapLocalizer():
         results = self.exist_processor.image_processor.post_process_object_detection(
             outputs, threshold=threshold, target_sizes=target_sizes
         )[0]
-        depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
         for idx, (score, bbox) in enumerate(sorted(zip(results['scores'], results['boxes']), key=lambda x: x[0], reverse=True)):
         
             tl_x, tl_y, br_x, br_y = bbox
             w, h = depth.shape
-            # if w > h:
-            #     tl_x, br_x = tl_x * w / h, br_x * w / h
-            # else:
-            #     tl_y, br_y = tl_y * h / w, br_y * h / w
             tl_x, tl_y, br_x, br_y = int(max(0, tl_x.item())), int(max(0, tl_y.item())), int(min(h, br_x.item())), int(min(w, br_y.item()))
-            pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
-            K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
-            xyzs = get_xyz(depth, pose, K)[0]
+            
             if torch.median(depth[tl_y: br_y, tl_x: br_x].reshape(-1)) < 3:
                 return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
-            # if depth[(tl_y + br_y) // 2, (tl_x + br_x) // 2] < 3.:
-            #     return xyzs[(tl_y + br_y) // 2, (tl_x + br_x) // 2]
         return None
 
     def localize_A(self, A, debug = True, return_debug = False):
