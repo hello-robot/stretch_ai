@@ -16,8 +16,6 @@ from torch import Tensor
 
 from transformers import AutoProcessor, AutoModel
 
-from sklearn.cluster import DBSCAN
-
 # from ultralytics import YOLOWorld
 from transformers import Owlv2Processor, Owlv2ForObjectDetection
 
@@ -78,54 +76,6 @@ def get_xyz(depth, pose, intrinsics):
     xyz = xyz.unflatten(1, (height, width))
 
     return xyz
-
-def find_clusters(vertices: np.ndarray, similarity: np.ndarray, obs = None):
-    # Calculate the number of top values directly
-    top_positions = vertices
-    # top_values = probability_over_all_points[top_indices].flatten()
-
-    # Apply DBSCAN clustering
-    dbscan = DBSCAN(eps=0.25, min_samples=3)
-    clusters = dbscan.fit(top_positions)
-    labels = clusters.labels_
-
-    # Initialize empty lists to store centroids and extends of each cluster
-    centroids = []
-    extends = []
-    similarity_max_list = []
-    points = []
-    obs_max_list = []
-    
-    for cluster_id in set(labels):
-        if cluster_id == -1:  # Ignore noise
-            continue
-
-        members = top_positions[labels == cluster_id]
-        centroid = np.mean(members, axis=0)
-
-        similarity_values = similarity[labels == cluster_id]
-        simiarity_max = np.max(similarity_values)
-
-        if obs is not None:
-            obs_values = obs[labels == cluster_id]
-            obs_max = np.max(obs_values)
-
-        sx = np.max(members[:, 0]) - np.min(members[:, 0])
-        sy = np.max(members[:, 1]) - np.min(members[:, 1])
-        sz = np.max(members[:, 2]) - np.min(members[:, 2])
-
-        # Append centroid and extends to the lists
-        centroids.append(centroid)
-        extends.append((sx, sy, sz))
-        similarity_max_list.append(simiarity_max)
-        points.append(members)
-        if obs is not None:
-            obs_max_list.append(obs_max)
-
-    if obs is not None:
-        return centroids, extends, similarity_max_list, points, obs_max_list
-    else:
-        return centroids, extends, similarity_max_list, points
 
 class VoxelMapLocalizer():
     def __init__(self, voxel_map_wrapper = None, exist_model = True, clip_model = None, processor = None, device = 'cuda', siglip = True):
@@ -211,7 +161,7 @@ class VoxelMapLocalizer():
         alignments = self.find_alignment_over_model(A).cpu()
         return obs_counts[alignments.argmax(dim = -1)].detach().cpu()
 
-    def compute_coord(self, text, obs_id, threshold = 0.25, point = None):
+    def compute_coord(self, text, obs_id, threshold = 0.25):
         if obs_id <= 0:
             return None
         rgb = self.voxel_map_wrapper.observations[obs_id - 1].rgb
@@ -219,27 +169,6 @@ class VoxelMapLocalizer():
         depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
         K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
         xyzs = get_xyz(depth, pose, K)[0]
-        
-        if point is not None:
-            distances = torch.linalg.norm(xyzs - point, dim=2)
-            cx, cy = torch.unravel_index(torch.argmin(distances), distances.shape)
-
-            height, width = rgb.shape[0], rgb.shape[1]
-            crop_size = (int(0.4 * height), int(0.4 * width))
-
-            half_width = crop_size[0] // 2
-            half_height = crop_size[1] // 2
-    
-            x_min = max(cx - half_width, 0)
-            y_min = max(cy - half_height, 0)
-            x_max = min(cx + half_width, height)
-            y_max = min(cy + half_height, width)
-    
-            rgb = rgb[x_min:x_max, y_min:y_max]
-            depth = depth[x_min:x_max, y_min:y_max]
-            xyzs = xyzs[x_min:x_max, y_min:y_max]
-            # cv2.imwrite(text + '.jpg', rgb.numpy()[:, :, [2, 1, 0]])
-
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
         inputs = self.exist_processor(text=[['a photo of a ' + text]], images=rgb, return_tensors="pt")
         for input in inputs:
@@ -259,123 +188,39 @@ class VoxelMapLocalizer():
             tl_x, tl_y, br_x, br_y = int(max(0, tl_x.item())), int(max(0, tl_y.item())), int(min(h, br_x.item())), int(min(w, br_y.item()))
             
             if torch.median(depth[tl_y: br_y, tl_x: br_x].reshape(-1)) < 3:
-                return xyzs[(tl_y + br_y) // 2, (tl_x + br_x) // 2]
-                # return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
+                return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
         return None
 
     def localize_A(self, A, debug = True, return_debug = False):
-        centroids, extends, similarity_max_list, points, obs_max_list, debug_text = self.find_clusters_for_A(A, return_obs_counts = True, debug = debug)
-        if len(centroids) == 0:
-            if not debug:
-                return None
-            else:
-                return None, debug_text
+        points, _, _, _ = self.voxel_pcd.get_pointcloud()
+        alignments = self.find_alignment_over_model(A).cpu()
+        point = points[alignments.argmax(dim = -1)].detach().cpu().squeeze()
+        obs_counts = self.voxel_pcd._obs_counts
+        image_id = obs_counts[alignments.argmax(dim = -1)].detach().cpu()
+        debug_text = ''
         target_point = None
-        obs = None
-        similarity = None
-        point = None
-        for idx, (centroid, obs, similarity, point) in enumerate(sorted(zip(centroids, obs_max_list, similarity_max_list, points), key=lambda x: x[2], reverse=True)):
-            
-            
-            res = self.compute_coord(A, obs, point = centroid)
-            if res is not None:
-                target_point = res
 
-                debug_text += '#### - Obejct is detected in observations where instance' + str(idx + 1) + ' comes from. **😃** Directly navigate to it.\n'
-
-                break
+        res = self.compute_coord(A, image_id)
+        # res = None
+        if res is not None:
+            target_point = res
+            debug_text += '#### - Obejct is detected in observations . **😃** Directly navigate to it.\n'
+        else:
+            # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
+            if self.siglip:
+                cosine_similarity_check = alignments.max().item() > 0.14
             else:
-                if self.siglip:
-                    cosine_similarity_check = similarity > 0.14
-                else:
-                    cosine_similarity_check = similarity > 0.3
+                cosine_similarity_check = alignments.max().item() > 0.3
+            if cosine_similarity_check:
+                target_point = point
 
-                if cosine_similarity_check:
-
-                    debug_text += '#### - Instance ' +  str(idx + 1) + ' has high cosine similarity (' + str(round(similarity, 3)) +  '). **😃** Directly navigate to it.\n'    
-
-                    target_point = centroid
-                    break
-
-        if target_point is None:
-            debug_text += '#### - All instances are not the target! Maybe target object has not been observed yet. **😭**\n'
+                debug_text += '#### - The point has high cosine similarity. **😃** Directly navigate to it.\n'
+            else:
+                debug_text += '#### - Cannot verify whether this instance is the target. **😞** \n'
+        # print('target_point', target_point)
         if not debug:
             return target_point
         elif not return_debug:
             return target_point, debug_text
         else:
-            return target_point, debug_text, obs, point
-
-    # def localize_A(self, A, debug = True, return_debug = False):
-    #     points, _, _, _ = self.voxel_pcd.get_pointcloud()
-    #     alignments = self.find_alignment_over_model(A).cpu()
-    #     point = points[alignments.argmax(dim = -1)].detach().cpu().squeeze()
-    #     obs_counts = self.voxel_pcd._obs_counts
-    #     image_id = obs_counts[alignments.argmax(dim = -1)].detach().cpu()
-    #     debug_text = ''
-    #     target_point = None
-
-    #     res = self.compute_coord(A, image_id, point = point)
-    #     # res = None
-    #     if res is not None:
-    #         target_point = res
-    #         debug_text += '#### - Obejct is detected in observations . **😃** Directly navigate to it.\n'
-    #     else:
-    #         # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
-    #         if self.siglip:
-    #             cosine_similarity_check = alignments.max().item() > 0.14
-    #         else:
-    #             cosine_similarity_check = alignments.max().item() > 0.3
-    #         if cosine_similarity_check:
-    #             target_point = point
-
-    #             debug_text += '#### - The point has high cosine similarity. **😃** Directly navigate to it.\n'
-    #         else:
-    #             debug_text += '#### - Cannot verify whether this instance is the target. **😞** \n'
-    #     # print('target_point', target_point)
-    #     if not debug:
-    #         return target_point
-    #     elif not return_debug:
-    #         return target_point, debug_text
-    #     else:
-    #         return target_point, debug_text, image_id, point
-
-    def find_clusters_for_A(self, A, return_obs_counts = False, debug = False):
-
-        debug_text = ''
-
-        points, features, _, _ = self.voxel_pcd.get_pointcloud()
-        alignments = self.find_alignment_over_model(A).cpu().reshape(-1).detach().numpy()
-        # turning_point = max(np.percentile(alignments, 99), 0.08)
-        if self.siglip:
-            turning_point = min(0.14, alignments[np.argsort(alignments)[-20]])
-        else:
-            turning_point = min(0.3, alignments[np.argsort(alignments)[-20]])
-        mask = alignments >= turning_point
-        alignments = alignments[mask]
-        points = points[mask]
-        if len(points) == 0:
-
-            debug_text += '### - No instance found! Maybe target object has not been observed yet. **😭**\n'
-
-            output = [[], [], [], []]
-            if return_obs_counts:
-                output.append([])
-            if debug:
-                output.append(debug_text)
-
-            return output
-        else:
-            if return_obs_counts:
-                obs_ids = self.voxel_pcd._obs_counts.detach().cpu().numpy()[mask]
-                centroids, extends, similarity_max_list, points, obs_max_list = find_clusters(points.detach().cpu().numpy(), alignments, obs = obs_ids)
-                output = [centroids, extends, similarity_max_list, points, obs_max_list]
-            else:
-                centroids, extends, similarity_max_list, points = find_clusters(points.detach().cpu().numpy(), alignments, obs = None)
-                output = [centroids, extends, similarity_max_list, points]
-
-            debug_text += '### - Found ' + str(len(centroids)) + ' instances that might be target object.\n'
-            if debug:
-                output.append(debug_text)
-            
-            return output
+            return target_point, debug_text, image_id, point
