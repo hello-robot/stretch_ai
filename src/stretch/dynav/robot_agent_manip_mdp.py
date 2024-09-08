@@ -25,8 +25,8 @@ from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import pickup, move_to_point, capture_and_process_image
 from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array
-# from stretch.dynav.voxel_map_server import ImageProcessor
-from stretch.dynav.llm_server import ImageProcessor
+from stretch.dynav.voxel_map_server import ImageProcessor
+# from stretch.dynav.llm_server import ImageProcessor
 
 import cv2
 
@@ -121,11 +121,11 @@ class RobotAgentMDP:
         self,
         text: str,
     ):
-        # start_time = time.time()
+        start_time = time.time()
 
         self.robot.look_front()
-        # self.look_around()
-        # self.robot.look_front()
+        self.look_around()
+        self.robot.look_front()
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
@@ -314,8 +314,8 @@ class RobotAgentMDP:
         return True
 
     def save(self):
-        with self.image_sender.voxel_map_lock:
-            self.image_sender.write_to_pickle()
+        with self.image_processor.voxel_map_lock:
+            self.image_processor.write_to_pickle()
 
 def send_array(socket, A, flags=0, copy=True, track=False):
     """send a numpy array with metadata"""

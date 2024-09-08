@@ -9,8 +9,8 @@ voxel_size: 0.1
 # 0.05 seems too low
 obs_min_height: 0.1  # Ignore things less than this high when planning motions
 obs_max_height: 1.5  # Ignore things over this height (eg ceilings)
-obs_min_density: 1  # This many points makes it an obstacle
-exp_min_density: 0
+obs_min_density: 5  # This many points makes it an obstacle
+exp_min_density: 1
 
 # Padding
 pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles

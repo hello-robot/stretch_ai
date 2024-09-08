@@ -54,7 +54,7 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [200, 200]
+DEFAULT_GRID_SIZE = [145, 145]
 
 logger = logging.getLogger(__name__)
 
@@ -632,8 +632,8 @@ class SparseVoxelMap(object):
         # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
         xyz, _, counts, _ = self.voxel_pcd.get_pointcloud()
         # print(counts)
-        if xyz is not None:
-            counts = torch.ones(xyz.shape[0])
+        # if xyz is not None:
+        #     counts = torch.ones(xyz.shape[0])
         obs_ids = self.voxel_pcd._obs_counts
         if xyz is None:
             xyz = torch.zeros((0, 3))

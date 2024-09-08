@@ -14,7 +14,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
     image_publisher = ImagePublisher(camera, socket)
 
     # Centering the object
-    head_tilt_angles = [0, -0.1]
+    head_tilt_angles = [0.1, 0, -0.1]
     tilt_retries, side_retries = 1, 0
     retry_flag = True
     head_tilt = INIT_HEAD_TILT
@@ -31,14 +31,14 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             hello_robot.move_to_position(base_trans=base_trans,
                                     head_pan=head_pan,
                                     head_tilt=head_tilt)
-            time.sleep(2)
+            time.sleep(1)
         
-        elif (retry_flag !=0 and side_retries == 3):
+        elif (retry_flag !=0 and side_retries == 2):
             print("Tried in all angles but couldn't succed")
-            time.sleep(2)
+            time.sleep(1)
             return None, None, None, None
 
-        elif (side_retries == 2 and tilt_retries == 3):
+        elif (side_retries == 2 and tilt_retries == 2):
             hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
             side_retries = 3
 

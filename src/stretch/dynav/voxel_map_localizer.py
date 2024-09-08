@@ -161,7 +161,7 @@ class VoxelMapLocalizer():
         alignments = self.find_alignment_over_model(A).cpu()
         return obs_counts[alignments.argmax(dim = -1)].detach().cpu()
 
-    def compute_coord(self, text, obs_id, threshold = 0.25):
+    def compute_coord(self, text, obs_id, threshold = 0.2):
         if obs_id <= 0:
             return None
         rgb = self.voxel_map_wrapper.observations[obs_id - 1].rgb

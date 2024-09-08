@@ -19,6 +19,8 @@ from transformers import Owlv2ForObjectDetection
 import google.generativeai as genai
 from openai import OpenAI
 import base64
+from collections import OrderedDict
+
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 generation_config = genai.GenerationConfig(temperature=0)
 safety_settings = [
@@ -171,11 +173,11 @@ class LLM_Localizer():
     def owl_locater(self, A, encoded_image, timestamps_lst):
         for i in timestamps_lst:
             image_info = encoded_image[i][-1]
-            res = self.compute_coord(A, image_info, threshold=0.2)
+            res = self.compute_coord(A, image_info, threshold=0.15)
             if res is not None:
                 debug_text = '#### - Obejct is detected in observations where instance' + str(i + 1) + ' comes from. **😃** Directly navigate to it.\n'
                 return res, debug_text, i, None
-                
+
         debug_text = '#### - All instances are not the target! Maybe target object has not been observed yet. **😭**\n'
         return None, debug_text, None, None
     
