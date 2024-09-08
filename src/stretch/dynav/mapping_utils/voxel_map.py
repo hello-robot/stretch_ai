@@ -369,14 +369,21 @@ class SparseVoxelMapNavigationSpace(XYT):
         # TODO: was this:
         # expanded_mask = expanded_mask & less_explored & ~obstacles
 
-        scores = []
-        points = []
-
         for selected_target in selected_targets:
             selected_x, selected_y = planner.to_xy([selected_target[0], selected_target[1]])
             theta = self.compute_theta(selected_x, selected_y, point[0], point[1])
 
+            # if debug and self.is_valid([selected_x, selected_y, theta]):
+            #     import matplotlib.pyplot as plt
+
+            #     obstacles, explored = self.voxel_map.get_2d_map()
+            #     plt.scatter(ys, xs, s = 1)
+            #     plt.scatter(selected_target[1], selected_target[0], s = 10)
+            #     plt.scatter(target_y, target_x, s = 10)
+            #     plt.imshow(obstacles)
             target_is_valid = self.is_valid([selected_x, selected_y, theta])
+            # print('Target:', [selected_x, selected_y, theta])
+            # print('Target is valid:', target_is_valid)
             if not target_is_valid:
                 continue
             if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) < 0.4:
@@ -389,53 +396,17 @@ class SparseVoxelMapNavigationSpace(XYT):
                 index_i = int(selected_target[0].int() + i)
                 index_j = int(selected_target[1].int() + j)
                 if obstacles[index_i][index_j]:
-                    score += 0.5
-
-            scores.append(score)
-
-        if len(points) == 0:
-            return None
-        else:
-            return points[np.argmax(scores)]
-
-        # for selected_target in selected_targets:
-        #     selected_x, selected_y = planner.to_xy([selected_target[0], selected_target[1]])
-        #     theta = self.compute_theta(selected_x, selected_y, point[0], point[1])
-
-        #     # if debug and self.is_valid([selected_x, selected_y, theta]):
-        #     #     import matplotlib.pyplot as plt
-
-        #     #     obstacles, explored = self.voxel_map.get_2d_map()
-        #     #     plt.scatter(ys, xs, s = 1)
-        #     #     plt.scatter(selected_target[1], selected_target[0], s = 10)
-        #     #     plt.scatter(target_y, target_x, s = 10)
-        #     #     plt.imshow(obstacles)
-        #     target_is_valid = self.is_valid([selected_x, selected_y, theta])
-        #     # print('Target:', [selected_x, selected_y, theta])
-        #     # print('Target is valid:', target_is_valid)
-        #     if not target_is_valid:
-        #         continue
-        #     if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) < 0.35:
-        #         continue
-        #     elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
-        #         print('OBSTACLE AVOIDANCE')
-        #         print(selected_target[0].int(), selected_target[1].int())
-        #         i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])
-        #         j = (point[1] - selected_target[1]) // abs(point[1] - selected_target[1])
-        #         index_i = int(selected_target[0].int() + i)
-        #         index_j = int(selected_target[1].int() + j)
-        #         if obstacles[index_i][index_j]:
-        #             target_is_valid = False
-        #     # elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
-        #     #     for i in [-1, 0, 1]:
-        #     #         for j in [-1, 0, 1]:
-        #     #             if obstacles[selected_target[0] + i][selected_target[1] + j]:
-        #     #                 target_is_valid = False
-        #     if not target_is_valid:
-        #         continue
+                    target_is_valid = False
+            # elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
+            #     for i in [-1, 0, 1]:
+            #         for j in [-1, 0, 1]:
+            #             if obstacles[selected_target[0] + i][selected_target[1] + j]:
+            #                 target_is_valid = False
+            if not target_is_valid:
+                continue
             
-        #     return np.array([selected_x, selected_y, theta])
-        # return None
+            return np.array([selected_x, selected_y, theta])
+        return None
 
     def sample_near_mask(
         self,
@@ -689,7 +660,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             plt.show()
         return index, time_heuristics, alignments_heuristics, total_heuristics
         
-    def _alignment_heuristic(self, alignments, outside_frontier, alignment_smooth = 100, alignment_threshold = 0.13, debug = False):
+    def _alignment_heuristic(self, alignments, outside_frontier, alignment_smooth = 20, alignment_threshold = 0.13, debug = False):
         alignments = np.ma.masked_array(alignments, ~outside_frontier)
         alignment_heuristics = 1 / (1 + np.exp(-alignment_smooth * (alignments - alignment_threshold)))
         index = np.unravel_index(np.argmax(alignment_heuristics), alignments.shape)

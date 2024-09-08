@@ -152,9 +152,6 @@ class ImageProcessor:
             self.img_thread = threading.Thread(target=self._recv_image)
             self.img_thread.daemon = True
             self.img_thread.start()
-
-        self.path = None
-        self.text = None
     
     def create_obstacle_map(self):
         print("- Load parameters")
@@ -223,25 +220,25 @@ class ImageProcessor:
         self.yolo_model.set_classes(self.texts)
         self.voxel_map_localizer = VoxelMapLocalizer(self.voxel_map, clip_model = self.clip_model, processor = self.clip_preprocess, device = self.device, siglip = self.siglip)
 
-    def compute_path(self, start_pose):
+    def process_text(self, text, start_pose):
         if self.rerun:
             rr.log('/object', rr.Clear(recursive = True), static = self.static)
             rr.log('/robot_start_pose', rr.Clear(recursive = True), static = self.static)
             rr.log('/direction', rr.Clear(recursive = True), static = self.static)
             rr.log('robot_monologue', rr.Clear(recursive = True), static = self.static)
             rr.log('/Past_observation_most_similar_to_text', rr.Clear(recursive = True), static = self.static)
-        
+            if not self.static:
+                rr.connect('100.108.67.79:9876')
         debug_text = ''
         mode = 'navigation'
         obs = None
-        with self.voxel_map_lock:
-            text = self.text
         # Do visual grounding
         if text is not None and text != '':
-            localized_point, debug_text, obs, pointcloud = self.voxel_map_localizer.localize_A(text, debug = True, return_debug = True)
+            with self.voxel_map_lock:
+                localized_point, debug_text, obs, pointcloud = self.voxel_map_localizer.localize_A(text, debug = True, return_debug = True)
             if localized_point is not None:
                 rr.log("/object", rr.Points3D([localized_point[0], localized_point[1], 1.5], colors=torch.Tensor([1, 0, 0]), radii=0.1), static = self.static)
-        # Do exploration
+        # Do Frontier based exploration
         if text is None or text == '' or localized_point is None:
             debug_text += '## Navigation fails, so robot starts exploring environments.\n'
             localized_point = self.sample_frontier(start_pose, text)
@@ -250,22 +247,15 @@ class ImageProcessor:
             print('\n', localized_point, '\n')
 
         if localized_point is None:
-            with self.voxel_map_lock:
-                self.traj = (text, None, start_pose)
-            return
+            return []
         
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
             
-        if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
-            return [[np.nan, np.nan, np.nan], localized_point]
+        # if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
+        #     return [[np.nan, np.nan, np.nan], localized_point]
 
         point = self.sample_navigation(start_pose, localized_point)
-        # if mode == 'navigation' and torch.linalg.norm(torch.Tensor(point)[:2] - torch.linalg.norm(localized_point[:2])) > 2.0:
-        #     localized_point = self.sample_frontier(start_pose, None)
-        #     mode = 'exploration'
-        #     point = self.sample_navigation(start_pose, localized_point)
-        #     debug_text += '## All reachable points of robot are too far from the target object, explore to find new paths. \n'
 
         if self.rerun:
             buf = BytesIO()
@@ -300,6 +290,7 @@ class ImageProcessor:
                 rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
         traj = []
         waypoints = None
+
         if point is None:
             print('Unable to find any target point, some exception might happen')
         else:
@@ -309,9 +300,9 @@ class ImageProcessor:
                 waypoints = [pt.state for pt in res.trajectory]
                 # If we are navigating to some object of interst, send (x, y, z) of 
                 # the object so that we can make sure the robot looks at the object after navigation
-                finished = len(waypoints) <= 5 and mode == 'navigation'
+                finished = len(waypoints) <= 10 and mode == 'navigation'
                 if not finished:
-                    waypoints = waypoints[:4]
+                    waypoints = waypoints[:8]
                 traj = self.planner.clean_path_for_xy(waypoints)
                 # traj = traj[1:]
                 if finished:
@@ -319,6 +310,9 @@ class ImageProcessor:
                     if isinstance(localized_point, torch.Tensor):
                         localized_point = localized_point.tolist()
                     traj.append(localized_point)
+                print('Planned trajectory:', traj)
+            else:
+                print('[FAILURE]', res.reason)
             
         if traj is not None:
             origins = []
@@ -329,20 +323,10 @@ class ImageProcessor:
                     vectors.append([traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0])
             rr.log("/direction", rr.Arrows3D(origins = origins, vectors = vectors, colors=torch.Tensor([0, 1, 0]), radii=0.05), static = self.static)
             rr.log("/robot_start_pose", rr.Points3D([start_pose[0], start_pose[1], 1.5], colors=torch.Tensor([0, 0, 1]), radii=0.1), static = self.static)
-        
-        self.write_to_pickle()
-        with self.voxel_map_lock:
-            self.traj = (text, traj, start_pose)
 
-    def process_text(self, text, start_pose):
-        if self.traj is not None:
-            saved_text, traj, saved_start_pose = self.traj
-            if saved_text == text and np.linalg.norm(saved_start_pose - start_pose) <= 0.25:
-                return traj
-        with self.voxel_map_lock:
-            self.text = text
-        self.compute_path(start_pose)
-        return self.traj[1]
+        # self.write_to_pickle()
+        return traj
+
 
 
     # def process_text(self, text, start_pose):
@@ -460,7 +444,7 @@ class ImageProcessor:
     def sample_navigation(self, start, point, mode = 'navigation'):
         # plt.clf()
         obstacles, _ = self.voxel_map.get_2d_map()
-        # plt.imshow(obstacles)
+        plt.imshow(obstacles)
         if point is None:
             start_pt = self.planner.to_pt(start)
             # plt.scatter(start_pt[1], start_pt[0], s = 10)
@@ -469,12 +453,12 @@ class ImageProcessor:
         print("point:", point, "goal:", goal)
         obstacles, explored = self.voxel_map.get_2d_map()
         start_pt = self.planner.to_pt(start)
-        # plt.scatter(start_pt[1], start_pt[0], s = 15, c = 'b')
+        plt.scatter(start_pt[1], start_pt[0], s = 15, c = 'b')
         point_pt = self.planner.to_pt(point)
-        # plt.scatter(point_pt[1], point_pt[0], s = 15, c = 'g')
+        plt.scatter(point_pt[1], point_pt[0], s = 15, c = 'g')
         if goal is not None:
             goal_pt = self.planner.to_pt(goal)
-            # plt.scatter(goal_pt[1], goal_pt[0], s = 10, c = 'r')
+            plt.scatter(goal_pt[1], goal_pt[0], s = 10, c = 'r')
         return goal
 
     def sample_frontier(self, start_pose = [0, 0, 0], text = None):
@@ -775,9 +759,6 @@ class ImageProcessor:
             if num_frames > 0 and i >= num_frames:
                 break
 
-            if rgb is None:
-                continue
-
             camera_pose = self.voxel_map.fix_data_type(camera_pose)
             xyz = self.voxel_map.fix_data_type(xyz)
             rgb = self.voxel_map.fix_data_type(rgb)
@@ -819,26 +800,13 @@ class ImageProcessor:
         data["depth"] = []
         data["feats"] = []
 
-        image_ids = torch.unique(self.voxel_map.voxel_pcd._obs_counts).tolist()
-
         for idx, frame in enumerate(self.voxel_map.observations):
             # add it to pickle
             # TODO: switch to using just Obs struct?
-            if idx in image_ids:
-                data["camera_poses"].append(frame.camera_pose)
-                data["camera_K"].append(frame.camera_K)
-                data["rgb"].append(frame.rgb)
-                data["depth"].append(frame.depth)
-            else:
-                data["camera_poses"].append(None)
-                data["camera_K"].append(None)
-                data["rgb"].append(None)
-                data["depth"].append(None)
-            # We might not need this
-            # data["xyz"].append(frame.xyz)
-            # data["world_xyz"].append(frame.full_world_xyz)
-            # data["feats"].append(frame.feats)
-            # data["base_poses"].append(frame.base_pose)
+            data["xyz"].append(frame.xyz)
+            data["world_xyz"].append(frame.full_world_xyz)
+            data["feats"].append(frame.feats)
+            data["base_poses"].append(frame.base_pose)
             data["xyz"].append(None)
             data["world_xyz"].append(None)
             data["feats"].append(None)

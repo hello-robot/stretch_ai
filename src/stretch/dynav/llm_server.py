@@ -42,6 +42,7 @@ from io import BytesIO
 from PIL import Image
 
 from stretch.dynav.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
+from collections import OrderedDict
 
 def get_inv_intrinsics(intrinsics):
     # return intrinsics.double().inverse().to(intrinsics)
@@ -282,7 +283,7 @@ class ImageProcessor:
                 waypoints = [pt.state for pt in res.trajectory]
                 # If we are navigating to some object of interst, send (x, y, z) of 
                 # the object so that we can make sure the robot looks at the object after navigation
-                finished = len(waypoints) <= 5 and mode == 'navigation'
+                finished = len(waypoints) <= 6 and mode == 'navigation'
                 if not finished:
                     waypoints = waypoints[:8]
                 traj = self.planner.clean_path_for_xy(waypoints)
