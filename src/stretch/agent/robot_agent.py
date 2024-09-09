@@ -1369,6 +1369,7 @@ class RobotAgent:
 
         # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
         tform = ransac_transform(xyz1, xyz2, visualize=debug)
+        breakpoint()
 
         # Apply the transform to the loaded map
         xyz1 = xyz1 @ tform[0].T + tform[1]

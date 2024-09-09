@@ -108,6 +108,7 @@ class SparseVoxelMap(object):
         mask_cropped_instances="False",
     )
     debug_valid_depth: bool = False
+    debug_instance_memory_processing_time: bool = False
 
     def __init__(
         self,
@@ -535,8 +536,9 @@ class SparseVoxelMap(object):
             )
             t1 = timeit.default_timer()
             self.instances.associate_instances_to_memory()
-            t2 = timeit.default_timer()
-            print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
+            if self.debug_instance_memory_processing_time:
+                t2 = timeit.default_timer()
+                print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
 
         if self.prune_detected_objects:
             valid_depth = valid_depth & (instance_image == self.background_instance_label)
