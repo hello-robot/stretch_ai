@@ -42,7 +42,7 @@ class RobotAgent:
 
     _retry_on_fail: bool = False
     debug_update_timing: bool = False
-    update_rerun_every_time: bool = False
+    update_rerun_every_time: bool = True
 
     def __init__(
         self,

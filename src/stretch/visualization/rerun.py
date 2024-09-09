@@ -10,11 +10,13 @@
 # license information maybe found below, if so.
 
 import time
-from typing import Optional, Tuple
+import timeit
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
+import torch
 
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
@@ -41,9 +43,34 @@ def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.nda
     return rotation_matrix, translation_vector
 
 
+def occupancy_map_to_indices(occupancy_map):
+    """
+    Convert a 2D occupancy map to an Nx3 array of float indices of occupied cells.
+
+    Args:
+    occupancy_map (np.ndarray): 2D boolean array where True represents occupied cells.
+
+    Returns:
+    np.ndarray: Nx3 float array where each row is [x, y, 0] of an occupied cell.
+    """
+    # Find the indices of occupied cells
+    occupied_indices = np.where(occupancy_map)
+
+    # Create the Nx3 array
+    num_points = len(occupied_indices[0])
+    xyz_array = np.zeros((num_points, 3), dtype=float)
+
+    # Fill in x and y coordinates
+    xyz_array[:, 0] = occupied_indices[0]  # x coordinates
+    xyz_array[:, 1] = occupied_indices[1]  # y coordinates
+    # z coordinates are already 0
+
+    return xyz_array
+
+
 def occupancy_map_to_3d_points(
     occupancy_map: np.ndarray,
-    grid_center: np.ndarray,
+    grid_center: Union[np.ndarray, torch.Tensor],
     grid_resolution: float,
     offset: Optional[np.ndarray] = np.zeros(3),
 ) -> np.ndarray:
@@ -62,18 +89,12 @@ def occupancy_map_to_3d_points(
     rows, cols = occupancy_map.shape
     center_row, center_col, _ = grid_center
 
-    for i in range(rows):
-        for j in range(cols):
-            if occupancy_map[i][j]:
-                x = (i - center_row) * grid_resolution
-                y = (j - center_col) * grid_resolution
-                z = 0  # Assuming the map is 2D, so z is always 0
-                x = x + offset[0]
-                y = y + offset[1]
-                z = z + offset[2]
-                points.append(np.array([x, y, z]))
+    if isinstance(grid_center, torch.Tensor):
+        grid_center = grid_center.cpu().numpy()
 
-    return np.array(points)
+    indices = occupancy_map_to_indices(occupancy_map)
+    points = (indices - grid_center) * grid_resolution + offset
+    return points
 
 
 class RerunVsualizer:
@@ -190,12 +211,14 @@ class RerunVsualizer:
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
-    def update_voxel_map(self, space: SparseVoxelMapNavigationSpace):
-        """Log voxel map
+    def update_voxel_map(self, space: SparseVoxelMapNavigationSpace, debug: bool = False):
+        """Log voxel map and send it to Rerun visualizer
         Args:
             space (SparseVoxelMapNavigationSpace): Voxel map object
         """
         rr.set_time_seconds("realtime", time.time())
+
+        t0 = timeit.default_timer()
         points, _, _, rgb = space.voxel_map.voxel_pcd.get_pointcloud()
         if rgb is None:
             return
@@ -204,13 +227,25 @@ class RerunVsualizer:
             "world/point_cloud",
             rr.Points3D(positions=points, radii=np.ones(rgb.shape[0]) * 0.01, colors=np.int64(rgb)),
         )
+
+        t1 = timeit.default_timer()
         grid_origin = space.voxel_map.grid_origin
+        t2 = timeit.default_timer()
         obstacles, explored = space.voxel_map.get_2d_map()
+        t3 = timeit.default_timer()
+
+        # Get obstacles and explored points
         grid_resolution = space.voxel_map.grid_resolution
         obs_points = np.array(occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution))
+        t4 = timeit.default_timer()
+
+        # Get explored points
         explored_points = np.array(
             occupancy_map_to_3d_points(explored, grid_origin, grid_resolution)
         )
+        t5 = timeit.default_timer()
+
+        # Log points
         rr.log(
             "world/obstacles",
             rr.Points3D(
@@ -225,6 +260,15 @@ class RerunVsualizer:
                 colors=[255, 255, 255],
             ),
         )
+        t6 = timeit.default_timer()
+
+        if debug:
+            print("Time to get point cloud: ", t1 - t0, "% = ", (t1 - t0) / (t6 - t0))
+            print("Time to get grid origin: ", t2 - t1, "% = ", (t2 - t1) / (t6 - t0))
+            print("Time to get 2D map: ", t3 - t2, "% = ", (t3 - t2) / (t6 - t0))
+            print("Time to get obstacles points: ", t4 - t3, "% = ", (t4 - t3) / (t6 - t0))
+            print("Time to get explored points: ", t5 - t4, "% = ", (t5 - t4) / (t6 - t0))
+            print("Time to log points: ", t6 - t5, "% = ", (t6 - t5) / (t6 - t0))
 
     def update_scene_graph(
         self, scene_graph: SceneGraph, semantic_sensor: Optional[OvmmPerception] = None

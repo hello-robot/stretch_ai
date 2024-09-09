@@ -45,7 +45,7 @@ def main(
         agent = RobotAgent(robot, parameters)
         agent.update()
         t0 = timeit.default_timer()
-        robot.update_rerun()
+        agent.update_rerun()
         t1 = timeit.default_timer()
         print(f"Time to update rerun: {t1 - t0}")
     try:
