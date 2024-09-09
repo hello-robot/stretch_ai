@@ -304,6 +304,11 @@ class RobotAgent:
         """Returns reference to the navigation space."""
         return self.space
 
+    @property
+    def navigation_space(self) -> ConfigurationSpace:
+        """Returns reference to the navigation space."""
+        return self.space
+
     def place_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
         """Try to place an object."""
         if not self.robot.in_manipulation_mode():
@@ -1158,7 +1163,7 @@ class RobotAgent:
                 # After doing everything - show where we will move to
                 robot_center = np.zeros(3)
                 robot_center[:2] = self.robot.get_base_pose()[:2]
-                self.voxel_map.show(
+                self.navigation_space.show(
                     orig=robot_center,
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
