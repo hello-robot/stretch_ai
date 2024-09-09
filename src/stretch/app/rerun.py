@@ -10,6 +10,7 @@
 # license information maybe found below, if so.
 
 import time
+import timeit
 
 import click
 
@@ -20,18 +21,17 @@ from stretch.core import get_parameters
 
 @click.command()
 @click.option("--robot_ip", default="", help="IP address of the robot")
-@click.option("--test", is_flag=True, help="Set if we are testing the planner")
 @click.option(
     "--local",
     is_flag=True,
-    test=False,
     help="Set if we are executing on the robot and not on a remote computer",
 )
+@click.option("--test-svm", is_flag=True, help="Set if we are testing the planner")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
-    parameter_file: str = "config/default_planner.yaml",
-    test: bool = False,
+    parameter_file: str = "default_planner.yaml",
+    test_svm: bool = False,
 ):
     # Create robot
     robot = HomeRobotZmqClient(
@@ -40,11 +40,14 @@ def main(
         enable_rerun_server=True,
     )
     robot.start()
-    if test:
+    if test_svm:
         parameters = get_parameters(parameter_file)
         agent = RobotAgent(robot, parameters)
-        robot.update()
+        agent.update()
+        t0 = timeit.default_timer()
         robot.update_rerun()
+        t1 = timeit.default_timer()
+        print(f"Time to update rerun: {t1 - t0}")
     try:
         while True:
             time.sleep(0.01)
