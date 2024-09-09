@@ -1381,8 +1381,6 @@ class RobotAgent:
         # Apply the transform to the loaded map
         xyz1 = xyz1 @ tform[:3, :3].T + tform[:3, 3]
 
-        debug = True
-
         if debug:
             # for visualization
             from stretch.utils.point_cloud import show_point_cloud
@@ -1391,10 +1389,12 @@ class RobotAgent:
             _rgb = np.concatenate([rgb1.cpu().numpy(), rgb2.cpu().numpy() * 0.5], axis=0) / 255
             show_point_cloud(_xyz, _rgb, orig=np.zeros(3))
 
-        breakpoint()
-
         # Add the loaded map to the current map
-        # self.voxel_map.add_pointcloud(xyz1, rgb1)
+        print("Reprocessing map with new pose transform...")
+        self.voxel_map.read_from_pickle(
+            filename, perception=self.semantic_sensor, transform_pose=tform
+        )
+        self.voxel_map.show()
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""

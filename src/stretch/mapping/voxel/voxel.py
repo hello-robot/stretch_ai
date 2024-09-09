@@ -551,9 +551,9 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
-            print("Adding this many points to the map:", world_xyz.shape)
+            # print("Adding this many points to the map:", world_xyz.shape)
             self.voxel_pcd.add(world_xyz, features=feats, rgb=rgb, weights=None)
-            print("Added points to the map:", self.voxel_pcd.num_points)
+            # print("Added points to the map:", self.voxel_pcd.num_points)
 
         if self._add_local_radius_points and len(self.observations) < 2:
             # Only do this at the first step, never after it.
@@ -664,7 +664,11 @@ class SparseVoxelMap(object):
             raise NotImplementedError("unsupported data type for tensor:", tensor)
 
     def read_from_pickle(
-        self, filename: str, num_frames: int = -1, perception: Optional[OvmmPerception] = None
+        self,
+        filename: str,
+        num_frames: int = -1,
+        perception: Optional[OvmmPerception] = None,
+        transform_pose: Optional[torch.Tensor] = None,
     ) -> bool:
         """Read from a pickle file as above. Will clear all currently stored data first."""
         self.reset_cache()
@@ -726,6 +730,8 @@ class SparseVoxelMap(object):
                 continue
 
             camera_pose = self.fix_data_type(camera_pose)
+            if transform_pose is not None:
+                camera_pose = camera_pose @ transform_pose
             if compressed:
                 rgb = compression.from_jpg(rgb)
                 depth = compression.from_jp2(depth) / 1000.0
