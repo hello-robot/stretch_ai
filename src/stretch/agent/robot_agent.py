@@ -1358,8 +1358,6 @@ class RobotAgent:
             filename(str): the name of the file to load the map from
         """
 
-        debug = True
-
         # Load the map from the file
         loaded_voxel_map = self._create_voxel_map(self.parameters)
         loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
@@ -1368,11 +1366,19 @@ class RobotAgent:
         xyz2, _, _, rgb2 = self.voxel_map.get_pointcloud()
 
         # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
-        tform = ransac_transform(xyz1, xyz2, visualize=debug)
-        breakpoint()
+        tform, fitness, inlier_rmse, num_inliers = ransac_transform(xyz1, xyz2, visualize=debug)
+        if debug:
+            print("Aligning maps...")
+            print("RANSAC transform:")
+            print(tform)
+            print("Fitness:", fitness)
+            print("Inlier RMSE:", inlier_rmse)
+            print("Num inliers:", num_inliers)
 
         # Apply the transform to the loaded map
-        xyz1 = xyz1 @ tform[0].T + tform[1]
+        xyz1 = xyz1 @ tform[:3, :3].T + tform[:3, 3]
+
+        debug = True
 
         if debug:
             # for visualization

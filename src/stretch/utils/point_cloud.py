@@ -427,7 +427,7 @@ import open3d as o3d
 from scipy.spatial import cKDTree
 
 
-def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold: float = 0.01):
+def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold: float = 0.25):
     """
     Find the transformation between two point clouds using RANSAC.
 
@@ -439,6 +439,9 @@ def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold
 
     Returns:
         np.ndarray: 4x4 transformation matrix
+        float: Fitness score
+        float: Inlier RMSE
+        int: Number of inliers found
     """
     # Convert numpy arrays to Open3D point clouds
     source = o3d.geometry.PointCloud()
@@ -497,7 +500,7 @@ def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold
         )
 
     # Return the transformation matrix
-    return result.transformation
+    return result.transformation, result.fitness, result.inlier_rmse, len(result.correspondence_set)
 
 
 def find_se3_transform(
