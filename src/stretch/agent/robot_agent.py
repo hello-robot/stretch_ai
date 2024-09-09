@@ -34,7 +34,7 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference
-from stretch.utils.point_cloud import find_se3_transform
+from stretch.utils.point_cloud import ransac_transform
 
 
 class RobotAgent:
@@ -1125,10 +1125,12 @@ class RobotAgent:
             else:
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
-                    print("Failed. Try again!")
+                    print("Exploration failed. Try again!")
                     continue
                 else:
-                    print("Failed. Quitting!")
+                    print("Start = ", start)
+                    print("Reason = ", res.reason)
+                    print("Exploration failed. Quitting!")
                     break
 
             # Error handling
@@ -1356,6 +1358,8 @@ class RobotAgent:
             filename(str): the name of the file to load the map from
         """
 
+        debug = True
+
         # Load the map from the file
         loaded_voxel_map = self._create_voxel_map(self.parameters)
         loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
@@ -1363,7 +1367,8 @@ class RobotAgent:
         xyz1, _, _, rgb1 = loaded_voxel_map.get_pointcloud()
         xyz2, _, _, rgb2 = self.voxel_map.get_pointcloud()
 
-        tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
+        # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
+        tform = ransac_transform(xyz1, xyz2, visualize=debug)
 
         # Apply the transform to the loaded map
         xyz1 = xyz1 @ tform[0].T + tform[1]
@@ -1373,11 +1378,13 @@ class RobotAgent:
             from stretch.utils.point_cloud import show_point_cloud
 
             _xyz = np.concatenate([xyz1.cpu().numpy(), xyz2.cpu().numpy()], axis=0)
-            _rgb = np.concatenate([rgb1.cpu().numpy(), rgb2.cpu().numpy() * 0.5], axis=0)
+            _rgb = np.concatenate([rgb1.cpu().numpy(), rgb2.cpu().numpy() * 0.5], axis=0) / 255
             show_point_cloud(_xyz, _rgb, orig=np.zeros(3))
 
+        breakpoint()
+
         # Add the loaded map to the current map
-        self.voxel_map.add_pointcloud(xyz1, rgb1)
+        # self.voxel_map.add_pointcloud(xyz1, rgb1)
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""

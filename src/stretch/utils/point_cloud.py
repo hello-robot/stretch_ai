@@ -18,6 +18,7 @@ import numpy as np
 import open3d as o3d
 import torch
 import trimesh.transformations as tra
+from scipy.spatial import cKDTree
 
 
 def numpy_to_pcd(xyz: np.ndarray, rgb: np.ndarray = None) -> o3d.geometry.PointCloud:
@@ -422,7 +423,82 @@ def dropout_random_ellipses(depth_img, dropout_mean, gamma_shape=10000, gamma_sc
 
 
 import numpy as np
+import open3d as o3d
 from scipy.spatial import cKDTree
+
+
+def ransac_transform(source_xyz, target_xyz, visualize=False):
+    """
+    Find the transformation between two point clouds using RANSAC.
+
+    Parameters:
+    source_xyz (np.ndarray): Source point cloud as a Nx3 numpy array
+    target_xyz (np.ndarray): Target point cloud as a Nx3 numpy array
+    visualize (bool): If True, visualize the registration result
+
+    Returns:
+    np.ndarray: 4x4 transformation matrix
+    """
+    # Convert numpy arrays to Open3D point clouds
+    source = o3d.geometry.PointCloud()
+    source.points = o3d.utility.Vector3dVector(source_xyz)
+    target = o3d.geometry.PointCloud()
+    target.points = o3d.utility.Vector3dVector(target_xyz)
+
+    # Estimate normals
+    source.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
+    )
+    target.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
+    )
+
+    # Compute FPFH features
+    source_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+        source, o3d.geometry.KDTreeSearchParamHybrid(radius=0.25, max_nn=100)
+    )
+    target_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+        target, o3d.geometry.KDTreeSearchParamHybrid(radius=0.25, max_nn=100)
+    )
+
+    # Apply RANSAC registration
+    distance_threshold = 0.01
+
+    result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+        source,
+        target,
+        source_fpfh,
+        target_fpfh,
+        True,
+        distance_threshold,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+        4,
+        [
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
+        ],
+        o3d.pipelines.registration.RANSACConvergenceCriteria(4000000, 500),
+    )
+
+    # Visualize if flag is set
+    if visualize:
+        # Apply the transformation to the source point cloud
+        source_transformed = source.transform(result.transformation)
+
+        # Color the point clouds
+        source_transformed.paint_uniform_color([1, 0, 0])  # Red for source
+        target.paint_uniform_color([0, 1, 0])  # Green for target
+
+        # Visualize the result
+        o3d.visualization.draw_geometries(
+            [source_transformed, target],
+            window_name="RANSAC Registration Result",
+            width=1200,
+            height=800,
+        )
+
+    # Return the transformation matrix
+    return result.transformation
 
 
 def find_se3_transform(

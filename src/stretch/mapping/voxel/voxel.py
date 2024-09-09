@@ -690,17 +690,22 @@ class SparseVoxelMap(object):
             return False
 
         for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
-            # TODO: compression of observations
-            # Right now we just do not support this
-            # data["obs"],  TODO: compression of Observations
-            zip(
-                data["camera_poses"],
-                data["camera_K"],
-                data["rgb"],
-                data["feats"],
-                data["depth"],
-                data["base_poses"],
-                instance_data,
+            tqdm.tqdm(
+                # TODO: compression of observations
+                # Right now we just do not support this
+                # data["obs"],  TODO: compression of Observations
+                zip(
+                    data["camera_poses"],
+                    data["camera_K"],
+                    data["rgb"],
+                    data["feats"],
+                    data["depth"],
+                    data["base_poses"],
+                    instance_data,
+                ),
+                ncols=80,
+                desc="Reading data from pickle",
+                unit="frame",
             )
         ):
             # Handle the case where we dont actually want to load everything
