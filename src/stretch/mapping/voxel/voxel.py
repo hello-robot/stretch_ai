@@ -1155,6 +1155,7 @@ class SparseVoxelMap(object):
         return SparseVoxelMap(
             resolution=voxel_size,
             local_radius=parameters["local_radius"],
+            grid_resolution=parameters["voxel_size"],
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
             neg_obs_height=parameters["neg_obs_height"],
