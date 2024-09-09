@@ -1390,6 +1390,7 @@ class RobotAgent:
             show_point_cloud(_xyz, _rgb, orig=np.zeros(3))
 
         # Add the loaded map to the current map
+        self.voxel_map.show()
         print("Reprocessing map with new pose transform...")
         self.voxel_map.read_from_pickle(
             filename, perception=self.semantic_sensor, transform_pose=tform

@@ -669,9 +669,19 @@ class SparseVoxelMap(object):
         num_frames: int = -1,
         perception: Optional[OvmmPerception] = None,
         transform_pose: Optional[torch.Tensor] = None,
+        reset: bool = False,
     ) -> bool:
-        """Read from a pickle file as above. Will clear all currently stored data first."""
-        self.reset_cache()
+        """Read from a pickle file as above. Will clear all currently stored data first.
+
+        Args:
+            filename(str): path to the pickle file
+            num_frames(int): number of frames to read from the file
+            perception(OvmmPerception): perception model to use for instance segmentation
+            transform_pose(torch.Tensor): transformation to apply to camera poses
+            reset(bool): whether to clear all currently stored data first
+        """
+        if reset:
+            self.reset_cache()
         if isinstance(filename, str):
             filename = Path(filename)
         assert filename.exists(), f"No file found at {filename}"
