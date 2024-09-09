@@ -120,10 +120,10 @@ class RobotAgent:
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
             self.robot.get_robot_model(),
-            step_size=parameters["step_size"],
-            rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters["dilate_frontier_size"],
-            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            step_size=parameters["motion_planner"]["step_size"],
+            rotation_step_size=parameters["motion_planner"]["rotation_step_size"],
+            dilate_frontier_size=parameters["motion_planner"]["frontier"]["dilate_frontier_size"],
+            dilate_obstacle_size=parameters["motion_planner"]["frontier"]["dilate_obstacle_size"],
             grid=self.voxel_map.grid,
         )
 
@@ -1035,6 +1035,7 @@ class RobotAgent:
             sampler = self.space.sample_closest_frontier(
                 start,
                 verbose=False,
+                expand_size=self._default_expand_frontier_size,
                 min_dist=self._frontier_min_dist,
                 step_dist=self._frontier_step_dist,
             )
