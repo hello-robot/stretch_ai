@@ -182,8 +182,6 @@ def main(
             dummy_robot,
             parameters,
             semantic_sensor=semantic_sensor,
-            rpc_stub=None,
-            grasp_client=None,
             voxel_map=loaded_voxel_map,
             use_instance_memory=(run_segmentation or show_instances),
         )
