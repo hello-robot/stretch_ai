@@ -449,6 +449,7 @@ def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold
     target = o3d.geometry.PointCloud()
     target.points = o3d.utility.Vector3dVector(target_xyz)
 
+    """
     # Estimate normals
     source.estimate_normals(
         search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
@@ -474,12 +475,21 @@ def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold
         True,
         distance_threshold,
         o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
-        4,
-        [
+        ransac_n=4,
+        checkers=[
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
         ],
-        o3d.pipelines.registration.RANSACConvergenceCriteria(4000000, 500),
+        criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=5000000, confidence=0.9999),
+    )
+    """
+
+    result = o3d.pipelines.registration.registration_icp(
+        source,
+        target,
+        distance_threshold,
+        np.eye(4),
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(),
     )
 
     # Visualize if flag is set

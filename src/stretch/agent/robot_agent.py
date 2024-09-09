@@ -1354,7 +1354,13 @@ class RobotAgent:
 
         self.robot.switch_to_navigation_mode()
 
-    def load_map(self, filename: str, color_weight: float = 0.5, debug: bool = False) -> None:
+    def load_map(
+        self,
+        filename: str,
+        color_weight: float = 0.5,
+        debug: bool = False,
+        ransac_distance_threshold: float = 0.1,
+    ) -> None:
         """Load a map from a PKL file. Creates a new voxel map and loads the data from the file into this map. Then uses RANSAC to figure out where the current map and the loaded map overlap, computes a transform, and applies this transform to the loaded map to align it with the current map.
 
         Args:
@@ -1369,28 +1375,31 @@ class RobotAgent:
         xyz2, _, _, rgb2 = self.voxel_map.get_pointcloud()
 
         # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
-        tform, fitness, inlier_rmse, num_inliers = ransac_transform(xyz1, xyz2, visualize=debug)
-        if debug:
-            print("Aligning maps...")
-            print("RANSAC transform:")
-            print(tform)
-            print("Fitness:", fitness)
-            print("Inlier RMSE:", inlier_rmse)
-            print("Num inliers:", num_inliers)
+        tform, fitness, inlier_rmse, num_inliers = ransac_transform(
+            xyz1, xyz2, visualize=debug, distance_threshold=ransac_distance_threshold
+        )
+        print("------------- Loaded map ---------------")
+        print("Aligning maps...")
+        print("RANSAC transform from old to new map:")
+        print(tform)
+        print("Fitness:", fitness)
+        print("Inlier RMSE:", inlier_rmse)
+        print("Num inliers:", num_inliers)
+        print("----------------------------------------")
 
-        # Apply the transform to the loaded map
-        xyz1 = xyz1 @ tform[:3, :3].T + tform[:3, 3]
-
+        # Apply the transform to the loaded map and
         if debug:
             # for visualization
             from stretch.utils.point_cloud import show_point_cloud
+
+            # Apply the transform to the loaded map
+            xyz1 = xyz1 @ tform[:3, :3].T + tform[:3, 3]
 
             _xyz = np.concatenate([xyz1.cpu().numpy(), xyz2.cpu().numpy()], axis=0)
             _rgb = np.concatenate([rgb1.cpu().numpy(), rgb2.cpu().numpy() * 0.5], axis=0) / 255
             show_point_cloud(_xyz, _rgb, orig=np.zeros(3))
 
         # Add the loaded map to the current map
-        self.voxel_map.show()
         print("Reprocessing map with new pose transform...")
         self.voxel_map.read_from_pickle(
             filename, perception=self.semantic_sensor, transform_pose=tform

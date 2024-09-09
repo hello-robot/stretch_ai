@@ -375,6 +375,7 @@ class SparseVoxelMap(object):
         instance_scores: Optional[Tensor] = None,
         obs: Optional[Observations] = None,
         xyz_frame: str = "camera",
+        pose_correction: Optional[Tensor] = None,
         **info,
     ):
         """Add this to our history of observations. Also update the current running map.
@@ -467,6 +468,9 @@ class SparseVoxelMap(object):
                 pose=camera_pose.unsqueeze(0),
                 inv_intrinsics=torch.linalg.inv(camera_K[:3, :3]).unsqueeze(0),
             )
+
+        if pose_correction is not None:
+            full_world_xyz = full_world_xyz @ pose_correction[:3, :3].T + pose_correction[:3, 3]
 
         # add observations before we start changing things
         self.observations.append(
@@ -740,8 +744,6 @@ class SparseVoxelMap(object):
                 continue
 
             camera_pose = self.fix_data_type(camera_pose)
-            if transform_pose is not None:
-                camera_pose = camera_pose @ transform_pose
             if compressed:
                 rgb = compression.from_jpg(rgb)
                 depth = compression.from_jp2(depth) / 1000.0
@@ -783,6 +785,7 @@ class SparseVoxelMap(object):
                 instance_classes=instance_classes,
                 instance_scores=instance_scores,
                 camera_K=K,
+                pose_correction=transform_pose,
             )
         return True
 
