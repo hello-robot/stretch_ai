@@ -551,7 +551,9 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
+            print("Adding this many points to the map:", world_xyz.shape)
             self.voxel_pcd.add(world_xyz, features=feats, rgb=rgb, weights=None)
+            print("Added points to the map:", self.voxel_pcd.num_points)
 
         if self._add_local_radius_points and len(self.observations) < 2:
             # Only do this at the first step, never after it.

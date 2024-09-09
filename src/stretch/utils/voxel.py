@@ -269,6 +269,26 @@ class VoxelizedPointcloud:
         """
         return self._points, self._features, self._weights, self._rgb
 
+    @property
+    def points(self) -> Tensor:
+        return self._points
+
+    @property
+    def features(self) -> Tensor:
+        return self._features
+
+    @property
+    def weights(self) -> Tensor:
+        return self._weights
+
+    @property
+    def rgb(self) -> Tensor:
+        return self._rgb
+
+    @property
+    def num_points(self) -> int:
+        return len(self._points)
+
     def clone(self):
         """
         Deep copy of object. All internal tensors are cloned individually.
