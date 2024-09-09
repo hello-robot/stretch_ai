@@ -427,17 +427,18 @@ import open3d as o3d
 from scipy.spatial import cKDTree
 
 
-def ransac_transform(source_xyz, target_xyz, visualize=False):
+def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold: float = 0.01):
     """
     Find the transformation between two point clouds using RANSAC.
 
     Parameters:
-    source_xyz (np.ndarray): Source point cloud as a Nx3 numpy array
-    target_xyz (np.ndarray): Target point cloud as a Nx3 numpy array
-    visualize (bool): If True, visualize the registration result
+        source_xyz (np.ndarray): Source point cloud as a Nx3 numpy array
+        target_xyz (np.ndarray): Target point cloud as a Nx3 numpy array
+        visualize (bool): If True, visualize the registration result
+        distance_threshold (float): Maximum correspondence distance
 
     Returns:
-    np.ndarray: 4x4 transformation matrix
+        np.ndarray: 4x4 transformation matrix
     """
     # Convert numpy arrays to Open3D point clouds
     source = o3d.geometry.PointCloud()
@@ -462,8 +463,6 @@ def ransac_transform(source_xyz, target_xyz, visualize=False):
     )
 
     # Apply RANSAC registration
-    distance_threshold = 0.01
-
     result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
         source,
         target,
