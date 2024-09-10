@@ -60,6 +60,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
     is_flag=True,
     help="Don't move the robot to the instance, if using real robot instead of offline data",
 )
+@click.option("--show-svm", is_flag=True, help="Show the SVM output")
 @click.option("-o", "--offline", is_flag=True, help="Run code offline on stored data.")
 def main(
     device_id: int = 0,
@@ -82,6 +83,7 @@ def main(
     all_matches: bool = False,
     threshold: float = 0.5,
     offline: bool = False,
+    show_svm: bool = False,
 ):
 
     print("- Load parameters")
@@ -133,6 +135,9 @@ def main(
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
         agent.voxel_map.read_from_pickle(input_path, num_frames=frame)
+
+    if show_svm:
+        agent.voxel_map.show()
 
     try:
         if len(text) == 0:

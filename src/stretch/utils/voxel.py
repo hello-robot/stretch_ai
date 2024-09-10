@@ -202,6 +202,9 @@ class VoxelizedPointcloud:
         cluster_voxel_idx, cluster_consecutive_idx, _ = voxelize(
             all_points, voxel_size=self.voxel_size, start=self._mins, end=self._maxs
         )
+        if self._points is not None:
+            print(self._points.shape, all_points.shape, cluster_consecutive_idx.shape)
+        print(all_points.shape)
         self._points, self._features, self._weights, self._rgb = reduce_pointcloud(
             cluster_consecutive_idx,
             pos=all_points,
@@ -210,6 +213,8 @@ class VoxelizedPointcloud:
             rgbs=all_rgb,
             feature_reduce=self.feature_pool_method,
         )
+        print(self._points.shape, all_points.shape, cluster_consecutive_idx.shape)
+        print("Done adding")
         return
 
     def get_idxs(self, points: Tensor) -> Tuple[Tensor, Tensor]:

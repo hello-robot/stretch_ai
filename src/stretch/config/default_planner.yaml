@@ -28,16 +28,17 @@ max_depth: 2.0
 
 # Object detection parameters
 detection:
-  module: "detic"
+  # module: "detic"
+  module: "yolo"
   category_map_file: example_cat_map.json
-  use_detic_viz: True
+  use_detic_viz: False
 
 # Point cloud cleanup
 filters:
   smooth_kernel_size: 2
   #smooth_kernel_size: 0
   use_median_filter: True
-  median_filter_size: 2
+  median_filter_size: 3
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
