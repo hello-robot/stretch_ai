@@ -205,7 +205,6 @@ class VoxelizedPointcloud:
         )
         if self._points is not None:
             print(self._points.shape, all_points.shape, cluster_consecutive_idx.shape)
-        print(all_points.shape)
         self._points, self._features, self._weights, self._rgb = reduce_pointcloud(
             cluster_consecutive_idx,
             pos=all_points,
@@ -215,9 +214,6 @@ class VoxelizedPointcloud:
             feature_reduce=self.feature_pool_method,
             min_weight_per_voxel=min_weight_per_voxel,
         )
-        print(self._points.shape, all_points.shape, cluster_consecutive_idx.shape)
-        print("Done adding")
-        breakpoint()
         return
 
     def get_idxs(self, points: Tensor) -> Tuple[Tensor, Tensor]:
