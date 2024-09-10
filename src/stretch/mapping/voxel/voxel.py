@@ -1079,11 +1079,11 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
-    def delete_instance(self, instance: Instance, force_update=False) -> None:
+    def delete_instance(self, instance: Instance, force_update=False, min_z=0) -> None:
         """Remove an instance from the map"""
         print("Deleting instance", instance.global_id)
         print("Bounds: ", instance.bounds)
-        self.delete_obstacles(instance.bounds, force_update=force_update)
+        self.delete_obstacles(instance.bounds, force_update=force_update, min_z = min_z)
         self.instances.pop_global_instance(env_id=0, global_instance_id=instance.global_id)
 
     def delete_obstacles(
@@ -1092,8 +1092,11 @@ class SparseVoxelMap(object):
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
         force_update: Optional[bool] = False,
+        min_z: Optional[float] = 0.0,
     ) -> None:
         """Delete obstacles from the map"""
+        # update bounds with min z threshold
+        bounds[2,0] = max(min_z, bounds[2,0])
         self.voxel_pcd.remove(bounds, point, radius)
 
         # Force recompute of 2d map
