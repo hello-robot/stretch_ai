@@ -21,6 +21,7 @@ pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacle
 min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
+add_local_every_step: True
 remove_visited_from_obstacles: False
 min_depth: 0.5
 # max_depth: 2.5

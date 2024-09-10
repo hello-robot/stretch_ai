@@ -143,5 +143,5 @@ def test_svm_large():
 
 if __name__ == "__main__":
     debug = True
-    test_svm_small()
-    # test_svm_large()
+    # test_svm_small()
+    test_svm_large()
