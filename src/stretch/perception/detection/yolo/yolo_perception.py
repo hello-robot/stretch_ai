@@ -119,7 +119,7 @@ class YoloPerception(PerceptionModule):
             task_observations["semantic_frame"] = None
             return (
                 np.zeros(rgb.shape[0], rgb.shape[1]),
-                np.zeros(rgb.shape[0], rgb.shape[1]),
+                -1 * np.ones(rgb.shape[0], rgb.shape[1]),
                 task_observations,
             )
 

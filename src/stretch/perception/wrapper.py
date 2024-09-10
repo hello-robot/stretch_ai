@@ -182,7 +182,6 @@ class OvmmPerception:
         )
         obs.semantic = semantic
         obs.instance = instance
-        breakpoint()
         if obs.task_observations is None:
             obs.task_observations = task_observations
         else:
