@@ -171,6 +171,7 @@ def get_similarity(
     text_embedding1: Optional[Tensor] = None,
     text_embedding2: Optional[Tensor] = None,
     view_matching_config: ViewMatchingConfig = ViewMatchingConfig(),
+    verbose: bool = False,
 ):
     """Compute similarity based on bounding boxes for now"""
     # BBox similarity
@@ -180,14 +181,16 @@ def get_similarity(
         overlap_eps=view_matching_config.box_overlap_eps,
         mode=view_matching_config.box_match_mode,
     )
-    print(f"geometric similarity score: {overlap_similarity}")
+    if verbose:
+        print(f"geometric similarity score: {overlap_similarity}")
     similarity = overlap_similarity * view_matching_config.box_overlap_weight
 
     if view_matching_config.visual_similarity_weight > 0.0:
         visual_similarity = nn.CosineSimilarity(dim=1)(
             visual_embedding1, torch.stack(visual_embedding2, dim=0)
         ).unsqueeze(0)
-        print(f"visual similarity score: {visual_similarity}")
+        if verbose:
+            print(f"visual similarity score: {visual_similarity}")
         # Handle the case where there is no embedding to examine
         # If we return visual similarity, only then do we use it
         if visual_similarity is not None:

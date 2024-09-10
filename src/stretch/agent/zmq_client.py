@@ -477,7 +477,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._finish = False
         self._last_step = -1
 
-    def open_gripper(self, blocking: bool = True, timeout: float = 10.0) -> bool:
+    def open_gripper(
+        self, blocking: bool = True, timeout: float = 10.0, verbose: bool = False
+    ) -> bool:
         """Open the gripper based on hard-coded presets."""
         gripper_target = self._robot_model.GRIPPER_OPEN
         print("[ZMQ CLIENT] Opening gripper to", gripper_target)
@@ -489,7 +491,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
-                print("Opening gripper:", joint_state[HelloStretchIdx.GRIPPER])
+                if verbose:
+                    print("Opening gripper:", joint_state[HelloStretchIdx.GRIPPER])
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
                 if gripper_err < 0.1:
                     return True
@@ -503,7 +506,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return True
 
     def close_gripper(
-        self, loose: bool = False, blocking: bool = True, timeout: float = 10.0
+        self,
+        loose: bool = False,
+        blocking: bool = True,
+        timeout: float = 10.0,
+        verbose: bool = False,
     ) -> bool:
         """Close the gripper based on hard-coded presets."""
         gripper_target = (
@@ -518,7 +525,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if joint_state is None:
                     continue
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
-                print("Closing gripper:", gripper_err, gripper_target)
+                if verbose:
+                    print("Closing gripper:", gripper_err, gripper_target)
                 if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()

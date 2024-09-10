@@ -109,6 +109,7 @@ class SparseVoxelMap(object):
         mask_cropped_instances="False",
     )
     debug_valid_depth: bool = False
+    debug_instance_memory_processing_time: bool = False
 
     def __init__(
         self,
@@ -377,6 +378,7 @@ class SparseVoxelMap(object):
         instance_scores: Optional[Tensor] = None,
         obs: Optional[Observations] = None,
         xyz_frame: str = "camera",
+        pose_correction: Optional[Tensor] = None,
         **info,
     ):
         """Add this to our history of observations. Also update the current running map.
@@ -470,6 +472,9 @@ class SparseVoxelMap(object):
                 inv_intrinsics=torch.linalg.inv(camera_K[:3, :3]).unsqueeze(0),
             )
 
+        if pose_correction is not None:
+            full_world_xyz = full_world_xyz @ pose_correction[:3, :3].T + pose_correction[:3, 3]
+
         # add observations before we start changing things
         self.observations.append(
             Frame(
@@ -538,8 +543,9 @@ class SparseVoxelMap(object):
             )
             t1 = timeit.default_timer()
             self.instances.associate_instances_to_memory()
-            t2 = timeit.default_timer()
-            print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
+            if self.debug_instance_memory_processing_time:
+                t2 = timeit.default_timer()
+                print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
 
         if self.prune_detected_objects:
             valid_depth = valid_depth & (instance_image == self.background_instance_label)
@@ -669,10 +675,24 @@ class SparseVoxelMap(object):
             raise NotImplementedError("unsupported data type for tensor:", tensor)
 
     def read_from_pickle(
-        self, filename: str, num_frames: int = -1, perception: Optional[OvmmPerception] = None
+        self,
+        filename: str,
+        num_frames: int = -1,
+        perception: Optional[OvmmPerception] = None,
+        transform_pose: Optional[torch.Tensor] = None,
+        reset: bool = False,
     ) -> bool:
-        """Read from a pickle file as above. Will clear all currently stored data first."""
-        self.reset_cache()
+        """Read from a pickle file as above. Will clear all currently stored data first.
+
+        Args:
+            filename(str): path to the pickle file
+            num_frames(int): number of frames to read from the file
+            perception(OvmmPerception): perception model to use for instance segmentation
+            transform_pose(torch.Tensor): transformation to apply to camera poses
+            reset(bool): whether to clear all currently stored data first
+        """
+        if reset:
+            self.reset_cache()
         if isinstance(filename, str):
             filename = Path(filename)
         assert filename.exists(), f"No file found at {filename}"
@@ -699,17 +719,22 @@ class SparseVoxelMap(object):
             return False
 
         for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
-            # TODO: compression of observations
-            # Right now we just do not support this
-            # data["obs"],  TODO: compression of Observations
-            zip(
-                data["camera_poses"],
-                data["camera_K"],
-                data["rgb"],
-                data["feats"],
-                data["depth"],
-                data["base_poses"],
-                instance_data,
+            tqdm.tqdm(
+                # TODO: compression of observations
+                # Right now we just do not support this
+                # data["obs"],  TODO: compression of Observations
+                zip(
+                    data["camera_poses"],
+                    data["camera_K"],
+                    data["rgb"],
+                    data["feats"],
+                    data["depth"],
+                    data["base_poses"],
+                    instance_data,
+                ),
+                ncols=80,
+                desc="Reading data from pickle",
+                unit="frame",
             )
         ):
             # Handle the case where we dont actually want to load everything
@@ -767,6 +792,7 @@ class SparseVoxelMap(object):
                 instance_classes=instance_classes,
                 instance_scores=instance_scores,
                 camera_K=K,
+                pose_correction=transform_pose,
             )
         return True
 
@@ -1157,6 +1183,7 @@ class SparseVoxelMap(object):
         return SparseVoxelMap(
             resolution=voxel_size,
             local_radius=parameters["local_radius"],
+            grid_resolution=parameters["voxel_size"],
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
             neg_obs_height=parameters["neg_obs_height"],

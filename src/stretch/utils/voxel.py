@@ -203,6 +203,7 @@ class VoxelizedPointcloud:
         cluster_voxel_idx, cluster_consecutive_idx, _ = voxelize(
             all_points, voxel_size=self.voxel_size, start=self._mins, end=self._maxs
         )
+
         self._points, self._features, self._weights, self._rgb = reduce_pointcloud(
             cluster_consecutive_idx,
             pos=all_points,
@@ -270,6 +271,26 @@ class VoxelizedPointcloud:
             weights (Tensor): N
         """
         return self._points, self._features, self._weights, self._rgb
+
+    @property
+    def points(self) -> Tensor:
+        return self._points
+
+    @property
+    def features(self) -> Tensor:
+        return self._features
+
+    @property
+    def weights(self) -> Tensor:
+        return self._weights
+
+    @property
+    def rgb(self) -> Tensor:
+        return self._rgb
+
+    @property
+    def num_points(self) -> int:
+        return len(self._points)
 
     def clone(self):
         """

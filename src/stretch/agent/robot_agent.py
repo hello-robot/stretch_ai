@@ -34,7 +34,7 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference
-from stretch.utils.point_cloud import find_se3_transform
+from stretch.utils.point_cloud import ransac_transform
 
 
 class RobotAgent:
@@ -42,7 +42,7 @@ class RobotAgent:
 
     _retry_on_fail: bool = False
     debug_update_timing: bool = False
-    update_rerun_every_time: bool = False
+    update_rerun_every_time: bool = True
 
     def __init__(
         self,
@@ -51,7 +51,6 @@ class RobotAgent:
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
-        rpc_stub=None,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
@@ -64,7 +63,6 @@ class RobotAgent:
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.rpc_stub = rpc_stub
         self.grasp_client = grasp_client
         self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
@@ -120,10 +118,10 @@ class RobotAgent:
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
             self.robot.get_robot_model(),
-            step_size=parameters["step_size"],
-            rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters["dilate_frontier_size"],
-            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            step_size=parameters["motion_planner"]["step_size"],
+            rotation_step_size=parameters["motion_planner"]["rotation_step_size"],
+            dilate_frontier_size=parameters["motion_planner"]["frontier"]["dilate_frontier_size"],
+            dilate_obstacle_size=parameters["motion_planner"]["frontier"]["dilate_obstacle_size"],
             grid=self.voxel_map.grid,
         )
 
@@ -301,6 +299,11 @@ class RobotAgent:
         return activations, matches
 
     def get_navigation_space(self) -> ConfigurationSpace:
+        """Returns reference to the navigation space."""
+        return self.space
+
+    @property
+    def navigation_space(self) -> ConfigurationSpace:
         """Returns reference to the navigation space."""
         return self.space
 
@@ -1036,6 +1039,7 @@ class RobotAgent:
             sampler = self.space.sample_closest_frontier(
                 start,
                 verbose=False,
+                expand_size=self._default_expand_frontier_size,
                 min_dist=self._frontier_min_dist,
                 step_dist=self._frontier_step_dist,
             )
@@ -1125,10 +1129,12 @@ class RobotAgent:
             else:
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
-                    print("Failed. Try again!")
+                    print("Exploration failed. Try again!")
                     continue
                 else:
-                    print("Failed. Quitting!")
+                    print("Start = ", start)
+                    print("Reason = ", res.reason)
+                    print("Exploration failed. Quitting!")
                     break
 
             # Error handling
@@ -1156,7 +1162,7 @@ class RobotAgent:
                 # After doing everything - show where we will move to
                 robot_center = np.zeros(3)
                 robot_center[:2] = self.robot.get_base_pose()[:2]
-                self.voxel_map.show(
+                self.navigation_space.show(
                     orig=robot_center,
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
@@ -1349,7 +1355,13 @@ class RobotAgent:
 
         self.robot.switch_to_navigation_mode()
 
-    def load_map(self, filename: str, color_weight: float = 0.5, debug: bool = False) -> None:
+    def load_map(
+        self,
+        filename: str,
+        color_weight: float = 0.5,
+        debug: bool = False,
+        ransac_distance_threshold: float = 0.1,
+    ) -> None:
         """Load a map from a PKL file. Creates a new voxel map and loads the data from the file into this map. Then uses RANSAC to figure out where the current map and the loaded map overlap, computes a transform, and applies this transform to the loaded map to align it with the current map.
 
         Args:
@@ -1363,21 +1375,37 @@ class RobotAgent:
         xyz1, _, _, rgb1 = loaded_voxel_map.get_pointcloud()
         xyz2, _, _, rgb2 = self.voxel_map.get_pointcloud()
 
-        tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
+        # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
+        tform, fitness, inlier_rmse, num_inliers = ransac_transform(
+            xyz1, xyz2, visualize=debug, distance_threshold=ransac_distance_threshold
+        )
+        print("------------- Loaded map ---------------")
+        print("Aligning maps...")
+        print("RANSAC transform from old to new map:")
+        print(tform)
+        print("Fitness:", fitness)
+        print("Inlier RMSE:", inlier_rmse)
+        print("Num inliers:", num_inliers)
+        print("----------------------------------------")
 
-        # Apply the transform to the loaded map
-        xyz1 = xyz1 @ tform[0].T + tform[1]
-
+        # Apply the transform to the loaded map and
         if debug:
             # for visualization
             from stretch.utils.point_cloud import show_point_cloud
 
+            # Apply the transform to the loaded map
+            xyz1 = xyz1 @ tform[:3, :3].T + tform[:3, 3]
+
             _xyz = np.concatenate([xyz1.cpu().numpy(), xyz2.cpu().numpy()], axis=0)
-            _rgb = np.concatenate([rgb1.cpu().numpy(), rgb2.cpu().numpy() * 0.5], axis=0)
+            _rgb = np.concatenate([rgb1.cpu().numpy(), rgb2.cpu().numpy() * 0.5], axis=0) / 255
             show_point_cloud(_xyz, _rgb, orig=np.zeros(3))
 
         # Add the loaded map to the current map
-        self.voxel_map.add_pointcloud(xyz1, rgb1)
+        print("Reprocessing map with new pose transform...")
+        self.voxel_map.read_from_pickle(
+            filename, perception=self.semantic_sensor, transform_pose=tform
+        )
+        self.voxel_map.show()
 
     def get_detections(self, **kwargs) -> List[Instance]:
         """Get the current detections."""
