@@ -193,6 +193,32 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def parameters(self) -> Parameters:
         return self._parameters
 
+    def get_ee_rgbd(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Get the RGB and depth images from the end effector camera.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: The RGB and depth images
+        """
+        with self._servo_lock:
+            if self._servo is None:
+                return None, None
+            rgb = self._servo_obs["ee_rgb"]
+            depth = self._servo_obs["ee_depth"]
+        return rgb, depth
+
+    def get_head_rgbd(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Get the RGB and depth images from the head camera.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: The RGB and depth images
+        """
+        with self._servo_lock:
+            if self._servo is None:
+                return None, None
+            rgb = self._servo["head_rgb"]
+            depth = self._servo["head_depth"]
+        return rgb, depth
+
     def get_joint_state(self, timeout: float = 5.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get the current joint positions, velocities, and efforts"""
         t0 = timeit.default_timer()
@@ -1056,6 +1082,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     f"[SERVO] time taken = {dt} avg = {sum_time/steps} keys={[k for k in output.keys()]}"
                 )
             t0 = timeit.default_timer()
+
+    @property
+    def running(self) -> bool:
+        """Is the client running"""
+        return not self._finish
 
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
