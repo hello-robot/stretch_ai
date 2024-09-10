@@ -118,8 +118,8 @@ class YoloPerception(PerceptionModule):
         if pred[0].boxes is None or pred[0].masks is None:
             task_observations["semantic_frame"] = None
             return (
-                np.zeros(rgb.shape[0], rgb.shape[1]),
-                -1 * np.ones(rgb.shape[0], rgb.shape[1]),
+                np.zeros((rgb.shape[0], rgb.shape[1])),
+                -1 * np.ones((rgb.shape[0], rgb.shape[1])),
                 task_observations,
             )
 
