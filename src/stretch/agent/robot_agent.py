@@ -421,6 +421,7 @@ class RobotAgent:
                 pan = -1 * i * np.pi / 4
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
+                time.sleep(0.1)
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()

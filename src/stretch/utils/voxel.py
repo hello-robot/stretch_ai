@@ -137,6 +137,7 @@ class VoxelizedPointcloud:
         features: Optional[Tensor],
         rgb: Optional[Tensor],
         weights: Optional[Tensor] = None,
+        min_weight_per_voxel: float = 10.0,
     ):
         """Add a feature pointcloud to the voxel grid.
 
@@ -212,9 +213,11 @@ class VoxelizedPointcloud:
             weights=all_weights,
             rgbs=all_rgb,
             feature_reduce=self.feature_pool_method,
+            min_weight_per_voxel=min_weight_per_voxel,
         )
         print(self._points.shape, all_points.shape, cluster_consecutive_idx.shape)
         print("Done adding")
+        breakpoint()
         return
 
     def get_idxs(self, points: Tensor) -> Tuple[Tensor, Tensor]:
@@ -386,6 +389,7 @@ def reduce_pointcloud(
     weights: Optional[Tensor] = None,
     rgbs: Optional[Tensor] = None,
     feature_reduce: str = "mean",
+    min_weight_per_voxel: float = 10.0,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     """Pools values within each voxel
 
@@ -412,12 +416,17 @@ def reduce_pointcloud(
 
     pos_cluster = scatter_weighted_mean(pos, weights, voxel_cluster, weights_cluster, dim=0)
 
+    valid_idx = weights_cluster >= min_weight_per_voxel
+
     if rgbs is not None:
         rgb_cluster = scatter_weighted_mean(rgbs, weights, voxel_cluster, weights_cluster, dim=0)
+        rgb_cluster = rgb_cluster[valid_idx]
     else:
         rgb_cluster = None
 
     if features is None:
+        weights_cluster = weights_cluster[valid_idx]
+        pos_cluster = pos_cluster[valid_idx]
         return pos_cluster, None, weights_cluster, rgb_cluster
 
     if feature_reduce == "mean":
@@ -431,6 +440,9 @@ def reduce_pointcloud(
     else:
         raise NotImplementedError(f"Unknown feature reduction method {feature_reduce}")
 
+    weights_cluster = weights_cluster[valid_idx]
+    pos_cluster = pos_cluster[valid_idx]
+    feature_cluster = feature_cluster[valid_idx]
     return pos_cluster, feature_cluster, weights_cluster, rgb_cluster
 
 

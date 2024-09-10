@@ -99,6 +99,7 @@ class SparseVoxelMap(object):
         encoder (Optional[BaseImageTextEncoder]): An encoder for feature embeddings (optional).
         map_2d_device (str): The device for 2D mapping.
         use_instance_memory (bool): Whether to create object-centric instance memory.
+        min_points_per_voxel (int): The minimum number of points per voxel.
     """
 
     DEFAULT_INSTANCE_MAP_KWARGS = dict(
@@ -139,6 +140,7 @@ class SparseVoxelMap(object):
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
         prune_detected_objects: bool = False,
+        min_points_per_voxel: int = 10,
     ):
         """
         Args:
@@ -212,6 +214,7 @@ class SparseVoxelMap(object):
         self.voxel_kwargs = voxel_kwargs
         self.encoder = encoder
         self.map_2d_device = map_2d_device
+        self._min_points_per_voxel = min_points_per_voxel
 
         # Set the device we use for things here
         if device is not None:
@@ -549,7 +552,13 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
-            self.voxel_pcd.add(world_xyz, features=feats, rgb=rgb, weights=None)
+            self.voxel_pcd.add(
+                world_xyz,
+                features=feats,
+                rgb=rgb,
+                weights=None,
+                min_weight_per_voxel=self._min_points_per_voxel,
+            )
 
         if self._add_local_radius_points and len(self.observations) < 2:
             # Only do this at the first step, never after it.
