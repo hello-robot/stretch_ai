@@ -1162,6 +1162,7 @@ class SparseVoxelMap(object):
             neg_obs_height=parameters["neg_obs_height"],
             min_depth=parameters["min_depth"],
             max_depth=parameters["max_depth"],
+            min_points_per_voxel=parameters["min_points_per_voxel"],
             pad_obstacles=parameters["pad_obstacles"],
             add_local_radius_points=parameters.get("add_local_radius_points", default=True),
             remove_visited_from_obstacles=parameters.get(
