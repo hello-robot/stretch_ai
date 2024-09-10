@@ -203,8 +203,6 @@ class VoxelizedPointcloud:
         cluster_voxel_idx, cluster_consecutive_idx, _ = voxelize(
             all_points, voxel_size=self.voxel_size, start=self._mins, end=self._maxs
         )
-        if self._points is not None:
-            print(self._points.shape, all_points.shape, cluster_consecutive_idx.shape)
         self._points, self._features, self._weights, self._rgb = reduce_pointcloud(
             cluster_consecutive_idx,
             pos=all_points,
