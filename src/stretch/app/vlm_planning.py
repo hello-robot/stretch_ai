@@ -185,12 +185,34 @@ def main(
     print("Agent loaded:", agent)
     # Display with agent overlay
     space = agent.get_navigation_space()
-
     if show_svm:
         footprint = dummy_robot.get_footprint()
         print(f"{x0} valid = {space.is_valid(x0)}")
         voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
 
+        import copy
+        import open3d as o3d
+        new_map = copy.deepcopy(voxel_map)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(voxel_map.get_instances()[2].point_cloud.numpy())
+        o3d.visualization.draw_geometries([pcd])
+        new_map.delete_instance(voxel_map.get_instances()[2], force_update=True)
+        new_map.show()
+        # from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
+        # new_space = SparseVoxelMapNavigationSpace(new_map,agent.robot.get_robot_model(),step_size=parameters["step_size"],rotation_step_size=parameters["rotation_step_size"],dilate_frontier_size=parameters["dilate_frontier_size"],dilate_obstacle_size=parameters["dilate_obstacle_size"],grid=new_map.grid)
+        planning_agent = RobotAgent(
+            dummy_robot,
+            parameters,
+            rpc_stub=None,
+            grasp_client=None,
+            voxel_map=new_map,
+            semantic_sensor=semantic_sensor,
+        )
+        breakpoint()    
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(planning_agent.get_all_reachable_instances()[0].point_cloud.numpy())
+        o3d.visualization.draw_geometries([pcd])    
+    
     if test_vlm:
         start_is_valid = space.is_valid(x0, verbose=True, debug=False)
         if not start_is_valid:

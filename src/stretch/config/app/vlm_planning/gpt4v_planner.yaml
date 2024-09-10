@@ -1,5 +1,5 @@
 encoder: "dinov2siglip"
-encoder_args: "google/siglip-base-patch16-224"
+encoder_args: {"version": "google/siglip-base-patch16-224"}
 tts_engine: "gTTS"
 open_vocab_category_map_file: example_cat_map.json
 
@@ -57,6 +57,7 @@ motion:
     head_tilt: 0.01
   joint_thresholds:
     head_not_moving_tolerance: 1.0e-4
+    gripper_open_threshold: 0.3
 
 # Exploration
 in_place_rotation_steps: 8
@@ -81,7 +82,7 @@ instance_memory:
 # TAMP parameters
 guarantee_instance_is_reachable: True
 plan_with_reachable_instances: True
-plan_with_scene_graph: True
+plan_with_scene_graph: False
 scene_graph:
   max_near_distance: 0.3
   min_on_height: 0.05

@@ -767,11 +767,11 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
-    def get_2d_map(self, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+    def get_2d_map(self, force_update = False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
 
         # Is this already cached? If so we don't need to go to all this work
-        if self._map2d is not None and self._seq == self._2d_last_updated:
+        if self._map2d is not None and self._seq == self._2d_last_updated and not force_update:
             return self._map2d
 
         # Convert metric measurements to discrete
@@ -1079,11 +1079,11 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
-    def delete_instance(self, instance: Instance) -> None:
+    def delete_instance(self, instance: Instance, force_update=False) -> None:
         """Remove an instance from the map"""
         print("Deleting instance", instance.global_id)
         print("Bounds: ", instance.bounds)
-        self.delete_obstacles(instance.bounds)
+        self.delete_obstacles(instance.bounds, force_update=force_update)
         self.instances.pop_global_instance(env_id=0, global_instance_id=instance.global_id)
 
     def delete_obstacles(
@@ -1091,12 +1091,13 @@ class SparseVoxelMap(object):
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
+        force_update: Optional[bool] = False,
     ) -> None:
         """Delete obstacles from the map"""
         self.voxel_pcd.remove(bounds, point, radius)
 
         # Force recompute of 2d map
-        self.get_2d_map()
+        self.get_2d_map(force_update=force_update)
 
     def _show_open3d(
         self,

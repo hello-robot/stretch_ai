@@ -110,17 +110,16 @@ class VoxelizedPointcloud:
                 _bounds = torch.tensor(bounds)
             else:
                 _bounds = bounds
-            _bounds = _bounds.flatten()
-            assert len(_bounds) == 6, "Bounds must be 6D"
-            mask = torch.any(self._points > _bounds[:3], dim=1) & torch.any(
-                self._points < _bounds[3:], dim=1
+            assert len(_bounds.flatten()) == 6, "Bounds must be 6D"
+            mask = torch.all(self._points > _bounds[:,0], dim=1) & torch.all(
+                self._points < _bounds[:,1], dim=1
             )
-            self._points = self._points[mask]
+            self._points = self._points[~mask]
             if self._features is not None:
-                self._features = self._features[mask]
+                self._features = self._features[~mask]
             if self._weights is not None:
-                self._weights = self._weights[mask]
-            self._rgb = self._rgb[mask]
+                self._weights = self._weights[~mask]
+            self._rgb = self._rgb[~mask]
 
     def add(
         self,
