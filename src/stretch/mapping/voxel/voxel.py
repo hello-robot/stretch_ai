@@ -238,6 +238,7 @@ class SparseVoxelMap(object):
 
         # Add points with local_radius to the voxel map at (0,0,0) unless we receive lidar points
         self._add_local_radius_points = add_local_radius_points
+        self._add_local_radius_every_step = add_local_radius_every_step
         self._remove_visited_from_obstacles = remove_visited_from_obstacles
         self.local_radius = local_radius
 
@@ -567,7 +568,9 @@ class SparseVoxelMap(object):
                 min_weight_per_voxel=self._min_points_per_voxel,
             )
 
-        if self._add_local_radius_points and len(self.observations) < 2:
+        if self._add_local_radius_points and (
+            len(self.observations) < 2 or self._add_local_radius_every_step
+        ):
             # Only do this at the first step, never after it.
             # TODO: just get this from camera_pose?
             # Add local radius points to the map around base
