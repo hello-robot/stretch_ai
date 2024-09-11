@@ -54,7 +54,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
     help="Find all objects with a similarity to the query above some threshold",
 )
 # This threshold seems to work ok for Siglip - will not work for e.g. CLIP
-@click.option("--threshold", default=0.05, help="Threshold for similarity when using --all-matches")
+@click.option("--threshold", default=0.5, help="Threshold for similarity when using --all-matches")
 @click.option(
     "--stationary",
     is_flag=True,
@@ -173,7 +173,7 @@ def main(
         else:
             # Get the best instance using agent's API
             if all_matches:
-                instances = agent.get_instances_from_text(text, threshold=threshold)
+                scores, instances = agent.get_instances_from_text(text, threshold=threshold)
             else:
                 _, instance = agent.get_instance_from_text(text)
                 instances = [instance]
@@ -182,8 +182,11 @@ def main(
                 logger.error("No matches found for query")
                 return
 
-            # Show the best view of the detected instance
-            instance.show_best_view()
+            # Loop over all instances and show them to the user
+            for instance in instances:
+                breakpoint()
+                # Show the best view of the detected instance
+                instance.show_best_view()
 
             if real_robot and not stationary:
                 # Confirm before moving

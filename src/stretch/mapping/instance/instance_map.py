@@ -755,14 +755,6 @@ class InstanceMemory:
 
             percent_points = n_mask / (instance_mask.shape[0] * instance_mask.shape[1])
 
-            # Create InstanceView if the view is large enough
-            # print(f"n_mask: {n_mask}/{self.min_pixels_for_instance_view}, n_points: {n_points}>1, percent_points: {percent_points}>{self.min_percent_for_instance_view}")
-            # import matplotlib
-            # matplotlib.use("TkAgg")
-            # import matplotlib.pyplot as plt
-            # plt.imshow(cropped_image / 255)
-            # plt.show()
-
             added = False
             if (
                 n_mask >= self.min_pixels_for_instance_view

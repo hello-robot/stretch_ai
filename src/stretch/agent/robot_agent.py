@@ -43,6 +43,7 @@ class RobotAgent:
     _retry_on_fail: bool = False
     debug_update_timing: bool = False
     update_rerun_every_time: bool = True
+    normalize_embeddings: bool = False
 
     def __init__(
         self,
@@ -68,7 +69,6 @@ class RobotAgent:
         self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
-        self.normalize_embeddings = True
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
@@ -232,6 +232,7 @@ class RobotAgent:
         encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
         best_instance = None
         best_activation = -1.0
+        print("--- Searching for instance ---")
         for instance in self.voxel_map.get_instances():
             ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
@@ -287,7 +288,7 @@ class RobotAgent:
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
-            activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
+            activation = self.encoder.compute_score(emb, encoded_text)
             # Add the instance to the list of matches if the cosine similarity is above the threshold
             if activation.item() > threshold:
                 activations.append(activation.item())
