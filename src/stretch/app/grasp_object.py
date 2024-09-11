@@ -25,7 +25,13 @@ def get_task(robot, demo, target_object):
     try:
         task = Task()
         update = UpdateOperation("update_scene", demo, retry_on_failure=True)
-        update.configure(move_head=False, target_object=target_object)
+        update.configure(
+            move_head=False,
+            target_object=target_object,
+            show_map_so_far=False,
+            clear_voxel_map=True,
+            show_instances_detected=False,
+        )
         grasp_object = GraspObjectOperation(
             "grasp_the_object",
             demo,
