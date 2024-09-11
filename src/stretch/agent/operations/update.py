@@ -24,7 +24,7 @@ class UpdateOperation(ManagedOperation):
     clear_voxel_map: bool = False
     move_head: Optional[bool] = None
     target_object: str = "cup"
-    match: str = "name"
+    match_method: str = "name"
 
     def set_target_object_class(self, object_class: str):
         self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
