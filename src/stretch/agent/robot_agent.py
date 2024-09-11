@@ -237,7 +237,7 @@ class RobotAgent:
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
-            activation = torch.cosine_similarity(emb, encoded_text, dim=-1)
+            activation = self.encoder.compute_score(emb, encoded_text)
             if activation.item() > best_activation:
                 best_activation = activation.item()
                 best_instance = instance

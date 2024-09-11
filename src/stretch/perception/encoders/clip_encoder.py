@@ -49,6 +49,10 @@ class ClipEncoder(BaseImageTextEncoder):
             text_features = self.model.encode_text(text)
         return text_features.float()
 
+    def compute_score(self, image: torch.Tensor, text: torch.Tensor) -> torch.Tensor:
+        """Compute similarity score between image and text"""
+        return (100.0 * image @ text.T).squeeze()
+
 
 class NormalizedClipEncoder(ClipEncoder):
     """Simple wrapper for encoding different things as text. Normalizes the results."""

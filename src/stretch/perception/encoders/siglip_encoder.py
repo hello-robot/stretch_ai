@@ -55,3 +55,7 @@ class SiglipEncoder(BaseImageTextEncoder):
         with torch.no_grad():
             text_features = self.model.get_text_features(**inputs)
         return text_features.float()
+
+    def compute_score(self, image: torch.Tensor, text: torch.Tensor) -> torch.Tensor:
+        """Compute similarity score between image and text"""
+        return torch.nn.functional.cosine_similarity(image, text, dim=-1)
