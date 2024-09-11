@@ -16,7 +16,6 @@ import numpy as np
 
 from stretch.agent.operations import GraspObjectOperation, UpdateOperation
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupManager
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.core.task import Task
@@ -26,12 +25,11 @@ from stretch.perception import create_semantic_sensor
 def get_task(robot, demo, target_object):
     """Create a very simple task just to test visual servoing to grasp."""
     try:
-        manager = PickupManager(demo, target_object=target_object)
         task = Task()
-        update = UpdateOperation("update_scene", manager, retry_on_failure=True)
+        update = UpdateOperation("update_scene", demo, retry_on_failure=True)
         grasp_object = GraspObjectOperation(
             "grasp_the_object",
-            manager,
+            demo,
         )
         grasp_object.configure(
             show_object_to_grasp=True,
@@ -40,6 +38,7 @@ def get_task(robot, demo, target_object):
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
         )
+        grasp_object.set_target_object_class(target_object)
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
