@@ -144,7 +144,7 @@ class HelloRobot:
             curr_gripper_pose = self.robot.get_gripper_position()
             # print('Robot means to move gripper to', next_gripper_pos * self.STRETCH_GRIPPER_MAX)
             # print('Robot actually moves gripper to', curr_gripper_pose)
-            if next_gripper_pos == -1 or (curr_gripper_pose > max(next_gripper_pos * self.STRETCH_GRIPPER_MAX, -0.2) + 0.1):
+            if next_gripper_pos == -1:
                 break
             
             if next_gripper_pos > 0:
@@ -205,7 +205,8 @@ class HelloRobot:
         # Moving only the lift first
         if mode == 1:
             target1 = state
-            target1[1] = target_state[1]
+            target1[0] = target_state[0]
+            target1[1] = min(1.1, target_state[1] + 0.2)
             self.robot.arm_to(target1, blocking = True, head = np.array([self.pan, self.tilt]))
 
         # print('pan tilt after', self.robot.get_pan_tilt())

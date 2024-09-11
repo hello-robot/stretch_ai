@@ -172,6 +172,8 @@ class LLM_Localizer():
 
     def owl_locater(self, A, encoded_image, timestamps_lst):
         for i in timestamps_lst:
+            if i not in encoded_image:
+                continue
             image_info = encoded_image[i][-1]
             res = self.compute_coord(A, image_info, threshold=0.15)
             if res is not None:

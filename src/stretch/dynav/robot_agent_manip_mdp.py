@@ -88,7 +88,7 @@ class RobotAgentMDP:
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.5, -0.5, -1.5]:
+        for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.6]:
                 start_time = time.time()
                 self.robot.head_to(pan, tilt, blocking = True)
@@ -292,15 +292,13 @@ class RobotAgentMDP:
             obj = text,
             socket = self.image_sender.manip_socket, 
             hello_robot = self.manip_wrapper)
-
-        print('Predicted width:', width)
     
         if rotation is None:
             return False
         
-        if width < 0.045 and self.re == 3:
+        if width < 0.05 and self.re == 3:
             gripper_width = 0.45
-        if width < 0.075 and self.re == 3: 
+        elif width < 0.075 and self.re == 3: 
             gripper_width = 0.6
         else:
             gripper_width = 1

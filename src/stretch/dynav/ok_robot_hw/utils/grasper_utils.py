@@ -14,7 +14,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
     image_publisher = ImagePublisher(camera, socket)
 
     # Centering the object
-    head_tilt_angles = [0.1, 0, -0.1]
+    head_tilt_angles = [0, -0.1, 0.1]
     tilt_retries, side_retries = 1, 0
     retry_flag = True
     head_tilt = INIT_HEAD_TILT
@@ -33,17 +33,17 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
                                     head_tilt=head_tilt)
             time.sleep(1)
         
-        elif (retry_flag !=0 and side_retries == 2):
+        elif (retry_flag !=0 and side_retries == 3):
             print("Tried in all angles but couldn't succed")
             time.sleep(1)
             return None, None, None, None
 
-        elif (side_retries == 2 and tilt_retries == 2):
+        elif (side_retries == 2 and tilt_retries == 3):
             hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
             side_retries = 3
 
         elif retry_flag == 2:
-            if (tilt_retries == 2):
+            if (tilt_retries == 3):
                 if (side_retries == 0):
                     hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
                     side_retries = 1
@@ -134,7 +134,8 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
 
     # Lifting the arm to high position as part of pregrasping position
     print('pan, tilt before', robot.robot.get_pan_tilt())
-    robot.move_to_position(lift_pos = 1.05, gripper_pos = gripper_width, head_pan = None, head_tilt = None)
+    robot.move_to_position(gripper_pos = gripper_width)
+    robot.move_to_position(lift_pos = 1.05, head_pan = None, head_tilt = None)
     print('pan, tilt after', robot.robot.get_pan_tilt())
 
     # Rotation for aligning Robot gripper frame to Model gripper frame
@@ -189,8 +190,11 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     # The distance between gripper and point is covered gradullay to allow for velocity control when it approaches the object
     # Lower velocity helps is not topping the light objects
     diff = abs(curr_diff - ref_diff)
-    if diff > 0.06:
-        dist = diff - 0.06
+    if diff > 0.08:
+        dist = diff - 0.08
+        state = robot.robot.get_six_joints()
+        state[1] += 0.02
+        robot.robot.arm_to(state, blocking = True)
         robot.move_to_pose(
             [0, 0, dist],
             [0, 0, 0],
@@ -200,7 +204,6 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
         
     while diff > 0.01:
         dist = min(0.03, diff)
-        print("Move to Secondary intermediate point with sleep 2s")
         robot.move_to_pose(
             [0, 0, dist],   
             [0, 0, 0],
@@ -218,4 +221,4 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     robot.move_to_position(arm_pos = 0.01)
     robot.move_to_position(wrist_pitch = 0.0)
     robot.move_to_position(lift_pos = min(robot.robot.get_six_joints()[1], 0.9), wrist_yaw = 2.5)
-    robot.move_to_position(lift_pos = min(robot.robot.get_six_joints()[1], 0.6))
+    robot.move_to_position(lift_pos = min(robot.robot.get_six_joints()[1], 0.55))

@@ -54,7 +54,7 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [145, 145]
+DEFAULT_GRID_SIZE = [200, 200]
 
 logger = logging.getLogger(__name__)
 
@@ -647,6 +647,7 @@ class SparseVoxelMap(object):
         # Crop to robot height
         min_height = int(self.obs_min_height / self.grid_resolution)
         max_height = int(self.obs_max_height / self.grid_resolution)
+        # print('min_height', min_height, 'max_height', max_height)
         grid_size = self.grid_size + [max_height]
         voxels = torch.zeros(grid_size, device=device)
 
