@@ -32,6 +32,7 @@ def get_task(robot, demo, target_object):
             demo,
         )
         grasp_object.configure(
+            target_object=target_object,
             show_object_to_grasp=True,
             servo_to_grasp=True,
             show_servo_gui=True,
