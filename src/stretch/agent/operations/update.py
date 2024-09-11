@@ -110,6 +110,11 @@ class UpdateOperation(ManagedOperation):
 
         if len(instances) == 0:
             self.warn(f"Could not find any instances of {self.target_object}.")
+            import matplotlib.pyplot as plt
+
+            for instance in self.agent.get_instances():
+                plt.imshow(instance.get_best_view().get_image())
+                plt.show()
             return
 
         print("Check explored instances for reachable receptacles:")

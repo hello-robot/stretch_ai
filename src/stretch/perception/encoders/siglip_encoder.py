@@ -27,7 +27,7 @@ class SiglipEncoder(BaseImageTextEncoder):
     Generally, these features are much better than OpenAI CLIP for open-vocabulary object detection.
     """
 
-    def __init__(self, normalize: bool = True, device: Optional[str] = None, **kwargs) -> None:
+    def __init__(self, normalize: bool = False, device: Optional[str] = None, **kwargs) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device

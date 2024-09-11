@@ -250,6 +250,10 @@ class RobotAgent:
                 print(f" - Instance {ins} has activation {activation.item()}")
         return best_activation, best_instance
 
+    def get_instances(self) -> List[Instance]:
+        """Return all instances in the voxel map."""
+        return self.voxel_map.get_instances()
+
     def get_instances_from_text(
         self,
         text_query: str,
@@ -292,9 +296,9 @@ class RobotAgent:
             # TODO: this is hacky - should probably just not support other encoders this way
             # if hasattr(self.encoder, "classify"):
             #    prob = self.encoder.classify(instance.get_best_view().get_image(), text_query)
+            #    activation = prob
             # else:
             activation = self.encoder.compute_score(emb, encoded_text)
-            # activation = prob
 
             # Add the instance to the list of matches if the cosine similarity is above the threshold
             if activation.item() > threshold:
