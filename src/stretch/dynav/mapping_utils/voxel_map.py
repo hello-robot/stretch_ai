@@ -349,10 +349,10 @@ class SparseVoxelMapNavigationSpace(XYT):
         reachable[reachable_xs, reachable_ys] = True
         
         obstacles, explored = self.voxel_map.get_2d_map()
-        if self.dilate_obstacles_kernel is not None:
-            obstacles = binary_dilation(
-                obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
-            )[0, 0].bool()
+        # if self.dilate_obstacles_kernel is not None:
+        #     obstacles = binary_dilation(
+        #         obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
+        #     )[0, 0].bool()
         reachable = reachable & ~obstacles
 
         target_x, target_y = planner.to_pt(point)
@@ -386,9 +386,9 @@ class SparseVoxelMapNavigationSpace(XYT):
             # print('Target is valid:', target_is_valid)
             if not target_is_valid:
                 continue
-            if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) < 0.4:
+            if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.35:
                 continue
-            elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
+            elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.45:
                 # print('OBSTACLE AVOIDANCE')
                 # print(selected_target[0].int(), selected_target[1].int())
                 i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])

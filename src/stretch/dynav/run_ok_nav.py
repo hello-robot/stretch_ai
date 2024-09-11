@@ -69,7 +69,7 @@ def main(
         parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = None, None
     robot.move_to_nav_posture()
-    robot.set_velocity(v = 15., w = 8.)
+    robot.set_velocity(v = 30., w = 15.)
 
     print("- Start robot agent with data collection")
     demo = RobotAgentMDP(
@@ -108,54 +108,58 @@ def main(
                     print('Exploration failed! Quitting!')
                     continue
         else:
-            robot.move_to_nav_posture()
-            robot.switch_to_navigation_mode()
-            text = input('Enter object name: ')
-            point = demo.navigate(text)
-            if point is None:
-                print('Navigation Failure!')
-                continue
-            robot.switch_to_navigation_mode()
-            xyt = robot.get_base_pose()
-            xyt[2] = xyt[2] + np.pi / 2
-            robot.navigate_to(xyt, blocking = True)
-            cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
+            text = None
+            point = None
+            if input('You want to run manipulation: y/n') != 'n':
+                robot.move_to_nav_posture()
+                robot.switch_to_navigation_mode()
+                text = input('Enter object name: ')
+                point = demo.navigate(text)
+                if point is None:
+                    print('Navigation Failure!')
+                robot.switch_to_navigation_mode()
+                xyt = robot.get_base_pose()
+                xyt[2] = xyt[2] + np.pi / 2
+                robot.navigate_to(xyt, blocking = True)
+                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
 
-            if input('You want to run manipulation: y/n') == 'n':
-                continue
-            camera_xyz = robot.get_head_pose()[:3, 3]
-            theta = compute_tilt(camera_xyz, point)
-            demo.manipulate(text, theta)
-            # robot.switch_to_navigation_mode()
-            # xyt = robot.get_base_pose()
-            # xyt[2] = xyt[2] - np.pi / 2
-            robot.look_front()
-            # robot.navigate_to(xyt, blocking = True)
+            if input('You want to run manipulation: y/n') != 'n':
+                robot.switch_to_manipulation_mode()
+                if text is None:
+                    text = input('Enter object name: ')
+                camera_xyz = robot.get_head_pose()[:3, 3]
+                if point is not None:
+                    theta = compute_tilt(camera_xyz, point)
+                else:
+                    theta = -0.6
+                demo.manipulate(text, theta)
+                robot.look_front()
             
-            robot.switch_to_navigation_mode()
-            if input('You want to run placing: y/n') == 'n':
-                continue
-            text = input('Enter receptacle name: ')
-            point = demo.navigate(text)
-            if point is None:
-                print('Navigation Failure')
-                continue
-            robot.switch_to_navigation_mode()
-            xyt = robot.get_base_pose()
-            xyt[2] = xyt[2] + np.pi / 2
-            robot.navigate_to(xyt, blocking = True)
-            cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
+            text = None
+            point = None
+            if input('You want to run placing: y/n') != 'n':
+                robot.switch_to_navigation_mode()
+                text = input('Enter receptacle name: ')
+                point = demo.navigate(text)
+                if point is None:
+                    print('Navigation Failure')
+                robot.switch_to_navigation_mode()
+                xyt = robot.get_base_pose()
+                xyt[2] = xyt[2] + np.pi / 2
+                robot.navigate_to(xyt, blocking = True)
+                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
         
-            if input('You want to run placing: y/n') == 'n':
-                continue
-            camera_xyz = robot.get_head_pose()[:3, 3]
-            theta = compute_tilt(camera_xyz, point)
-            demo.place(text, theta)
-            # robot.switch_to_navigation_mode()
-            # xyt = robot.get_base_pose()
-            # xyt[2] = xyt[2] - np.pi / 2
-            robot.move_to_nav_posture()
-            # robot.navigate_to(xyt, blocking = True)
+            if input('You want to run placing: y/n') != 'n':
+                robot.switch_to_manipulation_mode()
+                if text is None:
+                    text = input('Enter receptacle name: ')
+                camera_xyz = robot.get_head_pose()[:3, 3]
+                if point is not None:
+                    theta = compute_tilt(camera_xyz, point)
+                else:
+                    theta = -0.6
+                demo.place(text, theta)
+                robot.move_to_nav_posture()
 
             demo.save()
 

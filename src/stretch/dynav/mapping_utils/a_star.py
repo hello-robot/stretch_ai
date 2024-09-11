@@ -51,11 +51,18 @@ class AStar():
 
     def reset(self):
         # print('loading the up to date navigable map')
-        print('Wait')
+        # print('Wait')
         obs, exp = self.space.voxel_map.get_2d_map()
         # print('up to date navigable map loaded')
         self._navigable = ~obs & exp
         self.start_time = time.time()
+
+    def verify_path(self, path) -> bool:
+        self.reset()
+        for i in range(max(10, len(path))):
+            if self.point_is_occupied(*self.to_pt(path[i][:2])):
+                return False
+            return True
 
     def point_is_occupied(self, x: int, y: int) -> bool:
         return not bool(self._navigable[x][y])

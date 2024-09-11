@@ -48,6 +48,7 @@ from io import BytesIO
 from PIL import Image
 
 from stretch.dynav.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
+# from stretch.utils.morphology import get_edges
 
 def get_inv_intrinsics(intrinsics):
     # return intrinsics.double().inverse().to(intrinsics)
@@ -106,7 +107,7 @@ def get_xyz(depth, pose, intrinsics):
 
 class ImageProcessor:
     def __init__(self,  
-        vision_method = 'mask*lip', 
+        vision_method = 'mask&*lip', 
         siglip = True,
         device = 'cuda',
         min_depth = 0.25,
@@ -144,6 +145,8 @@ class ImageProcessor:
         self.create_vision_model()
 
         self.voxel_map_lock = threading.Lock()  # Create a lock for synchronizing access to `self.voxel_map_localizer`
+
+        self.traj = None
         
         if open_communication:
             self.img_socket = load_socket(img_port)
@@ -232,45 +235,95 @@ class ImageProcessor:
         debug_text = ''
         mode = 'navigation'
         obs = None
-        # Do visual grounding
-        if text is not None and text != '':
-            with self.voxel_map_lock:
-                localized_point, debug_text, obs, pointcloud = self.voxel_map_localizer.localize_A(text, debug = True, return_debug = True)
-            if localized_point is not None:
-                rr.log("/object", rr.Points3D([localized_point[0], localized_point[1], 1.5], colors=torch.Tensor([1, 0, 0]), radii=0.1), static = self.static)
-        # Do Frontier based exploration
-        if text is None or text == '' or localized_point is None:
-            debug_text += '## Navigation fails, so robot starts exploring environments.\n'
-            localized_point = self.sample_frontier(start_pose, text)
-            mode = 'exploration'
-            rr.log("/object", rr.Points3D([0, 0, 0], colors=torch.Tensor([1, 0, 0]), radii=0), static = self.static)
-            print('\n', localized_point, '\n')
-
-        if localized_point is None:
-            return []
+        localized_point = None
+        waypoints = None
         
-        if len(localized_point) == 2:
-            localized_point = np.array([localized_point[0], localized_point[1], 0])
-            
-        # if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
-        #     return [[np.nan, np.nan, np.nan], localized_point]
+        if text is not None and text != '' and self.traj is not None:
+            print('saved traj', self.traj)
+            traj_target_point = self.traj[-1]
+            if self.voxel_map_localizer.verify_point(text, traj_target_point):
+                localized_point = traj_target_point
+                debug_text += '## Last visual grounding results looks fine so directly use it.\n'
+                if self.planner.verify_path(self.traj[:-2]):
+                    waypoints = self.traj[:-2]
+                    debug_text += '## Last path planning results looks fine so directly use it.\n'
 
-        point = self.sample_navigation(start_pose, localized_point)
+        if waypoints is None:
+            # Do visual grounding
+            if text is not None and text != '' and localized_point is None:
+                with self.voxel_map_lock:
+                    localized_point, debug_text, obs, pointcloud = self.voxel_map_localizer.localize_A(text, debug = True, return_debug = True)
+                if localized_point is not None:
+                    rr.log("/object", rr.Points3D([localized_point[0], localized_point[1], 1.5], colors=torch.Tensor([1, 0, 0]), radii=0.1), static = self.static)
+            # Do Frontier based exploration
+            if text is None or text == '' or localized_point is None:
+                debug_text += '## Navigation fails, so robot starts exploring environments.\n'
+                localized_point = self.sample_frontier(start_pose, text)
+                mode = 'exploration'
+                rr.log("/object", rr.Points3D([0, 0, 0], colors=torch.Tensor([1, 0, 0]), radii=0), static = self.static)
+                print('\n', localized_point, '\n')
 
-        if self.rerun:
-            buf = BytesIO()
-            plt.savefig(buf, format='png')
-            buf.seek(0)
-            img = Image.open(buf)
-            img = np.array(img)
-            buf.close()
-            rr.log('2d_map', rr.Image(img), static = self.static)
-        else:
-            if text != '':
-                plt.savefig(self.log + '/debug_' + text + str(self.obs_count) + '.png')
+            if localized_point is None:
+                return []
+        
+            if len(localized_point) == 2:
+                localized_point = np.array([localized_point[0], localized_point[1], 0])
+
+            point = self.sample_navigation(start_pose, localized_point)
+
+            if self.rerun:
+                buf = BytesIO()
+                plt.savefig(buf, format='png')
+                buf.seek(0)
+                img = Image.open(buf)
+                img = np.array(img)
+                buf.close()
+                rr.log('2d_map', rr.Image(img), static = self.static)
             else:
-                plt.savefig(self.log + '/debug_exploration' + str(self.obs_count) + '.png')
-        plt.clf()
+                if text != '':
+                    plt.savefig(self.log + '/debug_' + text + str(self.obs_count) + '.png')
+                else:
+                    plt.savefig(self.log + '/debug_exploration' + str(self.obs_count) + '.png')
+            plt.clf()
+
+            if obs is not None and mode == 'navigation':
+                rgb = self.voxel_map.observations[obs - 1].rgb
+                if not self.rerun:
+                    if isinstance(rgb, torch.Tensor):
+                        rgb = np.array(rgb)
+                    cv2.imwrite(self.log + '/debug_' + text + '.png', rgb[:, :, [2, 1, 0]])
+                else:
+                    rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
+            waypoints = None
+
+            if point is None:
+                print('Unable to find any target point, some exception might happen')
+            else:
+                print('Target point is', point)
+                res = self.planner.plan(start_pose, point)
+            if res.success:
+                waypoints = [pt.state for pt in res.trajectory]
+            else:
+                waypoints = None
+                print('[FAILURE]', res.reason)
+        # If we are navigating to some object of interst, send (x, y, z) of 
+        # the object so that we can make sure the robot looks at the object after navigation
+        traj = []
+        if waypoints is not None:
+            finished = len(waypoints) <= 10 and mode == 'navigation'
+            if finished:
+                self.traj = None
+            else:
+                self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            if not finished:
+                waypoints = waypoints[:8]
+            traj = self.planner.clean_path_for_xy(waypoints)
+            if finished:
+                traj.append([np.nan, np.nan, np.nan])
+                if isinstance(localized_point, torch.Tensor):
+                    localized_point = localized_point.tolist()
+                traj.append(localized_point)
+            print('Planned trajectory:', traj)
 
         if self.rerun:
             if text is not None and text != '':
@@ -279,40 +332,6 @@ class ImageProcessor:
                 debug_text = '### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n'
             debug_text = '# Robot\'s monologue: \n' + debug_text
             rr.log("robot_monologue", rr.TextDocument(debug_text, media_type = rr.MediaType.MARKDOWN), static = self.static)
-
-        if obs is not None and mode == 'navigation':
-            rgb = self.voxel_map.observations[obs - 1].rgb
-            if not self.rerun:
-                if isinstance(rgb, torch.Tensor):
-                    rgb = np.array(rgb)
-                cv2.imwrite(self.log + '/debug_' + text + '.png', rgb[:, :, [2, 1, 0]])
-            else:
-                rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
-        traj = []
-        waypoints = None
-
-        if point is None:
-            print('Unable to find any target point, some exception might happen')
-        else:
-            print('Target point is', point)
-            res = self.planner.plan(start_pose, point)
-            if res.success:
-                waypoints = [pt.state for pt in res.trajectory]
-                # If we are navigating to some object of interst, send (x, y, z) of 
-                # the object so that we can make sure the robot looks at the object after navigation
-                finished = len(waypoints) <= 10 and mode == 'navigation'
-                if not finished:
-                    waypoints = waypoints[:8]
-                traj = self.planner.clean_path_for_xy(waypoints)
-                # traj = traj[1:]
-                if finished:
-                    traj.append([np.nan, np.nan, np.nan])
-                    if isinstance(localized_point, torch.Tensor):
-                        localized_point = localized_point.tolist()
-                    traj.append(localized_point)
-                print('Planned trajectory:', traj)
-            else:
-                print('[FAILURE]', res.reason)
             
         if traj is not None:
             origins = []
@@ -455,10 +474,10 @@ class ImageProcessor:
         start_pt = self.planner.to_pt(start)
         plt.scatter(start_pt[1], start_pt[0], s = 15, c = 'b')
         point_pt = self.planner.to_pt(point)
-        plt.scatter(point_pt[1], point_pt[0], s = 15, c = 'g')
+        plt.scatter(point_pt[1], point_pt[0], s = 15, c = 'r')
         if goal is not None:
             goal_pt = self.planner.to_pt(goal)
-            plt.scatter(goal_pt[1], goal_pt[0], s = 10, c = 'r')
+            plt.scatter(goal_pt[1], goal_pt[0], s = 10, c = 'g')
         return goal
 
     def sample_frontier(self, start_pose = [0, 0, 0], text = None):
@@ -549,7 +568,7 @@ class ImageProcessor:
     def run_mask_clip(self, rgb, mask, world_xyz):
 
         with torch.no_grad():
-            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.15, verbose=False)
+            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False)
             xyxy_tensor = results[0].boxes.xyxy
             if len(xyxy_tensor) == 0:
                 return
@@ -581,7 +600,7 @@ class ImageProcessor:
 
     def run_owl_sam_clip(self, rgb, mask, world_xyz):
         with torch.no_grad():
-            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.15, verbose=False)
+            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False)
             xyxy_tensor = results[0].boxes.xyxy
             if len(xyxy_tensor) == 0:
                 return
@@ -686,15 +705,17 @@ class ImageProcessor:
             scipy.ndimage.median_filter(depth, size=5)
         )
         median_filter_error = (depth - median_depth).abs()
+        # edges = get_edges(depth, threshold=0.5)
         valid_depth = torch.logical_and(depth < self.max_depth, depth > self.min_depth)
         valid_depth = (
             valid_depth
             & (median_filter_error < 0.01).bool()
+            # & ~edges
         )
         
         with self.voxel_map_lock:
             if self.vision_method == 'mask&*lip':
-                min_samples_clear = 5
+                min_samples_clear = 3
             else:
                 min_samples_clear = 10
             self.voxel_map_localizer.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear = min_samples_clear)
@@ -729,6 +750,8 @@ class ImageProcessor:
         # print('image processing takes ' + str(end_time - start_time) + ' seconds.')
 
     def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
+        print('Reading from ', pickle_file_name)
+        rr.init('Debug', spawn = True)
         if isinstance(pickle_file_name, str):
             pickle_file_name = Path(pickle_file_name)
         assert pickle_file_name.exists(), f"No file found at {pickle_file_name}"
@@ -763,9 +786,11 @@ class ImageProcessor:
             xyz = self.voxel_map.fix_data_type(xyz)
             rgb = self.voxel_map.fix_data_type(rgb)
             depth = self.voxel_map.fix_data_type(depth)
+            intrinsics = self.voxel_map.fix_data_type(K)
             if feats is not None:
                 feats = self.voxel_map.fix_data_type(feats)
             base_pose = self.voxel_map.fix_data_type(base_pose)
+            self.voxel_map.voxel_pcd.clear_points(depth, intrinsics, camera_pose)
             self.voxel_map.add(
                 camera_pose=camera_pose,
                 xyz=xyz,
@@ -775,6 +800,24 @@ class ImageProcessor:
                 base_pose=base_pose,
                 camera_K=K,
             )
+            # points = self.voxel_map.voxel_pcd._points.detach().cpu()
+            # rgb = self.voxel_map.voxel_pcd._rgb.detach().cpu() / 255.
+            # rr.log("Obstalce_map/pointcloud", rr.Points3D(points[points[:, 2] > 0.1], \
+            #                                                   colors=rgb[points[:, 2] > 0.1], radii=0.03))
+            # plt.clf()
+            # obstacles, _ = self.voxel_map.get_2d_map()
+            # plt.imshow(obstacles)
+            # grid_coord = self.voxel_map.xy_to_grid_coords(camera_pose[:2, 3])
+            # plt.scatter(grid_coord[0], grid_coord[1], color = 'r')
+            # buf = BytesIO()
+            # plt.savefig(buf, format='png')
+            # buf.seek(0)
+            # img = Image.open(buf)
+            # img = np.array(img)
+            # buf.close()
+            # rr.log('2d_map', rr.Image(img))
+            # rr.log('robot_point', rr.Points3D(camera_pose[:3, 3], colors=[1, 0, 0], radii=0.2))
+
             self.obs_count += 1
         self.voxel_map_localizer.voxel_pcd._points = data["combined_xyz"]
         self.voxel_map_localizer.voxel_pcd._features = data["combined_feats"]
@@ -799,18 +842,17 @@ class ImageProcessor:
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
-
-        for idx, frame in enumerate(self.voxel_map.observations):
+        for frame in self.voxel_map.observations:
             # add it to pickle
             # TODO: switch to using just Obs struct?
+            data["camera_poses"].append(frame.camera_pose)
+            data["base_poses"].append(frame.base_pose)
+            data["camera_K"].append(frame.camera_K)
             data["xyz"].append(frame.xyz)
             data["world_xyz"].append(frame.full_world_xyz)
+            data["rgb"].append(frame.rgb)
+            data["depth"].append(frame.depth)
             data["feats"].append(frame.feats)
-            data["base_poses"].append(frame.base_pose)
-            data["xyz"].append(None)
-            data["world_xyz"].append(None)
-            data["feats"].append(None)
-            data["base_poses"].append(None)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []
@@ -828,18 +870,18 @@ class ImageProcessor:
         print('write all data to', filename)
 
 # @hydra.main(version_base="1.2", config_path=".", config_name="config.yaml")
-def main(cfg):
-    torch.manual_seed(1)
-    imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
-    # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
-    # if not cfg.pickle_file_name is None:
-    #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
-    # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
-    # if cfg.open_communication:
-    #     while True:
-    #         imageProcessor.recv_text()
-    imageProcessor.read_from_pickle('debug/debug_2024-09-07_18-15-08.pkl', -1)
-    imageProcessor.write_to_pickle()
+# def main(cfg):
+#     torch.manual_seed(1)
+#     imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
+#     # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
+#     # if not cfg.pickle_file_name is None:
+#     #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
+#     # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
+#     # if cfg.open_communication:
+#     #     while True:
+#     #         imageProcessor.recv_text()
+#     imageProcessor.read_from_pickle('debug/debug_2024-09-09_07-50-41.pkl', -1)
+#     imageProcessor.write_to_pickle()
 
 if __name__ == "__main__":
     main(None)
