@@ -410,13 +410,21 @@ class RobotAgent:
             instances=self.semantic_sensor is not None,
         )
 
-    def update(self, visualize_map: bool = False, debug_instances: bool = False):
+    def update(
+        self,
+        visualize_map: bool = False,
+        debug_instances: bool = False,
+        move_head: Optional[bool] = None,
+    ):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
         t0 = timeit.default_timer()
 
         steps = 0
-        if self._sweep_head_on_update:
+        print("Move head:", move_head)
+        move_head = (move_head is None and self._sweep_head_on_update) or move_head is True
+        print("Move head:", move_head)
+        if move_head:
             num_steps = 5
         else:
             num_steps = 1
@@ -430,7 +438,7 @@ class RobotAgent:
 
         tilt = -1 * np.pi / 4
         for i in range(num_steps):
-            if self._sweep_head_on_update:
+            if move_head:
                 pan = -1 * i * np.pi / 4
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
@@ -449,10 +457,10 @@ class RobotAgent:
             self.voxel_map.add_obs(obs)
             t3 = timeit.default_timer()
 
-            if not self._sweep_head_on_update:
+            if not move_head:
                 break
 
-        if self._sweep_head_on_update:
+        if move_head:
             self.robot.head_to(0, tilt, blocking=True)
             x, y, theta = self.robot.get_base_pose()
             self.voxel_map.delete_obstacles(
