@@ -312,13 +312,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         head_pan = np.clip(head_pan, -np.pi, 0)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
-        self.send_action(next_action, timeout=timeout)
+        sent = self.send_action(next_action, timeout=timeout)
 
         if blocking:
+            step = sent["step"]
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
-            self._wait_for_head(whole_body_q)
+            self._wait_for_head(whole_body_q, block_id=step)
 
     def arm_to(
         self,
@@ -587,6 +588,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         min_wait_time: float = 0.5,
         resend_action: Optional[dict] = None,
+        block_id: int = -1,
         verbose: bool = False,
     ) -> None:
         """Wait for the head to move to a particular configuration."""
@@ -598,8 +600,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Head must be stationary for at least min_wait_time
         while not self._finish:
             joint_positions, joint_velocities, _ = self.get_joint_state()
+
             if joint_positions is None:
                 continue
+
+            if self._last_step < block_id:
+                # TODO: remove debug info
+                # print("Waiting for step", block_id, "to be processed; currently on:", self._last_step)
+                time.sleep(0.05)
+                continue
+
             pan_err = np.abs(
                 joint_positions[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN]
             )
