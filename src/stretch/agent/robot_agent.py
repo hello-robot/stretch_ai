@@ -425,9 +425,7 @@ class RobotAgent:
         t0 = timeit.default_timer()
 
         steps = 0
-        print("Move head:", move_head)
         move_head = (move_head is None and self._sweep_head_on_update) or move_head is True
-        print("Move head:", move_head)
         if move_head:
             num_steps = 5
         else:

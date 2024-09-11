@@ -304,7 +304,7 @@ class GraspObjectOperation(ManagedOperation):
                 target_mask = np.zeros([servo.ee_rgb.shape[0], servo.ee_rgb.shape[1]], dtype=bool)
 
             # Get depth
-            center_depth = servo.ee_depth[center_y, center_x] / 1000
+            center_depth = servo.ee_depth[center_y, center_x]
 
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
@@ -410,6 +410,9 @@ class GraspObjectOperation(ManagedOperation):
                 if aligned:
                     # First, check to see if we are close enough to grasp
                     if center_depth < self.median_distance_when_grasping:
+                        print(
+                            f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
+                        )
                         self.info("Aligned and close enough to grasp.")
                         success = self._grasp()
                         break
