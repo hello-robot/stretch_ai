@@ -54,7 +54,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
     help="Find all objects with a similarity to the query above some threshold",
 )
 # This threshold seems to work ok for Siglip - will not work for e.g. CLIP
-@click.option("--threshold", default=0.5, help="Threshold for similarity when using --all-matches")
+@click.option("--threshold", default=0.05, help="Threshold for similarity when using --all-matches")
 @click.option(
     "--stationary",
     is_flag=True,
