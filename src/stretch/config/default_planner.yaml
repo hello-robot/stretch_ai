@@ -8,11 +8,11 @@ open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
-voxel_size: 0.04 # Size of a voxel in meters
+voxel_size: 0.05 # Size of a voxel in meters
 obs_min_height: 0.1  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
-neg_obs_height: -0.05  # Things less than this height ARE obstacles
-obs_min_density: 30  # This many points makes it an obstacle
+neg_obs_height: -5.00  # Things less than this height ARE obstacles
+obs_min_density: 100  # This many points makes it an obstacle
 min_points_per_voxel: 20  # Drop things below this density per voxel
 
 # Padding
@@ -38,7 +38,7 @@ filters:
   smooth_kernel_size: 2
   #smooth_kernel_size: 0
   use_median_filter: True
-  median_filter_size: 2
+  median_filter_size: 4
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
