@@ -141,6 +141,7 @@ class SparseVoxelMap(object):
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
         prune_detected_objects: bool = False,
+        add_local_radius_every_step: bool = False,
         min_points_per_voxel: int = 10,
     ):
         """
@@ -1189,6 +1190,7 @@ class SparseVoxelMap(object):
             neg_obs_height=parameters["neg_obs_height"],
             min_depth=parameters["min_depth"],
             max_depth=parameters["max_depth"],
+            add_local_radius_every_step=parameters["add_local_every_step"],
             min_points_per_voxel=parameters["min_points_per_voxel"],
             pad_obstacles=parameters["pad_obstacles"],
             add_local_radius_points=parameters.get("add_local_radius_points", default=True),
