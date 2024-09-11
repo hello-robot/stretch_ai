@@ -9,12 +9,11 @@ tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.04 # Size of a voxel in meters
-# 0.05 seems too low
 obs_min_height: 0.1  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
-neg_obs_height: -0.05  # Things less than this height ARE obstacles
-obs_min_density: 15  # This many points makes it an obstacle
-min_points_per_voxel: 20  # Drop things below this density per voxel
+neg_obs_height: -0.10  # Things less than this height ARE obstacles
+obs_min_density: 50  # This many points makes it an obstacle
+min_points_per_voxel: 50  # Drop things below this density per voxel
 
 # Padding
 pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
@@ -22,25 +21,24 @@ pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacle
 min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
-add_local_every_step: True
+add_local_every_step: False
 remove_visited_from_obstacles: False
 min_depth: 0.5
-# max_depth: 2.5
 max_depth: 2.0
 
 # Object detection parameters
 detection:
-  # module: "detic"
-  module: "yolo"
+  module: "detic"
+  # module: "yolo"
   category_map_file: example_cat_map.json
   use_detic_viz: False
 
 # Point cloud cleanup
 filters:
   smooth_kernel_size: 2
-  #smooth_kernel_size: 0
+  # smooth_kernel_size: 0
   use_median_filter: True
-  median_filter_size: 3
+  median_filter_size: 2
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1

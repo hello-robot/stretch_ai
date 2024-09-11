@@ -211,7 +211,13 @@ class RerunVsualizer:
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
-    def update_voxel_map(self, space: SparseVoxelMapNavigationSpace, debug: bool = False):
+    def update_voxel_map(
+        self,
+        space: SparseVoxelMapNavigationSpace,
+        debug: bool = False,
+        explored_radius=0.04,
+        obstacle_radius=0.05,
+    ):
         """Log voxel map and send it to Rerun visualizer
         Args:
             space (SparseVoxelMapNavigationSpace): Voxel map object
@@ -249,14 +255,16 @@ class RerunVsualizer:
         rr.log(
             "world/obstacles",
             rr.Points3D(
-                positions=obs_points, radii=np.ones(points.shape[0]) * 0.025, colors=[255, 0, 0]
+                positions=obs_points,
+                radii=np.ones(points.shape[0]) * obstacle_radius,
+                colors=[255, 0, 0],
             ),
         )
         rr.log(
             "world/explored",
             rr.Points3D(
                 positions=explored_points,
-                radii=np.ones(points.shape[0]) * 0.01,
+                radii=np.ones(points.shape[0]) * explored_radius,
                 colors=[255, 255, 255],
             ),
         )

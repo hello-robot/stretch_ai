@@ -110,6 +110,7 @@ class SparseVoxelMap(object):
     )
     debug_valid_depth: bool = False
     debug_instance_memory_processing_time: bool = False
+    use_negative_obstacles: bool = False
 
     def __init__(
         self,
@@ -141,6 +142,7 @@ class SparseVoxelMap(object):
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
         prune_detected_objects: bool = False,
+        add_local_radius_every_step: bool = False,
         min_points_per_voxel: int = 10,
     ):
         """
@@ -237,6 +239,7 @@ class SparseVoxelMap(object):
 
         # Add points with local_radius to the voxel map at (0,0,0) unless we receive lidar points
         self._add_local_radius_points = add_local_radius_points
+        self._add_local_radius_every_step = add_local_radius_every_step
         self._remove_visited_from_obstacles = remove_visited_from_obstacles
         self.local_radius = local_radius
 
@@ -566,7 +569,9 @@ class SparseVoxelMap(object):
                 min_weight_per_voxel=self._min_points_per_voxel,
             )
 
-        if self._add_local_radius_points and len(self.observations) < 2:
+        if self._add_local_radius_points and (
+            len(self.observations) < 2 or self._add_local_radius_every_step
+        ):
             # Only do this at the first step, never after it.
             # TODO: just get this from camera_pose?
             # Add local radius points to the map around base
@@ -833,8 +838,6 @@ class SparseVoxelMap(object):
 
         device = xyz.device
         xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
-        # xyz[xyz[:, -1] < 0, -1] = 0
-        negative_obstacles = xyz[:, -1] < self.neg_obs_height
 
         # Crop to robot height
         min_height = int(self.obs_min_height / self.grid_resolution)
@@ -844,12 +847,15 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
-        obs_mask = obs_mask | negative_obstacles
+        if self.use_negative_obstacles:
+            neg_height = int(self.neg_obs_height / self.grid_resolution)
+            negative_obstacles = xyz[:, -1] < neg_height
+            obs_mask = obs_mask | negative_obstacles
         xyz = xyz[obs_mask, :]
         counts = counts[obs_mask][:, None]
 
         # voxels[x_coords, y_coords, z_coords] = 1
-        voxels = scatter3d(xyz, counts, grid_size)
+        voxels = scatter3d(xyz, counts, grid_size).squeeze()
 
         # Compute the obstacle voxel grid based on what we've seen
         obstacle_voxels = voxels[:, :, min_height:]
@@ -867,7 +873,6 @@ class SparseVoxelMap(object):
             )[0, 0].bool()
 
         # Explored area = only floor mass
-        # floor_voxels = voxels[:, :, :min_height]
         explored_soft = torch.sum(voxels, dim=-1)
 
         # Add explored radius around the robot, up to min depth
@@ -1189,6 +1194,7 @@ class SparseVoxelMap(object):
             neg_obs_height=parameters["neg_obs_height"],
             min_depth=parameters["min_depth"],
             max_depth=parameters["max_depth"],
+            add_local_radius_every_step=parameters["add_local_every_step"],
             min_points_per_voxel=parameters["min_points_per_voxel"],
             pad_obstacles=parameters["pad_obstacles"],
             add_local_radius_points=parameters.get("add_local_radius_points", default=True),
