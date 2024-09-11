@@ -11,9 +11,9 @@ tts_engine: "gTTS"
 voxel_size: 0.05 # Size of a voxel in meters
 obs_min_height: 0.1  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
-neg_obs_height: -5.00  # Things less than this height ARE obstacles
+neg_obs_height: -0.10  # Things less than this height ARE obstacles
 obs_min_density: 100  # This many points makes it an obstacle
-min_points_per_voxel: 20  # Drop things below this density per voxel
+min_points_per_voxel: 100  # Drop things below this density per voxel
 
 # Padding
 pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
