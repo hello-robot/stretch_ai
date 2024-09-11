@@ -363,6 +363,7 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 # check not moving threshold
                 if not_moving_count > max_not_moving_count:
+                    self.info("Not moving; try to grasp.")
                     success = self._grasp()
                     break
                 # If we have a target mask, compute the median depth of the object
@@ -409,6 +410,7 @@ class GraspObjectOperation(ManagedOperation):
                 if aligned:
                     # First, check to see if we are close enough to grasp
                     if center_depth < self.median_distance_when_grasping:
+                        self.info("Aligned and close enough to grasp.")
                         success = self._grasp()
                         break
                     # If we are aligned, step the whole thing closer by some amount
