@@ -110,6 +110,7 @@ class SparseVoxelMap(object):
     )
     debug_valid_depth: bool = False
     debug_instance_memory_processing_time: bool = False
+    use_negative_obstacles: bool = False
 
     def __init__(
         self,
@@ -837,8 +838,6 @@ class SparseVoxelMap(object):
 
         device = xyz.device
         xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
-        # xyz[xyz[:, -1] < 0, -1] = 0
-        negative_obstacles = xyz[:, -1] < self.neg_obs_height
 
         # Crop to robot height
         min_height = int(self.obs_min_height / self.grid_resolution)
@@ -848,12 +847,15 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
-        obs_mask = obs_mask | negative_obstacles
+        if self.use_negative_obstacles:
+            neg_height = int(self.neg_obs_height / self.grid_resolution)
+            negative_obstacles = xyz[:, -1] < neg_height
+            obs_mask = obs_mask | negative_obstacles
         xyz = xyz[obs_mask, :]
         counts = counts[obs_mask][:, None]
 
         # voxels[x_coords, y_coords, z_coords] = 1
-        voxels = scatter3d(xyz, counts, grid_size)
+        voxels = scatter3d(xyz, counts, grid_size).squeeze()
 
         # Compute the obstacle voxel grid based on what we've seen
         obstacle_voxels = voxels[:, :, min_height:]
@@ -871,7 +873,6 @@ class SparseVoxelMap(object):
             )[0, 0].bool()
 
         # Explored area = only floor mass
-        # floor_voxels = voxels[:, :, :min_height]
         explored_soft = torch.sum(voxels, dim=-1)
 
         # Add explored radius around the robot, up to min depth

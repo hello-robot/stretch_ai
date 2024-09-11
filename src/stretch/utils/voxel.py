@@ -477,22 +477,21 @@ def scatter3d(voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int]
     assert len(grid_dimensions) == 3, "this is designed to work only in 3d"
     assert voxel_indices.shape[-1] == 3, "3d points expected for indices"
 
-    # Calculate a unique index for each voxel in the 3D grid
-    unique_voxel_indices = (
-        voxel_indices[:, 0] * (grid_dimensions[1] * grid_dimensions[2])
-        + voxel_indices[:, 1] * grid_dimensions[2]
-        + voxel_indices[:, 2]
-    )
+    N, F = weights.shape
+    X, Y, Z = grid_dimensions
 
-    # Use scatter to accumulate weights into voxels
-    voxel_weights = scatter(
-        weights,
-        unique_voxel_indices,
-        dim=0,
-        reduce="mean",
-        dim_size=grid_dimensions[0] * grid_dimensions[1] * grid_dimensions[2],
-    )
-    return voxel_weights.reshape(*grid_dimensions)
+    # Compute voxel indices for each point
+    # voxel_indices = (points / voxel_size).long().clamp(min=0, max=torch.tensor(grid_size) - 1)
+    voxel_indices = voxel_indices.clamp(
+        min=torch.zeros(3), max=torch.tensor(grid_dimensions) - 1
+    ).long()
+
+    # Create empty voxel grid
+    voxel_grid = torch.zeros(*grid_dimensions, F, device=weights.device)
+
+    # Scatter features into voxel grid
+    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = weights
+    return voxel_grid
 
 
 def drop_smallest_weight_points(
