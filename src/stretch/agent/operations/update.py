@@ -47,6 +47,7 @@ class UpdateOperation(ManagedOperation):
         self.show_map_so_far = show_map_so_far
         self.clear_voxel_map = clear_voxel_map
         self.target_object = target_object
+        print("Target object is set to", self.target_object)
 
     def run(self):
         self.intro("Updating the world model.")
