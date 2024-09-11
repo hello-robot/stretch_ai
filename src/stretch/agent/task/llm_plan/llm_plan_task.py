@@ -9,13 +9,12 @@
 
 from typing import Optional
 
-from stretch.agent.base import TaskManager
 from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
 from stretch.utils.llm_plan_compiler import LLMPlanCompiler
 
 
-class LLMPlanTask(TaskManager):
+class LLMPlanTask():
     def __init__(self, agent: RobotAgent, llm_plan: Optional[str] = None):
         # Sync these things
         self.agent = agent

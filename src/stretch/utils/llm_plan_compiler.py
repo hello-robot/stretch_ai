@@ -9,7 +9,6 @@
 
 import ast
 
-from stretch.agent.base import TaskManager
 from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
@@ -28,9 +27,9 @@ class TreeNode:
 
 
 class LLMPlanCompiler(ast.NodeVisitor):
-    def __init__(self, agent: RobotAgent, manager: TaskManager, llm_plan: str):
+    def __init__(self, agent: RobotAgent, llm_plan: str):
         self.agent = agent
-        self.manager = manager
+        self.robot = agent.robot
         self.llm_plan = llm_plan
         self.task = None
 
@@ -48,40 +47,40 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def place(self, object_name: str):
         """Adds a PlaceObjectOperation to the task"""
-        speak_not_implemented = SpeakOperation(name="place_" + object_name, manager=self.manager)
+        speak_not_implemented = SpeakOperation(name="place_" + object_name, agent=self.agent, robot=self.robot)
         speak_not_implemented.configure(message="Place operation not implemented")
         self.task.add_operation(speak_not_implemented)
         return "place_" + object_name
 
     def say(self, message: str):
         """Adds a SpeakOperation to the task"""
-        say_operation = SpeakOperation(name="say_" + message, manager=self.manager)
+        say_operation = SpeakOperation(name="say_" + message, agent=self.agent, robot=self.robot)
         say_operation.configure(message=message)
         self.task.add_operation(say_operation)
         return "say_" + message
 
     def wave(self):
         """Adds a WaveOperation to the task"""
-        self.task.add_operation(WaveOperation(name="wave", manager=self.manager))
+        self.task.add_operation(WaveOperation(name="wave", agent=self.agent, robot=self.robot))
         return "wave"
 
     def open_cabinet(self):
         """Adds a SpeakOperation (not implemented) to the task"""
-        speak_not_implemented = SpeakOperation(name="open_cabinet", manager=self.manager)
+        speak_not_implemented = SpeakOperation(name="open_cabinet", agent=self.agent, robot=self.robot)
         speak_not_implemented.configure(message="Open cabinet operation not implemented")
         self.task.add_operation(speak_not_implemented)
         return "open_cabinet"
 
     def close_cabinet(self):
         """Adds a SpeakOperation (not implemented) to the task"""
-        speak_not_implemented = SpeakOperation(name="close_cabinet", manager=self.manager)
+        speak_not_implemented = SpeakOperation(name="close_cabinet", agent=self.agent, robot=self.robot)
         speak_not_implemented.configure(message="Close cabinet operation not implemented")
         self.task.add_operation(speak_not_implemented)
         return "close_cabinet"
 
     def get_detections(self):
         """Adds a SpeakOperation (not implemented) to the task"""
-        speak_not_implemented = SpeakOperation(name="get_detections", manager=self.manager)
+        speak_not_implemented = SpeakOperation(name="get_detections", agent=self.agent, robot=self.robot)
         speak_not_implemented.configure(message="Get detections operation not implemented")
         self.task.add_operation(speak_not_implemented)
         return "get_detections"
