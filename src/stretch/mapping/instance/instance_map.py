@@ -724,17 +724,15 @@ class InstanceMemory:
             h, w = masked_image.shape[1:]
             cropped_image = self.get_cropped_image(image, bbox)
             instance_mask = self.get_cropped_image(instance_mask.unsqueeze(0), bbox)
+            if self.mask_cropped_instances:
+                cropped_image = cropped_image * instance_mask
 
             # get embedding
             if self.encoder is not None:
-                # option 1: encoder the original crop
+                # Compute semantic image features (e.g. SigLIP or CLIP)
                 embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
 
-                # option 2: encode crop with applied mask
-                # embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
-                #     cropped_image.device
-                # )
-
+                # Get a separate set of visual, not semantic, features
                 if hasattr(self.encoder, "get_visual_feat"):
                     visual_feat = self.encoder.get_visual_feat(cropped_image).to(
                         cropped_image.device

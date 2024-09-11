@@ -1225,6 +1225,9 @@ class SparseVoxelMap(object):
                 "min_percent_for_instance_view": parameters.get(
                     "instance_memory/min_percent_for_instance_view", 0.2
                 ),
+                "mask_cropped_instances": parameters.get(
+                    "instance_memory/mask_cropped_instances", False
+                ),
                 "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
                 "use_visual_feat": parameters.get("use_visual_feat", False),
             },

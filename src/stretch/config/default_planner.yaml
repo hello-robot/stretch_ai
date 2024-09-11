@@ -80,6 +80,10 @@ instance_memory:
   max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.1
+  # Should we remove the background from the instance views?
+  # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
+  # It will have an effect on performance.
+  mask_cropped_instances: False  # Should we remove the background from the instance views?
   matching:
     # Feature matching threshold for if something is considered a particular class
     # Set this value by experimting with:

@@ -184,7 +184,6 @@ def main(
 
             # Loop over all instances and show them to the user
             for instance in instances:
-                breakpoint()
                 # Show the best view of the detected instance
                 instance.show_best_view()
 
