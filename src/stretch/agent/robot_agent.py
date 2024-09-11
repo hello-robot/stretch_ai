@@ -256,7 +256,7 @@ class RobotAgent:
         aggregation_method: str = "mean",
         normalize: bool = False,
         verbose: bool = True,
-        threshold: float = 0.5,
+        threshold: float = 0.01,
     ) -> List[Tuple[float, Instance]]:
         """Get all instances that match the text query.
 
@@ -288,7 +288,14 @@ class RobotAgent:
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
             )
-            activation = self.encoder.compute_score(emb, encoded_text)
+
+            # TODO: this is hacky - should probably just not support other encoders this way
+            if hasattr(self.encoder, "classify"):
+                prob = self.encoder.classify(instance.get_best_view().get_image(), text_query)
+            else:
+                activation = self.encoder.compute_score(emb, encoded_text)
+            activation = prob
+
             # Add the instance to the list of matches if the cosine similarity is above the threshold
             if activation.item() > threshold:
                 activations.append(activation.item())

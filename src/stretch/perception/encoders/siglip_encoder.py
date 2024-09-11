@@ -56,6 +56,38 @@ class SiglipEncoder(BaseImageTextEncoder):
             text_features = self.model.get_text_features(**inputs)
         return text_features.float()
 
+    def classify(self, image: Union[np.ndarray, torch.Tensor], text: str) -> torch.Tensor:
+        """Classify image and text"""
+
+        # Convert image to PIL
+        if isinstance(image, torch.Tensor):
+            image = image.cpu().numpy()
+        image = image.astype(np.uint8)
+        pil_image = Image.fromarray(image)
+
+        # Process image and text
+        inputs = self.processor(
+            images=pil_image, text=text, return_tensors="pt", padding="max_length"
+        )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # Evaluate model
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        logits = outputs.logits_per_image
+        probs = torch.sigmoid(logits)
+        return probs
+
+    def encode_batch_text(self, texts: list[str]) -> torch.Tensor:
+        """Return feature vector for text"""
+        # inputs = self.processor(text, return_tensors="pt")
+        inputs = self.tokenizer(texts, padding="max_length", return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        with torch.no_grad():
+            text_features = self.model.get_text_features(**inputs)
+        return text_features.float()
+
     def compute_score(self, image: torch.Tensor, text: torch.Tensor) -> torch.Tensor:
         """Compute similarity score between image and text"""
         return torch.sigmoid((image @ text.T).sum(dim=-1))
