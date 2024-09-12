@@ -113,14 +113,15 @@ def main(
     prompt = None
 
     # Get the LLM client
+    llm_client = None
     if prompt is not None:
-        llm = get_llm_client(llm, prompt=prompt)
+        llm_client = get_llm_client(llm, prompt=prompt)
 
     # Parse things and listen to the user
     while robot.running:
         agent.reset()
 
-        if llm is None:
+        if llm_client is None:
             # Call the LLM client and parse
             if len(target_object) == 0:
                 target_object = input("Enter the target object: ")

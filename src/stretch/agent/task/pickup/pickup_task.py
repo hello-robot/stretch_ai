@@ -110,7 +110,7 @@ class PickupTask:
 
         # Look for the target receptacle
         search_for_receptacle = SearchForReceptacleOperation(
-            "search_for_box",
+            "search_for_{self.target_receptacle}",
             self.agent,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
@@ -119,7 +119,7 @@ class PickupTask:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            "search_for_objects_on_floor",
+            "search_for_{self.target_object}_on_floor",
             self.agent,
             retry_on_failure=True,
             match_method=matching,
