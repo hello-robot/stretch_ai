@@ -7,108 +7,150 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import cv2
 import sys
-sys.path.append('/home/hello-robot/repos/dino-vit-features')
+
+sys.path.append("/home/hello-robot/repos/dino-vit-features")
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
 from correspondences import find_correspondences, visualize_correspondences
 from extractor import ViTExtractor
-import matplotlib.pyplot as plt
-import torch
-import time
-import numpy as np
+
 from stretch.agent import RobotClient
+from stretch.agent.manipulation.dinobot import (
+    compute_error,
+    extract_3d_coordinates,
+    find_transformation,
+)
 from stretch.perception.detection.detic import DeticPerception
-
-# image_path1 = "/home/hello-robot/ee_rgb_1.png" #@param
-# image_path2 = "/home/hello-robot/ee_rgb_0.png" #@param
-# image1 = cv2.imread(image_path1)
-# image2 = cv2.imread(image_path2)
-# image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2RGB)
-# image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2RGB)
-
-#@markdown Choose number of points to output:
-num_pairs = 10 #@param
-#@markdown Choose loading size:
-load_size = 224 #@param
-#@markdown Choose layer of descriptor:
-layer = 9 #@param
-#@markdown Choose facet of descriptor:
-facet = 'key' #@param
-#@markdown Choose if to use a binned descriptor:
-bin=True #@param
-#@markdown Choose fg / bg threshold:
-thresh=0.05 #@param
-#@markdown Choose model type:
-model_type='dino_vits8' #@param
-#@markdown Choose stride:
-stride=4 #@param
-
-
-track_object_id = 41  # detic object id for cup
 
 
 class Dinobot:
-    def __init__(self, model_type: str = 'dino_vits8', stride: int = 4):
-        self.robot = RobotClient(robot_ip="10.0.0.14")
-        self.bottleneck_image = None
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.feature_extractor = ViTExtractor(model_type = model_type, 
-                                              stride = stride, 
-                                              device = self.device)
-    
-    def get_correspondences(self, image1, image2,
-                            num_pairs=10, load_size=224, layer=9,
-                            facet='key', bin=True, thresh=0.05):
-        points1, points2, image1_pil, image2_pil = find_correspondences(self.feature_extractor,
-                                                                        image1, image2, 
-                                                                        num_pairs, 
-                                                                        load_size, 
-                                                                        layer, 
-                                                                        facet, 
-                                                                        bin, 
-                                                                        thresh)
+    def __init__(self, model_type: str = "dino_vits8", stride: int = 4):
+        self.bottleneck_image_rgb = None
+        self.bottleneck_image_depth = None
+        self.bottleneck_image_camera_K = None
+
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.feature_extractor = ViTExtractor(
+            model_type=model_type, stride=stride, device=self.device
+        )
+
+    def get_correspondences(
+        self,
+        image1,
+        image2,
+        num_pairs=10,
+        load_size=224,
+        layer=9,
+        facet="key",
+        bin=True,
+        thresh=0.05,
+    ):
+        points1, points2, image1_pil, image2_pil = find_correspondences(
+            self.feature_extractor, image1, image2, num_pairs, load_size, layer, facet, bin, thresh
+        )
         return points1, points2
 
-    def run(self, visualize=False):
+    def run(self, robot: RobotClient, visualize=False):
         print("Running Dinobot")
         while True:
-            obs = self.robot.get_observation()
-            servo = self.robot.get_servo_observation()
-            ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_BGR2RGB)
+            servo = robot.get_servo_observation()
             ee_depth = servo.ee_depth
-            if not isinstance(self.bottleneck_image,type(None)):
+            if not isinstance(self.bottleneck_image_rgb, type(None)):
                 start = time.perf_counter()
                 with torch.no_grad():
-                    points1, points2 = self.get_correspondences(self.bottleneck_image, servo.ee_rgb)
+                    points1, points2 = self.get_correspondences(
+                        self.bottleneck_image_rgb, servo.ee_rgb
+                    )
+                    self.move_to_bottleneck(None, points1, points2, ee_depth)
                 inf_ts = (time.perf_counter() - start) * 1000
                 print(f"\n  current: {inf_ts} ms")
                 if visualize:
                     if len(points1) == len(points2):
-                        im1, im2 = visualize_correspondences(points1, points2, self.bottleneck_image, servo.ee_rgb)
+                        im1, im2 = visualize_correspondences(
+                            points1, points2, self.bottleneck_image_rgb, servo.ee_rgb
+                        )
                         fig, axes = plt.subplots(1, 2, figsize=(10, 5))
                         axes[0].imshow(im1)
-                        axes[0].set_title('Bottleneck Image')
-                        axes[0].axis('off')
+                        axes[0].set_title("Bottleneck Image")
+                        axes[0].axis("off")
                         axes[1].imshow(im2)
-                        axes[1].set_title('Live Image')
-                        axes[1].axis('off')
+                        axes[1].set_title("Live Image")
+                        axes[1].axis("off")
                         plt.show()
                     else:
                         print("No correspondences found")
-    
-    def update_bottleneck_image(self, image):
-        self.bottleneck_image = image
-                
+            else:
+                print("No bottleneck image found")
+
+    def update_bottleneck_image(
+        self, image: np.ndarray, depth: np.ndarray, camera_K: np.ndarray, mask: np.ndarray
+    ):
+        image[~mask] = [0, 0, 0]
+        self.bottleneck_image_rgb = image.copy()
+        self.bottleneck_image_depth = depth.copy()
+        self.bottleneck_image_camera_K = camera_K.copy()
+
+    def move_to_bottleneck(self, robot: RobotClient, bottleneck_points, live_points, live_depth):
+        # Given the pixel coordinates of the correspondences, and their depth values,
+        # project the points to 3D space.
+        bottleneck_xyz = depth_to_xyz(self.bottleneck_image_depth, self.bottleneck_image_camera_K)
+        points1 = extract_3d_coordinates(bottleneck_points, bottleneck_xyz)
+        live_xyz = depth_to_xyz(live_depth, self.bottleneck_image_camera_K)
+        points2 = extract_3d_coordinates(live_points, live_xyz)
+        # Find rigid translation and rotation that aligns the points by minimising error, using SVD.
+        R, t = find_transformation(points1, points2)
+        print(f"Robot needs to R: {R}, T: {t}")
+        # TODO: Move robot
+        error = compute_error(points1, points2)
+        return error
+
+
+def depth_to_xyz(depth_image, camera_matrix):
+    # Convert depth image to point cloud
+    h, w = depth_image.shape
+    i, j = np.indices((h, w))
+    z = depth_image
+    x = (j - camera_matrix[0, 2]) * z / camera_matrix[0, 0]
+    y = (i - camera_matrix[1, 2]) * z / camera_matrix[1, 1]
+    xyz = np.stack((x, y, z), axis=-1)
+    return xyz
+
+
+def depth_to_xyz(depth, camera_K):
+    """get depth from numpy using simple pinhole camera model"""
+    h, w = depth.shape
+    indices = np.indices((h, w), dtype=np.float32).transpose(1, 2, 0)
+    z = depth
+    px, py = camera_K[0, 2], camera_K[1, 2]
+    fx, fy = camera_K[0, 0], camera_K[1, 1]
+    # pixel indices start at top-left corner. for these equations, it starts at bottom-left
+    x = (indices[:, :, 1] - px) * (z / fx)
+    y = (indices[:, :, 0] - py) * (z / fy)
+    # Should now be height x width x 3, after this:
+    xyz = np.stack([x, y, z], axis=-1)
+    return xyz
+
 
 if __name__ == "__main__":
+    robot = RobotClient(robot_ip="10.0.0.14")
     dinobot = Dinobot()
     detic = DeticPerception()
+    track_object_id = 41  # detic object id for cup
 
-    bottleneck_image = dinobot.robot.get_servo_observation().ee_rgb
-    semantic, instance, task_observations = detic.predict(bottleneck_image)
+    # First frame is the bottleneck image
+    bottleneck_image_rgb = robot.get_servo_observation().ee_rgb
+    bottleneck_image_depth = robot.get_servo_observation().ee_depth
+    bottleneck_image_camera_K = robot.get_servo_observation().ee_camera_K
+    semantic, instance, task_observations = detic.predict(bottleneck_image_rgb)
     if track_object_id in task_observations["instance_classes"]:
         object_mask = semantic == track_object_id
-        bottleneck_image[~object_mask] = [0, 0, 0]
-
-    dinobot.update_bottleneck_image(bottleneck_image)
-    dinobot.run(visualize=True)
+        dinobot.update_bottleneck_image(
+            bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
+        )
+        dinobot.run(robot, visualize=True)
+    else:
+        print(f"Object ID: {track_object_id} not found in the image")
