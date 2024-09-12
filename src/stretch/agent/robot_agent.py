@@ -1048,6 +1048,7 @@ class RobotAgent:
         if not start_is_valid:
             if verbose:
                 print("Start not valid. back up a bit.")
+            self.robot.navigate_to([-0.1, 0, 0], relative=True)
             return PlanResult(False, reason="invalid start state")
 
         # sample a goal
@@ -1079,7 +1080,6 @@ class RobotAgent:
 
     def run_exploration(
         self,
-        rate: int = 10,
         manual_wait: bool = False,
         explore_iter: int = 3,
         try_to_plan_iter: int = 10,
@@ -1118,7 +1118,7 @@ class RobotAgent:
             print("       Start:", start)
             self.print_found_classes(task_goal)
             res = self.plan_to_frontier(
-                start=start, rate=rate, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
+                start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
             )
 
             # if it succeeds, execute a trajectory to this position
