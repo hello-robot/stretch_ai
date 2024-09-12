@@ -84,7 +84,7 @@ def main(
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
-    llm = get_llm_client("gemma")
+    llm = get_llm_client(llm)
 
     # Parse things and listen to the user
     while robot.running:
