@@ -1077,7 +1077,7 @@ class RobotAgent:
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
-        verbose: bool = False,
+        verbose: bool = True,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
         start_is_valid = self.space.is_valid(start, verbose=True)
