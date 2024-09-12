@@ -18,6 +18,7 @@ import numpy as np
 import torch
 from correspondences import find_correspondences, visualize_correspondences
 from extractor import ViTExtractor
+from scipy.spatial.transform import Rotation
 
 from stretch.agent import RobotClient
 from stretch.agent.manipulation.dinobot import (
@@ -95,7 +96,9 @@ class Dinobot:
         )
         return points1, points2
 
-    def run(self, robot: RobotClient, demo: Demo, visualize: bool = False):
+    def run(
+        self, robot: RobotClient, demo: Demo, visualize: bool = False, apply_mask_callback=None
+    ):
         """
         Run the Dinobot algorithm
         Args:
@@ -106,20 +109,20 @@ class Dinobot:
         print("Running Dinobot")
         while True:
             servo = robot.get_servo_observation()
-            ee_depth = servo.ee_depth
+            ee_depth = servo.ee_depth.copy()
+            ee_rgb = servo.ee_rgb.copy()
+            if apply_mask_callback is not None:
+                ee_rgb = apply_mask_callback(ee_rgb)
             if not isinstance(demo.bottleneck_image_rgb, type(None)):
                 start = time.perf_counter()
                 with torch.no_grad():
-                    points1, points2 = self.get_correspondences(
-                        demo.bottleneck_image_rgb, servo.ee_rgb
-                    )
-                    self.move_to_bottleneck(None, points1, points2, ee_depth, demo)
+                    points1, points2 = self.get_correspondences(demo.bottleneck_image_rgb, ee_rgb)
                 inf_ts = (time.perf_counter() - start) * 1000
                 print(f"\n  current: {inf_ts} ms")
                 if visualize:
                     if len(points1) == len(points2):
                         im1, im2 = visualize_correspondences(
-                            points1, points2, demo.bottleneck_image_rgb, servo.ee_rgb
+                            points1, points2, demo.bottleneck_image_rgb, ee_rgb
                         )
                         fig, axes = plt.subplots(1, 2, figsize=(10, 5))
                         axes[0].imshow(im1)
@@ -131,6 +134,8 @@ class Dinobot:
                         plt.show()
                     else:
                         print("No correspondences found")
+                # Move the robot to the bottleneck pose
+                self.move_to_bottleneck(None, points1, points2, ee_depth, demo)
             else:
                 print("No bottleneck image found")
 
@@ -161,8 +166,9 @@ class Dinobot:
         points2 = extract_3d_coordinates(live_points, live_xyz)
         # Find rigid translation and rotation that aligns the points by minimising error, using SVD.
         R, t = find_transformation(points1, points2)
-        print(f"Robot needs to R: {R}, T: {t}")
-        # TODO: Move robot
+        r = Rotation.from_matrix(R)
+        angles = r.as_euler("xyz")
+        print(f"Robot needs to Rotate: {angles}, T: {t}")
         error = compute_error(points1, points2)
         return error
 
@@ -188,16 +194,26 @@ if __name__ == "__main__":
     detic = DeticPerception()
     track_object_id = 41  # detic object id for cup
 
-    # First frame is the bottleneck image
+    # First frame is the bottleneck image for now
     bottleneck_image_rgb = robot.get_servo_observation().ee_rgb
     bottleneck_image_depth = robot.get_servo_observation().ee_depth
     bottleneck_image_camera_K = robot.get_servo_observation().ee_camera_K
     semantic, instance, task_observations = detic.predict(bottleneck_image_rgb)
+
+    def apply_mask_callback(image: np.ndarray) -> np.ndarray:
+        semantic, instance, task_observations = detic.predict(image)
+        if track_object_id in task_observations["instance_classes"]:
+            object_mask = semantic == track_object_id
+            image[~object_mask] = [0, 0, 0]
+        else:
+            print(f"Object ID: {track_object_id} not found in the live image")
+        return image
+
     if track_object_id in task_observations["instance_classes"]:
         object_mask = semantic == track_object_id
         demo = Demo(
             bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
         )
-        dinobot.run(robot, demo, visualize=True)
+        dinobot.run(robot, demo, visualize=True, apply_mask_callback=apply_mask_callback)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
