@@ -16,7 +16,7 @@ obs_min_density: 50  # This many points makes it an obstacle
 min_points_per_voxel: 50  # Drop things below this density per voxel
 
 # Padding
-pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
+pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacles
 # pad_obstacles: 1  # Add this many units (voxel_size) to the area around obstacles
 min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 
@@ -111,7 +111,7 @@ motion_planner:
   frontier:
     dilate_frontier_size: 4  # Used to shrink the frontier back from the edges of the world
     dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
-    default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
+    default_expand_frontier_size: 12  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
