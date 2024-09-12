@@ -33,7 +33,7 @@ from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
-from stretch.utils.geometry import angle_difference
+from stretch.utils.geometry import angle_difference, xyt_base_to_global
 from stretch.utils.point_cloud import ransac_transform
 
 
@@ -722,6 +722,44 @@ class RobotAgent:
                 return True
         return False
 
+    def recover_from_invalid_start(self) -> bool:
+        """Try to recover from an invalid start state.
+
+        Returns:
+            bool: whether the robot recovered from the invalid start state
+        """
+
+        # Get current invalid pose
+        start = self.robot.get_base_pose()
+
+        # Apply relative transformation to XYT
+        forward = np.array([-0.1, 0, 0])
+        backward = np.array([0.1, 0, 0])
+
+        xyt_goal_forward = xyt_base_to_global(forward, start)
+        xyt_goal_backward = xyt_base_to_global(backward, start)
+
+        # Is this valid?
+        if self.space.is_valid(xyt_goal_backward, verbose=True):
+            logger.warning("Trying to move backwards...")
+            # Compute the position forward or backward from the robot
+            self.robot.navigate_to(xyt_goal_backward, relative=False)
+        elif self.space.is_valid(xyt_goal_forward, verbose=True):
+            logger.warning("Trying to move forward...")
+            # Compute the position forward or backward from the robot
+            self.robot.navigate_to(xyt_goal_forward, relative=False)
+        else:
+            logger.warning("Could not recover from invalid start state!")
+            return False
+
+        # Get the current position in case we are still invalid
+        start = self.robot.get_base_pose()
+        start_is_valid = self.space.is_valid(start, verbose=True)
+        if not start_is_valid:
+            logger.warning("Tried and failed to recover from invalid start state!")
+            return False
+        return start_is_valid
+
     def move_to_any_instance(
         self, matches: List[Tuple[int, Instance]], max_try_per_instance=10, verbose: bool = False
     ) -> bool:
@@ -733,12 +771,11 @@ class RobotAgent:
         start_is_valid_retries = 5
         while not start_is_valid and start_is_valid_retries > 0:
             if verbose:
-                print(f"Start {start} is not valid. back up a bit.")
-            self.robot.navigate_to([-0.1, 0, 0], relative=True)
-            # Get the current position in case we are still invalid
-            start = self.robot.get_base_pose()
-            start_is_valid = self.space.is_valid(start, verbose=True)
+                print(f"Start {start} is not valid. Either back up a bit or go forward.")
+            ok = self.recover_from_invalid_start()
             start_is_valid_retries -= 1
+            start_is_valid = ok
+
         res = None
 
         # Just terminate here - motion planning issues apparently!
@@ -1048,8 +1085,9 @@ class RobotAgent:
         if not start_is_valid:
             if verbose:
                 print("Start not valid. back up a bit.")
-            self.robot.navigate_to([-0.1, 0, 0], relative=True)
-            return PlanResult(False, reason="invalid start state")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                return PlanResult(False, reason="invalid start state")
 
         # sample a goal
         if random_goals:
