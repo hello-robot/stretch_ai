@@ -11,6 +11,7 @@ import sys
 
 sys.path.append("/home/hello-robot/repos/dino-vit-features")
 import time
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,12 +28,49 @@ from stretch.agent.manipulation.dinobot import (
 from stretch.perception.detection.detic import DeticPerception
 
 
-class Dinobot:
-    def __init__(self, model_type: str = "dino_vits8", stride: int = 4):
-        self.bottleneck_image_rgb = None
-        self.bottleneck_image_depth = None
-        self.bottleneck_image_camera_K = None
+class Demo:
+    """
+    A demonstration from bottleneck pose
+    """
 
+    def __init__(
+        self, image: np.ndarray, depth: np.ndarray, camera_K: np.ndarray, mask: np.ndarray
+    ):
+        """
+        Initialize the Demo class
+        Args:
+            image (np.ndarray): The bottleneck image
+            depth (np.ndarray): The bottleneck depth image
+            camera_K (np.ndarray): The camera intrinsics
+            mask (np.ndarray): The object mask
+        """
+        image[~mask] = [0, 0, 0]
+        self.bottleneck_image_rgb = image.copy()
+        self.bottleneck_image_depth = depth.copy()
+        self.bottleneck_image_camera_K = camera_K.copy()
+        self.object_mask = mask.copy()
+        self.trajectories = {}
+
+    @staticmethod
+    def load_demo(self, path_to_demo_folder=None):
+        # Load a demonstration from a folder containing data
+        # TODO
+        raise NotImplementedError
+
+
+class Dinobot:
+    """
+    Dinobot is a class that uses DINO correspondences to move the robot to the bottleneck pose.
+    And replay a demonstration.
+    """
+
+    def __init__(self, model_type: str = "dino_vits8", stride: int = 4):
+        """
+        Initialize the Dinobot class
+        Args:
+            model_type (str): The model type to use for feature extraction
+            stride (int): The stride to use for feature extraction
+        """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.feature_extractor = ViTExtractor(
             model_type=model_type, stride=stride, device=self.device
@@ -40,38 +78,48 @@ class Dinobot:
 
     def get_correspondences(
         self,
-        image1,
-        image2,
-        num_pairs=10,
-        load_size=224,
-        layer=9,
-        facet="key",
-        bin=True,
-        thresh=0.05,
-    ):
+        image1: np.ndarray,
+        image2: np.ndarray,
+        num_pairs: int = 10,
+        load_size: int = 224,
+        layer: int = 9,
+        facet: str = "key",
+        bin: bool = True,
+        thresh: float = 0.05,
+    ) -> Tuple[List, List]:
+        """
+        Get correspondences key points between two images
+        """
         points1, points2, image1_pil, image2_pil = find_correspondences(
             self.feature_extractor, image1, image2, num_pairs, load_size, layer, facet, bin, thresh
         )
         return points1, points2
 
-    def run(self, robot: RobotClient, visualize=False):
+    def run(self, robot: RobotClient, demo: Demo, visualize: bool = False):
+        """
+        Run the Dinobot algorithm
+        Args:
+            robot (RobotClient): The robot client to use
+            demo (Demo): The demonstration to replay
+            visualize (bool): Whether to visualize the correspondences
+        """
         print("Running Dinobot")
         while True:
             servo = robot.get_servo_observation()
             ee_depth = servo.ee_depth
-            if not isinstance(self.bottleneck_image_rgb, type(None)):
+            if not isinstance(demo.bottleneck_image_rgb, type(None)):
                 start = time.perf_counter()
                 with torch.no_grad():
                     points1, points2 = self.get_correspondences(
-                        self.bottleneck_image_rgb, servo.ee_rgb
+                        demo.bottleneck_image_rgb, servo.ee_rgb
                     )
-                    self.move_to_bottleneck(None, points1, points2, ee_depth)
+                    self.move_to_bottleneck(None, points1, points2, ee_depth, demo)
                 inf_ts = (time.perf_counter() - start) * 1000
                 print(f"\n  current: {inf_ts} ms")
                 if visualize:
                     if len(points1) == len(points2):
                         im1, im2 = visualize_correspondences(
-                            points1, points2, self.bottleneck_image_rgb, servo.ee_rgb
+                            points1, points2, demo.bottleneck_image_rgb, servo.ee_rgb
                         )
                         fig, axes = plt.subplots(1, 2, figsize=(10, 5))
                         axes[0].imshow(im1)
@@ -86,20 +134,30 @@ class Dinobot:
             else:
                 print("No bottleneck image found")
 
-    def update_bottleneck_image(
-        self, image: np.ndarray, depth: np.ndarray, camera_K: np.ndarray, mask: np.ndarray
-    ):
-        image[~mask] = [0, 0, 0]
-        self.bottleneck_image_rgb = image.copy()
-        self.bottleneck_image_depth = depth.copy()
-        self.bottleneck_image_camera_K = camera_K.copy()
-
-    def move_to_bottleneck(self, robot: RobotClient, bottleneck_points, live_points, live_depth):
+    def move_to_bottleneck(
+        self,
+        robot: RobotClient,
+        bottleneck_points: List,
+        live_points: List,
+        live_depth: np.ndarray,
+        demo: Demo,
+    ) -> float:
+        """
+        Move the robot to the bottleneck pose
+        Args:
+            robot (RobotClient): The robot client to use
+            bottleneck_points (List): The bottleneck points
+            live_points (List): The live points
+            live_depth (np.ndarray): The depth image
+            demo (Demo): The demonstration to replay
+        Returns:
+            float: The error between the bottleneck and live points
+        """
         # Given the pixel coordinates of the correspondences, and their depth values,
         # project the points to 3D space.
-        bottleneck_xyz = depth_to_xyz(self.bottleneck_image_depth, self.bottleneck_image_camera_K)
+        bottleneck_xyz = depth_to_xyz(demo.bottleneck_image_depth, demo.bottleneck_image_camera_K)
         points1 = extract_3d_coordinates(bottleneck_points, bottleneck_xyz)
-        live_xyz = depth_to_xyz(live_depth, self.bottleneck_image_camera_K)
+        live_xyz = depth_to_xyz(live_depth, demo.bottleneck_image_camera_K)
         points2 = extract_3d_coordinates(live_points, live_xyz)
         # Find rigid translation and rotation that aligns the points by minimising error, using SVD.
         R, t = find_transformation(points1, points2)
@@ -109,18 +167,7 @@ class Dinobot:
         return error
 
 
-def depth_to_xyz(depth_image, camera_matrix):
-    # Convert depth image to point cloud
-    h, w = depth_image.shape
-    i, j = np.indices((h, w))
-    z = depth_image
-    x = (j - camera_matrix[0, 2]) * z / camera_matrix[0, 0]
-    y = (i - camera_matrix[1, 2]) * z / camera_matrix[1, 1]
-    xyz = np.stack((x, y, z), axis=-1)
-    return xyz
-
-
-def depth_to_xyz(depth, camera_K):
+def depth_to_xyz(depth: np.ndarray, camera_K: np.ndarray) -> np.ndarray:
     """get depth from numpy using simple pinhole camera model"""
     h, w = depth.shape
     indices = np.indices((h, w), dtype=np.float32).transpose(1, 2, 0)
@@ -148,9 +195,9 @@ if __name__ == "__main__":
     semantic, instance, task_observations = detic.predict(bottleneck_image_rgb)
     if track_object_id in task_observations["instance_classes"]:
         object_mask = semantic == track_object_id
-        dinobot.update_bottleneck_image(
+        demo = Demo(
             bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
         )
-        dinobot.run(robot, visualize=True)
+        dinobot.run(robot, demo, visualize=True)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
