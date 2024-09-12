@@ -570,6 +570,24 @@ class RobotAgent:
             use_cache=use_cache,
         )
 
+    def within_reach_of(
+        self, instance: Instance, start: Optional[np.ndarray] = None, verbose: bool = False
+    ) -> bool:
+        """Check if the instance is within manipulation range.
+
+        Args:
+            instance(Instance): an object in the world
+            start(np.ndarray): the start position
+            verbose(bool): extra info is printed
+
+        Returns:
+            bool: whether the instance is within manipulation range
+        """
+
+        start = start if start is not None else self.robot.get_base_pose()
+
+        bounds = instance.object_xyz
+
     def plan_to_instance(
         self,
         instance: Instance,

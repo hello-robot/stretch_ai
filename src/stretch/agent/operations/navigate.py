@@ -43,8 +43,13 @@ class NavigateToObjectOperation(ManagedOperation):
             )
             breakpoint()
 
+        if self.agent.within_reach_of(self.get_target()):
+            self.cheer("Already within reach of object!")
+            return True
+
         # Motion plan to the object
-        plan = self.plan_to_instance_for_manipulation(self.get_target(), start=start)
+        plan = self.agent.plan_to_instance_for_manipulation(self.get_target(), start=start)
+
         if plan.success:
             self.plan = plan
             self.cheer("Found plan to object!")
@@ -57,6 +62,10 @@ class NavigateToObjectOperation(ManagedOperation):
     def run(self):
         self.intro("executing motion plan to the object.")
         self.robot.move_to_nav_posture()
+
+        if self.agent.within_reach_of(self.get_target()):
+            self.warn("Already within reach of object!")
+            return
 
         # Execute the trajectory
         assert (
