@@ -114,7 +114,7 @@ def main(
 
     # Get the LLM client
     if prompt is not None:
-        llm = get_llm_client(llm)
+        llm = get_llm_client(llm, prompt=prompt)
 
     # Parse things and listen to the user
     while robot.running:
@@ -126,8 +126,6 @@ def main(
                 target_object = input("Enter the target object: ")
             if len(receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
-        else:
-            raise NotImplementedError("LLM client not implemented yet")
 
         # After the robot has started...
         try:
