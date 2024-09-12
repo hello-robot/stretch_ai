@@ -11,6 +11,7 @@
 
 import click
 
+import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -127,6 +128,10 @@ def main(
                 target_object = input("Enter the target object: ")
             if len(receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
+
+        if len(target_object) == 0 or len(receptacle) == 0:
+            logger.error("You need to enter a target object and receptacle")
+            break
 
         # After the robot has started...
         try:
