@@ -15,7 +15,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llm import get_llm_client
+from stretch.llms import get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
 
 
@@ -43,9 +43,9 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option(
     "--llm",
-    default="gemma",
+    default="gemma2b",
     help="Client to use for language model.",
-    type=click.Choice(["gemma", "llama", "openai"]),
+    type=click.Choice(get_llm_choices()),
 )
 def main(
     robot_ip: str = "192.168.1.15",

@@ -24,6 +24,17 @@ __all__ = [
     "SimpleStretchPromptBuilder",
 ]
 
+llms = {
+    "gemma2b": Gemma2bClient,
+    "llama": LlamaClient,
+    "openai": OpenaiClient,
+}
+
+
+def get_llm_choices():
+    """Return a list of available LLM clients."""
+    return llms.keys()
+
 
 def get_llm_client(client_type: str, **kwargs) -> AbstractLLMClient:
     """Return an LLM client of the specified type.
