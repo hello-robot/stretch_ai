@@ -635,6 +635,7 @@ class RobotAgent:
             if verbose:
                 print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
 
+        # Plan to the instance
         if not has_plan:
             # Call planner
             res = self.plan_to_bounds(
