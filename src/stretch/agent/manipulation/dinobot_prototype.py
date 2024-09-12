@@ -15,6 +15,7 @@ from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import open3d as o3d
 import torch
 from correspondences import find_correspondences, visualize_correspondences
 from extractor import ViTExtractor
@@ -27,6 +28,8 @@ from stretch.agent.manipulation.dinobot import (
     find_transformation,
 )
 from stretch.perception.detection.detic import DeticPerception
+
+DEBUG_VISUALIZATION = False
 
 
 class Demo:
@@ -164,12 +167,69 @@ class Dinobot:
         points1 = extract_3d_coordinates(bottleneck_points, bottleneck_xyz)
         live_xyz = depth_to_xyz(live_depth, demo.bottleneck_image_camera_K)
         points2 = extract_3d_coordinates(live_points, live_xyz)
+
+        invalid_depth_ids = []
+        for i, point in enumerate(points1):
+            print(point)
+            if np.mean(point) == 0:
+                invalid_depth_ids.append(i)
+        for i, point in enumerate(points2):
+            if np.mean(point) == 0:
+                invalid_depth_ids.append(i)
+        invalid_depth_ids = list(set(invalid_depth_ids))
+        points1 = np.delete(points1, invalid_depth_ids, axis=0)
+        points2 = np.delete(points2, invalid_depth_ids, axis=0)
+        print(f" Number of valid correspondences: {len(points1)}")
+
         # Find rigid translation and rotation that aligns the points by minimising error, using SVD.
         R, t = find_transformation(points1, points2)
         r = Rotation.from_matrix(R)
         angles = r.as_euler("xyz")
         print(f"Robot needs to Rotate: {angles}, T: {t}")
         error = compute_error(points1, points2)
+        print(f"Error: {error}")
+
+        # Example usage
+        unique_colors = generate_unique_colors(len(points1))
+
+        # Debug 3D Visualization
+        if DEBUG_VISUALIZATION:
+            origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+                size=0.03, origin=[0, 0, 0]
+            )
+
+            bottleneck_frame = o3d.geometry.PointCloud()
+            bottleneck_frame.points = o3d.utility.Vector3dVector(
+                bottleneck_xyz.reshape((bottleneck_xyz.shape[0] * bottleneck_xyz.shape[1], 3))
+            )
+            points1_frame = o3d.geometry.PointCloud()
+            points1_frame.points = o3d.utility.Vector3dVector(points1)
+
+            spheres = []
+            for point, color in zip(points1, unique_colors):
+                sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
+                sphere.paint_uniform_color(color)
+                sphere.translate(point)
+                spheres.append(sphere)
+            components = [origin_frame, bottleneck_frame]
+            components.extend(spheres)
+            o3d.visualization.draw_geometries(components)
+
+            # live_frame = o3d.geometry.PointCloud()
+            # live_frame.points = o3d.utility.Vector3dVector(live_xyz.reshape((live_xyz.shape[0]*live_xyz.shape[1],3)))
+            # points2_frame = o3d.geometry.PointCloud()
+            # points2_frame.points = o3d.utility.Vector3dVector(points2)
+
+            # spheres = []
+            # for point,color in zip(points2,unique_colors):
+            #     sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
+            #     sphere.paint_uniform_color(color)
+            #     sphere.translate(point)
+            #     spheres.append(sphere)
+            # components = [origin_frame,live_frame]
+            # components.extend(spheres)
+            # o3d.visualization.draw_geometries(components)
+
         return error
 
 
@@ -186,6 +246,18 @@ def depth_to_xyz(depth: np.ndarray, camera_K: np.ndarray) -> np.ndarray:
     # Should now be height x width x 3, after this:
     xyz = np.stack([x, y, z], axis=-1)
     return xyz
+
+
+def generate_unique_colors(n: int) -> List[Tuple[int, int, int]]:
+    """
+    Generate N unique colors.
+    Args:
+        n (int): Number of unique colors to generate
+    Returns:
+        List[Tuple[int, int, int]]: List of RGB color tuples
+    """
+    colors = plt.cm.get_cmap("hsv", n)
+    return [tuple(c for c in colors(i)[:3]) for i in range(n)]
 
 
 if __name__ == "__main__":

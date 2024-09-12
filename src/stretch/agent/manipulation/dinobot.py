@@ -14,13 +14,15 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-sys.path.append('/home/hello-robot/repos/dino-vit-features')
+
+sys.path.append("/home/hello-robot/repos/dino-vit-features")
+import sys
+
 # Install this DINO repo to extract correspondences: https://github.com/ShirAmir/dino-vit-features
 from correspondences import draw_correspondences, find_correspondences
 from PIL import Image
 
 from stretch.agent import HomeRobotZmqClient
-import sys
 
 # Hyperparameters for DINO correspondences extraction
 # num_pairs = 8
@@ -132,15 +134,15 @@ def extract_3d_coordinates(points, xyz):
     depths = []
     for point in points:
         x, y = point
-        depths.append(xyz[y, x, 2])
+        depths.append(xyz[x][y])
 
     # Create a new array of shape (n, 3) with the 3d coordinates
-    points_3d = []
-    for i, point in enumerate(points):
-        x, y = point
-        points_3d.append([x, y, depths[i]])
+    # points_3d = []
+    # for i, point in enumerate(points):
+    #     x, y = point
+    #     points_3d.append()
 
-    return np.array(points_3d)
+    return np.array(depths)
 
 
 def compute_error(points1: np.ndarray, points2: np.ndarray) -> float:
@@ -235,6 +237,7 @@ def main(robot_ip, local, path_to_demo_folder):
 
     # Start the demo
     dinobot_demo(robot, path_to_demo_folder)
+
 
 if __name__ == "__main__":
     main()
