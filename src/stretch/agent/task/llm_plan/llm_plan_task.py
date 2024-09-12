@@ -30,7 +30,7 @@ class LLMPlanTask():
         self.task = None
 
         if llm_plan is not None:
-            self.llm_plan_compiler = LLMPlanCompiler(agent, self, self.llm_plan)
+            self.llm_plan_compiler = LLMPlanCompiler(agent, self.llm_plan)
             self.task = self.llm_plan_compiler.compile()
 
     def configure(self, llm_plan: Optional[str] = None):
@@ -38,8 +38,9 @@ class LLMPlanTask():
         self.llm_plan = llm_plan
 
     def get_task(self) -> Task:
-        if self.llm_plan is not None:
-            self.llm_plan_compiler = LLMPlanCompiler(self.agent, self, self.llm_plan)
+        if self.llm_plan is None and self.task is None:
+            self.llm_plan_compiler = LLMPlanCompiler(self.agent, self.llm_plan)
+            # print("Compiling LLM plan...")
             self.task = self.llm_plan_compiler.compile()
 
         return self.task

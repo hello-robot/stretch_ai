@@ -32,6 +32,7 @@ class LLMPlanCompiler(ast.NodeVisitor):
         self.robot = agent.robot
         self.llm_plan = llm_plan
         self.task = None
+        self.root = None
 
     def go_to(self, location: str):
         """Adds a GoToNavOperation to the task"""
@@ -55,6 +56,7 @@ class LLMPlanCompiler(ast.NodeVisitor):
     def say(self, message: str):
         """Adds a SpeakOperation to the task"""
         say_operation = SpeakOperation(name="say_" + message, agent=self.agent, robot=self.robot)
+        print(f"Configuring with message: {message}")
         say_operation.configure(message=message)
         self.task.add_operation(say_operation)
         return "say_" + message
@@ -96,22 +98,30 @@ class LLMPlanCompiler(ast.NodeVisitor):
                 raise ValueError("Unexpected test condition")
 
             # Create the root node with the function call
-            root = TreeNode(function_call=function_call)
+            if self.root is None:
+                self.root = TreeNode(function_call=function_call)
+                new_node = self.root
+            else:
+                new_node = TreeNode(function_call=function_call)
 
             # Recursively build success and failure branches
             if len(node.body) > 0:
-                root.success = self.build_tree(node.body[0])
+                new_node.success = self.build_tree(node.body[0])
             if len(node.orelse) > 0:
-                root.failure = self.build_tree(node.orelse[0])
+                new_node.failure = self.build_tree(node.orelse[0])
 
-            return root
+            return new_node
 
         elif isinstance(node, ast.Expr):
             # Extract function call
             expr = node.value
             if isinstance(expr, ast.Call):
                 function_call = ast.unparse(expr)
-                return TreeNode(function_call=function_call)
+                if self.root is None:
+                    self.root = TreeNode(function_call=function_call)
+                    return self.root
+                else:
+                    return TreeNode(function_call=function_call)
 
         elif isinstance(node, ast.Module):
             # Start processing the body of the module
@@ -121,6 +131,8 @@ class LLMPlanCompiler(ast.NodeVisitor):
         elif isinstance(node, ast.FunctionDef):
             if len(node.body) > 0:
                 return self.build_tree(node.body[0])
+        else:
+            print("Unknown node type")
 
         raise ValueError("Unexpected AST node")
 

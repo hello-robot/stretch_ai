@@ -21,6 +21,7 @@ class SpeakOperation(ManagedOperation):
     """
 
     _success = True
+    _message = ""
 
     def can_start(self) -> bool:
         return True
@@ -30,11 +31,10 @@ class SpeakOperation(ManagedOperation):
         message: str = "Hello, world!",
     ):
         """Configure the operation given a message to speak."""
-        self.message = message
+        self._message = message
 
     def run(
         self,
-        message: str = "Hello, world!",
     ):
         """
         Speaks a message
@@ -43,7 +43,7 @@ class SpeakOperation(ManagedOperation):
             message (str): The message to speak.
         """
         try:
-            self.agent.tts.say_async(message)
+            self.agent.tts.say_async(self._message)
             self._success = True
         except Exception as e:
             self._success = False
