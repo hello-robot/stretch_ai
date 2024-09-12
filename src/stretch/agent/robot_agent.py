@@ -341,7 +341,7 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = True
+        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = False
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -1088,6 +1088,8 @@ class RobotAgent:
             ok = self.recover_from_invalid_start()
             if not ok:
                 return PlanResult(False, reason="invalid start state")
+        else:
+            print("Planning to frontier...")
 
         # sample a goal
         if random_goals:
@@ -1106,15 +1108,35 @@ class RobotAgent:
                     # No more positions to sample
                     break
 
+                if self.space.is_valid(goal.cpu().numpy(), verbose=True):
+                    if verbose:
+                        print("       Start:", start)
+                        print("Sampled Goal:", goal.cpu().numpy())
+                else:
+                    continue
+
                 # For debugging, we can set the random seed to 0
                 if fix_random_seed:
                     np.random.seed(0)
                     random.seed(0)
 
+                self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
                 res = self.planner.plan(start, goal.cpu().numpy())
                 if res.success:
                     return res
+                else:
+                    if verbose:
+                        print("Plan failed. Reason:", res.reason)
         return PlanResult(False, reason="no valid plans found")
+
+    def get_history(self, reversed: bool = False) -> List[np.ndarray]:
+        """Get the history of the robot's positions."""
+        history = []
+        for obs in self.voxel_map.observations:
+            history.append(obs.base_pose)
+        if reversed:
+            history.reverse()
+        return history
 
     def run_exploration(
         self,

@@ -203,7 +203,7 @@ def main(
     if len(start) > 0:
         x0 = np.array([float(x) for x in start.split(",")])
     else:
-        x0 = voxel_map.observations[-1].base_pose
+        x0 = voxel_map.observations[-1].base_pose.numpy()
     assert len(x0) == 3, "start pose must be 3 values: x, y, theta"
     start_xyz = [x0[0], x0[1], 0]
 
