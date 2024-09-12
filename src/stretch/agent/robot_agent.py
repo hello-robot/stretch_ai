@@ -1036,7 +1036,6 @@ class RobotAgent:
     def plan_to_frontier(
         self,
         start: np.ndarray,
-        rate: int = 10,
         manual_wait: bool = False,
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
