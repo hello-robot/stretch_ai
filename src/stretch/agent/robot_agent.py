@@ -585,8 +585,18 @@ class RobotAgent:
         """
 
         start = start if start is not None else self.robot.get_base_pose()
-
-        bounds = instance.object_xyz
+        if isinstance(start, np.ndarray):
+            start = torch.tensor(start, device=self.voxel_map.device)
+        object_xyz = instance.get_center()
+        if np.linalg.norm(start[:2] - object_xyz[:2]) < self._manipulation_radius:
+            return True
+        if (
+            ((instance.point_cloud[:, :2] - start[:2]).norm(dim=-1) < self._manipulation_radius)
+            .any()
+            .item()
+        ):
+            return True
+        return False
 
     def plan_to_instance(
         self,
