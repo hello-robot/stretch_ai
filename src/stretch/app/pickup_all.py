@@ -109,7 +109,10 @@ def main(
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
+    # TODO: Add a prompt for the user to enter the target object and receptacle
     prompt = None
+
+    # Get the LLM client
     if prompt is not None:
         llm = get_llm_client(llm)
 
