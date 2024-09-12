@@ -75,11 +75,14 @@ class NavigateToObjectOperation(ManagedOperation):
         if self.agent.within_reach_of(self.get_target()):
             self.warn("Already within reach of object!")
             xyz = self.get_target().get_center()
+            start_xyz = self.robot.get_base_pose()[:2]
             theta = math.atan2(
                 xyz[1] - self.robot.get_base_pose()[1], xyz[0] - self.robot.get_base_pose()[0]
             )
             self.robot.navigate_to(
-                np.array([xyz[0], xyz[1], theta + np.pi / 2]), blocking=True, timeout=30.0
+                np.array([start_xyz[0], start_xyz[1], theta + np.pi / 2]),
+                blocking=True,
+                timeout=30.0,
             )
             return
 
