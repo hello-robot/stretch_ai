@@ -1103,6 +1103,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Is the client running"""
         return not self._finish
 
+    def is_running(self) -> bool:
+        """Is the client running"""
+        return not self._finish
+
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 

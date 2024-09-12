@@ -15,6 +15,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
+from stretch.llm import get_llm_client
 from stretch.perception import create_semantic_sensor
 
 
@@ -28,25 +29,6 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option(
-    "--target_object",
-    type=str,
-    default="toy",
-    help="Type of object to pick up from the floor and move",
-)
-@click.option(
-    "--receptacle",
-    "--target_receptacle",
-    type=str,
-    default="box",
-    help="Type of receptacle to place the object in",
-)
-@click.option(
-    "--force-rotate",
-    "--force_rotate",
-    is_flag=True,
-    help="Force the robot to rotate in place before doing anything.",
-)
-@click.option(
     "--match_method",
     type=click.Choice(["class", "feature"]),
     default="class",
@@ -59,6 +41,12 @@ from stretch.perception import create_semantic_sensor
     help="Mode of operation for the robot.",
     type=click.Choice(["one_shot", "all"]),
 )
+@click.option(
+    "--llm",
+    default="gemma",
+    help="Client to use for language model.",
+    type=click.Choice(["gemma", "llama", "openai"]),
+)
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -69,9 +57,9 @@ def main(
     reset: bool = False,
     target_object: str = "shoe",
     receptacle: str = "box",
-    force_rotate: bool = False,
     mode: str = "one_shot",
     match_method: str = "feature",
+    llm: str = "gemma",
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -96,22 +84,34 @@ def main(
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
-    # After the robot has started...
-    try:
-        pickup_task = PickupTask(
-            agent, target_object=target_object, target_receptacle=receptacle, matching=match_method
-        )
-        task = pickup_task.get_task(add_rotate=force_rotate, mode=mode)
-    except Exception as e:
-        print(f"Error creating task: {e}")
-        robot.stop()
-        raise e
+    llm = get_llm_client("gemma")
 
-    task.run()
+    # Parse things and listen to the user
+    while robot.running:
 
-    if reset:
-        # Send the robot home at the end!
-        agent.go_home()
+        # Call the LLM client and parse
+
+        # After the robot has started...
+        try:
+            pickup_task = PickupTask(
+                agent,
+                target_object=target_object,
+                target_receptacle=receptacle,
+                matching=match_method,
+            )
+            task = pickup_task.get_task(add_rotate=True, mode=mode)
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            robot.stop()
+            raise e
+
+        task.run()
+
+        if reset:
+            # Send the robot home at the end!
+            agent.go_home()
+
+        break
 
     # At the end, disable everything
     robot.stop()

@@ -7,8 +7,39 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+from .base import AbstractLLMClient, AbstractPromptBuilder
 from .gemma_client import Gemma2bClient
 from .llama_client import LlamaClient
 from .openai_client import OpenaiClient
 from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .prompts.simple_prompt import SimpleStretchPromptBuilder
+
+# This is a list of all the modules that are imported when you use the import * syntax.
+# The __all__ variable is used to define what symbols get exported when from a module when you use the import * syntax.
+__all__ = [
+    "Gemma2bClient",
+    "LlamaClient",
+    "OpenaiClient",
+    "ObjectManipNavPromptBuilder",
+    "SimpleStretchPromptBuilder",
+]
+
+
+def get_llm_client(client_type: str, **kwargs) -> AbstractLLMClient:
+    """Return an LLM client of the specified type.
+
+    Args:
+        client_type: The type of client to create.
+        kwargs: Additional keyword arguments to pass to the client constructor.
+
+    Returns:
+        An LLM client.
+    """
+    if client_type == "gemma2b":
+        return Gemma2bClient(**kwargs)
+    elif client_type == "llama":
+        return LlamaClient(**kwargs)
+    elif client_type == "openai":
+        return OpenaiClient(**kwargs)
+    else:
+        raise ValueError(f"Invalid client type: {client_type}")
