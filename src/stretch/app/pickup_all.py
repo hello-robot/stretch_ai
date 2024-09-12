@@ -120,11 +120,14 @@ def main(
     while robot.running:
         agent.reset()
 
-        # Call the LLM client and parse
-        if len(target_object) == 0:
-            target_object = input("Enter the target object: ")
-        if len(receptacle) == 0:
-            receptacle = input("Enter the target receptacle: ")
+        if llm is None:
+            # Call the LLM client and parse
+            if len(target_object) == 0:
+                target_object = input("Enter the target object: ")
+            if len(receptacle) == 0:
+                receptacle = input("Enter the target receptacle: ")
+        else:
+            raise NotImplementedError("LLM client not implemented yet")
 
         # After the robot has started...
         try:
