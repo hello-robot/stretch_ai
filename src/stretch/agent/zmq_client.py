@@ -695,9 +695,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         close_to_goal = False
 
-        # TODO: this is useful for debugging
-        # verbose = True
-
         while True:
 
             # Minor delay at the end - give it time to get new messages
