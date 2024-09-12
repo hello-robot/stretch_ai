@@ -6,6 +6,7 @@
 #
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
+from typing import Union
 
 from .base import AbstractLLMClient, AbstractPromptBuilder
 from .gemma_client import Gemma2bClient
@@ -36,7 +37,9 @@ def get_llm_choices():
     return llms.keys()
 
 
-def get_llm_client(client_type: str, **kwargs) -> AbstractLLMClient:
+def get_llm_client(
+    client_type: str, prompt: Union[str, AbstractPromptBuilder], **kwargs
+) -> AbstractLLMClient:
     """Return an LLM client of the specified type.
 
     Args:

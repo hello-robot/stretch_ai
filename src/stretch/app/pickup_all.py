@@ -31,7 +31,7 @@ from stretch.perception import create_semantic_sensor
 @click.option(
     "--match_method",
     type=click.Choice(["class", "feature"]),
-    default="class",
+    default="feature",
     help="Method to match objects to pick up. Options: class, feature.",
     show_default=True,
 )
@@ -47,6 +47,31 @@ from stretch.perception import create_semantic_sensor
     help="Client to use for language model.",
     type=click.Choice(get_llm_choices()),
 )
+@click.option(
+    "--device_id",
+    default=0,
+    help="ID of the device to use for perception",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Set to print debug information",
+)
+@click.option(
+    "--show_intermediate_maps",
+    is_flag=True,
+    help="Set to visualize intermediate maps",
+)
+@click.option(
+    "--target_object",
+    default="",
+    help="Name of the object to pick up",
+)
+@click.option(
+    "--receptacle",
+    default="",
+    help="Name of the receptacle to place the object in",
+)
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -55,8 +80,8 @@ def main(
     verbose: bool = False,
     show_intermediate_maps: bool = False,
     reset: bool = False,
-    target_object: str = "shoe",
-    receptacle: str = "box",
+    target_object: str = "",
+    receptacle: str = "",
     mode: str = "one_shot",
     match_method: str = "feature",
     llm: str = "gemma",
@@ -84,12 +109,19 @@ def main(
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
-    llm = get_llm_client(llm)
+    prompt = None
+    if prompt is not None:
+        llm = get_llm_client(llm)
 
     # Parse things and listen to the user
     while robot.running:
+        agent.reset()
 
         # Call the LLM client and parse
+        if len(target_object) == 0:
+            target_object = input("Enter the target object: ")
+        if len(receptacle) == 0:
+            receptacle = input("Enter the target receptacle: ")
 
         # After the robot has started...
         try:

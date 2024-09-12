@@ -1313,6 +1313,7 @@ class RobotAgent:
                 "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
             )
         self.voxel_map.reset()
+        self.reset_object_plans()
 
     def save_instance_images(self, root: Union[Path, str] = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""
