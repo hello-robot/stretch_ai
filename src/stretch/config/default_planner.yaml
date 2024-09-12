@@ -115,7 +115,7 @@ motion_planner:
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
-    step_dist: 0.1
+    step_dist: 0.2
   goals:
     manipulation_radius: 0.55
 

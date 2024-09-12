@@ -12,7 +12,6 @@
 import click
 
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.perception import create_semantic_sensor
@@ -79,23 +78,11 @@ def main(
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     agent.start(visualize_map_at_start=show_intermediate_maps)
-    if reset:
-        agent.move_closed_loop([0, 0, 0], max_time=60.0)
-
-    # After the robot has started...
-    try:
-        pickup_task = PickupTask(agent, target_object=target_object, destination=destination)
-        task = pickup_task.get_task(add_rotate=force_rotate, mode=mode)
-    except Exception as e:
-        print(f"Error creating task: {e}")
-        robot.stop()
-        raise e
-
-    task.run()
 
     if reset:
         # Send the robot home at the end!
         agent.go_home()
+        agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     # At the end, disable everything
     robot.stop()
