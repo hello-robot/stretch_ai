@@ -50,22 +50,17 @@ class GraspObjectOperation(ManagedOperation):
     show_servo_gui: bool = True
     show_point_cloud: bool = False
 
-    # Thresholds for centering on object
-    align_x_threshold: int = 10
-    align_y_threshold: int = 7
-    grasp_loose: bool = False
-    reset_observation: bool = False
+    # ------------------------
+    # These are the most important parameters for tuning to make the grasping "feel" nice
+    # This is almost certainly worth tuning a bit.
 
-    # Visual servoing config
-    track_image_center: bool = False
-    gripper_aruco_detector: GripperArucoDetector = None
-    min_points_to_approach: int = 100
-    detected_center_offset_y: int = -40
-    percentage_of_image_when_grasping: float = 0.2
-    open_loop_z_offset: float = -0.1
-    open_loop_x_offset: float = -0.1
-    max_failed_attempts: int = 10
-    max_random_motions: int = 10
+    # Thresholds for centering on object
+    # align_x_threshold: int = 10
+    # align_y_threshold: int = 7
+    # These are the values used to decide when it's aligned enough to grasp
+    align_x_threshold: int = 14
+    align_y_threshold: int = 10
+
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.1
 
@@ -79,6 +74,22 @@ class GraspObjectOperation(ManagedOperation):
     # wrist_pitch_step: float = 0.075  # Maybe too fast
     wrist_pitch_step: float = 0.06
     # wrist_pitch_step: float = 0.05  # Too slow
+    # ------------------------
+
+    # Parameters about how to grasp - less important
+    grasp_loose: bool = False
+    reset_observation: bool = False
+
+    # Visual servoing config
+    track_image_center: bool = False
+    gripper_aruco_detector: GripperArucoDetector = None
+    min_points_to_approach: int = 100
+    detected_center_offset_y: int = -40
+    percentage_of_image_when_grasping: float = 0.2
+    open_loop_z_offset: float = -0.1
+    open_loop_x_offset: float = -0.1
+    max_failed_attempts: int = 10
+    max_random_motions: int = 10
 
     # Timing issues
     expected_network_delay = 0.4
