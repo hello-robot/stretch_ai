@@ -482,7 +482,6 @@ class GraspObjectOperation(ManagedOperation):
                             f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
                         )
                         self.info("Aligned and close enough to grasp.")
-                        breakpoint()
                         success = self._grasp()
                         break
                     # If we are aligned, step the whole thing closer by some amount
