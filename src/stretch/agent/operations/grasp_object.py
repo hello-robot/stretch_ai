@@ -7,6 +7,14 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import time
 import timeit
 from typing import Optional, Tuple
@@ -34,6 +42,7 @@ class GraspObjectOperation(ManagedOperation):
     _success: bool = False
 
     # Task information
+    match_method: str = "class"
     target_object: Optional[str] = None
 
     # Debugging UI elements
@@ -132,10 +141,36 @@ class GraspObjectOperation(ManagedOperation):
             np.ndarray: Mask for the class of the object we are trying to grasp
         """
         mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
-        for iid in np.unique(servo.semantic):
-            name = self.agent.semantic_sensor.get_class_name_for_id(iid)
-            if name is not None and self.target_object in name:
-                mask = np.bitwise_or(mask, servo.semantic == iid)
+
+        if self.match_method == "class":
+
+            # Get the target class
+            if self.agent.current_object is not None:
+                target_class_id = self.agent.current_object.category_id
+                target_class = self.agent.semantic_sensor.get_class_name_for_id(target_class_id)
+            else:
+                target_class = self.target_object
+
+            # Now find the mask with that class
+            for iid in np.unique(servo.semantic):
+                name = self.agent.semantic_sensor.get_class_name_for_id(iid)
+                if name is not None and target_class in name:
+                    mask = np.bitwise_or(mask, servo.semantic == iid)
+
+        elif self.match_method == "feature":
+            if self.target_object is None:
+                raise ValueError(
+                    f"Target object must be set before running match method {self.match_method}."
+                )
+            for iid in np.unique(servo.instance):
+                rgb = servo.ee_rgb[servo.instance == iid]
+                import matplotlib.pyplot as plt
+
+                plt.imshow(rgb)
+                plt.show()
+        else:
+            raise ValueError(f"Invalid matching method {self.match_method}.")
+
         return mask
 
     def set_target_object_class(self, target_object: str):
@@ -174,6 +209,8 @@ class GraspObjectOperation(ManagedOperation):
         maximum_overlap_mask = None
         maximum_overlap_pts = float("-inf")
         center_x, center_y = center
+
+        # Loop over all detected instances -- finding the one that matches our target object
         for iid in np.unique(instance_mask):
             current_instance_mask = instance_mask == iid
 
@@ -284,6 +321,7 @@ class GraspObjectOperation(ManagedOperation):
             latest_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
+            print("latest mask size:", np.sum(latest_mask.flatten()))
 
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
