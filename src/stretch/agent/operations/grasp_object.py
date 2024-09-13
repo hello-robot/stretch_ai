@@ -75,7 +75,8 @@ class GraspObjectOperation(ManagedOperation):
     # Movement parameters
     lift_arm_ratio: float = 0.08
     base_x_step: float = 0.10
-    wrist_pitch_step: float = 0.075
+    # wrist_pitch_step: float = 0.075
+    wrist_pitch_step: float = 0.05
 
     # Timing issues
     expected_network_delay = 0.4
@@ -254,6 +255,21 @@ class GraspObjectOperation(ManagedOperation):
     def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
+
+        if not self.open_loop:
+            joint_state = self.robot.get_joint_positions()
+            # Now compute what to do
+            base_x = joint_state[HelloStretchIdx.BASE_X]
+            wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
+            arm = joint_state[HelloStretchIdx.ARM]
+            lift = joint_state[HelloStretchIdx.LIFT]
+
+            self.robot.arm_to(
+                [base_x, lift - 0.03, arm + 0.05, 0, wrist_pitch, 0],
+                head=constants.look_at_ee,
+                blocking=False,
+            )
+
         self.robot.close_gripper(loose=self.grasp_loose, blocking=True)
         time.sleep(0.5)
 
