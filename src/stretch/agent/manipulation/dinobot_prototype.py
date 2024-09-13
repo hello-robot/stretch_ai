@@ -27,6 +27,7 @@ from stretch.agent.manipulation.dinobot import (
     extract_3d_coordinates,
     find_transformation,
 )
+from stretch.motion import HelloStretchIdx
 from stretch.perception.detection.detic import DeticPerception
 
 DEBUG_VISUALIZATION = False
@@ -138,9 +139,20 @@ class Dinobot:
                     else:
                         print("No correspondences found")
                 # Move the robot to the bottleneck pose
-                self.move_to_bottleneck(None, points1, points2, ee_depth, demo)
+                self.move_to_bottleneck(robot, points1, points2, ee_depth, demo)
             else:
                 print("No bottleneck image found")
+
+    def move_robot(self, robot: RobotClient, R: np.ndarray, t: np.ndarray) -> float:
+        """
+        Move the robot to the bottleneck pose
+        """
+        robot.switch_to_manipulation_mode()
+        joint_state = robot.get_joint_positions().copy()
+        # joint_state[HelloStretchIdx.ARM] = joint_state[HelloStretchIdx.ARM] + t[2]
+        # joint_state[HelloStretchIdx.LIFT] = joint_state[HelloStretchIdx.LIFT] + t[1]
+        joint_state[HelloStretchIdx.BASE_X] = joint_state[HelloStretchIdx.BASE_X] + t[0]
+        robot.arm_to(joint_state, blocking=True)
 
     def move_to_bottleneck(
         self,
@@ -151,7 +163,7 @@ class Dinobot:
         demo: Demo,
     ) -> float:
         """
-        Move the robot to the bottleneck pose
+        Compute the transformation to move the robot to the bottleneck pose
         Args:
             robot (RobotClient): The robot client to use
             bottleneck_points (List): The bottleneck points
@@ -189,15 +201,14 @@ class Dinobot:
         error = compute_error(points1, points2)
         print(f"Error: {error}")
 
-        # Example usage
-        unique_colors = generate_unique_colors(len(points1))
-
         # Debug 3D Visualization
         if DEBUG_VISUALIZATION:
+            unique_colors = generate_unique_colors(len(points1))
             origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
                 size=0.03, origin=[0, 0, 0]
             )
 
+            # Bottleneck frame
             bottleneck_frame = o3d.geometry.PointCloud()
             bottleneck_frame.points = o3d.utility.Vector3dVector(
                 bottleneck_xyz.reshape((bottleneck_xyz.shape[0] * bottleneck_xyz.shape[1], 3))
@@ -215,6 +226,7 @@ class Dinobot:
             components.extend(spheres)
             o3d.visualization.draw_geometries(components)
 
+            # Live frame
             # live_frame = o3d.geometry.PointCloud()
             # live_frame.points = o3d.utility.Vector3dVector(live_xyz.reshape((live_xyz.shape[0]*live_xyz.shape[1],3)))
             # points2_frame = o3d.geometry.PointCloud()
@@ -229,6 +241,8 @@ class Dinobot:
             # components = [origin_frame,live_frame]
             # components.extend(spheres)
             # o3d.visualization.draw_geometries(components)
+
+        self.move_robot(robot, R, t)
 
         return error
 
@@ -279,6 +293,7 @@ if __name__ == "__main__":
             image[~object_mask] = [0, 0, 0]
         else:
             print(f"Object ID: {track_object_id} not found in the live image")
+            breakpoint()
         return image
 
     if track_object_id in task_observations["instance_classes"]:
@@ -286,6 +301,7 @@ if __name__ == "__main__":
         demo = Demo(
             bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
         )
+        input("Displace the object")
         dinobot.run(robot, demo, visualize=True, apply_mask_callback=apply_mask_callback)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
