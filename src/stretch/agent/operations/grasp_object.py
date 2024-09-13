@@ -58,8 +58,8 @@ class GraspObjectOperation(ManagedOperation):
     # align_x_threshold: int = 10
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 14
-    align_y_threshold: int = 10
+    align_x_threshold: int = 15
+    align_y_threshold: int = 15
 
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.1
@@ -71,8 +71,8 @@ class GraspObjectOperation(ManagedOperation):
     # Movement parameters
     lift_arm_ratio: float = 0.08
     base_x_step: float = 0.10
-    # wrist_pitch_step: float = 0.075  # Maybe too fast
-    wrist_pitch_step: float = 0.06
+    wrist_pitch_step: float = 0.075  # Maybe too fast
+    # wrist_pitch_step: float = 0.06
     # wrist_pitch_step: float = 0.05  # Too slow
     # ------------------------
 
