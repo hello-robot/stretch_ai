@@ -36,55 +36,64 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def go_to(self, location: str):
         """Adds a GoToNavOperation to the task"""
-        self.task.add_operation(GoToNavOperation(name="go_to_" + location, location=location))
+        self.task.add_operation(GoToNavOperation(name="go_to_" + location, location=location), True)
         return "go_to_" + location
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
         self.task.add_operation(
-            GraspObjectOperation(name="pick_" + object_name, object_name=object_name)
+            GraspObjectOperation(name="pick_" + object_name, object_name=object_name), True
         )
         return "pick_" + object_name
 
     def place(self, object_name: str):
         """Adds a PlaceObjectOperation to the task"""
-        speak_not_implemented = SpeakOperation(name="place_" + object_name, agent=self.agent, robot=self.robot)
+        speak_not_implemented = SpeakOperation(
+            name="place_" + object_name, agent=self.agent, robot=self.robot
+        )
         speak_not_implemented.configure(message="Place operation not implemented")
-        self.task.add_operation(speak_not_implemented)
+        self.task.add_operation(speak_not_implemented, True)
         return "place_" + object_name
 
     def say(self, message: str):
         """Adds a SpeakOperation to the task"""
         say_operation = SpeakOperation(name="say_" + message, agent=self.agent, robot=self.robot)
-        print(f"Configuring with message: {message}")
         say_operation.configure(message=message)
-        self.task.add_operation(say_operation)
+        self.task.add_operation(say_operation, True)
         return "say_" + message
 
     def wave(self):
         """Adds a WaveOperation to the task"""
-        self.task.add_operation(WaveOperation(name="wave", agent=self.agent, robot=self.robot))
+        self.task.add_operation(
+            WaveOperation(name="wave", agent=self.agent, robot=self.robot), True
+        )
         return "wave"
 
     def open_cabinet(self):
         """Adds a SpeakOperation (not implemented) to the task"""
-        speak_not_implemented = SpeakOperation(name="open_cabinet", agent=self.agent, robot=self.robot)
+        speak_not_implemented = SpeakOperation(
+            name="open_cabinet", agent=self.agent, robot=self.robot
+        )
         speak_not_implemented.configure(message="Open cabinet operation not implemented")
-        self.task.add_operation(speak_not_implemented)
+        self.task.add_operation(speak_not_implemented, True)
         return "open_cabinet"
 
     def close_cabinet(self):
         """Adds a SpeakOperation (not implemented) to the task"""
-        speak_not_implemented = SpeakOperation(name="close_cabinet", agent=self.agent, robot=self.robot)
+        speak_not_implemented = SpeakOperation(
+            name="close_cabinet", agent=self.agent, robot=self.robot
+        )
         speak_not_implemented.configure(message="Close cabinet operation not implemented")
-        self.task.add_operation(speak_not_implemented)
+        self.task.add_operation(speak_not_implemented, True)
         return "close_cabinet"
 
     def get_detections(self):
         """Adds a SpeakOperation (not implemented) to the task"""
-        speak_not_implemented = SpeakOperation(name="get_detections", agent=self.agent, robot=self.robot)
+        speak_not_implemented = SpeakOperation(
+            name="get_detections", agent=self.agent, robot=self.robot
+        )
         speak_not_implemented.configure(message="Get detections operation not implemented")
-        self.task.add_operation(speak_not_implemented)
+        self.task.add_operation(speak_not_implemented, True)
         return "get_detections"
 
     def build_tree(self, node):
@@ -130,7 +139,26 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
         elif isinstance(node, ast.FunctionDef):
             if len(node.body) > 0:
-                return self.build_tree(node.body[0])
+                previous_operation = None
+                first_operation = None
+                for expr in node.body:
+                    operation = self.build_tree(expr)
+
+                    if first_operation is None:
+                        first_operation = operation
+
+                    if previous_operation is None:
+                        previous_operation = operation
+                        continue
+
+                    if previous_operation.function_call.startswith(
+                        "say"
+                    ) or previous_operation.function_call.startswith("wave"):
+                        previous_operation.success = operation
+
+                    previous_operation = operation
+
+                return first_operation
         else:
             print("Unknown node type")
 
@@ -160,7 +188,7 @@ class LLMPlanCompiler(ast.NodeVisitor):
     def compile(self):
         self.task = Task()
         tree = ast.parse(self.llm_plan)
-        root = self.build_tree(tree)
-        self.convert_to_task(root)
+        self.build_tree(tree)
+        self.convert_to_task(self.root)
 
         return self.task
