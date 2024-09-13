@@ -13,6 +13,8 @@ from .gemma_client import Gemma2bClient
 from .llama_client import LlamaClient
 from .openai_client import OpenaiClient
 from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
+from .prompts.ok_robot_prompt import OkRobotPromptBuilder
+from .prompts.pickup_prompt import PickupPromptBuilder
 from .prompts.simple_prompt import SimpleStretchPromptBuilder
 
 # This is a list of all the modules that are imported when you use the import * syntax.
@@ -23,6 +25,10 @@ __all__ = [
     "OpenaiClient",
     "ObjectManipNavPromptBuilder",
     "SimpleStretchPromptBuilder",
+    "OkRobotPromptBuilder",
+    "PickupPromptBuilder",
+    "AbstractLLMClient",
+    "AbstractPromptBuilder",
 ]
 
 llms = {
@@ -30,6 +36,32 @@ llms = {
     "llama": LlamaClient,
     "openai": OpenaiClient,
 }
+
+prompts = {
+    "simple": SimpleStretchPromptBuilder,
+    "object_manip_nav": ObjectManipNavPromptBuilder,
+    "ok_robot": OkRobotPromptBuilder,
+    "pickup": PickupPromptBuilder,
+}
+
+
+def get_prompt_builder(prompt_type: str) -> AbstractPromptBuilder:
+    """Return a prompt builder of the specified type.
+
+    Args:
+        prompt_type: The type of prompt builder to create.
+
+    Returns:
+        A prompt builder.
+    """
+    if prompt_type not in prompts:
+        raise ValueError(f"Invalid prompt type: {prompt_type}")
+    return prompts[prompt_type]()
+
+
+def get_prompt_choices():
+    """Return a list of available prompt builders."""
+    return prompts.keys()
 
 
 def get_llm_choices():
