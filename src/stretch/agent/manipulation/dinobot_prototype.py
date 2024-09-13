@@ -10,6 +10,7 @@
 import sys
 
 sys.path.append("/home/hello-robot/repos/dino-vit-features")
+sys.path.append("/home/hello-robot/repos/gripper_grasp_space")
 import time
 from typing import List, Tuple
 
@@ -20,6 +21,7 @@ import torch
 from correspondences import find_correspondences, visualize_correspondences
 from extractor import ViTExtractor
 from scipy.spatial.transform import Rotation
+from urdf_utils import get_stretch_3_urdf
 
 from stretch.agent import RobotClient
 from stretch.agent.manipulation.dinobot import (
@@ -80,12 +82,13 @@ class Dinobot:
         self.feature_extractor = ViTExtractor(
             model_type=model_type, stride=stride, device=self.device
         )
+        self.urdf_model = get_stretch_3_urdf()
 
     def get_correspondences(
         self,
         image1: np.ndarray,
         image2: np.ndarray,
-        num_pairs: int = 10,
+        num_pairs: int = 20,
         load_size: int = 224,
         layer: int = 9,
         facet: str = "key",
@@ -101,7 +104,12 @@ class Dinobot:
         return points1, points2
 
     def run(
-        self, robot: RobotClient, demo: Demo, visualize: bool = False, apply_mask_callback=None
+        self,
+        robot: RobotClient,
+        demo: Demo,
+        visualize: bool = False,
+        apply_mask_callback=None,
+        error_threshold: float = 0.01,
     ):
         """
         Run the Dinobot algorithm
@@ -111,7 +119,8 @@ class Dinobot:
             visualize (bool): Whether to visualize the correspondences
         """
         print("Running Dinobot")
-        while True:
+        error = 100000
+        while error > error_threshold:
             servo = robot.get_servo_observation()
             ee_depth = servo.ee_depth.copy()
             ee_rgb = servo.ee_rgb.copy()
@@ -139,19 +148,36 @@ class Dinobot:
                     else:
                         print("No correspondences found")
                 # Move the robot to the bottleneck pose
-                self.move_to_bottleneck(robot, points1, points2, ee_depth, demo)
+                error = self.move_to_bottleneck(robot, points1, points2, ee_depth, demo)
             else:
                 print("No bottleneck image found")
+        print("Dinobot finished")
 
     def move_robot(self, robot: RobotClient, R: np.ndarray, t: np.ndarray) -> float:
         """
         Move the robot to the bottleneck pose
         """
+        ee_transform = np.eye(4)
+        ee_transform[:3, :3] = R
+        ee_transform[:3, 3] = t
+        T_d405_to_wrist_yaw = self.urdf_model.get_transform(
+            "gripper_camera_color_optical_frame", "link_wrist_yaw"
+        )
+        ee_transform_wrist_yaw_T = T_d405_to_wrist_yaw @ ee_transform
+        translation_vector = ee_transform_wrist_yaw_T[:3, 3]
+        rotation_mat = ee_transform_wrist_yaw_T[:3, :3]
         robot.switch_to_manipulation_mode()
         joint_state = robot.get_joint_positions().copy()
-        # joint_state[HelloStretchIdx.ARM] = joint_state[HelloStretchIdx.ARM] + t[2]
-        # joint_state[HelloStretchIdx.LIFT] = joint_state[HelloStretchIdx.LIFT] + t[1]
-        joint_state[HelloStretchIdx.BASE_X] = joint_state[HelloStretchIdx.BASE_X] + t[0]
+        print(f"TRanslation: {translation_vector}")
+        breakpoint()
+        # joint_state[HelloStretchIdx.ARM] = joint_state[HelloStretchIdx.ARM] + ee_transform_wrist_yaw_T[:3][3]
+        # joint_state[HelloStretchIdx.LIFT] = joint_state[HelloStretchIdx.LIFT] + ee_transform_wrist_yaw_T[:3][2]
+        joint_state[HelloStretchIdx.BASE_X] = (
+            joint_state[HelloStretchIdx.BASE_X] - translation_vector[0]
+        )
+        # joint_state[HelloStretchIdx.WRIST_YAW] = joint_state[HelloStretchIdx.WRIST_YAW] + R[0]
+        # joint_state[HelloStretchIdx.WRIST_PITCH] = joint_state[HelloStretchIdx.WRIST_PITCH] + R[1]
+        # joint_state[HelloStretchIdx.WRIST_ROLL] = joint_state[HelloStretchIdx.WRIST_ROLL] + R[2]
         robot.arm_to(joint_state, blocking=True)
 
     def move_to_bottleneck(
@@ -182,7 +208,6 @@ class Dinobot:
 
         invalid_depth_ids = []
         for i, point in enumerate(points1):
-            print(point)
             if np.mean(point) == 0:
                 invalid_depth_ids.append(i)
         for i, point in enumerate(points2):
@@ -197,7 +222,7 @@ class Dinobot:
         R, t = find_transformation(points1, points2)
         r = Rotation.from_matrix(R)
         angles = r.as_euler("xyz")
-        print(f"Robot needs to Rotate: {angles}, T: {t}")
+        print(f"Camera frame to Rot: {R}, Trans: {t}")
         error = compute_error(points1, points2)
         print(f"Error: {error}")
 
@@ -242,8 +267,7 @@ class Dinobot:
             # components.extend(spheres)
             # o3d.visualization.draw_geometries(components)
 
-        self.move_robot(robot, R, t)
-
+        self.move_robot(robot, angles, t)
         return error
 
 
