@@ -23,7 +23,6 @@ import cv2
 import numpy as np
 
 import stretch.motion.constants as constants
-import stretch.utils.logger as logger
 from stretch.agent.base import ManagedOperation
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance
@@ -67,6 +66,8 @@ class GraspObjectOperation(ManagedOperation):
     open_loop_x_offset: float = -0.1
     max_failed_attempts: int = 10
     max_random_motions: int = 10
+    # pregrasp_distance_from_object: float = 0.075
+    pregrasp_distance_from_object: float = 0.1
 
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
@@ -75,8 +76,9 @@ class GraspObjectOperation(ManagedOperation):
     # Movement parameters
     lift_arm_ratio: float = 0.08
     base_x_step: float = 0.10
-    # wrist_pitch_step: float = 0.075
-    wrist_pitch_step: float = 0.05
+    # wrist_pitch_step: float = 0.075  # Maybe too fast
+    wrist_pitch_step: float = 0.06
+    # wrist_pitch_step: float = 0.05  # Too slow
 
     # Timing issues
     expected_network_delay = 0.4
@@ -264,11 +266,13 @@ class GraspObjectOperation(ManagedOperation):
             arm = joint_state[HelloStretchIdx.ARM]
             lift = joint_state[HelloStretchIdx.LIFT]
 
+            # Move the arm in closer
             self.robot.arm_to(
-                [base_x, lift - 0.03, arm + 0.05, 0, wrist_pitch, 0],
+                [base_x, lift - 0.05, arm + 0.1, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
+            time.sleep(0.5)
 
         self.robot.close_gripper(loose=self.grasp_loose, blocking=True)
         time.sleep(0.5)
@@ -418,7 +422,9 @@ class GraspObjectOperation(ManagedOperation):
                     break
 
             if not pregrasp_done and current_xyz is not None:
-                self.pregrasp_open_loop(current_xyz, distance_from_object=0.075)
+                self.pregrasp_open_loop(
+                    current_xyz, distance_from_object=self.pregrasp_distance_from_object
+                )
                 pregrasp_done = True
             else:
                 # check not moving threshold
@@ -469,22 +475,7 @@ class GraspObjectOperation(ManagedOperation):
                 # Fix lift to only go down
                 lift = min(lift, prev_lift)
 
-                if not center_in_mask:
-                    # If the center of the image is not in the mask, we are not aligned
-                    # We move base, or wrist at random
-                    logger.warning("Center not in mask; moving randomly.")
-                    r = np.random.rand()
-                    if r < 0.25:
-                        base_x += -self.base_x_step / 2
-                    elif r < 0.5:
-                        base_x += self.base_x_step / 2
-                    elif r < 0.75:
-                        wrist_pitch += -self.wrist_pitch_step / 2
-                    else:
-                        wrist_pitch += self.wrist_pitch_step / 2
-                    random_motion_counter += 1
-                    input("---")
-                elif aligned:
+                if aligned:
                     # First, check to see if we are close enough to grasp
                     if center_depth < self.median_distance_when_grasping:
                         print(
@@ -625,7 +616,13 @@ class GraspObjectOperation(ManagedOperation):
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
 
-    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.2):
+    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
+        """Move to a pregrasp position in an open loop manner.
+
+        Args:
+            object_xyz (np.ndarray): Location to grasp
+            distance_from_object (float, optional): Distance from object. Defaults to 0.2.
+        """
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
