@@ -50,10 +50,10 @@ def get_llm_client(
         An LLM client.
     """
     if client_type == "gemma2b":
-        return Gemma2bClient(**kwargs)
+        return Gemma2bClient(prompt, **kwargs)
     elif client_type == "llama":
-        return LlamaClient(**kwargs)
+        return LlamaClient(prompt, **kwargs)
     elif client_type == "openai":
-        return OpenaiClient(**kwargs)
+        return OpenaiClient(prompt, **kwargs)
     else:
         raise ValueError(f"Invalid client type: {client_type}")

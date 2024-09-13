@@ -18,6 +18,7 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
+from stretch.utils.prompt import PickupPromptBuilder
 
 
 @click.command()
@@ -116,12 +117,11 @@ def main(
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
-    # TODO: Add a prompt for the user to enter the target object and receptacle
-    prompt = None
+    prompt = PickupPromptBuilder()
 
     # Get the LLM client
     llm_client = None
-    if prompt is not None:
+    if use_llm:
         llm_client = get_llm_client(llm, prompt=prompt)
 
     # Parse things and listen to the user
