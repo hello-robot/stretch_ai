@@ -178,6 +178,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     """Search for an object on the floor"""
 
     plan_for_manipulation: bool = True
+    update_at_start: bool = False
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
@@ -194,11 +195,14 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         # Clear the current object
         self.agent.current_object = None
 
-        # Update world map
-        # Switch to navigation posture
-        self.robot.move_to_nav_posture()
-        # Do not update until you are in nav posture
-        self.update()
+        if self.update_at_start:
+            # Update world map
+            # Switch to navigation posture
+            self.robot.move_to_nav_posture()
+
+            # Do not update until you are in nav posture
+
+            self.update()
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far

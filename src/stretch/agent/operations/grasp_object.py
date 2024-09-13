@@ -23,6 +23,7 @@ import cv2
 import numpy as np
 
 import stretch.motion.constants as constants
+import stretch.utils.logger as logger
 from stretch.agent.base import ManagedOperation
 from stretch.core.interfaces import Observations
 from stretch.mapping.instance import Instance
@@ -65,6 +66,7 @@ class GraspObjectOperation(ManagedOperation):
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
     max_failed_attempts: int = 10
+    max_random_motions: int = 10
 
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
@@ -265,7 +267,7 @@ class GraspObjectOperation(ManagedOperation):
         return True
 
     def visual_servo_to_object(
-        self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 10
+        self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 50
     ) -> bool:
         """Use visual servoing to grasp the object."""
 
@@ -289,6 +291,7 @@ class GraspObjectOperation(ManagedOperation):
         failed_counter = 0
         not_moving_count = 0
         q_last = np.array([0.0 for _ in range(11)])  # 11 DOF, HelloStretchIdx
+        random_motion_counter = 0
 
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
@@ -427,6 +430,11 @@ class GraspObjectOperation(ManagedOperation):
                 # Since we were able to detect it, copy over the target mask
                 prev_target_mask = target_mask
 
+                # Are we aligned to the object
+                aligned = (
+                    np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
+                )
+
                 print()
                 print("----- STEP VISUAL SERVOING -----")
                 print("Observed this many target mask points:", np.sum(target_mask.flatten()))
@@ -440,21 +448,34 @@ class GraspObjectOperation(ManagedOperation):
                 print(f"Center distance to object is {center_depth}.")
                 print("Center in mask?", center_in_mask)
                 print("Current XYZ:", current_xyz)
-
-                aligned = (
-                    np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
-                )
+                print("Aligned?", aligned)
 
                 # Fix lift to only go down
                 lift = min(lift, prev_lift)
 
-                if aligned:
+                if not center_in_mask:
+                    # If the center of the image is not in the mask, we are not aligned
+                    # We move base, or wrist at random
+                    logger.warning("Center not in mask; moving randomly.")
+                    r = np.random.rand()
+                    if r < 0.25:
+                        base_x += -self.base_x_step / 2
+                    elif r < 0.5:
+                        base_x += self.base_x_step / 2
+                    elif r < 0.75:
+                        wrist_pitch += -self.wrist_pitch_step / 2
+                    else:
+                        wrist_pitch += self.wrist_pitch_step / 2
+                    random_motion_counter += 1
+                    input("---")
+                elif aligned:
                     # First, check to see if we are close enough to grasp
                     if center_depth < self.median_distance_when_grasping:
                         print(
                             f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
                         )
                         self.info("Aligned and close enough to grasp.")
+                        breakpoint()
                         success = self._grasp()
                         break
                     # If we are aligned, step the whole thing closer by some amount
@@ -531,6 +552,10 @@ class GraspObjectOperation(ManagedOperation):
 
                 q_last = q
 
+            if random_motion_counter > self.max_random_motions:
+                self.error("Failed to align to object after 10 random motions.")
+                break
+
         if self.show_servo_gui:
             cv2.destroyAllWindows()
         return success
@@ -576,9 +601,6 @@ class GraspObjectOperation(ManagedOperation):
             # If we try to servo, then do this
             self._success = self.visual_servo_to_object(self.agent.current_object)
 
-        if not self._success:
-            self.grasp_open_loop(object_xyz)
-
         # clear observations
         if self.reset_observation:
             self.observations.clear_history()
@@ -587,7 +609,7 @@ class GraspObjectOperation(ManagedOperation):
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
 
-    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.1):
+    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.2):
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
