@@ -73,6 +73,11 @@ from stretch.perception import create_semantic_sensor
     default="",
     help="Name of the receptacle to place the object in",
 )
+@click.option(
+    "--use_llm",
+    is_flag=True,
+    help="Set to use the language model",
+)
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -86,6 +91,7 @@ def main(
     mode: str = "one_shot",
     match_method: str = "feature",
     llm: str = "gemma",
+    use_llm: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -147,6 +153,7 @@ def main(
             robot.stop()
             raise e
 
+        # Execute the task
         task.run()
 
         if reset:
