@@ -41,6 +41,8 @@ class PickupTask:
         # Task information
         self.agent.target_object = target_object
         self.agent.target_receptacle = target_receptacle
+        self.target_object = target_object
+        self.target_receptacle = target_receptacle
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
 
         assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
