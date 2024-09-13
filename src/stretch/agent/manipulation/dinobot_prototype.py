@@ -170,7 +170,7 @@ class Dinobot:
         joint_state = robot.get_joint_positions().copy()
         print(f"TRanslation: {translation_vector}")
         breakpoint()
-        # joint_state[HelloStretchIdx.ARM] = joint_state[HelloStretchIdx.ARM] + ee_transform_wrist_yaw_T[:3][3]
+        joint_state[HelloStretchIdx.ARM] = joint_state[HelloStretchIdx.ARM] - translation_vector[1]
         # joint_state[HelloStretchIdx.LIFT] = joint_state[HelloStretchIdx.LIFT] + ee_transform_wrist_yaw_T[:3][2]
         joint_state[HelloStretchIdx.BASE_X] = (
             joint_state[HelloStretchIdx.BASE_X] - translation_vector[0]
