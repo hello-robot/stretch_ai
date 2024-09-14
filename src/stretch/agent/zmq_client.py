@@ -466,6 +466,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             xyt = xyt.xyt
         assert len(xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
+        if self._rerun:
+            self._rerun.update_nav_goal(xyt)
         self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def reset(self):

@@ -326,6 +326,26 @@ class RerunVsualizer:
             t1 = timeit.default_timer()
             print("Time to log scene graph objects: ", t1 - t0)
 
+    def update_nav_goal(self, goal, timeout=10):
+        """Log navigation goal
+        Args:
+            goal (np.ndarray): Goal coordinates
+        """
+        ts = time.time()
+        rr.set_time_seconds("realtime", ts)
+        rr.log("world/xyt_goal/blob", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
+        rr.log(
+            "world/xyt_goal",
+            rr.Transform3D(
+                translation=[goal[0], goal[1], 0],
+                rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=goal[2]),
+                axis_length=0.5,
+            ),
+        )
+        rr.set_time_seconds("realtime", ts + timeout)
+        rr.log("world/xyt_goal", rr.Clear(recursive=True))
+        rr.set_time_seconds("realtime", ts)
+
     def step(self, obs, servo):
         """Log all the data"""
         if obs and servo:
