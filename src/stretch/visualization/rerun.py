@@ -215,7 +215,7 @@ class RerunVsualizer:
         self,
         space: SparseVoxelMapNavigationSpace,
         debug: bool = False,
-        explored_radius=0.04,
+        explored_radius=0.01,
         obstacle_radius=0.05,
     ):
         """Log voxel map and send it to Rerun visualizer
@@ -293,6 +293,7 @@ class RerunVsualizer:
             bounds = []
             colors = []
 
+            t0 = timeit.default_timer()
             for idx, instance in enumerate(scene_graph.instances):
                 name = semantic_sensor.get_class_name_for_id(instance.category_id)
                 if name not in self.bbox_colors_memory:
@@ -322,6 +323,8 @@ class RerunVsualizer:
                     colors=colors,
                 ),
             )
+            t1 = timeit.default_timer()
+            print("Time to log scene graph objects: ", t1 - t0)
 
     def step(self, obs, servo):
         """Log all the data"""
