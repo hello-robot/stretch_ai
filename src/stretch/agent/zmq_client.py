@@ -86,7 +86,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
         start_immediately: bool = True,
-        enable_rerun_server: bool = False,
+        enable_rerun_server: bool = True,
     ):
         """
         Create a client to communicate with the robot over ZMQ.

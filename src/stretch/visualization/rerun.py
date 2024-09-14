@@ -100,7 +100,7 @@ def occupancy_map_to_3d_points(
 class RerunVsualizer:
     def __init__(self):
         rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=False, server_memory_limit="1GB")
+        rr.serve(open_browser=True, server_memory_limit="2GB")
 
         # Create environment Box place holder
         rr.log(
@@ -309,7 +309,7 @@ class RerunVsualizer:
                 bounds.append(half_sizes)
                 pose = scene_graph.get_ins_center_pos(idx)
                 confidence = best_view.score
-                centers.append(pose)
+                centers.append(rr.components.PoseTranslation3D(pose))
                 labels.append(f"{name} {confidence:.2f}")
                 colors.append(self.bbox_colors_memory[name])
             rr.log(
