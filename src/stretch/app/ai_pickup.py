@@ -152,12 +152,12 @@ def main(
             # Call the LLM client and parse
             llm_response = chat_wrapper.query()
             target_object = prompt.get_object(llm_response)
-            receptacle = prompt.get_receptacle(llm_response)
+            qreceptacle = prompt.get_receptacle(llm_response)
             say_this = prompt.get_say_this(llm_response)
 
         if say_this is not None:
             chat_wrapper.say(say_this)
-            agent.say(say_this)
+            # agent.say(say_this)
 
         if len(target_object) == 0 or len(receptacle) == 0:
             logger.error("You need to enter a target object and receptacle")

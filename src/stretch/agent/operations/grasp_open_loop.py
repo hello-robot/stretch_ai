@@ -104,7 +104,6 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
             best_score = float("-inf")
             best_iid = None
 
-            breakpoint()
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
