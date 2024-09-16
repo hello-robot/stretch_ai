@@ -152,8 +152,12 @@ def main(
             # Call the LLM client and parse
             llm_response = chat_wrapper.query()
             target_object = prompt.get_object(llm_response)
-            qreceptacle = prompt.get_receptacle(llm_response)
+            receptacle = prompt.get_receptacle(llm_response)
             say_this = prompt.get_say_this(llm_response)
+            print("LLM response:", llm_response)
+            print("Target object:", target_object)
+            print("Receptacle:", receptacle)
+            print("Say this:", say_this)
 
         if say_this is not None:
             chat_wrapper.say(say_this)
