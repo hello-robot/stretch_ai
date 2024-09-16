@@ -7,6 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+from typing import List, Tuple
+
 from stretch.llms.base import AbstractPromptBuilder
 
 simple_stretch_prompt = """You are a friendly, helpful robot named Stretch. You are always helpful, and answer questions concisely. You will answer questions very concisely.
@@ -104,3 +106,25 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("place", command[6:-1]))
 
         return parsed_commands
+
+    def get_object(self, response: List[Tuple[str, str]]) -> str:
+        """Return the object from the response."""
+        for command, args in response:
+            if command == "pickup":
+                return args
+        return ""
+
+    def get_receptacle(self, response: List[Tuple[str, str]]) -> str:
+        """Return the receptacle from the response."""
+        for command, args in response:
+            if command == "place":
+                return args
+        return ""
+
+    def get_say_this(self, response: List[Tuple[str, str]]) -> str:
+        """Return the text to say from the response."""
+        all_messages = []
+        for command, args in response:
+            if command == "say":
+                all_messages.append(args)
+        return " ".join(all_messages)

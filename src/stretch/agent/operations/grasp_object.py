@@ -45,6 +45,9 @@ class GraspObjectOperation(ManagedOperation):
     match_method: str = "class"
     target_object: Optional[str] = None
 
+    # Should we use the previous mask at all?
+    use_prev_mask: bool = False
+
     # Debugging UI elements
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
@@ -170,6 +173,8 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 target_class = self.target_object
 
+            print("[GRASP OBJECT] Detecting objects of class", target_class)
+
             # Now find the mask with that class
             for iid in np.unique(servo.semantic):
                 name = self.agent.semantic_sensor.get_class_name_for_id(iid)
@@ -181,12 +186,23 @@ class GraspObjectOperation(ManagedOperation):
                 raise ValueError(
                     f"Target object must be set before running match method {self.match_method}."
                 )
+            print("[GRASP OBJECT] Detecting objects described as", self.target_object)
+            text_features = self.agent.encode_text(self.target_object)
+            best_score = float("-inf")
+            best_iid = None
             for iid in np.unique(servo.instance):
                 rgb = servo.ee_rgb[servo.instance == iid]
                 import matplotlib.pyplot as plt
 
                 plt.imshow(rgb)
                 plt.show()
+
+                features = self.agent.encode_image(rgb)
+                score = self.agent.compare_features(text_features, features)
+                if score > best_score:
+                    best_score = score
+                    best_iid = iid
+                    mask = servo.instance == iid
         else:
             raise ValueError(f"Invalid matching method {self.match_method}.")
 
@@ -241,7 +257,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
             # This is in case we are losing track of particular objects and getting classes mixed up
-            if prev_mask is not None:
+            if prev_mask is not None and self.use_prev_mask:
                 # Find the mask with the most points
                 mask = np.bitwise_and(current_instance_mask, prev_mask)
                 mask = np.bitwise_and(mask, class_mask)
@@ -258,6 +274,7 @@ class GraspObjectOperation(ManagedOperation):
                 target_mask = mask
                 target_mask_pts = num_pts
 
+        input("----")
         if maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
         if target_mask is not None:

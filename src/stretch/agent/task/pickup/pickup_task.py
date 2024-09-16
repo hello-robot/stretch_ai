@@ -171,6 +171,7 @@ class PickupTask:
         )
         grasp_object.set_target_object_class(self.agent.target_object)
         grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
+        grasp_object.match_method = matching
         place_object_on_receptacle = PlaceObjectOperation(
             "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
         )

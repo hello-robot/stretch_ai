@@ -204,6 +204,10 @@ class RobotAgent:
         """Encode image using the encoder"""
         return self.encoder.encode_image(image)
 
+    def compare_features(self, feature1: torch.Tensor, feature2: torch.Tensor) -> float:
+        """Compare two feature vectors using the encoder"""
+        return self.encoder.compute_score(feature1, feature2)
+
     def get_instance_from_text(
         self,
         text_query: str,

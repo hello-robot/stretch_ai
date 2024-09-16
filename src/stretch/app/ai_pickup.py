@@ -16,9 +16,8 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llms import LLMChatWrapper, get_llm_choices, get_llm_client
+from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
-from stretch.utils.prompt import PickupPromptBuilder
 
 
 @click.command()
@@ -32,6 +31,7 @@ from stretch.utils.prompt import PickupPromptBuilder
 @click.option("--parameter_file", default="default_planner.yaml", help="Path to parameter file")
 @click.option(
     "--match_method",
+    "--match-method",
     type=click.Choice(["class", "feature"]),
     default="feature",
     help="Method to match objects to pick up. Options: class, feature.",
@@ -61,11 +61,13 @@ from stretch.utils.prompt import PickupPromptBuilder
 )
 @click.option(
     "--show_intermediate_maps",
+    "--show-intermediate-maps",
     is_flag=True,
     help="Set to visualize intermediate maps",
 )
 @click.option(
     "--target_object",
+    "--target-object",
     default="",
     help="Name of the object to pick up",
 )
@@ -76,11 +78,13 @@ from stretch.utils.prompt import PickupPromptBuilder
 )
 @click.option(
     "--use_llm",
+    "--use-llm",
     is_flag=True,
     help="Set to use the language model",
 )
 @click.option(
     "--use_voice",
+    "--use-voice",
     is_flag=True,
     help="Set to use voice input",
 )
@@ -135,6 +139,7 @@ def main(
     while robot.running:
         agent.reset()
 
+        say_this = None
         if llm_client is None:
             # Call the LLM client and parse
             if len(target_object) == 0:

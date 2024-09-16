@@ -53,6 +53,7 @@ class ManagedOperation(Operation):
     def update(self, **kwargs):
         print(colored("================ Updating the world model ==================", "blue"))
         self.agent.update(**kwargs)
+        breakpoint()
 
     def attempt(self, message: str):
         print(colored(f"Trying {self.name}:", "blue"), message)
