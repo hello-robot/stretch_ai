@@ -37,6 +37,15 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         self.match_method = match_method
         self.debug_show_point_cloud = debug_show_point_cloud
 
+    def set_target_object_class(self, target_object: str) -> None:
+        self.target_object = target_object
+
+    def set_target_object_instance(self, target_object: str) -> None:
+        self.target_object = target_object
+
+    def set_target_object(self, target_object: str) -> None:
+        self.target_object = target_object
+
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         if self.target_object is None:
