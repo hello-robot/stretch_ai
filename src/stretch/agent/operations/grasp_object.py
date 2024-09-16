@@ -191,6 +191,7 @@ class GraspObjectOperation(ManagedOperation):
             best_score = float("-inf")
             best_iid = None
             for iid in np.unique(servo.instance):
+                breakpoint()
                 rgb = servo.ee_rgb[servo.instance == iid]
                 import matplotlib.pyplot as plt
 
@@ -199,6 +200,7 @@ class GraspObjectOperation(ManagedOperation):
 
                 features = self.agent.encode_image(rgb)
                 score = self.agent.compare_features(text_features, features)
+                print(f"Score for {iid} is {score}")
                 if score > best_score:
                     best_score = score
                     best_iid = iid
