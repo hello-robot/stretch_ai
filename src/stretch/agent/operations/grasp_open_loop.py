@@ -40,9 +40,6 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
     def set_target_object_class(self, target_object: str) -> None:
         self.target_object = target_object
 
-    def set_target_object_instance(self, target_object: str) -> None:
-        self.target_object = target_object
-
     def set_target_object(self, target_object: str) -> None:
         self.target_object = target_object
 
