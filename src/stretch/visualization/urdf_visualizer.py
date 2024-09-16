@@ -14,6 +14,7 @@ import re
 
 import numpy as np
 import urchin as urdf_loader
+from trimesh import Trimesh
 
 pkg_path = str(importlib_resources.files("stretch_urdf"))
 model_name = "SE3"  # RE1V0, RE2V0, SE3
@@ -55,10 +56,18 @@ class URDFVisualizer:
 
     abs_urdf_file_path = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
 
-    def __init__(self, urdf_file=abs_urdf_file_path):
-        self.urdf = self.urdf = urdf_loader.URDF.load(urdf_file)
+    def __init__(self, urdf_file: str = abs_urdf_file_path):
+        self.urdf = urdf_loader.URDF.load(urdf_file)
 
-    def get_tri_meshes(self, cfg=None, use_collision=True) -> list:
+    def get_tri_meshes(self, cfg: dict = None, use_collision: bool = True) -> list:
+        """
+        Get list of trimesh objects, pose and link names of the robot with the given configuration
+        Args:
+            cfg: Configuration of the robot
+            use_collision: Whether to use collision meshes or visual meshes
+        Returns:
+            list: List of trimesh objects, pose and link names of the robot with the given configuration
+        """
         if use_collision:
             fk = self.urdf.collision_trimesh_fk(cfg=cfg)
         else:
@@ -75,7 +84,15 @@ class URDFVisualizer:
             )
         return t_meshes
 
-    def get_combined_robot_mesh(self, cfg=None, use_collision=True):
+    def get_combined_robot_mesh(self, cfg: dict = None, use_collision: bool = True) -> Trimesh:
+        """
+        Get an fully combined mesh of the robot with the given configuration
+        Args:
+            cfg: Configuration of the robot
+            use_collision: Whether to use collision meshes or visual meshes
+        Returns:
+            Trimesh: Fully combined mesh of the robot with the given configuration
+        """
         tm = self.get_tri_meshes(cfg, use_collision)
         mesh_list = tm["mesh"]
         pose_list = np.array(tm["pose"])
@@ -88,6 +105,11 @@ class URDFVisualizer:
     def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:
         """
         Get transformation matrix of the link w.r.t. the base_link
+        Args:
+            cfg: Configuration of the robot
+            link_name: Name of the link
+        Returns:
+            Transformation matrix of the link w.r.t. the base_link
         """
         lk_cfg = {
             "joint_wrist_yaw": cfg["wrist_yaw"],

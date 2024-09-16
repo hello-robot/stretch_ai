@@ -99,7 +99,13 @@ def occupancy_map_to_3d_points(
 
 
 class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
-    def log_robot_mesh(self, cfg, use_collision=True):
+    def log_robot_mesh(self, cfg: dict, use_collision: bool = True, debug: bool = False):
+        """
+        Log robot mesh using joint configuration data
+        Args:
+            cfg (dict): Joint configuration
+            use_collision (bool): use collision mesh
+        """
         lk_cfg = {
             "joint_wrist_yaw": cfg["wrist_yaw"],
             "joint_wrist_pitch": cfg["wrist_pitch"],
@@ -115,14 +121,15 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         if "gripper" in cfg.keys():
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
-        st = time.perf_counter()
+        t0 = timeit.default_timer()
         mesh = self.get_combined_robot_mesh(cfg=lk_cfg, use_collision=use_collision)
-        print(f"Time to get mesh: {1000*(time.perf_counter() - st)}")
-        st2 = time.perf_counter()
+        t1 = timeit.default_timer()
+        if debug:
+            print(f"Time to get mesh: {1000*(t1 - t1)} ms")
         # breakpoint()
         rr.set_time_seconds("realtime", time.time())
         rr.log(
-            "world/robot/base_link",
+            "world/robot/mesh",
             rr.Mesh3D(
                 vertex_positions=mesh.vertices,
                 triangle_indices=mesh.faces,
@@ -133,10 +140,18 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
             ),
             timeless=True,
         )
-        t2 = 1000 * (time.perf_counter() - st2)
-        print(f"Time to rr log mesh: {t2}")
+        t2 = 1000 * (timeit.default_timer() - t1)
+        if debug:
+            print(f"Time to rr log mesh: {t2}")
+            print(f"Total time to log mesh: {1000*(timeit.default_timer() - t0)} ms")
 
-    def log(self, obs, use_collision=True):
+    def log(self, obs, use_collision: bool = True, debug: bool = False):
+        """
+        Log robot mesh using urdf visualizer to rerun
+        Args:
+            obs (dict): Observation dataclass
+            use_collision (bool): use collision mesh
+        """
         state = obs["joint"]
         cfg = {}
         for k in HelloStretchIdx.name_to_idx:
@@ -175,6 +190,7 @@ class RerunVsualizer:
         self.setup_blueprint()
 
     def setup_blueprint(self):
+        """Setup the blueprint for the visualizer"""
         world_view = rrb.Spatial3DView(origin="world")
         my_blueprint = rrb.Blueprint(
             rrb.Horizontal(
@@ -422,9 +438,7 @@ class RerunVsualizer:
                 self.log_robot_state(obs)
 
                 if self.display_robot_mesh:
-                    st = time.perf_counter()
                     self.log_robot_mesh(obs)
-                    print("Total time to log urdf: ", 1000 * (time.perf_counter() - st))
 
             except Exception as e:
                 print(e)
