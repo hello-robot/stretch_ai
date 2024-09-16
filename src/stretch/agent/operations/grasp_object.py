@@ -65,7 +65,7 @@ class GraspObjectOperation(ManagedOperation):
     align_y_threshold: int = 15
 
     # pregrasp_distance_from_object: float = 0.075
-    pregrasp_distance_from_object: float = 0.2
+    pregrasp_distance_from_object: float = 0.25
 
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
@@ -502,6 +502,7 @@ class GraspObjectOperation(ManagedOperation):
             print(" lift =", lift)
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
+            print("Center depth:", center_depth)
             print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
@@ -521,6 +522,7 @@ class GraspObjectOperation(ManagedOperation):
                     self.info("Aligned and close enough to grasp.")
                     success = self._grasp()
                     break
+
                 # If we are aligned, step the whole thing closer by some amount
                 # This is based on the pitch - basically
                 aligned_once = True
@@ -547,53 +549,53 @@ class GraspObjectOperation(ManagedOperation):
                 elif dy < -1 * self.align_y_threshold:
                     wrist_pitch += self.wrist_pitch_step * py
 
-                # Force to reacquire the target mask if we moved the camera too much
-                prev_target_mask = None
+            # Force to reacquire the target mask if we moved the camera too much
+            prev_target_mask = None
 
-                # safety checks
-                q = [
-                    base_x,
-                    0.0,
-                    0.0,
-                    lift,
-                    arm,
-                    0.0,
-                    0.0,
-                    wrist_pitch,
-                    0.0,
-                    0.0,
-                    0.0,
-                ]  # 11 DOF: see HelloStretchIdx
+            # safety checks
+            q = [
+                base_x,
+                0.0,
+                0.0,
+                lift,
+                arm,
+                0.0,
+                0.0,
+                wrist_pitch,
+                0.0,
+                0.0,
+                0.0,
+            ]  # 11 DOF: see HelloStretchIdx
 
-                q = np.array(q)
+            q = np.array(q)
 
+            ee_pos, ee_quat = self.robot_model.manip_fk(q)
+
+            while ee_pos[2] < 0.03:
+                lift += 0.01
+                q[HelloStretchIdx.LIFT] = lift
                 ee_pos, ee_quat = self.robot_model.manip_fk(q)
 
-                while ee_pos[2] < 0.03:
-                    lift += 0.01
-                    q[HelloStretchIdx.LIFT] = lift
-                    ee_pos, ee_quat = self.robot_model.manip_fk(q)
+            print("tgt x =", base_x)
+            print(" lift =", lift)
+            print("  arm =", arm)
+            print("pitch =", wrist_pitch)
 
-                print("tgt x =", base_x)
-                print(" lift =", lift)
-                print("  arm =", arm)
-                print("pitch =", wrist_pitch)
+            self.robot.arm_to(
+                [base_x, lift, arm, 0, wrist_pitch, 0],
+                head=constants.look_at_ee,
+                blocking=False,
+            )
+            prev_lift = lift
+            time.sleep(self.expected_network_delay)
 
-                self.robot.arm_to(
-                    [base_x, lift, arm, 0, wrist_pitch, 0],
-                    head=constants.look_at_ee,
-                    blocking=False,
-                )
-                prev_lift = lift
-                time.sleep(self.expected_network_delay)
+            # check not moving
+            if np.linalg.norm(q - q_last) < 0.05:  # TODO: tune
+                not_moving_count += 1
+            else:
+                not_moving_count = 0
 
-                # check not moving
-                if np.linalg.norm(q - q_last) < 0.05:  # TODO: tune
-                    not_moving_count += 1
-                else:
-                    not_moving_count = 0
-
-                q_last = q
+            q_last = q
 
             if random_motion_counter > self.max_random_motions:
                 self.error("Failed to align to object after 10 random motions.")
