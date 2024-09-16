@@ -61,12 +61,7 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
             servo (Observations): Servo observation
             current_xyz (np.ndarray): Current xyz location
         """
-        # TODO: remove this, overrides existing servo state
-        # servo = self.robot.get_servo_observation()
-        # world_xyz = servo.get_ee_xyz_in_world_frame()
         world_xyz_head = servo.get_xyz_in_world_frame()
-        # all_xyz = np.concatenate([world_xyz_head.reshape(-1, 3), world_xyz.reshape(-1, 3)], axis=0)
-        # all_rgb = np.concatenate([servo.rgb.reshape(-1, 3), servo.ee_rgb.reshape(-1, 3)], axis=0)
         all_xyz = world_xyz_head.reshape(-1, 3)
         all_rgb = servo.rgb.reshape(-1, 3) / 255
         show_point_cloud(all_xyz, all_rgb, orig=current_xyz)
@@ -108,13 +103,15 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
             text_features = self.agent.encode_text(self.target_object)
             best_score = float("-inf")
             best_iid = None
+
+            breakpoint()
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
                 if iid < 0:
                     continue
 
-                rgb = servo.ee_rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
+                rgb = servo.rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
 
                 # TODO: remove debug code
                 #  import matplotlib.pyplot as plt
