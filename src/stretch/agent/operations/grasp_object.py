@@ -86,7 +86,7 @@ class GraspObjectOperation(ManagedOperation):
     # Move the arm forward by this amount when grasping
     _grasp_arm_offset: float = 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = -0.13
+    _grasp_lift_offset: float = -0.10
 
     # Visual servoing config
     track_image_center: bool = False
@@ -309,7 +309,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [
                     base_x,
-                    lift + self._grasp_lift_offset,
+                    np.clip(lift + self._grasp_lift_offset, 0, 0.5),
                     arm + self._grasp_arm_offset,
                     0,
                     wrist_pitch,
