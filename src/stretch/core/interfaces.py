@@ -248,6 +248,10 @@ class Observations:
     # Optional third-person view from simulation
     third_person_image: Optional[np.ndarray] = None
 
+    # lidar
+    lidar_points: Optional[np.ndarray] = None
+    lidar_timestamp: Optional[int] = None
+
     # Proprioreception
     joint: Optional[np.ndarray] = None  # joint positions of the robot
     relative_resting_position: Optional[

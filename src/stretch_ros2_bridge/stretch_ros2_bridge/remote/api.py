@@ -62,7 +62,7 @@ class StretchClient(AbstractRobotClient):
 
         if camera_overrides is None:
             camera_overrides = {}
-        self._ros_client = StretchRosInterface(init_lidar=False, d405=d405, **camera_overrides)
+        self._ros_client = StretchRosInterface(init_lidar=True, d405=d405, **camera_overrides)
 
         # Robot model
         self._robot_model = HelloStretchKinematics(
@@ -211,6 +211,10 @@ class StretchClient(AbstractRobotClient):
     def ee_rgb_cam(self):
         return self._ros_client.ee_rgb_cam
 
+    @property
+    def lidar(self):
+        return self._ros_client._lidar
+
     def get_joint_state(self):
         """Get joint states from the robot. If in manipulation mode, use the base_x position from start of manipulation mode as the joint state for base_x."""
         q, dq, eff = self._ros_client.get_joint_state()
@@ -248,6 +252,10 @@ class StretchClient(AbstractRobotClient):
     def get_base_pose(self) -> np.ndarray:
         """Get the robot's base pose as XYT."""
         return self.nav.get_base_pose()
+
+    def get_pose_graph(self) -> np.ndarray:
+        """Get SLAM pose graph as a numpy array"""
+        return np.array(self._ros_client.get_pose_graph())
 
     def load_map(self, filename: str):
         self.mapping.load_map(filename)
@@ -305,6 +313,10 @@ class StretchClient(AbstractRobotClient):
         # Get joint state information
         joint_positions, _, _ = self.get_joint_state()
 
+        # Get lidar points and timestamp
+        lidar_points = self.lidar().get()
+        lidar_timestamp = self.lidar().get_timestamp().nanoseconds()
+
         # Create the observation
         obs = Observations(
             rgb=rgb,
@@ -315,6 +327,8 @@ class StretchClient(AbstractRobotClient):
             camera_pose=self.head_camera_pose,
             joint=joint_positions,
             camera_K=self.get_camera_intrinsics(),
+            lidar_points=lidar_points,
+            lidar_timestamp=lidar_timestamp,
         )
         return obs
 

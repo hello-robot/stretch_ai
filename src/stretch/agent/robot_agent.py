@@ -16,6 +16,7 @@ import random
 import time
 import timeit
 from pathlib import Path
+from threading import Lock, Thread
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -33,7 +34,7 @@ from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
-from stretch.utils.geometry import angle_difference
+from stretch.utils.geometry import angle_difference  # , sophus2xyt, xyt2sophus
 
 
 class RobotAgent:
@@ -180,7 +181,15 @@ class RobotAgent:
         if parameters["motion_planner"]["simplify_plans"]:
             self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
+        # Map updates
+        self._robot_lock = Lock()
+        self._update_map_thread = Thread(target=self.update_map_loop, args=(self,))
+        self._update_map_thread.start()
+
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
+
+    def __del__(self):
+        self._update_map_thread.join()
 
     @property
     def feature_match_threshold(self) -> float:
@@ -418,6 +427,71 @@ class RobotAgent:
             footprint=self.robot.get_robot_model().get_footprint(),
             instances=self.semantic_sensor is not None,
         )
+
+    def update_map_with_pose_graph(self):
+        """Update our voxel map using a pose graph"""
+        obs = None
+        t0 = timeit.default_timer()
+        self.pose_graph = self.robot.get_pose_graph()
+
+        while obs is None:
+            obs = self.robot.get_observation()
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10:
+                logger.error("Failed to get observation")
+                return
+
+        t1 = timeit.default_timer()
+        self.obs_history.append(obs)
+        self.obs_count += 1
+        # Optionally do this
+        if self.semantic_sensor is not None:
+            # Semantic prediction
+            obs = self.semantic_sensor.predict(obs)
+
+        t2 = timeit.default_timer()
+
+        # Update past observations based on our new pose graph
+        start_pose = None
+
+        for observation in self.obs_history:
+            lidar_timestamp = obs.lidar_timestamp
+
+            for vertex in self.pose_graph:
+                # if abs(vertex[0] - )
+                pass
+
+        t2 = timeit.default_timer()
+        self.voxel_map.add_obs(obs)
+
+        t3 = timeit.default_timer()
+
+        if self.use_scene_graph:
+            self._update_scene_graph()
+            self.scene_graph.get_relationships()
+
+        t4 = timeit.default_timer()
+
+        if self.debug_update_timing:
+            print("Update timing:")
+            print("Time to get observation:", t1 - t0, "seconds, % =", (t1 - t0) / (t4 - t0))
+            print("Time to predict:", t2 - t1, "seconds, % =", (t2 - t1) / (t4 - t0))
+            print("Time to add obs:", t3 - t2, "seconds, % =", (t3 - t2) / (t4 - t0))
+            print("Time to update scene graph:", t4 - t3, "seconds, % =", (t4 - t3) / (t4 - t0))
+
+        # # Add observation - helper function will unpack it
+        # if visualize_map:
+        #     # Now draw 2d maps to show what was happening
+        #     self.voxel_map.get_2d_map(debug=True)
+
+        # t5 = timeit.default_timer()
+
+    def update_map_loop(self):
+        """Threaded function that updates our voxel map in real-time"""
+        while True:
+            with self._robot_lock:
+                self.update_map_with_pose_graph()
+            time.sleep(0.5)
 
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
