@@ -138,7 +138,6 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         self.attempt("Grasping an object")
         obs = self.robot.get_observation()
         current_xyz = obs.get_xyz_in_world_frame()
-        current_xyz_base = point_global_to_base(current_xyz, self.robot.get_base_pose())
 
         # Find the best object mask
         mask = self.get_class_mask(obs)
@@ -149,7 +148,7 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
             object_xyz = self.agent.current_object.get_center()
         else:
             # Find the object location
-            object_points = current_xyz[mask]
+            object_points = current_xyz[mask, :]
             object_xyz = np.mean(object_points, axis=0)
             self.info(f"Object location: {object_xyz}")
 
