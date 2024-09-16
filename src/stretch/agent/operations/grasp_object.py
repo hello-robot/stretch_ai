@@ -196,16 +196,16 @@ class GraspObjectOperation(ManagedOperation):
                 if iid < 0:
                     continue
 
-                breakpoint()
-                rgb = servo.ee_rgb[servo.instance == iid]
-                import matplotlib.pyplot as plt
+                rgb = servo.ee_rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
 
-                plt.imshow(rgb)
-                plt.show()
+                # TODO: remove debug code
+                #  import matplotlib.pyplot as plt
+                # plt.imshow(rgb)
+                # plt.show()
 
                 features = self.agent.encode_image(rgb)
                 score = self.agent.compare_features(text_features, features)
-                print(f"Score for {iid} is {score}")
+                print(f" - Score for {iid} is {score}")
                 if score > best_score:
                     best_score = score
                     best_iid = iid
