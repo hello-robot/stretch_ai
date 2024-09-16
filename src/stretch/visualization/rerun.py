@@ -99,10 +99,25 @@ def occupancy_map_to_3d_points(
 
 
 class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
-    def log(self, cfg=None):
+    def log_robot_mesh(self, cfg, use_collision=True):
+        lk_cfg = {
+            "joint_wrist_yaw": cfg["wrist_yaw"],
+            "joint_wrist_pitch": cfg["wrist_pitch"],
+            "joint_wrist_roll": cfg["wrist_roll"],
+            "joint_lift": cfg["lift"],
+            "joint_arm_l0": cfg["arm"] / 4,
+            "joint_arm_l1": cfg["arm"] / 4,
+            "joint_arm_l2": cfg["arm"] / 4,
+            "joint_arm_l3": cfg["arm"] / 4,
+            "joint_head_pan": cfg["head_pan"],
+            "joint_head_tilt": cfg["head_tilt"],
+        }
+        if "gripper" in cfg.keys():
+            lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+            lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
         st = time.perf_counter()
-        mesh = self.get_combined_robot_mesh(cfg=None, use_collision=True)
-        print(f"Time to get mesh: {time.perf_counter() - st}")
+        mesh = self.get_combined_robot_mesh(cfg=lk_cfg, use_collision=use_collision)
+        print(f"Time to get mesh: {1000*(time.perf_counter() - st)}")
         st2 = time.perf_counter()
         # breakpoint()
         rr.log(
@@ -117,18 +132,28 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
             ),
             timeless=True,
         )
-        t2 = time.perf_counter() - st2
+        t2 = 1000 * (time.perf_counter() - st2)
         print(f"Time to rr log mesh: {t2}")
+
+    def log(self, obs, use_collision=True):
+        state = obs["joint"]
+        cfg = {}
+        for k in HelloStretchIdx.name_to_idx:
+            cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
+        # breakpoint()
+        self.log_robot_mesh(cfg=cfg, use_collision=use_collision)
 
 
 class RerunVsualizer:
-    def __init__(self):
+    def __init__(self, display_robot_mesh: bool = True, open_browser: bool = True):
         rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=True, server_memory_limit="2GB")
+        rr.serve(open_browser=open_browser, server_memory_limit="2GB")
 
-        self.urdf_logger = StretchURDFLogger()
+        self.display_robot_mesh = display_robot_mesh
 
-        self.urdf_logger.log()
+        if self.display_robot_mesh:
+            self.urdf_logger = StretchURDFLogger()
+
         # Create environment Box place holder
         rr.log(
             "world/map_box",
@@ -237,6 +262,11 @@ class RerunVsualizer:
         state = obs["joint"]
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
+
+    def log_robot_mesh(self, obs, use_collision=True):
+        """
+        Log robot mesh using urdf visualizer"""
+        self.urdf_logger.log(obs, use_collision=use_collision)
 
     def update_voxel_map(
         self,
@@ -383,8 +413,11 @@ class RerunVsualizer:
                 self.log_ee_frame(obs)
                 self.log_ee_camera(servo)
                 self.log_robot_state(obs)
-                st = time.perf_counter()
-                self.urdf_logger.log()
-                print("Total time to log urdf: ", time.perf_counter() - st)
+
+                if self.display_robot_mesh:
+                    st = time.perf_counter()
+                    self.log_robot_mesh(obs)
+                    print("Total time to log urdf: ", 1000 * (time.perf_counter() - st))
+
             except Exception as e:
                 print(e)
