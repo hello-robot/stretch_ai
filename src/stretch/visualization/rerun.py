@@ -22,6 +22,7 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.motion import HelloStretchIdx
 from stretch.perception.wrapper import OvmmPerception
+from stretch.visualization import urdf_visualizer
 
 
 def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -97,10 +98,77 @@ def occupancy_map_to_3d_points(
     return points
 
 
+class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
+    def log_robot_mesh(self, cfg: dict, use_collision: bool = True, debug: bool = False):
+        """
+        Log robot mesh using joint configuration data
+        Args:
+            cfg (dict): Joint configuration
+            use_collision (bool): use collision mesh
+        """
+        lk_cfg = {
+            "joint_wrist_yaw": cfg["wrist_yaw"],
+            "joint_wrist_pitch": cfg["wrist_pitch"],
+            "joint_wrist_roll": cfg["wrist_roll"],
+            "joint_lift": cfg["lift"],
+            "joint_arm_l0": cfg["arm"] / 4,
+            "joint_arm_l1": cfg["arm"] / 4,
+            "joint_arm_l2": cfg["arm"] / 4,
+            "joint_arm_l3": cfg["arm"] / 4,
+            "joint_head_pan": cfg["head_pan"],
+            "joint_head_tilt": cfg["head_tilt"],
+        }
+        if "gripper" in cfg.keys():
+            lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+            lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
+        t0 = timeit.default_timer()
+        mesh = self.get_combined_robot_mesh(cfg=lk_cfg, use_collision=use_collision)
+        t1 = timeit.default_timer()
+        if debug:
+            print(f"Time to get mesh: {1000*(t1 - t1)} ms")
+        # breakpoint()
+        rr.set_time_seconds("realtime", time.time())
+        rr.log(
+            "world/robot/mesh",
+            rr.Mesh3D(
+                vertex_positions=mesh.vertices,
+                triangle_indices=mesh.faces,
+                vertex_normals=mesh.vertex_normals,
+                # vertex_colors=vertex_colors,
+                # albedo_texture=albedo_texture,
+                # vertex_texcoords=vertex_texcoords,
+            ),
+            timeless=True,
+        )
+        t2 = 1000 * (timeit.default_timer() - t1)
+        if debug:
+            print(f"Time to rr log mesh: {t2}")
+            print(f"Total time to log mesh: {1000*(timeit.default_timer() - t0)} ms")
+
+    def log(self, obs, use_collision: bool = True, debug: bool = False):
+        """
+        Log robot mesh using urdf visualizer to rerun
+        Args:
+            obs (dict): Observation dataclass
+            use_collision (bool): use collision mesh
+        """
+        state = obs["joint"]
+        cfg = {}
+        for k in HelloStretchIdx.name_to_idx:
+            cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
+        # breakpoint()
+        self.log_robot_mesh(cfg=cfg, use_collision=use_collision)
+
+
 class RerunVsualizer:
-    def __init__(self):
+    def __init__(self, display_robot_mesh: bool = True, open_browser: bool = True):
         rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=False, server_memory_limit="1GB")
+        rr.serve(open_browser=open_browser, server_memory_limit="2GB")
+
+        self.display_robot_mesh = display_robot_mesh
+
+        if self.display_robot_mesh:
+            self.urdf_logger = StretchURDFLogger()
 
         # Create environment Box place holder
         rr.log(
@@ -122,11 +190,18 @@ class RerunVsualizer:
         self.setup_blueprint()
 
     def setup_blueprint(self):
+        """Setup the blueprint for the visualizer"""
         my_blueprint = rrb.Blueprint(
-            rrb.Spatial3DView(origin="world"),
-            rrb.BlueprintPanel(expanded=True),
-            rrb.SelectionPanel(expanded=True),
-            rrb.TimePanel(expanded=True),
+            rrb.Horizontal(
+                rrb.Spatial3DView(name="3D View", origin="world"),
+                rrb.Vertical(
+                    rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+                    rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+                ),
+                rrb.TimePanel(state=True),
+                rrb.SelectionPanel(state=True),
+                rrb.BlueprintPanel(state=True),
+            ),
             collapse_panels=True,
         )
         rr.send_blueprint(my_blueprint)
@@ -143,7 +218,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
                 image_from_camera=obs["camera_K"],
-                image_plane_distance=0.35,
+                image_plane_distance=0.25,
             ),
         )
 
@@ -200,7 +275,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
                 image_from_camera=servo.ee_camera_K,
-                image_plane_distance=0.35,
+                image_plane_distance=0.25,
             ),
         )
 
@@ -211,11 +286,16 @@ class RerunVsualizer:
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
+    def log_robot_mesh(self, obs, use_collision=True):
+        """
+        Log robot mesh using urdf visualizer"""
+        self.urdf_logger.log(obs, use_collision=use_collision)
+
     def update_voxel_map(
         self,
         space: SparseVoxelMapNavigationSpace,
         debug: bool = False,
-        explored_radius=0.04,
+        explored_radius=0.01,
         obstacle_radius=0.05,
     ):
         """Log voxel map and send it to Rerun visualizer
@@ -293,6 +373,7 @@ class RerunVsualizer:
             bounds = []
             colors = []
 
+            t0 = timeit.default_timer()
             for idx, instance in enumerate(scene_graph.instances):
                 name = semantic_sensor.get_class_name_for_id(instance.category_id)
                 if name not in self.bbox_colors_memory:
@@ -309,7 +390,7 @@ class RerunVsualizer:
                 bounds.append(half_sizes)
                 pose = scene_graph.get_ins_center_pos(idx)
                 confidence = best_view.score
-                centers.append(pose)
+                centers.append(rr.components.PoseTranslation3D(pose))
                 labels.append(f"{name} {confidence:.2f}")
                 colors.append(self.bbox_colors_memory[name])
             rr.log(
@@ -322,6 +403,28 @@ class RerunVsualizer:
                     colors=colors,
                 ),
             )
+            t1 = timeit.default_timer()
+            print("Time to log scene graph objects: ", t1 - t0)
+
+    def update_nav_goal(self, goal, timeout=10):
+        """Log navigation goal
+        Args:
+            goal (np.ndarray): Goal coordinates
+        """
+        ts = time.time()
+        rr.set_time_seconds("realtime", ts)
+        rr.log("world/xyt_goal/blob", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
+        rr.log(
+            "world/xyt_goal",
+            rr.Transform3D(
+                translation=[goal[0], goal[1], 0],
+                rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=goal[2]),
+                axis_length=0.5,
+            ),
+        )
+        rr.set_time_seconds("realtime", ts + timeout)
+        rr.log("world/xyt_goal", rr.Clear(recursive=True))
+        rr.set_time_seconds("realtime", ts)
 
     def step(self, obs, servo):
         """Log all the data"""
@@ -333,5 +436,9 @@ class RerunVsualizer:
                 self.log_ee_frame(obs)
                 self.log_ee_camera(servo)
                 self.log_robot_state(obs)
+
+                if self.display_robot_mesh:
+                    self.log_robot_mesh(obs)
+
             except Exception as e:
                 print(e)

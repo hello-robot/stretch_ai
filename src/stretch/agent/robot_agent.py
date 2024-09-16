@@ -521,6 +521,8 @@ class RobotAgent:
         """Update the rerun server with the latest observations."""
         if self.robot._rerun:
             self.robot._rerun.update_voxel_map(self.space)
+            self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+
         else:
             logger.error("No rerun server available!")
 
