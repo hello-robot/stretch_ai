@@ -191,7 +191,6 @@ class RerunVsualizer:
 
     def setup_blueprint(self):
         """Setup the blueprint for the visualizer"""
-        world_view = rrb.Spatial3DView(origin="world")
         my_blueprint = rrb.Blueprint(
             rrb.Horizontal(
                 rrb.Spatial3DView(name="3D View", origin="world"),
@@ -199,8 +198,9 @@ class RerunVsualizer:
                     rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
                     rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
                 ),
-                rrb.TimePanel(expanded=True),
-                rrb.SelectionPanel(expanded=False),
+                rrb.TimePanel(state=True),
+                rrb.SelectionPanel(state=True),
+                rrb.BlueprintPanel(state=True),
             ),
             collapse_panels=True,
         )
@@ -218,7 +218,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
                 image_from_camera=obs["camera_K"],
-                image_plane_distance=0.35,
+                image_plane_distance=0.25,
             ),
         )
 
@@ -275,7 +275,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
                 image_from_camera=servo.ee_camera_K,
-                image_plane_distance=0.35,
+                image_plane_distance=0.25,
             ),
         )
 
