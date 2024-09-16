@@ -8,12 +8,11 @@
 # license information maybe found below, if so.
 
 from stretch.agent.base import ManagedOperation
-from stretch.agent.robot_agent import RobotAgent
-from stretch.core.robot import AbstractRobotClient
 
 
 class GoToOperation(ManagedOperation):
     """Put the robot into navigation mode"""
+
     location = None
     _successful = False
 

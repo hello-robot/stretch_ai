@@ -120,7 +120,7 @@ class GraspObjectOperation(ManagedOperation):
         if self.target_object is None:
             self.error("No target object set.")
             return False
-        
+
         if not self.robot.in_manipulation_mode():
             self.robot.switch_to_manipulation_mode()
 
@@ -149,6 +149,7 @@ class GraspObjectOperation(ManagedOperation):
             target_object (str): Target object class
         """
         self.target_object = target_object
+        self.agent.current_object = self.agent.get_instance_from_text(self.target_object)[1]
 
     def get_target_mask(
         self,

@@ -43,12 +43,12 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
-        grasp_object = GraspObjectOperation(name="pick_" + object_name, agent=self.agent, robot=self.robot)
+        grasp_object = GraspObjectOperation(
+            name="pick_" + object_name, agent=self.agent, robot=self.robot
+        )
         grasp_object.configure(target_object=object_name, show_object_to_grasp=True)
         grasp_object.set_target_object_class(object_name)
-        self.task.add_operation(
-            grasp_object, True
-        )
+        self.task.add_operation(grasp_object, True)
         return "pick_" + object_name
 
     def place(self, object_name: str):
