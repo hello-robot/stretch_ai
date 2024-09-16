@@ -303,7 +303,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Move the arm in closer
             self.robot.arm_to(
-                [base_x, lift - 0.05, arm + 0.1, 0, wrist_pitch, 0],
+                [base_x, lift - 0.1, arm + 0.15, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
                 blocking=True,
             )
