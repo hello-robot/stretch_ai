@@ -117,7 +117,7 @@ def main(
         rate=10,
         manual_wait=False,
         explore_iter=20,
-        task_goal="sky",  # arbitrary object to collect
+        task_goal="bottle",  # arbitrary object to collect
         # as many instances as possible
         go_home_at_end=True,
         visualize=False,

@@ -120,6 +120,10 @@ class GraspObjectOperation(ManagedOperation):
         if self.target_object is None:
             self.error("No target object set.")
             return False
+        
+        if not self.robot.in_manipulation_mode():
+            self.robot.switch_to_manipulation_mode()
+
         return self.agent.current_object is not None and self.robot.in_manipulation_mode()
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:

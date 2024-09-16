@@ -10,7 +10,7 @@
 import ast
 
 from stretch.agent.operations import (
-    GoToNavOperation,
+    GoToOperation,
     GraspObjectOperation,
     SpeakOperation,
     WaveOperation,
@@ -36,13 +36,18 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def go_to(self, location: str):
         """Adds a GoToNavOperation to the task"""
-        self.task.add_operation(GoToNavOperation(name="go_to_" + location, location=location), True)
+        go_to = GoToOperation(name="go_to_" + location, agent=self.agent, robot=self.robot)
+        go_to.configure(location=location)
+        self.task.add_operation(go_to, True)
         return "go_to_" + location
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
+        grasp_object = GraspObjectOperation(name="pick_" + object_name, agent=self.agent, robot=self.robot)
+        grasp_object.configure(target_object=object_name, show_object_to_grasp=True)
+        grasp_object.set_target_object_class(object_name)
         self.task.add_operation(
-            GraspObjectOperation(name="pick_" + object_name, object_name=object_name), True
+            grasp_object, True
         )
         return "pick_" + object_name
 

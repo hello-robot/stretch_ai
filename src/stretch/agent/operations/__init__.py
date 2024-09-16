@@ -16,6 +16,7 @@ from .emote import (
     WaveOperation,
     WithdrawOperation,
 )
+from .go_to import GoToOperation
 from .grasp_object import GraspObjectOperation
 from .navigate import NavigateToObjectOperation
 from .place_object import PlaceObjectOperation
