@@ -120,6 +120,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         print(f"Time to get mesh: {1000*(time.perf_counter() - st)}")
         st2 = time.perf_counter()
         # breakpoint()
+        rr.set_time_seconds("realtime", time.time())
         rr.log(
             "world/robot/base_link",
             rr.Mesh3D(
@@ -174,11 +175,17 @@ class RerunVsualizer:
         self.setup_blueprint()
 
     def setup_blueprint(self):
+        world_view = rrb.Spatial3DView(origin="world")
         my_blueprint = rrb.Blueprint(
-            rrb.Spatial3DView(origin="world"),
-            rrb.BlueprintPanel(expanded=True),
-            rrb.SelectionPanel(expanded=True),
-            rrb.TimePanel(expanded=True),
+            rrb.Horizontal(
+                rrb.Spatial3DView(name="3D View", origin="world"),
+                rrb.Vertical(
+                    rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+                    rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+                ),
+                rrb.TimePanel(expanded=True),
+                rrb.SelectionPanel(expanded=False),
+            ),
             collapse_panels=True,
         )
         rr.send_blueprint(my_blueprint)
