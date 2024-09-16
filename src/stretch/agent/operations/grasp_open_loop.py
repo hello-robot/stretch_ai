@@ -23,7 +23,7 @@ from stretch.utils.point_cloud import show_point_cloud
 
 class OpenLoopGraspObjectOperation(ManagedOperation):
 
-    debug_show_point_cloud: bool = True
+    debug_show_point_cloud: bool = False
     match_method: str = "feature"
     target_object: str = None
     lift_distance: float = 0.2
@@ -172,8 +172,6 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         if self.debug_show_point_cloud:
             self._debug_show_point_cloud(obs, object_xyz)
 
-        breakpoint()
-
         # Grasp the object
         self.grasp_open_loop(object_xyz)
 
@@ -190,8 +188,6 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         model = self.robot.get_robot_model()
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
-
-        breakpoint()
 
         joint_state = self.robot.get_joint_positions()
 
@@ -220,6 +216,10 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         # Lift the arm up a bit
         target_joint_positions_lifted = target_joint_positions.copy()
         target_joint_positions_lifted[HelloStretchIdx.LIFT] += self.lift_distance
+
+        print("Go to lifted target position")
+        self.robot.arm_to(target_joint_positions_lifted, head=constants.look_at_ee, blocking=True)
+        time.sleep(0.5)
 
         # Move to the target joint state
         print(f"{self.name}: Moving to grasp position.")

@@ -11,7 +11,7 @@
 
 import click
 
-import stretch.utils.logger as logger
+# import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -154,18 +154,18 @@ def main(
             target_object = prompt.get_object(llm_response)
             receptacle = prompt.get_receptacle(llm_response)
             say_this = prompt.get_say_this(llm_response)
-            print("LLM response:", llm_response)
-            print("Target object:", target_object)
-            print("Receptacle:", receptacle)
-            print("Say this:", say_this)
+            # print("LLM response:", llm_response)
+            # print("Target object:", target_object)
+            # print("Receptacle:", receptacle)
+            # print("Say this:", say_this)
 
         if say_this is not None:
             chat_wrapper.say(say_this)
             # agent.say(say_this)
 
         if len(target_object) == 0 or len(receptacle) == 0:
-            logger.error("You need to enter a target object and receptacle")
-            break
+            # logger.error("You need to enter a target object and receptacle")
+            continue
 
         # After the robot has started...
         try:

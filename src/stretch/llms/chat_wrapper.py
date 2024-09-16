@@ -46,7 +46,9 @@ class LLMChatWrapper:
 
     def query(self, verbose: bool = False) -> Any:
         if self.voice:
+            print("-" * 80)
             input(colored("Press enter to speak or ctrl+c to exit.", "yellow"))
+            print("-" * 80)
 
             # Create a temporary file
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
@@ -65,7 +67,9 @@ class LLMChatWrapper:
 
                 print(colored("I heard:", "green"), input_text)
         else:
+            print("-" * 80)
             input_text = input(colored("You: ", "green"))
+            print("-" * 80)
 
         if len(input_text) == 0:
             return None
@@ -90,4 +94,6 @@ class LLMChatWrapper:
         if self.voice:
             raise NotImplementedError("Voice is not supported yet.")
         else:
+            print("-" * 80)
             print(colored("Robot:", "blue"), text)
+            print("-" * 80)
