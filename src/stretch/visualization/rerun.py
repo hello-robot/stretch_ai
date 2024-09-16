@@ -9,6 +9,9 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import multiprocessing
+import signal
+import sys
 import time
 import timeit
 from typing import Optional, Tuple, Union
@@ -98,6 +101,53 @@ def occupancy_map_to_3d_points(
     return points
 
 
+exit_event = multiprocessing.Event()
+
+
+def signal_handler(self, signal_received, frame):
+    global exit_event
+    exit_event.set()
+    sys.exit(0)
+
+
+def _compute_worker(
+    shared_joint_cfg, shared_vertices, shared_faces, shared_vertex_normals, exit_event
+):
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    exit_event = multiprocessing.Event()
+    urdf_logger = StretchURDFLogger()
+
+    while not exit_event.is_set():
+        data = urdf_logger.get_mesh_data(shared_joint_cfg.get(), use_collision=True)
+        shared_vertices.put(data["vertices"])
+        shared_faces.put(data["faces"])
+        shared_vertex_normals.put(data["vertex_normals"])
+
+
+class URDFMeshProcess:
+    def __init__(self):
+        self.shared_joint_cfg = multiprocessing.Queue()
+        self.shared_vertices = multiprocessing.Queue()
+        self.shared_faces = multiprocessing.Queue()
+        self.shared_vertex_normals = multiprocessing.Queue()
+        self.process = multiprocessing.Process(
+            target=_compute_worker,
+            args=(
+                self.shared_joint_cfg,
+                self.shared_vertices,
+                self.shared_faces,
+                self.shared_vertex_normals,
+                exit_event,
+            ),
+        )
+        self.process.start()
+
+    def log(obs):
+        # TODO: populate shared_joint_cfg and extract mesh data to return
+        raise NotImplementedError
+
+
 class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
     def log_robot_mesh(self, cfg, use_collision=True):
         lk_cfg = {
@@ -135,6 +185,31 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         t2 = 1000 * (time.perf_counter() - st2)
         print(f"Time to rr log mesh: {t2}")
 
+    def get_mesh_data(self, cfg, use_collision=True):
+        lk_cfg = {
+            "joint_wrist_yaw": cfg["wrist_yaw"],
+            "joint_wrist_pitch": cfg["wrist_pitch"],
+            "joint_wrist_roll": cfg["wrist_roll"],
+            "joint_lift": cfg["lift"],
+            "joint_arm_l0": cfg["arm"] / 4,
+            "joint_arm_l1": cfg["arm"] / 4,
+            "joint_arm_l2": cfg["arm"] / 4,
+            "joint_arm_l3": cfg["arm"] / 4,
+            "joint_head_pan": cfg["head_pan"],
+            "joint_head_tilt": cfg["head_tilt"],
+        }
+        if "gripper" in cfg.keys():
+            lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+            lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
+        st = time.perf_counter()
+        mesh = self.get_combined_robot_mesh(cfg=lk_cfg, use_collision=use_collision)
+
+        return {
+            "vertices": mesh.vertices,
+            "faces": mesh.faces,
+            "vertex_normals": mesh.vertex_normals,
+        }
+
     def log(self, obs, use_collision=True):
         state = obs["joint"]
         cfg = {}
@@ -152,7 +227,7 @@ class RerunVsualizer:
         self.display_robot_mesh = display_robot_mesh
 
         if self.display_robot_mesh:
-            self.urdf_logger = StretchURDFLogger()
+            self.urdf_logger = URDFMeshProcess()
 
         # Create environment Box place holder
         rr.log(
