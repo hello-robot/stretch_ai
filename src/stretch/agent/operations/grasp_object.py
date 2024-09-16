@@ -191,6 +191,11 @@ class GraspObjectOperation(ManagedOperation):
             best_score = float("-inf")
             best_iid = None
             for iid in np.unique(servo.instance):
+
+                # Ignore the background
+                if iid < 0:
+                    continue
+
                 breakpoint()
                 rgb = servo.ee_rgb[servo.instance == iid]
                 import matplotlib.pyplot as plt
@@ -343,6 +348,14 @@ class GraspObjectOperation(ManagedOperation):
         q_last = np.array([0.0 for _ in range(11)])  # 11 DOF, HelloStretchIdx
         random_motion_counter = 0
 
+        if not pregrasp_done:
+            # Move to pregrasp position
+            self.pregrasp_open_loop(
+                instance.get_center(), distance_from_object=self.pregrasp_distance_from_object
+            )
+            pregrasp_done = True
+        input("PREGRASP DONE")
+
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
@@ -451,97 +464,89 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
-            if not pregrasp_done and current_xyz is not None:
-                self.pregrasp_open_loop(
-                    current_xyz, distance_from_object=self.pregrasp_distance_from_object
-                )
-                pregrasp_done = True
+            # check not moving threshold
+            if not_moving_count > max_not_moving_count:
+                self.info("Not moving; try to grasp.")
+                success = self._grasp()
+                break
+            # If we have a target mask, compute the median depth of the object
+            # Otherwise we will just try to grasp if we are close enough - assume we lost track!
+            if target_mask is not None:
+                object_depth = servo.ee_depth[target_mask]
+                median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
-                # check not moving threshold
-                if not_moving_count > max_not_moving_count:
-                    self.info("Not moving; try to grasp.")
+                print("detected classes:", np.unique(servo.ee_semantic))
+                if center_depth < self.median_distance_when_grasping:
+                    success = self._grasp()
+                continue
+
+            dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
+
+            # Is the center of the image part of the target mask or not?
+            center_in_mask = target_mask[int(center_y), int(center_x)] > 0
+            # TODO: add deadband bubble around this?
+
+            # Since we were able to detect it, copy over the target mask
+            prev_target_mask = target_mask
+
+            # Are we aligned to the object
+            aligned = np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
+
+            print()
+            print("----- STEP VISUAL SERVOING -----")
+            print("Observed this many target mask points:", np.sum(target_mask.flatten()))
+            print("failed =", failed_counter, "/", self.max_failed_attempts)
+            print("cur x =", base_x)
+            print(" lift =", lift)
+            print("  arm =", arm)
+            print("pitch =", wrist_pitch)
+            print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
+            print(f"Median distance to object is {median_object_depth}.")
+            print(f"Center distance to object is {center_depth}.")
+            print("Center in mask?", center_in_mask)
+            print("Current XYZ:", current_xyz)
+            print("Aligned?", aligned)
+
+            # Fix lift to only go down
+            lift = min(lift, prev_lift)
+
+            if aligned:
+                # First, check to see if we are close enough to grasp
+                if center_depth < self.median_distance_when_grasping:
+                    print(
+                        f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
+                    )
+                    self.info("Aligned and close enough to grasp.")
                     success = self._grasp()
                     break
-                # If we have a target mask, compute the median depth of the object
-                # Otherwise we will just try to grasp if we are close enough - assume we lost track!
-                if target_mask is not None:
-                    object_depth = servo.ee_depth[target_mask]
-                    median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
-                else:
-                    print("detected classes:", np.unique(servo.ee_semantic))
-                    if center_depth < self.median_distance_when_grasping:
-                        success = self._grasp()
-                    continue
+                # If we are aligned, step the whole thing closer by some amount
+                # This is based on the pitch - basically
+                aligned_once = True
+                arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
+                lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
+                arm += arm_component
+                lift += lift_component
+            else:
+                # Add these to do some really hacky proportionate control
+                px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
+                py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
 
-                dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
+                # Move the base and modify the wrist pitch
+                # TODO: remove debug code
+                # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
+                if dx > self.align_x_threshold:
+                    # Move in x - this means translate the base
+                    base_x += -self.base_x_step * px
+                elif dx < -1 * self.align_x_threshold:
+                    base_x += self.base_x_step * px
+                if dy > self.align_y_threshold:
+                    # Move in y - this means translate the base
+                    wrist_pitch += -self.wrist_pitch_step * py
+                elif dy < -1 * self.align_y_threshold:
+                    wrist_pitch += self.wrist_pitch_step * py
 
-                # Is the center of the image part of the target mask or not?
-                center_in_mask = target_mask[int(center_y), int(center_x)] > 0
-                # TODO: add deadband bubble around this?
-
-                # Since we were able to detect it, copy over the target mask
-                prev_target_mask = target_mask
-
-                # Are we aligned to the object
-                aligned = (
-                    np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
-                )
-
-                print()
-                print("----- STEP VISUAL SERVOING -----")
-                print("Observed this many target mask points:", np.sum(target_mask.flatten()))
-                print("failed =", failed_counter, "/", self.max_failed_attempts)
-                print("cur x =", base_x)
-                print(" lift =", lift)
-                print("  arm =", arm)
-                print("pitch =", wrist_pitch)
-                print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
-                print(f"Median distance to object is {median_object_depth}.")
-                print(f"Center distance to object is {center_depth}.")
-                print("Center in mask?", center_in_mask)
-                print("Current XYZ:", current_xyz)
-                print("Aligned?", aligned)
-
-                # Fix lift to only go down
-                lift = min(lift, prev_lift)
-
-                if aligned:
-                    # First, check to see if we are close enough to grasp
-                    if center_depth < self.median_distance_when_grasping:
-                        print(
-                            f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
-                        )
-                        self.info("Aligned and close enough to grasp.")
-                        success = self._grasp()
-                        break
-                    # If we are aligned, step the whole thing closer by some amount
-                    # This is based on the pitch - basically
-                    aligned_once = True
-                    arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
-                    lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
-                    arm += arm_component
-                    lift += lift_component
-                else:
-                    # Add these to do some really hacky proportionate control
-                    px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
-                    py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
-
-                    # Move the base and modify the wrist pitch
-                    # TODO: remove debug code
-                    # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
-                    if dx > self.align_x_threshold:
-                        # Move in x - this means translate the base
-                        base_x += -self.base_x_step * px
-                    elif dx < -1 * self.align_x_threshold:
-                        base_x += self.base_x_step * px
-                    if dy > self.align_y_threshold:
-                        # Move in y - this means translate the base
-                        wrist_pitch += -self.wrist_pitch_step * py
-                    elif dy < -1 * self.align_y_threshold:
-                        wrist_pitch += self.wrist_pitch_step * py
-
-                    # Force to reacquire the target mask if we moved the camera too much
-                    prev_target_mask = None
+                # Force to reacquire the target mask if we moved the camera too much
+                prev_target_mask = None
 
                 # safety checks
                 q = [
