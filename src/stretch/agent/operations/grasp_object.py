@@ -65,7 +65,7 @@ class GraspObjectOperation(ManagedOperation):
     align_y_threshold: int = 15
 
     # pregrasp_distance_from_object: float = 0.075
-    pregrasp_distance_from_object: float = 0.1
+    pregrasp_distance_from_object: float = 0.2
 
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
@@ -354,7 +354,10 @@ class GraspObjectOperation(ManagedOperation):
                 instance.get_center(), distance_from_object=self.pregrasp_distance_from_object
             )
             pregrasp_done = True
-        input("PREGRASP DONE")
+
+        # Give a short pause here to make sure ee image is up to date
+        time.sleep(0.5)
+        self.warn("Starting visual servoing.")
 
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
