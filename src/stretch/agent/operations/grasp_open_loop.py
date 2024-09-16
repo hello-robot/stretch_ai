@@ -137,6 +137,7 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         """Grasp based on data from the head camera only."""
         self.attempt("Grasping an object")
         obs = self.robot.get_observation()
+        obs = self.agent.semantic_sensor.predict(obs, ee=False)
         current_xyz = obs.get_xyz_in_world_frame()
 
         # Find the best object mask
