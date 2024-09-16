@@ -61,8 +61,6 @@ class GraspObjectOperation(ManagedOperation):
     # align_x_threshold: int = 10
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
-    # align_x_threshold: int = 15
-    # align_y_threshold: int = 15
     align_x_threshold: int = 15
     align_y_threshold: int = 15
 

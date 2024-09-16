@@ -14,6 +14,7 @@ from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
+    OpenLoopGraspObjectOperation,
     PlaceObjectOperation,
     PreGraspObjectOperation,
     RotateInPlaceOperation,
@@ -161,17 +162,30 @@ class PickupTask:
         )
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
-        grasp_object = GraspObjectOperation(
-            "grasp_the_object",
-            self.agent,
-            parent=pregrasp_object,
-            on_failure=pregrasp_object,
-            on_cannot_start=go_to_object,
-            retry_on_failure=False,
-        )
-        grasp_object.set_target_object_class(self.agent.target_object)
-        grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
-        grasp_object.match_method = matching
+        if self.use_visual_servoing_for_grasp:
+            grasp_object = GraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.servo_to_grasp = True
+            grasp_object.match_method = matching
+        else:
+            grasp_object = OpenLoopGraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.match_method = matching
+
         place_object_on_receptacle = PlaceObjectOperation(
             "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
         )

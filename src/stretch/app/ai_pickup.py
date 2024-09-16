@@ -88,6 +88,7 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Set to use voice input",
 )
+@click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -103,6 +104,7 @@ def main(
     llm: str = "gemma",
     use_llm: bool = False,
     use_voice: bool = False,
+    open_loop: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -168,6 +170,7 @@ def main(
                 target_object=target_object,
                 target_receptacle=receptacle,
                 matching=match_method,
+                use_visual_servoing_for_grasp=not open_loop,
             )
             task = pickup_task.get_task(add_rotate=True, mode=mode)
         except Exception as e:
