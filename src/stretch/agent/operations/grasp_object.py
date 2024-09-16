@@ -281,7 +281,6 @@ class GraspObjectOperation(ManagedOperation):
                 target_mask = mask
                 target_mask_pts = num_pts
 
-        input("----")
         if maximum_overlap_pts > self.min_points_to_approach:
             return maximum_overlap_mask
         if target_mask is not None:
