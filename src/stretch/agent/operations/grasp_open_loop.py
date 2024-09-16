@@ -23,7 +23,7 @@ from stretch.utils.point_cloud import show_point_cloud
 
 class OpenLoopGraspObjectOperation(ManagedOperation):
 
-    debug_show_point_cloud: bool = False
+    debug_show_point_cloud: bool = True
     match_method: str = "feature"
     target_object: str = None
     lift_distance: float = 0.2
@@ -135,6 +135,23 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
     def run(self):
         """Grasp based on data from the head camera only."""
         self.attempt("Grasping an object")
+
+        # Get the arm out of the way so we can look for the object
+        q = self.robot.get_joint_positions()
+        base_x = q[HelloStretchIdx.BASE_X]
+        lift = q[HelloStretchIdx.LIFT]
+        arm = q[HelloStretchIdx.ARM]
+        wrist_pitch = q[HelloStretchIdx.WRIST_PITCH]
+        wrist_yaw = q[HelloStretchIdx.WRIST_YAW]
+        wrist_roll = q[HelloStretchIdx.WRIST_ROLL]
+        self.robot.arm_to(
+            [base_x, 0.3, arm, wrist_roll, wrist_pitch, wrist_yaw],
+            head=[-np.pi / 2, -3 * np.pi / 8],
+            blocking=True,
+        )
+        time.sleep(0.25)
+
+        # Capture an observation
         obs = self.robot.get_observation()
         obs = self.agent.semantic_sensor.predict(obs, ee=False)
         current_xyz = obs.get_xyz_in_world_frame()
@@ -155,6 +172,8 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         if self.debug_show_point_cloud:
             self._debug_show_point_cloud(obs, object_xyz)
 
+        breakpoint()
+
         # Grasp the object
         self.grasp_open_loop(object_xyz)
 
@@ -171,6 +190,9 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         model = self.robot.get_robot_model()
         xyt = self.robot.get_base_pose()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
+
+        breakpoint()
+
         joint_state = self.robot.get_joint_positions()
 
         # We assume the current end-effector orientation is the correct one, going into this
