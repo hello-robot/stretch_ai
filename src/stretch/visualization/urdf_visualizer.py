@@ -11,10 +11,8 @@
 
 import importlib.resources as importlib_resources
 import re
-import time
 
 import numpy as np
-import rerun as rr
 import urchin as urdf_loader
 
 pkg_path = str(importlib_resources.files("stretch_urdf"))
@@ -55,21 +53,37 @@ class URDFVisualizer:
     original implementation of `urdf_loader.URDF.show`.
     """
 
-    def __init__(self, urdf_file_path):
-        self.urdf = self.urdf = urdf_loader.URDF.load(urdf_file_path)
+    abs_urdf_file_path = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
+
+    def __init__(self, urdf_file=abs_urdf_file_path):
+        self.urdf = self.urdf = urdf_loader.URDF.load(urdf_file)
 
     def get_tri_meshes(self, cfg=None, use_collision=True) -> list:
         if use_collision:
             fk = self.urdf.collision_trimesh_fk(cfg=cfg)
         else:
             fk = self.urdf.visual_trimesh_fk(cfg=cfg)
-        t_meshes = {"mesh": [], "pose": []}
+        t_meshes = {"mesh": [], "pose": [], "link": []}
         for tm in fk:
             pose = fk[tm]
             t_mesh = tm.copy()
             t_meshes["mesh"].append(t_mesh)
             t_meshes["pose"].append(pose)
+            # [:-4] to remove the .STL extension
+            t_meshes["link"].append(
+                tm.metadata["file_name"][:-4] if "file_name" in tm.metadata.keys() else None
+            )
         return t_meshes
+
+    def get_combined_robot_mesh(self, cfg=None, use_collision=True):
+        tm = self.get_tri_meshes(cfg, use_collision)
+        mesh_list = tm["mesh"]
+        pose_list = np.array(tm["pose"])
+        for m, p in zip(mesh_list, pose_list):
+            m.apply_transform(p)
+        combined_mesh = np.sum(mesh_list)
+        combined_mesh.remove_duplicate_faces()
+        return combined_mesh
 
     def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:
         """
@@ -91,42 +105,3 @@ class URDFVisualizer:
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
         return self.urdf.link_fk(lk_cfg, link=link_name)
-
-
-class StretchURDFLogger(URDFVisualizer):
-    def __init__(self) -> None:
-        urdf_file = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
-        super().__init__(urdf_file)
-
-    def log(self):
-        st = time.perf_counter()
-        tm = self.get_tri_meshes()
-        mesh_list = tm["mesh"]
-        pose_list = np.array(tm["pose"])
-        for m, p in zip(mesh_list, pose_list):
-            m.apply_transform(p)
-        combined_mesh = np.sum(mesh_list)
-        combined_mesh.remove_duplicate_faces()
-        mesh = combined_mesh
-        print(f"Time to get mesh: {time.perf_counter() - st}")
-        st2 = time.perf_counter()
-        # breakpoint()
-        rr.log(
-            "world/robot/base_link",
-            rr.Mesh3D(
-                vertex_positions=mesh.vertices,
-                triangle_indices=mesh.faces,
-                vertex_normals=mesh.vertex_normals,
-                # vertex_colors=vertex_colors,
-                # albedo_texture=albedo_texture,
-                # vertex_texcoords=vertex_texcoords,
-            ),
-            timeless=True,
-        )
-        t2 = time.perf_counter() - st2
-        print(f"Time to rr log mesh: {t2}")
-
-
-if __name__ == "__main__":
-    urdf_logger = StretchURDFLogger()
-    urdf_logger.log()

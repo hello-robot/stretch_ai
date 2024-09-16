@@ -98,12 +98,35 @@ def occupancy_map_to_3d_points(
     return points
 
 
+class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
+    def log(self, cfg=None):
+        st = time.perf_counter()
+        mesh = self.get_combined_robot_mesh(cfg=None, use_collision=True)
+        print(f"Time to get mesh: {time.perf_counter() - st}")
+        st2 = time.perf_counter()
+        # breakpoint()
+        rr.log(
+            "world/robot/base_link",
+            rr.Mesh3D(
+                vertex_positions=mesh.vertices,
+                triangle_indices=mesh.faces,
+                vertex_normals=mesh.vertex_normals,
+                # vertex_colors=vertex_colors,
+                # albedo_texture=albedo_texture,
+                # vertex_texcoords=vertex_texcoords,
+            ),
+            timeless=True,
+        )
+        t2 = time.perf_counter() - st2
+        print(f"Time to rr log mesh: {t2}")
+
+
 class RerunVsualizer:
     def __init__(self):
         rr.init("Stretch_robot", spawn=False)
         rr.serve(open_browser=True, server_memory_limit="2GB")
 
-        self.urdf_logger = urdf_visualizer.StretchURDFLogger()
+        self.urdf_logger = StretchURDFLogger()
 
         self.urdf_logger.log()
         # Create environment Box place holder
