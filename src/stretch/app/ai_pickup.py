@@ -16,7 +16,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llms import get_llm_choices, get_llm_client
+from stretch.llms import LLMChatWrapper, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
 from stretch.utils.prompt import PickupPromptBuilder
 
@@ -79,6 +79,11 @@ from stretch.utils.prompt import PickupPromptBuilder
     is_flag=True,
     help="Set to use the language model",
 )
+@click.option(
+    "--use_voice",
+    is_flag=True,
+    help="Set to use voice input",
+)
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -93,6 +98,7 @@ def main(
     match_method: str = "feature",
     llm: str = "gemma",
     use_llm: bool = False,
+    use_voice: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -123,6 +129,7 @@ def main(
     llm_client = None
     if use_llm:
         llm_client = get_llm_client(llm, prompt=prompt)
+        chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
 
     # Parse things and listen to the user
     while robot.running:
@@ -134,6 +141,16 @@ def main(
                 target_object = input("Enter the target object: ")
             if len(receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
+        else:
+            # Call the LLM client and parse
+            llm_response = chat_wrapper.query()
+            target_object = prompt.get_object(llm_response)
+            receptacle = prompt.get_receptacle(llm_response)
+            say_this = prompt.get_say_this(llm_response)
+
+        if say_this is not None:
+            chat_wrapper.say(say_this)
+            agent.say(say_this)
 
         if len(target_object) == 0 or len(receptacle) == 0:
             logger.error("You need to enter a target object and receptacle")

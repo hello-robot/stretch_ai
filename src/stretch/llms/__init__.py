@@ -9,6 +9,7 @@
 from typing import Union
 
 from .base import AbstractLLMClient, AbstractPromptBuilder
+from .chat_wrapper import LLMChatWrapper
 from .gemma_client import Gemma2bClient
 from .llama_client import LlamaClient
 from .openai_client import OpenaiClient
@@ -29,6 +30,7 @@ __all__ = [
     "PickupPromptBuilder",
     "AbstractLLMClient",
     "AbstractPromptBuilder",
+    "LLMChatWrapper",
 ]
 
 llms = {
