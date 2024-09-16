@@ -26,16 +26,19 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
     debug_show_point_cloud: bool = False
     match_method: str = "feature"
     target_object: str = None
+    lift_distance: float = 0.2
 
     def configure(
         self,
         target_object: str,
         match_method: str = "feature",
         debug_show_point_cloud: bool = False,
+        lift_distance: float = 0.2,
     ) -> None:
         self.target_object = target_object
         self.match_method = match_method
         self.debug_show_point_cloud = debug_show_point_cloud
+        self.lift_distance = lift_distance
 
     def set_target_object_class(self, target_object: str) -> None:
         self.target_object = target_object
