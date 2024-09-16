@@ -61,6 +61,8 @@ class GraspObjectOperation(ManagedOperation):
     # align_x_threshold: int = 10
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
+    # align_x_threshold: int = 15
+    # align_y_threshold: int = 15
     align_x_threshold: int = 15
     align_y_threshold: int = 15
 
@@ -71,6 +73,8 @@ class GraspObjectOperation(ManagedOperation):
     # median_distance_when_grasping: float = 0.175
     # median_distance_when_grasping: float = 0.15
     median_distance_when_grasping: float = 0.2
+    lift_min_height: float = 0.1
+    lift_max_height: float = 0.5
 
     # Movement parameters
     lift_arm_ratio: float = 0.08
@@ -169,6 +173,7 @@ class GraspObjectOperation(ManagedOperation):
         """
         mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
 
+        print("[GRASP OBJECT] match method =", self.match_method)
         if self.match_method == "class":
 
             # Get the target class
@@ -185,7 +190,6 @@ class GraspObjectOperation(ManagedOperation):
                 name = self.agent.semantic_sensor.get_class_name_for_id(iid)
                 if name is not None and target_class in name:
                     mask = np.bitwise_or(mask, servo.semantic == iid)
-
         elif self.match_method == "feature":
             if self.target_object is None:
                 raise ValueError(
@@ -309,7 +313,9 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [
                     base_x,
-                    np.clip(lift + self._grasp_lift_offset, 0, 0.5),
+                    np.clip(
+                        lift + self._grasp_lift_offset, self.lift_min_height, self.lift_max_height
+                    ),
                     arm + self._grasp_arm_offset,
                     0,
                     wrist_pitch,
