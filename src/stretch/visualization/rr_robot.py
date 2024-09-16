@@ -11,11 +11,11 @@
 
 import importlib.resources as importlib_resources
 import re
+import time
 
 import numpy as np
+import rerun as rr
 import urchin as urdf_loader
-
-from stretch.visualization import rr_urdf
 
 pkg_path = str(importlib_resources.files("stretch_urdf"))
 model_name = "SE3"  # RE1V0, RE2V0, SE3
@@ -27,11 +27,7 @@ urdf_dir = pkg_path + f"/{model_name}/"
 
 def get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path) -> str:
     """
-    Generates Robot XML with absolute path to mesh files
-    Args:
-        robot_pose_attrib: Robot pose attributes in form {"pos": "x y z", "quat": "x y z w"}
-    Returns:
-        str: Path to the generated XML file
+    Generates Robot URDF with absolute path to mesh files
     """
 
     with open(urdf_file_path, "r") as f:
@@ -54,25 +50,26 @@ def get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path) ->
     return urdf_dir + temp_abs_urdf
 
 
-class URDFmodel:
-    def __init__(self) -> None:
-        """
-        Load URDF model
-        """
-        self.urdf = urdf_loader.URDF.load(urdf_file_path, lazy_load_meshes=True)
-        self.joints_names = [
-            "joint_wrist_yaw",
-            "joint_wrist_pitch",
-            "joint_wrist_roll",
-            "joint_lift",
-            "joint_arm_l0",
-            "joint_arm_l1",
-            "joint_arm_l2",
-            "joint_arm_l3",
-            "joint_head_pan",
-            "joint_head_tilt",
-            "joint_gripper_finger_left",
-        ]
+class URDFVisualizer:
+    """The `show` method in this class is modified from the
+    original implementation of `urdf_loader.URDF.show`.
+    """
+
+    def __init__(self, urdf_file_path):
+        self.urdf = self.urdf = urdf_loader.URDF.load(urdf_file_path)
+
+    def get_tri_meshes(self, cfg=None, use_collision=True) -> list:
+        if use_collision:
+            fk = self.urdf.collision_trimesh_fk(cfg=cfg)
+        else:
+            fk = self.urdf.visual_trimesh_fk(cfg=cfg)
+        t_meshes = {"mesh": [], "pose": []}
+        for tm in fk:
+            pose = fk[tm]
+            t_mesh = tm.copy()
+            t_meshes["mesh"].append(t_mesh)
+            t_meshes["pose"].append(pose)
+        return t_meshes
 
     def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:
         """
@@ -96,7 +93,40 @@ class URDFmodel:
         return self.urdf.link_fk(lk_cfg, link=link_name)
 
 
+class StretchURDFLogger(URDFVisualizer):
+    def __init__(self) -> None:
+        urdf_file = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
+        super().__init__(urdf_file)
+
+    def log(self):
+        st = time.perf_counter()
+        tm = self.get_tri_meshes()
+        mesh_list = tm["mesh"]
+        pose_list = np.array(tm["pose"])
+        for m, p in zip(mesh_list, pose_list):
+            m.apply_transform(p)
+        combined_mesh = np.sum(mesh_list)
+        combined_mesh.remove_duplicate_faces()
+        mesh = combined_mesh
+        print(f"Time to get mesh: {time.perf_counter() - st}")
+        st2 = time.perf_counter()
+        # breakpoint()
+        rr.log(
+            "world/robot/base_link",
+            rr.Mesh3D(
+                vertex_positions=mesh.vertices,
+                triangle_indices=mesh.faces,
+                vertex_normals=mesh.vertex_normals,
+                # vertex_colors=vertex_colors,
+                # albedo_texture=albedo_texture,
+                # vertex_texcoords=vertex_texcoords,
+            ),
+            timeless=True,
+        )
+        t2 = time.perf_counter() - st2
+        print(f"Time to rr log mesh: {t2}")
+
+
 if __name__ == "__main__":
-    urdf_file = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
-    urdf_logger = rr_urdf.URDFLogger(urdf_file)
+    urdf_logger = StretchURDFLogger()
     urdf_logger.log()

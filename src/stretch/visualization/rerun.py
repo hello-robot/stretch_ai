@@ -22,6 +22,7 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.motion import HelloStretchIdx
 from stretch.perception.wrapper import OvmmPerception
+from stretch.visualization import rr_robot
 
 
 def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -102,6 +103,9 @@ class RerunVsualizer:
         rr.init("Stretch_robot", spawn=False)
         rr.serve(open_browser=True, server_memory_limit="2GB")
 
+        self.urdf_logger = rr_robot.StretchURDFLogger()
+
+        self.urdf_logger.log()
         # Create environment Box place holder
         rr.log(
             "world/map_box",
@@ -356,5 +360,8 @@ class RerunVsualizer:
                 self.log_ee_frame(obs)
                 self.log_ee_camera(servo)
                 self.log_robot_state(obs)
+                st = time.perf_counter()
+                self.urdf_logger.log()
+                print("Total time to log urdf: ", time.perf_counter() - st)
             except Exception as e:
                 print(e)
