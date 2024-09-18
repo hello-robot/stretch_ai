@@ -667,7 +667,7 @@ class SparseVoxelMap(object):
         obstacles_soft = torch.sum(obstacle_voxels, dim=-1)
         obstacles = obstacles_soft > self.obs_min_density
 
-        history_ids = history_ids[:, :, min_height:max_height]
+        # history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
         history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size = 5))
 
