@@ -99,6 +99,56 @@ def occupancy_map_to_3d_points(
 
 
 class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
+    link_names = []
+    link_poses = []
+
+    def load_robot_mesh(self, cfg: dict = None, use_collision: bool = True, debug: bool = False):
+        trimesh_list = self.get_tri_meshes(cfg=cfg, use_collision=use_collision)
+        self.link_names = trimesh_list["link"]
+        self.link_poses = trimesh_list["pose"]
+        for i in range(len(trimesh_list["link"])):
+            rr.log(
+                f"world/robot/mesh/{trimesh_list['link'][i]}",
+                rr.Mesh3D(
+                    vertex_positions=trimesh_list["mesh"][i].vertices,
+                    triangle_indices=trimesh_list["mesh"][i].faces,
+                    vertex_normals=trimesh_list["mesh"][i].vertex_normals,
+                ),
+                static=True,
+            )
+
+    def log_transforms(self, cfg: dict, debug: bool = False):
+        lk_cfg = {
+            "joint_wrist_yaw": cfg["wrist_yaw"],
+            "joint_wrist_pitch": cfg["wrist_pitch"],
+            "joint_wrist_roll": cfg["wrist_roll"],
+            "joint_lift": cfg["lift"],
+            "joint_arm_l0": cfg["arm"] / 4,
+            "joint_arm_l1": cfg["arm"] / 4,
+            "joint_arm_l2": cfg["arm"] / 4,
+            "joint_arm_l3": cfg["arm"] / 4,
+            "joint_head_pan": cfg["head_pan"],
+            "joint_head_tilt": cfg["head_tilt"],
+        }
+        if "gripper" in cfg.keys():
+            lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+            lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
+        tms = self.get_tri_meshes(cfg=lk_cfg, use_collision=False)
+        self.link_poses = tms["pose"]
+        self.link_names = tms["link"]
+        for link in self.link_names:
+            idx = self.link_names.index(link)
+            rr.set_time_seconds("realtime", time.time())
+            rr.log(
+                f"world/robot/mesh/{link}",
+                rr.Transform3D(
+                    translation=self.link_poses[idx][:3, 3],
+                    mat3x3=self.link_poses[idx][:3, :3],
+                    axis_length=0.3,
+                ),
+                static=False,
+            )
+
     def log_robot_mesh(self, cfg: dict, use_collision: bool = True, debug: bool = False):
         """
         Log robot mesh using joint configuration data
@@ -157,7 +207,8 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         for k in HelloStretchIdx.name_to_idx:
             cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
         # breakpoint()
-        self.log_robot_mesh(cfg=cfg, use_collision=use_collision)
+        # self.log_robot_mesh(cfg=cfg, use_collision=use_collision)
+        self.log_transforms(cfg=cfg, debug=debug)
 
 
 class RerunVsualizer:
@@ -169,6 +220,7 @@ class RerunVsualizer:
 
         if self.display_robot_mesh:
             self.urdf_logger = StretchURDFLogger()
+            self.urdf_logger.load_robot_mesh(use_collision=False)
 
         # Create environment Box place holder
         rr.log(
