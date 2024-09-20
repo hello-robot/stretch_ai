@@ -53,8 +53,9 @@ def get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path) ->
 
 
 class URDFVisualizer:
-    """The `show` method in this class is modified from the
-    original implementation of `urdf_loader.URDF.show`.
+    """
+    URDF wrapper class to get trimesh objects, link poses and FK transformations
+    using urchin.urdf_loader
     """
 
     abs_urdf_file_path = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
