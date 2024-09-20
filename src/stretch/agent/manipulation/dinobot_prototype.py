@@ -178,7 +178,7 @@ class Dinobot:
         T_ee_target[:3, 3] = T_ee_target[:3, 3] - t_d405_ee
         T_ee_target[:3, :3] = np.matmul(T_ee_target[:3, :3], R_d405_ee)
 
-        DEBUG = True
+        DEBUG = False
         if DEBUG:
 
             origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
@@ -225,26 +225,14 @@ class Dinobot:
                     T_ee_blob,
                     T_target_d405_frame,
                     T_d405_target_blob,
-                    # ]
                     T_ee_target_frame,
                     T_ee_target_blob,
                 ]
             )
 
-            # # Visualize the frames with labels
-            # o3d.visualization.draw_geometries(
-            #     [origin_frame, T_d405_frame, T_ee_frame]
-            # )
-        return
-
-        T_ee_d405 = self.urdf_model.get_transform(
-            "link_grasp_center", "gripper_camera_color_optical_frame"
-        )
-
-        T_ee_target = np.matmul(T_d405_target, np.linalg.inv(T_ee_d405))
+        # Extract the target end-effector position and rotation
         target_ee_pos = T_ee_target[:3, 3]
-        target_ee_rot = T_ee_target[:3, :3]
-        rot = Rotation.from_matrix(target_ee_rot)
+        rot = Rotation.from_matrix(T_ee_target[:3, :3])
         joint_state = robot.get_joint_positions().copy()
         target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
             target_ee_pos, rot.as_quat(), q0=joint_state
