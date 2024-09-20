@@ -99,13 +99,42 @@ def occupancy_map_to_3d_points(
 
 
 class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
-    def log_robot_mesh(self, cfg: dict, use_collision: bool = True, debug: bool = False):
+    link_names = []
+    link_poses = []
+
+    def load_robot_mesh(self, cfg: dict = None, use_collision: bool = False):
         """
-        Log robot mesh using joint configuration data
+        Load robot mesh using urdf visualizer to rerun
+        This is to be run once at the beginning of the rerun
         Args:
-            cfg (dict): Joint configuration
+            cfg (dict): Configuration of the robot
             use_collision (bool): use collision mesh
         """
+        trimesh_list = self.get_tri_meshes(cfg=cfg, use_collision=use_collision)
+        self.link_names = trimesh_list["link"]
+        self.link_poses = trimesh_list["pose"]
+        for i in range(len(trimesh_list["link"])):
+            rr.log(
+                f"world/robot/mesh/{trimesh_list['link'][i]}",
+                rr.Mesh3D(
+                    vertex_positions=trimesh_list["mesh"][i].vertices,
+                    triangle_indices=trimesh_list["mesh"][i].faces,
+                    vertex_normals=trimesh_list["mesh"][i].vertex_normals,
+                ),
+                static=True,
+            )
+
+    def log_transforms(self, obs, debug: bool = False):
+        """
+        Log robot mesh using urdf visualizer to rerun
+        Args:
+            obs (dict): Observation dataclass
+            use_collision (bool): use collision mesh
+        """
+        state = obs["joint"]
+        cfg = {}
+        for k in HelloStretchIdx.name_to_idx:
+            cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
         lk_cfg = {
             "joint_wrist_yaw": cfg["wrist_yaw"],
             "joint_wrist_pitch": cfg["wrist_pitch"],
@@ -122,53 +151,52 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
         t0 = timeit.default_timer()
-        mesh = self.get_combined_robot_mesh(cfg=lk_cfg, use_collision=use_collision)
+        tms = self.get_tri_meshes(cfg=lk_cfg, use_collision=False)
         t1 = timeit.default_timer()
+        self.link_poses = tms["pose"]
+        self.link_names = tms["link"]
+        for link in self.link_names:
+            idx = self.link_names.index(link)
+            rr.set_time_seconds("realtime", time.time())
+            rr.log(
+                f"world/robot/mesh/{link}",
+                rr.Transform3D(
+                    translation=self.link_poses[idx][:3, 3],
+                    mat3x3=self.link_poses[idx][:3, :3],
+                    axis_length=0.0,
+                ),
+                static=False,
+            )
+        t2 = timeit.default_timer()
         if debug:
-            print(f"Time to get mesh: {1000*(t1 - t1)} ms")
-        # breakpoint()
-        rr.set_time_seconds("realtime", time.time())
-        rr.log(
-            "world/robot/mesh",
-            rr.Mesh3D(
-                vertex_positions=mesh.vertices,
-                triangle_indices=mesh.faces,
-                vertex_normals=mesh.vertex_normals,
-                # vertex_colors=vertex_colors,
-                # albedo_texture=albedo_texture,
-                # vertex_texcoords=vertex_texcoords,
-            ),
-            timeless=True,
-        )
-        t2 = 1000 * (timeit.default_timer() - t1)
-        if debug:
-            print(f"Time to rr log mesh: {t2}")
-            print(f"Total time to log mesh: {1000*(timeit.default_timer() - t0)} ms")
-
-    def log(self, obs, use_collision: bool = True, debug: bool = False):
-        """
-        Log robot mesh using urdf visualizer to rerun
-        Args:
-            obs (dict): Observation dataclass
-            use_collision (bool): use collision mesh
-        """
-        state = obs["joint"]
-        cfg = {}
-        for k in HelloStretchIdx.name_to_idx:
-            cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
-        # breakpoint()
-        self.log_robot_mesh(cfg=cfg, use_collision=use_collision)
+            print("Time to get tri meshes (ms): ", 1000 * (t1 - t0))
+            print("Time to log robot transforms (ms): ", 1000 * (t2 - t1))
+            print("Total time to log robot transforms (ms): ", 1000 * (t2 - t0))
 
 
 class RerunVsualizer:
-    def __init__(self, display_robot_mesh: bool = True, open_browser: bool = True):
+    def __init__(
+        self,
+        display_robot_mesh: bool = True,
+        open_browser: bool = True,
+        server_memory_limit: str = "4GB",
+        collapse_panels: bool = True,
+    ):
+        """Rerun visualizer class
+        Args:
+            display_robot_mesh (bool): Display robot mesh
+            open_browser (bool): Open browser at start
+            server_memory_limit (str): Server memory limit E.g. 2GB or 20%
+            collapse_panels (bool): Set to false to have customizable rerun panels
+        """
         rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=open_browser, server_memory_limit="2GB")
+        rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
         self.display_robot_mesh = display_robot_mesh
 
         if self.display_robot_mesh:
             self.urdf_logger = StretchURDFLogger()
+            self.urdf_logger.load_robot_mesh(use_collision=False)
 
         # Create environment Box place holder
         rr.log(
@@ -186,23 +214,26 @@ class RerunVsualizer:
         )
 
         self.bbox_colors_memory = {}
-        self.step_delay_s = 1 / 15
-        self.setup_blueprint()
+        self.step_delay_s = 0.3
+        self.setup_blueprint(collapse_panels)
 
-    def setup_blueprint(self):
-        """Setup the blueprint for the visualizer"""
-        my_blueprint = rrb.Blueprint(
-            rrb.Horizontal(
-                rrb.Spatial3DView(name="3D View", origin="world"),
-                rrb.Vertical(
-                    rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
-                    rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
-                ),
-                rrb.TimePanel(state=True),
-                rrb.SelectionPanel(state=True),
-                rrb.BlueprintPanel(state=True),
+    def setup_blueprint(self, collapse_panels: bool):
+        """Setup the blueprint for the visualizer
+        Args:
+            collapse_panels (bool): fully hides the blueprint/selection panels,
+                                    and shows the simplified time panel
+        """
+        main = rrb.Horizontal(
+            rrb.Spatial3DView(name="3D View", origin="world"),
+            rrb.Vertical(
+                rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+                rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
             ),
-            collapse_panels=True,
+            column_shares=[3, 1],
+        )
+        my_blueprint = rrb.Blueprint(
+            rrb.Vertical(main, rrb.TimePanel(state=True)),
+            collapse_panels=collapse_panels,
         )
         rr.send_blueprint(my_blueprint)
 
@@ -218,7 +249,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
                 image_from_camera=obs["camera_K"],
-                image_plane_distance=0.25,
+                image_plane_distance=0.15,
             ),
         )
 
@@ -229,13 +260,12 @@ class RerunVsualizer:
         theta = obs["compass"]
         rb_arrow = rr.Arrows3D(
             origins=[0, 0, 0],
-            vectors=[0.5, 0, 0],
+            vectors=[0.4, 0, 0],
             radii=0.02,
             labels="robot",
             colors=[255, 0, 0, 255],
         )
         rr.log("world/robot/arrow", rb_arrow)
-        rr.log("world/robot/blob", rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13))
         rr.log(
             "world/robot",
             rr.Transform3D(
@@ -275,7 +305,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
                 image_from_camera=servo.ee_camera_K,
-                image_plane_distance=0.25,
+                image_plane_distance=0.15,
             ),
         )
 
@@ -286,10 +316,10 @@ class RerunVsualizer:
         for k in HelloStretchIdx.name_to_idx:
             rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
 
-    def log_robot_mesh(self, obs, use_collision=True):
+    def log_robot_transforms(self, obs):
         """
-        Log robot mesh using urdf visualizer"""
-        self.urdf_logger.log(obs, use_collision=use_collision)
+        Log robot mesh transforms using urdf visualizer"""
+        self.urdf_logger.log_transforms(obs)
 
     def update_voxel_map(
         self,
@@ -413,7 +443,7 @@ class RerunVsualizer:
         """
         ts = time.time()
         rr.set_time_seconds("realtime", ts)
-        rr.log("world/xyt_goal/blob", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
+        rr.log("world/xyt_goal", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
         rr.log(
             "world/xyt_goal",
             rr.Transform3D(
@@ -422,15 +452,16 @@ class RerunVsualizer:
                 axis_length=0.5,
             ),
         )
-        rr.set_time_seconds("realtime", ts + timeout)
-        rr.log("world/xyt_goal", rr.Clear(recursive=True))
-        rr.set_time_seconds("realtime", ts)
+        # rr.set_time_seconds("realtime", ts + timeout)
+        # rr.log("world/xyt_goal", rr.Clear(recursive=True))
+        # rr.set_time_seconds("realtime", ts)
 
     def step(self, obs, servo):
         """Log all the data"""
         if obs and servo:
             rr.set_time_seconds("realtime", time.time())
             try:
+                t0 = timeit.default_timer()
                 self.log_robot_xyt(obs)
                 self.log_head_camera(obs)
                 self.log_ee_frame(obs)
@@ -438,7 +469,11 @@ class RerunVsualizer:
                 self.log_robot_state(obs)
 
                 if self.display_robot_mesh:
-                    self.log_robot_mesh(obs)
+                    self.log_robot_transforms(obs)
+                t1 = timeit.default_timer()
+                sleep_time = self.step_delay_s - (t1 - t0)
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
 
             except Exception as e:
                 print(e)

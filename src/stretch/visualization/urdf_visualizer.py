@@ -11,6 +11,7 @@
 
 import importlib.resources as importlib_resources
 import re
+import timeit
 
 import numpy as np
 import urchin as urdf_loader
@@ -50,8 +51,9 @@ def get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path) ->
 
 
 class URDFVisualizer:
-    """The `show` method in this class is modified from the
-    original implementation of `urdf_loader.URDF.show`.
+    """
+    URDF wrapper class to get trimesh objects, link poses and FK transformations
+    using urchin.urdf_loader
     """
 
     abs_urdf_file_path = get_absolute_path_stretch_urdf(urdf_file_path, mesh_files_directory_path)
@@ -59,7 +61,9 @@ class URDFVisualizer:
     def __init__(self, urdf_file: str = abs_urdf_file_path):
         self.urdf = urdf_loader.URDF.load(urdf_file)
 
-    def get_tri_meshes(self, cfg: dict = None, use_collision: bool = True) -> list:
+    def get_tri_meshes(
+        self, cfg: dict = None, use_collision: bool = True, debug: bool = False
+    ) -> list:
         """
         Get list of trimesh objects, pose and link names of the robot with the given configuration
         Args:
@@ -68,10 +72,12 @@ class URDFVisualizer:
         Returns:
             list: List of trimesh objects, pose and link names of the robot with the given configuration
         """
+        t0 = timeit.default_timer()
         if use_collision:
             fk = self.urdf.collision_trimesh_fk(cfg=cfg)
         else:
             fk = self.urdf.visual_trimesh_fk(cfg=cfg)
+        t1 = timeit.default_timer()
         t_meshes = {"mesh": [], "pose": [], "link": []}
         for tm in fk:
             pose = fk[tm]
@@ -82,6 +88,10 @@ class URDFVisualizer:
             t_meshes["link"].append(
                 tm.metadata["file_name"][:-4] if "file_name" in tm.metadata.keys() else None
             )
+        t2 = timeit.default_timer()
+        if debug:
+            print(f"[get_trimeshes method] Time to compute FK (ms): {1000 * (t1 - t0)}")
+            print(f"[get_trimeshes method] Time to get meshes list (ms): {1000 * (t2 - t1)}")
         return t_meshes
 
     def get_combined_robot_mesh(self, cfg: dict = None, use_collision: bool = True) -> Trimesh:
