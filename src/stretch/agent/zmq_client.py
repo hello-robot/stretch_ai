@@ -108,7 +108,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.reset()
 
         # Variables we set here should not change
-        self._iter = 0  # Tracks number of actions set, never reset this
+        self._iter = -1  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
         self._started = False
 
@@ -427,14 +427,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return True
 
     def navigate_to(
-        self, xyt: ContinuousNavigationAction, relative=False, blocking=False, timeout: float = 10.0
+        self,
+        xyt: ContinuousNavigationAction,
+        relative=False,
+        blocking=False,
+        timeout: float = 10.0,
+        verbose: bool = False,
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             xyt = xyt.xyt
         assert len(xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
-        self.send_action(next_action, timeout=timeout)
+        self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -454,15 +459,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
+                self.gripper_to(gripper_target, blocking=False)
                 joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
+                print("Opening gripper:", joint_state[HelloStretchIdx.GRIPPER])
                 gripper_err = np.abs(joint_state[HelloStretchIdx.GRIPPER] - gripper_target)
                 if gripper_err < 0.1:
                     return True
                 t1 = timeit.default_timer()
                 if t1 - t0 > timeout:
-                    print("[ZMQ CLIENT] Timeout waiting for gripper to close")
+                    print("[ZMQ CLIENT] Timeout waiting for gripper to open")
                     break
                 self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
@@ -526,14 +533,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
-        next_action = {"posture": "navigation"}
+        next_action = {"posture": "navigation", "step": self._iter}
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
-        next_action = {"posture": "manipulation"}
+        next_action = {"posture": "manipulation", "step": self._iter}
         self.send_action(next_action)
         time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
@@ -606,7 +613,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         angle_threshold: Optional[float] = None,
         min_steps_not_moving: Optional[int] = 1,
         goal_angle: Optional[float] = None,
-        goal_angle_threshold: Optional[float] = 0.1,
+        goal_angle_threshold: Optional[float] = 0.15,
         resend_action: Optional[dict] = None,
     ) -> None:
         """Wait for the navigation action to finish.
@@ -634,10 +641,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             min_steps_not_moving = self._min_steps_not_moving
         t0 = timeit.default_timer()
         close_to_goal = False
+
+        # TODO: this is useful for debugging
+        # verbose = True
+
         while True:
-            with self._obs_lock:
-                if self._obs is None:
+
+            # Minor delay at the end - give it time to get new messages
+            time.sleep(0.01)
+
+            with self._state_lock:
+                if self._state is None:
+                    print("waiting for obs")
                     continue
+
             xyt = self.get_base_pose()
             pos = xyt[:2]
             ang = xyt[2]
@@ -662,16 +679,21 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 not_moving_count += 1
             else:
                 not_moving_count = 0
+
+            # Check if we are at the goal
+            # If we are at the goal, we can stop if we are not moving
             last_pos = pos
             last_ang = ang
             close_to_goal = at_goal
             if verbose:
                 print(
-                    f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._obs['at_goal']}"
+                    f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
                 )
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
+                if verbose:
+                    print("---> At goal")
                 break
 
             # Resend the action if we are not moving for some reason and it's been provided
@@ -679,10 +701,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 # Resend the action
                 self.send_socket.send_pyobj(resend_action)
 
-            # Minor delay at the end - give it time to get new messages
-            time.sleep(0.01)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
+                print(
+                    f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
+                )
                 raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
@@ -707,7 +730,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._obs = obs
             self._last_step = obs["step"]
             if self._iter <= 0:
-                self._iter = self._last_step
+                self._iter = max(self._last_step, self._iter)
 
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
@@ -857,12 +880,22 @@ class HomeRobotZmqClient(AbstractRobotClient):
             time.sleep(max(0, _delay - (dt)))
         return False
 
+    def set_base_velocity(self, forward: float, rotational: float) -> None:
+        """Set the velocity of the robot base.
+
+        Args:
+            forward (float): forward velocity
+            rotational (float): rotational velocity
+        """
+        next_action = {"base_velocity": {"v": forward, "w": rotational}}
+        self.send_action(next_action)
+
     def send_action(
         self,
-        next_action: Optional[Dict[str, Any]] = None,
-        timeout: float = 10.0,
+        next_action: Dict[str, Any],
+        timeout: float = 5.0,
         verbose: bool = False,
-    ) -> None:
+    ) -> Dict[str, Any]:
         """Send the next action to the robot"""
         if verbose:
             print("-> sending", next_action)
@@ -876,6 +909,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # Send it
             next_action["step"] = block_id
             self._iter += 1
+
+            # TODO: fix all of this - why do we need to do this?
+            # print("SENDING THIS ACTION:", next_action)
+            self.send_socket.send_pyobj(next_action)
+            time.sleep(0.01)
+            # TODO: why do we send the action twice?
+            # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
@@ -888,7 +928,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             current_action = next_action
 
         # Make sure we had time to read
-        time.sleep(0.1)
+        # time.sleep(0.1)
         if blocking:
             # Wait for the command to finish
             self._wait_for_action(
@@ -898,7 +938,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 timeout=timeout,
                 # resend_action=current_action,
             )
-            time.sleep(0.1)
+
+        # Returns the current action in case we want to do something with it like resend
+        return current_action
 
     def blocking_spin(self, verbose: bool = False, visualize: bool = False):
         """Listen for incoming observations and update internal state"""
@@ -917,8 +959,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._seq_id += 1
             output["rgb"] = compression.from_jpg(output["rgb"])
             compressed_depth = output["depth"]
-            depth = compression.from_jp2(compressed_depth)
-            output["depth"] = depth / 1000.0
+            depth = compression.from_jp2(compressed_depth) / 1000
+            output["depth"] = depth
 
             if camera is None:
                 camera = Camera.from_K(
@@ -950,11 +992,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # color_image = compression.from_webp(message["ee_cam/color_image"])
         color_image = compression.from_jpg(message["ee_cam/color_image"])
         depth_image = compression.from_jp2(message["ee_cam/depth_image"])
+        depth_image = depth_image / 1000
         image_scaling = message["ee_cam/image_scaling"]
 
         # Get head information from the message as well
         head_color_image = compression.from_jpg(message["head_cam/color_image"])
-        head_depth_image = compression.from_jp2(message["head_cam/depth_image"])
+        head_depth_image = compression.from_jp2(message["head_cam/depth_image"]) / 1000
         head_image_scaling = message["head_cam/image_scaling"]
         joint = message["robot/config"]
         with self._servo_lock and self._state_lock:
@@ -976,6 +1019,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             observation.ee_pose = message["ee/pose"]
             observation.depth_scaling = message["head_cam/depth_scaling"]
             observation.ee_depth_scaling = message["ee_cam/image_scaling"]
+            if "is_simulation" in message:
+                observation.is_simulation = message["is_simulation"]
+            else:
+                observation.is_simulation = False
             self._servo = observation
 
     def get_servo_observation(self):
@@ -1029,6 +1076,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._rerun.step(self._obs, self._servo)
             time.sleep(0.3)
 
+    @property
+    def is_homed(self) -> bool:
+        return self._state is not None and self._state["is_homed"]
+
+    @property
+    def is_runstopped(self) -> bool:
+        return self._state is not None and self._state["is_runstopped"]
+
     def start(self) -> bool:
         """Start running blocking thread in a separate thread"""
         if self._started:
@@ -1062,6 +1117,30 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 )
                 logger.info("Robot IP:", self.send_address)
                 return False
+
+        # Separately wait for state messages
+        while self._state is None:
+            time.sleep(0.1)
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10.0:
+                logger.error(
+                    colored(
+                        "Timeout waiting for state information; are you connected to the robot? Check the network.",
+                        "red",
+                    )
+                )
+
+        if not self.is_homed:
+            self.stop()
+            raise RuntimeError(
+                "Robot is not homed; please home the robot before running. You can do so by shutting down the server and running ./stretch_robot_home.py on the robot."
+            )
+        if self.is_runstopped:
+            self.stop()
+            raise RuntimeError(
+                "Robot is runstopped; please release the runstop before running. You can do so by pressing and briefly holding the runstop button on the robot."
+            )
+
         self._started = True
         return True
 

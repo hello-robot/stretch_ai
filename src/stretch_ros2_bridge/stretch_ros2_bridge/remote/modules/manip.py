@@ -352,28 +352,25 @@ class StretchManipulationClient(AbstractControlModule):
 
         return self.goto_ee_pose([0, 0, 0], quat_desired, relative=True, **kwargs)
 
-    @enforce_enabled
     def open_gripper(self, blocking: bool = True):
         gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][1]
         self.move_gripper(gripper_target, blocking=blocking)
 
-    @enforce_enabled
     def close_gripper(self, loose: bool = False, blocking: bool = True):
         gripper_target = self._robot_model.range[HelloStretchIdx.GRIPPER][0]
         if loose:
             gripper_target += 0.3
         self.move_gripper(gripper_target, blocking=blocking)
 
-    @enforce_enabled
     def move_gripper(self, target, blocking: bool = True):
-        joint_goals = {
-            self._ros_client.GRIPPER_FINGER: target,
-        }
-        self._ros_client.send_trajectory_goals(joint_goals)
+
+        joint_goals = {self._ros_client.GRIPPER_FINGER: target}
 
         def wait_for_gripper():
             rate = self._ros_client.create_rate(1 / GRIPPER_MOTION_SECS)
             rate.sleep()
+
+        self._ros_client.send_joint_goals(joint_goals)
 
         self._register_wait(wait_for_gripper)
         if blocking:

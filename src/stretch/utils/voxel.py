@@ -21,9 +21,15 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
 from torch import Tensor
-from torch_geometric.nn.pool.consecutive import consecutive_cluster
-from torch_geometric.nn.pool.voxel_grid import voxel_grid
-from torch_geometric.utils import scatter
+
+USE_TORCH_GEOMETRIC = False
+if USE_TORCH_GEOMETRIC:
+    from torch_geometric.nn.pool.consecutive import consecutive_cluster
+    from torch_geometric.nn.pool.voxel_grid import voxel_grid
+    from torch_geometric.utils import scatter
+else:
+    from stretch.utils.torch_geometric import consecutive_cluster, voxel_grid
+    from stretch.utils.torch_scatter import scatter
 
 
 class VoxelizedPointcloud:

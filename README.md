@@ -78,7 +78,6 @@ ros2 launch stretch_ros2_bridge server.launch.py
 Then, first try these apps to make sure connections are working properly:
 
 - [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
-- [Test Timing](#test-timing) - Test the timing of the robot's control loop over the network.
 - [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
@@ -92,36 +91,14 @@ Advanced:
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
 
-Debug tools:
-
-- [Camera Info](#camera-info) - Print out camera information.
-
 Finally:
 
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 
+There are also some apps for [debugging](docs/debug.md).
+
 ## Installation
-
-### Temporary Note on ROS2 Version
-
-On the robot, we are *temporarily* using a new version of the [stretch_ros2](https://github.com/hello-robot/stretch_ros2/tree/feature/streaming_position) ROS package: the `feature/streaming_position` branch. This allows us to send smoother commands to the robot.
-
-On your robot, go to your `ament_ws` directory and checkout the `feature/streaming_position` branch:
-
-```bash
-cd ~/ament_ws/src/stretch_ros2
-git checkout feature/streaming_position
-```
-
-Then, build the workspace:
-
-```bash
-cd ~/ament_ws
-colcon build --packages-select stretch_ros2
-```
-
-You can verify this has worked by running the `view_images` app. If the robot moves its arm, you are good to go!
 
 ### System Dependencies
 
@@ -144,11 +121,71 @@ On both your PC and your robot, clone and install the package:
 
 ```bash
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
+```
 
-# Install
+#### Install On PC
+
+The installation script will install the package and its dependencies, as well as (optionally) some perception modules.
+
+```bash
 cd stretch_ai
+./install.sh
+```
+
+#### Install On the Robot
+
+Robot installation can be tricky, because we use some features from [ROS2](https://docs.ros.org/en/humble/index.html), specifically the [Nav2](https://github.com/ros-navigation/navigation2) package for LIDAR slam.
+
+You will need to link Stretch AI into your ROS workspace. There are two ways to do this; either install stretch AI in your base python environment, or link the conda environment into ROS (advanced). Either way, you will then need to [set up the ROS2 bridge](#set-up-ament-workspace) in your Ament workspace.
+
+*Why all this complexity?* We run a set of ROS2 nodes based on the [HomeRobot](https://github.com/facebookresearch/home-robot) and [OK-Robot](https://ok-robot.github.io/) codebases for mobile manipulation and localization. In particular, this allows us to use [Nav2](https://docs.nav2.org/), a very well-tested ROS2 navigation stack, for localization, which makes it easier to build complex applications. You do not need to understand ROS2 to use this stack.
+
+##### Option 1: Install Stretch AI in Base Python Environment
+
+To install in the base python environment, you need to make sure build tools are up to date:
+
+```bash
+conda deactivate  # only if you are in a conda environment
+pip install --upgrade pip setuptools packaging build meson ninja
+```
+
+This is particularly an issue for scikit-fmm, which is used for motion planning. After this is done, you can install the package as normal:
+
+```bash
 pip install ./src
 ```
+
+Then, [set up the ROS2 bridge](#set-up-ament-workspace-on-the-robot).
+
+##### Option 2: Link Conda Environment into ROS (Advanced).
+
+If you are using a conda environment, you can link the conda environment into ROS. This is a bit more advanced, but can be useful if you want to keep your ROS and conda environments separate.
+
+Install using the installation script, but using the `--cpu` flag for a CPU-only installation:
+
+```bash
+./install.sh --cpu
+```
+
+Then, activate the conda environment:
+
+```bash
+conda activate stretch_ai_$VERSION_cpu
+```
+
+Then, [link the package into your ament workspace](#set-up-ament-workspace-on-the-robot) and install the package:
+
+```bash
+colcon build --cmake-args -DPYTHON_EXECUTABLE=$(which python)
+```
+
+Some ROS python repositories might be missing - specifically `empy` and `catkin_pkg`. You can install these with:
+
+```bash
+python -m pip install empy catkin_pkg
+```
+
+#### Set Up Ament Workspace on the Robot
 
 On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
 
@@ -156,10 +193,25 @@ On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament works
 cd stretch_ai
 ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
 cd ~/ament_ws
-colcon build --symlink-install --packages-select stretch_ros2_bridge
+colcon build --packages-select stretch_ros2_bridge
 ```
 
-More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
+You need to rebuild the ROS2 bridge every time you update the codebase. You can do this with:
+
+```bash
+cd ~/ament_ws
+colcon build --packages-select stretch_ros2_bridge
+```
+
+#### Experimental: Install ORB-SLAM3 On the Robot (Advanced)
+
+[ORB-SLAM3](https://arxiv.org/pdf/2007.11898) is an open-source VSLAM (visual slam) library. Using it in conjunction with LIDAR-based localization can improve performance in many environments. Installation is documented in a [separate file](docs/orbslam3.md).
+
+*Installation is not required to use Stretch AI.* If you chose to do so, you can then then use the ORB-SLAM3 version of the server launch file:
+
+```
+ros2 launch stretch_ros2_bridge server_orbslam3.launch.py
+```
 
 ### Using LLMs
 
@@ -230,20 +282,6 @@ python -m stretch.app.keyboard_teleop --headless
 
 Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
 
-#### Test Timing
-
-Test the timing of the robot's control loop over the network. This will print out the time it takes to send a command to the robot and receive a response. It will show a histogram after a fixed number of iterations given by the `--iterations` flag (default is 500).
-
-```bash
-python -m stretch.app.timing --robot_ip $ROBOT_IP
-
-# Headless mode - no display
-python -m stretch.app.timing --headless
-
-# Set the number of iterations per histogram to 1000
-python -m stretch.app.timing --iterations 1000
-```
-
 #### Print Joint States
 
 To make sure the robot is connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
@@ -256,23 +294,6 @@ You can also print out just one specific joint. For example, to just get arm ext
 
 ```
 python -m stretch.app.print_joint_states --joint arm
-```
-
-#### Camera Info
-
-Print out information about the cameras on the robot for debugging purposes:
-
-```bash
-python -m stretch.app.camera_info --robot_ip $ROBOT_IP
-```
-
-This will print out information about the resolutions of different images sent by the robot's cameras, and should show something like this:
-
-```
----------------------- Camera Info ----------------------
-Servo Head RGB shape: (320, 240, 3) Servo Head Depth shape: (320, 240)
-Servo EE RGB shape: (240, 320, 3) Servo EE Depth shape: (240, 320)
-Observation RGB shape: (640, 480, 3) Observation Depth shape: (640, 480)
 ```
 
 #### Visualization and Streaming Video
@@ -468,6 +489,8 @@ See the [docker guide](docs/docker.md) for more information and troubleshooting 
 Parts of this codebase were derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project, and is licensed under the [MIT license](META_LICENSE). We thank the Meta team for their contributions.
 
 The [stretch_ros2_bridge](src/stretch_ros2_bridge) package is based on the [OK robot](https://github.com/ok-robot/ok-robot) project's [Robot Controller](https://github.com/NYU-robot-learning/robot-controller/), and is licensed under the [Apache 2.0 license](src/stretch_ros2_bridge/LICENSE).
+
+We use [LeRobot from HuggingFace](https://github.com/huggingface/lerobot) for imitation learning, though we use [our own fork](https://github.com/hello-robot/lerobot).
 
 ## License
 

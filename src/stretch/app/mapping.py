@@ -51,7 +51,7 @@ def main(
     visualize,
     manual_wait,
     output_filename,
-    navigate_home: bool = True,
+    navigate_home: bool = False,
     device_id: int = 0,
     verbose: bool = True,
     show_intermediate_maps: bool = False,
@@ -76,6 +76,7 @@ def main(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
         parameters=parameters,
+        enable_rerun_server=True,
     )
     # Call demo_main with all the arguments
     demo_main(
@@ -108,7 +109,7 @@ def demo_main(
     visualize,
     manual_wait,
     output_filename,
-    navigate_home: bool = True,
+    navigate_home: bool = False,
     device_id: int = 0,
     verbose: bool = True,
     show_intermediate_maps: bool = False,
@@ -150,7 +151,7 @@ def demo_main(
         parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = parameters.get_task_goals()
 
-    if write_instance_images:
+    if write_instance_images or object_to_find is not None:
         print("- Create semantic sensor based on detic")
         semantic_sensor = create_semantic_sensor(
             parameters=parameters,
@@ -185,7 +186,8 @@ def demo_main(
     # Run the actual procedure
     try:
         if len(matches) == 0 or force_explore:
-            print(f"Exploring for {object_to_find}, {location_to_place}...")
+            if object_to_find is not None:
+                print(f"Exploring for {object_to_find}...")
             demo.run_exploration(
                 rate,
                 manual_wait,
@@ -195,8 +197,9 @@ def demo_main(
                 visualize=show_intermediate_maps,
             )
         print("Done collecting data.")
-        matches = demo.get_found_instances_by_class(object_to_find)
-        print("-> Found", len(matches), f"instances of class {object_to_find}.")
+        if object_to_find is not None:
+            matches = demo.get_found_instances_by_class(object_to_find)
+            print("-> Found", len(matches), f"instances of class {object_to_find}.")
 
     except Exception as e:
         raise (e)
