@@ -33,7 +33,7 @@ from stretch.motion import ConfigurationSpace, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
-from stretch.utils.geometry import angle_difference
+from stretch.utils.geometry import angle_difference, xyt_base_to_global
 from stretch.utils.point_cloud import ransac_transform
 
 
@@ -204,6 +204,10 @@ class RobotAgent:
         """Encode image using the encoder"""
         return self.encoder.encode_image(image)
 
+    def compare_features(self, feature1: torch.Tensor, feature2: torch.Tensor) -> float:
+        """Compare two feature vectors using the encoder"""
+        return self.encoder.compute_score(feature1, feature2)
+
     def get_instance_from_text(
         self,
         text_query: str,
@@ -341,7 +345,7 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = True
+        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = False
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -517,6 +521,8 @@ class RobotAgent:
         """Update the rerun server with the latest observations."""
         if self.robot._rerun:
             self.robot._rerun.update_voxel_map(self.space)
+            self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+
         else:
             logger.error("No rerun server available!")
 
@@ -570,6 +576,34 @@ class RobotAgent:
             use_cache=use_cache,
         )
 
+    def within_reach_of(
+        self, instance: Instance, start: Optional[np.ndarray] = None, verbose: bool = False
+    ) -> bool:
+        """Check if the instance is within manipulation range.
+
+        Args:
+            instance(Instance): an object in the world
+            start(np.ndarray): the start position
+            verbose(bool): extra info is printed
+
+        Returns:
+            bool: whether the instance is within manipulation range
+        """
+
+        start = start if start is not None else self.robot.get_base_pose()
+        if isinstance(start, np.ndarray):
+            start = torch.tensor(start, device=self.voxel_map.device)
+        object_xyz = instance.get_center()
+        if np.linalg.norm(start[:2] - object_xyz[:2]) < self._manipulation_radius:
+            return True
+        if (
+            ((instance.point_cloud[:, :2] - start[:2]).norm(dim=-1) < self._manipulation_radius)
+            .any()
+            .item()
+        ):
+            return True
+        return False
+
     def plan_to_instance(
         self,
         instance: Instance,
@@ -607,6 +641,7 @@ class RobotAgent:
             if verbose:
                 print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
 
+        # Plan to the instance
         if not has_plan:
             # Call planner
             res = self.plan_to_bounds(
@@ -722,6 +757,44 @@ class RobotAgent:
                 return True
         return False
 
+    def recover_from_invalid_start(self) -> bool:
+        """Try to recover from an invalid start state.
+
+        Returns:
+            bool: whether the robot recovered from the invalid start state
+        """
+
+        # Get current invalid pose
+        start = self.robot.get_base_pose()
+
+        # Apply relative transformation to XYT
+        forward = np.array([-0.1, 0, 0])
+        backward = np.array([0.1, 0, 0])
+
+        xyt_goal_forward = xyt_base_to_global(forward, start)
+        xyt_goal_backward = xyt_base_to_global(backward, start)
+
+        # Is this valid?
+        if self.space.is_valid(xyt_goal_backward, verbose=True):
+            logger.warning("Trying to move backwards...")
+            # Compute the position forward or backward from the robot
+            self.robot.navigate_to(xyt_goal_backward, relative=False)
+        elif self.space.is_valid(xyt_goal_forward, verbose=True):
+            logger.warning("Trying to move forward...")
+            # Compute the position forward or backward from the robot
+            self.robot.navigate_to(xyt_goal_forward, relative=False)
+        else:
+            logger.warning("Could not recover from invalid start state!")
+            return False
+
+        # Get the current position in case we are still invalid
+        start = self.robot.get_base_pose()
+        start_is_valid = self.space.is_valid(start, verbose=True)
+        if not start_is_valid:
+            logger.warning("Tried and failed to recover from invalid start state!")
+            return False
+        return start_is_valid
+
     def move_to_any_instance(
         self, matches: List[Tuple[int, Instance]], max_try_per_instance=10, verbose: bool = False
     ) -> bool:
@@ -733,12 +806,11 @@ class RobotAgent:
         start_is_valid_retries = 5
         while not start_is_valid and start_is_valid_retries > 0:
             if verbose:
-                print(f"Start {start} is not valid. back up a bit.")
-            self.robot.navigate_to([-0.1, 0, 0], relative=True)
-            # Get the current position in case we are still invalid
-            start = self.robot.get_base_pose()
-            start_is_valid = self.space.is_valid(start, verbose=True)
+                print(f"Start {start} is not valid. Either back up a bit or go forward.")
+            ok = self.recover_from_invalid_start()
             start_is_valid_retries -= 1
+            start_is_valid = ok
+
         res = None
 
         # Just terminate here - motion planning issues apparently!
@@ -1036,12 +1108,11 @@ class RobotAgent:
     def plan_to_frontier(
         self,
         start: np.ndarray,
-        rate: int = 10,
         manual_wait: bool = False,
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
-        verbose: bool = False,
+        verbose: bool = True,
     ) -> PlanResult:
         """Motion plan to a frontier location."""
         start_is_valid = self.space.is_valid(start, verbose=True)
@@ -1049,7 +1120,11 @@ class RobotAgent:
         if not start_is_valid:
             if verbose:
                 print("Start not valid. back up a bit.")
-            return PlanResult(False, reason="invalid start state")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                return PlanResult(False, reason="invalid start state")
+        else:
+            print("Planning to frontier...")
 
         # sample a goal
         if random_goals:
@@ -1068,19 +1143,38 @@ class RobotAgent:
                     # No more positions to sample
                     break
 
+                if self.space.is_valid(goal.cpu().numpy(), verbose=True):
+                    if verbose:
+                        print("       Start:", start)
+                        print("Sampled Goal:", goal.cpu().numpy())
+                else:
+                    continue
+
                 # For debugging, we can set the random seed to 0
                 if fix_random_seed:
                     np.random.seed(0)
                     random.seed(0)
 
+                self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
                 res = self.planner.plan(start, goal.cpu().numpy())
                 if res.success:
                     return res
+                else:
+                    if verbose:
+                        print("Plan failed. Reason:", res.reason)
         return PlanResult(False, reason="no valid plans found")
+
+    def get_history(self, reversed: bool = False) -> List[np.ndarray]:
+        """Get the history of the robot's positions."""
+        history = []
+        for obs in self.voxel_map.observations:
+            history.append(obs.base_pose)
+        if reversed:
+            history.reverse()
+        return history
 
     def run_exploration(
         self,
-        rate: int = 10,
         manual_wait: bool = False,
         explore_iter: int = 3,
         try_to_plan_iter: int = 10,
@@ -1119,7 +1213,7 @@ class RobotAgent:
             print("       Start:", start)
             self.print_found_classes(task_goal)
             res = self.plan_to_frontier(
-                start=start, rate=rate, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
+                start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
             )
 
             # if it succeeds, execute a trajectory to this position
@@ -1254,6 +1348,7 @@ class RobotAgent:
                 "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
             )
         self.voxel_map.reset()
+        self.reset_object_plans()
 
     def save_instance_images(self, root: Union[Path, str] = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""

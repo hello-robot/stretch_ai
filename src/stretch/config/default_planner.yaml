@@ -17,7 +17,6 @@ min_points_per_voxel: 50  # Drop things below this density per voxel
 
 # Padding
 pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
-# pad_obstacles: 1  # Add this many units (voxel_size) to the area around obstacles
 min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
@@ -109,13 +108,13 @@ motion_planner:
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
-    dilate_frontier_size: 4  # Used to shrink the frontier back from the edges of the world
-    dilate_obstacle_size: 5  # Used when selecting goals and computing what the "frontier" is 
+    dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
     default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
-    step_dist: 0.1
+    step_dist: 0.2
   goals:
     manipulation_radius: 0.55
 

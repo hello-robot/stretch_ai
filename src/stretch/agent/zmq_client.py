@@ -86,7 +86,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         ee_link_name: Optional[str] = None,
         manip_mode_controlled_joints: Optional[List[str]] = None,
         start_immediately: bool = True,
-        enable_rerun_server: bool = False,
+        enable_rerun_server: bool = True,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -466,6 +466,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             xyt = xyt.xyt
         assert len(xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
+        if self._rerun:
+            self._rerun.update_nav_goal(xyt)
         self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def reset(self):
@@ -694,9 +696,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             min_steps_not_moving = self._min_steps_not_moving
         t0 = timeit.default_timer()
         close_to_goal = False
-
-        # TODO: this is useful for debugging
-        # verbose = True
 
         while True:
 
@@ -1106,6 +1105,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Is the client running"""
         return not self._finish
 
+    def is_running(self) -> bool:
+        """Is the client running"""
+        return not self._finish
+
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 
@@ -1132,7 +1135,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Use the rerun server so that we can visualize what is going on as the robot takes actions in the world."""
         while not self._finish:
             self._rerun.step(self._obs, self._servo)
-            time.sleep(0.3)
 
     @property
     def is_homed(self) -> bool:
