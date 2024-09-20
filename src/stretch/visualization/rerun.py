@@ -279,7 +279,7 @@ class RerunVsualizer:
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
-        rr.log("world/ee/arrow", ee_arrow)
+        # rr.log("world/ee/arrow", ee_arrow)
         rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_ee_camera(self, servo):

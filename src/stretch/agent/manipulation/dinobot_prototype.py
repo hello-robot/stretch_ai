@@ -155,6 +155,10 @@ class Dinobot:
     def move_robot(self, robot: RobotClient, R: np.ndarray, t: np.ndarray) -> float:
         """
         Move the robot to the bottleneck pose
+        Args:
+            robot (RobotClient): The robot client to use
+            R (np.ndarray): The rotation matrix in D405 frame needed to be applied
+            t (np.ndarray): The translation vector in D405 frame needed to be applied
         """
         model = robot.get_robot_model()
         T_d405 = self.urdf.get_transform_fk(
@@ -233,9 +237,13 @@ class Dinobot:
         target_ee_pos = T_ee_target[:3, 3]
         rot = Rotation.from_matrix(T_ee_target[:3, :3])
         joint_state = robot.get_joint_positions().copy()
+
+        # Compute the IK solution for the target end-effector position and rotation
         target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
             target_ee_pos, rot.as_quat(), q0=joint_state
         )
+
+        # Move the robot to the target joint positions
         robot.switch_to_manipulation_mode()
         robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
 
@@ -305,6 +313,7 @@ class Dinobot:
             points1_frame = o3d.geometry.PointCloud()
             points1_frame.points = o3d.utility.Vector3dVector(points1)
 
+            # Visualize the unique correspondences between bottleneck and live frame
             spheres = []
             for point, color in zip(points1, unique_colors):
                 sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
@@ -375,6 +384,8 @@ if __name__ == "__main__":
     semantic, instance, task_observations = detic.predict(bottleneck_image_rgb)
 
     def apply_mask_callback(image: np.ndarray) -> np.ndarray:
+        # Not applying mask to live image seems to work better
+        return image
         semantic, instance, task_observations = detic.predict(image)
         if track_object_id in task_observations["instance_classes"]:
             object_mask = semantic == track_object_id
