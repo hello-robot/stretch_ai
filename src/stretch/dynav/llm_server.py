@@ -101,7 +101,7 @@ def get_xyz(depth, pose, intrinsics):
 
 class ImageProcessor:
     def __init__(self,  
-        vision_method = 'flash_owl', 
+        vision_method = 'pro_owl', 
         siglip = True,
         device = 'cuda',
         min_depth = 0.25,
@@ -234,9 +234,6 @@ class ImageProcessor:
         
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
-            
-        if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
-            return [[np.nan, np.nan, np.nan], localized_point]
 
         point = self.sample_navigation(start_pose, localized_point)
 
@@ -263,14 +260,14 @@ class ImageProcessor:
             debug_text = '# Robot\'s monologue: \n' + debug_text
             rr.log("robot_monologue", rr.TextDocument(debug_text, media_type = rr.MediaType.MARKDOWN), static = self.static)
 
-        if obs is not None and mode == 'navigation':
-            rgb = self.voxel_map.observations[obs - 1].rgb
-            if not self.rerun:
-                if isinstance(rgb, torch.Tensor):
-                    rgb = np.array(rgb)
-                cv2.imwrite(self.log + '/debug_' + text + '.png', rgb[:, :, [2, 1, 0]])
-            else:
-                rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
+        # if obs is not None and mode == 'navigation':
+        #     rgb = self.voxel_map.observations[obs - 1].rgb
+        #     if not self.rerun:
+        #         if isinstance(rgb, torch.Tensor):
+        #             rgb = np.array(rgb)
+        #         cv2.imwrite(self.log + '/debug_' + text + '.png', rgb[:, :, [2, 1, 0]])
+        #     else:
+        #         rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
         traj = []
         waypoints = None
 
@@ -283,7 +280,7 @@ class ImageProcessor:
                 waypoints = [pt.state for pt in res.trajectory]
                 # If we are navigating to some object of interst, send (x, y, z) of 
                 # the object so that we can make sure the robot looks at the object after navigation
-                finished = len(waypoints) <= 6 and mode == 'navigation'
+                finished = len(waypoints) <= 10 and mode == 'navigation'
                 if not finished:
                     waypoints = waypoints[:8]
                 traj = self.planner.clean_path_for_xy(waypoints)
