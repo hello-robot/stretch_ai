@@ -149,7 +149,6 @@ class GraspObjectOperation(ManagedOperation):
             target_object (str): Target object class
         """
         self.target_object = target_object
-        self.agent.current_object = self.agent.get_instance_from_text(self.target_object)[1]
 
     def get_target_mask(
         self,

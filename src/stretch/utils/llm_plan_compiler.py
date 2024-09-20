@@ -12,6 +12,7 @@ import ast
 from stretch.agent.operations import (
     GoToOperation,
     GraspObjectOperation,
+    PreGraspObjectOperation,
     SpeakOperation,
     WaveOperation,
 )
@@ -43,13 +44,28 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
+        _, self.agent.current_object = self.agent.get_instance_from_text(object_name)
+
+        pregrasp_object = PreGraspObjectOperation(
+            name="pregrasp_" + object_name,
+            agent=self.agent,
+            robot=self.robot,
+            on_failure=None,
+            retry_on_failure=True,
+        )
+
         grasp_object = GraspObjectOperation(
-            name="pick_" + object_name, agent=self.agent, robot=self.robot
+            name="pick_" + object_name,
+            agent=self.agent,
+            robot=self.robot,
+            on_failure=pregrasp_object,
         )
         grasp_object.configure(target_object=object_name, show_object_to_grasp=True)
         grasp_object.set_target_object_class(object_name)
+
+        self.task.add_operation(pregrasp_object, True)
         self.task.add_operation(grasp_object, True)
-        return "pick_" + object_name
+        return ("pregrasp_" + object_name, "pick_" + object_name)
 
     def place(self, object_name: str):
         """Adds a PlaceObjectOperation to the task"""
@@ -177,14 +193,35 @@ class LLMPlanCompiler(ast.NodeVisitor):
             return
 
         # Create the operation
-        root_operation_name = eval("self." + root.function_call)
+        operation_ret = eval("self." + root.function_call)
+
+        itermediate_operation_name = None
+
+        if type(operation_ret) is tuple:
+            root_operation_name = operation_ret[1]
+            itermediate_operation_name = operation_ret[0]
+        else:
+            root_operation_name = operation_ret
+
+        # root_operation_name
 
         # Connect the operation to the parent
         if parent_operation_name is not None:
             if success:
-                self.task.connect_on_success(parent_operation_name, root_operation_name)
+                # self.task.connect_on_success(parent_operation_name, root_operation_name)
+                if itermediate_operation_name is not None:
+                    self.task.connect_on_success(parent_operation_name, itermediate_operation_name)
+                    self.task.connect_on_success(itermediate_operation_name, root_operation_name)
+
+                else:
+                    self.task.connect_on_success(parent_operation_name, root_operation_name)
             else:
-                self.task.connect_on_failure(parent_operation_name, root_operation_name)
+                # self.task.connect_on_failure(parent_operation_name, root_operation_name)
+                if itermediate_operation_name is not None:
+                    self.task.connect_on_failure(parent_operation_name, itermediate_operation_name)
+                    self.task.connect_on_success(itermediate_operation_name, root_operation_name)
+                else:
+                    self.task.connect_on_failure(parent_operation_name, root_operation_name)
 
         # Recursively process the success and failure branches
         self.convert_to_task(root.success, root_operation_name, True)

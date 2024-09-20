@@ -235,7 +235,7 @@ class RobotAgent:
         aggregation_method: str = "mean",
         normalize: bool = False,
         verbose: bool = True,
-    ) -> Optional[Instance]:
+    ) -> Optional[tuple]:
         """Get the instance that best matches the text query.
 
         Args:
