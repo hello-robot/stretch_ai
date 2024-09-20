@@ -20,7 +20,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
 
 
-class TreeNode:
+class LLMTreeNode:
     def __init__(self, function_call, success=None, failure=None):
         self.function_call = function_call
         self.success = success
@@ -129,10 +129,10 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
             # Create the root node with the function call
             if self.root is None:
-                self.root = TreeNode(function_call=function_call)
+                self.root = LLMTreeNode(function_call=function_call)
                 new_node = self.root
             else:
-                new_node = TreeNode(function_call=function_call)
+                new_node = LLMTreeNode(function_call=function_call)
 
             # Recursively build success and failure branches
             if len(node.body) > 0:
@@ -148,10 +148,10 @@ class LLMPlanCompiler(ast.NodeVisitor):
             if isinstance(expr, ast.Call):
                 function_call = ast.unparse(expr)
                 if self.root is None:
-                    self.root = TreeNode(function_call=function_call)
+                    self.root = LLMTreeNode(function_call=function_call)
                     return self.root
                 else:
-                    return TreeNode(function_call=function_call)
+                    return LLMTreeNode(function_call=function_call)
 
         elif isinstance(node, ast.Module):
             # Start processing the body of the module
@@ -186,7 +186,7 @@ class LLMPlanCompiler(ast.NodeVisitor):
         raise ValueError("Unexpected AST node")
 
     def convert_to_task(
-        self, root: TreeNode, parent_operation_name: str = None, success: bool = True
+        self, root: LLMTreeNode, parent_operation_name: str = None, success: bool = True
     ):
         """Recursively convert the tree into a task by adding operations and connecting them"""
         if root is None:
