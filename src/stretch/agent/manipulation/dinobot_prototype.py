@@ -176,10 +176,9 @@ class Dinobot:
         R_d405_ee = T_d405_ee[:3, :3]
         t_d405_ee = T_d405_ee[:3, 3]
         T_ee_target[:3, 3] = T_ee_target[:3, 3] - t_d405_ee
-        T_ee_target[:3, :3] = np.matmul(T_ee_target[:3, :3], R_d405_ee)
+        T_ee_target[:3, :3] = np.dot(T_ee_target[:3, :3], R_d405_ee)
 
-        DEBUG = False
-        if DEBUG:
+        if DEBUG_VISUALIZATION:
 
             origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
                 size=0.1, origin=[0, 0, 0]
