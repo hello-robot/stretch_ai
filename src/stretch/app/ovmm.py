@@ -61,6 +61,7 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Don't move the robot to the instance, if using real robot instead of offline data",
 )
+@click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -81,6 +82,7 @@ def main(
     stationary: bool = False,
     all_matches: bool = False,
     threshold: float = 0.5,
+    target_object: str = "toy",
 ):
 
     print("- Load parameters")
@@ -117,7 +119,7 @@ def main(
         rate=10,
         manual_wait=False,
         explore_iter=20,
-        task_goal="bottle",  # arbitrary object to collect
+        task_goal=target_object,  # arbitrary object to collect
         # as many instances as possible
         go_home_at_end=True,
         visualize=False,
