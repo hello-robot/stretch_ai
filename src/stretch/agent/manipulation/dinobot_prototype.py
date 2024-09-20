@@ -160,14 +160,23 @@ class Dinobot:
         T_d405 = self.urdf.get_transform_fk(
             robot.get_joint_positions(), "gripper_camera_color_optical_frame"
         )
+
+        # Get the transformation from the bottleneck d405 frame to the target d405 frame
         T_ee = self.urdf.get_transform_fk(robot.get_joint_positions(), "link_grasp_center")
         D405_target = np.eye(4)
         D405_target[:3, :3] = R
         D405_target[:3, 3] = t
         T_d405_target = np.matmul(T_d405, D405_target)
 
-        T_d405_ee = np.matmul(np.linalg.inv(T_d405), T_ee)
-        T_ee_target = np.matmul(T_d405_target, np.linalg.inv(T_d405_ee))
+        # Get the transformation from the target d405 frame to the target ee frame
+        T_d405_ee = np.dot(np.linalg.inv(T_d405), T_ee)
+        T_ee_target = T_d405_target.copy()
+
+        # Extract the transformation to target ee frame
+        R_d405_ee = T_d405_ee[:3, :3]
+        t_d405_ee = T_d405_ee[:3, 3]
+        T_ee_target[:3, 3] = T_ee_target[:3, 3] - t_d405_ee
+        T_ee_target[:3, :3] = np.matmul(T_ee_target[:3, :3], R_d405_ee)
 
         DEBUG = True
         if DEBUG:
@@ -176,32 +185,30 @@ class Dinobot:
                 size=0.1, origin=[0, 0, 0]
             )
 
+            # Current frames
             T_d405_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
             T_d405_frame.transform(T_d405)
+            origin_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            origin_blob.paint_uniform_color([1, 0, 0])  # Red for origin
+            T_d405_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            T_d405_blob.paint_uniform_color([0, 1, 0])  # Green for T_d405
             T_ee_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
             T_ee_frame.transform(T_ee)
+            T_ee_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            T_ee_blob.paint_uniform_color([0, 0, 1])  # Blue for T_ee
 
+            # Targets
             T_target_d405_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
             T_target_d405_frame.transform(T_d405_target)
             T_d405_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_d405_target_blob.paint_uniform_color([0.15, 0.7, 0.15])  # Green for T_d405
+            T_d405_target_blob.paint_uniform_color([0.5, 0.7, 0.5])  # Green for T_d405
             T_d405_target_blob.translate(T_d405_target[:3, 3])
 
-            # T_ee_target_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            # T_ee_target_frame.transform(T_ee_target)
-            # T_ee_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            # T_ee_target_blob.paint_uniform_color([0.15, 0.15, 0.7])  # Blue for T_ee
-            # T_ee_target_blob.translate(T_ee_target[:3, 3])
-
-            # Create blobs at the origins of the coordinate frames
-            origin_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            origin_blob.paint_uniform_color([1, 0, 0])  # Red for origin
-
-            T_d405_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_d405_blob.paint_uniform_color([0, 1, 0])  # Green for T_d405
-
-            T_ee_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_ee_blob.paint_uniform_color([0, 0, 1])  # Blue for T_ee
+            T_ee_target_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+            T_ee_target_frame.transform(T_ee_target)
+            T_ee_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            T_ee_target_blob.paint_uniform_color([0.5, 0.5, 0.7])  # Blue for T_ee
+            T_ee_target_blob.translate(T_ee_target[:3, 3])
 
             # Translate blobs to the origins of the coordinate frames
             T_d405_blob.translate(T_d405[:3, 3])
@@ -218,8 +225,10 @@ class Dinobot:
                     T_ee_blob,
                     T_target_d405_frame,
                     T_d405_target_blob,
+                    # ]
+                    T_ee_target_frame,
+                    T_ee_target_blob,
                 ]
-                #  T_ee_target_frame,T_ee_target_blob]
             )
 
             # # Visualize the frames with labels
