@@ -45,7 +45,7 @@ class UpdateOperation(ManagedOperation):
         self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
 
         # Notify and move the arm back to normal. Showing the map is optional.
-        print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+        print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
         self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
 
         if self.show_map_so_far:
@@ -66,7 +66,7 @@ class UpdateOperation(ManagedOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.manager.voxel_map.observations[-1].instance)
+            plt.imshow(self.agent.voxel_map.observations[-1].instance)
             plt.show()
 
         # Describe the scene the robot is operating in
@@ -74,14 +74,14 @@ class UpdateOperation(ManagedOperation):
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
-        instances = self.manager.instance_memory.get_instances()
+        instances = self.agent.voxel_map.instances.get_instances()
         receptacle_options = []
         object_options = []
         dist_to_object = float("inf")
 
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
             if self.show_instances_detected:
@@ -95,10 +95,10 @@ class UpdateOperation(ManagedOperation):
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
-                    self.manager.current_receptacle = instance
+                    self.agent.current_receptacle = instance
                 else:
                     self.warn(f" - Found a receptacle but could not reach it.")
-            elif self.manager.target_object in name:
+            elif self.agent.target_object in name:
                 relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
                 if len(relations) == 0:
                     # This may or may not be what we want, but it certainly is not on the floor
@@ -115,11 +115,11 @@ class UpdateOperation(ManagedOperation):
                         print(
                             f" - This object is closer than the previous one: {dist} < {dist_to_object}."
                         )
-                        self.manager.current_object = instance
+                        self.agent.current_object = instance
                         dist_to_object = dist
                 else:
                     self.warn(f" - Found an object of class {name} but could not reach it.")
 
     def was_successful(self):
         """We're just taking an image so this is always going to be a success"""
-        return self.manager.current_object is not None
+        return self.agent.current_object is not None

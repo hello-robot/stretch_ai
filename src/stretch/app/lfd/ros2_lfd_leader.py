@@ -89,7 +89,7 @@ class ROS2LfdLeader:
             elif key == ord("n"):
                 return False
 
-    def run(self, display_received_images: bool = True) -> dict:
+    def run(self, display_received_images: bool = False) -> dict:
         """Take in image data and other data received by the robot and process it appropriately. Will parse the new observations, predict future actions and send the next action to the robot, and save everything to disk."""
         loop_timer = lt.LoopStats("dex_teleop_leader")
         try:
@@ -146,54 +146,57 @@ class ROS2LfdLeader:
                     combined = np.vstack((combined, head_combined))
                     cv2.imshow("Observed RGB/Depth Image", combined)
 
-                # Wait for spacebar to be pressed and start/stop recording
-                # Spacebar is 32
-                # Escape is 27
-                key = cv2.waitKey(1)
-                if key == 32:
-                    self._recording = not self._recording
-                    self.prev_goal_dict = None
-                    if self._recording:
-                        print("[LEADER] Recording started.")
-                    else:
-                        print("[LEADER] Recording stopped.")
-                        self._need_to_write = True
-                        if self._force:
-                            # Try to terminate
-                            print("[LEADER] Force recording done. Terminating.")
-                            return None
-                elif key == 27:
-                    if self._recording:
-                        self._need_to_write = True
-                    self._recording = False
-                    print("[LEADER] Recording stopped. Terminating.")
-                    break
-                elif key == ord("p"):
-                    self._run_policy = not self._run_policy
-                    if self._run_policy:
-                        self.policy.reset()
-                        print("[LEADER] Running policy!")
-                        self._recording = True
-                    else:
+                    # Wait for spacebar to be pressed and start/stop recording
+                    # Spacebar is 32
+                    # Escape is 27
+                    key = cv2.waitKey(1)
+                    if key == 32:
+                        self._recording = not self._recording
+                        self.prev_goal_dict = None
+                        if self._recording:
+                            print("[LEADER] Recording started.")
+                        else:
+                            print("[LEADER] Recording stopped.")
+                            self._need_to_write = True
+                            if self._force:
+                                # Try to terminate
+                                print("[LEADER] Force recording done. Terminating.")
+                                return None
+                    elif key == 27:
+                        if self._recording:
+                            self._need_to_write = True
                         self._recording = False
-                        self._need_to_write = True
-                        print("[LEADER] Stopping policy!")
-                elif key == ord("r"):
-                    # Reset position
-                    self.robot.arm_to(
-                        [
-                            0.0,  # base_x
-                            0.9,  # lift
-                            0.02,  # arm
-                            0.0,  # wrist yaw, pitch, roll
-                            -0.8,
-                            0.0,
-                        ],
-                        gripper=self.robot._robot_model.GRIPPER_OPEN,
-                    )
+                        print("[LEADER] Recording stopped. Terminating.")
+                        break
+                    elif key == ord("p"):
+                        self._run_policy = not self._run_policy
+                        if self._run_policy:
+                            self.policy.reset()
+                            print("[LEADER] Running policy!")
+                            self._recording = True
+                        else:
+                            self._recording = False
+                            self._need_to_write = True
+                            print("[LEADER] Stopping policy!")
+                    elif key == ord("r"):
+                        # Reset position
+                        self.robot.arm_to(
+                            [
+                                0.0,  # base_x
+                                0.9,  # lift
+                                0.02,  # arm
+                                0.0,  # wrist yaw, pitch, roll
+                                -0.8,
+                                0.0,
+                            ],
+                            gripper=self.robot._robot_model.GRIPPER_OPEN,
+                        )
+                else:
+                    self._run_policy = True
 
                 joint_actions = {}
 
+                action = None
                 if self._run_policy:
                     # Build state observations in correct format
                     observations = {
@@ -233,10 +236,14 @@ class ROS2LfdLeader:
                     joint_actions = {
                         name: action[idx] for idx, name in enumerate(dobbe_format.ACTION_ORDER)
                     }
+                else:
+                    # If we aren't running the policy, what do we even need to do?
+                    continue  # Skip the rest of the loop
 
                 if self._recording:
-                    print("[LEADER] action=")
-                    pp.pprint(action)
+                    if action is not None:
+                        print("[LEADER] action=")
+                        pp.pprint(action)
 
                     # Record episode if enabled
                     self._recorder.add(
@@ -294,7 +301,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--robot_ip", type=str, default="192.168.1.15")
+    parser.add_argument("-i", "--robot_ip", type=str, default="", help="Robot IP address")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-u", "--user-name", type=str, default="default_user")
     parser.add_argument("-t", "--task-name", type=str, default="default_task")
@@ -321,6 +328,10 @@ if __name__ == "__main__":
     parser.add_argument("--policy_name", type=str, required=True)
     parser.add_argument("--depth-filter-k", type=int, default=None)
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument(
+        "--rerun", action="store_true", help="Enable rerun server for visualization."
+    )
+    parser.add_argument("--show-images", action="store_true", help="Show images received by robot.")
     args = parser.parse_args()
 
     # Parameters
@@ -333,6 +344,7 @@ if __name__ == "__main__":
         send_port=args.send_port,
         parameters=parameters,
         manip_mode_controlled_joints=MANIP_MODE_CONTROLLED_JOINTS,
+        enable_rerun_server=args.rerun,
     )
     robot.switch_to_manipulation_mode()
     robot.move_to_manip_posture()
@@ -354,7 +366,7 @@ if __name__ == "__main__":
     )
 
     try:
-        leader.run(display_received_images=True)
+        leader.run(display_received_images=args.show_images)
     except KeyboardInterrupt:
         pass
 

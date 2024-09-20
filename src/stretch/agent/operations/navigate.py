@@ -23,9 +23,9 @@ class NavigateToObjectOperation(ManagedOperation):
 
     def get_target(self):
         if self.to_receptacle:
-            return self.manager.current_receptacle
+            return self.agent.current_receptacle
         else:
-            return self.manager.current_object
+            return self.agent.current_object
 
     def can_start(self):
         print(
@@ -50,7 +50,7 @@ class NavigateToObjectOperation(ManagedOperation):
             self.cheer("Found plan to object!")
             return True
         else:
-            self.manager.set_instance_as_unreachable(self.get_target())
+            self.agent.set_instance_as_unreachable(self.get_target())
         self.error("Planning failed!")
         return False
 

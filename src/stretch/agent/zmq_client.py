@@ -1045,6 +1045,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
             time.sleep(0.01)
+
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 
