@@ -102,7 +102,14 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
     link_names = []
     link_poses = []
 
-    def load_robot_mesh(self, cfg: dict = None, use_collision: bool = True, debug: bool = False):
+    def load_robot_mesh(self, cfg: dict = None, use_collision: bool = False):
+        """
+        Load robot mesh using urdf visualizer to rerun
+        This is to be run once at the beginning of the rerun
+        Args:
+            cfg (dict): Configuration of the robot
+            use_collision (bool): use collision mesh
+        """
         trimesh_list = self.get_tri_meshes(cfg=cfg, use_collision=use_collision)
         self.link_names = trimesh_list["link"]
         self.link_poses = trimesh_list["pose"]
