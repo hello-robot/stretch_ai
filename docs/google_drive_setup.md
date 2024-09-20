@@ -1,10 +1,14 @@
 # Creating Google Drive JSON Credentials
 
-Follow these steps to create a JSON file for Google Drive credentials:
+Warning: this is experimental code, and may not be all that useful. It's designed to provide a way to upload data from a Stretch to Google Cloud services.
+
+First, you need to install the google cloud python API:
 
 ```bash
 python -m pip install --upgrade google-api-python-client
 ```
+
+Follow these steps to create a JSON file for Google Drive credentials:
 
 ## Step 1: Go to Google Cloud Console
 
