@@ -182,6 +182,13 @@ class RerunVsualizer:
         server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
     ):
+        """Rerun visualizer class
+        Args:
+            display_robot_mesh (bool): Display robot mesh
+            open_browser (bool): Open browser at start
+            server_memory_limit (str): Server memory limit E.g. 2GB or 20%
+            collapse_panels (bool): Set to false to have customizable rerun panels
+        """
         rr.init("Stretch_robot", spawn=False)
         rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
