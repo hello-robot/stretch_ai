@@ -10,7 +10,6 @@
 import sys
 
 sys.path.append("/home/hello-robot/repos/dino-vit-features")
-sys.path.append("/home/hello-robot/repos/gripper_grasp_space")
 import time
 from typing import List, Tuple
 
@@ -21,8 +20,8 @@ import torch
 from correspondences import find_correspondences, visualize_correspondences
 from extractor import ViTExtractor
 from scipy.spatial.transform import Rotation
-from urdf_utils import get_stretch_3_urdf
 
+import stretch.motion.constants as constants
 from stretch.agent import RobotClient
 from stretch.agent.manipulation.dinobot import (
     compute_error,
@@ -30,6 +29,7 @@ from stretch.agent.manipulation.dinobot import (
     find_transformation,
 )
 from stretch.perception.detection.detic import DeticPerception
+from stretch.visualization.urdf_visualizer import URDFVisualizer
 
 DEBUG_VISUALIZATION = False
 
@@ -81,7 +81,7 @@ class Dinobot:
         self.feature_extractor = ViTExtractor(
             model_type=model_type, stride=stride, device=self.device
         )
-        self.urdf_model = get_stretch_3_urdf()
+        self.urdf = URDFVisualizer()
 
     def get_correspondences(
         self,
@@ -157,25 +157,91 @@ class Dinobot:
         Move the robot to the bottleneck pose
         """
         model = robot.get_robot_model()
+        T_d405 = self.urdf.get_transform_fk(
+            robot.get_joint_positions(), "gripper_camera_color_optical_frame"
+        )
+        T_ee = self.urdf.get_transform_fk(robot.get_joint_positions(), "link_grasp_center")
+        D405_target = np.eye(4)
+        D405_target[:3, :3] = R
+        D405_target[:3, 3] = t
+        T_d405_target = np.matmul(T_d405, D405_target)
+
+        T_d405_ee = np.matmul(np.linalg.inv(T_d405), T_ee)
+        T_ee_target = np.matmul(T_d405_target, np.linalg.inv(T_d405_ee))
+
+        DEBUG = True
+        if DEBUG:
+
+            origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+                size=0.1, origin=[0, 0, 0]
+            )
+
+            T_d405_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+            T_d405_frame.transform(T_d405)
+            T_ee_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+            T_ee_frame.transform(T_ee)
+
+            T_target_d405_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+            T_target_d405_frame.transform(T_d405_target)
+            T_d405_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            T_d405_target_blob.paint_uniform_color([0.15, 0.7, 0.15])  # Green for T_d405
+            T_d405_target_blob.translate(T_d405_target[:3, 3])
+
+            # T_ee_target_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+            # T_ee_target_frame.transform(T_ee_target)
+            # T_ee_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            # T_ee_target_blob.paint_uniform_color([0.15, 0.15, 0.7])  # Blue for T_ee
+            # T_ee_target_blob.translate(T_ee_target[:3, 3])
+
+            # Create blobs at the origins of the coordinate frames
+            origin_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            origin_blob.paint_uniform_color([1, 0, 0])  # Red for origin
+
+            T_d405_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            T_d405_blob.paint_uniform_color([0, 1, 0])  # Green for T_d405
+
+            T_ee_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+            T_ee_blob.paint_uniform_color([0, 0, 1])  # Blue for T_ee
+
+            # Translate blobs to the origins of the coordinate frames
+            T_d405_blob.translate(T_d405[:3, 3])
+            T_ee_blob.translate(T_ee[:3, 3])
+
+            # Add blobs to the visualization
+            o3d.visualization.draw_geometries(
+                [
+                    origin_frame,
+                    T_d405_frame,
+                    T_ee_frame,
+                    origin_blob,
+                    T_d405_blob,
+                    T_ee_blob,
+                    T_target_d405_frame,
+                    T_d405_target_blob,
+                ]
+                #  T_ee_target_frame,T_ee_target_blob]
+            )
+
+            # # Visualize the frames with labels
+            # o3d.visualization.draw_geometries(
+            #     [origin_frame, T_d405_frame, T_ee_frame]
+            # )
+        return
+
+        T_ee_d405 = self.urdf_model.get_transform(
+            "link_grasp_center", "gripper_camera_color_optical_frame"
+        )
+
+        T_ee_target = np.matmul(T_d405_target, np.linalg.inv(T_ee_d405))
+        target_ee_pos = T_ee_target[:3, 3]
+        target_ee_rot = T_ee_target[:3, :3]
+        rot = Rotation.from_matrix(target_ee_rot)
         joint_state = robot.get_joint_positions().copy()
-        ee_pos, ee_rot = model.manip_fk(joint_state)
-        T_ee = self.urdf_model.get_transform("gripper_camera_color_optical_frame", "base_link")
-        # Translate and rotate the t and R with T_ee
-        t_transformed = T_ee[:3, :3] @ t + T_ee[:3, 3]
-        R_transformed = T_ee[:3, :3] @ R @ np.linalg.inv(T_ee[:3, :3])
-
-        print(f"EE Pos: {ee_pos}, EE Rot: {ee_rot}", "R: ", R, "t: ", t)
-        rot = Rotation.from_matrix(R)
-
-        target_joint_state, success, info = model.manip_ik((ee_pos - t, rot.as_quat()))
-
-        # # Create a 4x4 transformation matrix from R and t
-        # transformation_matrix = np.eye(4)
-        # transformation_matrix[:3, :3] = R
-        # transformation_matrix[:3, 3] = t
-
+        target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
+            target_ee_pos, rot.as_quat(), q0=joint_state
+        )
         robot.switch_to_manipulation_mode()
-        robot.arm_to(target_joint_state, blocking=True)
+        robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
 
     def move_to_bottleneck(
         self,
@@ -224,7 +290,6 @@ class Dinobot:
         print(f"Error: {error}")
 
         # Debug 3D Visualization
-        DEBUG_VISUALIZATION = True
         if DEBUG_VISUALIZATION:
             unique_colors = generate_unique_colors(len(points1))
             origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
@@ -270,7 +335,7 @@ class Dinobot:
             # components.extend(spheres)
             # o3d.visualization.draw_geometries(components)
 
-        # self.move_robot(robot, R, t)
+        self.move_robot(robot, R, t)
         return error
 
 
