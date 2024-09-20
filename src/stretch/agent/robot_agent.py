@@ -395,7 +395,7 @@ class RobotAgent:
                 self.voxel_map.show(
                     orig=np.zeros(3),
                     xyt=self.robot.get_base_pose(),
-                    footprint=self.robot.get_robot_model().get_footprint(),
+                    footprint=self.robot.get_robot_model().get_(),
                     instances=self.semantic_sensor is not None,
                 )
 

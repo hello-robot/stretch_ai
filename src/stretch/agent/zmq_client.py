@@ -1135,7 +1135,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Use the rerun server so that we can visualize what is going on as the robot takes actions in the world."""
         while not self._finish:
             self._rerun.step(self._obs, self._servo)
-            time.sleep(0.3)
 
     @property
     def is_homed(self) -> bool:
