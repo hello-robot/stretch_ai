@@ -146,7 +146,7 @@ class LLM_Localizer():
                         weights = weights,
                         obs_count = obs_count)
 
-    def compute_coord(self, text, image_info, threshold = 0.25):
+    def compute_coord(self, text, image_info, threshold = 0.2):
         rgb = image_info['image']
         inputs = self.exist_processor(text=[['a photo of a ' + text]], images=rgb, return_tensors="pt")
         for input in inputs:
@@ -175,7 +175,7 @@ class LLM_Localizer():
             if i not in encoded_image:
                 continue
             image_info = encoded_image[i][-1]
-            res = self.compute_coord(A, image_info, threshold=0.15)
+            res = self.compute_coord(A, image_info, threshold=0.2)
             if res is not None:
                 debug_text = '#### - Obejct is detected in observations where instance' + str(i + 1) + ' comes from. **😃** Directly navigate to it.\n'
                 return res, debug_text, i, None
@@ -184,7 +184,7 @@ class LLM_Localizer():
         return None, debug_text, None, None
     
     def gpt_chunk(self, chunk, sys_prompt, user_prompt):
-        for i in range(10):
+        for i in range(3):
             try:
                 response = self.gpt_client.chat.completions.create(
                     model=self.existence_checking_model,
@@ -264,7 +264,9 @@ class LLM_Localizer():
         # print(A, timestamps_lst)
         return self.owl_locater(A, encoded_image, timestamps_lst)
 
-    def localize_A(self, A, debug = True, return_debug = False, count_threshold = 3):
+    def localize_A(self, A, debug = True, return_debug = False, count_threshold = -1):
+        start_time = time.time()
+
         encoded_image = OrderedDict()
 
         counts = torch.bincount(self.voxel_pcd._obs_counts)
@@ -278,7 +280,7 @@ class LLM_Localizer():
 
         if 'gemini' in self.existence_checking_model:
             process_chunk = self.gemini_chunk
-            context_length = 100
+            context_length = 60
         elif 'gpt' in self.existence_checking_model:
             process_chunk = self.gpt_chunk
             context_length = 30
@@ -312,6 +314,10 @@ class LLM_Localizer():
                         "url": f"data:image/png;base64,{base64_encoded}"}
                     }, {'image':image, 'xyz':xyz, 'depth':depth}]
         target_point, debug_text, obs, point = self.llm_locator(A, encoded_image, process_chunk, context_length)
+
+        end_time = time.time()
+        print('visual grounding takes', end_time - start_time, 'seconds')
+
         if not debug:
             return target_point
         elif not return_debug:

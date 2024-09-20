@@ -25,8 +25,8 @@ from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import pickup, move_to_point, capture_and_process_image
 from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array
-from stretch.dynav.voxel_map_server import ImageProcessor
-# from stretch.dynav.llm_server import ImageProcessor
+# from stretch.dynav.voxel_map_server import ImageProcessor
+from stretch.dynav.llm_server import ImageProcessor
 
 import cv2
 
@@ -90,10 +90,7 @@ class RobotAgentMDP:
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.6]:
-                start_time = time.time()
                 self.robot.head_to(pan, tilt, blocking = True)
-                end_time = time.time()
-                print('moving head takes ', end_time - start_time, 'seconds.')
                 self.update()
 
     def rotate_in_place(self):
