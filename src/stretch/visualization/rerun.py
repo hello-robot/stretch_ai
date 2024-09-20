@@ -156,7 +156,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
                 rr.Transform3D(
                     translation=self.link_poses[idx][:3, 3],
                     mat3x3=self.link_poses[idx][:3, :3],
-                    axis_length=0.3,
+                    axis_length=0.0,
                 ),
                 static=False,
             )
@@ -235,7 +235,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
                 image_from_camera=obs["camera_K"],
-                image_plane_distance=0.25,
+                image_plane_distance=0.15,
             ),
         )
 
@@ -246,13 +246,12 @@ class RerunVsualizer:
         theta = obs["compass"]
         rb_arrow = rr.Arrows3D(
             origins=[0, 0, 0],
-            vectors=[0.5, 0, 0],
+            vectors=[0.4, 0, 0],
             radii=0.02,
             labels="robot",
             colors=[255, 0, 0, 255],
         )
         rr.log("world/robot/arrow", rb_arrow)
-        rr.log("world/robot/blob", rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13))
         rr.log(
             "world/robot",
             rr.Transform3D(
@@ -292,7 +291,7 @@ class RerunVsualizer:
             rr.Pinhole(
                 resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
                 image_from_camera=servo.ee_camera_K,
-                image_plane_distance=0.25,
+                image_plane_distance=0.15,
             ),
         )
 
@@ -430,18 +429,18 @@ class RerunVsualizer:
         """
         ts = time.time()
         rr.set_time_seconds("realtime", ts)
-        rr.log("world/xyt_goal/blob", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
+        rr.log("world/xyt_goal", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
         rr.log(
-            "world/xyt_goal/blob",
+            "world/xyt_goal",
             rr.Transform3D(
                 translation=[goal[0], goal[1], 0],
                 rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=goal[2]),
                 axis_length=0.5,
             ),
         )
-        rr.set_time_seconds("realtime", ts + timeout)
-        rr.log("world/xyt_goal", rr.Clear(recursive=True))
-        rr.set_time_seconds("realtime", ts)
+        # rr.set_time_seconds("realtime", ts + timeout)
+        # rr.log("world/xyt_goal", rr.Clear(recursive=True))
+        # rr.set_time_seconds("realtime", ts)
 
     def step(self, obs, servo):
         """Log all the data"""
