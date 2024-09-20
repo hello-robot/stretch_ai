@@ -29,7 +29,6 @@ from stretch.agent.manipulation.dinobot import (
     extract_3d_coordinates,
     find_transformation,
 )
-from stretch.motion import HelloStretchIdx
 from stretch.perception.detection.detic import DeticPerception
 
 DEBUG_VISUALIZATION = False
@@ -157,28 +156,26 @@ class Dinobot:
         """
         Move the robot to the bottleneck pose
         """
-        ee_transform = np.eye(4)
-        ee_transform[:3, :3] = R
-        ee_transform[:3, 3] = t
-        T_d405_to_wrist_yaw = self.urdf_model.get_transform(
-            "gripper_camera_color_optical_frame", "link_wrist_yaw"
-        )
-        ee_transform_wrist_yaw_T = T_d405_to_wrist_yaw @ ee_transform
-        translation_vector = ee_transform_wrist_yaw_T[:3, 3]
-        rotation_mat = ee_transform_wrist_yaw_T[:3, :3]
-        robot.switch_to_manipulation_mode()
+        model = robot.get_robot_model()
         joint_state = robot.get_joint_positions().copy()
-        print(f"TRanslation: {translation_vector}")
-        breakpoint()
-        joint_state[HelloStretchIdx.ARM] = joint_state[HelloStretchIdx.ARM] - translation_vector[1]
-        # joint_state[HelloStretchIdx.LIFT] = joint_state[HelloStretchIdx.LIFT] + ee_transform_wrist_yaw_T[:3][2]
-        joint_state[HelloStretchIdx.BASE_X] = (
-            joint_state[HelloStretchIdx.BASE_X] - translation_vector[0]
-        )
-        # joint_state[HelloStretchIdx.WRIST_YAW] = joint_state[HelloStretchIdx.WRIST_YAW] + R[0]
-        # joint_state[HelloStretchIdx.WRIST_PITCH] = joint_state[HelloStretchIdx.WRIST_PITCH] + R[1]
-        # joint_state[HelloStretchIdx.WRIST_ROLL] = joint_state[HelloStretchIdx.WRIST_ROLL] + R[2]
-        robot.arm_to(joint_state, blocking=True)
+        ee_pos, ee_rot = model.manip_fk(joint_state)
+        T_ee = self.urdf_model.get_transform("gripper_camera_color_optical_frame", "base_link")
+        # Translate and rotate the t and R with T_ee
+        t_transformed = T_ee[:3, :3] @ t + T_ee[:3, 3]
+        R_transformed = T_ee[:3, :3] @ R @ np.linalg.inv(T_ee[:3, :3])
+
+        print(f"EE Pos: {ee_pos}, EE Rot: {ee_rot}", "R: ", R, "t: ", t)
+        rot = Rotation.from_matrix(R)
+
+        target_joint_state, success, info = model.manip_ik((ee_pos - t, rot.as_quat()))
+
+        # # Create a 4x4 transformation matrix from R and t
+        # transformation_matrix = np.eye(4)
+        # transformation_matrix[:3, :3] = R
+        # transformation_matrix[:3, 3] = t
+
+        robot.switch_to_manipulation_mode()
+        robot.arm_to(target_joint_state, blocking=True)
 
     def move_to_bottleneck(
         self,
@@ -227,11 +224,17 @@ class Dinobot:
         print(f"Error: {error}")
 
         # Debug 3D Visualization
+        DEBUG_VISUALIZATION = True
         if DEBUG_VISUALIZATION:
             unique_colors = generate_unique_colors(len(points1))
             origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
                 size=0.03, origin=[0, 0, 0]
             )
+
+            transformed_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+                size=0.03, origin=t
+            )
+            transformed_frame.rotate(R, center=(0, 0, 0))
 
             # Bottleneck frame
             bottleneck_frame = o3d.geometry.PointCloud()
@@ -247,7 +250,7 @@ class Dinobot:
                 sphere.paint_uniform_color(color)
                 sphere.translate(point)
                 spheres.append(sphere)
-            components = [origin_frame, bottleneck_frame]
+            components = [origin_frame, bottleneck_frame, transformed_frame]
             components.extend(spheres)
             o3d.visualization.draw_geometries(components)
 
@@ -267,7 +270,7 @@ class Dinobot:
             # components.extend(spheres)
             # o3d.visualization.draw_geometries(components)
 
-        self.move_robot(robot, angles, t)
+        # self.move_robot(robot, R, t)
         return error
 
 
@@ -299,7 +302,7 @@ def generate_unique_colors(n: int) -> List[Tuple[int, int, int]]:
 
 
 if __name__ == "__main__":
-    robot = RobotClient(robot_ip="10.0.0.14")
+    robot = RobotClient(robot_ip="10.0.0.2")
     dinobot = Dinobot()
     detic = DeticPerception()
     track_object_id = 41  # detic object id for cup
