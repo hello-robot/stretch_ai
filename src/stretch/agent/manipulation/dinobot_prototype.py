@@ -33,6 +33,8 @@ from stretch.agent.manipulation.dinobot import (
 from stretch.perception.detection.detic import DeticPerception
 from stretch.visualization.urdf_visualizer import URDFVisualizer
 
+DEBUG_VERIFICATION = False
+
 
 class Demo:
     """
@@ -226,7 +228,7 @@ class Dinobot:
         rr.set_time_seconds("realtime", time.time())
         T_d405_target_world = np.matmul(base_4x4, T_d405_target)
         rr.log(
-            "world/d405_bottleneck_frame",
+            "world/d405_bottleneck_frame/blob",
             rr.Points3D(
                 [0, 0, 0],
                 colors=[255, 255, 0, 255],
@@ -245,90 +247,74 @@ class Dinobot:
             static=True,
         )
 
-        T_ee_target_world = np.matmul(base_4x4, T_ee_target)
-        rr.log(
-            "world/ee_bottleneck_frame",
-            rr.Points3D(
-                [0, 0, 0],
-                colors=[0, 255, 255, 255],
-                labels="target_ee_bottleneck_frame",
-                radii=0.01,
-            ),
-            static=True,
+        d405_bottleneck_arrow = rr.Arrows3D(
+            origins=[0, 0, 0],
+            vectors=[0, 0, 0.2],
+            radii=0.005,
+            labels="d405_bottleneck_frame",
+            colors=[128, 0, 128, 255],
         )
-        rr.log(
-            "world/ee_bottleneck_frame",
-            rr.Transform3D(
-                translation=T_ee_target_world[:3, 3],
-                mat3x3=T_ee_target_world[:3, :3],
-                axis_length=0.3,
-            ),
-            static=True,
-        )
-        rr.log(
-            "world/target_ee_d405_line",
-            rr.LineStrips3D(
-                [T_ee_target_world[:3, 3], T_d405_target_world[:3, 3]],
-                colors=[255, 165, 0, 255],
-                radii=0.005,
-            ),
-            static=True,
-        )
-
-        rr.log(
-            "world/robot/current_ee_d405_line",
-            rr.LineStrips3D([T_ee[:3, 3], T_d405[:3, 3]], colors=[128, 0, 128, 255], radii=0.005),
-            static=True,
-        )
+        rr.log("world/d405_bottleneck_frame/arrow", d405_bottleneck_arrow)
 
         rr.log(
             "world/ee_camera",
             rr.Points3D(
                 [0, 0, 0],
                 colors=[255, 255, 0, 255],
-                labels="current_d405_frame",
+                labels="ee_camera_frame",
                 radii=0.01,
             ),
             static=True,
         )
+
+        current_d405_arrow = rr.Arrows3D(
+            origins=[0, 0, 0],
+            vectors=[0, 0, 0.5],
+            radii=0.005,
+            labels="d405_frame",
+            colors=[255, 105, 180, 255],
+        )
+        rr.log("world/ee_camera/arrow", current_d405_arrow)
+
         rr.log(
             "world/ee",
             rr.Points3D(
                 [0, 0, 0],
                 colors=[0, 255, 255, 255],
-                labels="current_ee_frame",
+                labels="ee_frame",
                 radii=0.01,
             ),
             static=True,
         )
-        input("Press Enter to move the robot to the target pose")
+        if DEBUG_VERIFICATION:
+            input("Press Enter to move the robot to the target pose")
 
         # Extract the target end-effector position and rotation
         target_ee_pos = T_ee_target[:3, 3]
         rot = Rotation.from_matrix(T_ee_target[:3, :3])
         joint_state = robot.get_joint_positions().copy()
 
-        # try:
-        # Compute the IK solution for the target end-effector position and rotation
-        # target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
-        #     target_ee_pos, rot.as_quat(), q0=joint_state
-        # )
+        try:
+            # Compute the IK solution for the target end-effector position and rotation
+            # target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
+            #     target_ee_pos, rot.as_quat(), q0=joint_state
+            # )
 
-        # Compute the IK solution for the target D405
-        target_d405_pos = T_d405_target[:3, 3]
-        rot = Rotation.from_matrix(T_d405_target[:3, :3])
-        joint_state = model._to_manip_format(joint_state)
-        target_joint_positions, success, _ = model.manip_ik(
-            pose_query=(target_d405_pos, rot.as_quat()),
-            q0=joint_state,
-            custom_ee_frame="gripper_camera_color_optical_frame",
-        )
+            # Compute the IK solution for the target D405
+            target_d405_pos = T_d405_target[:3, 3]
+            rot = Rotation.from_matrix(T_d405_target[:3, :3])
+            joint_state = model._to_manip_format(joint_state)
+            target_joint_positions, success, _ = model.manip_ik(
+                pose_query=(target_d405_pos, rot.as_quat()),
+                q0=joint_state,
+                custom_ee_frame="gripper_camera_color_optical_frame",
+            )
 
-        # Move the robot to the target joint positions
-        robot.switch_to_manipulation_mode()
-        robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
-        # except Exception as e:
-        #     print(f"Failed to move the robot to the target pose: {e}")
+            # Move the robot to the target joint positions
+            robot.switch_to_manipulation_mode()
+            robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
+        except Exception as e:
+            print(f"Failed to move the robot to the target pose: {e}")
 
     def move_to_bottleneck(
         self,
@@ -460,6 +446,6 @@ if __name__ == "__main__":
         print("\nFirst frame is the bottleneck image\n")
         print("=================================================")
         input("Displace the object and press Enter:")
-        dinobot.run(robot, demo, visualize=True, apply_mask_callback=apply_mask_callback)
+        dinobot.run(robot, demo, visualize=False, apply_mask_callback=apply_mask_callback)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
