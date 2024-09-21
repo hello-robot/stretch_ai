@@ -360,7 +360,7 @@ class DemoRecorder(Demo):
         self.trajectories = {}
         self.start_ts = None
         self.__id = 0
-        self._delay = 0.5
+        self._delay = 2
         self.urdf = URDFVisualizer()
 
     def _step(self, ee_rgb: np.ndarray, ee_depth: np.ndarray, d405_frame: np.ndarray):
@@ -524,8 +524,16 @@ if __name__ == "__main__":
     error_threshold = 0.17
     detic = DeticPerception()
     track_object_id = 41  # detic object id for cup
-    demo = DemoRecorder
-    # demo = None
+
+    print("\nFirst frame is the bottleneck image\n")
+    print("=================================================")
+    input(
+        click.style(
+            "Displace the object and backdrive robot to desired location and press Enter to collect demo:",
+            fg="yellow",
+            bold=True,
+        )
+    )
 
     # First frame is the bottleneck image for now
     bottleneck_image_rgb = robot.get_servo_observation().ee_rgb
@@ -551,17 +559,13 @@ if __name__ == "__main__":
             bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
         )
         demo.collect_demo(robot)
-
-        print("\nFirst frame is the bottleneck image\n")
-        print("=================================================")
         input(
             click.style(
-                "Displace the object and backdrive robot to desired location and press Enter to replay trajectory:",
+                "Displace the object and backdrive robot to another location and press Enter to try a grasp:",
                 fg="yellow",
                 bold=True,
             )
         )
-
         print("Visually servoing to the bottleneck pose...")
         # Visual Servo to bottleneck pose
         dinobot.run(
