@@ -10,12 +10,14 @@
 import sys
 
 sys.path.append("/home/hello-robot/repos/dino-vit-features")
+import math
 import time
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
+import rerun as rr
 import torch
 from correspondences import find_correspondences, visualize_correspondences
 from extractor import ViTExtractor
@@ -64,6 +66,15 @@ class Demo:
         raise NotImplementedError
 
 
+def Rz(theta):
+    """
+    Rotation matrix about z-axis
+    """
+    return np.matrix(
+        [[math.cos(theta), -math.sin(theta), 0], [math.sin(theta), math.cos(theta), 0], [0, 0, 1]]
+    )
+
+
 class Dinobot:
     """
     Dinobot is a class that uses DINO correspondences to move the robot to the bottleneck pose.
@@ -87,7 +98,7 @@ class Dinobot:
         self,
         image1: np.ndarray,
         image2: np.ndarray,
-        num_pairs: int = 20,
+        num_pairs: int = 10,
         load_size: int = 224,
         layer: int = 9,
         facet: str = "key",
@@ -108,7 +119,7 @@ class Dinobot:
         demo: Demo,
         visualize: bool = False,
         apply_mask_callback=None,
-        error_threshold: float = 0.01,
+        error_threshold: float = 0.03,
     ):
         """
         Run the Dinobot algorithm
@@ -182,70 +193,79 @@ class Dinobot:
         T_ee_target[:3, 3] = T_ee_target[:3, 3] - t_d405_ee
         T_ee_target[:3, :3] = np.dot(T_ee_target[:3, :3], R_d405_ee)
 
-        if DEBUG_VISUALIZATION:
+        base_xyt = robot.get_base_pose()
+        base_4x4 = np.eye(4)
+        base_4x4[:3, :3] = Rz(base_xyt[2])
+        base_4x4[:2, 3] = base_xyt[:2]
 
-            origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=0.1, origin=[0, 0, 0]
-            )
+        # Rerun logging
+        # Log the computed target bottleneck d405 and end-effector frames in the world frame
+        rr.set_time_seconds("realtime", time.time())
+        T_d405_target_world = np.matmul(base_4x4, T_d405_target)
+        rr.log(
+            "world/d405_bottleneck_frame",
+            rr.Points3D(
+                [0, 0, 0],
+                colors=[255, 255, 0, 255],
+                labels="target_d405_bottleneck_frame",
+                radii=0.01,
+            ),
+            static=True,
+        )
+        rr.log(
+            "world/d405_bottleneck_frame",
+            rr.Transform3D(
+                translation=T_d405_target_world[:3, 3],
+                mat3x3=T_d405_target_world[:3, :3],
+                axis_length=0.3,
+            ),
+            static=True,
+        )
 
-            # Current frames
-            T_d405_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            T_d405_frame.transform(T_d405)
-            origin_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            origin_blob.paint_uniform_color([1, 0, 0])  # Red for origin
-            T_d405_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_d405_blob.paint_uniform_color([0, 1, 0])  # Green for T_d405
-            T_ee_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            T_ee_frame.transform(T_ee)
-            T_ee_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_ee_blob.paint_uniform_color([0, 0, 1])  # Blue for T_ee
+        T_ee_target_world = np.matmul(base_4x4, T_ee_target)
+        rr.log(
+            "world/ee_bottleneck_frame",
+            rr.Points3D(
+                [0, 0, 0],
+                colors=[0, 255, 255, 255],
+                labels="target_ee_bottleneck_frame",
+                radii=0.01,
+            ),
+            static=True,
+        )
+        rr.log(
+            "world/ee_bottleneck_frame",
+            rr.Transform3D(
+                translation=T_ee_target_world[:3, 3],
+                mat3x3=T_ee_target_world[:3, :3],
+                axis_length=0.3,
+            ),
+            static=True,
+        )
+        rr.log(
+            "world/target_ee_d405_line",
+            rr.LineStrips3D([T_ee_target_world[:3, 3], T_d405_target_world[:3, 3]], radii=0.005),
+            static=True,
+        )
 
-            # Targets
-            T_target_d405_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            T_target_d405_frame.transform(T_d405_target)
-            T_d405_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_d405_target_blob.paint_uniform_color([0.5, 0.7, 0.5])  # Green for T_d405
-            T_d405_target_blob.translate(T_d405_target[:3, 3])
-
-            T_ee_target_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            T_ee_target_frame.transform(T_ee_target)
-            T_ee_target_blob = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-            T_ee_target_blob.paint_uniform_color([0.5, 0.5, 0.7])  # Blue for T_ee
-            T_ee_target_blob.translate(T_ee_target[:3, 3])
-
-            # Translate blobs to the origins of the coordinate frames
-            T_d405_blob.translate(T_d405[:3, 3])
-            T_ee_blob.translate(T_ee[:3, 3])
-
-            # Add blobs to the visualization
-            o3d.visualization.draw_geometries(
-                [
-                    origin_frame,
-                    T_d405_frame,
-                    T_ee_frame,
-                    origin_blob,
-                    T_d405_blob,
-                    T_ee_blob,
-                    T_target_d405_frame,
-                    T_d405_target_blob,
-                    T_ee_target_frame,
-                    T_ee_target_blob,
-                ]
-            )
+        input("Press Enter to move the robot to the target pose")
 
         # Extract the target end-effector position and rotation
         target_ee_pos = T_ee_target[:3, 3]
         rot = Rotation.from_matrix(T_ee_target[:3, :3])
         joint_state = robot.get_joint_positions().copy()
 
-        # Compute the IK solution for the target end-effector position and rotation
-        target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
-            target_ee_pos, rot.as_quat(), q0=joint_state
-        )
+        try:
+            # Compute the IK solution for the target end-effector position and rotation
+            target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
+                target_ee_pos, rot.as_quat(), q0=joint_state
+            )
 
-        # Move the robot to the target joint positions
-        robot.switch_to_manipulation_mode()
-        robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
+            # Move the robot to the target joint positions
+            robot.switch_to_manipulation_mode()
+            robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
+        except Exception as e:
+            print(f"Failed to move the robot to the target pose: {e}")
 
     def move_to_bottleneck(
         self,
@@ -288,7 +308,6 @@ class Dinobot:
         # Find rigid translation and rotation that aligns the points by minimising error, using SVD.
         R, t = find_transformation(points1, points2)
         r = Rotation.from_matrix(R)
-        angles = r.as_euler("xyz")
         print(f"Camera frame to Rot: {R}, Trans: {t}")
         error = compute_error(points1, points2)
         print(f"Error: {error}")
@@ -384,8 +403,6 @@ if __name__ == "__main__":
     semantic, instance, task_observations = detic.predict(bottleneck_image_rgb)
 
     def apply_mask_callback(image: np.ndarray) -> np.ndarray:
-        # Not applying mask to live image seems to work better
-        return image
         semantic, instance, task_observations = detic.predict(image)
         if track_object_id in task_observations["instance_classes"]:
             object_mask = semantic == track_object_id
@@ -400,7 +417,9 @@ if __name__ == "__main__":
         demo = Demo(
             bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
         )
-        input("Displace the object")
+        print("\nFirst frame is the bottleneck image\n")
+        print("=================================================")
+        input("Displace the object and press Enter:")
         dinobot.run(robot, demo, visualize=True, apply_mask_callback=apply_mask_callback)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
