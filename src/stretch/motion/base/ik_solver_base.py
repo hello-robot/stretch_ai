@@ -13,7 +13,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -44,6 +44,7 @@ class IKSolverBase(object):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
+        custom_ee_frame: Optional[str] = None,
     ) -> Tuple[np.ndarray, bool, dict]:
 
         """

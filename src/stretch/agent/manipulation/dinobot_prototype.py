@@ -136,10 +136,11 @@ class Dinobot:
                 ee_rgb = apply_mask_callback(ee_rgb)
             if not isinstance(demo.bottleneck_image_rgb, type(None)):
                 start = time.perf_counter()
+                print("Extracting correspondences...")
                 with torch.no_grad():
                     points1, points2 = self.get_correspondences(demo.bottleneck_image_rgb, ee_rgb)
                 inf_ts = (time.perf_counter() - start) * 1000
-                print(f"\n  current: {inf_ts} ms")
+                print(f"\n  Total correspondence extraction time: {inf_ts} ms")
                 if visualize:
                     if len(points1) == len(points2):
                         im1, im2 = visualize_correspondences(
@@ -185,7 +186,7 @@ class Dinobot:
                 print("No bottleneck image found")
         print("Dinobot finished")
 
-    def move_robot(self, robot: RobotClient, R: np.ndarray, t: np.ndarray) -> float:
+    def move_robot(self, robot: RobotClient, R: np.ndarray, t: np.ndarray):
         """
         Move the robot to the bottleneck pose
         Args:
@@ -307,17 +308,27 @@ class Dinobot:
         rot = Rotation.from_matrix(T_ee_target[:3, :3])
         joint_state = robot.get_joint_positions().copy()
 
-        try:
-            # Compute the IK solution for the target end-effector position and rotation
-            target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
-                target_ee_pos, rot.as_quat(), q0=joint_state
-            )
+        # try:
+        # Compute the IK solution for the target end-effector position and rotation
+        # target_joint_positions, _, _, success, _ = model.manip_ik_for_grasp_frame(
+        #     target_ee_pos, rot.as_quat(), q0=joint_state
+        # )
 
-            # Move the robot to the target joint positions
-            robot.switch_to_manipulation_mode()
-            robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
-        except Exception as e:
-            print(f"Failed to move the robot to the target pose: {e}")
+        # Compute the IK solution for the target D405
+        target_d405_pos = T_d405_target[:3, 3]
+        rot = Rotation.from_matrix(T_d405_target[:3, :3])
+        joint_state = model._to_manip_format(joint_state)
+        target_joint_positions, success, _ = model.manip_ik(
+            pose_query=(target_d405_pos, rot.as_quat()),
+            q0=joint_state,
+            custom_ee_frame="gripper_camera_color_optical_frame",
+        )
+
+        # Move the robot to the target joint positions
+        robot.switch_to_manipulation_mode()
+        robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
+        # except Exception as e:
+        #     print(f"Failed to move the robot to the target pose: {e}")
 
     def move_to_bottleneck(
         self,

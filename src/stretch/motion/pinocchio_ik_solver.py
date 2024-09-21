@@ -171,6 +171,7 @@ class PinocchioIKSolver(IKSolverBase):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
+        custom_ee_frame: Optional[str] = None,
     ) -> Tuple[np.ndarray, bool, dict]:
         """given end-effector position and quaternion, return joint values.
 
@@ -181,7 +182,8 @@ class PinocchioIKSolver(IKSolverBase):
             max iterations: time budget in number of steps; included for compatibility with pb
         """
         i = 0
-
+        _ee_frame = self.ee_frame_idx if custom_ee_frame is None else custom_ee_frame
+        _ee_frame_idx = [f.name for f in self.model.frames].index(_ee_frame)
         if q_init is None:
             q = self.q_neutral.copy()
             if num_attempts > 1:
@@ -196,9 +198,9 @@ class PinocchioIKSolver(IKSolverBase):
         desired_ee_pose = pinocchio.SE3(R.from_quat(quat_desired).as_matrix(), pos_desired)
         while True:
             pinocchio.forwardKinematics(self.model, self.data, q)
-            pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
+            pinocchio.updateFramePlacement(self.model, self.data, _ee_frame_idx)
 
-            dMi = desired_ee_pose.actInv(self.data.oMf[self.ee_frame_idx])
+            dMi = desired_ee_pose.actInv(self.data.oMf[_ee_frame_idx])
             err = pinocchio.log(dMi).vector
             if verbose:
                 print(f"[pinocchio_ik_solver] iter={i}; error={err}")
@@ -212,7 +214,7 @@ class PinocchioIKSolver(IKSolverBase):
                 self.model,
                 self.data,
                 q,
-                self.ee_frame_idx,
+                _ee_frame_idx,
                 pinocchio.ReferenceFrame.LOCAL,
             )
             v = -J.T.dot(np.linalg.solve(J.dot(J.T) + self.DAMP * np.eye(6), err))
