@@ -11,9 +11,12 @@ import sys
 
 sys.path.append("/home/hello-robot/repos/dino-vit-features")
 import math
+import os
+import pickle
 import time
 from typing import List, Tuple
 
+import click
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -119,7 +122,7 @@ class Dinobot:
         demo: Demo,
         visualize: bool = False,
         apply_mask_callback=None,
-        error_threshold: float = 0.03,
+        error_threshold: float = 0.17,
     ):
         """
         Run the Dinobot algorithm
@@ -218,81 +221,15 @@ class Dinobot:
         T_ee_target[:3, 3] = T_ee_target[:3, 3] - t_d405_ee
         T_ee_target[:3, :3] = np.dot(T_ee_target[:3, :3], R_d405_ee)
 
-        base_xyt = robot.get_base_pose()
-        base_4x4 = np.eye(4)
-        base_4x4[:3, :3] = Rz(base_xyt[2])
-        base_4x4[:2, 3] = base_xyt[:2]
+        rerun_log(robot, T_d405_target)
+        joint_state = robot.get_joint_positions().copy()
 
-        # Rerun logging
-        # Log the computed target bottleneck d405 and end-effector frames in the world frame
-        rr.set_time_seconds("realtime", time.time())
-        T_d405_target_world = np.matmul(base_4x4, T_d405_target)
-        rr.log(
-            "world/d405_bottleneck_frame/blob",
-            rr.Points3D(
-                [0, 0, 0],
-                colors=[255, 255, 0, 255],
-                labels="target_d405_bottleneck_frame",
-                radii=0.01,
-            ),
-            static=True,
-        )
-        rr.log(
-            "world/d405_bottleneck_frame",
-            rr.Transform3D(
-                translation=T_d405_target_world[:3, 3],
-                mat3x3=T_d405_target_world[:3, :3],
-                axis_length=0.3,
-            ),
-            static=True,
-        )
-
-        d405_bottleneck_arrow = rr.Arrows3D(
-            origins=[0, 0, 0],
-            vectors=[0, 0, 0.2],
-            radii=0.005,
-            labels="d405_bottleneck_frame",
-            colors=[128, 0, 128, 255],
-        )
-        rr.log("world/d405_bottleneck_frame/arrow", d405_bottleneck_arrow)
-
-        rr.log(
-            "world/ee_camera",
-            rr.Points3D(
-                [0, 0, 0],
-                colors=[255, 255, 0, 255],
-                labels="ee_camera_frame",
-                radii=0.01,
-            ),
-            static=True,
-        )
-
-        current_d405_arrow = rr.Arrows3D(
-            origins=[0, 0, 0],
-            vectors=[0, 0, 0.5],
-            radii=0.005,
-            labels="d405_frame",
-            colors=[255, 105, 180, 255],
-        )
-        rr.log("world/ee_camera/arrow", current_d405_arrow)
-
-        rr.log(
-            "world/ee",
-            rr.Points3D(
-                [0, 0, 0],
-                colors=[0, 255, 255, 255],
-                labels="ee_frame",
-                radii=0.01,
-            ),
-            static=True,
-        )
         if DEBUG:
             input("Press Enter to move the robot to the target pose")
 
         # Extract the target end-effector position and rotation
-        target_ee_pos = T_ee_target[:3, 3]
-        rot = Rotation.from_matrix(T_ee_target[:3, :3])
-        joint_state = robot.get_joint_positions().copy()
+        # target_ee_pos = T_ee_target[:3, 3]
+        # rot = Rotation.from_matrix(T_ee_target[:3, :3])
 
         try:
             # Compute the IK solution for the target end-effector position and rotation
@@ -300,7 +237,7 @@ class Dinobot:
             #     target_ee_pos, rot.as_quat(), q0=joint_state
             # )
 
-            # Compute the IK solution for the target D405
+            # Compute the IK solution for the target D405 as custom ee frame
             target_d405_pos = T_d405_target[:3, 3]
             rot = Rotation.from_matrix(T_d405_target[:3, :3])
             joint_state = model._to_manip_format(joint_state)
@@ -377,12 +314,10 @@ class Dinobot:
         rr.log(
             "world/perceived_correspondences",
             rr.Points3D(points2, colors=colors.astype(np.uint8), radii=0.007),
-            static=True,
         )
         rr.log(
             "world/perceived_correspondences",
             rr.Transform3D(translation=T_d405[:3, 3], mat3x3=T_d405[:3, :3], axis_length=0.00),
-            static=True,
         )
 
         self.move_robot(robot, R, t)
@@ -416,12 +351,181 @@ def generate_unique_colors(n: int) -> List[Tuple[int, int, int]]:
     return [tuple(c for c in colors(i)[:3]) for i in range(n)]
 
 
+class DemoRecorder(Demo):
+    def __init__(
+        self, image: np.ndarray, depth: np.ndarray, camera_K: np.ndarray, mask: np.ndarray
+    ):
+        super().__init__(image, depth, camera_K, mask)
+        self.__first_frame = False
+        self.trajectories = {}
+        self.start_ts = None
+        self.__id = 0
+        self._delay = 0.5
+        self.urdf = URDFVisualizer()
+
+    def _step(self, ee_rgb: np.ndarray, ee_depth: np.ndarray, d405_frame: np.ndarray):
+        if not self.__first_frame:
+            self.__first_frame = True
+            self.start_ts = time.time()
+        self.trajectories[self.__id] = {
+            "ee_rgb": ee_rgb,
+            "ee_depth": ee_depth,
+            "d405_frame": d405_frame,
+        }
+        self.__id += 1
+
+    def save_demo(self, filepath: str = f"./demo_{time.strftime('%Y%m%d-%H%M%S')}"):
+        demo_data = {
+            "bottleneck_image_rgb": self.bottleneck_image_rgb,
+            "bottleneck_image_depth": self.bottleneck_image_depth,
+            "bottleneck_image_camera_K": self.bottleneck_image_camera_K,
+            "object_mask": self.object_mask,
+            "trajectories": self.trajectories,
+        }
+
+        with open(os.path.join(f"{filepath}.pkl"), "wb") as f:
+            pickle.dump(demo_data, f)
+
+    def collect_demo(
+        self, robot: RobotClient, filepath: str = f"./demo_{time.strftime('%Y%m%d-%H%M%S')}"
+    ):
+        print("=================================================")
+        print("Collect Demonstration through back driving on run stop")
+        print("-------------------------------------------------")
+        input(
+            click.style(
+                "Press Enter to start recording the demonstration frame by frame...",
+                fg="yellow",
+                bold=True,
+            )
+        )
+        click.secho("Recording demonstration...", fg="green", bold=True)
+        while True:
+            servo = robot.get_servo_observation()
+            ee_rgb = servo.ee_rgb.copy()
+            ee_depth = servo.ee_depth.copy()
+            d405_frame = self.urdf.get_transform_fk(
+                robot.get_joint_positions(), "gripper_camera_color_optical_frame"
+            )
+            self._step(ee_rgb, ee_depth, d405_frame)
+            if click.confirm("Record Next Frame?"):
+                continue
+            else:
+                self.save_demo(filepath)
+                click.secho(
+                    f"Demonstration recording finished. N_Frames: {self.__id+1}",
+                    fg="green",
+                    bold=True,
+                )
+                break
+
+    def replay_demo(self, robot: RobotClient):
+        print("=================================================")
+        print("            Replay Demonstration")
+        print("-------------------------------------------------")
+        for id in self.trajectories:
+            print(f"Frame ID: {id}")
+            self.move_to_d405_frame(robot, self.trajectories[id]["d405_frame"])
+            time.sleep(self._delay)
+
+    def move_to_d405_frame(self, robot: RobotClient, T_d405_target: np.ndarray):
+        model = robot.get_robot_model()
+        # Compute the IK solution for the target D405 as custom ee frame
+        target_d405_pos = T_d405_target[:3, 3]
+        rerun_log(robot, T_d405_target)
+        rot = Rotation.from_matrix(T_d405_target[:3, :3])
+        joint_state = robot.get_joint_positions().copy()
+        joint_state = model._to_manip_format(joint_state)
+        target_joint_positions, success, _ = model.manip_ik(
+            pose_query=(target_d405_pos, rot.as_quat()),
+            q0=joint_state,
+            custom_ee_frame="gripper_camera_color_optical_frame",
+        )
+
+        # Move the robot to the target joint positions
+        robot.switch_to_manipulation_mode()
+        robot.arm_to(target_joint_positions, blocking=True, head=constants.look_at_ee)
+
+
+def rerun_log(robot: RobotClient, T_d405_target: np.ndarray):
+    """
+    Rerun logging method
+    """
+    base_xyt = robot.get_base_pose()
+    base_4x4 = np.eye(4)
+    base_4x4[:3, :3] = Rz(base_xyt[2])
+    base_4x4[:2, 3] = base_xyt[:2]
+
+    # Rerun logging
+    # Log the computed target bottleneck d405 and end-effector frames in the world frame
+    rr.set_time_seconds("realtime", time.time())
+    T_d405_target_world = np.matmul(base_4x4, T_d405_target)
+    rr.log(
+        "world/d405_bottleneck_frame/blob",
+        rr.Points3D(
+            [0, 0, 0],
+            colors=[255, 255, 0, 255],
+            labels="target_d405_bottleneck_frame",
+            radii=0.01,
+        ),
+    )
+    rr.log(
+        "world/d405_bottleneck_frame",
+        rr.Transform3D(
+            translation=T_d405_target_world[:3, 3],
+            mat3x3=T_d405_target_world[:3, :3],
+            axis_length=0.3,
+        ),
+    )
+
+    d405_bottleneck_arrow = rr.Arrows3D(
+        origins=[0, 0, 0],
+        vectors=[0, 0, 0.2],
+        radii=0.0025,
+        labels="d405_bottleneck_frame",
+        colors=[128, 0, 128, 255],
+    )
+    rr.log("world/d405_bottleneck_frame/arrow", d405_bottleneck_arrow)
+
+    rr.log(
+        "world/ee_camera",
+        rr.Points3D(
+            [0, 0, 0],
+            colors=[255, 255, 0, 255],
+            labels="ee_camera_frame",
+            radii=0.01,
+        ),
+    )
+
+    current_d405_arrow = rr.Arrows3D(
+        origins=[0, 0, 0],
+        vectors=[0, 0, 0.5],
+        radii=0.005,
+        labels="d405_frame",
+        colors=[255, 105, 180, 255],
+    )
+    rr.log("world/ee_camera/arrow", current_d405_arrow)
+
+    rr.log(
+        "world/ee",
+        rr.Points3D(
+            [0, 0, 0],
+            colors=[0, 255, 255, 255],
+            labels="ee_frame",
+            radii=0.01,
+        ),
+    )
+
+
 if __name__ == "__main__":
-    DEBUG = True
+    DEBUG = False
     robot = RobotClient(robot_ip="10.0.0.2")
     dinobot = Dinobot()
+    error_threshold = 0.17
     detic = DeticPerception()
     track_object_id = 41  # detic object id for cup
+    demo = DemoRecorder
+    # demo = None
 
     # First frame is the bottleneck image for now
     bottleneck_image_rgb = robot.get_servo_observation().ee_rgb
@@ -441,12 +545,34 @@ if __name__ == "__main__":
 
     if track_object_id in task_observations["instance_classes"]:
         object_mask = semantic == track_object_id
-        demo = Demo(
+
+        # Collect demonstration
+        demo = DemoRecorder(
             bottleneck_image_rgb, bottleneck_image_depth, bottleneck_image_camera_K, object_mask
         )
+        demo.collect_demo(robot)
+
         print("\nFirst frame is the bottleneck image\n")
         print("=================================================")
-        input("Displace the object and press Enter:")
-        dinobot.run(robot, demo, visualize=DEBUG, apply_mask_callback=apply_mask_callback)
+        input(
+            click.style(
+                "Displace the object and backdrive robot to desired location and press Enter to replay trajectory:",
+                fg="yellow",
+                bold=True,
+            )
+        )
+
+        print("Visually servoing to the bottleneck pose...")
+        # Visual Servo to bottleneck pose
+        dinobot.run(
+            robot,
+            demo,
+            visualize=DEBUG,
+            apply_mask_callback=apply_mask_callback,
+            error_threshold=error_threshold,
+        )
+        print("Replaying 3D trajectories...")
+        # Replay demonstration
+        demo.replay_demo(robot)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
