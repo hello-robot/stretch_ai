@@ -33,7 +33,7 @@ from stretch.agent.manipulation.dinobot import (
 from stretch.perception.detection.detic import DeticPerception
 from stretch.visualization.urdf_visualizer import URDFVisualizer
 
-DEBUG_VERIFICATION = False
+DEBUG = False
 
 
 class Demo:
@@ -286,7 +286,7 @@ class Dinobot:
             ),
             static=True,
         )
-        if DEBUG_VERIFICATION:
+        if DEBUG:
             input("Press Enter to move the robot to the target pose")
 
         # Extract the target end-effector position and rotation
@@ -417,6 +417,7 @@ def generate_unique_colors(n: int) -> List[Tuple[int, int, int]]:
 
 
 if __name__ == "__main__":
+    DEBUG = True
     robot = RobotClient(robot_ip="10.0.0.2")
     dinobot = Dinobot()
     detic = DeticPerception()
@@ -446,6 +447,6 @@ if __name__ == "__main__":
         print("\nFirst frame is the bottleneck image\n")
         print("=================================================")
         input("Displace the object and press Enter:")
-        dinobot.run(robot, demo, visualize=False, apply_mask_callback=apply_mask_callback)
+        dinobot.run(robot, demo, visualize=DEBUG, apply_mask_callback=apply_mask_callback)
     else:
         print(f"Object ID: {track_object_id} not found in the image")
