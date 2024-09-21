@@ -14,9 +14,9 @@ import math
 import time
 from typing import List, Tuple
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
 import rerun as rr
 import torch
 from correspondences import find_correspondences, visualize_correspondences
@@ -32,8 +32,6 @@ from stretch.agent.manipulation.dinobot import (
 )
 from stretch.perception.detection.detic import DeticPerception
 from stretch.visualization.urdf_visualizer import URDFVisualizer
-
-DEBUG_VISUALIZATION = False
 
 
 class Demo:
@@ -147,14 +145,38 @@ class Dinobot:
                         im1, im2 = visualize_correspondences(
                             points1, points2, demo.bottleneck_image_rgb, ee_rgb
                         )
-                        fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-                        axes[0].imshow(im1)
-                        axes[0].set_title("Bottleneck Image")
-                        axes[0].axis("off")
-                        axes[1].imshow(im2)
-                        axes[1].set_title("Live Image")
-                        axes[1].axis("off")
-                        plt.show()
+                        im1 = cv2.putText(
+                            im1,
+                            "Bottleneck Image",
+                            (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (255, 255, 255),
+                            2,
+                            cv2.LINE_AA,
+                        )
+                        im2 = cv2.putText(
+                            im2,
+                            "Live Image",
+                            (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (255, 255, 255),
+                            2,
+                            cv2.LINE_AA,
+                        )
+                        stacked_images = np.hstack((im1, im2))
+                        # Enlarge the image for better visualization
+                        stacked_images = cv2.resize(stacked_images, (0, 0), fx=2, fy=2)
+                        cv2.imshow(
+                            "Correspondences", cv2.cvtColor(stacked_images, cv2.COLOR_RGB2BGR)
+                        )
+                        while True:
+                            if cv2.waitKey(1) & 0xFF == ord("q"):
+                                break
+                            if cv2.getWindowProperty("Correspondences", cv2.WND_PROP_VISIBLE) < 1:
+                                break
+                        cv2.destroyAllWindows()
                     else:
                         print("No correspondences found")
                 # Move the robot to the bottleneck pose
@@ -244,10 +266,40 @@ class Dinobot:
         )
         rr.log(
             "world/target_ee_d405_line",
-            rr.LineStrips3D([T_ee_target_world[:3, 3], T_d405_target_world[:3, 3]], radii=0.005),
+            rr.LineStrips3D(
+                [T_ee_target_world[:3, 3], T_d405_target_world[:3, 3]],
+                colors=[255, 165, 0, 255],
+                radii=0.005,
+            ),
             static=True,
         )
 
+        rr.log(
+            "world/robot/current_ee_d405_line",
+            rr.LineStrips3D([T_ee[:3, 3], T_d405[:3, 3]], colors=[128, 0, 128, 255], radii=0.005),
+            static=True,
+        )
+
+        rr.log(
+            "world/ee_camera",
+            rr.Points3D(
+                [0, 0, 0],
+                colors=[255, 255, 0, 255],
+                labels="current_d405_frame",
+                radii=0.01,
+            ),
+            static=True,
+        )
+        rr.log(
+            "world/ee",
+            rr.Points3D(
+                [0, 0, 0],
+                colors=[0, 255, 255, 255],
+                labels="current_ee_frame",
+                radii=0.01,
+            ),
+            static=True,
+        )
         input("Press Enter to move the robot to the target pose")
 
         # Extract the target end-effector position and rotation
@@ -312,52 +364,29 @@ class Dinobot:
         error = compute_error(points1, points2)
         print(f"Error: {error}")
 
-        # Debug 3D Visualization
-        if DEBUG_VISUALIZATION:
-            unique_colors = generate_unique_colors(len(points1))
-            origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=0.03, origin=[0, 0, 0]
-            )
-
-            transformed_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=0.03, origin=t
-            )
-            transformed_frame.rotate(R, center=(0, 0, 0))
-
-            # Bottleneck frame
-            bottleneck_frame = o3d.geometry.PointCloud()
-            bottleneck_frame.points = o3d.utility.Vector3dVector(
-                bottleneck_xyz.reshape((bottleneck_xyz.shape[0] * bottleneck_xyz.shape[1], 3))
-            )
-            points1_frame = o3d.geometry.PointCloud()
-            points1_frame.points = o3d.utility.Vector3dVector(points1)
-
-            # Visualize the unique correspondences between bottleneck and live frame
-            spheres = []
-            for point, color in zip(points1, unique_colors):
-                sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
-                sphere.paint_uniform_color(color)
-                sphere.translate(point)
-                spheres.append(sphere)
-            components = [origin_frame, bottleneck_frame, transformed_frame]
-            components.extend(spheres)
-            o3d.visualization.draw_geometries(components)
-
-            # Live frame
-            # live_frame = o3d.geometry.PointCloud()
-            # live_frame.points = o3d.utility.Vector3dVector(live_xyz.reshape((live_xyz.shape[0]*live_xyz.shape[1],3)))
-            # points2_frame = o3d.geometry.PointCloud()
-            # points2_frame.points = o3d.utility.Vector3dVector(points2)
-
-            # spheres = []
-            # for point,color in zip(points2,unique_colors):
-            #     sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
-            #     sphere.paint_uniform_color(color)
-            #     sphere.translate(point)
-            #     spheres.append(sphere)
-            # components = [origin_frame,live_frame]
-            # components.extend(spheres)
-            # o3d.visualization.draw_geometries(components)
+        # Rerun logging
+        # Log correspondences 3d points from live image frame
+        unique_colors = generate_unique_colors(len(points2))
+        colors = np.array(unique_colors) * 255
+        T_d405 = self.urdf.get_transform_fk(
+            robot.get_joint_positions(), "gripper_camera_color_optical_frame"
+        )
+        base_xyt = robot.get_base_pose()
+        base_4x4 = np.eye(4)
+        base_4x4[:3, :3] = Rz(base_xyt[2])
+        base_4x4[:2, 3] = base_xyt[:2]
+        T_d405 = np.matmul(base_4x4, T_d405)
+        rr.set_time_seconds("realtime", time.time())
+        rr.log(
+            "world/perceived_correspondences",
+            rr.Points3D(points2, colors=colors.astype(np.uint8), radii=0.007),
+            static=True,
+        )
+        rr.log(
+            "world/perceived_correspondences",
+            rr.Transform3D(translation=T_d405[:3, 3], mat3x3=T_d405[:3, :3], axis_length=0.00),
+            static=True,
+        )
 
         self.move_robot(robot, R, t)
         return error
