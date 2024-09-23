@@ -123,7 +123,6 @@ def main(
     print("Starting robot exploration...")
 
     agent.run_exploration(
-        rate=10,
         manual_wait=False,
         explore_iter=20,
         task_goal=target_object,  # arbitrary object to collect
