@@ -35,7 +35,7 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--spin", default=False, is_flag=True)
 @click.option("--reset", is_flag=True)
 @click.option(
-    "--input_file", default="", type=str, help="Path to input file used instead of robot data"
+    "-i", "--input-path", default="", type=str, help="Path to input file used instead of robot data"
 )
 @click.option(
     "--write-instance-images",
@@ -60,6 +60,8 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
     is_flag=True,
     help="Don't move the robot to the instance, if using real robot instead of offline data",
 )
+@click.option("--show-svm", is_flag=True, help="Show the SVM output")
+@click.option("-o", "--offline", is_flag=True, help="Run code offline on stored data.")
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -73,13 +75,15 @@ def main(
     output_filename: str = "stretch_output",
     spin: bool = False,
     write_instance_images: bool = False,
-    input_file: str = "",
+    input_path: str = "",
     frame: int = -1,
     text: str = "",
     yes: bool = False,
     stationary: bool = False,
     all_matches: bool = False,
     threshold: float = 0.5,
+    offline: bool = False,
+    show_svm: bool = False,
 ):
 
     print("- Load parameters")
@@ -90,7 +94,7 @@ def main(
         verbose=verbose,
     )
 
-    if len(input_file) == 0 or input_file is None:
+    if not offline:
         real_robot = True
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
@@ -111,10 +115,14 @@ def main(
 
         if spin:
             # Rotate and capture many frames
-            agent.rotate_in_place(steps=8, visualize=False)
+            agent.rotate_in_place(visualize=False)
         else:
             # Just capture a single frame
             agent.update()
+
+        # Load the input file
+        if input_path is not None and len(input_path) > 0:
+            agent.load_map(input_path)
 
         if explore_iter > 0:
             raise NotImplementedError("Exploration not implemented yet")
@@ -126,7 +134,10 @@ def main(
         real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
-        agent.voxel_map.read_from_pickle(input_file, num_frames=frame)
+        agent.voxel_map.read_from_pickle(input_path, num_frames=frame)
+
+    if show_svm:
+        agent.voxel_map.show()
 
     try:
         if len(text) == 0:
@@ -162,7 +173,7 @@ def main(
         else:
             # Get the best instance using agent's API
             if all_matches:
-                instances = agent.get_instances_from_text(text, threshold=threshold)
+                scores, instances = agent.get_instances_from_text(text, threshold=threshold)
             else:
                 _, instance = agent.get_instance_from_text(text)
                 instances = [instance]
@@ -171,8 +182,10 @@ def main(
                 logger.error("No matches found for query")
                 return
 
-            # Show the best view of the detected instance
-            instance.show_best_view()
+            # Loop over all instances and show them to the user
+            for instance in instances:
+                # Show the best view of the detected instance
+                instance.show_best_view()
 
             if real_robot and not stationary:
                 # Confirm before moving

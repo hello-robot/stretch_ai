@@ -86,8 +86,13 @@ class VoxelizedPointcloud:
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
+        min_height: Optional[float] = None,
     ):
         """Deletes points within a certain radius of a point, or optionally within certain bounds."""
+
+        if min_height is None:
+            min_height = -np.inf
+
         if point is not None and radius is not None:
             # We will do a radius removal
             assert bounds is None, "Cannot do both radius and bounds removal"
@@ -97,7 +102,9 @@ class VoxelizedPointcloud:
                 dists = torch.norm(self._points[:, :2] - torch.tensor(point[:2]), dim=1)
             else:
                 dists = torch.norm(self._points - torch.tensor(point), dim=1)
-            mask = dists > radius
+            radius_mask = dists > radius
+            height_ok = self._points[:, 2] < min_height
+            mask = radius_mask | height_ok
             self._points = self._points[mask]
             if self._features is not None:
                 self._features = self._features[mask]
@@ -121,6 +128,8 @@ class VoxelizedPointcloud:
             if self._weights is not None:
                 self._weights = self._weights[mask]
             self._rgb = self._rgb[mask]
+        else:
+            raise ValueError("Must specify either bounds or both point and radius to remove points")
 
     def add(
         self,
@@ -128,6 +137,7 @@ class VoxelizedPointcloud:
         features: Optional[Tensor],
         rgb: Optional[Tensor],
         weights: Optional[Tensor] = None,
+        min_weight_per_voxel: float = 10.0,
     ):
         """Add a feature pointcloud to the voxel grid.
 
@@ -185,6 +195,7 @@ class VoxelizedPointcloud:
                 torch.cat([self._features, features], dim=0) if (features is not None) else None
             )
             all_rgb = torch.cat([self._rgb, rgb], dim=0) if (rgb is not None) else None
+
         # Future optimization:
         # If there are no new voxels, then we could save a bit of compute time
         # by only recomputing the voxel/cluster for the new points
@@ -193,6 +204,7 @@ class VoxelizedPointcloud:
         cluster_voxel_idx, cluster_consecutive_idx, _ = voxelize(
             all_points, voxel_size=self.voxel_size, start=self._mins, end=self._maxs
         )
+
         self._points, self._features, self._weights, self._rgb = reduce_pointcloud(
             cluster_consecutive_idx,
             pos=all_points,
@@ -200,6 +212,7 @@ class VoxelizedPointcloud:
             weights=all_weights,
             rgbs=all_rgb,
             feature_reduce=self.feature_pool_method,
+            min_weight_per_voxel=min_weight_per_voxel,
         )
         return
 
@@ -259,6 +272,26 @@ class VoxelizedPointcloud:
             weights (Tensor): N
         """
         return self._points, self._features, self._weights, self._rgb
+
+    @property
+    def points(self) -> Tensor:
+        return self._points
+
+    @property
+    def features(self) -> Tensor:
+        return self._features
+
+    @property
+    def weights(self) -> Tensor:
+        return self._weights
+
+    @property
+    def rgb(self) -> Tensor:
+        return self._rgb
+
+    @property
+    def num_points(self) -> int:
+        return len(self._points)
 
     def clone(self):
         """
@@ -372,6 +405,7 @@ def reduce_pointcloud(
     weights: Optional[Tensor] = None,
     rgbs: Optional[Tensor] = None,
     feature_reduce: str = "mean",
+    min_weight_per_voxel: float = 10.0,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     """Pools values within each voxel
 
@@ -398,12 +432,17 @@ def reduce_pointcloud(
 
     pos_cluster = scatter_weighted_mean(pos, weights, voxel_cluster, weights_cluster, dim=0)
 
+    valid_idx = weights_cluster >= min_weight_per_voxel
+
     if rgbs is not None:
         rgb_cluster = scatter_weighted_mean(rgbs, weights, voxel_cluster, weights_cluster, dim=0)
+        rgb_cluster = rgb_cluster[valid_idx]
     else:
         rgb_cluster = None
 
     if features is None:
+        weights_cluster = weights_cluster[valid_idx]
+        pos_cluster = pos_cluster[valid_idx]
         return pos_cluster, None, weights_cluster, rgb_cluster
 
     if feature_reduce == "mean":
@@ -417,6 +456,9 @@ def reduce_pointcloud(
     else:
         raise NotImplementedError(f"Unknown feature reduction method {feature_reduce}")
 
+    weights_cluster = weights_cluster[valid_idx]
+    pos_cluster = pos_cluster[valid_idx]
+    feature_cluster = feature_cluster[valid_idx]
     return pos_cluster, feature_cluster, weights_cluster, rgb_cluster
 
 
@@ -435,22 +477,21 @@ def scatter3d(voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int]
     assert len(grid_dimensions) == 3, "this is designed to work only in 3d"
     assert voxel_indices.shape[-1] == 3, "3d points expected for indices"
 
-    # Calculate a unique index for each voxel in the 3D grid
-    unique_voxel_indices = (
-        voxel_indices[:, 0] * (grid_dimensions[1] * grid_dimensions[2])
-        + voxel_indices[:, 1] * grid_dimensions[2]
-        + voxel_indices[:, 2]
-    )
+    N, F = weights.shape
+    X, Y, Z = grid_dimensions
 
-    # Use scatter to accumulate weights into voxels
-    voxel_weights = scatter(
-        weights,
-        unique_voxel_indices,
-        dim=0,
-        reduce="mean",
-        dim_size=grid_dimensions[0] * grid_dimensions[1] * grid_dimensions[2],
-    )
-    return voxel_weights.reshape(*grid_dimensions)
+    # Compute voxel indices for each point
+    # voxel_indices = (points / voxel_size).long().clamp(min=0, max=torch.tensor(grid_size) - 1)
+    voxel_indices = voxel_indices.clamp(
+        min=torch.zeros(3), max=torch.tensor(grid_dimensions) - 1
+    ).long()
+
+    # Create empty voxel grid
+    voxel_grid = torch.zeros(*grid_dimensions, F, device=weights.device)
+
+    # Scatter features into voxel grid
+    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = weights
+    return voxel_grid
 
 
 def drop_smallest_weight_points(

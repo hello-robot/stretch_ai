@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 
+import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.perception.constants import RearrangeDETICCategories
@@ -247,14 +248,17 @@ def create_semantic_sensor(
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
     if verbose:
-        print("- Loading configuration")
+        print("[PERCEPTION] Loading configuration")
     if parameters is None:
         parameters = get_parameters(config_path)
     if category_map_file is None:
         category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
     if verbose:
-        print("- Create and load vocabulary and perception model")
+        logger.alert(
+            "[PERCEPTION] Create and load vocabulary and perception model:",
+            parameters["detection"]["module"],
+        )
     semantic_sensor = OvmmPerception(
         parameters=parameters,
         gpu_device_id=device_id,
