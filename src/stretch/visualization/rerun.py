@@ -181,6 +181,7 @@ class RerunVsualizer:
         open_browser: bool = True,
         server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
+        show_cameras_in_3d_view: bool = False,
     ):
         """Rerun visualizer class
         Args:
@@ -193,6 +194,7 @@ class RerunVsualizer:
         rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
         self.display_robot_mesh = display_robot_mesh
+        self.show_cameras_in_3d_view = show_cameras_in_3d_view
 
         if self.display_robot_mesh:
             self.urdf_logger = StretchURDFLogger()
@@ -240,8 +242,9 @@ class RerunVsualizer:
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
         rr.set_time_seconds("realtime", time.time())
-        rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
-        rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]))
+        if self.show_cameras_in_3d_view:
+            rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
+            rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]))
         rot, trans = decompose_homogeneous_matrix(obs["camera_pose"])
         rr.log("world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
         rr.log(
@@ -296,8 +299,9 @@ class RerunVsualizer:
         """
         rr.set_time_seconds("realtime", time.time())
         # EE Camera
-        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
-        rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
+        if self.show_cameras_in_3d_view:
+            rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
+            rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
         rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
         rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
         rr.log(
