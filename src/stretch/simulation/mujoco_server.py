@@ -364,8 +364,10 @@ class MujocoZmqServer(BaseZmqServer):
         return self.control_mode
 
     @override
-    def start(self, robocasa: bool = False):
-        self.robot_sim.start()  # This will start the simulation and open Mujoco-Viewer window
+    def start(self, show_viewer_ui: bool = False, robocasa: bool = False):
+        self.robot_sim.start(
+            show_viewer_ui
+        )  # This will start the simulation and open Mujoco-Viewer window
         super().start()
 
         # Create a thread for the control loop
@@ -380,7 +382,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
-            self._status = self.robot_sim.pull_status()
+            self._status = self.robot_sim._pull_status()
             time.sleep(1 / self.simulation_rate)
 
     @override
@@ -574,6 +576,7 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--robocasa-task", default="PnPCounterToCab", help="Robocasa task to generate")
 @click.option("--robocasa-style", type=int, default=1, help="Robocasa style to generate")
 @click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
+@click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
 @click.option(
     "--robocasa-write-to-xml",
     default=False,
@@ -596,11 +599,12 @@ def main(
     robocasa_style: int,
     robocasa_layout: int,
     robocasa_write_to_xml: bool,
+    show_viewer_ui: bool,
 ):
 
     scene_model = None
     if use_robocasa:
-        scene_model, scene_xml = model_generation_wizard(
+        scene_model, scene_xml, objects_info = model_generation_wizard(
             task=robocasa_task,
             style=robocasa_style,
             layout=robocasa_layout,
@@ -621,7 +625,7 @@ def main(
         scene_model=scene_model,
     )
     try:
-        server.start(robocasa=use_robocasa)
+        server.start(show_viewer_ui=show_viewer_ui, robocasa=use_robocasa)
 
     except KeyboardInterrupt:
         server.robot_sim.stop()

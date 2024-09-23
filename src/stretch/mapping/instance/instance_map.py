@@ -576,6 +576,7 @@ class InstanceMemory:
         background_instance_labels: List[int] = [0],
         valid_points: Optional[Tensor] = None,
         pose: Optional[Tensor] = None,
+        verbose: bool = False,
     ):
         """
         Process instance information in the current frame and add instance views to the list of unprocessed views for future association.
@@ -723,17 +724,15 @@ class InstanceMemory:
             h, w = masked_image.shape[1:]
             cropped_image = self.get_cropped_image(image, bbox)
             instance_mask = self.get_cropped_image(instance_mask.unsqueeze(0), bbox)
+            if self.mask_cropped_instances:
+                cropped_image = cropped_image * instance_mask
 
             # get embedding
             if self.encoder is not None:
-                # option 1: encoder the original crop
+                # Compute semantic image features (e.g. SigLIP or CLIP)
                 embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
 
-                # option 2: encode crop with applied mask
-                # embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
-                #     cropped_image.device
-                # )
-
+                # Get a separate set of visual, not semantic, features
                 if hasattr(self.encoder, "get_visual_feat"):
                     visual_feat = self.encoder.get_visual_feat(cropped_image).to(
                         cropped_image.device
@@ -754,14 +753,6 @@ class InstanceMemory:
 
             percent_points = n_mask / (instance_mask.shape[0] * instance_mask.shape[1])
 
-            # Create InstanceView if the view is large enough
-            # print(f"n_mask: {n_mask}/{self.min_pixels_for_instance_view}, n_points: {n_points}>1, percent_points: {percent_points}>{self.min_percent_for_instance_view}")
-            # import matplotlib
-            # matplotlib.use("TkAgg")
-            # import matplotlib.pyplot as plt
-            # plt.imshow(cropped_image / 255)
-            # plt.show()
-
             added = False
             if (
                 n_mask >= self.min_pixels_for_instance_view
@@ -772,13 +763,15 @@ class InstanceMemory:
                 volume = float(box3d_volume_from_bounds(bounds).squeeze())
 
                 if volume < float(self.min_instance_vol):
-                    logger.info(
-                        f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
+                        )
                 elif volume > float(self.max_instance_vol):
-                    logger.info(
-                        f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
+                        )
                 elif (
                     min(
                         bounds[0][1] - bounds[0][0],
@@ -787,17 +780,20 @@ class InstanceMemory:
                     )
                     < self.min_instance_thickness
                 ):
-                    logger.info(
-                        f"Skipping a flat instance with {n_points} points",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping a flat instance with {n_points} points",
+                        )
                 elif (bounds[2][0] + bounds[2][1]) / 2.0 < self.min_instance_height:
-                    logger.info(
-                        f"Skipping a instance with low height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping a instance with low height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
+                        )
                 elif (bounds[2][0] + bounds[2][1]) / 2.0 > self.max_instance_height:
-                    logger.info(
-                        f"Skipping a instance with high height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping a instance with high height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
+                        )
                 else:
                     # get instance view
                     instance_view = InstanceView(
@@ -820,15 +816,17 @@ class InstanceMemory:
                     self.unprocessed_views[env_id][instance_id.item()] = instance_view
                     added = True
             else:
-                logger.info(
-                    f"Skipping a small instance with {n_mask} pixels",
-                )
+                if verbose:
+                    logger.info(
+                        f"Skipping a small instance with {n_mask} pixels",
+                    )
 
             t1 = timeit.default_timer()
-            if added:
-                print(f"Added Instance {instance_id} took {t1-t0} seconds")
-            else:
-                print(f"Skipped Instance {instance_id} took {t1-t0} seconds")
+            if verbose:
+                if added:
+                    print(f"Added Instance {instance_id} took {t1-t0} seconds")
+                else:
+                    print(f"Skipped Instance {instance_id} took {t1-t0} seconds")
 
         # This timestep should be passable (e.g. for Spot we have a Datetime object)
         self.timesteps[env_id] += 1

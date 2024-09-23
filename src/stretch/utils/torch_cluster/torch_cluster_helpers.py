@@ -69,7 +69,7 @@ def grid_cluster(
     num_voxels = torch.max(num_voxels, torch.ones_like(num_voxels))
 
     # Compute voxel indices for each point
-    voxel_indices = ((pos - start) / size).long()
+    voxel_indices = ((pos - start) / size).round().long()
 
     # Clamp indices to ensure they're within bounds
     voxel_indices = torch.clamp(voxel_indices, min=torch.zeros_like(num_voxels), max=num_voxels - 1)

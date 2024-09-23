@@ -32,6 +32,10 @@ class AbstractPromptBuilder(ABC):
             self.prompt_str = self.configure(**kwargs)
         return self.prompt_str
 
+    def parse_response(self, response: str) -> Any:
+        """Parse the response from the LLM. Usually does nothing."""
+        return response
+
 
 class AbstractLLMClient(ABC):
     """Abstract base class for a client that interacts with a language model."""

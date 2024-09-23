@@ -77,6 +77,11 @@ class RRTConnect(RRT):
                 nodes0, nodes1 = self.nodes_fwd, self.nodes_rev
             # Sample a random point and try to connect both trees
             next_state = self.space.sample()
+
+            # is it valid
+            if not self.validate(next_state):
+                continue
+
             # If they both connect, you won!
             res0, closest_node = self.step_planner(nodes=nodes0, next_state=next_state)
             res1, final_node = self.step_planner(nodes=nodes1, next_state=closest_node.state)
@@ -100,4 +105,8 @@ class RRTConnect(RRT):
                     path_fwd.append(new_node)
                     parent = new_node
                 return PlanResult(True, path_fwd, planner=self)
-        return PlanResult(False, planner=self)
+        return PlanResult(
+            False,
+            planner=self,
+            reason=f"max_iter reached with nodes fwd = {len(self.nodes_fwd)} and nodes rev = {len(self.nodes_rev)}",
+        )
