@@ -119,8 +119,8 @@ def plan_to_deltas(xyt0, plan):
     "--start",
     "-x",
     type=str,
-    default="0,0,0",
-    help="start pose for planning as a tuple X,Y,Theta in meters and radians",
+    default="",
+    help="start pose for planning as a tuple X,Y,Theta in meters and radians. Empty will parse from file.",
 )
 @click.option(
     "--test-remove",
@@ -182,8 +182,6 @@ def main(
             dummy_robot,
             parameters,
             semantic_sensor=semantic_sensor,
-            rpc_stub=None,
-            grasp_client=None,
             voxel_map=loaded_voxel_map,
             use_instance_memory=(run_segmentation or show_instances),
         )
@@ -202,7 +200,10 @@ def main(
             resolution=voxel_size, use_instance_memory=(run_segmentation or show_instances)
         )
 
-    x0 = np.array([float(x) for x in start.split(",")])
+    if len(start) > 0:
+        x0 = np.array([float(x) for x in start.split(",")])
+    else:
+        x0 = voxel_map.observations[-1].base_pose.numpy()
     assert len(x0) == 3, "start pose must be 3 values: x, y, theta"
     start_xyz = [x0[0], x0[1], 0]
 

@@ -5,23 +5,11 @@ File.version: "1.0"
 
 Camera.type: "PinHole"
 
-# # Right Camera calibration and distortion parameters (OpenCV)
-# Camera1.fx: 389.8414917
-# Camera1.fy: 389.8414917
-# Camera1.cx: 322.49621582
-# Camera1.cy: 234.46322632
-
 # Depth camera stretchpy
 Camera1.fx: 607.1060791
 Camera1.fy: 607.26599121
 Camera1.cx: 317.01971436
 Camera1.cy: 240.16447449
-
-# # ROS 2
-# Camera1.fx: 910.65911
-# Camera1.fy: 910.89892
-# Camera1.cx: 635.52954
-# Camera1.cy: 360.24673
 
 # distortion parameters
 Camera1.k1: 0.0
@@ -30,8 +18,8 @@ Camera1.p1: 0.0
 Camera1.p2: 0.0
 
 # Camera resolution
-Camera.width: 480
-Camera.height: 640
+Camera.width: 640
+Camera.height: 480
 
 # Camera frames per second 
 Camera.fps: 30
@@ -39,18 +27,20 @@ Camera.fps: 30
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
 
-# Close/Far threshold. Baseline times.
 Stereo.ThDepth: 40.0
 Stereo.b: 0.0745
 
 # Depth map values factor
 RGBD.DepthMapFactor: 1000.0
 
+# Do not insert KFs when recently lost
+IMU.InsertKFsWhenLost: 0
+
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 1500
+ORBextractor.nFeatures: 1000
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
 ORBextractor.scaleFactor: 1.2
@@ -62,8 +52,8 @@ ORBextractor.nLevels: 8
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
 # You can lower these values if your images have low contrast			
-ORBextractor.iniThFAST: 15
-ORBextractor.minThFAST: 4
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

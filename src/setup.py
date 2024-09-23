@@ -53,6 +53,7 @@ setuptools.setup(
         "openai",
         "openai-clip",
         # Hardware dependencies
+        "hello-robot-stretch-urdf",
         "pyrealsense2",
         "urchin",
         # Visualization
@@ -67,6 +68,7 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers",
         "accelerate",
+        "einops",
         # Compression tools
         "pyliblzfse",
         "webp",
@@ -95,13 +97,14 @@ setuptools.setup(
             "flake8",
             "black",
             "mypy",
+            "lark",
         ],
         "sim": [
             "mujoco",
             "hello-robot-stretch-urdf",
             "grpcio",
         ],
-        "hand_tracking": [
+        "hand_tracker": [
             "mediapipe",
             "webcam",
         ],

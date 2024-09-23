@@ -11,7 +11,7 @@ from typing import Optional
 
 from termcolor import colored
 
-from stretch.agent.base.task_manager import TaskManager
+from stretch.agent.robot_agent import RobotAgent
 from stretch.core.robot import AbstractRobotClient
 from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
@@ -24,17 +24,16 @@ class ManagedOperation(Operation):
     def __init__(
         self,
         name,
-        manager: Optional[TaskManager] = None,
+        agent: Optional[RobotAgent] = None,
         robot: Optional[AbstractRobotClient] = None,
         **kwargs,
     ):
         super().__init__(name, **kwargs)
-        if manager is not None:
-            self.manager = manager
-            self.robot = manager.robot
-            self.parameters = manager.parameters
-            self.navigation_space = manager.navigation_space
-            self.agent = manager.agent
+        if agent is not None:
+            self.agent = agent
+            self.robot = agent.robot
+            self.parameters = agent.parameters
+            self.navigation_space = agent.space
         elif robot is not None:
             self.robot = robot
             self.parameters = robot.parameters
@@ -51,9 +50,9 @@ class ManagedOperation(Operation):
         """
         return self._name
 
-    def update(self):
+    def update(self, **kwargs):
         print(colored("================ Updating the world model ==================", "blue"))
-        self.agent.update()
+        self.agent.update(**kwargs)
 
     def attempt(self, message: str):
         print(colored(f"Trying {self.name}:", "blue"), message)
@@ -86,7 +85,7 @@ class ManagedOperation(Operation):
         matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
-        plt.imshow(self.manager.voxel_map.observations[0].instance)
+        plt.imshow(self.agent.voxel_map.observations[0].instance)
         plt.show()
 
     def show_instance(self, instance: Instance, title: Optional[str] = None):

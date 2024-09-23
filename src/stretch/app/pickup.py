@@ -12,7 +12,7 @@
 import click
 
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupManager
+from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.perception import create_semantic_sensor
@@ -59,9 +59,11 @@ from stretch.perception import create_semantic_sensor
     help="Mode of operation for the robot.",
     type=click.Choice(["one_shot", "all"]),
 )
+@click.option("--open_loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
+    open_loop: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     device_id: int = 0,
     verbose: bool = False,
@@ -98,10 +100,14 @@ def main(
 
     # After the robot has started...
     try:
-        manager = PickupManager(
-            agent, target_object=target_object, target_receptacle=receptacle, matching=match_method
+        pickup_task = PickupTask(
+            agent,
+            target_object=target_object,
+            target_receptacle=receptacle,
+            matching=match_method,
+            use_visual_servoing_for_grasp=not open_loop,
         )
-        task = manager.get_task(add_rotate=force_rotate, mode=mode)
+        task = pickup_task.get_task(add_rotate=force_rotate, mode=mode)
     except Exception as e:
         print(f"Error creating task: {e}")
         robot.stop()

@@ -107,9 +107,9 @@ class OrbSlam(Slam):
         """
         while True:
             msg = self.camera.get_message()
-            self.color_image = msg["color_image"]
-            self.depth_image = msg["depth_image"]
-            self.timestamp = time.time()
+            self.color_image = np.array(msg["color_image"])
+            self.depth_image = np.array(msg["depth_image"])
+            self.timestamp = float(time.time())
             self.dirty = True
 
     def slam_thread(self):
@@ -119,7 +119,7 @@ class OrbSlam(Slam):
         while True:
             if self.dirty:
                 Tcw = self.slam_system.process_image_rgbd(
-                    self.color_image, self.depth_image, self.timestamp
+                    self.color_image, self.depth_image, [], self.timestamp
                 )
                 self.dirty = False
 
@@ -127,6 +127,9 @@ class OrbSlam(Slam):
                 # in row-major order of 16 elements
 
                 # Reshape it to a 4x4 matrix
+                if (len(Tcw)) == 0:
+                    continue
+
                 Tcw = np.array(Tcw).reshape(4, 4)
 
                 # Compute Twc

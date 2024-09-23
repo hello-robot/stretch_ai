@@ -16,16 +16,16 @@ from termcolor import colored
 
 from stretch.audio import AudioRecorder
 from stretch.audio.speech_to_text import WhisperSpeechToText
-from stretch.llms import Gemma2bClient, LlamaClient
+from stretch.llms import get_llm_choices, get_llm_client
 from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
 
 
 @click.command()
 @click.option(
-    "--model",
-    default="gemma",
+    "--llm",
+    default="gemma2b",
     help="The model to use (gemma or llama)",
-    type=click.Choice(["gemma", "llama"]),
+    type=click.Choice(get_llm_choices()),
 )
 @click.option(
     "--max_audio_duration", default=10.0, help="The maximum duration of the audio recording"
@@ -33,17 +33,12 @@ from stretch.llms.prompts.simple_prompt import SimpleStretchPromptBuilder
 @click.option(
     "--silence_limit", default=2.0, help="The amount of silence before stopping the recording"
 )
-def main(model="gemma", max_audio_duration: float = 10.0, silence_limit: float = 2.0):
+def main(llm="gemma2b", max_audio_duration: float = 10.0, silence_limit: float = 2.0):
     # Load the tokenizer and model
     audio_recorder = AudioRecorder()
     whisper = WhisperSpeechToText()
     prompt = SimpleStretchPromptBuilder()
-    if model == "gemma":
-        client = Gemma2bClient(prompt)
-    elif model == "llama":
-        client = LlamaClient(prompt)
-    else:
-        raise ValueError(f"Invalid model: {model}")
+    client = get_llm_client(llm, prompt)
 
     print("Talk to me, Stretch! If you don't say anything, I will give up.")
     for i in range(50):
