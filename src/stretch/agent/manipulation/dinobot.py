@@ -65,8 +65,10 @@ def load_demo(path_to_demo_folder):
         demo_deltas.append(delta)
 
     # pull out the first frame in the videos for the bottleneck images
-    rgb_bn = Image.open("ee_rgb_0.jpg")
-    depth_bn = Image.open("ee_rgb_1.jpg")
+    # rgb_bn = Image.open("ee_rgb_0.jpg")
+    # depth_bn = Image.open("ee_rgb_1.jpg")
+    rgb_bn = Image.open("bottleneck_rgb.png")
+    depth_bn = Image.open("bottleneck_depth.png")
 
     return rgb_bn, depth_bn, demo_deltas
 
@@ -134,15 +136,16 @@ def extract_3d_coordinates(points, xyz):
     depths = []
     for point in points:
         x, y = point
-        depths.append(xyz[x][y])
+        depths.append(xyz[y, x, 2])
 
     # Create a new array of shape (n, 3) with the 3d coordinates
-    # points_3d = []
-    # for i, point in enumerate(points):
-    #     x, y = point
-    #     points_3d.append()
+    points_3d = []
+    for i, point in enumerate(points):
+        x, y = point
+        points_3d.append([x, y, depths[i]])
 
-    return np.array(depths)
+    breakpoint()
+    return np.array(points_3d)
 
 
 def compute_error(points1: np.ndarray, points2: np.ndarray) -> float:
