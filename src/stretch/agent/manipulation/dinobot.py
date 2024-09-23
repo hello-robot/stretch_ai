@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-sys.path.append("/home/hello-robot/repos/dino-vit-features")
+# sys.path.append("/home/hello-robot/repos/dino-vit-features")
+sys.path.append("/home/cpaxton/src/dino-vit-features")
 import sys
 
 # Install this DINO repo to extract correspondences: https://github.com/ShirAmir/dino-vit-features

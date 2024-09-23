@@ -20,6 +20,7 @@ from trimesh import Trimesh
 from stretch.motion import HelloStretchIdx
 
 pkg_path = str(importlib_resources.files("stretch_urdf"))
+
 model_name = "SE3"  # RE1V0, RE2V0, SE3
 tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
 urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
