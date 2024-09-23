@@ -38,6 +38,9 @@ def compute_tilt(camera_xyz, target_xyz):
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
 @click.option("--re", default=1, type=int)
+@click.option("--method", default='dynamem', type=str)
+@click.option("--env", default=1, type=int)
+@click.option("--test", default=1, type=int)
 @click.option(
     "--input-path",
     type=click.Path(),
@@ -50,6 +53,9 @@ def main(
     navigate_home: bool = False,
     explore_iter: int = 5,
     re: int = 1,
+    method: str = 'dynamem',
+    env: int = 1,
+    test: int = 1,
     input_path: str = None,
     **kwargs,
 ):
@@ -73,7 +79,7 @@ def main(
 
     print("- Start robot agent with data collection")
     demo = RobotAgentMDP(
-        robot, parameters, ip = ip, re = re
+        robot, parameters, ip = ip, re = re, env_num = env, test_num = test, method = method
     )
 
     if input_path is None:
@@ -117,13 +123,14 @@ def main(
                 point = demo.navigate(text)
                 if point is None:
                     print('Navigation Failure!')
+                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
+
+            if input('You want to run manipulation: y/n') != 'n':
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking = True)
-                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
 
-            if input('You want to run manipulation: y/n') != 'n':
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input('Enter object name: ')
@@ -143,13 +150,14 @@ def main(
                 point = demo.navigate(text)
                 if point is None:
                     print('Navigation Failure')
+                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
+        
+            if input('You want to run placing: y/n') != 'n':
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking = True)
-                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
-        
-            if input('You want to run placing: y/n') != 'n':
+                
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input('Enter receptacle name: ')

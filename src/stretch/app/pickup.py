@@ -12,7 +12,7 @@
 import click
 
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupManager
+from stretch.agent.task.pickup import PickupTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.perception import create_semantic_sensor
@@ -98,10 +98,10 @@ def main(
 
     # After the robot has started...
     try:
-        manager = PickupManager(
+        pickup_task = PickupTask(
             agent, target_object=target_object, target_receptacle=receptacle, matching=match_method
         )
-        task = manager.get_task(add_rotate=force_rotate, mode=mode)
+        task = pickup_task.get_task(add_rotate=force_rotate, mode=mode)
     except Exception as e:
         print(f"Error creating task: {e}")
         robot.stop()

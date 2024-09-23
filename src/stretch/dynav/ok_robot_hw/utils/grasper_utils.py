@@ -167,7 +167,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
     pin_base_point = apply_se3_transform(pin_cam2base_transform, pin_point)
     # print(f"pin base point {pin_base_point}")
 
-    diff_value = (0.227 - gripper_depth - gripper_height) # 0.228 is the distance between link_Straight_gripper node and the gripper tip
+    diff_value = (0.226 - gripper_depth - gripper_height) # 0.228 is the distance between link_Straight_gripper node and the gripper tip
     pin_transformed_point1[2] -= (diff_value)
     ref_diff = (diff_value)
 
