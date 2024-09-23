@@ -55,6 +55,7 @@ class AStar():
         obs, exp = self.space.voxel_map.get_2d_map()
         # print('up to date navigable map loaded')
         self._navigable = ~obs & exp
+        # self._navigable = ~obs
         self.start_time = time.time()
 
     def verify_path(self, path) -> bool:
@@ -95,7 +96,7 @@ class AStar():
         return obstacle_punishment
 
     # A* heuristic
-    def compute_heuristic(self, a: Tuple[int, int], b: Tuple[int, int], weight = 12, avoid = 3) -> float:
+    def compute_heuristic(self, a: Tuple[int, int], b: Tuple[int, int], weight = 6, avoid = 3) -> float:
         return self.compute_dis(a, b) + weight * self.compute_obstacle_punishment(a, weight, avoid)\
             + self.compute_obstacle_punishment(b, weight, avoid)
 

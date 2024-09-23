@@ -49,6 +49,7 @@ from PIL import Image
 
 from stretch.dynav.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
 # from stretch.utils.morphology import get_edges
+import torch.nn.functional as F
 
 def get_inv_intrinsics(intrinsics):
     # return intrinsics.double().inverse().to(intrinsics)
@@ -107,21 +108,26 @@ def get_xyz(depth, pose, intrinsics):
 
 class ImageProcessor:
     def __init__(self,  
-        vision_method = 'mask&*lip', 
+        vision_method = 'mask*lip', 
         siglip = True,
         device = 'cuda',
         min_depth = 0.25,
         max_depth = 2.5,
-        img_port = 5555,
+        img_port = 5558,
         text_port = 5556,
         open_communication = True,
         rerun = True,
-        static = True
+        static = True,
+        log = None,
+        image_shape = (450, 350)
     ):
         self.static = static
         self.siglip = siglip
         current_datetime = datetime.datetime.now()
-        self.log = 'debug_' + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        if log is None:
+            self.log = 'debug_' + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        else:
+            self.log = log
         self.rerun = rerun
         if self.rerun:
             if self.static:
@@ -147,6 +153,7 @@ class ImageProcessor:
         self.voxel_map_lock = threading.Lock()  # Create a lock for synchronizing access to `self.voxel_map_localizer`
 
         self.traj = None
+        self.image_shape = image_shape
         
         if open_communication:
             self.img_socket = load_socket(img_port)
@@ -244,9 +251,9 @@ class ImageProcessor:
             if self.voxel_map_localizer.verify_point(text, traj_target_point):
                 localized_point = traj_target_point
                 debug_text += '## Last visual grounding results looks fine so directly use it.\n'
-                if self.planner.verify_path(self.traj[:-2]):
-                    waypoints = self.traj[:-2]
-                    debug_text += '## Last path planning results looks fine so directly use it.\n'
+                # if self.planner.verify_path(self.traj[:-2]):
+                #     waypoints = self.traj[:-2]
+                #     debug_text += '## Last path planning results looks fine so directly use it.\n'
 
         if waypoints is None:
             # Do visual grounding
@@ -340,7 +347,7 @@ class ImageProcessor:
                 if idx != len(traj) - 1:
                     origins.append([traj[idx][0], traj[idx][1], 1.5])
                     vectors.append([traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0])
-            rr.log("/direction", rr.Arrows3D(origins = origins, vectors = vectors, colors=torch.Tensor([0, 1, 0]), radii=0.05), static = self.static)
+            rr.log("/direction", rr.Arrows3D(origins = origins, vectors = vectors, colors=torch.Tensor([0, 1, 0]), radii=0.1), static = self.static)
             rr.log("/robot_start_pose", rr.Points3D([start_pose[0], start_pose[1], 1.5], colors=torch.Tensor([0, 0, 1]), radii=0.1), static = self.static)
 
         # self.write_to_pickle()
@@ -568,7 +575,7 @@ class ImageProcessor:
     def run_mask_clip(self, rgb, mask, world_xyz):
 
         with torch.no_grad():
-            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False)
+            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False)
             xyxy_tensor = results[0].boxes.xyxy
             if len(xyxy_tensor) == 0:
                 return
@@ -600,7 +607,7 @@ class ImageProcessor:
 
     def run_owl_sam_clip(self, rgb, mask, world_xyz):
         with torch.no_grad():
-            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False)
+            results = self.yolo_model.predict(rgb.permute(1,2,0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False)
             xyxy_tensor = results[0].boxes.xyxy
             if len(xyxy_tensor) == 0:
                 return
@@ -690,7 +697,6 @@ class ImageProcessor:
         if not os.path.exists(self.log):
             os.mkdir(self.log)
         self.obs_count += 1
-        world_xyz = get_xyz(depth, pose, intrinsics).squeeze(0)
 
         cv2.imwrite(self.log + '/rgb' + str(self.obs_count) + '.jpg', rgb[:, :, [2, 1, 0]])
         np.save(self.log + '/rgb' + str(self.obs_count) + '.npy', rgb)
@@ -700,7 +706,18 @@ class ImageProcessor:
 
         rgb, depth = torch.from_numpy(rgb), torch.from_numpy(depth)
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
+        
+        h, w = self.image_shape
+        h_image, w_image = depth.shape
+        rgb = F.interpolate(rgb.unsqueeze(0), size=self.image_shape, mode='bilinear', align_corners=False).squeeze(0)
+        depth = F.interpolate(depth.unsqueeze(0).unsqueeze(0), size=self.image_shape, mode='bilinear', align_corners=False).squeeze(0).squeeze(0)
+        intrinsics[0, 0] *= w / w_image
+        intrinsics[1, 1] *= h / h_image
+        intrinsics[0, 2] *= w / w_image
+        intrinsics[1, 2] *= h / h_image
 
+        world_xyz = get_xyz(depth, pose, intrinsics).squeeze(0)
+        
         median_depth = torch.from_numpy(
             scipy.ndimage.median_filter(depth, size=5)
         )
@@ -873,15 +890,15 @@ class ImageProcessor:
 # def main(cfg):
 #     torch.manual_seed(1)
 #     imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
-#     # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
-#     # if not cfg.pickle_file_name is None:
-#     #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
-#     # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
-#     # if cfg.open_communication:
-#     #     while True:
-#     #         imageProcessor.recv_text()
-#     imageProcessor.read_from_pickle('debug/debug_2024-09-09_07-50-41.pkl', -1)
-#     imageProcessor.write_to_pickle()
+    # imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
+    # if not cfg.pickle_file_name is None:
+    #     imageProcessor.read_from_pickle(cfg.pickle_file_name)
+    # print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
+    # if cfg.open_communication:
+    #     while True:
+    #         imageProcessor.recv_text()
+    # imageProcessor.read_from_pickle('env.pkl', -1)
+    # imageProcessor.write_to_pickle()
 
 if __name__ == "__main__":
     main(None)

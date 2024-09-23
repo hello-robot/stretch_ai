@@ -63,15 +63,15 @@ def main(
     )
 
     while input('STOP? Y/N') != 'Y':
-        text = input('Enter object name: ')
-        theta = -0.6
-        demo.manipulate(text, theta)
+        if input('You want to run manipulation: y/n') == 'y':
+            text = input('Enter object name: ')
+            theta = -0.6
+            demo.manipulate(text, theta)
             
-        if input('You want to run placing: y/n') == 'n':
-            continue
-        text = input('Enter receptacle name: ')
-        theta = -0.6
-        demo.place(text, theta)
+        if input('You want to run placing: y/n') == 'y':
+            text = input('Enter receptacle name: ')
+            theta = -0.6
+            demo.place(text, theta)
 
 
 if __name__ == "__main__":

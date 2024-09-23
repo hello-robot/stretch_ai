@@ -112,6 +112,7 @@ class VoxelMapLocalizer():
         rgb: Optional[Tensor],
         weights: Optional[Tensor] = None,
         obs_count: Optional[Tensor] = None,
+        # weight_decay: float = 0.95
     ):
         points = points.to(self.device)
         if features is not None:
@@ -120,6 +121,8 @@ class VoxelMapLocalizer():
             rgb = rgb.to(self.device)
         if weights is not None:
             weights = weights.to(self.device)
+        # if weight_decay is not None and self.voxel_pcd._weights is not None:
+        #     self.voxel_pcd._weights *= weight_decay
         self.voxel_pcd.add(points = points, 
                         features = features,
                         rgb = rgb,
