@@ -25,8 +25,8 @@ from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import pickup, move_to_point, capture_and_process_image
 from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array
-# from stretch.dynav.voxel_map_server import ImageProcessor
-from stretch.dynav.llm_server import ImageProcessor
+
+# from stretch.dynav.llm_server import ImageProcessor
 
 import cv2
 
@@ -43,10 +43,13 @@ class RobotAgentMDP:
         robot: RobotClient,
         parameters: Dict[str, Any],
         ip: str,
-        image_port: int = 5555,
+        image_port: int = 5558,
         text_port: int = 5556,
         manip_port: int = 5557,
         re: int = 1,
+        env_num: int = 1,
+        test_num: int = 1,
+        method: str = 'dynamem'
     ):
         print('------------------------YOU ARE NOW RUNNING PEIQI CODES V3-----------------')
         self.re = re
@@ -77,7 +80,12 @@ class RobotAgentMDP:
         )
 
         self.image_sender = ImageSender(ip = ip, image_port = image_port, text_port = text_port, manip_port = manip_port)
-        self.image_processor = ImageProcessor(rerun = True, static = False)
+        if method == 'dynamem':
+            from stretch.dynav.voxel_map_server import ImageProcessor
+            self.image_processor = ImageProcessor(rerun = True, static = False, log = 'env' + str(env_num) + '_' + str(test_num))
+        elif method == 'mllm':
+            from stretch.dynav.llm_server import ImageProcessor
+            self.image_processor = ImageProcessor(rerun = True, static = False, log = 'env' + str(env_num) + '_' + str(test_num))
 
         self.look_around_times = []
         self.execute_times = []
@@ -90,7 +98,10 @@ class RobotAgentMDP:
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.6]:
+                start_time = time.time()
                 self.robot.head_to(pan, tilt, blocking = True)
+                end_time = time.time()
+                print('moving head takes ', end_time - start_time, 'seconds.')
                 self.update()
 
     def rotate_in_place(self):

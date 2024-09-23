@@ -54,7 +54,7 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [200, 200]
+DEFAULT_GRID_SIZE = [180, 180]
 
 logger = logging.getLogger(__name__)
 
