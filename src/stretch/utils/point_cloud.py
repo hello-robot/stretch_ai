@@ -11,12 +11,14 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np
 import open3d as o3d
+import torch
 import trimesh.transformations as tra
+from scipy.spatial import cKDTree
 
 
 def numpy_to_pcd(xyz: np.ndarray, rgb: np.ndarray = None) -> o3d.geometry.PointCloud:
@@ -418,3 +420,187 @@ def dropout_random_ellipses(depth_img, dropout_mean, gamma_shape=10000, gamma_sc
         depth_img[mask == 1] = 0
 
     return depth_img
+
+
+import numpy as np
+import open3d as o3d
+from scipy.spatial import cKDTree
+
+
+def ransac_transform(source_xyz, target_xyz, visualize=False, distance_threshold: float = 0.25):
+    """
+    Find the transformation between two point clouds using RANSAC.
+
+    Parameters:
+        source_xyz (np.ndarray): Source point cloud as a Nx3 numpy array
+        target_xyz (np.ndarray): Target point cloud as a Nx3 numpy array
+        visualize (bool): If True, visualize the registration result
+        distance_threshold (float): Maximum correspondence distance
+
+    Returns:
+        np.ndarray: 4x4 transformation matrix
+        float: Fitness score
+        float: Inlier RMSE
+        int: Number of inliers found
+    """
+    # Convert numpy arrays to Open3D point clouds
+    source = o3d.geometry.PointCloud()
+    source.points = o3d.utility.Vector3dVector(source_xyz)
+    target = o3d.geometry.PointCloud()
+    target.points = o3d.utility.Vector3dVector(target_xyz)
+
+    """
+    # Estimate normals
+    source.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
+    )
+    target.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
+    )
+
+    # Compute FPFH features
+    source_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+        source, o3d.geometry.KDTreeSearchParamHybrid(radius=0.25, max_nn=100)
+    )
+    target_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+        target, o3d.geometry.KDTreeSearchParamHybrid(radius=0.25, max_nn=100)
+    )
+
+    # Apply RANSAC registration
+    result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+        source,
+        target,
+        source_fpfh,
+        target_fpfh,
+        True,
+        distance_threshold,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+        ransac_n=4,
+        checkers=[
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
+        ],
+        criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=5000000, confidence=0.9999),
+    )
+    """
+
+    result = o3d.pipelines.registration.registration_icp(
+        source,
+        target,
+        distance_threshold,
+        np.eye(4),
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+    )
+
+    # Visualize if flag is set
+    if visualize:
+        # Apply the transformation to the source point cloud
+        source_transformed = source.transform(result.transformation)
+
+        # Color the point clouds
+        source_transformed.paint_uniform_color([1, 0, 0])  # Red for source
+        target.paint_uniform_color([0, 1, 0])  # Green for target
+
+        # Visualize the result
+        o3d.visualization.draw_geometries(
+            [source_transformed, target],
+            window_name="RANSAC Registration Result",
+            width=1200,
+            height=800,
+        )
+
+    # Return the transformation matrix
+    return result.transformation, result.fitness, result.inlier_rmse, len(result.correspondence_set)
+
+
+def find_se3_transform(
+    cloud1: Union[torch.Tensor, np.ndarray],
+    cloud2: Union[torch.Tensor, np.ndarray],
+    rgb1: Union[torch.Tensor, np.ndarray],
+    rgb2: Union[torch.Tensor, np.ndarray],
+    color_weight=0.5,
+    max_iterations=50,
+    tolerance=1e-5,
+):
+    """
+    Find the SE(3) transformation between two colorized point clouds.
+
+    Parameters:
+    cloud1, cloud2: Nx3 numpy arrays containing XYZ coordinates
+    rgb1, rgb2: Nx3 numpy arrays containing RGB values (0-255)
+    color_weight: Weight given to color difference (0-1)
+    max_iterations: Maximum number of ICP iterations
+    tolerance: Convergence tolerance for transformation change
+
+    Returns:
+    R: 3x3 rotation matrix
+    t: 3x1 translation vector
+    """
+
+    # Example usage:
+    # cloud1 = np.random.rand(1000, 3)  # XYZ coordinates for cloud 1
+    # cloud2 = np.random.rand(1000, 3)  # XYZ coordinates for cloud 2
+    # rgb1 = np.random.randint(0, 256, (1000, 3))  # RGB values for cloud 1
+    # rgb2 = np.random.randint(0, 256, (1000, 3))  # RGB values for cloud 2
+    #
+    # R, t = find_se3_transform(cloud1, cloud2, rgb1, rgb2)
+
+    if isinstance(cloud1, torch.Tensor):
+        cloud1 = cloud1.cpu().numpy()
+    if isinstance(cloud2, torch.Tensor):
+        cloud2 = cloud2.cpu().numpy()
+    if isinstance(rgb1, torch.Tensor):
+        rgb1 = rgb1.cpu().numpy()
+    if isinstance(rgb2, torch.Tensor):
+        rgb2 = rgb2.cpu().numpy()
+
+    def best_fit_transform(A, B):
+        """
+        Calculates the least-squares best-fit transform between corresponding 3D points A->B
+        """
+        centroid_A = np.mean(A, axis=0)
+        centroid_B = np.mean(B, axis=0)
+        AA = A - centroid_A
+        BB = B - centroid_B
+        H = np.dot(AA.T, BB)
+        U, S, Vt = np.linalg.svd(H)
+        R = np.dot(Vt.T, U.T)
+        if np.linalg.det(R) < 0:
+            Vt[2, :] *= -1
+            R = np.dot(Vt.T, U.T)
+        t = centroid_B.T - np.dot(R, centroid_A.T)
+        return R, t
+
+    # Normalize RGB values
+    rgb1_norm = rgb1 / 255.0
+    rgb2_norm = rgb2 / 255.0
+
+    # Combine spatial and color information
+    combined1 = np.hstack((cloud1, rgb1_norm * color_weight))
+    combined2 = np.hstack((cloud2, rgb2_norm * color_weight))
+
+    # Initial transformation
+    R = np.eye(3)
+    t = np.zeros(3)
+
+    for iteration in range(max_iterations):
+        # Find nearest neighbors
+        tree = cKDTree(combined2)
+        distances, indices = tree.query(combined1, k=1)
+
+        # Estimate transformation
+        R_new, t_new = best_fit_transform(cloud1, cloud2[indices])
+
+        # Update transformation
+        t = t_new + np.dot(R_new, t)
+        R = np.dot(R_new, R)
+
+        # Apply transformation
+        cloud1 = np.dot(cloud1, R_new.T) + t_new
+        combined1[:, :3] = cloud1
+
+        # Check for convergence
+        if np.sum(np.abs(R_new - np.eye(3))) < tolerance and np.sum(np.abs(t_new)) < tolerance:
+            break
+
+    return R, t

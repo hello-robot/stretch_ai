@@ -7,7 +7,4 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from .object_manip_nav_prompt import ObjectManipNavPromptBuilder
-from .ok_robot_prompt import OkRobotPromptBuilder
-from .pickup_prompt import PickupPromptBuilder
-from .simple_prompt import SimpleStretchPromptBuilder
+from .llm_plan_task import LLMPlanTask

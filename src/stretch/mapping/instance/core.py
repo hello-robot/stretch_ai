@@ -175,6 +175,7 @@ class Instance:
             )
         if normalize:
             emb = emb / emb.norm(dim=-1, keepdim=True)
+
         return emb
 
     def get_best_view(self, metric: str = "area") -> InstanceView:
