@@ -8,6 +8,10 @@
 # license information maybe found below, if so.
 
 
+import math
+
+import numpy as np
+
 from stretch.agent.base import ManagedOperation
 
 
@@ -43,8 +47,12 @@ class NavigateToObjectOperation(ManagedOperation):
             )
             breakpoint()
 
+        if self.agent.within_reach_of(self.get_target()):
+            self.cheer("Already within reach of object!")
+
         # Motion plan to the object
-        plan = self.plan_to_instance_for_manipulation(self.get_target(), start=start)
+        plan = self.agent.plan_to_instance_for_manipulation(self.get_target(), start=start)
+
         if plan.success:
             self.plan = plan
             self.cheer("Found plan to object!")
@@ -55,8 +63,28 @@ class NavigateToObjectOperation(ManagedOperation):
         return False
 
     def run(self):
+        """Navigate the robot to the object. If the object is within reach, we will not move the robot, but will rotate it to face the object.
+
+        Returns:
+            bool: True if the operation was successful, False otherwise.
+        """
+
         self.intro("executing motion plan to the object.")
         self.robot.move_to_nav_posture()
+
+        if self.agent.within_reach_of(self.get_target()):
+            self.warn("Already within reach of object!")
+            xyz = self.get_target().get_center()
+            start_xyz = self.robot.get_base_pose()[:2]
+            theta = math.atan2(
+                xyz[1] - self.robot.get_base_pose()[1], xyz[0] - self.robot.get_base_pose()[0]
+            )
+            self.robot.navigate_to(
+                np.array([start_xyz[0], start_xyz[1], theta + np.pi / 2]),
+                blocking=True,
+                timeout=30.0,
+            )
+            return
 
         # Execute the trajectory
         assert (

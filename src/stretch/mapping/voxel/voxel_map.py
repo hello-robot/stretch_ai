@@ -12,7 +12,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import math
-from typing import Optional, Tuple
+from collections import deque
+from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -63,6 +64,9 @@ class SparseVoxelMapNavigationSpace(XYT):
         if grid is None:
             grid = self.voxel_map.grid
         self.grid = grid
+
+        # Create a stack for storing states to sample
+        self._stack = deque()
 
         # Always use 3d states
         self.use_orientation = use_orientation
@@ -808,14 +812,29 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             yield None
 
+    def push_locations_to_stack(self, locations: list[Union[np.ndarray, torch.Tensor]]):
+        """Push locations to stack for sampling.
+
+        Args:
+            locations(list): list of locations to push to stack
+        """
+        for loc in locations:
+            if isinstance(loc, torch.Tensor):
+                loc = loc.cpu().numpy()
+            self._stack.append(loc)
+
     def sample(self) -> np.ndarray:
         """Sample any position that corresponds to an "explored" location. Goals are valid if they are within a reasonable distance of explored locations. Paths through free space are ok and don't collide.
 
         Since our motion planners currently use numpy, we'll stick with that for the return type for now.
         """
 
+        if len(self._stack) > 0:
+            state = self._stack.pop()
+            return state
+
         # Sample any point which is explored and not an obstacle
-        # Sampled points are convertd to CPU for now
+        # Sampled points are converted to CPU for now
         point = self.voxel_map.sample_explored()
 
         # Create holder

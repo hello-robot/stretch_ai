@@ -53,6 +53,7 @@ setuptools.setup(
         "openai",
         "openai-clip",
         # Hardware dependencies
+        "hello-robot-stretch-urdf",
         "pyrealsense2",
         "urchin",
         # Visualization

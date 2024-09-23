@@ -8,33 +8,34 @@ open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
-voxel_size: 0.05
-# 0.05 seems too low
+voxel_size: 0.04 # Size of a voxel in meters
 obs_min_height: 0.1  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
-obs_min_density: 5  # This many points makes it an obstacle
+neg_obs_height: -0.10  # Things less than this height ARE obstacles
+obs_min_density: 50  # This many points makes it an obstacle
+min_points_per_voxel: 50  # Drop things below this density per voxel
 
 # Padding
-# pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
-pad_obstacles: 1  # Add this many units (voxel_size) to the area around obstacles
+pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
 min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
+add_local_every_step: False
 remove_visited_from_obstacles: False
 min_depth: 0.5
-# max_depth: 2.5
 max_depth: 2.0
 
 # Object detection parameters
 detection:
   module: "detic"
+  # module: "yolo"
   category_map_file: example_cat_map.json
-  use_detic_viz: True
+  use_detic_viz: False
 
 # Point cloud cleanup
 filters:
   smooth_kernel_size: 2
-  #smooth_kernel_size: 0
+  # smooth_kernel_size: 0
   use_median_filter: True
   median_filter_size: 2
   median_filter_max_error: 0.01
@@ -68,7 +69,11 @@ motion:
     gripper_open_threshold: 0.3
 
 # Exploration
-in_place_rotation_steps: 8
+agent:
+  #in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
+  #sweep_head_on_update: False
+  in_place_rotation_steps: 2
+  sweep_head_on_update: True
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
@@ -80,6 +85,10 @@ instance_memory:
   max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.1
+  # Should we remove the background from the instance views?
+  # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
+  # It will have an effect on performance.
+  mask_cropped_instances: False  # Should we remove the background from the instance views?
   matching:
     # Feature matching threshold for if something is considered a particular class
     # Set this value by experimting with:
@@ -97,21 +106,21 @@ scene_graph:
   max_on_height: 0.2
 
 # Navigation space - used for motion planning and computing goals.
-step_size: 0.1
-rotation_step_size: 0.2 
-dilate_frontier_size: 3  # Used to shrink the frontier back from the edges of the world
-dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
 motion_planner:
+  step_size: 0.1
+  rotation_step_size: 0.2 
   simplify_plans: True
   shortcut_plans: True
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
+    dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
     default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
-    step_dist: 0.1
+    step_dist: 0.2
   goals:
     manipulation_radius: 0.55
 
