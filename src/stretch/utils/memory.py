@@ -63,3 +63,8 @@ def get_path_to_debug(name: str) -> str:
     _ensure_path_exists()
     os.makedirs(os.path.join(path, "debug"), exist_ok=True)
     return os.path.join(path, "debug", name)
+
+
+def get_path_to_default_credentials() -> str:
+    """Gets the path to the default credentials file"""
+    return os.path.join(path, "credentials.json")
