@@ -101,7 +101,7 @@ def get_xyz(depth, pose, intrinsics):
 
 class ImageProcessor:
     def __init__(self,  
-        vision_method = 'flash_owl', 
+        vision_method = 'pro_owl', 
         siglip = True,
         device = 'cuda',
         min_depth = 0.25,
@@ -110,12 +110,16 @@ class ImageProcessor:
         text_port = 5556,
         open_communication = True,
         rerun = True,
-        static = True
+        static = True,
+        log = None
     ):
         self.static = static
         self.siglip = siglip
         current_datetime = datetime.datetime.now()
-        self.log = 'debug_' + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        if log is None:
+            self.log = 'debug_' + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        else:
+            self.log = log
         self.rerun = rerun
         if self.rerun:
             rr.init(self.log, spawn = True)
@@ -234,9 +238,6 @@ class ImageProcessor:
         
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
-            
-        if torch.linalg.norm((torch.tensor(localized_point) - torch.tensor(start_pose))[:2]) < 0.7:
-            return [[np.nan, np.nan, np.nan], localized_point]
 
         point = self.sample_navigation(start_pose, localized_point)
 
@@ -264,7 +265,7 @@ class ImageProcessor:
             rr.log("robot_monologue", rr.TextDocument(debug_text, media_type = rr.MediaType.MARKDOWN), static = self.static)
 
         if obs is not None and mode == 'navigation':
-            rgb = self.voxel_map.observations[obs - 1].rgb
+            rgb = self.voxel_map.observations[obs].rgb
             if not self.rerun:
                 if isinstance(rgb, torch.Tensor):
                     rgb = np.array(rgb)
@@ -283,7 +284,7 @@ class ImageProcessor:
                 waypoints = [pt.state for pt in res.trajectory]
                 # If we are navigating to some object of interst, send (x, y, z) of 
                 # the object so that we can make sure the robot looks at the object after navigation
-                finished = len(waypoints) <= 6 and mode == 'navigation'
+                finished = len(waypoints) <= 10 and mode == 'navigation'
                 if not finished:
                     waypoints = waypoints[:8]
                 traj = self.planner.clean_path_for_xy(waypoints)
@@ -425,6 +426,8 @@ class ImageProcessor:
             self.add_to_voxel_pcd(valid_xyz, None, valid_rgb)
     
     def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
+        print('Reading from ', pickle_file_name)
+        rr.init('Debug', spawn = True)
         if isinstance(pickle_file_name, str):
             pickle_file_name = Path(pickle_file_name)
         assert pickle_file_name.exists(), f"No file found at {pickle_file_name}"
@@ -455,16 +458,15 @@ class ImageProcessor:
             if num_frames > 0 and i >= num_frames:
                 break
 
-            if rgb is None:
-                continue
-
             camera_pose = self.voxel_map.fix_data_type(camera_pose)
             xyz = self.voxel_map.fix_data_type(xyz)
             rgb = self.voxel_map.fix_data_type(rgb)
             depth = self.voxel_map.fix_data_type(depth)
+            intrinsics = self.voxel_map.fix_data_type(K)
             if feats is not None:
                 feats = self.voxel_map.fix_data_type(feats)
             base_pose = self.voxel_map.fix_data_type(base_pose)
+            self.voxel_map.voxel_pcd.clear_points(depth, intrinsics, camera_pose)
             self.voxel_map.add(
                 camera_pose=camera_pose,
                 xyz=xyz,
@@ -484,6 +486,7 @@ class ImageProcessor:
         self.voxel_map_localizer.voxel_pcd.obs_count = max(self.voxel_map_localizer.voxel_pcd._obs_counts).item()
         self.voxel_map.voxel_pcd.obs_count = max(self.voxel_map_localizer.voxel_pcd._obs_counts).item()
 
+
     def write_to_pickle(self):
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
         if not os.path.exists('debug'):
@@ -498,31 +501,17 @@ class ImageProcessor:
         data["rgb"] = []
         data["depth"] = []
         data["feats"] = []
-
-        image_ids = torch.unique(self.voxel_map.voxel_pcd._obs_counts).tolist()
-
-        for idx, frame in enumerate(self.voxel_map.observations):
+        for frame in self.voxel_map.observations:
             # add it to pickle
             # TODO: switch to using just Obs struct?
-            if idx in image_ids:
-                data["camera_poses"].append(frame.camera_pose)
-                data["camera_K"].append(frame.camera_K)
-                data["rgb"].append(frame.rgb)
-                data["depth"].append(frame.depth)
-            else:
-                data["camera_poses"].append(None)
-                data["camera_K"].append(None)
-                data["rgb"].append(None)
-                data["depth"].append(None)
-            # We might not need this
-            # data["xyz"].append(frame.xyz)
-            # data["world_xyz"].append(frame.full_world_xyz)
-            # data["feats"].append(frame.feats)
-            # data["base_poses"].append(frame.base_pose)
-            data["xyz"].append(None)
-            data["world_xyz"].append(None)
-            data["feats"].append(None)
-            data["base_poses"].append(None)
+            data["camera_poses"].append(frame.camera_pose)
+            data["base_poses"].append(frame.base_pose)
+            data["camera_K"].append(frame.camera_K)
+            data["xyz"].append(frame.xyz)
+            data["world_xyz"].append(frame.full_world_xyz)
+            data["rgb"].append(frame.rgb)
+            data["depth"].append(frame.depth)
+            data["feats"].append(frame.feats)
             for k, v in frame.info.items():
                 if k not in data:
                     data[k] = []

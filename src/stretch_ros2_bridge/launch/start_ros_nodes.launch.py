@@ -38,13 +38,6 @@ def generate_launch_description():
         )
     )
 
-    camera_pose_publisher_node = Node(
-        package="stretch_ros2_bridge",
-        executable="camera_pose_publisher",
-        name="camera_pose_publisher",
-        on_exit=launch.actions.Shutdown(),
-    )
-
     odometry_publisher_node = Node(
         package="stretch_ros2_bridge",
         executable="odom_tf_publisher",
@@ -70,7 +63,6 @@ def generate_launch_description():
             stretch_driver_launch,
             stretch_cameras_launch,
             lidar_launch,
-            camera_pose_publisher_node,
             goto_controller_node,
             odometry_publisher_node,
         ]

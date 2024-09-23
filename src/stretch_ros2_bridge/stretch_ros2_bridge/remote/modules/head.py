@@ -91,11 +91,13 @@ class StretchHeadClient(AbstractControlModule):
         if tilt is not None:
             joint_goals[self._ros_client.HEAD_TILT] = tilt
 
-        self._ros_client.send_trajectory_goals(joint_goals)
+        # self._ros_client.send_trajectory_goals(joint_goals)
+        self._ros_client.send_joint_goals(joint_goals)
 
-        self._register_wait(self._ros_client.wait_for_trajectory_action)
-        if blocking:
-            self.wait()
+        # TODO: remove old ROS trajectory code
+        # self._register_wait(self._ros_client.wait_for_trajectory_action)
+        # if blocking:
+        #     self.wait()
 
     def look_close(self, blocking: bool = True):
         """Point camera sideways towards the gripper"""
