@@ -93,7 +93,7 @@ The code is organized as follows. Inside the core package `src/stretch`:
 - [agent](src/stretch/agent) is aggregate functionality, particularly robot_agent which includes lots of common tools including motion planning algorithms.
   - In particular, `agent/zmq_client.py` is specifically the robot control API, an implementation of the client in core/interfaces.py. there's another ROS client in `stretch_ros2_bridge`.
   - [agent/robot_agent.py](src/stretch/agent/robot_agent.py) is the main robot agent, which is a high-level interface to the robot. It is used in the `app` scripts.
-  - [agent/base](src/stretch/agent/base) contains base classes for creating tasks, such as the [TaskManager](src/stretch/agent/base/task_manager.py) class and the [ManagedOperation](src/stretch/agent/base/managed_operation.py) class.
+  - [agent/base](src/stretch/agent/base) contains base classes for creating common and sequentially executed robot operations through the [ManagedOperation](src/stretch/agent/base/managed_operation.py) class.
   - [agent/task](src/stretch/agent/task) contains task-specific code, such as for the `pickup` task. This is divided between "Managers" like [pickup_manager.py](src/stretch/agent/task/pickup_manager.py) which are composed of "Operations." Each operation is a composable state machine node with pre- and post-conditions.
   - [agent/operations](src/stretch/agent/operations) contains the individual operations, such as `move_to_pose.py` which moves the robot to a given pose.
 
@@ -137,4 +137,24 @@ python -m stretch.perception.captioners.blip_captioner --image_path receptacle.p
 python -m stretch.perception.captioners.git_captioner --image_path object.png
 # Gives: "a cardboard box on the floor"
 python -m stretch.perception.captioners.git_captioner --image_path receptacle.png
+```
+
+### Developing on the Robot
+
+You can run the server and ROS nodes separately on the robot. Run the server itself with:
+
+```
+ros2 run stretch_ros2_bridge server
+```
+
+You can then run the SLAM and other ROS nodes:
+
+```
+ros2 launch stretch_ros2_bridge startup_stretch_hector_slam.launch.py
+```
+
+Or, if you are using [ORB-SLAM3](docs/orbslam.md):
+
+```
+ros2 launch stretch_ros2_bridge startup_stretch_orbslam.launch.py
 ```
