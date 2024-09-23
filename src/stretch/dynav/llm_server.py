@@ -14,46 +14,21 @@ import threading
 
 # import wget
 import time
-from collections import OrderedDict
 from io import BytesIO
 from pathlib import Path
 
-import clip
 import cv2
-import hydra
 import numpy as np
-import open3d as o3d
 import rerun as rr
 import scipy
 import torch
-import torch.nn.functional as F
-import torchvision.transforms.functional as V
-import zmq
 from matplotlib import pyplot as plt
 from PIL import Image
-from torchvision import transforms
-from transformers import AutoModel, AutoProcessor
 
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import (
-    load_socket,
-    recv_array,
-    recv_depth_img,
-    recv_everything,
-    recv_rgb_img,
-    send_array,
-    send_depth_img,
-    send_everything,
-    send_rgb_img,
-)
+from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.llm_localizer import LLM_Localizer
-from stretch.dynav.mapping_utils import (
-    AStar,
-    SparseVoxelMap,
-    SparseVoxelMapNavigationSpace,
-    VoxelizedPointcloud,
-)
-from stretch.dynav.scannet import CLASS_LABELS_200
+from stretch.dynav.mapping_utils import AStar, SparseVoxelMap, SparseVoxelMapNavigationSpace
 
 
 def get_inv_intrinsics(intrinsics):
@@ -327,7 +302,7 @@ class ImageProcessor:
             res = self.planner.plan(start_pose, point)
             if res.success:
                 waypoints = [pt.state for pt in res.trajectory]
-                # If we are navigating to some object of interst, send (x, y, z) of
+                # If we are navigating to some object of interest, send (x, y, z) of
                 # the object so that we can make sure the robot looks at the object after navigation
                 finished = len(waypoints) <= 10 and mode == "navigation"
                 if not finished:
