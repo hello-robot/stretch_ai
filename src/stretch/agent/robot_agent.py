@@ -214,7 +214,7 @@ class RobotAgent:
         aggregation_method: str = "mean",
         normalize: bool = False,
         verbose: bool = True,
-    ) -> Optional[Instance]:
+    ) -> Optional[tuple]:
         """Get the instance that best matches the text query.
 
         Args:
@@ -233,7 +233,7 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
+        encoded_text = self.encode_text(text_query).to(self.voxel_map.map_2d_device)
         best_instance = None
         best_activation = -1.0
         print("--- Searching for instance ---")
@@ -289,7 +289,7 @@ class RobotAgent:
         activations = []
         matches = []
         # Encode the text query and move it to the same device as the instance embeddings
-        encoded_text = self.encode_text(text_query).to(self.voxel_map.device)
+        encoded_text = self.encode_text(text_query).to(self.voxel_map.map_2d_device)
         # Compute the cosine similarity between the text query and each instance embedding
         for instance in self.voxel_map.get_instances():
             ins = instance.get_instance_id()

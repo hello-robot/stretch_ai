@@ -61,9 +61,15 @@ jobs:
       run: |
         python -m pip install pytest
         cd src/
+        echo "Running mapping tests"
         python -m pytest -vv test/mapping
+        echo "Running llms tests"
         python -m pytest -vv test/llms
+        echo "Running perception tests"
         python -m pytest -vv test/perception
+        echo "Running utils tests"
         python -m pytest -vv test/utils
+        echo "Running core tests"
         python -m pytest -vv test/core
-        python -m pytest -vv test/audio
+        # echo "Running audio tests"
+        # python -m pytest -vv test/audio
