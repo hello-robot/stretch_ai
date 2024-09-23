@@ -52,7 +52,7 @@ class PlaceObjectOperation(ManagedOperation):
         self.use_pitch_from_vertical = use_pitch_from_vertical
 
     def get_target(self):
-        return self.manager.current_receptacle
+        return self.agent.current_receptacle
 
     def get_target_center(self):
         return self.get_target().point_cloud.mean(axis=0)
@@ -95,7 +95,7 @@ class PlaceObjectOperation(ManagedOperation):
         self.attempt(
             "will start placing the object if we have object and receptacle, and are close enough to drop."
         )
-        if self.manager.current_object is None or self.manager.current_receptacle is None:
+        if self.agent.current_object is None or self.agent.current_receptacle is None:
             self.error("Object or receptacle not found.")
             return False
         # TODO: this should be deteriministic
@@ -147,6 +147,8 @@ class PlaceObjectOperation(ManagedOperation):
         # Switch to place position
         print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
+        self.robot.switch_to_manipulation_mode()
+
         # Get object xyz coords
         xyt = self.robot.get_base_pose()
         placement_xyz = self.sample_placement_position(xyt)

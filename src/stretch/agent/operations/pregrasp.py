@@ -26,9 +26,9 @@ class PreGraspObjectOperation(ManagedOperation):
         """Can only move to an object if it's been picked out and is reachable."""
 
         self.plan = None
-        if self.manager.current_object is None:
+        if self.agent.current_object is None:
             return False
-        elif self.manager.is_instance_unreachable(self.manager.current_object):
+        elif self.agent.is_instance_unreachable(self.agent.current_object):
             return False
 
         start = self.robot.get_base_pose()
@@ -39,7 +39,7 @@ class PreGraspObjectOperation(ManagedOperation):
             breakpoint()
 
         # Get the center of the object point cloud so that we can look at it
-        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        object_xyz = self.agent.current_object.point_cloud.mean(axis=0)
         dist = np.linalg.norm(object_xyz[:2] - start[:2])
         if dist > self.grasp_distance_threshold:
             self.error(f"Object is too far away to grasp: {dist}")
@@ -62,7 +62,7 @@ class PreGraspObjectOperation(ManagedOperation):
         ee_pos, ee_rot = model.manip_fk(joint_state)
 
         # Get the center of the object point cloud so that we can look at it
-        object_xyz = self.manager.current_object.point_cloud.mean(axis=0)
+        object_xyz = self.agent.current_object.point_cloud.mean(axis=0)
         xyt = self.robot.get_base_pose()
         if self.show_object_in_voxel_grid:
             # Show where the object is together with the robot base
@@ -87,6 +87,7 @@ class PreGraspObjectOperation(ManagedOperation):
         # Strip out fields from the full robot state to only get the 6dof manipulator state
         # TODO: we should probably handle this in the zmq wrapper.
         # arm_cmd = conversions.config_to_manip_command(joint_state)
+        self.robot.switch_to_manipulation_mode()
         self.robot.arm_to(joint_state, blocking=True)
 
     def was_successful(self):

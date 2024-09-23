@@ -10,11 +10,11 @@
 from typing import Optional
 
 import stretch.utils.logger as logger
-from stretch.agent.base import TaskManager
 from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
+    OpenLoopGraspObjectOperation,
     PlaceObjectOperation,
     PreGraspObjectOperation,
     RotateInPlaceOperation,
@@ -25,7 +25,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
 
 
-class PickupManager(TaskManager):
+class PickupTask:
     """Simple robot that will look around and pick up different objects"""
 
     def __init__(
@@ -36,9 +36,12 @@ class PickupManager(TaskManager):
         use_visual_servoing_for_grasp: bool = True,
         matching: str = "feature",
     ) -> None:
-        super().__init__(agent)
+        # super().__init__(agent)
+        self.agent = agent
 
         # Task information
+        self.agent.target_object = target_object
+        self.agent.target_receptacle = target_receptacle
         self.target_object = target_object
         self.target_receptacle = target_receptacle
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
@@ -47,19 +50,19 @@ class PickupManager(TaskManager):
         self.matching = matching
 
         # Sync these things
-        self.robot = agent.robot
-        self.voxel_map = agent.voxel_map
-        self.navigation_space = agent.space
-        self.semantic_sensor = agent.semantic_sensor
-        self.parameters = agent.parameters
-        self.instance_memory = agent.voxel_map.instances
+        self.robot = self.agent.robot
+        self.voxel_map = self.agent.voxel_map
+        self.navigation_space = self.agent.space
+        self.semantic_sensor = self.agent.semantic_sensor
+        self.parameters = self.agent.parameters
+        self.instance_memory = self.agent.voxel_map.instances
         assert (
             self.instance_memory is not None
         ), "Make sure instance memory was created! This is configured in parameters file."
 
         self.current_object = None
         self.current_receptacle = None
-        self.reset_object_plans()
+        self.agent.reset_object_plans()
 
     def get_task(self, add_rotate: bool = False, mode: str = "one_shot") -> Task:
         """Create a task plan with loopbacks and recovery from failure. The robot will explore the environment, find objects, and pick them up
@@ -99,19 +102,19 @@ class PickupManager(TaskManager):
 
         # Put the robot into navigation mode
         go_to_navigation_mode = GoToNavOperation(
-            "go to navigation mode", self, retry_on_failure=True
+            "go to navigation mode", self.agent, retry_on_failure=True
         )
 
         if add_rotate:
             # Spin in place to find objects.
             rotate_in_place = RotateInPlaceOperation(
-                "rotate_in_place", self, parent=go_to_navigation_mode
+                "rotate_in_place", self.agent, parent=go_to_navigation_mode
             )
 
         # Look for the target receptacle
         search_for_receptacle = SearchForReceptacleOperation(
-            "search_for_box",
-            self,
+            f"search_for_{self.target_receptacle}",
+            self.agent,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
             match_method=matching,
@@ -119,21 +122,21 @@ class PickupManager(TaskManager):
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            "search_for_objects_on_floor",
-            self,
+            f"search_for_{self.target_object}_on_floor",
+            self.agent,
             retry_on_failure=True,
             match_method=matching,
         )
-        if self.target_object is not None:
+        if self.agent.target_object is not None:
             # Overwrite the default object to search for
-            search_for_object.set_target_object_class(self.target_object)
-        if self.target_receptacle is not None:
-            search_for_receptacle.set_target_object_class(self.target_receptacle)
+            search_for_object.set_target_object_class(self.agent.target_object)
+        if self.agent.target_receptacle is not None:
+            search_for_receptacle.set_target_object_class(self.agent.target_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
             "go_to_object",
-            self,
+            self.agent,
             parent=search_for_object,
             on_cannot_start=search_for_object,
             to_receptacle=False,
@@ -141,7 +144,10 @@ class PickupManager(TaskManager):
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_receptacle = NavigateToObjectOperation(
-            "go_to_receptacle", self, on_cannot_start=search_for_receptacle, to_receptacle=True
+            "go_to_receptacle",
+            self.agent,
+            on_cannot_start=search_for_receptacle,
+            to_receptacle=True,
         )
 
         # When about to start, run object detection and try to find the object. If not in front of us, explore again.
@@ -149,24 +155,39 @@ class PickupManager(TaskManager):
         # To determine if we can start, we just check to see if there's a detectable object nearby.
         pregrasp_object = PreGraspObjectOperation(
             "prepare_to_grasp",
-            self,
+            self.agent,
             on_failure=None,
             on_cannot_start=go_to_object,
             retry_on_failure=True,
         )
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
-        grasp_object = GraspObjectOperation(
-            "grasp_the_object",
-            self,
-            parent=pregrasp_object,
-            on_failure=pregrasp_object,
-            on_cannot_start=go_to_object,
-            retry_on_failure=False,
-        )
-        grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
+        if self.use_visual_servoing_for_grasp:
+            grasp_object = GraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.servo_to_grasp = True
+            grasp_object.match_method = matching
+        else:
+            grasp_object = OpenLoopGraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.match_method = matching
+
         place_object_on_receptacle = PlaceObjectOperation(
-            "place_object_on_receptacle", self, on_cannot_start=go_to_receptacle
+            "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
         )
 
         task = Task()

@@ -62,7 +62,7 @@ class ManagedSearchOperation(ManagedOperation):
             return self.is_match_by_feature(instance)
         elif self.match_method == "class":
             # Lookup the class name and check if it matches our target
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {instance.global_id} of class {name}")
             return self.is_name_match(name)
 
@@ -88,7 +88,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         # Now update the world
         self.update()
 
-        print(f"So far we have found: {len(self.manager.instance_memory)} objects.")
+        print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
         if self.object_class is None:
             self.set_target_object_class("box")
 
@@ -111,12 +111,12 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
             breakpoint()
 
         # Check to see if we have a receptacle in the map
-        instances = self.manager.instance_memory.get_instances()
+        instances = self.agent.voxel_map.instances.get_instances()
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             # For debugging during exploration
             if self.show_instances_detected:
-                name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+                name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
                 self.show_instance(instance, f"Instance {i} with name {name}")
 
             # Find the object we care about
@@ -125,17 +125,17 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 plan = self.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
-                    self.manager.current_receptacle = instance
+                    self.agent.current_receptacle = instance
                     break
                 else:
-                    self.manager.set_instance_as_unreachable(instance)
+                    self.agent.set_instance_as_unreachable(instance)
                     self.warn(f" - Found a receptacle but could not reach it.")
 
         # If no receptacle, pick a random point nearby and just wander around
-        if self.manager.current_receptacle is None:
+        if self.agent.current_receptacle is None:
             print("None found. Try moving to frontier.")
             # Find a point on the frontier and move there
-            res = self.manager.agent.plan_to_frontier(start=start)
+            res = self.agent.plan_to_frontier(start=start)
             if res.success:
                 self.robot.execute_trajectory(
                     [node.state for node in res.trajectory], final_timeout=10.0
@@ -145,18 +145,18 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
                 # If we moved to the frontier, then and only then can we clean up the object plans.
                 self.warn("Resetting object plans.")
-                self.manager.reset_object_plans()
+                self.agent.reset_object_plans()
             else:
                 self.error("Failed to find a reachable frontier.")
                 raise RuntimeError("Failed to find a reachable frontier.")
         else:
             self.cheer(f"Found a receptacle!")
-            view = self.manager.current_receptacle.get_best_view()
+            view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("receptacle.png")
             if self.show_map_so_far:
                 # This shows us what the robot has found so far
-                object_xyz = self.manager.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
+                object_xyz = self.agent.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
                 self.agent.voxel_map.show(
                     orig=object_xyz,
@@ -166,7 +166,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 )
 
     def was_successful(self) -> bool:
-        res = self.manager.current_receptacle is not None
+        res = self.agent.current_receptacle is not None
         if res:
             self.cheer("Successfully found a receptacle!")
         else:
@@ -177,140 +177,13 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     """Search for an object on the floor"""
 
-    plan_for_manipulation: bool = True
-
-    def can_start(self) -> bool:
-        self.attempt("If receptacle is found, we can start searching for objects.")
-        return self.manager.current_receptacle is not None
-
-    def run(self) -> None:
-        self.intro("Find a reachable object on the floor.")
-        self._successful = False
-
-        # Set the object class if not set
-        if self.object_class is None:
-            self.object_class = self.manager.target_object
-
-        # Clear the current object
-        self.manager.current_object = None
-
-        # Update world map
-        # Switch to navigation posture
-        self.robot.move_to_nav_posture()
-        # Do not update until you are in nav posture
-        self.update()
-
-        if self.show_map_so_far:
-            # This shows us what the robot has found so far
-            xyt = self.robot.get_base_pose()
-            self.agent.voxel_map.show(
-                orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
-            )
-
-        # Get the current location of the robot
-        start = self.robot.get_base_pose()
-        if not self.navigation_space.is_valid(start):
-            self.error(
-                "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
-            )
-            breakpoint()
-
-        if self.show_instances_detected:
-            # Show the last instance image
-            import matplotlib
-
-            # TODO: why do we need to configure this every time
-            matplotlib.use("TkAgg")
-            import matplotlib.pyplot as plt
-
-            plt.imshow(self.manager.voxel_map.observations[0].instance)
-            plt.show()
-
-        # Check to see if we have a receptacle in the map
-        instances = self.manager.instance_memory.get_instances()
-
-        # Compute scene graph from instance memory so that we can use it
-        scene_graph = self.agent.get_scene_graph()
-
-        receptacle_options = []
-        print(f"Check explored instances for reachable {self.object_class} instances:")
-        for i, instance in enumerate(instances):
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
-            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
-
-            if self.manager.is_instance_unreachable(instance):
-                print(" - Instance is unreachable.")
-                continue
-
-            if self.show_instances_detected:
-                self.show_instance(instance, f"Instance {i} with name {name}")
-
-            if self.object_class in name:
-                relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
-                if len(relations) > 0:
-                    # We found a matching relation!
-                    print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
-
-                    # Move to object on floor
-                    plan = self.plan_to_instance_for_manipulation(
-                        instance, start=start, radius_m=0.5
-                    )
-                    if plan.success:
-                        print(
-                            f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
-                        )
-                        self.manager.current_object = instance
-                        break
-
-        # Check to see if there is a visitable frontier
-        if self.manager.current_object is None:
-            self.warn(f"No {self.object_class} found. Moving to frontier.")
-            # Find a point on the frontier and move there
-            res = self.agent.plan_to_frontier(start=start)
-            if res.success:
-                self.robot.execute_trajectory(
-                    [node.state for node in res.trajectory], final_timeout=10.0
-                )
-            # Update world model once we get to frontier
-            self.update()
-
-            # If we moved to the frontier, then and only then can we clean up the object plans.
-            self.warn("Resetting object plans.")
-            self.manager.reset_object_plans()
-        else:
-            self.cheer(f"Found object of {self.object_class}!")
-            view = self.manager.current_object.get_best_view()
-            image = Image.fromarray(view.get_image())
-            image.save("object.png")
-            if self.show_map_so_far:
-                # This shows us what the robot has found so far
-                object_xyz = self.manager.current_object.point_cloud.mean(axis=0).cpu().numpy()
-                xyt = self.robot.get_base_pose()
-                self.agent.voxel_map.show(
-                    orig=object_xyz,
-                    xyt=xyt,
-                    footprint=self.robot_model.get_footprint(),
-                    planner_visuals=False,
-                )
-
-        # TODO: better behavior
-        # If no visitable frontier, pick a random point nearby and just wander around
-
-    def was_successful(self) -> bool:
-        return self.manager.current_object is not None and not self.manager.is_instance_unreachable(
-            self.manager.current_object
-        )
-
-
-class SearchForObjectOnFloorOperation(ManagedSearchOperation):
-    """Search for an object on the floor"""
-
     # Important parameters
     plan_for_manipulation: bool = True
+    update_at_start: bool = False
 
     def can_start(self) -> bool:
         self.attempt("If receptacle is found, we can start searching for objects.")
-        return self.manager.current_receptacle is not None
+        return self.agent.current_receptacle is not None
 
     def run(self) -> None:
         self.intro("Find a reachable object on the floor.")
@@ -318,16 +191,17 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
 
         # Set the object class if not set
         if self.object_class is None:
-            self.set_target_object_class(self.manager.target_object)
+            self.set_target_object_class(self.agent.target_object)
 
         # Clear the current object
-        self.manager.current_object = None
+        self.agent.current_object = None
 
-        # Update world map
-        # Switch to navigation posture
-        self.robot.move_to_nav_posture()
-        # Do not update until you are in nav posture
-        self.update()
+        if self.update_at_start:
+            # Update world map
+            # Switch to navigation posture
+            self.robot.move_to_nav_posture()
+            # Do not update until you are in nav posture
+            self.update()
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
@@ -352,11 +226,11 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.manager.voxel_map.observations[0].instance)
+            plt.imshow(self.agent.voxel_map.observations[0].instance)
             plt.show()
 
         # Check to see if we have a receptacle in the map
-        instances = self.manager.instance_memory.get_instances()
+        instances = self.agent.voxel_map.instances.get_instances()
 
         # Compute scene graph from instance memory so that we can use it
         scene_graph = self.agent.get_scene_graph()
@@ -364,10 +238,10 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         receptacle_options = []
         print(f"Check explored instances for reachable {self.object_class} instances:")
         for i, instance in enumerate(instances):
-            name = self.manager.semantic_sensor.get_class_name_for_id(instance.category_id)
+            name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
-            if self.manager.is_instance_unreachable(instance):
+            if self.agent.is_instance_unreachable(instance):
                 print(" - Instance is unreachable.")
                 continue
 
@@ -386,11 +260,11 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
                         )
-                        self.manager.current_object = instance
+                        self.agent.current_object = instance
                         break
 
         # Check to see if there is a visitable frontier
-        if self.manager.current_object is None:
+        if self.agent.current_object is None:
             self.warn(f"No {self.object_class} found. Moving to frontier.")
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
@@ -403,15 +277,15 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
 
             # If we moved to the frontier, then and only then can we clean up the object plans.
             self.warn("Resetting object plans.")
-            self.manager.reset_object_plans()
+            self.agent.reset_object_plans()
         else:
             self.cheer(f"Found object of {self.object_class}!")
-            view = self.manager.current_object.get_best_view()
+            view = self.agent.current_object.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("object.png")
             if self.show_map_so_far:
                 # This shows us what the robot has found so far
-                object_xyz = self.manager.current_object.point_cloud.mean(axis=0).cpu().numpy()
+                object_xyz = self.agent.current_object.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
                 self.agent.voxel_map.show(
                     orig=object_xyz,
@@ -424,6 +298,6 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         # If no visitable frontier, pick a random point nearby and just wander around
 
     def was_successful(self) -> bool:
-        return self.manager.current_object is not None and not self.manager.is_instance_unreachable(
-            self.manager.current_object
+        return self.agent.current_object is not None and not self.agent.is_instance_unreachable(
+            self.agent.current_object
         )

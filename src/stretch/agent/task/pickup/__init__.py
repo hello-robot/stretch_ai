@@ -7,5 +7,5 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from .multi_manager import MultiPickupManager
-from .pickup_manager import PickupManager
+from .multi_pickup_task import MultiPickupTask
+from .pickup_task import PickupTask
