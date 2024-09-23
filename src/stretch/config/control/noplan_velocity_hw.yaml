@@ -5,16 +5,16 @@
 #w_max: 0.5  # (vel_m_max - vel_m_default) / wheel_separation_m
 #acc_lin: 0.2  # 0.5 * base.params["motion"]["max"]["accel_m"]
 #acc_ang: 0.4  # 0.5 * (accel_m_max - accel_m_default) / wheel_separation_m
-v_max: 0.2  # base.params["motion"]["default"]["vel_m"]
-w_max: 0.5  # (vel_m_max - vel_m_default) / wheel_separation_m
+v_max: 10.0  # base.params["motion"]["default"]["vel_m"]
+w_max: 5.0  # (vel_m_max - vel_m_default) / wheel_separation_m
   #w_max: 0.6  # (vel_m_max - vel_m_default) / wheel_separation_m
 acc_lin: 0.1  # 0.5 * base.params["motion"]["max"]["accel_m"]
 acc_ang: 0.2  # 0.5 * (accel_m_max - accel_m_default) / wheel_separation_m
 #acc_ang: 0.3  # 0.5 * (accel_m_max - accel_m_default) / wheel_separation_m
 
 # Tolerances for determining whether the goal position or orientation is reached
-lin_error_tol: 0.12
-ang_error_tol: 0.12
+lin_error_tol: 0.15
+ang_error_tol: 0.15
 
 # Error tolerance ratio - scale target error by this to a minimum of the tolerance below
 lin_error_ratio: 0.5

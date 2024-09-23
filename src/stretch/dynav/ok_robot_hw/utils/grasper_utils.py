@@ -169,7 +169,7 @@ def pickup(robot, rotation, translation, base_node, gripper_node, gripper_height
 
     # Moving gripper to a point that is 0.2m away from the pose center in the line of gripper
     robot.move_to_pose(
-        [pin_transformed_point1[0], pin_transformed_point1[1], pin_transformed_point1[2] - 0.22],
+        [pin_transformed_point1[0], pin_transformed_point1[1], pin_transformed_point1[2] - 0.2],
         [0, 0, 0],
         [1],
         move_mode = 1
