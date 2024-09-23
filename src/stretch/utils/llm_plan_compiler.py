@@ -21,6 +21,9 @@ from stretch.core.task import Task
 
 
 class LLMTreeNode:
+    """Represents a node in the tree of function calls.
+    Each node has a function call and two branches for success and failure"""
+
     def __init__(self, function_call, success=None, failure=None):
         self.function_call = function_call
         self.success = success
