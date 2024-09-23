@@ -62,11 +62,7 @@ from stretch.perception import create_semantic_sensor
     help="Client to use for language model.",
     type=click.Choice(get_llm_choices()),
 )
-@click.option(
-    "--stationary",
-    is_flag=True,
-    help="Don't move the robot to the instance, if using real robot instead of offline data",
-)
+@click.option("--explore-iter", default=10, type=int, help="Number of iterations to explore")
 @click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
 def main(
     device_id: int = 0,
@@ -85,7 +81,6 @@ def main(
     frame: int = -1,
     text: str = "",
     yes: bool = False,
-    stationary: bool = False,
     all_matches: bool = False,
     threshold: float = 0.5,
     target_object: str = "toy",
@@ -124,7 +119,7 @@ def main(
 
     agent.run_exploration(
         manual_wait=False,
-        explore_iter=20,
+        explore_iter=explore_iter,
         task_goal=target_object,  # arbitrary object to collect
         # as many instances as possible
         go_home_at_end=True,
@@ -137,7 +132,11 @@ def main(
         text = input("Enter a long horizon task: ")
         plan = client(text)
         print(f"Generated plan: \n{plan}")
-        proceed = input("Proceed with plan? [y/n]: ")
+
+        if yes:
+            proceed = True
+        else:
+            proceed = input("Proceed with plan? [y/n]: ")
 
         if plan.startswith("```python"):
             plan = plan.split("\n", 1)[1]
