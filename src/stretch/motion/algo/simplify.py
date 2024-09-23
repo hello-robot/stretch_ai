@@ -50,6 +50,10 @@ class SimplifyXYT(Planner):
     def reset(self):
         self.nodes = None
 
+    @property
+    def space(self):
+        return self.planner.space
+
     def _verify(self, new_nodes):
         """Check to see if new nodes are spaced enough apart and nothing is within min_dist"""
         prev_node = None

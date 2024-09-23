@@ -9,10 +9,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import time
-
 import click
-import numpy as np
 
 from stretch.agent.operations import GraspObjectOperation, UpdateOperation
 from stretch.agent.robot_agent import RobotAgent
@@ -24,14 +21,23 @@ from stretch.perception import create_semantic_sensor
 
 def get_task(robot, demo, target_object):
     """Create a very simple task just to test visual servoing to grasp."""
+    print("[GRASP OBJECT APP] Target object is set to", target_object)
     try:
         task = Task()
         update = UpdateOperation("update_scene", demo, retry_on_failure=True)
+        update.configure(
+            move_head=False,
+            target_object=target_object,
+            show_map_so_far=False,
+            clear_voxel_map=True,
+            show_instances_detected=False,
+        )
         grasp_object = GraspObjectOperation(
             "grasp_the_object",
             demo,
         )
         grasp_object.configure(
+            target_object=target_object,
             show_object_to_grasp=True,
             servo_to_grasp=True,
             show_servo_gui=True,
@@ -95,20 +101,9 @@ def main(
     demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
-    targets = ["cup", "hand_towel", "screwdriver"]
-
-    # for _ in range(repeat_count):
-    for target_object in targets:
-        if reset:
-            robot.move_to_nav_posture()
-            robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
-            # robot.arm_to([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], blocking=True)
-            robot.arm_to([0.0, 0.78, 0.05, 0, -3 * np.pi / 8, 0], blocking=True)
-            time.sleep(3.0)
-
-        task = get_task(robot, demo, target_object)
-        task.run()
-        robot.open_gripper()
+    task = get_task(robot, demo, target_object)
+    task.run()
+    robot.open_gripper()
 
     if reset:
         robot.move_to_nav_posture()

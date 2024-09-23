@@ -14,6 +14,7 @@ from stretch.agent.operations import (
     GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
+    OpenLoopGraspObjectOperation,
     PlaceObjectOperation,
     PreGraspObjectOperation,
     RotateInPlaceOperation,
@@ -41,6 +42,8 @@ class PickupTask:
         # Task information
         self.agent.target_object = target_object
         self.agent.target_receptacle = target_receptacle
+        self.target_object = target_object
+        self.target_receptacle = target_receptacle
         self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
 
         assert matching in ["feature", "class"], f"Invalid instance matching method: {matching}"
@@ -110,7 +113,7 @@ class PickupTask:
 
         # Look for the target receptacle
         search_for_receptacle = SearchForReceptacleOperation(
-            "search_for_box",
+            f"search_for_{self.target_receptacle}",
             self.agent,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
@@ -119,7 +122,7 @@ class PickupTask:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            "search_for_objects_on_floor",
+            f"search_for_{self.target_object}_on_floor",
             self.agent,
             retry_on_failure=True,
             match_method=matching,
@@ -159,16 +162,30 @@ class PickupTask:
         )
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
-        grasp_object = GraspObjectOperation(
-            "grasp_the_object",
-            self.agent,
-            parent=pregrasp_object,
-            on_failure=pregrasp_object,
-            on_cannot_start=go_to_object,
-            retry_on_failure=False,
-        )
-        grasp_object.set_target_object_class(self.agent.target_object)
-        grasp_object.servo_to_grasp = self.use_visual_servoing_for_grasp
+        if self.use_visual_servoing_for_grasp:
+            grasp_object = GraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.servo_to_grasp = True
+            grasp_object.match_method = matching
+        else:
+            grasp_object = OpenLoopGraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.match_method = matching
+
         place_object_on_receptacle = PlaceObjectOperation(
             "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
         )

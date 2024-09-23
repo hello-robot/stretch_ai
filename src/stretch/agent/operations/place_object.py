@@ -147,6 +147,8 @@ class PlaceObjectOperation(ManagedOperation):
         # Switch to place position
         print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
+        self.robot.switch_to_manipulation_mode()
+
         # Get object xyz coords
         xyt = self.robot.get_base_pose()
         placement_xyz = self.sample_placement_position(xyt)

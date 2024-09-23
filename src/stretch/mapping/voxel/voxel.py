@@ -29,6 +29,7 @@ from torch import Tensor
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
+from stretch.core.parameters import Parameters
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
 from stretch.motion import Footprint, PlanResult, RobotModel
@@ -98,6 +99,7 @@ class SparseVoxelMap(object):
         encoder (Optional[BaseImageTextEncoder]): An encoder for feature embeddings (optional).
         map_2d_device (str): The device for 2D mapping.
         use_instance_memory (bool): Whether to create object-centric instance memory.
+        min_points_per_voxel (int): The minimum number of points per voxel.
     """
 
     DEFAULT_INSTANCE_MAP_KWARGS = dict(
@@ -107,6 +109,8 @@ class SparseVoxelMap(object):
         mask_cropped_instances="False",
     )
     debug_valid_depth: bool = False
+    debug_instance_memory_processing_time: bool = False
+    use_negative_obstacles: bool = False
 
     def __init__(
         self,
@@ -118,6 +122,7 @@ class SparseVoxelMap(object):
         obs_max_height: float = 1.8,
         obs_min_density: float = 10,
         smooth_kernel_size: int = 2,
+        neg_obs_height: float = 0.0,
         add_local_radius_points: bool = True,
         remove_visited_from_obstacles: bool = False,
         local_radius: float = 0.15,
@@ -129,6 +134,7 @@ class SparseVoxelMap(object):
         voxel_kwargs: Dict[str, Any] = {},
         encoder: Optional[BaseImageTextEncoder] = None,
         map_2d_device: str = "cpu",
+        device: Optional[str] = None,
         use_instance_memory: bool = False,
         use_median_filter: bool = False,
         median_filter_size: int = 5,
@@ -136,6 +142,8 @@ class SparseVoxelMap(object):
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
         prune_detected_objects: bool = False,
+        add_local_radius_every_step: bool = False,
+        min_points_per_voxel: int = 10,
     ):
         """
         Args:
@@ -170,6 +178,7 @@ class SparseVoxelMap(object):
         self.feature_dim = feature_dim
         self.obs_min_height = obs_min_height
         self.obs_max_height = obs_max_height
+        self.neg_obs_height = neg_obs_height
         self.obs_min_density = obs_min_density
         self.prune_detected_objects = prune_detected_objects
 
@@ -208,6 +217,13 @@ class SparseVoxelMap(object):
         self.voxel_kwargs = voxel_kwargs
         self.encoder = encoder
         self.map_2d_device = map_2d_device
+        self._min_points_per_voxel = min_points_per_voxel
+
+        # Set the device we use for things here
+        if device is not None:
+            self.device = device
+        else:
+            self.device = self.map_2d_device
 
         # Create kernel(s) for obstacle dilation over 2d/3d maps
         if self.pad_obstacles > 0:
@@ -223,6 +239,7 @@ class SparseVoxelMap(object):
 
         # Add points with local_radius to the voxel map at (0,0,0) unless we receive lidar points
         self._add_local_radius_points = add_local_radius_points
+        self._add_local_radius_every_step = add_local_radius_every_step
         self._remove_visited_from_obstacles = remove_visited_from_obstacles
         self.local_radius = local_radius
 
@@ -364,6 +381,7 @@ class SparseVoxelMap(object):
         instance_scores: Optional[Tensor] = None,
         obs: Optional[Observations] = None,
         xyz_frame: str = "camera",
+        pose_correction: Optional[Tensor] = None,
         **info,
     ):
         """Add this to our history of observations. Also update the current running map.
@@ -457,6 +475,9 @@ class SparseVoxelMap(object):
                 inv_intrinsics=torch.linalg.inv(camera_K[:3, :3]).unsqueeze(0),
             )
 
+        if pose_correction is not None:
+            full_world_xyz = full_world_xyz @ pose_correction[:3, :3].T + pose_correction[:3, 3]
+
         # add observations before we start changing things
         self.observations.append(
             Frame(
@@ -525,8 +546,9 @@ class SparseVoxelMap(object):
             )
             t1 = timeit.default_timer()
             self.instances.associate_instances_to_memory()
-            t2 = timeit.default_timer()
-            print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
+            if self.debug_instance_memory_processing_time:
+                t2 = timeit.default_timer()
+                print(__file__, ": Instance memory processing time: ", t1 - t0, t2 - t1)
 
         if self.prune_detected_objects:
             valid_depth = valid_depth & (instance_image == self.background_instance_label)
@@ -539,13 +561,25 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
-            self.voxel_pcd.add(world_xyz, features=feats, rgb=rgb, weights=None)
+            self.voxel_pcd.add(
+                world_xyz,
+                features=feats,
+                rgb=rgb,
+                weights=None,
+                min_weight_per_voxel=self._min_points_per_voxel,
+            )
 
-        if self._add_local_radius_points:
+        if self._add_local_radius_points and (
+            len(self.observations) < 2 or self._add_local_radius_every_step
+        ):
+            # Only do this at the first step, never after it.
             # TODO: just get this from camera_pose?
-            self._update_visited(camera_pose[:3, 3].to(self.map_2d_device))
-        if base_pose is not None:
-            self._update_visited(base_pose.to(self.map_2d_device))
+            # Add local radius points to the map around base
+            if base_pose is not None:
+                self._update_visited(base_pose.to(self.map_2d_device))
+            else:
+                # Camera only
+                self._update_visited(camera_pose[:3, 3].to(self.map_2d_device))
 
         # Increment sequence counter
         self._seq += 1
@@ -646,10 +680,24 @@ class SparseVoxelMap(object):
             raise NotImplementedError("unsupported data type for tensor:", tensor)
 
     def read_from_pickle(
-        self, filename: str, num_frames: int = -1, perception: Optional[OvmmPerception] = None
+        self,
+        filename: str,
+        num_frames: int = -1,
+        perception: Optional[OvmmPerception] = None,
+        transform_pose: Optional[torch.Tensor] = None,
+        reset: bool = False,
     ) -> bool:
-        """Read from a pickle file as above. Will clear all currently stored data first."""
-        self.reset_cache()
+        """Read from a pickle file as above. Will clear all currently stored data first.
+
+        Args:
+            filename(str): path to the pickle file
+            num_frames(int): number of frames to read from the file
+            perception(OvmmPerception): perception model to use for instance segmentation
+            transform_pose(torch.Tensor): transformation to apply to camera poses
+            reset(bool): whether to clear all currently stored data first
+        """
+        if reset:
+            self.reset_cache()
         if isinstance(filename, str):
             filename = Path(filename)
         assert filename.exists(), f"No file found at {filename}"
@@ -676,17 +724,22 @@ class SparseVoxelMap(object):
             return False
 
         for i, (camera_pose, K, rgb, feats, depth, base_pose, instance) in enumerate(
-            # TODO: compression of observations
-            # Right now we just do not support this
-            # data["obs"],  TODO: compression of Observations
-            zip(
-                data["camera_poses"],
-                data["camera_K"],
-                data["rgb"],
-                data["feats"],
-                data["depth"],
-                data["base_poses"],
-                instance_data,
+            tqdm.tqdm(
+                # TODO: compression of observations
+                # Right now we just do not support this
+                # data["obs"],  TODO: compression of Observations
+                zip(
+                    data["camera_poses"],
+                    data["camera_K"],
+                    data["rgb"],
+                    data["feats"],
+                    data["depth"],
+                    data["base_poses"],
+                    instance_data,
+                ),
+                ncols=80,
+                desc="Reading data from pickle",
+                unit="frame",
             )
         ):
             # Handle the case where we dont actually want to load everything
@@ -744,6 +797,7 @@ class SparseVoxelMap(object):
                 instance_classes=instance_classes,
                 instance_scores=instance_scores,
                 camera_K=K,
+                pose_correction=transform_pose,
             )
         return True
 
@@ -767,6 +821,10 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
+    def get_pointcloud(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Get the current point cloud"""
+        return self.voxel_pcd.get_pointcloud()
+
     def get_2d_map(self, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
 
@@ -780,12 +838,6 @@ class SparseVoxelMap(object):
 
         device = xyz.device
         xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
-        xyz[xyz[:, -1] < 0, -1] = 0
-
-        # from stretch.utils.point_cloud import show_point_cloud
-        # show_point_cloud(xyz, rgb, orig=np.zeros(3))
-        xyz[xyz[:, -1] < 0, -1] = 0
-        # show_point_cloud(xyz, rgb, orig=np.zeros(3))
 
         # Crop to robot height
         min_height = int(self.obs_min_height / self.grid_resolution)
@@ -795,11 +847,15 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
+        if self.use_negative_obstacles:
+            neg_height = int(self.neg_obs_height / self.grid_resolution)
+            negative_obstacles = xyz[:, -1] < neg_height
+            obs_mask = obs_mask | negative_obstacles
         xyz = xyz[obs_mask, :]
         counts = counts[obs_mask][:, None]
 
         # voxels[x_coords, y_coords, z_coords] = 1
-        voxels = scatter3d(xyz, counts, grid_size)
+        voxels = scatter3d(xyz, counts, grid_size).squeeze()
 
         # Compute the obstacle voxel grid based on what we've seen
         obstacle_voxels = voxels[:, :, min_height:]
@@ -817,7 +873,6 @@ class SparseVoxelMap(object):
             )[0, 0].bool()
 
         # Explored area = only floor mass
-        # floor_voxels = voxels[:, :, :min_height]
         explored_soft = torch.sum(voxels, dim=-1)
 
         # Add explored radius around the robot, up to min depth
@@ -1091,9 +1146,10 @@ class SparseVoxelMap(object):
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
+        min_height: Optional[float] = None,
     ) -> None:
         """Delete obstacles from the map"""
-        self.voxel_pcd.remove(bounds, point, radius)
+        self.voxel_pcd.remove(bounds, point, radius, min_height=min_height)
 
         # Force recompute of 2d map
         self.get_2d_map()
@@ -1120,3 +1176,64 @@ class SparseVoxelMap(object):
         # Returns xyz and rgb for further inspection
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
         return points, rgb
+
+    @staticmethod
+    def from_parameters(
+        parameters: Parameters,
+        encoder: BaseImageTextEncoder,
+        voxel_size: float = 0.05,
+        use_instance_memory: bool = True,
+        **kwargs,
+    ) -> "SparseVoxelMap":
+        return SparseVoxelMap(
+            resolution=voxel_size,
+            local_radius=parameters["local_radius"],
+            grid_resolution=parameters["voxel_size"],
+            obs_min_height=parameters["obs_min_height"],
+            obs_max_height=parameters["obs_max_height"],
+            neg_obs_height=parameters["neg_obs_height"],
+            min_depth=parameters["min_depth"],
+            max_depth=parameters["max_depth"],
+            add_local_radius_every_step=parameters["add_local_every_step"],
+            min_points_per_voxel=parameters["min_points_per_voxel"],
+            pad_obstacles=parameters["pad_obstacles"],
+            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
+            remove_visited_from_obstacles=parameters.get(
+                "remove_visited_from_obstacles", default=False
+            ),
+            obs_min_density=parameters["obs_min_density"],
+            encoder=encoder,
+            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
+            use_median_filter=parameters.get("filters/use_median_filter", False),
+            median_filter_size=parameters.get("filters/median_filter_size", 5),
+            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
+            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            use_instance_memory=use_instance_memory,
+            instance_memory_kwargs={
+                "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
+                "min_instance_thickness": parameters.get(
+                    "instance_memory/min_instance_thickness", 0.01
+                ),
+                "min_instance_vol": parameters.get("instance_memory/min_instance_vol", 1e-6),
+                "max_instance_vol": parameters.get("instance_memory/max_instance_vol", 10.0),
+                "min_instance_height": parameters.get("instance_memory/min_instance_height", 0.1),
+                "max_instance_height": parameters.get("instance_memory/max_instance_height", 1.8),
+                "min_pixels_for_instance_view": parameters.get(
+                    "instance_memory/min_pixels_for_instance_view", 100
+                ),
+                "min_percent_for_instance_view": parameters.get(
+                    "instance_memory/min_percent_for_instance_view", 0.2
+                ),
+                "mask_cropped_instances": parameters.get(
+                    "instance_memory/mask_cropped_instances", False
+                ),
+                "open_vocab_cat_map_file": parameters.get("open_vocab_category_map_file", None),
+                "use_visual_feat": parameters.get("use_visual_feat", False),
+            },
+            prune_detected_objects=parameters.get("prune_detected_objects", False),
+        )
+
+    def _get_instance_color(instance_id: int) -> List[float]:
+        """Get a color for an instance"""
+        return [np.random.random() for _ in range(3)]

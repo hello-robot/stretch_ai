@@ -16,8 +16,11 @@ from .emote import (
     WaveOperation,
     WithdrawOperation,
 )
+
+# from .grasp_closed_loop import ClosedLoopGraspObjectOperation
 from .go_to import GoToOperation
 from .grasp_object import GraspObjectOperation
+from .grasp_open_loop import OpenLoopGraspObjectOperation
 from .navigate import NavigateToObjectOperation
 from .place_object import PlaceObjectOperation
 from .pregrasp import PreGraspObjectOperation
