@@ -563,7 +563,7 @@ class StretchRosInterface(Node):
         for pose in msg.poses:
             p = np.array(
                 [
-                    pose.header.stamp.nsecs,
+                    pose.header.stamp.nanosec,
                     pose.pose.position.x,
                     pose.pose.position.y,
                     pose.pose.position.z,
