@@ -1,32 +1,40 @@
-import numpy as np
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
 
+import math
+from typing import List, Optional, Tuple, Union
+
+import clip
 import cv2
-
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
+from PIL import Image
+from sklearn.cluster import DBSCAN
+from torch import Tensor
 from torchvision.transforms.functional import InterpolationMode
 
-import clip
+# from ultralytics import YOLOWorld
+from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection, Owlv2Processor
 
 from stretch.dynav.mapping_utils import VoxelizedPointcloud
 
-from typing import List, Optional, Tuple, Union
-from torch import Tensor
-
-from transformers import AutoProcessor, AutoModel
-
-# from ultralytics import YOLOWorld
-from transformers import Owlv2Processor, Owlv2ForObjectDetection
-
-import math
-from PIL import Image
-
-from sklearn.cluster import DBSCAN
 
 def get_inv_intrinsics(intrinsics):
     # return intrinsics.double().inverse().to(intrinsics)
-    fx, fy, ppx, ppy = intrinsics[..., 0, 0], intrinsics[..., 1, 1], intrinsics[..., 0, 2], intrinsics[..., 1, 2]
+    fx, fy, ppx, ppy = (
+        intrinsics[..., 0, 0],
+        intrinsics[..., 1, 1],
+        intrinsics[..., 0, 2],
+        intrinsics[..., 1, 2],
+    )
     inv_intrinsics = torch.zeros_like(intrinsics)
     inv_intrinsics[..., 0, 0] = 1.0 / fx
     inv_intrinsics[..., 1, 1] = 1.0 / fy
@@ -34,6 +42,7 @@ def get_inv_intrinsics(intrinsics):
     inv_intrinsics[..., 1, 2] = -ppy / fy
     inv_intrinsics[..., 2, 2] = 1.0
     return inv_intrinsics
+
 
 def get_xyz(depth, pose, intrinsics):
     """Returns the XYZ coordinates for a set of points.
@@ -74,14 +83,23 @@ def get_xyz(depth, pose, intrinsics):
     xyz = xyz @ get_inv_intrinsics(intrinsics).transpose(-1, -2)
     xyz = xyz * depth.flatten(1).unsqueeze(-1)
     xyz = (xyz[..., None, :] * pose[..., None, :3, :3]).sum(dim=-1) + pose[..., None, :3, 3]
-    
+
     xyz = xyz.unflatten(1, (height, width))
 
     return xyz
 
-class VoxelMapLocalizer():
-    def __init__(self, voxel_map_wrapper = None, exist_model = True, clip_model = None, processor = None, device = 'cuda', siglip = True):
-        print('Localizer V3')
+
+class VoxelMapLocalizer:
+    def __init__(
+        self,
+        voxel_map_wrapper=None,
+        exist_model=True,
+        clip_model=None,
+        processor=None,
+        device="cuda",
+        siglip=True,
+    ):
+        print("Localizer V3")
         self.voxel_map_wrapper = voxel_map_wrapper
         self.device = device
         # self.clip_model, self.preprocessor = clip.load(model_config, device=device)
@@ -92,21 +110,27 @@ class VoxelMapLocalizer():
             self.clip_model, self.preprocessor = clip.load("ViT-B/16", device=self.device)
             self.clip_model.eval()
         else:
-            self.clip_model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(self.device)
+            self.clip_model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(
+                self.device
+            )
             self.preprocessor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
-        self.voxel_pcd = VoxelizedPointcloud(voxel_size = 0.05).to(self.device)
+        self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.05).to(self.device)
         # self.exist_model = YOLOWorld("yolov8l-worldv2.pt")
         self.existence_checking_model = exist_model
         if exist_model:
-            print('WE ARE USING OWLV2!')
-            self.exist_processor = AutoProcessor.from_pretrained("google/owlv2-base-patch16-ensemble")
-            self.exist_model = Owlv2ForObjectDetection.from_pretrained("google/owlv2-base-patch16-ensemble").to(self.device)
+            print("WE ARE USING OWLV2!")
+            self.exist_processor = AutoProcessor.from_pretrained(
+                "google/owlv2-base-patch16-ensemble"
+            )
+            self.exist_model = Owlv2ForObjectDetection.from_pretrained(
+                "google/owlv2-base-patch16-ensemble"
+            ).to(self.device)
         else:
-            print('YOU ARE USING NOTHING!')
-        
+            print("YOU ARE USING NOTHING!")
 
-    def add(self,
+    def add(
+        self,
         points: Tensor,
         features: Optional[Tensor],
         rgb: Optional[Tensor],
@@ -123,15 +147,13 @@ class VoxelMapLocalizer():
             weights = weights.to(self.device)
         # if weight_decay is not None and self.voxel_pcd._weights is not None:
         #     self.voxel_pcd._weights *= weight_decay
-        self.voxel_pcd.add(points = points, 
-                        features = features,
-                        rgb = rgb,
-                        weights = weights,
-                        obs_count = obs_count)
+        self.voxel_pcd.add(
+            points=points, features=features, rgb=rgb, weights=weights, obs_count=obs_count
+        )
 
     def calculate_clip_and_st_embeddings_for_queries(self, queries):
         if isinstance(queries, str):
-            queries = [queries] 
+            queries = [queries]
         if self.siglip:
             inputs = self.preprocessor(text=queries, padding="max_length", return_tensors="pt")
             for input in inputs:
@@ -144,7 +166,7 @@ class VoxelMapLocalizer():
         # all_clip_tokens = self.clip_model.encode_text(text)
         all_clip_tokens = F.normalize(all_clip_tokens, p=2, dim=-1)
         return all_clip_tokens
-        
+
     def find_alignment_over_model(self, queries):
         clip_text_tokens = self.calculate_clip_and_st_embeddings_for_queries(queries)
         points, features, weights, _ = self.voxel_pcd.get_pointcloud()
@@ -152,21 +174,21 @@ class VoxelMapLocalizer():
             return None
         features = F.normalize(features, p=2, dim=-1)
         point_alignments = clip_text_tokens.float() @ features.float().T
-    
+
         # print(point_alignments.shape)
         return point_alignments
 
     def find_alignment_for_A(self, A):
         points, features, _, _ = self.voxel_pcd.get_pointcloud()
         alignments = self.find_alignment_over_model(A).cpu()
-        return points[alignments.argmax(dim = -1)].detach().cpu()
-    
+        return points[alignments.argmax(dim=-1)].detach().cpu()
+
     def find_obs_id_for_A(self, A):
         obs_counts = self.voxel_pcd._obs_counts
         alignments = self.find_alignment_over_model(A).cpu()
-        return obs_counts[alignments.argmax(dim = -1)].detach().cpu()
+        return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
 
-    def compute_coord(self, text, obs_id, threshold = 0.2):
+    def compute_coord(self, text, obs_id, threshold=0.2):
         # print(obs_id, len(self.voxel_map_wrapper.observations))
         if obs_id <= 0 or obs_id > len(self.voxel_map_wrapper.observations):
             return None
@@ -177,13 +199,15 @@ class VoxelMapLocalizer():
         xyzs = get_xyz(depth, pose, K)[0]
         # rgb[depth >= 2.5] = 0
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
-        inputs = self.exist_processor(text=[['a photo of a ' + text]], images=rgb, return_tensors="pt")
+        inputs = self.exist_processor(
+            text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
+        )
         for input in inputs:
-            inputs[input] = inputs[input].to('cuda')
-        
+            inputs[input] = inputs[input].to("cuda")
+
         with torch.no_grad():
             outputs = self.exist_model(**inputs)
-    
+
         target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
         results = self.exist_processor.image_processor.post_process_object_detection(
             outputs, threshold=threshold, target_sizes=target_sizes
@@ -194,30 +218,37 @@ class VoxelMapLocalizer():
         # w, h = depth.shape
         # tl_x, tl_y, br_x, br_y = int(max(0, tl_x.item())), int(max(0, tl_y.item())), int(min(h, br_x.item())), int(min(w, br_y.item()))
         # return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
-        for idx, (score, bbox) in enumerate(sorted(zip(results['scores'], results['boxes']), key=lambda x: x[0], reverse=True)):
-        
+        for idx, (score, bbox) in enumerate(
+            sorted(zip(results["scores"], results["boxes"]), key=lambda x: x[0], reverse=True)
+        ):
+
             tl_x, tl_y, br_x, br_y = bbox
             w, h = depth.shape
-            tl_x, tl_y, br_x, br_y = int(max(0, tl_x.item())), int(max(0, tl_y.item())), int(min(h, br_x.item())), int(min(w, br_y.item()))
-            
-            if torch.median(depth[tl_y: br_y, tl_x: br_x].reshape(-1)) < 3:
-                return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
+            tl_x, tl_y, br_x, br_y = (
+                int(max(0, tl_x.item())),
+                int(max(0, tl_y.item())),
+                int(min(h, br_x.item())),
+                int(min(w, br_y.item())),
+            )
+
+            if torch.median(depth[tl_y:br_y, tl_x:br_x].reshape(-1)) < 3:
+                return torch.median(xyzs[tl_y:br_y, tl_x:br_x].reshape(-1, 3), dim=0).values
         return None
 
-    def verify_point(self, A, point, distance_threshold = 0.1, similarity_threshold = 0.14):
+    def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
         if isinstance(point, np.ndarray):
             point = torch.from_numpy(point)
         points, _, _, _ = self.voxel_pcd.get_pointcloud()
-        distances = torch.linalg.norm(point - points.detach().cpu(), dim = -1)
+        distances = torch.linalg.norm(point - points.detach().cpu(), dim=-1)
         if torch.min(distances) > distance_threshold:
-            print('Points are so far from other points!')
+            print("Points are so far from other points!")
             return False
         alignments = self.find_alignment_over_model(A).detach().cpu()[0]
         if torch.max(alignments[distances <= distance_threshold]) < similarity_threshold:
-            print('Points close the the point are not similar to the text!')
-        return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold       
+            print("Points close the the point are not similar to the text!")
+        return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
 
-    def localize_A(self, A, debug = True, return_debug = False):
+    def localize_A(self, A, debug=True, return_debug=False):
         # centroids, extends, similarity_max_list, points, obs_max_list, debug_text = self.find_clusters_for_A(A, return_obs_counts = True, debug = debug)
         # if len(centroids) == 0:
         #     if not debug:
@@ -244,7 +275,7 @@ class VoxelMapLocalizer():
         #         debug_text += '#### - Instance ' +  str(idx + 1) + ' has high cosine similarity (' + str(round(similarity, 3)) +  '). **😃** Directly navigate to it.\n'
 
         #         break
-            
+
         #     debug_text += '#### - Cannot verify whether this instance is the target. **😞** \n'
 
         # if target_point is None:
@@ -259,17 +290,19 @@ class VoxelMapLocalizer():
         alignments = self.find_alignment_over_model(A).cpu()
         # alignments = alignments[0, points[:, -1] >= 0.1]
         # points = points[points[:, -1] >= 0.1]
-        point = points[alignments.argmax(dim = -1)].detach().cpu().squeeze()
+        point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
         obs_counts = self.voxel_pcd._obs_counts
-        image_id = obs_counts[alignments.argmax(dim = -1)].detach().cpu()
-        debug_text = ''
+        image_id = obs_counts[alignments.argmax(dim=-1)].detach().cpu()
+        debug_text = ""
         target_point = None
 
         res = self.compute_coord(A, image_id)
         # res = None
         if res is not None:
             target_point = res
-            debug_text += '#### - Obejct is detected in observations . **😃** Directly navigate to it.\n'
+            debug_text += (
+                "#### - Obejct is detected in observations . **😃** Directly navigate to it.\n"
+            )
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
             if self.siglip:
@@ -279,9 +312,11 @@ class VoxelMapLocalizer():
             if cosine_similarity_check:
                 target_point = point
 
-                debug_text += '#### - The point has high cosine similarity. **😃** Directly navigate to it.\n'
+                debug_text += (
+                    "#### - The point has high cosine similarity. **😃** Directly navigate to it.\n"
+                )
             else:
-                debug_text += '#### - Cannot verify whether this instance is the target. **😞** \n'
+                debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
         # print('target_point', target_point)
         if not debug:
             return target_point
@@ -290,9 +325,9 @@ class VoxelMapLocalizer():
         else:
             return target_point, debug_text, image_id, point
 
-    def find_clusters_for_A(self, A, return_obs_counts = False, debug = False, turning_point = None):
+    def find_clusters_for_A(self, A, return_obs_counts=False, debug=False, turning_point=None):
 
-        debug_text = ''
+        debug_text = ""
 
         points, features, _, _ = self.voxel_pcd.get_pointcloud()
         alignments = self.find_alignment_over_model(A).cpu().reshape(-1).detach().numpy()
@@ -306,7 +341,9 @@ class VoxelMapLocalizer():
         points = points[mask]
         if len(points) == 0:
 
-            debug_text += '### - No instance found! Maybe target object has not been observed yet. **😭**\n'
+            debug_text += (
+                "### - No instance found! Maybe target object has not been observed yet. **😭**\n"
+            )
 
             output = [[], [], [], []]
             if return_obs_counts:
@@ -318,20 +355,26 @@ class VoxelMapLocalizer():
         else:
             if return_obs_counts:
                 obs_ids = self.voxel_pcd._obs_counts.detach().cpu().numpy()[mask]
-                centroids, extends, similarity_max_list, points, obs_max_list = find_clusters(points.detach().cpu().numpy(), alignments, obs = obs_ids)
+                centroids, extends, similarity_max_list, points, obs_max_list = find_clusters(
+                    points.detach().cpu().numpy(), alignments, obs=obs_ids
+                )
                 output = [centroids, extends, similarity_max_list, points, obs_max_list]
             else:
-                centroids, extends, similarity_max_list, points = find_clusters(points.detach().cpu().numpy(), alignments, obs = None)
+                centroids, extends, similarity_max_list, points = find_clusters(
+                    points.detach().cpu().numpy(), alignments, obs=None
+                )
                 output = [centroids, extends, similarity_max_list, points]
 
-            debug_text += '### - Found ' + str(len(centroids)) + ' instances that might be target object.\n'
+            debug_text += (
+                "### - Found " + str(len(centroids)) + " instances that might be target object.\n"
+            )
             if debug:
                 output.append(debug_text)
-            
+
             return output
 
 
-def find_clusters(vertices: np.ndarray, similarity: np.ndarray, obs = None):
+def find_clusters(vertices: np.ndarray, similarity: np.ndarray, obs=None):
     # Calculate the number of top values directly
     top_positions = vertices
     # top_values = probability_over_all_points[top_indices].flatten()
@@ -347,7 +390,7 @@ def find_clusters(vertices: np.ndarray, similarity: np.ndarray, obs = None):
     similarity_list = []
     points = []
     obs_max_list = []
-    
+
     for cluster_id in set(labels):
         if cluster_id == -1:  # Ignore noise
             continue
