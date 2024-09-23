@@ -1,6 +1,6 @@
 # Robot Side Code
 
-Most of the heavy code will be running in the workstation and will communicate with the robot through sockets
+Most of the heavy code will be running in the workstation and will communicate with the robot through sockets.
 
 ## Preparation to run robot side codes
 
@@ -26,6 +26,8 @@ roslaunch home_robot_hw startup_stretch_hector_slam.launch
 ```
 python run.py -x1 [x1] -y1 [y1] -x2 [x2] -y2 [y2] -ip [your workstation ip]
 ```
+
+\<\<\<\<\<\<\< HEAD
 
 - **\[x1, y1\]** - Coordinated of tape on which the base of the robot is on
 - **\[x2, y2\]** - Coordinates of the secondary tape.
