@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -5,36 +14,34 @@
 import copy
 import logging
 import math
+import os
 import pickle
+import time
 from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
+import cv2
 import numpy as np
 import open3d as open3d
 import scipy
 import skimage
 import torch
+import torch.nn.functional as F
+import torchvision.transforms.functional as V
 import trimesh
+from scipy.ndimage import gaussian_filter, maximum_filter
 from torch import Tensor
+from torchvision import transforms
 
 from stretch.core.interfaces import Observations
+from stretch.dynav.mapping_utils import VoxelizedPointcloud, scatter3d
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.utils.data_tools.dict import update
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
-from stretch.dynav.mapping_utils import VoxelizedPointcloud, scatter3d
-
-import torch.nn.functional as F
-import torchvision.transforms.functional as V
-from torchvision import transforms
-import os
-import cv2
-import time
-
-from scipy.ndimage import gaussian_filter, maximum_filter
 
 Frame = namedtuple(
     "Frame",
@@ -129,7 +136,9 @@ class SparseVoxelMap(object):
             resolution(float): in meters, size of a voxel
             feature_dim(int): size of feature embeddings to capture per-voxel point
         """
-        print('------------------------YOU ARE NOW RUNNING PEIQI VOXEL MAP CODES V3-----------------')
+        print(
+            "------------------------YOU ARE NOW RUNNING PEIQI VOXEL MAP CODES V3-----------------"
+        )
         # TODO: We an use fastai.store_attr() to get rid of this boilerplate code
         self.resolution = resolution
         self.feature_dim = feature_dim
@@ -248,11 +257,9 @@ class SparseVoxelMap(object):
         depth = self.fix_data_type(obs.depth)
         xyz = self.fix_data_type(obs.xyz)
         camera_pose = self.fix_data_type(obs.camera_pose)
-        base_pose = torch.from_numpy(
-            np.array([obs.gps[0], obs.gps[1], obs.compass[0]])
-        ).float()
+        base_pose = torch.from_numpy(np.array([obs.gps[0], obs.gps[1], obs.compass[0]])).float()
         K = self.fix_data_type(obs.camera_K) if camera_K is None else camera_K
-        
+
         self.add(
             camera_pose=camera_pose,
             xyz=xyz,
@@ -317,9 +324,7 @@ class SparseVoxelMap(object):
                 assert (
                     feats.shape[-1] == self.feature_dim
                 ), f"features must match voxel feature dimenstionality of {self.feature_dim}"
-                assert (
-                    xyz.shape[0] == feats.shape[0]
-                ), "features must be available for each point"
+                assert xyz.shape[0] == feats.shape[0], "features must be available for each point"
             else:
                 pass
             if isinstance(xyz, np.ndarray):
@@ -329,9 +334,7 @@ class SparseVoxelMap(object):
         if camera_K is not None:
             assert camera_K.ndim == 2, "camera intrinsics K must be a 3x3 matrix"
         assert (
-            camera_pose.ndim == 2
-            and camera_pose.shape[0] == 4
-            and camera_pose.shape[1] == 4
+            camera_pose.ndim == 2 and camera_pose.shape[0] == 4 and camera_pose.shape[1] == 4
         ), "Camera pose must be a 4x4 matrix representing a pose in SE(3)"
         assert (
             xyz_frame in VALID_FRAMES
@@ -349,8 +352,7 @@ class SparseVoxelMap(object):
         if xyz is not None:
             if xyz_frame == "camera":
                 full_world_xyz = (
-                    torch.cat([xyz, torch.ones_like(xyz[..., [0]])], dim=-1)
-                    @ camera_pose.T
+                    torch.cat([xyz, torch.ones_like(xyz[..., [0]])], dim=-1) @ camera_pose.T
                 )[..., :3]
             elif xyz_frame == "world":
                 full_world_xyz = xyz
@@ -389,8 +391,7 @@ class SparseVoxelMap(object):
 
             if self.use_median_filter:
                 valid_depth = (
-                    valid_depth
-                    & (median_filter_error < self.median_filter_max_error).bool()
+                    valid_depth & (median_filter_error < self.median_filter_max_error).bool()
                 )
 
         # Add to voxel grid
@@ -401,7 +402,9 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
-            selected_indices = torch.randperm(len(world_xyz))[:int((1 - self.point_update_threshold) * len(world_xyz))]
+            selected_indices = torch.randperm(len(world_xyz))[
+                : int((1 - self.point_update_threshold) * len(world_xyz))
+            ]
             if len(selected_indices) == 0:
                 return
             if world_xyz is not None:
@@ -524,16 +527,7 @@ class SparseVoxelMap(object):
         assert filename.exists(), f"No file found at {filename}"
         with filename.open("rb") as f:
             data = pickle.load(f)
-        for i, (
-            camera_pose,
-            xyz,
-            rgb,
-            feats,
-            depth,
-            base_pose,
-            K,
-            world_xyz,
-        ) in enumerate(
+        for i, (camera_pose, xyz, rgb, feats, depth, base_pose, K, world_xyz,) in enumerate(
             zip(
                 data["camera_poses"],
                 data["xyz"],
@@ -586,9 +580,7 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
-    def get_2d_alignment_heuristics(
-        self, voxel_map_localizer, text, debug: bool = False
-    ):
+    def get_2d_alignment_heuristics(self, voxel_map_localizer, text, debug: bool = False):
         if voxel_map_localizer.voxel_pcd._points is None:
             return None
         # Convert metric measurements to discrete
@@ -615,9 +607,10 @@ class SparseVoxelMap(object):
 
         alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
         alignment_heuristics = torch.max(alignment_heuristics, dim=-1).values
-        alignment_heuristics = torch.from_numpy(maximum_filter(alignment_heuristics.numpy(), size = 7))
+        alignment_heuristics = torch.from_numpy(
+            maximum_filter(alignment_heuristics.numpy(), size=7)
+        )
         return alignment_heuristics
-
 
     def get_2d_map(
         self, debug: bool = False, return_history_id: bool = False
@@ -625,7 +618,11 @@ class SparseVoxelMap(object):
         """Get 2d map with explored area and frontiers."""
 
         # Is this already cached? If so we don't need to go to all this work
-        if self._map2d is not None and self._history_soft is not None and self._seq == self._2d_last_updated:
+        if (
+            self._map2d is not None
+            and self._history_soft is not None
+            and self._seq == self._2d_last_updated
+        ):
             return self._map2d if not return_history_id else (*self._map2d, self._history_soft)
 
         # Convert metric measurements to discrete
@@ -669,7 +666,7 @@ class SparseVoxelMap(object):
 
         # history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
-        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size = 5))
+        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=5))
 
         if self._remove_visited_from_obstacles:
             # Remove "visited" points containing observations of the robot
@@ -700,11 +697,9 @@ class SparseVoxelMap(object):
         if self.smooth_kernel_size > 0:
             # Opening and closing operations here on explore
             explored = binary_erosion(
-                binary_dilation(
-                    explored.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel
-                ),
+                binary_dilation(explored.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
                 self.smooth_kernel,
-            ) #[0, 0].bool()
+            )  # [0, 0].bool()
             explored = binary_dilation(
                 binary_erosion(explored, self.smooth_kernel),
                 self.smooth_kernel,
@@ -761,16 +756,12 @@ class SparseVoxelMap(object):
         if isinstance(xy, np.ndarray):
             xy = torch.from_numpy(xy).float()
         grid_xy = (xy / self.grid_resolution) + self.grid_origin[:2]
-        if torch.any(grid_xy >= self._grid_size_t) or torch.any(
-            grid_xy < torch.zeros(2)
-        ):
+        if torch.any(grid_xy >= self._grid_size_t) or torch.any(grid_xy < torch.zeros(2)):
             return None
         else:
             return grid_xy.int()
 
-    def plan_to_grid_coords(
-        self, plan_result: PlanResult
-    ) -> Optional[List[torch.Tensor]]:
+    def plan_to_grid_coords(self, plan_result: PlanResult) -> Optional[List[torch.Tensor]]:
         """Convert a plan properly into grid coordinates"""
         if not plan_result.success:
             return None
@@ -791,16 +782,12 @@ class SparseVoxelMap(object):
         res[:2] = self.grid_coords_to_xy(grid_coords)
         return res
 
-    def show(
-        self, backend: str = "open3d", **backend_kwargs
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def show(self, backend: str = "open3d", **backend_kwargs) -> Tuple[np.ndarray, np.ndarray]:
         """Display the aggregated point cloud."""
         if backend == "open3d":
             return self._show_open3d(**backend_kwargs)
         else:
-            raise NotImplementedError(
-                f"Uknown backend {backend}, must be 'open3d' or 'pytorch3d"
-            )
+            raise NotImplementedError(f"Uknown backend {backend}, must be 'open3d' or 'pytorch3d")
 
     def get_xyz_rgb(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return xyz and rgb of the current map"""
@@ -819,9 +806,7 @@ class SparseVoxelMap(object):
     def xyt_is_safe(self, xyt: np.ndarray, robot: Optional[RobotModel] = None) -> bool:
         """Check to see if a given xyt position is known to be safe."""
         if robot is not None:
-            raise NotImplementedError(
-                "not currently checking against robot base geometry"
-            )
+            raise NotImplementedError("not currently checking against robot base geometry")
         obstacles, explored = self.get_2d_map()
         # Convert xy to grid coords
         grid_xy = self.xy_to_grid_coords(xyt[:2])
@@ -904,9 +889,7 @@ class SparseVoxelMap(object):
         # Create a combined point cloud
         # pc_xyz, pc_rgb, pc_feats = self.get_data()
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
-        pcd = numpy_to_pcd(
-            points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy()
-        )
+        pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
         if orig is None:
             orig = np.zeros(3)
         geoms = create_visualization_geometries(pcd=pcd, orig=orig)
@@ -938,9 +921,7 @@ class SparseVoxelMap(object):
         """Get a 3d mesh cube for the footprint of the robot. But this does not work very well for whatever reason."""
         # Define the dimensions of the cube
         if dimensions is None:
-            dimensions = np.array(
-                [0.2, 0.2, 0.2]
-            )  # Cube dimensions (length, width, height)
+            dimensions = np.array([0.2, 0.2, 0.2])  # Cube dimensions (length, width, height)
 
         x, y, theta = xyt
         # theta = theta - np.pi/2
@@ -964,9 +945,7 @@ class SparseVoxelMap(object):
         y_offset = -1 * dimensions[1] / 2
         dx = (math.cos(theta) * x_offset) + (math.cos(theta - np.pi / 2) * y_offset)
         dy = (math.sin(theta + np.pi / 2) * y_offset) + (math.sin(theta) * x_offset)
-        translation_vector = np.array(
-            [x + dx, y + dy, 0]
-        )  # Apply offset based on theta
+        translation_vector = np.array([x + dx, y + dy, 0])  # Apply offset based on theta
         transformation_matrix = np.identity(4)
         transformation_matrix[:3, :3] = rotation_matrix
         transformation_matrix[:3, 3] = translation_vector
@@ -990,9 +969,7 @@ class SparseVoxelMap(object):
         """Show and return bounding box information and rgb color information from an explored point cloud. Uses open3d."""
 
         # get geometries so we can use them
-        geoms = self._get_open3d_geometries(
-            orig, norm, xyt=xyt, footprint=footprint
-        )
+        geoms = self._get_open3d_geometries(orig, norm, xyt=xyt, footprint=footprint)
 
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)
