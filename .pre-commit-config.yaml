@@ -65,6 +65,8 @@ repos:
     rev: v2.2.4 
     hooks: 
       - id: codespell 
+        args: 
+          - --ignore-words=.codespell-ignore-words.txt
         exclude: > 
           (?x)^( 
             | .*\.svg 
