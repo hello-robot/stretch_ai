@@ -62,3 +62,7 @@ jobs:
         python -m pip install pytest
         cd src/; python -m pytest --monitor-memory --timeout=300 -vv test/mapping
         cd src/; python -m pytest --monitor-memory --timeout=300 -vv test/llms
+        cd src/; python -m pytest --monitor-memory --timeout=300 -vv test/perception
+        cd src/; python -m pytest --monitor-memory --timeout=300 -vv test/utils
+        cd src/; python -m pytest --monitor-memory --timeout=300 -vv test/core
+        cd src/; python -m pytest --monitor-memory --timeout=300 -vv test/audio
