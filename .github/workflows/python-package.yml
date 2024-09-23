@@ -60,5 +60,4 @@ jobs:
     - name: Test with pytest
       run: |
         python -m pip install pytest
-        # mkdir -p ~/.stretch; printf "robots:\n  - ip_addr: 127.0.0.1\n    port: 20200\n" > ~/.stretch/config.yaml
-        cd src/; python -m pytest .
+        cd src/; python -m pytest --monitor-memory --timeout=300 -vv .
