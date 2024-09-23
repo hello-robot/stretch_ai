@@ -18,6 +18,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 import torch
 
+from stretch.core.interfaces import Observations
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.motion import HelloStretchIdx
@@ -175,6 +176,9 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
 
 
 class RerunVsualizer:
+
+    camera_point_radius = 0.01
+
     def __init__(
         self,
         display_robot_mesh: bool = True,
@@ -182,6 +186,7 @@ class RerunVsualizer:
         server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
+        show_camera_point_clouds: bool = True,
     ):
         """Rerun visualizer class
         Args:
@@ -195,6 +200,7 @@ class RerunVsualizer:
 
         self.display_robot_mesh = display_robot_mesh
         self.show_cameras_in_3d_view = show_cameras_in_3d_view
+        self.show_camera_point_clouds = show_camera_point_clouds
 
         if self.display_robot_mesh:
             self.urdf_logger = StretchURDFLogger()
@@ -239,24 +245,44 @@ class RerunVsualizer:
         )
         rr.send_blueprint(my_blueprint)
 
-    def log_head_camera(self, obs):
-        """Log head camera pose and images"""
-        rr.set_time_seconds("realtime", time.time())
-        if self.show_cameras_in_3d_view:
-            rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]))
-            rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]))
-        rot, trans = decompose_homogeneous_matrix(obs["camera_pose"])
-        rr.log("world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
-        rr.log(
-            "world/head_camera",
-            rr.Pinhole(
-                resolution=[obs["rgb"].shape[1], obs["rgb"].shape[0]],
-                image_from_camera=obs["camera_K"],
-                image_plane_distance=0.15,
-            ),
-        )
+    def log_head_camera(self, obs: Observations):
+        """Log head camera pose and images
 
-    def log_robot_xyt(self, obs):
+        Args:
+            obs (Observations): Observation dataclass
+        """
+        rr.set_time_seconds("realtime", time.time())
+        rr.log("world/head_camera/rgb", rr.Image(obs.rgb))
+
+        if self.show_camera_point_clouds:
+            head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
+            head_rgb = obs.rgb.reshape(-1, 3)
+            rr.log(
+                "world/head_camera/points",
+                rr.Points3D(
+                    positions=head_xyz,
+                    radii=np.ones(head_xyz.shape[:2]) * self.camera_point_radius,
+                    colors=np.int64(head_rgb),
+                ),
+            )
+        else:
+            rr.log("world/head_camera/depth", rr.depthimage(obs.head_depth))
+
+        if self.show_cameras_in_3d_view:
+            rot, trans = decompose_homogeneous_matrix(obs.camera_pose)
+            rr.log(
+                "world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3)
+            )
+            rr.log(
+                "world/head_camera",
+                rr.Pinhole(
+                    resolution=[obs.rgb.shape[1], obs.rgb.shape[0]],
+                    image_from_camera=obs.camera_K,
+                    image_plane_distance=0.15,
+                ),
+            )
+
+    def log_robot_xyt(self, obs: Observations):
         """Log robot world pose"""
         rr.set_time_seconds("realtime", time.time())
         xy = obs["gps"]
@@ -299,19 +325,35 @@ class RerunVsualizer:
         """
         rr.set_time_seconds("realtime", time.time())
         # EE Camera
+        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
+
+        if self.show_camera_point_clouds:
+            ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
+            ee_rgb = servo.ee_rgb.reshape(-1, 3)
+            rr.log(
+                "world/ee_camera/points",
+                rr.Points3D(
+                    positions=ee_xyz,
+                    radii=np.ones(ee_xyz.shape[:2]) * self.camera_point_radius,
+                    colors=np.int64(ee_rgb),
+                ),
+            )
+        else:
+            rr.log("world/ee_camera/depth", rr.depthimage(servo.ee_depth))
+
         if self.show_cameras_in_3d_view:
-            rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
-            rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth))
-        rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
-        rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
-        rr.log(
-            "world/ee_camera",
-            rr.Pinhole(
-                resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
-                image_from_camera=servo.ee_camera_K,
-                image_plane_distance=0.15,
-            ),
-        )
+            rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
+            rr.log(
+                "world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3)
+            )
+            rr.log(
+                "world/ee_camera",
+                rr.Pinhole(
+                    resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
+                    image_from_camera=servo.ee_camera_K,
+                    image_plane_distance=0.15,
+                ),
+            )
 
     def log_robot_state(self, obs):
         """Log robot joint states"""
@@ -467,9 +509,12 @@ class RerunVsualizer:
             try:
                 t0 = timeit.default_timer()
                 self.log_robot_xyt(obs)
-                self.log_head_camera(obs)
                 self.log_ee_frame(obs)
+
+                # Cameras use the lower-res servo object
+                self.log_head_camera(servo)
                 self.log_ee_camera(servo)
+
                 self.log_robot_state(obs)
 
                 if self.display_robot_mesh:
