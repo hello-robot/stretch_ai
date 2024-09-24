@@ -33,7 +33,6 @@ from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
-from stretch.visualization.rerun import RerunVsualizer
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
@@ -181,6 +180,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._servo_lock = Lock()
 
         if enable_rerun_server:
+            # TODO: move this import to the top of the file before merged
+            from stretch.visualization.rerun import RerunVsualizer
+
             self._rerun = RerunVsualizer()
         else:
             self._rerun = None

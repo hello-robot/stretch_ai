@@ -1574,24 +1574,14 @@ class RobotAgent:
             crop = crop.cropped_image
             if isinstance(crop, np.ndarray):
                 crop = torch.from_numpy(crop)
-            # loc = torch.mean(instance.point_cloud, axis=0)
             candidate_objects.append((crop, global_id, features))
 
         if len(candidate_objects) >= max_context_length:
             logger.warning(
                 f"\nWarning: VLMs can only handle limited size of crops -- ignoring instances using strategy: {sample_strategy}..."
             )
-            if sample_strategy == "major_vote":
-                # Send all the crop images so the agent can implement divide and conquer
-                pass
-            elif sample_strategy == "random_subsample":
-                pass
-            elif sample_strategy == "first_seen":
-                # Send the first images below the context length
-                pass
-            elif sample_strategy == "clip":
+            if sample_strategy == "clip":
                 # clip ranking
-                torch.cuda.empty_cache()
                 if task:
                     print(f"clip sampling based on task: {task}")
                     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -1599,7 +1589,6 @@ class RobotAgent:
                     for obj in candidate_objects:
                         image_features.append(obj[2])
                     image_features = torch.stack(image_features).squeeze(1).to(device)
-                    # image_features /= image_features.norm(dim=-1, keepdim=True)
                     similarity = (100.0 * text_features @ image_features.T).softmax(dim=-1)
                     _, indices = similarity[0].topk(len(candidate_objects))
                     sorted_objects = []
@@ -1646,7 +1635,7 @@ class RobotAgent:
         query=None
     ):
         """This is a connection to a remote thing for getting language commands"""
-        if self.parameters["vlm_option"] == "gpt4v":
+        if self.parameters["vlm_option"] == "gpt4":
             if not api_key:
                 api_key = input(
                     "You are using GPT4v for planning, please type in your openai key: "
@@ -1655,7 +1644,7 @@ class RobotAgent:
             world_representation = self.get_observations(
                 task=query, current_pose=current_pose, show_prompts=show_prompts
             )
-            output = self.get_output_from_gpt4v(world_representation, api_key=api_key, task=query)
+            output = self.get_output_from_gpt(world_representation, api_key=api_key, task=query)
             if show_plan:
                 import re
 
@@ -1663,11 +1652,11 @@ class RobotAgent:
 
                 if output == "explore":
                     print(
-                        ">>>>>> gpt4v cannot find a plan, the robot should explore more >>>>>>>>>"
+                        ">>>>>> Planner cannot find a plan, the robot should explore more >>>>>>>>>"
                     )
-                elif output == "gpt4v API error":
+                elif output == "gpt API error":
                     print(
-                        ">>>>>> there is something wrong with the gpt4v api >>>>>>>>>"
+                        ">>>>>> there is something wrong with the planner api >>>>>>>>>"
                     )
                 else:
                     actions = output.split("; ")
@@ -1695,11 +1684,8 @@ class RobotAgent:
             print(f"Task plan generated from VLMs has been written to {plan_file}")
         return output
     
-    def get_output_from_gpt4v(self, world_rep, api_key, task):
-        import sys
-        import os
-        from stretch.utils.gpt4_agent import GPT4Agent
-
+    def get_output_from_gpt(self, world_rep, api_key, task):
+        from stretch.llms.multi_crop_openai_client import MultiCropOpenAIClient
         # TODO: put these into config
         img_size = 256
         temperature = 0.2
@@ -1710,7 +1696,7 @@ class RobotAgent:
         ) as f:
             prompt = f.read()
 
-        gpt_agent = GPT4Agent(
+        gpt_agent = MultiCropOpenAIClient(
             cfg=dict(
                 img_size=img_size,
                 prompt=prompt,
@@ -1721,6 +1707,6 @@ class RobotAgent:
         )
         gpt_agent.reset()
         plan = gpt_agent.act_on_observations(
-            0, world_rep, goal=task, debug_path=None
+            world_rep, goal=task, debug_path=None
         )
         return plan

@@ -203,34 +203,31 @@ def main(
         # manually remove an instance for testing planning. TODO: this should come from VLM.
         new_map = copy.deepcopy(voxel_map)
         pcd = o3d.geometry.PointCloud()
-        removed_instance = voxel_map.get_instances()[2]  # a stuffed animal
+        removed_instance = voxel_map.get_instances()[
+            0
+        ]  # hopefully this is a stuffed animal
         pcd.points = o3d.utility.Vector3dVector(removed_instance.point_cloud.numpy())
         o3d.visualization.draw_geometries([pcd])
-        new_map.delete_instance(removed_instance, force_update=True, min_z=0.05)
+        new_map.delete_instance(removed_instance, force_update=True, min_bound_z=0.05)
         new_map.show()
 
         # create a new agent for planning with the updated map
         planning_agent = RobotAgent(
             dummy_robot,
             parameters,
-            rpc_stub=None,
-            grasp_client=None,
             voxel_map=new_map,
             semantic_sensor=semantic_sensor,
         )
 
-        while True:
-            try:
-                print("old plan: \n")
-                agent.get_plan_from_vlm(
-                    current_pose=x0, show_plan=True, api_key=api_key
-                )
-                print("new plan: \n")
-                planning_agent.get_plan_from_vlm(
-                    current_pose=x0, show_plan=True, api_key=api_key
-                )
-            except KeyboardInterrupt:
-                break
+        print("\nPlan with the original map: ")
+        agent.get_plan_from_vlm(
+            current_pose=x0, show_plan=True, api_key=api_key
+        )
+        print("\nPlan with the updated map: ")
+        planning_agent.get_plan_from_vlm(
+            current_pose=x0, show_plan=True, api_key=api_key
+        )
+
 
 
 if __name__ == "__main__":

@@ -87,6 +87,7 @@ class VoxelizedPointcloud:
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
         min_height: Optional[float] = None,
+        min_bound_z: Optional[float] = 0.0,   
     ):
         """Deletes points within a certain radius of a point, or optionally within certain bounds."""
 
@@ -113,6 +114,8 @@ class VoxelizedPointcloud:
             self._rgb = self._rgb[mask]
 
         elif bounds is not None:
+            # update bounds with min z threshold
+            bounds[2,0] = max(min_bound_z, bounds[2,0])            
             if not isinstance(bounds, torch.Tensor):
                 _bounds = torch.tensor(bounds)
             else:

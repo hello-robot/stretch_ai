@@ -1,33 +1,34 @@
 encoder: "dinov2siglip"
-encoder_args: {"version": "google/siglip-base-patch16-224"}
+encoder_args: { "version": "google/siglip-base-patch16-224" }
 tts_engine: "gTTS"
 open_vocab_category_map_file: example_cat_map.json
 
 # Sparse Voxel Map parameters
-voxel_size: 0.05
-obs_min_height: 0.1  # Ignore things less than this high
-obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
-obs_min_density: 10  # This many points makes it an obstacle
+voxel_size: 0.04 # Size of a voxel in meters
+obs_min_height: 0.1 # Ignore things less than this high when planning motions
+obs_max_height: 1.8 # Ignore things over this height (eg ceilings)
+neg_obs_height: -0.10 # Things less than this height ARE obstacles
+obs_min_density: 50 # This many points makes it an obstacle
+min_points_per_voxel: 50 # Drop things below this density per voxel
 
 # Padding
-# pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
-pad_obstacles: 1  # Add this many units (voxel_size) to the area around obstacles
-min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
+pad_obstacles: 1 # Add this many units (voxel_size) to the area around obstacles
+min_pad_obstacles: 0 # Do not pad LESS than this amount, for safety.
 
-local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
+local_radius: 0.8 # Area around the robot to mark as explored (kind of a hack)
+add_local_every_step: False
 remove_visited_from_obstacles: False
 min_depth: 0.5
-# max_depth: 2.5
 max_depth: 2.0
 
 # Object detection parameters
-detection:
-  module: sam2
-  category_map_file: example_cat_map.json
 # detection:
-#   module: "detic"
+#   module: sam2
 #   category_map_file: example_cat_map.json
-#   use_detic_viz: False
+detection:
+  module: "detic"
+  category_map_file: example_cat_map.json
+  use_detic_viz: False
 
 # Point cloud cleanup
 filters:
@@ -43,9 +44,9 @@ filters:
 # Motion convergence parameters
 # These are to make sure the robot is not doing anything weird
 motion:
-  moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
-  angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
-  min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
+  moving_threshold: 0.001 # How much the robot has to move to be considered "moving"
+  angle_threshold: 0.01 # How much the robot has to rotate to be considered "rotating"
+  min_steps_not_moving: 2 # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
     arm: 0.05
     base_x: 0.05
@@ -60,18 +61,26 @@ motion:
     gripper_open_threshold: 0.3
 
 # Exploration
-in_place_rotation_steps: 8
+agent:
+  #in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
+  #sweep_head_on_update: False
+  in_place_rotation_steps: 2
+  sweep_head_on_update: True
 
+# Instance memory parameters
+# These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
 instance_memory:
-  min_instance_thickness: 0.01 # filter out instances that are too flat like floors, walls etc
-  min_instance_vol: 1e-4 # filter out instances that are of too small volume
-  max_instance_vol: 0.5 # filter out instances that are too large
-  min_instance_height: 0.05
-  max_instance_height: 1
+  min_instance_thickness: 0.01
+  min_instance_vol: 1e-6
+  max_instance_vol: 10.0
+  min_instance_height: 0.01
+  max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.1
-  use_visual_feat: True
-
+  # Should we remove the background from the instance views?
+  # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
+  # It will have an effect on performance.
+  mask_cropped_instances: False # Should we remove the background from the instance views?
   matching:
     # Feature matching threshold for if something is considered a particular class
     # Set this value by experimting with:
@@ -89,21 +98,21 @@ scene_graph:
   max_on_height: 0.2
 
 # Navigation space - used for motion planning and computing goals.
-step_size: 0.1
-rotation_step_size: 0.2 
-dilate_frontier_size: 3  # Used to shrink the frontier back from the edges of the world
-dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
 motion_planner:
+  step_size: 0.1
+  rotation_step_size: 0.2
   simplify_plans: True
   shortcut_plans: True
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
-    default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
+    dilate_frontier_size: 5 # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 6 # Used when selecting goals and computing what the "frontier" is
+    default_expand_frontier_size: 10 # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
-    step_dist: 0.1
+    step_dist: 0.2
   goals:
     manipulation_radius: 0.55
 
@@ -117,19 +126,20 @@ trajectory_per_step_timeout: 3.0
 # User interface
 # Choose one of: (object_to_find, location_to_place), command, or chat
 # Don't use all of them!
-name: "stretch"  # for logging - currently not used
-vlm_context_length: 20  # How long messages sent to the vlm server can be if we are using it
+vlm_context_length: 20 # How long messages sent to the vlm server can be if we are using it
 limited_obs_publish_sleep: 0.5
 
-# High level stuff: commands to execute 
-# command: "pick up a bottle and put it on the chair"
-# name: "spot"
-exploration_steps: 10 # we can potentially increase it to 150 for sim
-# object_to_find: "bottle"
-# location_to_place: "chair"
+# High level stuff: commands to execute
+exploration_steps: 50
+name: "stretch"
+task:
+  command: "pick up a bottle and put it on the chair"
+  # object_to_find: "bottle"
+  # object_to_find: "toy_vehicle"
+  # location_to_place: "chair"
 
 # VLM Query parameters
 sample_strategy: "clip"
-vlm_option: gpt4v
+vlm_option: gpt4
 replanning: False # if replanning is True, the robot agent will memorize the task that is given at the first place
 save_vlm_plan: True
