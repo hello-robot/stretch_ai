@@ -848,12 +848,13 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
+        xyz = xyz[obs_mask, :]
+        counts = counts[obs_mask][:, None]
+
         if self.use_negative_obstacles:
             neg_height = int(self.neg_obs_height / self.grid_resolution)
             negative_obstacles = xyz[:, -1] < neg_height
-            obs_mask = obs_mask | negative_obstacles
-        xyz = xyz[obs_mask, :]
-        counts = counts[obs_mask][:, None]
+            xyz[negative_obstacles, -1] = min_height + 1
 
         # voxels[x_coords, y_coords, z_coords] = 1
         voxels = scatter3d(xyz, counts, grid_size).squeeze()
