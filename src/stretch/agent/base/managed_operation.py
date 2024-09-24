@@ -50,9 +50,9 @@ class ManagedOperation(Operation):
         """
         return self._name
 
-    def update(self):
+    def update(self, **kwargs):
         print(colored("================ Updating the world model ==================", "blue"))
-        self.agent.update()
+        self.agent.update(**kwargs)
 
     def attempt(self, message: str):
         print(colored(f"Trying {self.name}:", "blue"), message)

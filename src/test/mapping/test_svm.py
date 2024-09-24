@@ -45,8 +45,6 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
         dummy_robot,
         parameters,
         semantic_sensor=None,
-        rpc_stub=None,
-        grasp_client=None,
         voxel_map=None,
         use_instance_memory=True,
     )
@@ -145,5 +143,5 @@ def test_svm_large():
 
 if __name__ == "__main__":
     debug = True
-    test_svm_small()
-    # test_svm_large()
+    # test_svm_small()
+    test_svm_large()

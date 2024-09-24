@@ -160,8 +160,6 @@ def main(
     agent = RobotAgent(
         dummy_robot,
         parameters,
-        rpc_stub=None,
-        grasp_client=None,
         voxel_map=loaded_voxel_map,
         semantic_sensor=semantic_sensor,
     )
