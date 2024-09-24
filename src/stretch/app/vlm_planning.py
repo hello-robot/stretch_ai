@@ -12,7 +12,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import pickle
 from pathlib import Path
 
 import click
@@ -21,8 +20,8 @@ import matplotlib
 
 matplotlib.use("TkAgg")
 import numpy as np
-import matplotlib.pyplot as plt
-
+import copy
+import open3d as o3d
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
 from stretch.core.interfaces import Observations
@@ -30,7 +29,9 @@ from stretch.perception import create_semantic_sensor
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 
 
-def add_raw_obs_to_voxel_map(obs_history, voxel_map, semantic_sensor, num_frames, frame_skip):
+def add_raw_obs_to_voxel_map(
+    obs_history, voxel_map, semantic_sensor, num_frames, frame_skip
+):
     key_obs = []
     num_obs = len(obs_history["rgb"])
     video_frames = []
@@ -74,7 +75,7 @@ def add_raw_obs_to_voxel_map(obs_history, voxel_map, semantic_sensor, num_frames
 
 def images_to_video(image_list, output_path, fps=30):
     """
-    Convert a list of numpy arrays (images) into a video.
+    Convert a list of raw rgb data into a video.
     """
     print("Generating an video for visualizing the data...")
     if not image_list:
@@ -152,8 +153,6 @@ def main(
     print("- Load parameters")
     parameters = get_parameters(config_path)
 
-    obs_history = pickle.load(input_path.open("rb"))
-
     print("Creating semantic sensors...")
     semantic_sensor = create_semantic_sensor(config_path=config_path)
 
@@ -168,6 +167,9 @@ def main(
     )
     voxel_map = agent.voxel_map
     voxel_map.read_from_pickle(input_path, num_frames=frame, perception=semantic_sensor)
+
+    # or load from raw data
+    # obs_history = pickle.load(input_path.open("rb"))
     # voxel_map = add_raw_obs_to_voxel_map(
     #     obs_history,
     #     voxel_map,
@@ -184,48 +186,32 @@ def main(
     start_xyz = [x0[0], x0[1], 0]
 
     print("Agent loaded:", agent)
+
     # Display with agent overlay
     space = agent.get_navigation_space()
     if show_svm:
         footprint = dummy_robot.get_footprint()
         print(f"{x0} valid = {space.is_valid(x0)}")
-        voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
-        # breakpoint()    
-        # pcd = o3d.geometry.PointCloud()
-        # pcd.points = o3d.utility.Vector3dVector(planning_agent.get_all_reachable_instances()[0].point_cloud.numpy())
-        # o3d.visualization.draw_geometries([pcd])
+        voxel_map.show(
+            instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint
+        )
 
-        # breakpoint()        
-        # instance = voxel_map.get_instances()[4]
-        # res = agent.plan_to_instance(instance, x0, verbose=False, radius_m=0.3)
-        # plt.imshow(instance.get_best_view().get_image())
-        # plt.show()
-        # print(" - Plan result:", res.success)
-        # if res.success:
-        #     print(" - Plan length:", len(res.trajectory))
-        # footprint = dummy_robot.get_footprint()
-        # sampled_xyt = res.trajectory[-1].state
-        # xyz = np.array([sampled_xyt[0], sampled_xyt[1], 0.1])
-        # # Display the sampled goal location that we can reach
-        # voxel_map.show(instances=show_instances,orig=xyz,xyt=sampled_xyt,footprint=footprint)
-        # breakpoint()
-    
     if test_vlm:
         start_is_valid = space.is_valid(x0, verbose=True, debug=False)
         if not start_is_valid:
             print("you need to manually set the start pose to be valid")
             return
-        
-        # manually remove a instance
-        import copy
-        import open3d as o3d
+
+        # manually remove an instance for testing planning. TODO: this should come from VLM.
         new_map = copy.deepcopy(voxel_map)
         pcd = o3d.geometry.PointCloud()
-        removed_instance = voxel_map.get_instances()[2] # a stuffed animal
+        removed_instance = voxel_map.get_instances()[2]  # a stuffed animal
         pcd.points = o3d.utility.Vector3dVector(removed_instance.point_cloud.numpy())
         o3d.visualization.draw_geometries([pcd])
         new_map.delete_instance(removed_instance, force_update=True, min_z=0.05)
         new_map.show()
+
+        # create a new agent for planning with the updated map
         planning_agent = RobotAgent(
             dummy_robot,
             parameters,
@@ -234,17 +220,20 @@ def main(
             voxel_map=new_map,
             semantic_sensor=semantic_sensor,
         )
-        
+
         while True:
             try:
-                print ("old plan: \n")
-                agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
-                print ("new plan: \n")
-                planning_agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
-                breakpoint()
+                print("old plan: \n")
+                agent.get_plan_from_vlm(
+                    current_pose=x0, show_plan=True, api_key=api_key
+                )
+                print("new plan: \n")
+                planning_agent.get_plan_from_vlm(
+                    current_pose=x0, show_plan=True, api_key=api_key
+                )
             except KeyboardInterrupt:
                 break
-                
+
 
 if __name__ == "__main__":
     """run the test script."""

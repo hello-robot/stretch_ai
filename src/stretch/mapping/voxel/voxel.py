@@ -586,7 +586,7 @@ class SparseVoxelMap(object):
 
         # Add a print statement with use of this code
         logger.alert(f"Write pkl to {filename}...")
-        logger.alert(f"You may visualize this file with:")
+        logger.alert("You may visualize this file with:")
         logger.alert()
         logger.alert(f"\tpython -m stretch.app.read_map -i {filename} --show-svm")
         logger.alert()
