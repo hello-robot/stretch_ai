@@ -793,7 +793,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 rgb=self._obs["rgb"],
                 depth=self._obs["depth"],
                 xyz=self._obs["xyz"],
-                lidar_points=self.obs["lidar_points"],
+                lidar_points=self._obs["lidar_points"],
                 lidar_timestamp=self._obs["lidar_timestamp"],
             )
             observation.joint = self._obs.get("joint", None)

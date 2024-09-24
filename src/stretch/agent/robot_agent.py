@@ -183,8 +183,13 @@ class RobotAgent:
 
         # Map updates
         self._robot_lock = Lock()
-        self._update_map_thread = Thread(target=self.update_map_loop, args=(self,))
+        self._update_map_thread = Thread(target=self.update_map_loop)
         self._update_map_thread.start()
+
+        # Get observations thread
+        self._robot_lock = Lock()
+        self._get_observations_thread = Thread(target=self.get_observations_loop)
+        self._get_observations_thread.start()
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
 
@@ -428,41 +433,67 @@ class RobotAgent:
             instances=self.semantic_sensor is not None,
         )
 
+    def get_observations_loop(self):
+        while True:
+            obs = None
+            t0 = timeit.default_timer()
+
+            while obs is None:
+                obs = self.robot.get_observation()
+                t1 = timeit.default_timer()
+                if t1 - t0 > 10:
+                    logger.error("Failed to get observation")
+                    return
+                
+            # t1 = timeit.default_timer()
+            self.obs_history.append(obs)
+            self.obs_count += 1
+            time.sleep(0.05)
+
     def update_map_with_pose_graph(self):
         """Update our voxel map using a pose graph"""
-        obs = None
+        
         t0 = timeit.default_timer()
         self.pose_graph = self.robot.get_pose_graph()
 
-        while obs is None:
-            obs = self.robot.get_observation()
-            t1 = timeit.default_timer()
-            if t1 - t0 > 10:
-                logger.error("Failed to get observation")
-                return
+        # while obs is None:
+        #     obs = self.robot.get_observation()
+        #     t1 = timeit.default_timer()
+        #     if t1 - t0 > 10:
+        #         logger.error("Failed to get observation")
+        #         return
 
         t1 = timeit.default_timer()
-        self.obs_history.append(obs)
-        self.obs_count += 1
+        # self.obs_history.append(obs)
+        # self.obs_count += 1
         # Optionally do this
         if self.semantic_sensor is not None:
             # Semantic prediction
-            obs = self.semantic_sensor.predict(obs)
+            for idx, obs in enumerate(self.obs_history):
+                if obs.task_observations is None:
+                    # print("No task observations, running semantic sensor")
+                    # obs = self.semantic_sensor.predict(obs)
+                    self.obs_history[idx] = obs
 
         t2 = timeit.default_timer()
 
         # Update past observations based on our new pose graph
         start_pose = None
 
+        print(f"len obs history: {len(self.obs_history)}")
+        print(f"len pose graph: {len(self.pose_graph)}")
+
         for observation in self.obs_history:
-            lidar_timestamp = obs.lidar_timestamp
+            lidar_timestamp = observation.lidar_timestamp
 
             for vertex in self.pose_graph:
-                # if abs(vertex[0] - )
-                pass
+                print(f"vertex: {vertex[0]}, lidar: {lidar_timestamp}")
+                if abs(vertex[0] - lidar_timestamp) < 0.5:
+                # pass
+                    print("Approximate match found!")
 
         t2 = timeit.default_timer()
-        self.voxel_map.add_obs(obs)
+        # self.voxel_map.add_obs(obs)
 
         t3 = timeit.default_timer()
 
@@ -489,8 +520,11 @@ class RobotAgent:
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time"""
         while True:
+            print("Updating map")
             with self._robot_lock:
+                print("Acquired lock")
                 self.update_map_with_pose_graph()
+                print("Updated map")
             time.sleep(0.5)
 
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
