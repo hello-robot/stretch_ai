@@ -110,7 +110,6 @@ class SparseVoxelMap(object):
     )
     debug_valid_depth: bool = False
     debug_instance_memory_processing_time: bool = False
-    use_negative_obstacles: bool = False
 
     def __init__(
         self,
@@ -144,6 +143,7 @@ class SparseVoxelMap(object):
         prune_detected_objects: bool = False,
         add_local_radius_every_step: bool = False,
         min_points_per_voxel: int = 10,
+        use_negative_obstacles: bool = False,
     ):
         """
         Args:
@@ -199,6 +199,7 @@ class SparseVoxelMap(object):
         self.median_filter_size = median_filter_size
         self.use_median_filter = use_median_filter
         self.median_filter_max_error = median_filter_max_error
+        self.use_negative_obstacles = use_negative_obstacles
 
         # Derivative filter params
         self.use_derivative_filter = use_derivative_filter
@@ -1191,7 +1192,6 @@ class SparseVoxelMap(object):
             grid_resolution=parameters["voxel_size"],
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
-            neg_obs_height=parameters["neg_obs_height"],
             min_depth=parameters["min_depth"],
             max_depth=parameters["max_depth"],
             add_local_radius_every_step=parameters["add_local_every_step"],
@@ -1209,6 +1209,8 @@ class SparseVoxelMap(object):
             median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            use_negative_obstacles=parameters.get("use_negative_obstacles", False),
+            neg_obs_height=parameters.get("neg_obs_height", -0.10),
             use_instance_memory=use_instance_memory,
             instance_memory_kwargs={
                 "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),
