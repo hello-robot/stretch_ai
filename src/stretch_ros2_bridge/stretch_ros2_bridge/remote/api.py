@@ -315,7 +315,7 @@ class StretchClient(AbstractRobotClient):
 
         # Get lidar points and timestamp
         lidar_points = self.lidar.get()
-        lidar_timestamp = self.lidar.get_time().nanosec
+        lidar_timestamp = self.lidar.get_time().nanoseconds() / 1e9
 
         # Create the observation
         obs = Observations(
