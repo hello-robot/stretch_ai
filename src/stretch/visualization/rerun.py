@@ -371,10 +371,12 @@ class RerunVsualizer:
         self,
         space: SparseVoxelMapNavigationSpace,
         debug: bool = False,
-        explored_radius=0.01,
+        explored_radius=0.025,
         obstacle_radius=0.05,
+        world_radius=0.03,
     ):
         """Log voxel map and send it to Rerun visualizer
+
         Args:
             space (SparseVoxelMapNavigationSpace): Voxel map object
         """
@@ -387,7 +389,9 @@ class RerunVsualizer:
 
         rr.log(
             "world/point_cloud",
-            rr.Points3D(positions=points, radii=np.ones(rgb.shape[0]) * 0.01, colors=np.int64(rgb)),
+            rr.Points3D(
+                positions=points, radii=np.ones(rgb.shape[0]) * world_radius, colors=np.int64(rgb)
+            ),
         )
 
         t1 = timeit.default_timer()

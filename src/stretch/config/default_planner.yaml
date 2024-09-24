@@ -37,7 +37,7 @@ filters:
   smooth_kernel_size: 2
   # smooth_kernel_size: 0
   use_median_filter: True
-  median_filter_size: 2
+  median_filter_size: 4
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
@@ -101,8 +101,8 @@ scene_graph:
 
 # Navigation space - used for motion planning and computing goals.
 motion_planner:
-  step_size: 0.1
-  rotation_step_size: 0.2 
+  step_size: 0.05
+  rotation_step_size: 0.1
   simplify_plans: True
   shortcut_plans: True
   shortcut_iter: 100
