@@ -20,11 +20,12 @@ from stretch_mujoco import StretchMujocoSimulator
 
 try:
     from stretch_mujoco.robocasa_gen import model_generation_wizard
-except:
+except ImportError as e:
     from stretch.utils.logger import error
 
     error("Could not import robocasa!")
     error("Install robosuite and robocasa in order to use model generation wizard.")
+    error(f"Error: {e}")
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
