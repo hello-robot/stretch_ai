@@ -16,6 +16,14 @@ from stretch.llms.multi_crop_openai_client import MultiCropOpenAIClient
 
 class VLMPlanner:
     def __init__(self, agent: RobotAgent, api_key: str = None) -> None:
+        """This is a connection to a VLM for getting a plan based on language commands.
+
+        Args:
+            agent (RobotAgent): the agent
+            api_key (str): the API key for the VLM. Optional; if not provided, will be read from the environment variable OPENAI_API_KEY. If not found there, will prompt the user for it.
+        """
+
+        self.agent = agent
 
         # TODO: put these into config
         img_size = 256
