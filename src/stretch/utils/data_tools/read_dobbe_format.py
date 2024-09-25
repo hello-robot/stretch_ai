@@ -394,7 +394,7 @@ if __name__ == "__main__":
 
     # Pull out the head image from data_dir
     pil_head_image = data_dir["observation.images.head"][0]
-    head_image = np.array(pil_head_image.data)
+    head_image = np.array(pil_head_image)
 
     breakpoint()
 
