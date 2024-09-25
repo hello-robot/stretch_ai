@@ -389,12 +389,14 @@ if __name__ == "__main__":
 
     # Pull out the first image from data_dir
     # This is a PIL image
-    pil_gripper_image = data_dir["observation.images.gripper"][0]
+    pil_gripper_image = data_dir["observation.images.gripper"]
     gripper_image = np.array(pil_gripper_image)
 
     # Pull out the head image from data_dir
     pil_head_image = data_dir["observation.images.head"][0]
-    head_image = np.array(pil_head_image)
+    head_image = np.array(pil_head_image.data)
+
+    breakpoint()
 
     import matplotlib.pyplot as plt
 
