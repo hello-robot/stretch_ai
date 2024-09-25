@@ -123,7 +123,7 @@ class ImageProcessor:
         rerun=True,
         static=True,
         log=None,
-        image_shape=(450, 350),
+        image_shape=(400, 300),
     ):
         self.static = static
         self.siglip = siglip

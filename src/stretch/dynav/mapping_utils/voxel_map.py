@@ -50,9 +50,6 @@ class SparseVoxelMapNavigationSpace(XYT):
         dilate_obstacle_size: int = 2,
         extend_mode: str = "separate",
     ):
-        print(
-            "------------------------YOU ARE NOW RUNNING PEIQI VOXEL NAVIGATION SPACE CODES-----------------"
-        )
         self.step_size = step_size
         self.rotation_step_size = rotation_step_size
         self.voxel_map = voxel_map
