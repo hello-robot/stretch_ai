@@ -1,11 +1,24 @@
-import zmq
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import numpy as np
 from PIL import Image as PILImage
 
-from stretch.dynav.ok_robot_hw.utils.communication_utils import send_array, recv_array, send_depth_img, recv_depth_img, send_rgb_img,  recv_rgb_img
+from stretch.dynav.ok_robot_hw.utils.communication_utils import (
+    recv_array,
+    send_array,
+    send_depth_img,
+    send_rgb_img,
+)
 
-class ImagePublisher():
 
+class ImagePublisher:
     def __init__(self, camera, socket):
         self.camera = camera
         self.socket = socket
@@ -24,12 +37,23 @@ class ImagePublisher():
         send_rgb_img(self.socket, rotated_image)
         print(self.socket.recv_string())
         send_depth_img(self.socket, rotated_depth)
-        print(self.socket.recv_string()) 
+        print(self.socket.recv_string())
         # send_array(self.socket, rotated_image)
         # print(self.socket.recv_string())
         # send_array(self.socket, rotated_depth)
-        # print(self.socket.recv_string()) 
-        send_array(self.socket, np.array([self.camera.fy, self.camera.fx, self.camera.cy, self.camera.cx, int(head_tilt*100)]))
+        # print(self.socket.recv_string())
+        send_array(
+            self.socket,
+            np.array(
+                [
+                    self.camera.fy,
+                    self.camera.fx,
+                    self.camera.cy,
+                    self.camera.cx,
+                    int(head_tilt * 100),
+                ]
+            ),
+        )
         print(self.socket.recv_string())
 
         ## Sending Object text and Manipulation mode
@@ -55,5 +79,5 @@ class ImagePublisher():
         print(translation)
         print("rotation: ")
         print(rotation)
-        print(self.socket.recv_string())    
+        print(self.socket.recv_string())
         return translation, rotation, depth, width, retry

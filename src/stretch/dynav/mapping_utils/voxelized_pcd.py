@@ -1,40 +1,22 @@
-"""
-    This file implements VoxelizedPointcloud module in home-robot project (https://github.com/facebookresearch/home-robot).
-    Adapted to be used in ok-robot's navigation voxel map:
-    https://github.com/facebookresearch/home-robot/blob/main/src/home_robot/home_robot/utils/voxel.py
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
 
-    License:
-
-    MIT License
-
-    Copyright (c) Meta Platforms, Inc. and affiliates.
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-    
-"""
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 from typing import List, Optional, Tuple, Union
 
-import cv2
-import numpy as np
 import torch
 from torch import Tensor
+
 USE_TORCH_GEOMETRIC = True
 if USE_TORCH_GEOMETRIC:
     from torch_geometric.nn.pool.consecutive import consecutive_cluster
@@ -55,7 +37,9 @@ def project_points(points_3d, K, pose):
         pose = torch.Tensor(pose)
     pose = pose.to(points_3d)
     # Convert points to homogeneous coordinates
-    points_3d_homogeneous = torch.hstack((points_3d, torch.ones((points_3d.shape[0], 1)).to(points_3d)))
+    points_3d_homogeneous = torch.hstack(
+        (points_3d, torch.ones((points_3d.shape[0], 1)).to(points_3d))
+    )
 
     # Transform points into camera coordinate system
     points_camera_homogeneous = torch.matmul(torch.linalg.inv(pose), points_3d_homogeneous.T).T
@@ -73,7 +57,9 @@ def get_depth_values(points_3d, pose):
     if not isinstance(pose, torch.Tensor):
         pose = torch.Tensor(pose)
     pose = pose.to(points_3d)
-    points_3d_homogeneous = torch.hstack((points_3d, torch.ones((points_3d.shape[0], 1)).to(points_3d)))
+    points_3d_homogeneous = torch.hstack(
+        (points_3d, torch.ones((points_3d.shape[0], 1)).to(points_3d))
+    )
 
     # Transform points into camera coordinate system
     points_camera_homogeneous = torch.matmul(torch.linalg.inv(pose), points_3d_homogeneous.T).T
@@ -136,7 +122,7 @@ class VoxelizedPointcloud:
         self._maxs = self.dim_maxs
         self.obs_count = 1
 
-    def clear_points(self, depth, intrinsics, pose, depth_is_valid = None, min_samples_clear = None):
+    def clear_points(self, depth, intrinsics, pose, depth_is_valid=None, min_samples_clear=None):
         if self._points is not None:
             xys = project_points(self._points.detach().cpu(), intrinsics, pose).int()
             xys = xys[:, [1, 0]]
@@ -146,37 +132,54 @@ class VoxelizedPointcloud:
             # Some points are projected to (i, j) on image plane and i, j might be smaller than 0 or greater than image size
             # which will lead to Index Error.
             valid_xys = xys.clone()
-            valid_xys[torch.any(torch.stack([
-                    xys[:, 0] < 0, 
-                    xys[:, 0] >= H, 
-                    xys[:, 1] < 0, 
-                    xys[:, 1] >= W,
-                ], dim = 0), dim = 0)] = 0
+            valid_xys[
+                torch.any(
+                    torch.stack(
+                        [
+                            xys[:, 0] < 0,
+                            xys[:, 0] < 0,
+                            xys[:, 0] < 0,
+                            xys[:, 0] >= H,
+                            xys[:, 0] >= H,
+                            xys[:, 0] >= H,
+                            xys[:, 1] < 0,
+                            xys[:, 1] < 0,
+                            xys[:, 1] < 0,
+                            xys[:, 1] >= W,
+                        ],
+                        dim=0,
+                    ),
+                    dim=0,
+                )
+            ] = 0
             indices = torch.any(
                 torch.stack(
                     [
                         # the points are projected outside image frame
-                        xys[:, 0] < 0, xys[:, 0] >= H, 
-                        xys[:, 1] < 0, xys[:, 1] >= W, 
+                        xys[:, 0] < 0,
+                        xys[:, 0] >= H,
+                        xys[:, 1] < 0,
+                        xys[:, 1] >= W,
                         # the points are projected to the image frame but is blocked by some obstacles
-                        depth[valid_xys[:, 0], valid_xys[:, 1]] < (proj_depth - 0.1), 
+                        depth[valid_xys[:, 0], valid_xys[:, 1]] < (proj_depth - 0.1),
                         # the points are projected to the image frame but they are behind camera
                         depth[valid_xys[:, 0], valid_xys[:, 1]] < 0.01,
                         proj_depth < 0.01,
                         # depth is too large
                         # (~depth_is_valid)[valid_xys[:, 0], valid_xys[:, 1]],
-                        proj_depth > 2.0
+                        proj_depth > 2.0,
                     ],
-                    dim = 0
+                    dim=0,
                 ),
-                dim = 0)
+                dim=0,
+            )
 
             # if self._entity_ids is not None:
             #     removed_entities, removed_counts = torch.unique(self._entity_ids.detach().cpu()[~indices], return_counts = True)
             #     total_counts = torch.bincount(self._entity_ids.detach().cpu())
             #     entities_to_be_removed = removed_entities[(removed_counts > total_counts[removed_entities] * 0.6) | (total_counts[removed_entities] - removed_counts < 5)]
             #     indices = indices & ~torch.isin(self._entity_ids.detach().cpu(), entities_to_be_removed)
-        
+
             # print('Clearing non valid points...')
             # print('Removing ' + str((~indices).sum().item()) + ' points.')
             indices = indices.to(self._points.device)
@@ -184,7 +187,7 @@ class VoxelizedPointcloud:
             if self._features is not None:
                 self._features = self._features[indices]
             if self._weights is not None:
-                self._weights= self._weights[indices]
+                self._weights = self._weights[indices]
             if self._rgb is not None:
                 self._rgb = self._rgb[indices]
             if self._obs_counts is not None:
@@ -194,7 +197,13 @@ class VoxelizedPointcloud:
 
             if self._entity_ids is not None and min_samples_clear is not None:
                 dbscan = DBSCAN(eps=self.voxel_size * 4, min_samples=min_samples_clear)
-                cluster_vertices = torch.cat((self._points.detach().cpu(), self._entity_ids.detach().cpu().reshape(-1,1) * 1000), -1).numpy()
+                cluster_vertices = torch.cat(
+                    (
+                        self._points.detach().cpu(),
+                        self._entity_ids.detach().cpu().reshape(-1, 1) * 1000,
+                    ),
+                    -1,
+                ).numpy()
                 clusters = dbscan.fit(cluster_vertices)
                 labels = clusters.labels_
                 indices = labels != -1
@@ -202,7 +211,7 @@ class VoxelizedPointcloud:
                 if self._features is not None:
                     self._features = self._features[indices]
                 if self._weights is not None:
-                    self._weights= self._weights[indices]
+                    self._weights = self._weights[indices]
                 if self._rgb is not None:
                     self._rgb = self._rgb[indices]
                 if self._obs_counts is not None:
@@ -217,7 +226,7 @@ class VoxelizedPointcloud:
         rgb: Optional[Tensor],
         weights: Optional[Tensor] = None,
         obs_count: Optional[int] = None,
-        entity_id: Optional[int] = None
+        entity_id: Optional[int] = None,
     ):
         """Add a feature pointcloud to the voxel grid.
 
@@ -235,13 +244,13 @@ class VoxelizedPointcloud:
             weights = torch.ones_like(points[..., 0])
 
         if obs_count is None:
-            obs_count = torch.ones_like(weights) * self.obs_count
+            obs_counts = torch.ones_like(weights) * self.obs_count
         else:
-            obs_count = torch.ones_like(weights) * obs_count
+            obs_counts = torch.ones_like(weights) * obs_count
         if entity_id is None:
-            entity_id =  torch.ones_like(weights) * self.obs_count
+            entity_ids = torch.ones_like(weights) * self.obs_count
         else:
-            obs_count = torch.ones_like(weights) * entity_id
+            entity_ids = torch.ones_like(weights) * entity_id
         self.obs_count += 1
 
         # Update voxel grid bounds
@@ -263,41 +272,33 @@ class VoxelizedPointcloud:
             self._mins, self._maxs = pos_mins, pos_maxs
             # recompute_voxels = True
         else:
-            assert (
-                self._maxs is not None
-            ), "How did self._mins get set without self._maxs?"
+            assert self._maxs is not None, "How did self._mins get set without self._maxs?"
             # recompute_voxels = torch.any(pos_mins < self._mins) or torch.any(self._maxs < pos_maxs)
             self._mins = torch.min(self._mins, pos_mins)
             self._maxs = torch.max(self._maxs, pos_maxs)
 
         if self._points is None:
-            assert (
-                self._features is None
-            ), "How did self._points get unset while _features is set?"
+            assert self._features is None, "How did self._points get unset while _features is set?"
             # assert self._rgbs is None, "How did self._points get unset while _rgbs is set?"
-            assert (
-                self._weights is None
-            ), "How did self._points get unset while _weights is set?"
+            assert self._weights is None, "How did self._points get unset while _weights is set?"
             all_points, all_features, all_weights, all_rgb = (
                 points,
                 features,
                 weights,
                 rgb,
             )
-            all_obs_counts = obs_count
-            all_entity_ids = entity_id
+            all_obs_counts = obs_counts
+            all_entity_ids = entity_ids
         else:
             assert (self._features is None) == (features is None)
             all_points = torch.cat([self._points, points], dim=0)
             all_weights = torch.cat([self._weights, weights], dim=0)
             all_features = (
-                torch.cat([self._features, features], dim=0)
-                if (features is not None)
-                else None
+                torch.cat([self._features, features], dim=0) if (features is not None) else None
             )
             all_rgb = torch.cat([self._rgb, rgb], dim=0) if (rgb is not None) else None
-            all_obs_counts = torch.cat([self._obs_counts, obs_count], dim=0)
-            all_entity_ids = torch.cat([self._entity_ids, entity_id], dim=0)
+            all_obs_counts = torch.cat([self._obs_counts, obs_counts], dim=0)
+            all_entity_ids = torch.cat([self._entity_ids, entity_ids], dim=0)
         # Future optimization:
         # If there are no new voxels, then we could save a bit of compute time
         # by only recomputing the voxel/cluster for the new points
@@ -306,20 +307,27 @@ class VoxelizedPointcloud:
         cluster_voxel_idx, cluster_consecutive_idx, _ = voxelize(
             all_points, voxel_size=self.voxel_size, start=self._mins, end=self._maxs
         )
-        self._points, self._features, self._weights, self._rgb, self._obs_counts, self._entity_ids = reduce_pointcloud(
+        (
+            self._points,
+            self._features,
+            self._weights,
+            self._rgb,
+            self._obs_counts,
+            self._entity_ids,
+        ) = reduce_pointcloud(
             cluster_consecutive_idx,
             pos=all_points,
             features=all_features,
             weights=all_weights,
             rgbs=all_rgb,
-            obs_counts = all_obs_counts,
-            entity_ids = all_entity_ids,
+            obs_counts=all_obs_counts,
+            entity_ids=all_entity_ids,
             feature_reduce=self.feature_pool_method,
         )
         self._obs_counts, self._entity_ids = self._obs_counts.int(), self._entity_ids.int()
         return
 
-    def get_idxs(self, points: Tensor) -> Tensor:
+    def get_idxs(self, points: Tensor) -> Tuple[Tensor, ...]:
         """Returns voxel index (long tensor) for each point in points
 
         Args:
@@ -366,7 +374,7 @@ class VoxelizedPointcloud:
         ) = self.get_idxs(points)
         return cluster_consecutive_idx
 
-    def get_pointcloud(self) -> Tuple[Tensor]:
+    def get_pointcloud(self) -> Tuple[Tensor, ...]:
         """Returns pointcloud (1 point per occupied voxel)
 
         Returns:
@@ -433,7 +441,7 @@ def voxelize(
     batch: Optional[Tensor] = None,
     start: Optional[Union[float, Tensor]] = None,
     end: Optional[Union[float, Tensor]] = None,
-) -> Tuple[Tensor]:
+) -> Tuple[Tensor, ...]:
     """Returns voxel indices and packed (consecutive) indices for points
 
     Args:
@@ -449,9 +457,7 @@ def voxelize(
         cluster_consecutive_idx (LongTensor): Packed idx -- contiguous in cluster ID. E.g. [0, 0, 2, 1, 1, 2]
         batch_sample: See https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/pool/max_pool.html
     """
-    voxel_cluster = voxel_grid(
-        pos=pos, batch=batch, size=voxel_size, start=start, end=end
-    )
+    voxel_cluster = voxel_grid(pos=pos, batch=batch, size=voxel_size, start=start, end=end)
     cluster_consecutive_idx, perm = consecutive_cluster(voxel_cluster)
     batch_sample = batch[perm] if batch is not None else None
     cluster_idx = voxel_cluster
@@ -478,9 +484,7 @@ def scatter_weighted_mean(
         Tensor: Agggregated features, weighted by weights and normalized by weights_cluster
     """
     assert dim == 0, "Dim != 0 not yet implemented"
-    feature_cluster = scatter(
-        features * weights[:, None], cluster, dim=dim, reduce="sum"
-    )
+    feature_cluster = scatter(features * weights[:, None], cluster, dim=dim, reduce="sum")
     feature_cluster = feature_cluster / weights_cluster[:, None]
     return feature_cluster
 
@@ -494,7 +498,7 @@ def reduce_pointcloud(
     obs_counts: Optional[Tensor] = None,
     entity_ids: Optional[Tensor] = None,
     feature_reduce: str = "mean",
-) -> Tuple[Tensor]:
+) -> Tuple[Tensor, ...]:
     """Pools values within each voxel
 
     Args:
@@ -518,29 +522,32 @@ def reduce_pointcloud(
         weights = torch.ones_like(pos[..., 0])
     weights_cluster = scatter(weights, voxel_cluster, dim=0, reduce="sum")
 
-    pos_cluster = scatter_weighted_mean(
-        pos, weights, voxel_cluster, weights_cluster, dim=0
-    )
+    pos_cluster = scatter_weighted_mean(pos, weights, voxel_cluster, weights_cluster, dim=0)
 
     if rgbs is not None:
-        rgb_cluster = scatter_weighted_mean(
-            rgbs, weights, voxel_cluster, weights_cluster, dim=0
-        )
+        rgb_cluster = scatter_weighted_mean(rgbs, weights, voxel_cluster, weights_cluster, dim=0)
     else:
         rgb_cluster = None
-    
+
     if obs_counts is not None:
-        obs_count_cluster = scatter(obs_counts, voxel_cluster, dim = 0, reduce = "max")
+        obs_count_cluster = scatter(obs_counts, voxel_cluster, dim=0, reduce="max")
     else:
         obs_count_cluster = None
 
     if entity_ids is not None:
-        entity_ids_cluster = scatter(entity_ids, voxel_cluster, dim = 0, reduce = "max")
+        entity_ids_cluster = scatter(entity_ids, voxel_cluster, dim=0, reduce="max")
     else:
         entity_ids_cluster = None
 
     if features is None:
-        return pos_cluster, None, weights_cluster, rgb_cluster, obs_count_cluster, entity_ids_cluster
+        return (
+            pos_cluster,
+            None,
+            weights_cluster,
+            rgb_cluster,
+            obs_count_cluster,
+            entity_ids_cluster,
+        )
 
     if feature_reduce == "mean":
         feature_cluster = scatter_weighted_mean(
@@ -549,17 +556,25 @@ def reduce_pointcloud(
     elif feature_reduce == "max":
         feature_cluster = scatter(features, voxel_cluster, dim=0, reduce="max")
     elif feature_reduce == "sum":
-        feature_cluster = scatter(
-            features * weights[:, None], voxel_cluster, dim=0, reduce="sum"
-        )
+        feature_cluster = scatter(features * weights[:, None], voxel_cluster, dim=0, reduce="sum")
     else:
         raise NotImplementedError(f"Unknown feature reduction method {feature_reduce}")
 
-    return pos_cluster, feature_cluster, weights_cluster, rgb_cluster, obs_count_cluster, entity_ids_cluster
+    return (
+        pos_cluster,
+        feature_cluster,
+        weights_cluster,
+        rgb_cluster,
+        obs_count_cluster,
+        entity_ids_cluster,
+    )
 
 
 def scatter3d(
-    voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int], method: str = "mean",
+    voxel_indices: Tensor,
+    weights: Tensor,
+    grid_dimensions: List[int],
+    method: str = "mean",
 ) -> Tensor:
     """Scatter weights into a 3d voxel grid of the appropriate size.
 

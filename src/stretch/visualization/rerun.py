@@ -94,7 +94,7 @@ class RerunVsualizer:
                 vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                 colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
             ),
-            static = True
+            static=True,
         )
 
         self.bbox_colors_memory = {}
@@ -114,10 +114,14 @@ class RerunVsualizer:
     def log_head_camera(self, obs):
         """Log head camera pose and images"""
         rr.set_time_seconds("realtime", time.time())
-        rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]), static = True)
-        rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]), static = True)
+        rr.log("world/head_camera/rgb", rr.Image(obs["rgb"]), static=True)
+        rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]), static=True)
         rot, trans = decompose_homogeneous_matrix(obs["camera_pose"])
-        rr.log("world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static = True)
+        rr.log(
+            "world/head_camera",
+            rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3),
+            static=True,
+        )
         rr.log(
             "world/head_camera",
             rr.Pinhole(
@@ -125,7 +129,7 @@ class RerunVsualizer:
                 image_from_camera=obs["camera_K"],
                 image_plane_distance=0.35,
             ),
-            static = True
+            static=True,
         )
 
     def log_robot_xyt(self, obs):
@@ -140,8 +144,12 @@ class RerunVsualizer:
             labels="robot",
             colors=[255, 0, 0, 255],
         )
-        rr.log("world/robot/arrow", rb_arrow, static = True)
-        rr.log("world/robot/blob", rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13), static = True)
+        rr.log("world/robot/arrow", rb_arrow, static=True)
+        rr.log(
+            "world/robot/blob",
+            rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13),
+            static=True,
+        )
         rr.log(
             "world/robot",
             rr.Transform3D(
@@ -149,7 +157,7 @@ class RerunVsualizer:
                 rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=theta),
                 axis_length=0.7,
             ),
-            static = True
+            static=True,
         )
 
     def log_ee_frame(self, obs):
@@ -163,8 +171,10 @@ class RerunVsualizer:
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
-        rr.log("world/ee/arrow", ee_arrow, static = True)
-        rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static = True)
+        rr.log("world/ee/arrow", ee_arrow, static=True)
+        rr.log(
+            "world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static=True
+        )
 
     def log_ee_camera(self, servo):
         """Log end effector camera pose and images
@@ -173,10 +183,14 @@ class RerunVsualizer:
         """
         rr.set_time_seconds("realtime", time.time())
         # EE Camera
-        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb), static = True)
-        rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth), static = True)
+        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb), static=True)
+        rr.log("world/ee_camera/depth", rr.DepthImage(servo.ee_depth), static=True)
         rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
-        rr.log("world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static = True)
+        rr.log(
+            "world/ee_camera",
+            rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3),
+            static=True,
+        )
         rr.log(
             "world/ee_camera",
             rr.Pinhole(
@@ -184,7 +198,7 @@ class RerunVsualizer:
                 image_from_camera=servo.ee_camera_K,
                 image_plane_distance=0.35,
             ),
-            static = True
+            static=True,
         )
 
     def log_robot_state(self, obs):
@@ -192,7 +206,11 @@ class RerunVsualizer:
         rr.set_time_seconds("realtime", time.time())
         state = obs["joint"]
         for k in HelloStretchIdx.name_to_idx:
-            rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]), static = True)
+            rr.log(
+                f"robot_state/joint_pose/{k}",
+                rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]),
+                static=True,
+            )
 
     def update_voxel_map(self, space: SparseVoxelMapNavigationSpace):
         """Log voxel map
@@ -207,7 +225,7 @@ class RerunVsualizer:
         rr.log(
             "world/point_cloud",
             rr.Points3D(positions=points, radii=np.ones(rgb.shape[0]) * 0.01, colors=np.int64(rgb)),
-            static = True
+            static=True,
         )
         grid_origin = space.voxel_map.grid_origin
         obstacles, explored = space.voxel_map.get_2d_map()
@@ -221,7 +239,7 @@ class RerunVsualizer:
             rr.Points3D(
                 positions=obs_points, radii=np.ones(points.shape[0]) * 0.025, colors=[255, 0, 0]
             ),
-            static = True
+            static=True,
         )
         rr.log(
             "world/explored",
@@ -230,7 +248,7 @@ class RerunVsualizer:
                 radii=np.ones(points.shape[0]) * 0.01,
                 colors=[255, 255, 255],
             ),
-            static = True
+            static=True,
         )
 
     def update_scene_graph(
@@ -259,7 +277,7 @@ class RerunVsualizer:
                 rr.log(
                     f"world/{instance.id}_{name}",
                     rr.Points3D(positions=point_cloud_rgb, colors=np.int64(pcd_rgb)),
-                    static = True
+                    static=True,
                 )
                 half_sizes = [(b[0] - b[1]) / 2 for b in bbox_bounds]
                 bounds.append(half_sizes)
@@ -277,7 +295,7 @@ class RerunVsualizer:
                     radii=0.01,
                     colors=colors,
                 ),
-                static = True
+                static=True,
             )
 
     def step(self, obs, servo):

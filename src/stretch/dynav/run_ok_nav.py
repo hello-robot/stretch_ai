@@ -1,30 +1,29 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
 #
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import click
-import matplotlib.pyplot as plt
+import cv2
 import numpy as np
-from PIL import Image
 
-# Mapping and perception
-from stretch.core.parameters import Parameters, get_parameters
-from stretch.dynav import RobotAgentMDP
-
-# Chat and UI tools
-from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 from stretch.agent import RobotClient
 
-import cv2
-import time
-import threading
+# Mapping and perception
+from stretch.core.parameters import get_parameters
+from stretch.dynav import RobotAgentMDP
+
 
 def compute_tilt(camera_xyz, target_xyz):
-    '''
-        a util function for computing robot head tilts so the robot can look at the target object after navigation
-        - camera_xyz: estimated (x, y, z) coordinates of camera
-        - target_xyz: estimated (x, y, z) coordinates of the target object
-    '''
+    """
+    a util function for computing robot head tilts so the robot can look at the target object after navigation
+    - camera_xyz: estimated (x, y, z) coordinates of camera
+    - target_xyz: estimated (x, y, z) coordinates of the target object
+    """
     if not isinstance(camera_xyz, np.ndarray):
         camera_xyz = np.array(camera_xyz)
     if not isinstance(target_xyz, np.ndarray):
@@ -32,13 +31,14 @@ def compute_tilt(camera_xyz, target_xyz):
     vector = camera_xyz - target_xyz
     return -np.arctan2(vector[2], np.linalg.norm(vector[:2]))
 
+
 @click.command()
-@click.option("--ip", default='100.108.67.79', type=str)
+@click.option("--ip", default="100.108.67.79", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
 @click.option("--re", default=1, type=int)
-@click.option("--method", default='dynamem', type=str)
+@click.option("--method", default="dynamem", type=str)
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)
 @click.option(
@@ -53,7 +53,7 @@ def main(
     navigate_home: bool = False,
     explore_iter: int = 5,
     re: int = 1,
-    method: str = 'dynamem',
+    method: str = "dynamem",
     env: int = 1,
     test: int = 1,
     input_path: str = None,
@@ -66,7 +66,7 @@ def main(
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = RobotClient(robot_ip = "100.79.44.11")
+    robot = RobotClient(robot_ip="100.79.44.11")
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
@@ -75,12 +75,10 @@ def main(
         parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = None, None
     robot.move_to_nav_posture()
-    robot.set_velocity(v = 30., w = 15.)
+    robot.set_velocity(v=30.0, w=15.0)
 
     print("- Start robot agent with data collection")
-    demo = RobotAgentMDP(
-        robot, parameters, ip = ip, re = re, env_num = env, test_num = test, method = method
-    )
+    demo = RobotAgentMDP(robot, parameters, ip=ip, re=re, env_num=env, test_num=test, method=method)
 
     if input_path is None:
         demo.rotate_in_place()
@@ -102,38 +100,38 @@ def main(
     # img_thread.start()
 
     while True:
-        mode = input('select mode? E/N/S')
-        if mode == 'S':
+        mode = input("select mode? E/N/S")
+        if mode == "S":
             demo.image_processor.write_to_pickle()
             break
-        if mode == 'E':
+        if mode == "E":
             robot.switch_to_navigation_mode()
             for epoch in range(explore_iter):
-                print('\n', 'Exploration epoch ', epoch, '\n')
+                print("\n", "Exploration epoch ", epoch, "\n")
                 if not demo.run_exploration():
-                    print('Exploration failed! Quitting!')
+                    print("Exploration failed! Quitting!")
                     continue
         else:
             text = None
             point = None
-            if input('You want to run manipulation: y/n') != 'n':
+            if input("You want to run manipulation: y/n") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
-                text = input('Enter object name: ')
+                text = input("Enter object name: ")
                 point = demo.navigate(text)
                 if point is None:
-                    print('Navigation Failure!')
-                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
+                    print("Navigation Failure!")
+                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
 
-            if input('You want to run manipulation: y/n') != 'n':
+            if input("You want to run manipulation: y/n") != "n":
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking = True)
+                robot.navigate_to(xyt, blocking=True)
 
                 robot.switch_to_manipulation_mode()
                 if text is None:
-                    text = input('Enter object name: ')
+                    text = input("Enter object name: ")
                 camera_xyz = robot.get_head_pose()[:3, 3]
                 if point is not None:
                     theta = compute_tilt(camera_xyz, point)
@@ -141,26 +139,26 @@ def main(
                     theta = -0.6
                 demo.manipulate(text, theta)
                 robot.look_front()
-            
+
             text = None
             point = None
-            if input('You want to run placing: y/n') != 'n':
+            if input("You want to run placing: y/n") != "n":
                 robot.switch_to_navigation_mode()
-                text = input('Enter receptacle name: ')
+                text = input("Enter receptacle name: ")
                 point = demo.navigate(text)
                 if point is None:
-                    print('Navigation Failure')
-                cv2.imwrite(text + '.jpg', robot.get_observation().rgb[:, :, [2, 1, 0]])
-        
-            if input('You want to run placing: y/n') != 'n':
+                    print("Navigation Failure")
+                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
+
+            if input("You want to run placing: y/n") != "n":
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking = True)
-                
+                robot.navigate_to(xyt, blocking=True)
+
                 robot.switch_to_manipulation_mode()
                 if text is None:
-                    text = input('Enter receptacle name: ')
+                    text = input("Enter receptacle name: ")
                 camera_xyz = robot.get_head_pose()[:3, 3]
                 if point is not None:
                     theta = compute_tilt(camera_xyz, point)
