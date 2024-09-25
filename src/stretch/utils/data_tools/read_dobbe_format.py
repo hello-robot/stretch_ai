@@ -169,6 +169,7 @@ def load_from_raw(
     fps: Optional[int] = 15,
     save_video: bool = False,
     debug: bool = False,
+    max_episodes: Optional[int] = None,
 ):
     episode_dirs = [path for path in Path(raw_dir).iterdir() if path.is_dir()]
 
@@ -184,6 +185,12 @@ def load_from_raw(
     if fps is None:
         logger.warning("FPS not set. Defaulting to 15.")
         fps = 15
+
+    if max_episodes is not None and (max_episodes < 0 or max_episodes > len(episode_dirs)):
+        logger.warning(
+            f"Invalid max_episodes: {max_episodes}. Had only {len(episode_dirs)} examples. Setting to None."
+        )
+        max_episodes = None
 
     ep_dicts = []
     ep_metadata = []
@@ -284,6 +291,9 @@ def load_from_raw(
         if debug:
             break
 
+        if ep_idx + 1 == max_episodes:
+            break
+
     data_dict = {}
     data_dict = concatenate_episodes(ep_dicts)
 
@@ -370,6 +380,6 @@ if __name__ == "__main__":
     test_path = Path("data/pickup_pink_cup/default_user/default_env/")
 
     data_dir, episode_data_index, info = load_from_raw(
-        test_path, out_dir=None, fps=None, save_video=False, debug=False
+        test_path, out_dir=None, fps=None, save_video=False, debug=False, max_episodes=1
     )
     breakpoint()
