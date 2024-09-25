@@ -219,6 +219,9 @@ class SparseVoxelMap(object):
         self.map_2d_device = map_2d_device
         self._min_points_per_voxel = min_points_per_voxel
 
+        # Is the 2d map stale?
+        self._stale_2d = True
+
         # Set the device we use for things here
         if device is not None:
             self.device = device
@@ -829,7 +832,12 @@ class SparseVoxelMap(object):
         """Get 2d map with explored area and frontiers."""
 
         # Is this already cached? If so we don't need to go to all this work
-        if self._map2d is not None and self._seq == self._2d_last_updated and not force_update:
+        if (
+            self._map2d is not None
+            and self._seq == self._2d_last_updated
+            and not force_update
+            and not self._stale_2d
+        ):
             return self._map2d
 
         # Convert metric measurements to discrete
@@ -928,6 +936,7 @@ class SparseVoxelMap(object):
         # Update cache
         self._map2d = (obstacles, explored)
         self._2d_last_updated = self._seq
+        self._stale_2d = False
         return obstacles, explored
 
     def plan_to_grid_coords(self, plan_result: PlanResult) -> Optional[List[torch.Tensor]]:
@@ -1147,6 +1156,7 @@ class SparseVoxelMap(object):
             # Get the 2d mask corresponding to the object bounds
             mask = self.mask_from_bounds(instance.bounds)
             self._visited[mask] = 1
+            self._stale_2d = True
 
     def delete_obstacles(
         self,
@@ -1156,12 +1166,24 @@ class SparseVoxelMap(object):
         force_update: Optional[bool] = False,
         min_height: Optional[float] = None,
         min_bound_z: Optional[float] = 0.0,
+        assume_explored: bool = False,
     ) -> None:
         """Delete obstacles from the map"""
         self.voxel_pcd.remove(bounds, point, radius, min_height=min_height, min_bound_z=min_bound_z)
 
+        if assume_explored:
+            if bounds is not None:
+                mask = self.mask_from_bounds(bounds)
+                self._visited[mask] = 1
+            elif point is not None:
+                raise NotImplementedError("deleting by point not yet implemented")
+            elif radius is not None:
+                raise NotImplementedError("deleting by radius not yet implemented")
+            else:
+                raise ValueError("must provide bounds, point, or radius")
+
         # Force recompute of 2d map
-        self.get_2d_map(force_update=force_update)
+        self.get_2d_map(force_update=force_update or assume_explored)
 
     def _show_open3d(
         self,
