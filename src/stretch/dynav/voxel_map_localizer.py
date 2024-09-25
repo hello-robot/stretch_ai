@@ -7,22 +7,17 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import math
-from typing import List, Optional, Tuple, Union
+from typing import Optional
 
 import clip
-import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as T
-from PIL import Image
 from sklearn.cluster import DBSCAN
 from torch import Tensor
-from torchvision.transforms.functional import InterpolationMode
 
 # from ultralytics import YOLOWorld
-from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection, Owlv2Processor
+from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
 from stretch.dynav.mapping_utils import VoxelizedPointcloud
 
@@ -263,7 +258,7 @@ class VoxelMapLocalizer:
         #     res = self.compute_coord(A, obs)
         #     if res is not None:
         #         target_point = res
-        #         debug_text += '#### - Obejct is detected in observations where instance' + str(idx + 1) + ' comes from. **😃** Directly navigate to it.\n'
+        #         debug_text += '#### - Object is detected in observations where instance' + str(idx + 1) + ' comes from. **😃** Directly navigate to it.\n'
         #         break
         #     if self.siglip:
         #         cosine_similarity_check = similarity > 0.14
@@ -301,7 +296,7 @@ class VoxelMapLocalizer:
         if res is not None:
             target_point = res
             debug_text += (
-                "#### - Obejct is detected in observations . **😃** Directly navigate to it.\n"
+                "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
             )
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'

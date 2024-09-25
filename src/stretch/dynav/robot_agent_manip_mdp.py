@@ -11,28 +11,22 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import copy
 import datetime
-import os
-import pickle
-import threading
 import time
-from multiprocessing import Process
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import cv2
 import numpy as np
-import torch
 import zmq
-from matplotlib import pyplot as plt
 
 from stretch.agent import RobotClient
-from stretch.core.parameters import Parameters, get_parameters
+from stretch.core.interfaces import Observations
+from stretch.core.parameters import Parameters
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
-from stretch.dynav.ok_robot_hw.utils.communication_utils import recv_array, send_array
+
+# from stretch.dynav.ok_robot_hw.utils.communication_utils import recv_array, send_array
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,
     move_to_point,
@@ -85,7 +79,7 @@ class RobotAgentMDP:
         self.pos_err_threshold = 0.35
         self.rot_err_threshold = 0.4
         self.obs_count = 0
-        self.obs_history = []
+        self.obs_history: List[Observations] = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
 
         self.image_sender = ImageSender(
@@ -96,16 +90,16 @@ class RobotAgentMDP:
 
             self.image_processor = ImageProcessor(
                 rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
-            )
+            )  # type: ignore
         elif method == "mllm":
-            from stretch.dynav.llm_server import ImageProcessor
+            from stretch.dynav.llm_server import LLMImageProcessor
 
-            self.image_processor = ImageProcessor(
+            self.image_processor = LLMImageProcessor(
                 rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
-            )
+            )  # type: ignore
 
-        self.look_around_times = []
-        self.execute_times = []
+        self.look_around_times: List[float] = []
+        self.execute_times: List[float] = []
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
 
@@ -163,7 +157,7 @@ class RobotAgentMDP:
         look_around_finish = time.time()
         look_around_take = look_around_finish - start_time
         print("Path planning takes ", look_around_take, " seconds.")
-        # self.look_around_times.append(look_around_take)
+        self.look_around_times.append(look_around_take)
         # print(self.look_around_times)
         # print(sum(self.look_around_times) / len(self.look_around_times))
 
@@ -276,7 +270,7 @@ class RobotAgentMDP:
         self.manip_wrapper.move_to_position(gripper_pos=1, lift_pos=1.05, arm_pos=0)
         self.manip_wrapper.move_to_position(wrist_pitch=-1.57)
 
-        # Shift the base back to the original point as we are certain that orginal point is navigable in navigation obstacle map
+        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
         self.manip_wrapper.move_to_position(
             base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
         )
@@ -340,7 +334,7 @@ class RobotAgentMDP:
                 gripper_width=gripper_width,
             )
 
-        # Shift the base back to the original point as we are certain that orginal point is navigable in navigation obstacle map
+        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
         self.manip_wrapper.move_to_position(
             base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
         )
