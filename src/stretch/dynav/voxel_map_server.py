@@ -19,18 +19,14 @@ from pathlib import Path
 
 import clip
 import cv2
-import hydra
 import numpy as np
-import open3d as o3d
 import rerun as rr
 import scipy
 import torch
 
 # from stretch.utils.morphology import get_edges
 import torch.nn.functional as F
-import torchvision.transforms.functional as V
 import wget
-import zmq
 from matplotlib import pyplot as plt
 from PIL import Image
 from sam2.build_sam import build_sam2
@@ -40,26 +36,11 @@ from transformers import AutoModel, AutoProcessor
 
 # from segment_anything import sam_model_registry, SamPredictor
 # from transformers import AutoProcessor, OwlViTForObjectDetection
-from ultralytics import SAM, YOLO, YOLOWorld
+from ultralytics import YOLOWorld
 
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import (
-    load_socket,
-    recv_array,
-    recv_depth_img,
-    recv_everything,
-    recv_rgb_img,
-    send_array,
-    send_depth_img,
-    send_everything,
-    send_rgb_img,
-)
-from stretch.dynav.mapping_utils import (
-    AStar,
-    SparseVoxelMap,
-    SparseVoxelMapNavigationSpace,
-    VoxelizedPointcloud,
-)
+from stretch.dynav.communication_util import load_socket, recv_everything
+from stretch.dynav.mapping_utils import AStar, SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.dynav.scannet import CLASS_LABELS_200
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
 
@@ -259,6 +240,10 @@ class ImageProcessor:
         )
 
     def process_text(self, text, start_pose):
+        """
+        Process the text query and return the trajectory for the robot to follow.
+        """
+
         if self.rerun:
             rr.log("/object", rr.Clear(recursive=True), static=self.static)
             rr.log("/robot_start_pose", rr.Clear(recursive=True), static=self.static)
@@ -364,7 +349,7 @@ class ImageProcessor:
             else:
                 waypoints = None
                 print("[FAILURE]", res.reason)
-        # If we are navigating to some object of interst, send (x, y, z) of
+        # If we are navigating to some object of interest, send (x, y, z) of
         # the object so that we can make sure the robot looks at the object after navigation
         traj = []
         if waypoints is not None:
@@ -502,7 +487,7 @@ class ImageProcessor:
     #         res = self.planner.plan(start_pose, point)
     #         if res.success:
     #             waypoints = [pt.state for pt in res.trajectory]
-    #             # If we are navigating to some object of interst, send (x, y, z) of
+    #             # If we are navigating to some object of interest, send (x, y, z) of
     #             # the object so that we can make sure the robot looks at the object after navigation
     #             print(waypoints)
     #             # finished = (len(waypoints) <= 4 or torch.linalg.norm(torch.Tensor(point)[:2] - torch.Tensor(start_pose[:2])) > 0.8) and mode == 'navigation'
@@ -1061,6 +1046,6 @@ class ImageProcessor:
 #         imageProcessor.recv_text()
 # imageProcessor.read_from_pickle('env.pkl', -1)
 # imageProcessor.write_to_pickle()
-
-if __name__ == "__main__":
-    main(None)
+#
+# if __name__ == "__main__":
+#     main(None)

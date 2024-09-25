@@ -94,7 +94,7 @@ def get_xyz(depth, pose, intrinsics):
     return xyz
 
 
-class ImageProcessor:
+class LLMImageProcessor:
     def __init__(
         self,
         vision_method="pro_owl",
