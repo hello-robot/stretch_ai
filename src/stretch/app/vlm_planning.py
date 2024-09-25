@@ -109,7 +109,7 @@ def images_to_video(image_list, output_path, fps=30):
     "--config-path",
     "-c",
     type=click.Path(),
-    default="src/stretch/configs/default_planner.yaml",
+    default="default_planner.yaml",
     help="Path to planner config.",
 )
 @click.option(
