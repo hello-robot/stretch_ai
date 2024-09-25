@@ -8,7 +8,6 @@
 # license information maybe found below, if so.
 
 import os
-from typing import Any, Dict
 
 import numpy as np
 import pinocchio as pin
@@ -20,7 +19,7 @@ from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.utils import transform_joint_array
 from stretch.motion.kinematics import HelloStretchIdx
 
-OVERRIDE_STATES: Dict[str, Any] = {}
+OVERRIDE_STATES: dict[str, float] = {}
 
 
 class HelloRobot:
@@ -235,6 +234,14 @@ class HelloRobot:
         self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
         self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
 
+        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
+
+        # print('pan tilt after', self.robot.get_pan_tilt())
+        # print(f"current state {self.robot.get_six_joints()}")
+        # print(f"target state {target_state}")
+        # time.sleep(1)
+
         # NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
         OVERRIDE_STATES["wrist_pitch"] = joints["joint_wrist_pitch"]
 
@@ -279,7 +286,7 @@ class HelloRobot:
         # print(f"final pos and quat {final_pos}\n {final_quat}")
 
         full_body_cfg = self.robot.solve_ik(
-            final_pos, final_quat, False, None, False, node_name=self.end_link
+            final_pos, final_quat, None, False, node_name=self.end_link
         )
         if full_body_cfg is None:
             print("Warning: Cannot find an IK solution for desired EE pose!")

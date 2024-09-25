@@ -7,41 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-"""
-    This file implements VoxelizedPointcloud module in home-robot project (https://github.com/facebookresearch/home-robot).
-    Adapted to be used in ok-robot's navigation voxel map:
-    https://github.com/facebookresearch/home-robot/blob/main/src/home_robot/home_robot/utils/voxel.py
-
-    License:
-
-    MIT License
-
-    Copyright (c) Meta Platforms, Inc. and affiliates.
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-    
-"""
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 from typing import List, Optional, Tuple, Union
 
-import cv2
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -266,13 +238,13 @@ class VoxelizedPointcloud:
             weights = torch.ones_like(points[..., 0])
 
         if obs_count is None:
-            obs_count = torch.ones_like(weights) * self.obs_count
+            obs_counts = torch.ones_like(weights) * self.obs_count
         else:
-            obs_count = torch.ones_like(weights) * obs_count
+            obs_counts = torch.ones_like(weights) * obs_count
         if entity_id is None:
-            entity_id = torch.ones_like(weights) * self.obs_count
+            entity_ids = torch.ones_like(weights) * self.obs_count
         else:
-            obs_count = torch.ones_like(weights) * entity_id
+            entity_ids = torch.ones_like(weights) * entity_id
         self.obs_count += 1
 
         # Update voxel grid bounds
@@ -309,8 +281,8 @@ class VoxelizedPointcloud:
                 weights,
                 rgb,
             )
-            all_obs_counts = obs_count
-            all_entity_ids = entity_id
+            all_obs_counts = obs_counts
+            all_entity_ids = entity_ids
         else:
             assert (self._features is None) == (features is None)
             all_points = torch.cat([self._points, points], dim=0)
@@ -319,8 +291,8 @@ class VoxelizedPointcloud:
                 torch.cat([self._features, features], dim=0) if (features is not None) else None
             )
             all_rgb = torch.cat([self._rgb, rgb], dim=0) if (rgb is not None) else None
-            all_obs_counts = torch.cat([self._obs_counts, obs_count], dim=0)
-            all_entity_ids = torch.cat([self._entity_ids, entity_id], dim=0)
+            all_obs_counts = torch.cat([self._obs_counts, obs_counts], dim=0)
+            all_entity_ids = torch.cat([self._entity_ids, entity_ids], dim=0)
         # Future optimization:
         # If there are no new voxels, then we could save a bit of compute time
         # by only recomputing the voxel/cluster for the new points
@@ -349,7 +321,7 @@ class VoxelizedPointcloud:
         self._obs_counts, self._entity_ids = self._obs_counts.int(), self._entity_ids.int()
         return
 
-    def get_idxs(self, points: Tensor) -> Tensor:
+    def get_idxs(self, points: Tensor) -> Tuple[Tensor, ...]:
         """Returns voxel index (long tensor) for each point in points
 
         Args:
@@ -396,7 +368,7 @@ class VoxelizedPointcloud:
         ) = self.get_idxs(points)
         return cluster_consecutive_idx
 
-    def get_pointcloud(self) -> Tuple[Tensor]:
+    def get_pointcloud(self) -> Tuple[Tensor, ...]:
         """Returns pointcloud (1 point per occupied voxel)
 
         Returns:
@@ -463,7 +435,7 @@ def voxelize(
     batch: Optional[Tensor] = None,
     start: Optional[Union[float, Tensor]] = None,
     end: Optional[Union[float, Tensor]] = None,
-) -> Tuple[Tensor]:
+) -> Tuple[Tensor, ...]:
     """Returns voxel indices and packed (consecutive) indices for points
 
     Args:
@@ -520,7 +492,7 @@ def reduce_pointcloud(
     obs_counts: Optional[Tensor] = None,
     entity_ids: Optional[Tensor] = None,
     feature_reduce: str = "mean",
-) -> Tuple[Tensor]:
+) -> Tuple[Tensor, ...]:
     """Pools values within each voxel
 
     Args:

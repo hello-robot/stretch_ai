@@ -7,7 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import math
 import time
 
 import numpy as np
@@ -47,7 +46,7 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             time.sleep(1)
 
         elif retry_flag != 0 and side_retries == 3:
-            print("Tried in all angles but couldn't succed")
+            print("Tried in all angles but couldn't succeed")
             time.sleep(1)
             return None, None, None, None
 
@@ -175,7 +174,7 @@ def pickup(
     # Rotation for aligning Robot gripper frame to Model gripper frame
     rotation2_top_mat = np.array([[0, 0, 1], [1, 0, 0], [0, -1, 0]])
 
-    # final Rotation of gripper to hold the objet
+    # final Rotation of gripper to hold the objcet
     pin_final_rotation = np.dot(pin_transformed_frame.rotation, rotation2_top_mat)
     print(f"pin final rotation {pin_final_rotation}")
 
@@ -242,7 +241,7 @@ def pickup(
     # Lifts the arm
     robot.move_to_position(lift_pos=min(robot.robot.get_six_joints()[1] + 0.2, 1.1))
 
-    # Tucks the gripper so that while moving to place it wont collide with any obstacles
+    # Tucks the gripper so that while moving to place it won't collide with any obstacles
     robot.move_to_position(arm_pos=0.01)
     robot.move_to_position(wrist_pitch=0.0)
     robot.move_to_position(lift_pos=min(robot.robot.get_six_joints()[1], 0.9), wrist_yaw=2.5)
