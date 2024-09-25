@@ -210,7 +210,9 @@ def main(
         removed_instance = voxel_map.get_instances()[0]  # hopefully this is a stuffed animal
         pcd.points = o3d.utility.Vector3dVector(removed_instance.point_cloud.numpy())
         o3d.visualization.draw_geometries([pcd])
-        new_map.delete_instance(removed_instance, force_update=True, min_bound_z=0.05)
+        new_map.delete_instance(
+            removed_instance, force_update=True, min_bound_z=0.05, assume_explored=True
+        )
         new_map.show()
 
         # create a new agent for planning with the updated map
