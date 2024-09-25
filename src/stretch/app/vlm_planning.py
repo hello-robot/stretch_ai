@@ -220,14 +220,11 @@ def main(
         )
 
         print("\nPlan with the original map: ")
-        agent.get_plan_from_vlm(
-            current_pose=x0, show_plan=True, api_key=api_key
-        )
+        agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
         print("\nPlan with the updated map: ")
         planning_agent.get_plan_from_vlm(
             current_pose=x0, show_plan=True, api_key=api_key
         )
-
 
 
 if __name__ == "__main__":
