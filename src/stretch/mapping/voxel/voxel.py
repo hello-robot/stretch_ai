@@ -1168,7 +1168,17 @@ class SparseVoxelMap(object):
         min_bound_z: Optional[float] = 0.0,
         assume_explored: bool = False,
     ) -> None:
-        """Delete obstacles from the map"""
+        """Delete obstacles from the map.
+
+        Args:
+            bounds: 3x2 array of min and max bounds in xyz
+            point: 3x1 array of point to delete
+            radius: radius around point to delete
+            force_update: force update of 2d map
+            min_height: minimum height to delete
+            min_bound_z: minimum z bound to delete
+            assume_explored: assume deleted area is explored
+        """
         self.voxel_pcd.remove(bounds, point, radius, min_height=min_height, min_bound_z=min_bound_z)
 
         if assume_explored:
