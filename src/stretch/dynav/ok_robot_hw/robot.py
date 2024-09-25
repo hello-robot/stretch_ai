@@ -132,6 +132,9 @@ class HelloRobot:
             target_state[5] = wrist_roll
 
         # Actual Movement
+        print("Expected", target_state)
+        print("Actual", self.robot.get_six_joints())
+        print("Error", target_state - self.robot.get_six_joints())
         # print('Target Position', target_state)
         # print('pan tilt before', self.robot.get_pan_tilt())
         self.robot.arm_to(target_state, blocking=blocking, head=np.array([self.pan, self.tilt]))
@@ -228,8 +231,8 @@ class HelloRobot:
             target1[1] = min(1.1, target_state[1] + 0.2)
             self.robot.arm_to(target1, blocking=True, head=np.array([self.pan, self.tilt]))
 
-        # print('pan tilt after', self.robot.get_pan_tilt())
-        # print('pan tilt before', self.robot.get_pan_tilt())
+        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
 
         self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
         self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)

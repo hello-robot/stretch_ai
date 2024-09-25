@@ -242,6 +242,16 @@ python -m stretch.llms.gemma_client
 python -m stretch.llms.llama_client
 ```
 
+### Using OVMM
+
+You can use the LLMs above to plan long-horizon tasks by generating code as robot policies:
+
+```bash
+python -m stretch.app.ovmm
+```
+
+The robot will start exploring its workspace and will soon ask you for a text command.
+
 ### Advanced Installation (PC Only)
 
 If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:

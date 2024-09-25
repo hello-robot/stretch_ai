@@ -137,13 +137,7 @@ class VoxelizedPointcloud:
                     torch.stack(
                         [
                             xys[:, 0] < 0,
-                            xys[:, 0] < 0,
-                            xys[:, 0] < 0,
                             xys[:, 0] >= H,
-                            xys[:, 0] >= H,
-                            xys[:, 0] >= H,
-                            xys[:, 1] < 0,
-                            xys[:, 1] < 0,
                             xys[:, 1] < 0,
                             xys[:, 1] >= W,
                         ],

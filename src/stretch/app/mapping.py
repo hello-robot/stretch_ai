@@ -26,7 +26,6 @@ from stretch.perception import create_semantic_sensor
 @click.command()
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
 @click.option("--robot_ip", default="")
-@click.option("--rate", default=5, type=int)
 @click.option("--visualize", default=False, is_flag=True)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--output-filename", default="stretch_output", type=str)
@@ -47,7 +46,6 @@ from stretch.perception import create_semantic_sensor
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 def main(
-    rate,
     visualize,
     manual_wait,
     output_filename,
@@ -82,7 +80,6 @@ def main(
     demo_main(
         robot,
         parameters=parameters,
-        rate=rate,
         visualize=visualize,
         manual_wait=manual_wait,
         output_filename=output_filename,
@@ -105,7 +102,6 @@ def main(
 
 def demo_main(
     robot: AbstractRobotClient,
-    rate,
     visualize,
     manual_wait,
     output_filename,
@@ -177,9 +173,9 @@ def demo_main(
         matches = []
 
     # Rotate in place
-    if parameters["in_place_rotation_steps"] > 0:
+    if parameters["agent"]["in_place_rotation_steps"] > 0:
         demo.rotate_in_place(
-            steps=parameters["in_place_rotation_steps"],
+            steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
         )
 
@@ -189,7 +185,6 @@ def demo_main(
             if object_to_find is not None:
                 print(f"Exploring for {object_to_find}...")
             demo.run_exploration(
-                rate,
                 manual_wait,
                 explore_iter=parameters["exploration_steps"],
                 task_goal=object_to_find,

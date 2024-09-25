@@ -242,6 +242,10 @@ class ImageProcessor:
         )
 
     def process_text(self, text, start_pose):
+        """
+        Process the text query and return the trajectory for the robot to follow.
+        """
+
         if self.rerun:
             rr.log("/object", rr.Clear(recursive=True), static=self.static)
             rr.log("/robot_start_pose", rr.Clear(recursive=True), static=self.static)
