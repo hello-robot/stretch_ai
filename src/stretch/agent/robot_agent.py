@@ -1632,7 +1632,7 @@ class RobotAgent:
         show_plan=False,
         plan_file="vlm_plan.txt",
         api_key=None,
-        query=None
+        query=None,
     ):
         """This is a connection to a remote thing for getting language commands"""
         if self.parameters["vlm_option"] == "gpt4":
@@ -1655,37 +1655,32 @@ class RobotAgent:
                         ">>>>>> Planner cannot find a plan, the robot should explore more >>>>>>>>>"
                     )
                 elif output == "gpt API error":
-                    print(
-                        ">>>>>> there is something wrong with the planner api >>>>>>>>>"
-                    )
+                    print(">>>>>> there is something wrong with the planner api >>>>>>>>>")
                 else:
                     actions = output.split("; ")
                     plt.clf()
                     for action_id, action in enumerate(actions):
                         crop_id = int(re.search(r"img_(\d+)", action).group(1))
-                        global_id = world_representation.object_images[
-                            crop_id
-                        ].instance_id
+                        global_id = world_representation.object_images[crop_id].instance_id
                         plt.subplot(1, len(actions), action_id + 1)
                         plt.imshow(
-                            self.voxel_map.get_instances()[global_id]
-                            .get_best_view()
-                            .get_image()
+                            self.voxel_map.get_instances()[global_id].get_best_view().get_image()
                         )
                         plt.title(action.split("(")[0] + f" instance {global_id}")
                         plt.axis("off")
-                    plt.suptitle(f'Task: {query}')
-                    plt.savefig('plan.png')
+                    plt.suptitle(f"Task: {query}")
+                    plt.savefig("plan.png")
         else:
-            raise RuntimeError("Not implemented yet.")     
+            raise RuntimeError("Not implemented yet.")
         if self.parameters["save_vlm_plan"]:
             with open(plan_file, "w") as f:
                 f.write(output)
             print(f"Task plan generated from VLMs has been written to {plan_file}")
         return output
-    
+
     def get_output_from_gpt(self, world_rep, api_key, task):
         from stretch.llms.multi_crop_openai_client import MultiCropOpenAIClient
+
         # TODO: put these into config
         img_size = 256
         temperature = 0.2
@@ -1706,7 +1701,5 @@ class RobotAgent:
             )
         )
         gpt_agent.reset()
-        plan = gpt_agent.act_on_observations(
-            world_rep, goal=task, debug_path=None
-        )
+        plan = gpt_agent.act_on_observations(world_rep, goal=task, debug_path=None)
         return plan

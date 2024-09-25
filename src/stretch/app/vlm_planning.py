@@ -19,9 +19,11 @@ import cv2
 import matplotlib
 
 matplotlib.use("TkAgg")
-import numpy as np
 import copy
+
+import numpy as np
 import open3d as o3d
+
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
 from stretch.core.interfaces import Observations
@@ -29,9 +31,7 @@ from stretch.perception import create_semantic_sensor
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 
 
-def add_raw_obs_to_voxel_map(
-    obs_history, voxel_map, semantic_sensor, num_frames, frame_skip
-):
+def add_raw_obs_to_voxel_map(obs_history, voxel_map, semantic_sensor, num_frames, frame_skip):
     key_obs = []
     num_obs = len(obs_history["rgb"])
     video_frames = []
@@ -190,9 +190,7 @@ def main(
     if show_svm:
         footprint = dummy_robot.get_footprint()
         print(f"{x0} valid = {space.is_valid(x0)}")
-        voxel_map.show(
-            instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint
-        )
+        voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
 
     if test_vlm:
         start_is_valid = space.is_valid(x0, verbose=True, debug=False)
@@ -203,9 +201,7 @@ def main(
         # manually remove an instance for testing planning. TODO: this should come from VLM.
         new_map = copy.deepcopy(voxel_map)
         pcd = o3d.geometry.PointCloud()
-        removed_instance = voxel_map.get_instances()[
-            0
-        ]  # hopefully this is a stuffed animal
+        removed_instance = voxel_map.get_instances()[0]  # hopefully this is a stuffed animal
         pcd.points = o3d.utility.Vector3dVector(removed_instance.point_cloud.numpy())
         o3d.visualization.draw_geometries([pcd])
         new_map.delete_instance(removed_instance, force_update=True, min_bound_z=0.05)
@@ -222,9 +218,7 @@ def main(
         print("\nPlan with the original map: ")
         agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
         print("\nPlan with the updated map: ")
-        planning_agent.get_plan_from_vlm(
-            current_pose=x0, show_plan=True, api_key=api_key
-        )
+        planning_agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
 
 
 if __name__ == "__main__":

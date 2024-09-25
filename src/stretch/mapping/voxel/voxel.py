@@ -825,7 +825,7 @@ class SparseVoxelMap(object):
         """Get the current point cloud"""
         return self.voxel_pcd.get_pointcloud()
 
-    def get_2d_map(self, force_update = False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+    def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
 
         # Is this already cached? If so we don't need to go to all this work
@@ -1134,18 +1134,12 @@ class SparseVoxelMap(object):
             wireframe.colors = open3d.utility.Vector3dVector(colors)
             geoms.append(wireframe)
 
-    def delete_instance(
-        self, instance: Instance, force_update=False, min_bound_z=0
-    ) -> None:
+    def delete_instance(self, instance: Instance, force_update=False, min_bound_z=0) -> None:
         """Remove an instance from the map"""
         print("Deleting instance", instance.global_id)
         print("Bounds: ", instance.bounds)
-        self.delete_obstacles(
-            instance.bounds, force_update=force_update, min_bound_z=min_bound_z
-        )
-        self.instances.pop_global_instance(
-            env_id=0, global_instance_id=instance.global_id
-        )
+        self.delete_obstacles(instance.bounds, force_update=force_update, min_bound_z=min_bound_z)
+        self.instances.pop_global_instance(env_id=0, global_instance_id=instance.global_id)
 
     def delete_obstacles(
         self,

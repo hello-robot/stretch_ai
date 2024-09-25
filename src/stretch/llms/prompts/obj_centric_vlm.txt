@@ -4,7 +4,7 @@ You will be given information about the environment and you must respond with an
 INPUT: the information about the environment will include images, scene descriptions, and a query:
 1. Images: a set of images that have been captured in the environment. Each image is a view of an object instance.
 2. Scene descriptions: a natural language description about spatial relationships among the images (object instances) being captured. 
-3. Query: a user query that your action plan must fullfill.
+3. Query: a user query that your action plan must fulfill.
 
 OUTPUT: the action plan in your response can only includes the following actions:
 1. goto(img_i): navigate to the object depicted in `img_i` 
@@ -12,7 +12,7 @@ OUTPUT: the action plan in your response can only includes the following actions
 3. placeon(img_i): place the object that the robot is currently holding (e.g., img_j) onto the surface depicted in `img_i`; must follow goto(img_j) and pickup(img_j) 
 4. explore(img_i): explore near the object depicited in 'img_i' to gather more information; please use this action if you can't come up with a plan
 
-Actions are seprated by semicolon. If you cannot provide an action plan, please simple output "explore" without any explanation.
+Actions are separated by semicolon. If you cannot provide an action plan, please simply output "explore" without any explanation.
 
 Example A:
 1. Images: <img_0>A book</img_0>, <img_1>A gray hat</img_1>, <img_2>A mug</img_2>, <img_3>A white coffee table</img_3>, <img_4>A roll of tape</img_4>, <img_5>A phone</img_5> 

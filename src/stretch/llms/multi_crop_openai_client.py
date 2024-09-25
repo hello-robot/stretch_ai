@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 import base64
 import io
 import logging
@@ -35,9 +44,7 @@ class MultiCropOpenAIClient:
         for img_id, object_image in enumerate(obs.object_images):
             # Convert to base64Image
             idx = object_image.crop_id
-            pil_image = self.resize(
-                Image.fromarray(np.array(object_image.image, dtype=np.uint8))
-            )
+            pil_image = self.resize(Image.fromarray(np.array(object_image.image, dtype=np.uint8)))
 
             plt.subplot(1, len(obs.object_images), img_id + 1)
             plt.imshow(pil_image)
