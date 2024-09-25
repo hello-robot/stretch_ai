@@ -408,7 +408,7 @@ class RobotAgent:
         ):  # TODO: this was breaking. Should this be a class method
             return self.parameters["command"]
         else:
-            return self.ask("please type any task you want the robot to do: ")
+            return self.ask("Please type any task you want the robot to do: ")
 
     def show_map(self):
         """Helper function to visualize the 3d map as it stands right now"""

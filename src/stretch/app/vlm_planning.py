@@ -106,6 +106,7 @@ def images_to_video(image_list, output_path, fps=30):
     default="output.pkl",
     help="Input path with default value 'output.npy'",
 )
+@click.option("--task", "-t", type=str, default="", help="Task to run with the planner.")
 @click.option(
     "--config-path",
     "-c",
@@ -142,7 +143,7 @@ def main(
     show_svm: bool = False,
     show_instances: bool = False,
     api_key: str = None,
-    # query: str = None,
+    task: str = "",
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
@@ -155,6 +156,8 @@ def main(
     print("- Load parameters")
     parameters = get_parameters(config_path)
     parameters.set("vlm_option", "gpt4")
+    if len(task) > 0:
+        parameters.set("command", task)
 
     print("Creating semantic sensors...")
     semantic_sensor = create_semantic_sensor(config_path=config_path)
