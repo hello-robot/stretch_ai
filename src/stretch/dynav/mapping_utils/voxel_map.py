@@ -12,7 +12,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import math
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +21,7 @@ import skimage
 import skimage.morphology
 import torch
 
-from stretch.dynav.mapping_utils import SparseVoxelMap
+from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.motion import XYT, Footprint
 from stretch.utils.geometry import angle_difference, interpolate_angles
 from stretch.utils.morphology import (
@@ -66,7 +66,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             self.dof = 2
 
-        self._kernels = {}
+        # # type: ignore comments used to bypass mypy check
+        self._kernels = {}  # type: ignore
 
         if dilate_frontier_size > 0:
             self.dilate_explored_kernel = torch.nn.Parameter(
@@ -112,7 +113,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self._orientation_resolution = 64
         self._oriented_masks = []
 
-        # NOTE: this is just debug code - lets you see waht the masks look like
+        # NOTE: this is just debug code - lets you see what the masks look like
         assert not show_all or orientation_resolution == 64
 
         for i in range(orientation_resolution):
@@ -134,10 +135,10 @@ class SparseVoxelMapNavigationSpace(XYT):
         assert len(q1) == 3 or len(q1) == 2, "2 or 3 dimensions for goal"
         if len(q1) == 3:
             # Measure to the final position exactly
-            return np.linalg.norm(q0 - q1)
+            return np.linalg.norm(q0 - q1).item()
         else:
             # Measure only to the final goal x/y position
-            return np.linalg.norm(q0[:2] - q1[:2])
+            return np.linalg.norm(q0[:2] - q1[:2]).item()
 
     def extend(self, q0: np.ndarray, q1: np.ndarray) -> np.ndarray:
         """extend towards another configuration in this space. Will be either separate or joint depending on if the robot can "strafe":
@@ -153,7 +154,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             raise NotImplementedError(f"not supported: {self.extend_mode=}")
 
-    def _extend_separate(self, q0: np.ndarray, q1: np.ndarray, xy_tol: float = 1e-8) -> np.ndarray:
+    def _extend_separate(self, q0: np.ndarray, q1: np.ndarray, xy_tol: float = 1e-8):
         """extend towards another configuration in this space.
         TODO: we can set the classes here, right now assuming still np.ndarray"""
         assert len(q0) == 3, f"initial configuration must be 3d, was {q0}"
@@ -235,15 +236,16 @@ class SparseVoxelMapNavigationSpace(XYT):
 
     def is_valid(
         self,
-        state: torch.Tensor,
+        state: Union[np.ndarray, torch.Tensor, List],
         is_safe_threshold=1.0,
         debug: bool = False,
         verbose: bool = False,
     ) -> bool:
         """Check to see if state is valid; i.e. if there's any collisions if mask is at right place"""
         assert len(state) == 3
-        if isinstance(state, np.ndarray):
-            state = torch.from_numpy(state).float()
+        if isinstance(state, torch.Tensor):
+            state = state.float().numpy()
+        state = np.array(state)
         ok = bool(self.voxel_map.xyt_is_safe(state[:2]))
         # if verbose:
         #     print('is navigable:', ok)
@@ -321,7 +323,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
     def sample_target_point(
         self, start: torch.Tensor, point: torch.Tensor, planner, exploration: bool = False
-    ) -> Optional[np.array]:
+    ) -> Optional[np.ndarray]:
         """Sample a position near the mask and return.
 
         Args:
@@ -337,8 +339,9 @@ class SparseVoxelMapNavigationSpace(XYT):
             print("No target point find, maybe no point is reachable")
             return None
         reachable_xs, reachable_ys = zip(*reachable_points)
-        reachable_xs = torch.tensor(reachable_xs)
-        reachable_ys = torch.tensor(reachable_ys)
+        # # type: ignore comments used to bypass mypy check
+        reachable_xs = torch.tensor(reachable_xs)  # type: ignore
+        reachable_ys = torch.tensor(reachable_ys)  # type: ignore
         reachable = torch.empty(obstacles.shape, dtype=torch.bool).fill_(False)
         reachable[reachable_xs, reachable_ys] = True
 
@@ -413,7 +416,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         verbose: bool = False,
         debug: bool = False,
         look_at_any_point: bool = False,
-    ) -> Optional[np.ndarray]:
+    ):
         """Sample a position near the mask and return.
 
         Args:
@@ -463,7 +466,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 outside_point = find_closest_point_on_mask(mask, point_grid_coords.float())
 
             # convert back
-            point = self.voxel_map.grid_coords_to_xy(point_grid_coords)
+            point = self.voxel_map.grid_coords_to_xy(point_grid_coords.numpy())
             if point is None:
                 print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                 continue
@@ -486,7 +489,8 @@ class SparseVoxelMapNavigationSpace(XYT):
                 theta += 2 * np.pi
 
             xyt = torch.zeros(3)
-            xyt[:2] = point
+            # # type: ignore to bypass mypy check
+            xyt[:2] = point  # type: ignore
             xyt[2] = theta
 
             # Check to see if this point is valid
@@ -703,7 +707,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         verbose: bool = False,
         step_dist: float = 0.1,
         min_dist: float = 0.1,
-    ) -> Optional[torch.Tensor]:
+    ):
         """Sample a valid location on the current frontier using FMM planner to compute geodesic distance. Returns points in order until it finds one that's valid.
 
         Args:

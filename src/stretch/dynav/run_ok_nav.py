@@ -7,27 +7,15 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import threading
-import time
-
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
 import click
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
 
 from stretch.agent import RobotClient
 
 # Mapping and perception
-from stretch.core.parameters import Parameters, get_parameters
+from stretch.core.parameters import get_parameters
 from stretch.dynav import RobotAgentMDP
-
-# Chat and UI tools
-from stretch.utils.point_cloud import numpy_to_pcd, show_point_cloud
 
 
 def compute_tilt(camera_xyz, target_xyz):

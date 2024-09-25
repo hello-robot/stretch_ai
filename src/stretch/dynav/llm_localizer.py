@@ -23,8 +23,7 @@ from PIL import Image
 from torch import Tensor
 from transformers import AutoProcessor, Owlv2ForObjectDetection
 
-from stretch.dynav.mapping_utils import VoxelizedPointcloud
-from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
+from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 generation_config = genai.GenerationConfig(temperature=0)
@@ -223,7 +222,7 @@ class LLM_Localizer:
                 res = self.compute_coord(A, image_info, threshold=0.2)
                 if res is not None:
                     debug_text = (
-                        "#### - Obejct is detected in observations where instance"
+                        "#### - Object is detected in observations where instance"
                         + str(i + 1)
                         + " comes from. **😃** Directly navigate to it.\n"
                     )
