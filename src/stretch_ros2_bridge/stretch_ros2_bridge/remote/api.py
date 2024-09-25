@@ -163,6 +163,10 @@ class StretchClient(AbstractRobotClient):
     def get_robot_model(self) -> RobotModel:
         """return a model of the robot for planning. Overrides base class method"""
         return self._robot_model
+    
+    def get_ros_client(self) -> StretchRosInterface:
+        """return the internal ROS client"""
+        return self._ros_client
 
     @property
     def robot_joint_pos(self):
@@ -315,7 +319,7 @@ class StretchClient(AbstractRobotClient):
 
         # Get lidar points and timestamp
         lidar_points = self.lidar.get()
-        lidar_timestamp = self.lidar.get_time().nanoseconds() / 1e9
+        lidar_timestamp = self.lidar.get_time().nanoseconds / 1e9
 
         # Create the observation
         obs = Observations(
