@@ -221,10 +221,10 @@ def main(
         )
 
         print("\nPlan with the original map: ")
-        vlm_planner.get_plan(current_pose=x0, show_plan=True)
+        vlm_planner.plan(current_pose=x0, show_plan=True)
         print("\nPlan with the updated map: ")
         vlm_planner.set_agent(planning_agent)
-        vlm_planner.get_plan(current_pose=x0, show_plan=True)
+        vlm_planner.plan(current_pose=x0, show_plan=True)
 
 
 if __name__ == "__main__":

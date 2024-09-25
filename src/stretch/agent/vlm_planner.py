@@ -43,6 +43,14 @@ class VLMPlanner:
         if not api_key:
             api_key = input("You are using GPT4v for planning, please type in your openai key: ")
 
+    def set_agent(self, agent: RobotAgent) -> None:
+        """Set the agent for the VLM planner.
+
+        Args:
+            agent (RobotAgent): the agent
+        """
+        self.agent = agent
+
     def plan(
         self,
         current_pose=None,
@@ -51,7 +59,7 @@ class VLMPlanner:
         plan_file: str = "vlm_plan.txt",
         api_key: Optional[str] = None,
         query=None,
-    ):
+    ) -> str:
         """This is a connection to a VLM for getting a plan based on language commands.
 
         Args:
