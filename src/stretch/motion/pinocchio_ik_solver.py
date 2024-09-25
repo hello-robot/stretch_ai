@@ -99,7 +99,7 @@ class PinocchioIKSolver(IKSolverBase):
         return [self.model.names[i + 1] for i in range(self.model.nq)]
 
     def _qmap_control2model(
-        self, q_input: np.ndarray, ignore_missing_joints: bool = False
+        self, q_input: Union[np.ndarray, dict], ignore_missing_joints: bool = False
     ) -> np.ndarray:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
@@ -134,10 +134,16 @@ class PinocchioIKSolver(IKSolverBase):
 
         return q_out
 
-    def get_frame_pose(self, config: Union[np.ndarray, dict], node_a: str, node_b: str, ignore_missing_joints: bool = False):
-        '''
-            Get a transformation matrix transforming from node_a frame to node_b frame
-        '''
+    def get_frame_pose(
+        self,
+        config: Union[np.ndarray, dict],
+        node_a: str,
+        node_b: str,
+        ignore_missing_joints: bool = False,
+    ):
+        """
+        Get a transformation matrix transforming from node_a frame to node_b frame
+        """
         q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
         # print('q_model', q_model)
         pinocchio.forwardKinematics(self.model, self.data, q_model)
@@ -194,7 +200,7 @@ class PinocchioIKSolver(IKSolverBase):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
-        node_name = None
+        node_name=None,
     ) -> Tuple[np.ndarray, bool, dict]:
         """given end-effector position and quaternion, return joint values.
 
@@ -221,7 +227,7 @@ class PinocchioIKSolver(IKSolverBase):
         while True:
             pinocchio.forwardKinematics(self.model, self.data, q)
             if node_name is not None:
-                frame_idx = [f.name for f in self.model.frames].index(node_name) 
+                frame_idx = [f.name for f in self.model.frames].index(node_name)
             else:
                 frame_idx = self.ee_frame_idx
             pinocchio.updateFramePlacement(self.model, self.data, frame_idx)

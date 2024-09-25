@@ -1,26 +1,42 @@
-import time
-from random import random
-from typing import Callable, List, Optional, Tuple, Set
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
 
-import numpy as np
-
-from stretch.motion import PlanResult
-from stretch.dynav.mapping_utils import SparseVoxelMapNavigationSpace
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 import heapq
 import math
-import torch
+import time
+from typing import List, Set, Tuple
 
-class Node():
+import numpy as np
+
+from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
+from stretch.motion import PlanResult
+
+
+class Node:
     """Stores an individual spot in the tree"""
 
     def __init__(self, state):
         self.state = state
 
-def neighbors(pt: Tuple[int, int]) -> List[Tuple[int, int]]:
-    return [(pt[0] + dx, pt[1] + dy) for dx in range(-1, 2) for dy in range(-1, 2) if (dx, dy) != (0, 0)]
 
-class AStar():
+def neighbors(pt: Tuple[int, int]) -> List[Tuple[int, int]]:
+    return [
+        (pt[0] + dx, pt[1] + dy) for dx in range(-1, 2) for dy in range(-1, 2) if (dx, dy) != (0, 0)
+    ]
+
+
+class AStar:
     """Define RRT planning problem and parameters"""
 
     def __init__(
@@ -30,7 +46,7 @@ class AStar():
         """Create RRT planner with configuration"""
         self.space = space
         self.reset()
-    
+
     def compute_theta(self, cur_x, cur_y, end_x, end_y):
         theta = 0
         if end_x == cur_x and end_y >= cur_y:
@@ -41,7 +57,7 @@ class AStar():
             theta = np.arctan((end_y - cur_y) / (end_x - cur_x))
             if end_x < cur_x:
                 theta = theta + np.pi
-            # move theta into [-pi, pi] range, for this function specifically, 
+            # move theta into [-pi, pi] range, for this function specifically,
             # (theta -= 2 * pi) or (theta += 2 * pi) is enough
             if theta > np.pi:
                 theta = theta - 2 * np.pi
@@ -58,24 +74,19 @@ class AStar():
         # self._navigable = ~obs
         self.start_time = time.time()
 
-    def verify_path(self, path) -> bool:
-        self.reset()
-        for i in range(max(10, len(path))):
-            if self.point_is_occupied(*self.to_pt(path[i][:2])):
-                return False
-            return True
-
     def point_is_occupied(self, x: int, y: int) -> bool:
         return not bool(self._navigable[x][y])
-    
+
     def to_pt(self, xy: Tuple[float, float]) -> Tuple[int, int]:
-        xy = torch.tensor([xy[0], xy[1]])
-        pt = self.space.voxel_map.xy_to_grid_coords(xy)
+        # # type: ignore to bypass mypy checking
+        xy = np.array([xy[0], xy[1]])  # type: ignore
+        pt = self.space.voxel_map.xy_to_grid_coords(xy)  # type: ignore
         return tuple(pt.tolist())
 
     def to_xy(self, pt: Tuple[int, int]) -> Tuple[float, float]:
-        pt = torch.tensor([pt[0], pt[1]])
-        xy = self.space.voxel_map.grid_coords_to_xy(pt)
+        # # type: ignore to bypass mypy checking
+        pt = np.array([pt[0], pt[1]])  # type: ignore
+        xy = self.space.voxel_map.grid_coords_to_xy(pt)  # type: ignore
         return tuple(xy.tolist())
 
     def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
@@ -96,9 +107,12 @@ class AStar():
         return obstacle_punishment
 
     # A* heuristic
-    def compute_heuristic(self, a: Tuple[int, int], b: Tuple[int, int], weight = 6, avoid = 3) -> float:
-        return self.compute_dis(a, b) + weight * self.compute_obstacle_punishment(a, weight, avoid)\
+    def compute_heuristic(self, a: Tuple[int, int], b: Tuple[int, int], weight=6, avoid=3) -> float:
+        return (
+            self.compute_dis(a, b)
+            + weight * self.compute_obstacle_punishment(a, weight, avoid)
             + self.compute_obstacle_punishment(b, weight, avoid)
+        )
 
     def is_in_line_of_sight(self, start_pt: Tuple[int, int], end_pt: Tuple[int, int]) -> bool:
         """Checks if there is a line-of-sight between two points.
@@ -150,7 +164,9 @@ class AStar():
         waypoints = [self.to_xy(waypt) for waypt in waypts]
         traj = []
         for i in range(len(waypoints) - 1):
-            theta = self.compute_theta(waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1])
+            theta = self.compute_theta(
+                waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1]
+            )
             traj.append([waypoints[i][0], waypoints[i][1], float(theta)])
         traj.append([waypoints[-1][0], waypoints[-1][1], goal[-1]])
         return traj
@@ -177,7 +193,7 @@ class AStar():
                 if self.is_in_line_of_sight(path[i][:2], path[j][:2]):
                     break
             else:
-               j = i + 1
+                j = i + 1
             # Include the mid waypoint to avoid the collision
             # if j - i >= 2:
             #     cleaned_path.append(path[(i + j) // 2])
@@ -185,7 +201,7 @@ class AStar():
             i = j
         return cleaned_path
 
-    def get_unoccupied_neighbor(self, pt: Tuple[int, int], goal_pt = None) -> Tuple[int, int]:
+    def get_unoccupied_neighbor(self, pt: Tuple[int, int], goal_pt=None) -> Tuple[int, int]:
         if not self.point_is_occupied(*pt):
             return pt
 
@@ -199,7 +215,9 @@ class AStar():
         for neighbor_pt in neighbor_pts:
             if not self.point_is_occupied(*neighbor_pt):
                 return neighbor_pt
-        print("The robot might stand on a non navigable point, so check obstacle map and restart roslaunch")
+        print(
+            "The robot might stand on a non navigable point, so check obstacle map and restart roslaunch"
+        )
         return None
         # raise ValueError("The robot might stand on a non navigable point, so check obstacle map and restart roslaunch")
 
@@ -305,20 +323,22 @@ class AStar():
         if not self.space.is_valid(goal):
             if verbose:
                 print("[Planner] invalid goal")
-            return PlanResult(False, reason = "[Planner] invalid goal")
+            return PlanResult(False, reason="[Planner] invalid goal")
         # Add start to the tree
         # print('Start running A* ', time.time() - self.start_time, ' seconds after path planning starts')
-        waypoints = self.run_astar(start[:2], goal[:2]) 
+        waypoints = self.run_astar(start[:2], goal[:2])
         # print('Finish running A* ', time.time() - self.start_time, ' seconds after path planning starts')
 
         if waypoints is None:
             if verbose:
                 print("A* fails, check obstacle map")
-            return PlanResult(False, reason = "A* fails, check obstacle map")
+            return PlanResult(False, reason="A* fails, check obstacle map")
         trajectory = []
         for i in range(len(waypoints) - 1):
-            theta = self.compute_theta(waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1])
+            theta = self.compute_theta(
+                waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1]
+            )
             trajectory.append(Node([waypoints[i][0], waypoints[i][1], float(theta)]))
         trajectory.append(Node([waypoints[-1][0], waypoints[-1][1], goal[-1]]))
         # print('Finish computing theta ', time.time() - self.start_time, ' seconds after path planning starts')
-        return PlanResult(True, trajectory = trajectory)
+        return PlanResult(True, trajectory=trajectory)

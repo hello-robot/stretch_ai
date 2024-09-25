@@ -567,7 +567,7 @@ class HelloStretchKinematics:
         update_pb: bool = True,
         num_attempts: int = 1,
         verbose: bool = False,
-        node_name = None
+        node_name=None,
     ):
         """IK in manipulation mode. Takes in a 4x4 pose_query matrix in se(3) and initial
         configuration of the robot.
@@ -592,7 +592,7 @@ class HelloStretchKinematics:
             raise NotImplementedError()
 
         q, success, debug_info = self.manip_ik_solver.compute_ik(
-            pos, quat, q0, num_attempts=num_attempts, verbose=verbose, node_name = node_name
+            pos, quat, q0, num_attempts=num_attempts, verbose=verbose, node_name=node_name
         )
 
         if q is not None and success:
