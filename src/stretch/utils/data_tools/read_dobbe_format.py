@@ -382,4 +382,28 @@ if __name__ == "__main__":
     data_dir, episode_data_index, info = load_from_raw(
         test_path, out_dir=None, fps=None, save_video=False, debug=False, max_episodes=1
     )
-    breakpoint()
+
+    # Pull out the first episode from episode_data_index
+    from_idx = episode_data_index["from"][0]
+    to_idx = episode_data_index["to"][0]
+
+    # Pull out the first image from data_dir
+    # This is a PIL image
+    pil_gripper_image = data_dir["observation.images.gripper"][0]
+    gripper_image = np.array(pil_gripper_image)
+
+    # Pull out the head image from data_dir
+    pil_head_image = data_dir["observation.images.head"][0]
+    head_image = np.array(pil_head_image)
+
+    import matplotlib.pyplot as plt
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(gripper_image)
+    plt.title("Gripper Image")
+    plt.axis("off")
+    plt.subplot(1, 2, 2)
+    plt.imshow(head_image)
+    plt.title("Head Image")
+    plt.axis("off")
+    plt.show()
