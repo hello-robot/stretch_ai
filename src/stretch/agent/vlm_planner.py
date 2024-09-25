@@ -74,7 +74,7 @@ class VLMPlanner:
             str: the plan
         """
 
-        query = self.get_command()
+        query = self.agent.get_command()
         world_representation = self.agent.get_observations(
             task=query, current_pose=current_pose, show_prompts=show_prompts
         )
