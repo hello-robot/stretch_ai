@@ -970,9 +970,9 @@ class RobotAgent:
                 matching_instances.append((i, instance))
         return self.filter_matches(matching_instances, threshold=threshold)
 
-    def extract_symbolic_spatial_info(self, instances, debug=False):
+    def extract_symbolic_spatial_info(self, instances: List[Instance], debug=False):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""
-        scene_graph = SceneGraph(instances)
+        scene_graph = SceneGraph(parameters=self.parameters, instances=instances)
         return scene_graph.get_relationships()
 
     def get_all_reachable_instances(self, current_pose=None) -> List[Tuple[int, Instance]]:

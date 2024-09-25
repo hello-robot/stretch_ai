@@ -83,7 +83,7 @@ class VLMPlanner:
         """
 
         query = self.agent.get_command()
-        world_representation = self.agent.get_observations(
+        world_representation = self.agent.get_object_centric_observations(
             task=query, current_pose=current_pose, show_prompts=show_prompts
         )
         output = self.get_output_from_gpt(world_representation, api_key=api_key, task=query)
