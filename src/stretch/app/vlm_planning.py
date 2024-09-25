@@ -25,6 +25,7 @@ import numpy as np
 import open3d as o3d
 
 from stretch.agent import RobotAgent
+from stretch.agent.vlm_planner import VLMPlanner
 from stretch.core import get_parameters
 from stretch.core.interfaces import Observations
 from stretch.perception import create_semantic_sensor
@@ -186,6 +187,9 @@ def main(
 
     print("Agent loaded:", agent)
 
+    # Create the VLM planner using the agent
+    vlm_planner = VLMPlanner(agent, api_key=api_key)
+
     # Display with agent overlay
     space = agent.get_navigation_space()
     if show_svm:
@@ -217,9 +221,10 @@ def main(
         )
 
         print("\nPlan with the original map: ")
-        agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
+        vlm_planner.get_plan(current_pose=x0, show_plan=True)
         print("\nPlan with the updated map: ")
-        planning_agent.get_plan_from_vlm(current_pose=x0, show_plan=True, api_key=api_key)
+        vlm_planner.set_agent(planning_agent)
+        vlm_planner.get_plan(current_pose=x0, show_plan=True)
 
 
 if __name__ == "__main__":

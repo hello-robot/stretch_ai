@@ -14,7 +14,7 @@ from torch import Tensor
 
 
 @dataclass
-class Observations:
+class ObjectCentricObservations:
     low_level_output_messages: List[str] = None
     scene_images: List = None
     object_images: List = None

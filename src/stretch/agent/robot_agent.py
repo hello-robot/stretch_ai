@@ -34,6 +34,7 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
+from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
 
 
@@ -1553,7 +1554,7 @@ class RobotAgent:
             print(f"Failed to execute plan: {e}")
             return False
 
-    def get_obj_centric_world_representation(
+    def get_object_centric_world_representation(
         self,
         instance_memory,
         max_context_length: int,
@@ -1561,11 +1562,22 @@ class RobotAgent:
         task: str = None,
         text_features=None,
         scene_graph=None,
-    ):
-        """Get version that LLM can handle - convert images into torch if not already"""
-        from stretch.utils.obj_centric import ObjectImage, Observations
+    ) -> ObjectCentricObservations:
+        """Get version that LLM can handle - convert images into torch if not already in that format. This will also clip the number of instances to the max context length.
 
-        obs = Observations(object_images=[], scene_graph=scene_graph)
+        Args:
+            instance_memory: the instance memory
+            max_context_length: the maximum number of instances to consider
+            sample_strategy: the strategy to use for sampling instances
+            task: the task that the robot is trying to solve
+            text_features: the text features
+            scene_graph: the scene graph
+
+        Returns:
+            ObjectCentricObservations: a list of object-centric observations
+        """
+
+        obs = ObjectCentricObservations(object_images=[], scene_graph=scene_graph)
         candidate_objects = []
         for instance in instance_memory:
             global_id = instance.global_id
@@ -1606,7 +1618,19 @@ class RobotAgent:
             )
         return obs
 
-    def get_observations(self, show_prompts=False, task=None, current_pose=None):
+    def get_object_centric_observations(
+        self, show_prompts: bool = False, task: Optional[str] = None, current_pose=None
+    ) -> ObjectCentricObservations:
+        """Get object-centric observations for the current state of the world. This is a list of images and associated object information.
+
+        Args:
+            show_prompts(bool): whether to show prompts to the user
+            task(str): the task that the robot is trying to solve
+            current_pose(np.ndarray): the current pose of the robot
+
+        Returns:
+            ObjectCentricObservations: a list of object-centric observations
+        """
         if self.plan_with_reachable_instances:
             instances = self.get_all_reachable_instances(current_pose=current_pose)
         else:
@@ -1615,7 +1639,8 @@ class RobotAgent:
         scene_graph = None
         if self.use_scene_graph:
             scene_graph = self.extract_symbolic_spatial_info(instances)
-        world_representation = self.get_obj_centric_world_representation(
+
+        world_representation = self.get_object_centric_world_representation(
             instances,
             self.parameters["vlm_context_length"],
             self.parameters["sample_strategy"],
@@ -1624,98 +1649,3 @@ class RobotAgent:
             scene_graph,
         )
         return world_representation
-
-    def get_plan_from_vlm(
-        self,
-        current_pose=None,
-        show_prompts=False,
-        show_plan=False,
-        plan_file="vlm_plan.txt",
-        api_key=None,
-        query=None,
-    ):
-        """This is a connection to a VLM for getting a plan based on language commands.
-
-        Args:
-            current_pose(np.ndarray): the current pose of the robot
-            show_prompts(bool): whether to show prompts
-            show_plan(bool): whether to show the plan
-            plan_file(str): the name of the file to save the plan to
-            api_key(str): the API key for the VLM
-            query(str): the query to send to the VLM
-
-        Returns:
-            str: the plan
-        """
-
-        vlm = self.parameters.get("vlm_option", None)
-        if vlm == "gpt4":
-            if not api_key:
-                api_key = input(
-                    "You are using GPT4v for planning, please type in your openai key: "
-                )
-            query = self.get_command()
-            world_representation = self.get_observations(
-                task=query, current_pose=current_pose, show_prompts=show_prompts
-            )
-            output = self.get_output_from_gpt(world_representation, api_key=api_key, task=query)
-            if show_plan:
-                import re
-
-                import matplotlib.pyplot as plt
-
-                if output == "explore":
-                    print(
-                        ">>>>>> Planner cannot find a plan, the robot should explore more >>>>>>>>>"
-                    )
-                elif output == "gpt API error":
-                    print(">>>>>> there is something wrong with the planner api >>>>>>>>>")
-                else:
-                    actions = output.split("; ")
-                    plt.clf()
-                    for action_id, action in enumerate(actions):
-                        crop_id = int(re.search(r"img_(\d+)", action).group(1))
-                        global_id = world_representation.object_images[crop_id].instance_id
-                        plt.subplot(1, len(actions), action_id + 1)
-                        plt.imshow(
-                            self.voxel_map.get_instances()[global_id].get_best_view().get_image()
-                        )
-                        plt.title(action.split("(")[0] + f" instance {global_id}")
-                        plt.axis("off")
-                    plt.suptitle(f"Task: {query}")
-                    plt.savefig("plan.png")
-        elif vlm is None:
-            return None
-        else:
-            raise RuntimeError(f"Not implemented yet: VLM option {vlm} not recognized")
-        if self.parameters["save_vlm_plan"]:
-            with open(plan_file, "w") as f:
-                f.write(output)
-            print(f"Task plan generated from VLMs has been written to {plan_file}")
-        return output
-
-    def get_output_from_gpt(self, world_rep, api_key, task):
-        from stretch.llms.multi_crop_openai_client import MultiCropOpenAIClient
-
-        # TODO: put these into config
-        img_size = 256
-        temperature = 0.2
-        max_tokens = 50
-        with open(
-            "src/stretch/llms/prompts/obj_centric_vlm.txt",
-            "r",
-        ) as f:
-            prompt = f.read()
-
-        gpt_agent = MultiCropOpenAIClient(
-            cfg=dict(
-                img_size=img_size,
-                prompt=prompt,
-                api_key=api_key,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-        )
-        gpt_agent.reset()
-        plan = gpt_agent.act_on_observations(world_rep, goal=task, debug_path=None)
-        return plan
