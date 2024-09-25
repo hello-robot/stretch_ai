@@ -1642,8 +1642,8 @@ class RobotAgent:
 
         world_representation = self.get_object_centric_world_representation(
             instances,
-            self.parameters["vlm_context_length"],
-            self.parameters.get("sample_strategy", "clip"),
+            self.parameters.get("vlm/vlm_context_length", 20),
+            self.parameters.get("vlm/sample_strategy", "clip"),
             task,
             self.encode_text(task),
             scene_graph,

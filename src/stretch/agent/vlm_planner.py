@@ -15,7 +15,7 @@ from stretch.llms.multi_crop_openai_client import MultiCropOpenAIClient
 
 
 class VLMPlanner:
-    def __init__(self, agent: RobotAgent, api_key: str = None) -> None:
+    def __init__(self, agent: RobotAgent, api_key: Optional[str] = None) -> None:
         """This is a connection to a VLM for getting a plan based on language commands.
 
         Args:
@@ -24,6 +24,9 @@ class VLMPlanner:
         """
 
         self.agent = agent
+
+        # Load parameters file from the agent
+        self.parameters = agent.parameters
 
         # TODO: put these into config
         img_size = 256
@@ -35,21 +38,22 @@ class VLMPlanner:
         ) as f:
             prompt = f.read()
 
+        if not api_key:
+            api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            api_key = input("You are using GPT4v for planning, please type in your openai key: ")
+        self.api_key = api_key
+
         self.gpt_agent = MultiCropOpenAIClient(
             cfg=dict(
                 img_size=img_size,
                 prompt=prompt,
-                api_key=api_key,
+                api_key=self.api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
         )
         self.gpt_agent.reset()
-
-        if not api_key:
-            api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            api_key = input("You are using GPT4v for planning, please type in your openai key: ")
 
     def set_agent(self, agent: RobotAgent) -> None:
         """Set the agent for the VLM planner.
@@ -65,7 +69,6 @@ class VLMPlanner:
         show_prompts=False,
         show_plan=False,
         plan_file: str = "vlm_plan.txt",
-        api_key: Optional[str] = None,
         query=None,
     ) -> str:
         """This is a connection to a VLM for getting a plan based on language commands.
@@ -75,7 +78,6 @@ class VLMPlanner:
             show_prompts(bool): whether to show prompts
             show_plan(bool): whether to show the plan
             plan_file(str): the name of the file to save the plan to
-            api_key(str): the API key for the VLM
             query(str): the query to send to the VLM
 
         Returns:
@@ -86,7 +88,7 @@ class VLMPlanner:
         world_representation = self.agent.get_object_centric_observations(
             task=query, current_pose=current_pose, show_prompts=show_prompts
         )
-        output = self.get_output_from_gpt(world_representation, api_key=api_key, task=query)
+        output = self.get_output_from_gpt(world_representation, task=query)
         if show_plan:
             import re
 
@@ -117,7 +119,7 @@ class VLMPlanner:
             print(f"Task plan generated from VLMs has been written to {plan_file}")
         return output
 
-    def get_output_from_gpt(self, world_rep, task: str, api_key: Optional[str] = None):
+    def get_output_from_gpt(self, world_rep, task: str):
 
         plan = self.gpt_agent.act_on_observations(world_rep, goal=task, debug_path=None)
         return plan
