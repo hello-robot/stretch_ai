@@ -38,6 +38,25 @@ class Parameters(object):
             return default
         return data[key]
 
+    def set(self, key: str, value: Any):
+        """Safe wrapper to dictionary
+
+        Args:
+            key (str): the key to set
+            value (Any): the value
+        """
+        if "/" in key:
+            keys = key.split("/")
+            data = self.data[keys[0]]
+            key = keys[-1]
+            if len(keys) > 2:
+                raise NotImplementedError(
+                    f"we dont yet support nested parameters to this depth: {len(keys)}"
+                )
+        else:
+            data = self.data
+        data[key] = value
+
     def __getitem__(self, key: str) -> Any:
         """Just a wrapper to the dictionary"""
         return self.data[key]

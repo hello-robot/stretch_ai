@@ -152,6 +152,7 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(config_path)
+    parameters.set("vlm_option", "gpt4")
 
     print("Creating semantic sensors...")
     semantic_sensor = create_semantic_sensor(config_path=config_path)

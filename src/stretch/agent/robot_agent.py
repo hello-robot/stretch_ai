@@ -1634,8 +1634,22 @@ class RobotAgent:
         api_key=None,
         query=None,
     ):
-        """This is a connection to a remote thing for getting language commands"""
-        if self.parameters["vlm_option"] == "gpt4":
+        """This is a connection to a VLM for getting a plan based on language commands.
+
+        Args:
+            current_pose(np.ndarray): the current pose of the robot
+            show_prompts(bool): whether to show prompts
+            show_plan(bool): whether to show the plan
+            plan_file(str): the name of the file to save the plan to
+            api_key(str): the API key for the VLM
+            query(str): the query to send to the VLM
+
+        Returns:
+            str: the plan
+        """
+
+        vlm = self.parameters.get("vlm_option", None)
+        if vlm == "gpt4":
             if not api_key:
                 api_key = input(
                     "You are using GPT4v for planning, please type in your openai key: "
@@ -1670,8 +1684,10 @@ class RobotAgent:
                         plt.axis("off")
                     plt.suptitle(f"Task: {query}")
                     plt.savefig("plan.png")
+        elif vlm is None:
+            return None
         else:
-            raise RuntimeError("Not implemented yet.")
+            raise RuntimeError(f"Not implemented yet: VLM option {vlm} not recognized")
         if self.parameters["save_vlm_plan"]:
             with open(plan_file, "w") as f:
                 f.write(output)
