@@ -13,12 +13,11 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import numpy as np
 import zmq
-from scipy.spatial.transform import Rotation as R
 from termcolor import colored
 
 import stretch.motion.constants as constants
@@ -324,7 +323,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self,
         pos: List[float],
         quat: Optional[List[float]] = None,
-        relative: bool = False,
         initial_cfg: np.ndarray = None,
         debug: bool = False,
         node_name=None,
@@ -339,22 +337,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         pos_ee_curr, quat_ee_curr = self.get_ee_pose()
         if quat is None:
-            quat = [0, 0, 0, 1] if relative else quat_ee_curr
+            quat = quat_ee_curr
 
         # Compute IK goal: pose relative to base
         pose_desired = posquat2sophus(np.array(pos), np.array(quat))
 
-        if relative:
-            pose_base2ee_curr = posquat2sophus(pos_ee_curr, quat_ee_curr)
-
-            pos_desired = pos_ee_curr + pose_input.translation()
-            so3_desired = pose_input.so3() * pose_base2ee_curr.so3()
-            quat_desired = R.from_matrix(so3_desired.matrix()).as_quat()
-
-            pose_base2ee_desired = posquat2sophus(pos_desired, quat_desired)
-
-        else:
-            pose_base2ee_desired = pose_desired
+        pose_base2ee_desired = pose_desired
 
         pos_ik_goal, quat_ik_goal = sophus2posquat(pose_base2ee_desired)
 
@@ -566,7 +554,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def navigate_to(
         self,
-        xyt: ContinuousNavigationAction,
+        xyt: Union[np.ndarray, ContinuousNavigationAction],
         relative=False,
         blocking=False,
         timeout: float = 10.0,

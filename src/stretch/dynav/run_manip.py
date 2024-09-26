@@ -18,7 +18,7 @@ import numpy as np
 from stretch.agent import RobotClient
 
 # Mapping and perception
-from stretch.core.parameters import Parameters, get_parameters
+from stretch.core.parameters import get_parameters
 from stretch.dynav import RobotAgentMDP
 
 

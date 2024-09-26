@@ -19,7 +19,7 @@ from torch import Tensor
 # from ultralytics import YOLOWorld
 from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
-from stretch.dynav.mapping_utils import VoxelizedPointcloud
+from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud
 
 
 def get_inv_intrinsics(intrinsics):

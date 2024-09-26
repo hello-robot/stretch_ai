@@ -271,15 +271,12 @@ class RerunVsualizer:
             labels="robot",
             colors=[255, 0, 0, 255],
         )
-
         rr.log("world/robot/arrow", rb_arrow, static=True)
         rr.log(
             "world/robot/blob",
             rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13),
             static=True,
         )
-        # rr.log("world/robot/arrow", rb_arrow)
-
         rr.log(
             "world/robot",
             rr.Transform3D(

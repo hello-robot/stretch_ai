@@ -7,33 +7,24 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
 import datetime
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-import cv2
 import numpy as np
 import zmq
 
 from stretch.agent import RobotClient
-from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
+from stretch.dynav.communication_util import recv_array, send_array, send_everything
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
 from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
-
-# from stretch.dynav.ok_robot_hw.utils.communication_utils import recv_array, send_array
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,
     move_to_point,
     pickup,
 )
-
-# from stretch.dynav.llm_server import ImageProcessor
 
 
 class RobotAgentMDP:
@@ -79,40 +70,34 @@ class RobotAgentMDP:
         self.pos_err_threshold = 0.35
         self.rot_err_threshold = 0.4
         self.obs_count = 0
-        self.obs_history: List[Observations] = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
 
         self.image_sender = ImageSender(
             ip=ip, image_port=image_port, text_port=text_port, manip_port=manip_port
         )
         if method == "dynamem":
-            from stretch.dynav.voxel_map_server import ImageProcessor
+            from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
-            self.image_processor = ImageProcessor(
+            self.image_processor = VoxelMapImageProcessor(
                 rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
             )  # type: ignore
         elif method == "mllm":
-            from stretch.dynav.llm_server import LLMImageProcessor
+            from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
 
-            self.image_processor = LLMImageProcessor(
+            self.image_processor = mLLMImageProcessor(
                 rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
             )  # type: ignore
 
-        self.look_around_times: List[float] = []
-        self.execute_times: List[float] = []
+        self.look_around_times: list[float] = []
+        self.execute_times: list[float] = []
 
         timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
-
-        # self.head_lock = threading.Lock()
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.6]:
-                start_time = time.time()
                 self.robot.head_to(pan, tilt, blocking=True)
-                end_time = time.time()
-                print("moving head takes ", end_time - start_time, "seconds.")
                 self.update()
 
     def rotate_in_place(self):
@@ -128,7 +113,6 @@ class RobotAgentMDP:
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = self.robot.get_observation()
         # self.image_sender.send_images(obs)
-        self.obs_history.append(obs)
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         # start_time = time.time()
@@ -157,7 +141,7 @@ class RobotAgentMDP:
         look_around_finish = time.time()
         look_around_take = look_around_finish - start_time
         print("Path planning takes ", look_around_take, " seconds.")
-        self.look_around_times.append(look_around_take)
+        # self.look_around_times.append(look_around_take)
         # print(self.look_around_times)
         # print(sum(self.look_around_times) / len(self.look_around_times))
 
@@ -344,80 +328,6 @@ class RobotAgentMDP:
     def save(self):
         with self.image_processor.voxel_map_lock:
             self.image_processor.write_to_pickle()
-
-
-def send_array(socket, A, flags=0, copy=True, track=False):
-    """send a numpy array with metadata"""
-    A = np.array(A)
-    md = dict(
-        dtype=str(A.dtype),
-        shape=A.shape,
-    )
-    socket.send_json(md, flags | zmq.SNDMORE)
-    return socket.send(np.ascontiguousarray(A), flags, copy=copy, track=track)
-
-
-def recv_array(socket, flags=0, copy=True, track=False):
-    """recv a numpy array"""
-    md = socket.recv_json(flags=flags)
-    msg = socket.recv(flags=flags, copy=copy, track=track)
-    A = np.frombuffer(msg, dtype=md["dtype"])
-    return A.reshape(md["shape"])
-
-
-def send_rgb_img(socket, img):
-    img = img.astype(np.uint8)
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
-    _, img_encoded = cv2.imencode(".jpg", img, encode_param)
-    socket.send(img_encoded.tobytes())
-
-
-def recv_rgb_img(socket):
-    img = socket.recv()
-    img = np.frombuffer(img, dtype=np.uint8)
-    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
-    return img
-
-
-def send_depth_img(socket, depth_img):
-    depth_img = (depth_img * 1000).astype(np.uint16)
-    encode_param = [
-        int(cv2.IMWRITE_PNG_COMPRESSION),
-        3,
-    ]  # Compression level from 0 (no compression) to 9 (max compression)
-    _, depth_img_encoded = cv2.imencode(".png", depth_img, encode_param)
-    socket.send(depth_img_encoded.tobytes())
-
-
-def recv_depth_img(socket):
-    depth_img = socket.recv()
-    depth_img = np.frombuffer(depth_img, dtype=np.uint8)
-    depth_img = cv2.imdecode(depth_img, cv2.IMREAD_UNCHANGED)
-    depth_img = depth_img / 1000.0
-    return depth_img
-
-
-def send_everything(socket, rgb, depth, intrinsics, pose):
-    send_rgb_img(socket, rgb)
-    socket.recv_string()
-    send_depth_img(socket, depth)
-    socket.recv_string()
-    send_array(socket, intrinsics)
-    socket.recv_string()
-    send_array(socket, pose)
-    socket.recv_string()
-
-
-def recv_everything(socket):
-    rgb = recv_rgb_img(socket)
-    socket.send_string("")
-    depth = recv_depth_img(socket)
-    socket.send_string("")
-    intrinsics = recv_array(socket)
-    socket.send_string("")
-    pose = recv_array(socket)
-    socket.send_string("")
-    return rgb, depth, intrinsics, pose
 
 
 class ImageSender:

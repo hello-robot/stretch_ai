@@ -99,7 +99,7 @@ class PinocchioIKSolver(IKSolverBase):
         return [self.model.names[i + 1] for i in range(self.model.nq)]
 
     def _qmap_control2model(
-        self, q_input: np.ndarray, ignore_missing_joints: bool = False
+        self, q_input: Union[np.ndarray, dict], ignore_missing_joints: bool = False
     ) -> np.ndarray:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
