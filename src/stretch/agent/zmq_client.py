@@ -325,7 +325,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         quat: Optional[List[float]] = None,
         initial_cfg: np.ndarray = None,
         debug: bool = False,
-        node_name=None,
+        custom_ee_frame: Optional[str] = None,
     ) -> Optional[np.ndarray]:
         """Solve inverse kinematics appropriately (or at least try to) and get the joint position
         that we will be moving to.
@@ -355,7 +355,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # Perform IK
         full_body_cfg, ik_success, ik_debug_info = self._robot_model.manip_ik(
-            (pos_ik_goal, quat_ik_goal), q0=initial_cfg, node_name=node_name
+            (pos_ik_goal, quat_ik_goal),
+            q0=initial_cfg,
+            custom_ee_frame=custom_ee_frame,
         )
 
         # Expected to return None if we did not get a solution
