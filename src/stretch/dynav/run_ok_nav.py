@@ -37,7 +37,7 @@ def compute_tilt(camera_xyz, target_xyz):
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
-@click.option("--re", default=1, type=int)
+@click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)

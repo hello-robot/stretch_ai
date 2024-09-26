@@ -38,6 +38,7 @@ from transformers import AutoModel, AutoProcessor
 # from transformers import AutoProcessor, OwlViTForObjectDetection
 from ultralytics import YOLOWorld
 
+import stretch.utils.logger as logger
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.mapping_utils.a_star import AStar
@@ -113,17 +114,18 @@ class ImageProcessor:
     def __init__(
         self,
         vision_method="mask*lip",
-        siglip=True,
-        device="cuda",
-        min_depth=0.25,
-        max_depth=2.5,
-        img_port=5558,
-        text_port=5556,
-        open_communication=True,
-        rerun=True,
-        static=True,
+        siglip: bool = True,
+        device: str = "cuda",
+        min_depth: float = 0.25,
+        max_depth: float = 2.5,
+        img_port: int = 5558,
+        text_port: int = 5556,
+        open_communication: bool = True,
+        rerun: bool = True,
+        static: bool = True,
         log=None,
         image_shape=(400, 300),
+        rerun_server_memory_limit: str = "4GB",
     ):
         self.static = static
         self.siglip = siglip
@@ -138,7 +140,10 @@ class ImageProcessor:
                 rr.init(self.log, spawn=False)
                 rr.connect("100.108.67.79:9876")
             else:
-                rr.init(self.log, spawn=True)
+                # rr.init(self.log, spawn=False)
+                # rr.connect("100.108.67.79:9876")
+                logger.info("Attempting to connect to existing rerun server.")
+
         self.min_depth = min_depth
         self.max_depth = max_depth
         self.obs_count = 0
