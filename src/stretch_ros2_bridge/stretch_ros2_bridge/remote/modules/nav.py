@@ -155,8 +155,8 @@ class StretchNavigationClient(AbstractControlModule):
         Directly sets the linear and angular velocity of robot base.
         """
         msg = Twist()
-        msg.linear.x = v
-        msg.angular.z = w
+        msg.linear.x = float(v)
+        msg.angular.z = float(w)
 
         self._ros_client.goto_off_service.call(Trigger.Request())
         self._ros_client.velocity_pub.publish(msg)
