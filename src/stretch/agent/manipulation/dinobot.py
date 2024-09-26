@@ -8,11 +8,16 @@
 # license information maybe found below, if so.
 
 import glob
+import sys
 
 import click
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
+# sys.path.append("/home/hello-robot/repos/dino-vit-features")
+sys.path.append("/home/cpaxton/src/dino-vit-features")
+import sys
 
 # Install this DINO repo to extract correspondences: https://github.com/ShirAmir/dino-vit-features
 from correspondences import draw_correspondences, find_correspondences
@@ -61,6 +66,8 @@ def load_demo(path_to_demo_folder):
         demo_deltas.append(delta)
 
     # pull out the first frame in the videos for the bottleneck images
+    # rgb_bn = Image.open("ee_rgb_0.jpg")
+    # depth_bn = Image.open("ee_rgb_1.jpg")
     rgb_bn = Image.open("bottleneck_rgb.png")
     depth_bn = Image.open("bottleneck_depth.png")
 
@@ -138,6 +145,7 @@ def extract_3d_coordinates(points, xyz):
         x, y = point
         points_3d.append([x, y, depths[i]])
 
+    breakpoint()
     return np.array(points_3d)
 
 
@@ -233,3 +241,7 @@ def main(robot_ip, local, path_to_demo_folder):
 
     # Start the demo
     dinobot_demo(robot, path_to_demo_folder)
+
+
+if __name__ == "__main__":
+    main()
