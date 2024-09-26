@@ -440,6 +440,8 @@ class RobotAgent:
 
             while obs is None:
                 obs = self.robot.get_observation()
+                if (len(self.obs_history) > 0) and (obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp):
+                    obs = None
                 t1 = timeit.default_timer()
                 if t1 - t0 > 10:
                     logger.error("Failed to get observation")
@@ -467,48 +469,73 @@ class RobotAgent:
         # self.obs_history.append(obs)
         # self.obs_count += 1
         # Optionally do this
-        if self.semantic_sensor is not None:
-            # Semantic prediction
-            for idx, obs in enumerate(self.obs_history):
-                if obs.task_observations is None:
-                    # print("No task observations, running semantic sensor")
-                    # obs = self.semantic_sensor.predict(obs)
-                    self.obs_history[idx] = obs
+        # if self.semantic_sensor is not None:
+        #     # Semantic prediction
+        #     for idx, obs in enumerate(self.obs_history):
+        #         if obs.task_observations is None:
+        #             # print("No task observations, running semantic sensor")
+        #             # obs = self.semantic_sensor.predict(obs)
+        #             self.obs_history[idx] = obs
 
-        t2 = timeit.default_timer()
+        # t1 = timeit.default_timer()
 
         # Update past observations based on our new pose graph
         start_pose = None
 
-        print(f"len obs history: {len(self.obs_history)}")
-        print(f"len pose graph: {len(self.pose_graph)}")
+        # print(f"len obs history: {len(self.obs_history)}")
+        # print(f"len pose graph: {len(self.pose_graph)}")
 
-        for observation in self.obs_history:
-            lidar_timestamp = observation.lidar_timestamp
+        # count = 0
+        print("Updating past observations")
+        for idx in range(len(self.obs_history)):
+            lidar_timestamp = self.obs_history[idx].lidar_timestamp
 
             for vertex in self.pose_graph:
-                print(f"vertex: {vertex[0]}, lidar: {lidar_timestamp}")
-                if abs(vertex[0] - lidar_timestamp) < 0.5:
-                # pass
-                    print("Approximate match found!")
+                if abs(vertex[0] - lidar_timestamp) < 0.01:
+                    print(f"Approximate match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+                    
+                    self.obs_history[idx].is_pose_graph_node = True
+                    self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
+                    self.obs_history[idx].compass = np.array([vertex[3],])
 
+                    print(f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}")
+
+                    if self.obs_history[idx].task_observations is None and self.semantic_sensor is not None:
+                        # observation.task_observations = []
+                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
+
+                    # Set to the new corrected pose
+                    # count += 1
         t2 = timeit.default_timer()
-        # self.voxel_map.add_obs(obs)
+        print(f"Done updating past observations. Time: {t2- t1}")
 
+        print("Updating voxel map")
         t3 = timeit.default_timer()
+        # self.voxel_map.add_obs(obs)
+        self.voxel_map.reset()
+        for obs in self.obs_history:
+            if obs.is_pose_graph_node:
+                self.voxel_map.add_obs(obs)
+            # self.voxel_map.add_obs(obs)
+
+        t4 = timeit.default_timer()
+        print(f"Done updating voxel map. Time: {t4 - t3}")
 
         if self.use_scene_graph:
             self._update_scene_graph()
             self.scene_graph.get_relationships()
 
-        t4 = timeit.default_timer()
+        t5 = timeit.default_timer()
+        print(f"Done updating scene graph. Time: {t5 - t4}")
 
-        if self.debug_update_timing:
-            print("Update timing:")
-            print("Time to get observation:", t1 - t0, "seconds, % =", (t1 - t0) / (t4 - t0))
-            print("Time to predict:", t2 - t1, "seconds, % =", (t2 - t1) / (t4 - t0))
-            print("Time to add obs:", t3 - t2, "seconds, % =", (t3 - t2) / (t4 - t0))
-            print("Time to update scene graph:", t4 - t3, "seconds, % =", (t4 - t3) / (t4 - t0))
+        print(f"Total observation count: {len(self.obs_history)}")
+
+        # if self.debug_update_timing:
+        #     print("Update timing:")
+        #     print("Time to get observation:", t1 - t0, "seconds, % =", (t1 - t0) / (t4 - t0))
+        #     print("Time to predict:", t2 - t1, "seconds, % =", (t2 - t1) / (t4 - t0))
+        #     print("Time to add obs:", t3 - t2, "seconds, % =", (t3 - t2) / (t4 - t0))
+        #     print("Time to update scene graph:", t4 - t3, "seconds, % =", (t4 - t3) / (t4 - t0))
 
         # # Add observation - helper function will unpack it
         # if visualize_map:
@@ -517,14 +544,25 @@ class RobotAgent:
 
         # t5 = timeit.default_timer()
 
+        # Clear out observations that are too old and are not pose graph nodes
+        if len(self.obs_history) > 200:
+            # Remove 10 oldest observations that are not pose graph nodes
+            del_count = 0
+            while del_count < 10:
+                if not self.obs_history[0].is_pose_graph_node:
+                    del self.obs_history[0]
+                    del_count += 1
+        t6 = timeit.default_timer()
+        print(f"Done clearing out old observations. Time: {t6 - t5}")
+
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time"""
         while True:
-            print("Updating map")
+            # print("Updating map")
             with self._robot_lock:
-                print("Acquired lock")
+                # print("Acquired lock")
                 self.update_map_with_pose_graph()
-                print("Updated map")
+                # print("Updated map")
             time.sleep(0.5)
 
     def update(self, visualize_map: bool = False, debug_instances: bool = False):
