@@ -31,3 +31,7 @@ class BaseImageTextEncoder(abc.ABC):
     @abc.abstractmethod
     def encode_text(self, text: str):
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def compute_score(self, image: Tensor, text: Tensor):
+        raise NotImplementedError
