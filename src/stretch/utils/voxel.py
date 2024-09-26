@@ -31,6 +31,76 @@ else:
     from stretch.utils.torch_geometric import consecutive_cluster, voxel_grid
     from stretch.utils.torch_scatter import scatter
 
+from typing import Literal
+
+import torch
+from torch import Tensor
+
+
+def merge_features(
+    idx: Tensor, features: Tensor, method: Literal["sum", "min", "max", "mean"] = "sum"
+) -> Tensor:
+    """
+    Merge features based on the given indices using the specified method.
+
+    This function takes a tensor of indices and a tensor of features, and merges
+    the features for duplicate indices according to the specified method.
+
+    Args:
+        idx (Tensor): A 1D integer tensor containing indices, possibly with duplicates.
+        features (Tensor): A 2D float tensor of shape (len(idx), feature_dim) containing
+                           feature vectors corresponding to each index.
+        method (Literal['sum', 'min', 'max', 'mean']): The method to use for merging
+                                                       features. Default is 'sum'.
+
+    Returns:
+        Tensor: A 2D tensor of shape (num_unique_idx, feature_dim) containing the
+                merged features.
+
+    Raises:
+        ValueError: If an invalid merge method is specified.
+
+    Example:
+        >>> idx = torch.tensor([0, 1, 0, 2, 1])
+        >>> features = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [9.0, 10.0]])
+        >>> merge_features(idx, features, method='sum')
+        tensor([[ 6.0,  8.0],
+                [12.0, 14.0],
+                [ 7.0,  8.0]])
+    """
+    if idx.dim() != 1:
+        raise ValueError("idx must be a 1D tensor")
+    if features.dim() != 2 or features.size(0) != idx.size(0):
+        raise ValueError("features must be a 2D tensor with shape (len(idx), feature_dim)")
+
+    unique_idx, inverse_idx = torch.unique(idx, return_inverse=True)
+    num_unique = unique_idx.size(0)
+    feature_dim = features.size(1)
+
+    if method == "sum":
+        merged = torch.zeros(num_unique, feature_dim, dtype=features.dtype, device=features.device)
+        merged.index_add_(0, inverse_idx, features)
+    elif method == "min":
+        merged = torch.full(
+            (num_unique, feature_dim), float("inf"), dtype=features.dtype, device=features.device
+        )
+        merged = torch.min(merged.index_copy(0, inverse_idx, features), merged)
+    elif method == "max":
+        merged = torch.full(
+            (num_unique, feature_dim), float("-inf"), dtype=features.dtype, device=features.device
+        )
+        merged = torch.max(merged.index_copy(0, inverse_idx, features), merged)
+    elif method == "mean":
+        merged = torch.zeros(num_unique, feature_dim, dtype=features.dtype, device=features.device)
+        merged.index_add_(0, inverse_idx, features)
+        count = torch.zeros(num_unique, dtype=torch.int, device=features.device)
+        count.index_add_(0, inverse_idx, torch.ones_like(inverse_idx))
+        merged /= count.unsqueeze(1)
+    else:
+        raise ValueError("Invalid merge method. Choose from 'sum', 'min', 'max', or 'mean'.")
+
+    return merged
+
 
 class VoxelizedPointcloud:
     _INTERNAL_TENSORS = [
