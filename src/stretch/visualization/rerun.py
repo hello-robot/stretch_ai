@@ -219,6 +219,7 @@ class RerunVsualizer:
                 vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                 colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
             ),
+            static=True,
         )
 
         self.bbox_colors_memory = {}
@@ -252,7 +253,8 @@ class RerunVsualizer:
             obs (Observations): Observation dataclass
         """
         rr.set_time_seconds("realtime", time.time())
-        rr.log("world/head_camera/rgb", rr.Image(obs.rgb))
+        rr.log("world/head_camera/rgb", rr.Image(obs.rgb), static=True)
+        # rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]), static=True)
 
         if self.show_camera_point_clouds:
             head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
@@ -294,7 +296,12 @@ class RerunVsualizer:
             labels="robot",
             colors=[255, 0, 0, 255],
         )
-        rr.log("world/robot/arrow", rb_arrow)
+        rr.log("world/robot/arrow", rb_arrow, static=True)
+        rr.log(
+            "world/robot/blob",
+            rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13),
+            static=True,
+        )
         rr.log(
             "world/robot",
             rr.Transform3D(
@@ -302,6 +309,7 @@ class RerunVsualizer:
                 rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=theta),
                 axis_length=0.7,
             ),
+            static=True,
         )
 
     def log_ee_frame(self, obs):
@@ -315,8 +323,14 @@ class RerunVsualizer:
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
+        # rr.log("world/ee/arrow", ee_arrow, static=True)
+        # rr.log(
+        #     "world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static=True
+        # )
         # rr.log("world/ee/arrow", ee_arrow)
-        rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
+        rr.log(
+            "world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3, static=True)
+        )
 
     def log_ee_camera(self, servo):
         """Log end effector camera pose and images
@@ -325,7 +339,7 @@ class RerunVsualizer:
         """
         rr.set_time_seconds("realtime", time.time())
         # EE Camera
-        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
+        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb), static=True)
 
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
@@ -339,7 +353,7 @@ class RerunVsualizer:
                 ),
             )
         else:
-            rr.log("world/ee_camera/depth", rr.depthimage(servo.ee_depth))
+            rr.log("world/ee_camera/depth", rr.depthimage(servo.ee_depth), static=True)
 
         if self.show_cameras_in_3d_view:
             rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
@@ -360,7 +374,11 @@ class RerunVsualizer:
         rr.set_time_seconds("realtime", time.time())
         state = obs["joint"]
         for k in HelloStretchIdx.name_to_idx:
-            rr.log(f"robot_state/joint_pose/{k}", rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]))
+            rr.log(
+                f"robot_state/joint_pose/{k}",
+                rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]),
+                static=True,
+            )
 
     def log_robot_transforms(self, obs):
         """
@@ -390,7 +408,10 @@ class RerunVsualizer:
         rr.log(
             "world/point_cloud",
             rr.Points3D(
-                positions=points, radii=np.ones(rgb.shape[0]) * world_radius, colors=np.int64(rgb)
+                positions=points,
+                radii=np.ones(rgb.shape[0]) * world_radius,
+                colors=np.int64(rgb),
+                static=True,
             ),
         )
 
@@ -419,6 +440,7 @@ class RerunVsualizer:
                 radii=np.ones(points.shape[0]) * obstacle_radius,
                 colors=[255, 0, 0],
             ),
+            static=True,
         )
         rr.log(
             "world/explored",
@@ -427,6 +449,7 @@ class RerunVsualizer:
                 radii=np.ones(points.shape[0]) * explored_radius,
                 colors=[255, 255, 255],
             ),
+            static=True,
         )
         t6 = timeit.default_timer()
 
@@ -465,6 +488,7 @@ class RerunVsualizer:
                 rr.log(
                     f"world/{instance.id}_{name}",
                     rr.Points3D(positions=point_cloud_rgb, colors=np.int64(pcd_rgb)),
+                    static=True,
                 )
                 half_sizes = [(b[0] - b[1]) / 2 for b in bbox_bounds]
                 bounds.append(half_sizes)
@@ -482,6 +506,7 @@ class RerunVsualizer:
                     radii=0.01,
                     colors=colors,
                 ),
+                static=True,
             )
             t1 = timeit.default_timer()
             print("Time to log scene graph objects: ", t1 - t0)

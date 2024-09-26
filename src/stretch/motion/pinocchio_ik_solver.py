@@ -99,7 +99,7 @@ class PinocchioIKSolver(IKSolverBase):
         return [self.model.names[i + 1] for i in range(self.model.nq)]
 
     def _qmap_control2model(
-        self, q_input: np.ndarray, ignore_missing_joints: bool = False
+        self, q_input: Union[np.ndarray, dict], ignore_missing_joints: bool = False
     ) -> np.ndarray:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
@@ -133,6 +133,35 @@ class PinocchioIKSolver(IKSolverBase):
                 q_out[i] = q_input[joint_idx]
 
         return q_out
+
+    def get_frame_pose(
+        self,
+        config: Union[np.ndarray, dict],
+        node_a: str,
+        node_b: str,
+        ignore_missing_joints: bool = False,
+    ):
+        """
+        Get a transformation matrix transforming from node_a frame to node_b frame
+        """
+        q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
+        # print('q_model', q_model)
+        pinocchio.forwardKinematics(self.model, self.data, q_model)
+        frame_idx1 = [f.name for f in self.model.frames].index(node_a)
+        frame_idx2 = [f.name for f in self.model.frames].index(node_b)
+        # print(frame_idx1)
+        # print(frame_idx2)
+        # print(self.model.getFrameId(node_a))
+        # print(self.model.getFrameId(node_b))
+        # frame_idx1 = self.model.getFrameId(node_a)
+        # frame_idx2 = self.model.getFrameId(node_b)
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx1)
+        placement_frame1 = self.data.oMf[frame_idx1]
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx2)
+        placement_frame2 = self.data.oMf[frame_idx2]
+        # print('pin 1', placement_frame1)
+        # print('pin 2', placement_frame2)
+        return placement_frame2.inverse() * placement_frame1
 
     def compute_fk(
         self, config: np.ndarray, link_name: str = None, ignore_missing_joints: bool = False
@@ -182,8 +211,11 @@ class PinocchioIKSolver(IKSolverBase):
             max iterations: time budget in number of steps; included for compatibility with pb
         """
         i = 0
-        _ee_frame = self.ee_frame_idx if custom_ee_frame is None else custom_ee_frame
-        _ee_frame_idx = [f.name for f in self.model.frames].index(_ee_frame)
+        if custom_ee_frame is not None:
+            _ee_frame_idx = [f.name for f in self.model.frames].index(custom_ee_frame)
+        else:
+            _ee_frame_idx = self.ee_frame_idx
+
         if q_init is None:
             q = self.q_neutral.copy()
             if num_attempts > 1:
@@ -199,7 +231,6 @@ class PinocchioIKSolver(IKSolverBase):
         while True:
             pinocchio.forwardKinematics(self.model, self.data, q)
             pinocchio.updateFramePlacement(self.model, self.data, _ee_frame_idx)
-
             dMi = desired_ee_pose.actInv(self.data.oMf[_ee_frame_idx])
             err = pinocchio.log(dMi).vector
             if verbose:
