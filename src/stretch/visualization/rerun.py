@@ -299,7 +299,6 @@ class RerunVsualizer:
         rr.log(
             "world/robot/blob",
             rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13),
-            static=True,
         )
         rr.log(
             "world/robot",
@@ -407,7 +406,6 @@ class RerunVsualizer:
                 positions=points,
                 radii=np.ones(rgb.shape[0]) * world_radius,
                 colors=np.int64(rgb),
-                static=True,
             ),
         )
 
@@ -436,7 +434,6 @@ class RerunVsualizer:
                 radii=np.ones(points.shape[0]) * obstacle_radius,
                 colors=[255, 0, 0],
             ),
-            static=True,
         )
         rr.log(
             "world/explored",
@@ -445,7 +442,6 @@ class RerunVsualizer:
                 radii=np.ones(points.shape[0]) * explored_radius,
                 colors=[255, 255, 255],
             ),
-            static=True,
         )
         t6 = timeit.default_timer()
 
