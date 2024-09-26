@@ -38,8 +38,8 @@ from torch import Tensor
 
 
 def merge_features(
-    idx: Tensor, features: Tensor, method: Literal["sum", "min", "max", "mean"] = "sum"
-) -> Tensor:
+    idx: Tensor, features: Tensor, method: str | Literal["sum", "min", "max", "mean"] = "sum"
+) -> Tuple[Tensor, Tensor]:
     """
     Merge features based on the given indices using the specified method.
 
@@ -54,20 +54,28 @@ def merge_features(
                                                        features. Default is 'sum'.
 
     Returns:
-        Tensor: A 2D tensor of shape (num_unique_idx, feature_dim) containing the
-                merged features.
+        Tuple[Tensor, Tensor]: A tuple containing:
+            - A 2D tensor of shape (num_unique_idx, feature_dim) containing the
+              merged features.
+            - A 1D tensor of unique indices corresponding to the merged features.
 
     Raises:
-        ValueError: If an invalid merge method is specified.
+        ValueError: If an invalid merge method is specified or if input tensors
+                    have incorrect dimensions.
 
     Example:
         >>> idx = torch.tensor([0, 1, 0, 2, 1])
         >>> features = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [9.0, 10.0]])
-        >>> merge_features(idx, features, method='sum')
+        >>> unique_idx, merged_features = merge_features(idx, features, method='sum')
+        >>> print(merged_features)
         tensor([[ 6.0,  8.0],
                 [12.0, 14.0],
                 [ 7.0,  8.0]])
+        >>> print(unique_idx)
+        tensor([0, 1, 2])
     """
+    print(idx.dim(), idx.shape)
+    breakpoint()
     if idx.dim() != 1:
         raise ValueError("idx must be a 1D tensor")
     if features.dim() != 2 or features.size(0) != idx.size(0):
@@ -99,7 +107,7 @@ def merge_features(
     else:
         raise ValueError("Invalid merge method. Choose from 'sum', 'min', 'max', or 'mean'.")
 
-    return merged
+    return unique_idx, merged
 
 
 class VoxelizedPointcloud:
@@ -546,6 +554,9 @@ def scatter3d(voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int]
     assert voxel_indices.shape[0] == weights.shape[0], "weights and indices must match"
     assert len(grid_dimensions) == 3, "this is designed to work only in 3d"
     assert voxel_indices.shape[-1] == 3, "3d points expected for indices"
+
+    if len(voxel_indices) == 0:
+        return torch.zeros(*grid_dimensions, device=weights.device)
 
     N, F = weights.shape
     X, Y, Z = grid_dimensions

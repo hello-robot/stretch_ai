@@ -18,6 +18,7 @@ import torch
 from torch import Tensor
 
 import stretch.utils.logger as logger
+from stretch.utils.voxel import merge_features
 
 USE_TORCH_GEOMETRIC = False
 if USE_TORCH_GEOMETRIC:
@@ -625,6 +626,9 @@ def scatter3d(
     assert len(grid_dimensions) == 3, "this is designed to work only in 3d"
     assert voxel_indices.shape[-1] == 3, "3d points expected for indices"
 
+    if len(voxel_indices) == 0:
+        return torch.zeros(*grid_dimensions, device=weights.device)
+
     N, F = weights.shape
     X, Y, Z = grid_dimensions
 
@@ -636,6 +640,9 @@ def scatter3d(
 
     # Reduce according to min/max/mean or none
     logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
+
+    if method is not None and method != "any":
+        merge_features(voxel_indices, weights, method=method)
 
     # Create empty voxel grid
     voxel_grid = torch.zeros(*grid_dimensions, F, device=weights.device)
