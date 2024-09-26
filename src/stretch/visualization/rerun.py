@@ -166,7 +166,6 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
                     mat3x3=self.link_poses[idx][:3, :3],
                     axis_length=0.0,
                 ),
-                static=False,
             )
         t2 = timeit.default_timer()
         if debug:
@@ -309,7 +308,6 @@ class RerunVsualizer:
                 rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=theta),
                 axis_length=0.7,
             ),
-            static=True,
         )
 
     def log_ee_frame(self, obs):
@@ -328,9 +326,7 @@ class RerunVsualizer:
         #     "world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static=True
         # )
         # rr.log("world/ee/arrow", ee_arrow)
-        rr.log(
-            "world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3, static=True)
-        )
+        rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_ee_camera(self, servo):
         """Log end effector camera pose and images
