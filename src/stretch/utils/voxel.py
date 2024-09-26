@@ -37,8 +37,49 @@ import torch
 from torch import Tensor
 
 
+def xyz_to_flat_index(xyz, grid_size):
+    """
+    Convert N x 3 tensor of XYZ coordinates to flat indices.
+
+    Args:
+    xyz (torch.Tensor): N x 3 tensor of XYZ coordinates
+    grid_size (torch.Tensor or list): Size of the grid in each dimension [X, Y, Z]
+
+    Returns:
+    torch.Tensor: N tensor of flat indices
+    """
+    if isinstance(grid_size, list):
+        grid_size = torch.tensor(grid_size)
+
+    return xyz[:, 0] + xyz[:, 1] * grid_size[0] + xyz[:, 2] * grid_size[0] * grid_size[1]
+
+
+def flat_index_to_xyz(flat_index, grid_size):
+    """
+    Convert flat indices to N x 3 tensor of XYZ coordinates.
+
+    Args:
+    flat_index (torch.Tensor): N tensor of flat indices
+    grid_size (torch.Tensor or list): Size of the grid in each dimension [X, Y, Z]
+
+    Returns:
+    torch.Tensor: N x 3 tensor of XYZ coordinates
+    """
+    if isinstance(grid_size, list):
+        grid_size = torch.tensor(grid_size)
+
+    z = flat_index // (grid_size[0] * grid_size[1])
+    y = (flat_index % (grid_size[0] * grid_size[1])) // grid_size[0]
+    x = flat_index % grid_size[0]
+
+    return torch.stack([x, y, z], dim=1)
+
+
 def merge_features(
-    idx: Tensor, features: Tensor, method: str | Literal["sum", "min", "max", "mean"] = "sum"
+    idx: Tensor,
+    features: Tensor,
+    method: str | Literal["sum", "min", "max", "mean"] = "sum",
+    grid_dimensions: Optional[List[int]] = None,
 ) -> Tuple[Tensor, Tensor]:
     """
     Merge features based on the given indices using the specified method.
@@ -74,10 +115,11 @@ def merge_features(
         >>> print(unique_idx)
         tensor([0, 1, 2])
     """
-    print(idx.dim(), idx.shape)
-    breakpoint()
-    if idx.dim() != 1:
-        raise ValueError("idx must be a 1D tensor")
+    if idx.dim() == 2 and idx.shape[-1] == 3:
+        # Convert from voxel indices
+        idx = xyz_to_flat_index(idx, grid_size=grid_dimensions)
+    elif idx.dim() != 1:
+        raise ValueError("idx must be a 1D tensor or a N x 3 tensor; was {}".format(idx.shape))
     if features.dim() != 2 or features.size(0) != idx.size(0):
         raise ValueError("features must be a 2D tensor with shape (len(idx), feature_dim)")
 
@@ -95,7 +137,7 @@ def merge_features(
         merged = torch.min(merged.index_copy(0, inverse_idx, features), merged)
     elif method == "max":
         merged = torch.full(
-            (num_unique, feature_dim), float("-inf"), dtype=features.dtype, device=features.device
+            (num_unique, feature_dim), -1, dtype=features.dtype, device=features.device
         )
         merged = torch.max(merged.index_copy(0, inverse_idx, features), merged)
     elif method == "mean":
@@ -106,6 +148,9 @@ def merge_features(
         merged /= count.unsqueeze(1)
     else:
         raise ValueError("Invalid merge method. Choose from 'sum', 'min', 'max', or 'mean'.")
+
+    if grid_dimensions is not None:
+        unique_idx = flat_index_to_xyz(unique_idx, grid_size=grid_dimensions)
 
     return unique_idx, merged
 

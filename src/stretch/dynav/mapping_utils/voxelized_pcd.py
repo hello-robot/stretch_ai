@@ -639,16 +639,15 @@ def scatter3d(
     ).long()
 
     # Reduce according to min/max/mean or none
-    logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
-
     if method is not None and method != "any":
-        merge_features(voxel_indices, weights, method=method)
+        logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
+        merge_features(voxel_indices, weights, grid_dimensions=grid_dimensions, method=method)
 
     # Create empty voxel grid
     voxel_grid = torch.zeros(*grid_dimensions, F, device=weights.device)
 
     # Scatter features into voxel grid
-    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = weights
+    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = weights.float()
     voxel_grid.squeeze_(-1)
     return voxel_grid
 
