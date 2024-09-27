@@ -72,7 +72,7 @@ RUN apt-get update && apt-get install  -y \
 
 
 SHELL ["mamba", "run", "-n", "stretch_ai", "/bin/bash", "-c"]
-ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]
+# ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .
