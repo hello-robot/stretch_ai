@@ -18,10 +18,16 @@ from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 class MolmoClient(AbstractLLMClient):
     def __init__(
         self,
-        prompt: Union[str, AbstractPromptBuilder],
+        prompt: Optional[Union[str, AbstractPromptBuilder]] = None,
         prompt_kwargs: Optional[Dict[str, Any]] = None,
         model: Optional[str] = None,
     ):
+        """
+        Args:
+            prompt (Optional[Union[str, AbstractPromptBuilder]], optional): The prompt to use for the model. Defaults to None.
+            prompt_kwargs (Optional[Dict[str, Any]], optional): The keyword arguments for the prompt. Defaults to None.
+            model (Optional[str], optional): The model to use. Defaults to None.
+        """
 
         if model is None:
             model = "allenai/MolmoE-1B-0924"
