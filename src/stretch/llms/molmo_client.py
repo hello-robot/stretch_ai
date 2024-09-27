@@ -37,6 +37,14 @@ class MolmoClient(AbstractLLMClient):
         )
 
     def __call__(self, command: str, image: Optional[Image.Image] = None, verbose: bool = False):
+        """Run the model on the given command and image.
+
+        Args:
+            command (str): The command to run the model on.
+            image (Optional[Image.Image], optional): The image to run the model on. Defaults to None.
+            verbose (bool, optional): Whether to print the generated text. Defaults to False.
+        """
+
         # process the image and text
         inputs = self.processor.process(images=[image] if image is not None else [], text=command)
 
