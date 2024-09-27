@@ -70,7 +70,25 @@ f570a0dd636d: Waiting
 1a08cbb00ee1: Waiting                                               
 ```
 
-This may take some time!
+This may take some time, but it will only need to happen once (or when there is a new update).
+
+After the image	is downloaded, you will hear two beeps, and the lidar will start spinning. The terminal will display outputs from the robot command server:
+```bash
+[server-12] j='joint_wrist_yaw' idx=10 idx_q=10
+[server-12] j='joint_wrist_pitch' idx=11 idx_q=11
+[server-12] j='joint_wrist_roll' idx=12 idx_q=12
+[server-12] ==========================================
+[server-12] Starting up threads:                                    
+[server-12]  - Starting send thread
+[server-12]  - Starting recv thread
+[server-12]  - Sending state information
+[server-12]  - Sending servo information
+[server-12] Running all...                                          
+[server-12] Starting to send full state
+[stretch_driver-3] [INFO] [1727454898.725969113] [stretch_driver]: Changed to mode = position
+```
+
+Now you just need to start the containers on the GPU machine and start running apps!
 
 ## On the Desktop or GPU Laptop
 
@@ -122,3 +140,35 @@ conda init # inside the container
 ```
 
 ## Testing
+
+Run the `view_images` app to test:
+
+```
+python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+The gripper will open and the arm will move, and then you will see the camera feed from the robot.
+
+If this does not happen, the most likely thing is that you cannot connect to the robot over the network. Verify IP address and ping, and try again.
+
+Else, you can press `q` to quit, and run a different app. Two we recommend are below.
+
+Stretch AI saves the `--robot_ip` parameter to a file; you should only need to provide it once, but you can provide it every time if you prefer.
+
+### Mapping
+
+```bash
+python -m stretch.app.mapping --explore_iter 0 --robot_ip $ROBOT_IP
+```
+
+The variable `explore_iter` is the number of iterations the robot will explore the environment. The robot will move around and build a map of the environment, as long as it is possible.
+
+If you set `--explore_iter 0`, the robot will only turn in place.
+
+### AI Pickup
+
+```bash
+python -m stretch.app.ai_pickup --robot_ip $ROBOT_IP
+```
+
+This will let you enter natural language instructions for an object and a location on the floor to place it. For example, we tested with "zebra" and "cardboard box."
