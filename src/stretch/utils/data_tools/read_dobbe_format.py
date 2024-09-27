@@ -167,7 +167,7 @@ def load_from_raw(
     raw_dir: str | Path,
     out_dir: Optional[str | Path],
     fps: Optional[int] = 15,
-    save_video: bool = False,
+    video: bool = False,
     debug: bool = False,
     max_episodes: Optional[int] = None,
 ):
@@ -200,7 +200,7 @@ def load_from_raw(
     for ep_idx, ep_path in tqdm.tqdm(enumerate(episode_dirs), total=len(episode_dirs)):
 
         # Dictionary for episode data
-        ep_dict = {}
+        ep_dict: Dict[str, Any] = {}
         num_frames = 0
 
         # Parse observation state and action
@@ -228,7 +228,7 @@ def load_from_raw(
             img_key = f"observation.images.{camera}"
             depth_key = f"observation.images.{camera}_depth"
 
-            if save_video:
+            if video:
                 video_path = ep_path / f"{camera}_compressed_video_h264.mp4"
 
                 fname = f"{camera}_episode_{ep_idx:06d}.mp4"
@@ -340,7 +340,7 @@ def from_raw_to_lerobot_format(
     raw_dir: Path | str,
     out_dir: Optional[Path | str] = None,
     fps: Optional[int] = None,
-    save_video: bool = False,
+    video: bool = False,
     debug: bool = False,
 ):
     """
@@ -350,7 +350,7 @@ def from_raw_to_lerobot_format(
         raw_dir (Path | str): Path to raw dobb-e format.
         out_dir (Optional[Path | str], optional): Output directory. Defaults to None.
         fps (Optional[int], optional): Frames per second. Defaults to None.
-        save_video (bool, optional): Save video. Defaults to False.
+        video (bool, optional): Use video. Defaults to False.
         debug (bool, optional): Debug mode. Defaults to False.
     """
 
@@ -366,11 +366,11 @@ def from_raw_to_lerobot_format(
     if fps is None:
         fps = 15
 
-    data_dir, episode_data_index, info = load_from_raw(raw_dir, out_dir, fps, save_video, debug)
-    hf_dataset = to_hf_dataset(data_dir, save_video)
+    data_dir, episode_data_index, info = load_from_raw(raw_dir, out_dir, fps, video, debug)
+    hf_dataset = to_hf_dataset(data_dir, video)
 
     info["fps"] = fps
-    info["video"] = save_video
+    info["video"] = video
 
     return hf_dataset, episode_data_index, info
 
@@ -380,6 +380,32 @@ if __name__ == "__main__":
     test_path = Path("data/pickup_pink_cup/default_user/default_env/")
 
     data_dir, episode_data_index, info = load_from_raw(
-        test_path, out_dir=None, fps=None, save_video=False, debug=False, max_episodes=1
+        test_path, out_dir=None, fps=None, video=False, debug=False, max_episodes=1
     )
+
+    # Pull out the first episode from episode_data_index
+    from_idx = episode_data_index["from"][0]
+    to_idx = episode_data_index["to"][0]
+
+    # Pull out the first image from data_dir
+    # This is a PIL image
+    pil_gripper_image = data_dir["observation.images.gripper"][0]
+    gripper_image = np.array(pil_gripper_image)
+
+    # Pull out the head image from data_dir
+    pil_head_image = data_dir["observation.images.head"][0]
+    head_image = np.array(pil_head_image)
+
     breakpoint()
+
+    import matplotlib.pyplot as plt
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(gripper_image)
+    plt.title("Gripper Image")
+    plt.axis("off")
+    plt.subplot(1, 2, 2)
+    plt.imshow(head_image)
+    plt.title("Head Image")
+    plt.axis("off")
+    plt.show()
