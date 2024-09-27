@@ -7,6 +7,7 @@ Stretch AI uses Docker to package the software and its dependencies in a contain
 ## Installing Docker
 
 Start by installing docker on the robot and your desktop or GPU laptop:
+
 ```
 sudo apt-get update
 sudo apt-get install docker.io
@@ -15,6 +16,7 @@ sudo apt-get install docker.io
 On the GPU machine, you also need the [NVIDIA container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Check the [official install guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the most up-to-date instructions.
 
 You can also install with:
+
 ```
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
   && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
@@ -26,6 +28,7 @@ sudo apt-get install -y nvidia-container-toolkit
 ```
 
 Then restart the docker service:
+
 ```
 sudo systemctl restart docker
 ```
@@ -41,6 +44,7 @@ We provide an easy startup script for running the Stretch AI software in a Docke
 ```
 
 You will see something like this as the docker image is downloaded:
+
 ```
 (base) hello-robot@stretch-se3-2005:~/src/stretchpy$ ./scripts/run_stretch_ai_ros2_bridge_server.sh 
 Starting Stretch AI ROS2 Bridge Server on stretch-se3-3005
@@ -73,6 +77,7 @@ f570a0dd636d: Waiting
 This may take some time, but it will only need to happen once (or when there is a new update).
 
 After the image	is downloaded, you will hear two beeps, and the lidar will start spinning. The terminal will display outputs from the robot command server:
+
 ```bash
 [server-12] j='joint_wrist_yaw' idx=10 idx_q=10
 [server-12] j='joint_wrist_pitch' idx=11 idx_q=11
@@ -99,9 +104,11 @@ Now you just need to start the containers on the GPU machine and start running a
 ```
 
 #### Verify NVIDIA docker
+
 Make sure nvidia docker is set up correctly. To do this, run the `nvidia-smi` command in the docker shell.
 
 You should see something like this:
+
 ```bash
 root@olympia:/app# nvidia-smi
 Fri Sep 27 16:12:43 2024       
@@ -166,7 +173,6 @@ python -m stretch.app.ai_pickup --robot_ip $ROBOT_IP
 
 This will let you enter natural language instructions for an object and a location on the floor to place it. For example, we tested with "zebra" and "cardboard box."
 
-
 ### Developing with the Docker container
 
 You can develop with the Docker container by mounting your local directory into the container. This way, you can edit files on your local machine and run them in the container.
@@ -180,12 +186,14 @@ We provide a script for this:
 This will mount the current installation of Stretch AI into the container. You can then run the apps as usual, but you may also run your local scripts.
 
 You may wish to start with an editable install:
+
 ```bash
 mamba init && source ~/.bashrc && mamba activate stretch_ai
 pip install -e src
 ```
 
 For example, try:
+
 ```bash
 python src/stretch/app/view_images.py --robot_ip $ROBOT_IP
 ```

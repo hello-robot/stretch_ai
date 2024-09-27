@@ -4,10 +4,10 @@
 echo "===================================================="
 echo "Running Stretch AI docker container with GPU support"
 if [ -z "$DISPLAY" ]; then
-  export DISPLAY=:0
-  echo "\$DISPLAY was not set. It has been set to :0 -- please verify that this is correct or GUI will not work!"
+    export DISPLAY=:0
+    echo "\$DISPLAY was not set. It has been set to :0 -- please verify that this is correct or GUI will not work!"
 else
-  echo "\$DISPLAY is already set to $DISPLAY"
+    echo "\$DISPLAY is already set to $DISPLAY"
 fi
 
 xhost si:localuser:root

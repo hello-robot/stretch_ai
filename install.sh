@@ -45,10 +45,10 @@ do
             INSTALL_TORCH_GEOMETRIC="true"
             shift
             ;;
-	--no-version)
-	    NO_VERSION="true"
-	    shift
-	    ;;
+        --no-version)
+            NO_VERSION="true"
+            shift
+            ;;
         *)
             shift
             # unknown option
@@ -62,18 +62,18 @@ if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION_NODOT=cpu
     export CUDA_HOME=""
     if [ "$NO_VERSION" == "true" ]; then
-	ENV_NAME=stretch_ai_cpu
+        ENV_NAME=stretch_ai_cpu
     else
-	ENV_NAME=stretch_ai_cpu_${VERSION}
+        ENV_NAME=stretch_ai_cpu_${VERSION}
     fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
     export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
     if [ "$NO_VERSION" == "true" ]; then
-	ENV_NAME=stretch_ai
+        ENV_NAME=stretch_ai
     else
-    	ENV_NAME=stretch_ai_${VERSION}
+        ENV_NAME=stretch_ai_${VERSION}
     fi
     export PYTORCH_VERSION=2.3.1
 fi
