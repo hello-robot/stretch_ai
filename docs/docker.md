@@ -100,7 +100,7 @@ docker run \
     -it \
     --gpus all \
     --network host \
-    --env DISPLAY $DISPLAY \
+    --env DISPLAY "$DISPLAY" \
     hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
 
