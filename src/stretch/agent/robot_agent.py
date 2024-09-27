@@ -457,34 +457,11 @@ class RobotAgent:
         t0 = timeit.default_timer()
         self.pose_graph = self.robot.get_pose_graph()
 
-        # while obs is None:
-        #     obs = self.robot.get_observation()
-        #     t1 = timeit.default_timer()
-        #     if t1 - t0 > 10:
-        #         logger.error("Failed to get observation")
-        #         return
-
         t1 = timeit.default_timer()
-        # self.obs_history.append(obs)
-        # self.obs_count += 1
-        # Optionally do this
-        # if self.semantic_sensor is not None:
-        #     # Semantic prediction
-        #     for idx, obs in enumerate(self.obs_history):
-        #         if obs.task_observations is None:
-        #             # print("No task observations, running semantic sensor")
-        #             # obs = self.semantic_sensor.predict(obs)
-        #             self.obs_history[idx] = obs
-
-        # t1 = timeit.default_timer()
 
         # Update past observations based on our new pose graph
         start_pose = None
 
-        # print(f"len obs history: {len(self.obs_history)}")
-        # print(f"len pose graph: {len(self.pose_graph)}")
-
-        # count = 0
         print("Updating past observations")
         for idx in range(len(self.obs_history)):
             lidar_timestamp = self.obs_history[idx].lidar_timestamp
@@ -500,22 +477,20 @@ class RobotAgent:
                     print(f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}")
 
                     if self.obs_history[idx].task_observations is None and self.semantic_sensor is not None:
-                        # observation.task_observations = []
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
 
-                    # Set to the new corrected pose
-                    # count += 1
         t2 = timeit.default_timer()
         print(f"Done updating past observations. Time: {t2- t1}")
 
         print("Updating voxel map")
         t3 = timeit.default_timer()
-        # self.voxel_map.add_obs(obs)
         self.voxel_map.reset()
         for obs in self.obs_history:
             if obs.is_pose_graph_node:
                 self.voxel_map.add_obs(obs)
-            # self.voxel_map.add_obs(obs)
+
+        robot_center = np.zeros(3)
+        robot_center[:2] = self.robot.get_base_pose()[:2]
 
         t4 = timeit.default_timer()
         print(f"Done updating voxel map. Time: {t4 - t3}")
@@ -524,24 +499,14 @@ class RobotAgent:
             self._update_scene_graph()
             self.scene_graph.get_relationships()
 
+        if len(self.voxel_map.observations) > 0:
+            self.update_rerun()
+
+
         t5 = timeit.default_timer()
         print(f"Done updating scene graph. Time: {t5 - t4}")
 
         print(f"Total observation count: {len(self.obs_history)}")
-
-        # if self.debug_update_timing:
-        #     print("Update timing:")
-        #     print("Time to get observation:", t1 - t0, "seconds, % =", (t1 - t0) / (t4 - t0))
-        #     print("Time to predict:", t2 - t1, "seconds, % =", (t2 - t1) / (t4 - t0))
-        #     print("Time to add obs:", t3 - t2, "seconds, % =", (t3 - t2) / (t4 - t0))
-        #     print("Time to update scene graph:", t4 - t3, "seconds, % =", (t4 - t3) / (t4 - t0))
-
-        # # Add observation - helper function will unpack it
-        # if visualize_map:
-        #     # Now draw 2d maps to show what was happening
-        #     self.voxel_map.get_2d_map(debug=True)
-
-        # t5 = timeit.default_timer()
 
         # Clear out observations that are too old and are not pose graph nodes
         if len(self.obs_history) > 200:
@@ -557,11 +522,8 @@ class RobotAgent:
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time"""
         while True:
-            # print("Updating map")
             with self._robot_lock:
-                # print("Acquired lock")
                 self.update_map_with_pose_graph()
-                # print("Updated map")
             time.sleep(0.5)
 
     def update(
@@ -667,7 +629,8 @@ class RobotAgent:
         """Update the rerun server with the latest observations."""
         if self.robot._rerun:
             self.robot._rerun.update_voxel_map(self.space)
-            self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+            if self.use_scene_graph:
+                self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
         else:
             logger.error("No rerun server available!")
