@@ -184,3 +184,10 @@ You may wish to start with an editable install:
 mamba init && source ~/.bashrc && mamba activate stretch_ai
 pip install -e src
 ```
+
+For example, try:
+```bash
+python src/stretch/app/view_images.py --robot_ip $ROBOT_IP
+```
+
+This will run the `view_images` app from your local installation, instead of the one in the container.
