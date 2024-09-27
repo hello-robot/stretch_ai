@@ -259,7 +259,18 @@ class StretchClient(AbstractRobotClient):
 
     def get_pose_graph(self) -> np.ndarray:
         """Get SLAM pose graph as a numpy array"""
-        return np.array(self._ros_client.get_pose_graph())
+        graph = self._ros_client.get_pose_graph()
+        for i in range(len(graph)):
+            relative_pose = xyt2sophus(np.array(graph[i][1:]))
+            euler_angles = relative_pose.so3().log()
+            theta = euler_angles[-1]
+
+            # GPS in robot coordinates
+            gps = relative_pose.translation()[:2]
+
+            graph[i] = np.array([graph[i][0], gps[0], gps[1], theta])
+
+        return graph
 
     def load_map(self, filename: str):
         self.mapping.load_map(filename)
