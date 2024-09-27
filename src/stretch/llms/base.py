@@ -10,7 +10,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pil
+from PIL import Image
 
 
 class AbstractPromptBuilder(ABC):
@@ -99,9 +99,7 @@ class AbstractLLMClient(ABC):
         return history_str
 
     @abstractmethod
-    def __call__(
-        self, command: str, image: Optional[pil.Image.Image] = None, verbose: bool = False
-    ):
+    def __call__(self, command: str, image: Optional[Image.Image] = None, verbose: bool = False):
         """Interact with the language model to generate a plan."""
 
     def parse(self, content: str) -> List[Tuple[str, str]]:

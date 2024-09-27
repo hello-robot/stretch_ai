@@ -34,12 +34,20 @@ class MolmoClient(AbstractLLMClient):
         super().__init__(prompt, prompt_kwargs)
         # load the processor
         self.processor = AutoProcessor.from_pretrained(
-            model, trust_remote_code=True, torch_dtype="auto", device_map="auto"
+            model,
+            trust_remote_code=True,
+            torch_dtype="auto",
+            device_map="auto",
+            offload_folder="./data",
         )
 
         # load the model
         self.model = AutoModelForCausalLM.from_pretrained(
-            model, trust_remote_code=True, torch_dtype="auto", device_map="auto"
+            model,
+            trust_remote_code=True,
+            torch_dtype="auto",
+            device_map="auto",
+            offload_folder="./data",
         )
 
     def __call__(self, command: str, image: Optional[Image.Image] = None, verbose: bool = False):
