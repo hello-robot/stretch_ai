@@ -155,10 +155,10 @@ docker run -it -v /run/desktop/mnt/host/wslg/.X11-unix:/tmp/.X11-unix `
 
 ### Developing within Docker Container Environment
 
-If you want to use the Docker container as a development environment and retain the changes made in the root `stretch_ai` repository, run the Docker container with the following argument to mount the cloned stretch_ai repository from your host filesystem to the `/app` directory inside the Docker container.
+If you want to use the Docker container as a development environment and retain the changes made in the root `stretch_ai` repository, run the Docker container with the following argument to mount the cloned `stretch_ai` repository from your host filesystem to the `/app` directory inside the Docker container.
 
 ```bash
 docker run -v ~/stretch_ai:/app [other_docker_options]
 ```
 
-By mounting the repository this way, any changes you make to the files in the stretch_ai directory on your host will be immediately reflected in the `/app` directory inside the container. This allows you to see your changes live, run them and ensures they are not lost when you stop the container.
+By mounting the repository this way, any changes you make to the files in the `stretch_ai` directory on your host will be immediately reflected in the `/app` directory inside the container. This allows you to see your changes live, run them and ensures they are not lost when you stop the container.

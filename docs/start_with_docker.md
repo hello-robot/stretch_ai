@@ -136,7 +136,8 @@ Fri Sep 27 16:12:43 2024
 #### Use the conda environment
 
 ```bash
-conda init # inside the container
+# Activate the environment
+mamba init && source ~/.bashrc && mamba activate stretch_ai
 ```
 
 ## Testing
