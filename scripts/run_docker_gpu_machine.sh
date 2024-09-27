@@ -1,6 +1,8 @@
 #!/bin/bash
 # Description: Run the docker container with GPU support
-#
+
+echo "===================================================="
+echo "Running Stretch AI docker container with GPU support"
 if [ -z "$DISPLAY" ]; then
   export DISPLAY=:0
   echo "\$DISPLAY was not set. It has been set to :0 -- please verify that this is correct or GUI will not work!"
@@ -9,6 +11,7 @@ else
 fi
 
 xhost si:localuser:root
+echo "===================================================="
 
 docker run \
     -it \

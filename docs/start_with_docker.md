@@ -25,6 +25,11 @@ sudo apt-get update
 sudo apt-get install -y nvidia-container-toolkit
 ```
 
+Then restart the docker service:
+```
+sudo systemctl restart docker
+```
+
 An [nvidia docker install script](scripts/install_nvidia_container_toolkit.sh) has been provided for Ubuntu machines. Again, though, [check the official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the most up-to-date instructions and if you have any issues.
 
 ## On the Robot
@@ -76,5 +81,44 @@ Now, to run the docker image, we need to:
 1. Start the container again and reconnect to the container shell
 1. Activate the conda environment
 
+
+### Run the container for the first time
+
+```bash
+./scripts/run_docker_gpu_machine.sh
+```
+
+#### Verify NVIDIA docker
+Make sure nvidia docker is set up correctly. To do this, run the `nvidia-smi` command in the docker shell.
+
+You should see something like this:
+```bash
+root@olympia:/app# nvidia-smi
+Fri Sep 27 16:12:43 2024       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 550.54.15              Driver Version: 550.54.15      CUDA Version: 12.4     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4090        Off |   00000000:01:00.0 Off |                  Off |
+|  0%   38C    P8             22W /  450W |     415MiB /  24564MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
++-----------------------------------------------------------------------------------------+
+```
+
+#### Use the conda environment
+
+```bash
+conda init # inside the container
+```
 
 ## Testing
