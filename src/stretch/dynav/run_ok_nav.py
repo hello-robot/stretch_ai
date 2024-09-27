@@ -104,7 +104,9 @@ def main(
     # img_thread.start()
 
     while True:
-        mode = input("select mode? E/N/S")
+        print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
+        mode = input("select mode? E/N/S: ")
+        mode = mode.upper()
         if mode == "S":
             demo.image_processor.write_to_pickle()
             break
