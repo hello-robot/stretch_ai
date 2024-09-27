@@ -13,6 +13,7 @@ from PIL import Image
 from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
+from stretch.utils.config import get_offload_path
 
 
 class MolmoClient(AbstractLLMClient):
@@ -32,13 +33,14 @@ class MolmoClient(AbstractLLMClient):
         if model is None:
             model = "allenai/MolmoE-1B-0924"
         super().__init__(prompt, prompt_kwargs)
+        save_dir = get_offload_path("molmo")
         # load the processor
         self.processor = AutoProcessor.from_pretrained(
             model,
             trust_remote_code=True,
             torch_dtype="auto",
             device_map="auto",
-            offload_folder="./data",
+            offload_folder=save_dir,
         )
 
         # load the model
@@ -47,7 +49,7 @@ class MolmoClient(AbstractLLMClient):
             trust_remote_code=True,
             torch_dtype="auto",
             device_map="auto",
-            offload_folder="./data",
+            offload_folder=save_dir,
         )
 
     def __call__(self, command: str, image: Optional[Image.Image] = None, verbose: bool = False):
