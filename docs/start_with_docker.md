@@ -165,3 +165,22 @@ python -m stretch.app.ai_pickup --robot_ip $ROBOT_IP
 ```
 
 This will let you enter natural language instructions for an object and a location on the floor to place it. For example, we tested with "zebra" and "cardboard box."
+
+
+### Developing with the Docker container
+
+You can develop with the Docker container by mounting your local directory into the container. This way, you can edit files on your local machine and run them in the container.
+
+We provide a script for this:
+
+```bash
+./scripts/dev_docker_gpu_machine.sh
+```
+
+This will mount the current installation of Stretch AI into the container. You can then run the apps as usual, but you may also run your local scripts.
+
+You may wish to start with an editable install:
+```bash
+mamba init && source ~/.bashrc && mamba activate stretch_ai
+pip install -e src
+```
