@@ -11,7 +11,6 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import datetime
 import random
 import time
 import timeit
@@ -56,6 +55,7 @@ class RobotAgent:
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
+        realtime_updates: bool = True,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -81,6 +81,7 @@ class RobotAgent:
         self.use_scene_graph = parameters["plan_with_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
+        self._realtime_updates = realtime_updates
 
         # ==============================================
         # Update configuration
@@ -140,17 +141,16 @@ class RobotAgent:
         if parameters["motion_planner"]["simplify_plans"]:
             self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
-        # Map updates
-        self._robot_lock = Lock()
-        self._update_map_thread = Thread(target=self.update_map_loop)
-        self._update_map_thread.start()
+        if self._realtime_updates:
+            # Map updates
+            self._robot_lock = Lock()
+            self._update_map_thread = Thread(target=self.update_map_loop)
+            self._update_map_thread.start()
 
-        # Get observations thread
-        self._robot_lock = Lock()
-        self._get_observations_thread = Thread(target=self.get_observations_loop)
-        self._get_observations_thread.start()
-
-        timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
+            # Get observations thread
+            self._robot_lock = Lock()
+            self._get_observations_thread = Thread(target=self.get_observations_loop)
+            self._get_observations_thread.start()
 
     def __del__(self):
         self._update_map_thread.join()
@@ -400,7 +400,8 @@ class RobotAgent:
                 print(" - Navigation took", t1 - t0, "seconds")
                 print(f"---- UPDATE {i+1} at {x}, {y}----")
             t0 = timeit.default_timer()
-            self.update()
+            if not self._realtime_updates:
+                self.update()
             t1 = timeit.default_timer()
             if verbose:
                 print("Update took", t1 - t0, "seconds")
@@ -439,13 +440,15 @@ class RobotAgent:
 
             while obs is None:
                 obs = self.robot.get_observation()
-                if (len(self.obs_history) > 0) and (obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp):
+                if (len(self.obs_history) > 0) and (
+                    obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
+                ):
                     obs = None
                 t1 = timeit.default_timer()
                 if t1 - t0 > 10:
                     logger.error("Failed to get observation")
                     return
-                
+
             # t1 = timeit.default_timer()
             self.obs_history.append(obs)
             self.obs_count += 1
@@ -453,7 +456,7 @@ class RobotAgent:
 
     def update_map_with_pose_graph(self):
         """Update our voxel map using a pose graph"""
-        
+
         t0 = timeit.default_timer()
         self.pose_graph = self.robot.get_pose_graph()
 
@@ -469,14 +472,23 @@ class RobotAgent:
             for vertex in self.pose_graph:
                 if abs(vertex[0] - lidar_timestamp) < 0.01:
                     print(f"Approximate match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-                    
+
                     self.obs_history[idx].is_pose_graph_node = True
                     self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].compass = np.array([vertex[3],])
+                    self.obs_history[idx].compass = np.array(
+                        [
+                            vertex[3],
+                        ]
+                    )
 
-                    print(f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}")
+                    print(
+                        f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
+                    )
 
-                    if self.obs_history[idx].task_observations is None and self.semantic_sensor is not None:
+                    if (
+                        self.obs_history[idx].task_observations is None
+                        and self.semantic_sensor is not None
+                    ):
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
 
         t2 = timeit.default_timer()
@@ -501,7 +513,6 @@ class RobotAgent:
 
         if len(self.voxel_map.observations) > 0:
             self.update_rerun()
-
 
         t5 = timeit.default_timer()
         print(f"Done updating scene graph. Time: {t5 - t4}")
@@ -1035,7 +1046,8 @@ class RobotAgent:
 
         # Add some debugging stuff - show what 3d point clouds look like
         if visualize_map_at_start:
-            self.update(visualize_map=False)  # Append latest observations
+            if not self._realtime_updates:
+                self.update(visualize_map=False)  # Append latest observations
             print("- Visualize map after updating")
             self.voxel_map.show(
                 orig=np.zeros(3),
@@ -1379,7 +1391,8 @@ class RobotAgent:
                     self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
 
             # Append latest observations
-            self.update()
+            if not self._realtime_updates:
+                self.update()
             # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
             if visualize:
                 # After doing everything - show where we will move to
