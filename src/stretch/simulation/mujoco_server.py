@@ -14,6 +14,7 @@ import timeit
 from typing import Any, Dict, Optional
 
 import click
+import mujoco
 import numpy as np
 from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
@@ -76,13 +77,48 @@ class MujocoZmqServer(BaseZmqServer):
     - Stretch_mujoco installation: https://github.com/hello-robot/stretch_mujoco/
     """
 
+    # Do we use a navigation controller command to move the robot back at the start of a Robocasa task?
+    _move_back_at_start: bool = False
+
     hz = CONTROL_HZ
     # How long should the controller report done before we're actually confident that we're done?
     done_t = 0.1
 
+    robocasa_start_offset = np.array([0.5, 0, -np.pi / 2])
+
     # Print debug messages for control loop
     debug_control_loop = False
     debug_set_goal_pose = True
+
+    def set_robot_position(self, xyt: np.ndarray, relative: bool = False) -> None:
+        """Set the robot position in the simulation."""
+
+        # Get mjdata and mjmodel from simulator
+        mjdata = self.robot_sim.mjdata
+        mjmodel = self.robot_sim.mjmodel
+
+        # Compute absolute goal
+        if relative:
+            xyt_base = self.get_base_pose()
+            xyt_goal = xyt_base_to_global(xyt, xyt_base)
+        else:
+            xyt_goal = xyt
+
+        # Get current position from mjdata
+        # TODO: remove debug print
+        # body_names = [mjmodel.body(i).name for i in range(mjmodel.nbody)]
+        # print(body_names)
+        base_pos = mjdata.body("base_link").xpos
+        mjdata.body["base_link"].body_xpos[:2] = xyt_goal[:2]
+
+        # Force the simulator to update
+        mujoco.mj_forward(mjmodel, mjdata)
+
+        # Convert the theta into a quaternion
+
+    def reset(self):
+        """Reset the robot to the initial state."""
+        self.robot_sim.reset_state()
 
     def __init__(
         self,
@@ -379,7 +415,11 @@ class MujocoZmqServer(BaseZmqServer):
             # When you start, move the agent back a bit
             # This is a hack!
             time.sleep(1.0)
-            self.set_goal_pose(np.array([-0.5, 0, 0]), relative=True)
+
+            if self._move_back_at_start:
+                self.set_goal_pose(self.robocasa_start_offset, relative=True)
+            else:
+                self.set_robot_position(self.robocasa_start_offset, relative=True)
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
