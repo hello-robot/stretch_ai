@@ -38,11 +38,11 @@ import liblzfse
 import numpy as np
 import torch
 import tqdm
-from datasets import Dataset, Features, Image, Sequence, Value
 
 import stretch.utils.logger as logger
 
 try:
+    from lerobot.common.datasets import Dataset, Features, Image, Sequence, Value
     from lerobot.common.datasets.push_dataset_to_hub.utils import concatenate_episodes
     from lerobot.common.datasets.utils import hf_transform_to_torch
     from lerobot.common.datasets.video_utils import VideoFrame

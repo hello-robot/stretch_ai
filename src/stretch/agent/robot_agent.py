@@ -367,7 +367,6 @@ class RobotAgent:
             print(f"==== ROTATE IN PLACE at {x}, {y} ====")
         while i < steps:
             t0 = timeit.default_timer()
-            print(i, x, y, theta)
             self.robot.navigate_to(
                 [x, y, theta + (i * step_size)],
                 relative=False,
