@@ -32,7 +32,7 @@ https://github.com/hello-robot/lerobot/blob/stretch-act/lerobot/common/datasets/
 import json
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import liblzfse
 import numpy as np
@@ -43,7 +43,6 @@ import stretch.utils.logger as logger
 
 try:
     from lerobot.common.datasets import Dataset, Features, Image, Sequence, Value
-    from lerobot.common.datasets.push_dataset_to_hub.utils import concatenate_episodes
     from lerobot.common.datasets.utils import hf_transform_to_torch
     from lerobot.common.datasets.video_utils import VideoFrame
 
@@ -110,6 +109,35 @@ STATE_ORDER = [
 #     "joint_wrist_yaw",
 #     "stretch_gripper",
 # ]
+
+
+def concatenate_episodes(ep_dicts: list[Dict[str, Any]]) -> Dict[str, Any]:
+    """Concatenate episodes into a single dictionary.
+
+    Args:
+        ep_dicts (List[Dict[str, Any]]): List of episode dictionaries.
+
+    Returns:
+        Dict[str, Any]: Concatenated episode dictionary.
+    """
+    data_dict: Dict[str, torch.Tensor | List[torch.Tensor]] = {}
+
+    keys = ep_dicts[0].keys()
+    for key in keys:
+        if torch.is_tensor(ep_dicts[0][key][0]):
+            data_dict[key] = torch.cat([ep_dict[key] for ep_dict in ep_dicts])
+        else:
+            if key not in data_dict:
+                data_dict[key] = []
+            for ep_dict in ep_dicts:
+                for x in ep_dict[key]:
+                    data_dict[key].append(x)  # type: ignore
+
+    total_frames = data_dict["frame_index"].shape[0]  # type: ignore
+    data_dict["index"] = torch.arange(0, total_frames, 1)
+    return data_dict
+
+
 def check_format(raw_dir):
 
     print("Image sizes set as: ", IMAGE_SIZE)
@@ -308,7 +336,7 @@ def load_from_raw(
     return data_dict, episode_data_index, info
 
 
-def to_hf_dataset(data_dict, video=False) -> Dataset:
+def to_hf_dataset(data_dict, video=False) -> "Dataset":
     features = {}
 
     keys = [key for key in data_dict if "observation.images." in key]
