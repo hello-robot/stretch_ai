@@ -360,7 +360,7 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = False
+        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = False, full_sweep: bool = True
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -380,6 +380,9 @@ class RobotAgent:
         x, y, theta = self.robot.get_base_pose()
         if verbose:
             print(f"==== ROTATE IN PLACE at {x}, {y} ====")
+
+        if full_sweep:
+            steps += 1
         while i < steps:
             t0 = timeit.default_timer()
             self.robot.navigate_to(
@@ -474,7 +477,7 @@ class RobotAgent:
             gps_past = self.obs_history[idx].gps
 
             for vertex in self.pose_graph:
-                if abs(vertex[0] - lidar_timestamp) < 0.1:
+                if abs(vertex[0] - lidar_timestamp) < 0.05:
                     # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
 
                     self.obs_history[idx].is_pose_graph_node = True
@@ -496,7 +499,7 @@ class RobotAgent:
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
                 # check if the gps is close to the gps of the pose graph node
                 elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.05
+                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.1
                     and self.obs_history[idx].pose_graph_timestamp is None
                 ):
                     # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")

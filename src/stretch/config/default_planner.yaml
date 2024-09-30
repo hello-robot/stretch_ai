@@ -66,7 +66,7 @@ motion:
 agent:
   #in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   #sweep_head_on_update: False
-  in_place_rotation_steps: 2
+  in_place_rotation_steps: 4
   sweep_head_on_update: True
 
 # Instance memory parameters
