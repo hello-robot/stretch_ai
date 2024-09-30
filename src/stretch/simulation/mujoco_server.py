@@ -14,7 +14,6 @@ import timeit
 from typing import Any, Dict, Optional
 
 import click
-import mujoco
 import numpy as np
 from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
@@ -90,8 +89,35 @@ class MujocoZmqServer(BaseZmqServer):
     debug_control_loop = False
     debug_set_goal_pose = True
 
+    def get_body_xyt(self, body_name: str) -> np.ndarray:
+        """Get the se(2) base pose: x, y, and theta"""
+
+        # Get mjdata and mjmodel from simulator
+        mjdata = self.robot_sim.mjdata
+        mjmodel = self.robot_sim.mjmodel
+
+        xyz = mjdata.body(body_name).xpos
+        rotation = mjdata.body("base_link").xmat.reshape(3, 3)
+        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
+        return np.array([xyz[0], xyz[1], theta])
+
     def set_robot_position(self, xyt: np.ndarray, relative: bool = False) -> None:
-        """Set the robot position in the simulation."""
+        """Set the robot position in the simulation
+
+        Args:
+            xyt (np.ndarray): The desired pose of the robot in world coordinates (x, y, theta).
+            relative (bool): If True, the pose is relative to the current pose of the robot.
+        """
+        return self.set_body_position(xyt, "base_link", relative=relative)
+
+    def set_body_position(self, xyt: np.ndarray, body_name: str, relative: bool = False) -> None:
+        """Set the robot position in the simulation.
+
+        Args:
+            xyt (np.ndarray): The desired pose of the robot in world coordinates (x, y, theta).
+            body_name (str): The name of the body to set the position of.
+            relative (bool): If True, the pose is relative to the current pose of the robot.
+        """
 
         # Get mjdata and mjmodel from simulator
         mjdata = self.robot_sim.mjdata
@@ -99,7 +125,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         # Compute absolute goal
         if relative:
-            xyt_base = self.get_base_pose()
+            xyt_base = self.get_body_xyt(body_name)
             xyt_goal = xyt_base_to_global(xyt, xyt_base)
         else:
             xyt_goal = xyt
@@ -109,12 +135,19 @@ class MujocoZmqServer(BaseZmqServer):
         # body_names = [mjmodel.body(i).name for i in range(mjmodel.nbody)]
         # print(body_names)
         base_pos = mjdata.body("base_link").xpos
-        mjdata.body["base_link"].body_xpos[:2] = xyt_goal[:2]
+        print(f"Current {body_name} position: {base_pos}")
+        base_pos[0] = xyt_goal[0]
+        base_pos[1] = xyt_goal[1]
+        print(f"Setting {body_name} to {base_pos}")
+        mjdata.body("base_link").xpos = base_pos
 
-        # Force the simulator to update
-        mujoco.mj_forward(mjmodel, mjdata)
-
-        # Convert the theta into a quaternion
+        # Convert the theta into a rotation matrix
+        rotation = mjdata.body("base_link").xmat.reshape(3, 3)
+        rotation[0, 0] = np.cos(xyt_goal[2])
+        rotation[0, 1] = -np.sin(xyt_goal[2])
+        rotation[1, 0] = np.sin(xyt_goal[2])
+        rotation[1, 1] = np.cos(xyt_goal[2])
+        mjdata.body("base_link").xmat = rotation.flatten()
 
     def reset(self):
         """Reset the robot to the initial state."""
