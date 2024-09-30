@@ -15,9 +15,10 @@ import threading
 
 import numpy as np
 import rclpy
-from rclpy.time import Time
 import rclpy.time
+from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
+
 
 class RosLidar(object):
     """Simple wrapper node for a ROS lidar"""
@@ -84,8 +85,10 @@ class RosLidar(object):
                     break
             rate.sleep()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import time
+
     from stretch_ros2_bridge.remote import StretchClient
 
     rclpy.init()

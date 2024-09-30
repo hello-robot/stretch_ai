@@ -163,7 +163,7 @@ class StretchClient(AbstractRobotClient):
     def get_robot_model(self) -> RobotModel:
         """return a model of the robot for planning. Overrides base class method"""
         return self._robot_model
-    
+
     def get_ros_client(self) -> StretchRosInterface:
         """return the internal ROS client"""
         return self._ros_client

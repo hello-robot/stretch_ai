@@ -273,6 +273,13 @@ class Observations:
     # True if matched with a pose graph node
     is_pose_graph_node: bool = False
 
+    # Timestamp of matched pose graph node
+    pose_graph_timestamp: Optional[int] = None
+
+    # Initial pose graph pose. GPS and compass.
+    initial_pose_graph_gps: Optional[np.ndarray] = None
+    initial_pose_graph_compass: Optional[np.ndarray] = None
+
     def compute_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
         """Compute xyz from depth and camera intrinsics."""
         if self.depth is not None and self.camera_K is not None:

@@ -562,11 +562,11 @@ class StretchRosInterface(Node):
 
         for pose in msg.poses:
             p = [
-                    pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9,
-                    pose.pose.position.x,
-                    pose.pose.position.y,
-                    pose.pose.position.z,
-                ]
+                pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9,
+                pose.pose.position.x,
+                pose.pose.position.y,
+                pose.pose.position.z,
+            ]
             self._pose_graph.append(p)
 
     def _odom_callback(self, msg: Odometry):
