@@ -215,7 +215,7 @@ def load_from_raw(
 
     # Set default fps
     if fps is None:
-        logger.warning("FPS not set. Defaulting to 15.")
+        logger.warning("[DATASET] FPS not set. Defaulting to 15.")
         fps = 15
 
     if max_episodes is not None and (max_episodes < 0 or max_episodes > len(episode_dirs)):
@@ -284,8 +284,7 @@ def load_from_raw(
 
                 images = []
                 for file in rgb_png:
-                    with PILImage.open(file) as f:
-                        images.append(f)
+                    images.append(PILImage.open(file))
 
                 ep_dict[img_key] = images
 
@@ -435,8 +434,6 @@ if __name__ == "__main__":
     pil_head_image = data_dir["observation.images.head"][0]
     head_image = np.array(pil_head_image)
 
-    breakpoint()
-
     import matplotlib.pyplot as plt
 
     plt.subplot(1, 2, 1)
@@ -447,4 +444,5 @@ if __name__ == "__main__":
     plt.imshow(head_image)
     plt.title("Head Image")
     plt.axis("off")
+    plt.suptitle("Images")
     plt.show()
