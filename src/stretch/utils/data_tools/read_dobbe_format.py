@@ -138,7 +138,12 @@ def concatenate_episodes(ep_dicts: list[Dict[str, Any]]) -> Dict[str, Any]:
     return data_dict
 
 
-def check_format(raw_dir):
+def check_format(raw_dir: Path) -> None:
+    """Check the format of the raw directory.
+
+    Args:
+        raw_dir (Path): Path to raw directory.
+    """
 
     print("Image sizes set as: ", IMAGE_SIZE)
 
