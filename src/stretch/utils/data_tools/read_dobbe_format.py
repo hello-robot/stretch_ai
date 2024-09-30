@@ -48,7 +48,6 @@ try:
 
     lerobot_found = True
 except ImportError:
-    logger.warning("lerobot not found. cannot export.")
     lerobot_found = False
 
 from PIL import Image as PILImage
@@ -229,6 +228,7 @@ def load_from_raw(
     ep_metadata = []
     episode_data_index: Dict[str, Any] = {"from": [], "to": []}
 
+    # Go through all the episodes
     id_from = 0
     for ep_idx, ep_path in tqdm.tqdm(enumerate(episode_dirs), total=len(episode_dirs)):
 
@@ -344,6 +344,9 @@ def load_from_raw(
 def to_hf_dataset(data_dict, video=False) -> "Dataset":
     features = {}
 
+    if not lerobot_found:
+        raise ImportError("lerobot not found. Cannot export.")
+
     keys = [key for key in data_dict if "observation.images." in key]
     for key in keys:
         if video:
@@ -386,6 +389,9 @@ def from_raw_to_lerobot_format(
         video (bool, optional): Use video. Defaults to False.
         debug (bool, optional): Debug mode. Defaults to False.
     """
+
+    if not lerobot_found:
+        raise ImportError("lerobot not found. Cannot export.")
 
     if isinstance(raw_dir, str):
         raw_dir = Path(raw_dir)
