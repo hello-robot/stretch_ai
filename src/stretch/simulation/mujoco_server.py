@@ -19,7 +19,7 @@ from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
 
 try:
-    from stretch_mujoco.robocasa_gen import model_generation_wizard
+    from stretch.simulation.robocasa_gen import model_generation_wizard
 except ImportError as e:
     from stretch.utils.logger import error
 
@@ -101,6 +101,21 @@ class MujocoZmqServer(BaseZmqServer):
         theta = np.arctan2(rotation[1, 0], rotation[0, 0])
         return np.array([xyz[0], xyz[1], theta])
 
+    def list_all_bodies(self):
+        """Debug function to list all bodies in the simulation."""
+        model = self.robot_sim.mjmodel
+        data = self.robot_sim.mjdata
+
+        # Loop over all bodies
+        for i in range(model.nbody):
+            body_name = model.body(i).name
+            body_pos = data.body(i).xpos
+            body_quat = data.body(i).xquat
+
+            print(f"Body {i}: {body_name}")
+            print(f"  Position: {body_pos}")
+            print(f"  Orientation (quaternion): {body_quat}")
+
     def set_robot_position(self, xyt: np.ndarray, relative: bool = False) -> None:
         """Set the robot position in the simulation
 
@@ -160,6 +175,7 @@ class MujocoZmqServer(BaseZmqServer):
         scene_model: Optional[str] = None,
         simulation_rate: int = 200,
         config_name: str = "noplan_velocity_sim",
+        objects_info: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
@@ -176,6 +192,7 @@ class MujocoZmqServer(BaseZmqServer):
         else:
             self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
+        self.objects_info = objects_info
 
         # Hard coded printout rates
         self.report_steps = 1000
@@ -451,8 +468,6 @@ class MujocoZmqServer(BaseZmqServer):
 
             if self._move_back_at_start:
                 self.set_goal_pose(self.robocasa_start_offset, relative=True)
-            else:
-                self.set_robot_position(self.robocasa_start_offset, relative=True)
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
@@ -677,12 +692,13 @@ def main(
 ):
 
     scene_model = None
+    objects_info = None
     if use_robocasa:
         scene_model, scene_xml, objects_info = model_generation_wizard(
             task=robocasa_task,
             style=robocasa_style,
             layout=robocasa_layout,
-            write_to_file=robocasa_write_to_xml,
+            write_to_file=robocasa_write_to_xml,  # type: ignore
         )
 
     server = MujocoZmqServer(
@@ -697,6 +713,7 @@ def main(
         depth_scaling,
         scene_path=scene_path,
         scene_model=scene_model,
+        objects_info=objects_info,
     )
     try:
         server.start(show_viewer_ui=show_viewer_ui, robocasa=use_robocasa)
