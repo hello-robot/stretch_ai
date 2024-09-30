@@ -13,7 +13,7 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import numpy as np
@@ -29,11 +29,11 @@ from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.motion import PlanResult, RobotModel
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
-from stretch.utils.geometry import angle_difference
+from stretch.utils.geometry import angle_difference, posquat2sophus, sophus2posquat
 from stretch.utils.image import Camera
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
-from stretch.visualization.rerun import RerunVsualizer
+from stretch.visualization.rerun import RerunVisualizer
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
@@ -181,7 +181,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._servo_lock = Lock()
 
         if enable_rerun_server:
-            self._rerun = RerunVsualizer()
+            self._rerun = RerunVisualizer()
         else:
             self._rerun = None
             self._rerun_thread = None
@@ -245,6 +245,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             joint_positions = self._state["joint_positions"]
         return joint_positions
 
+    def get_six_joints(self, timeout: float = 5.0) -> np.ndarray:
+        """Get the six major joint positions"""
+        joint_positions = self.get_joint_positions(timeout=timeout)
+        return np.array(self._extract_joint_pos(joint_positions))
+
     def get_joint_velocities(self, timeout: float = 5.0) -> np.ndarray:
         """Get the current joint velocities"""
         t0 = timeit.default_timer()
@@ -292,6 +297,86 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 xyt = self._state["base_pose"]
         return xyt
 
+    def get_pan_tilt(self):
+        joint_positions, _, _ = self.get_joint_state()
+        return joint_positions[HelloStretchIdx.HEAD_PAN], joint_positions[HelloStretchIdx.HEAD_TILT]
+
+    def get_gripper_position(self):
+        joint_state = self.get_joint_positions()
+        return joint_state[HelloStretchIdx.GRIPPER]
+
+    def get_ee_pose(self, matrix=False, link_name=None, q=None):
+        if q is None:
+            q = self.get_joint_positions()
+        pos, quat = self._robot_model.manip_fk(q, node=link_name)
+
+        if matrix:
+            pose = posquat2sophus(pos, quat)
+            return pose.matrix()
+        else:
+            return pos, quat
+
+    def get_frame_pose(self, q, node_a: str, node_b: str):
+        return self._robot_model.manip_ik_solver.get_frame_pose(q, node_a, node_b)
+
+    def solve_ik(
+        self,
+        pos: List[float],
+        quat: Optional[List[float]] = None,
+        initial_cfg: np.ndarray = None,
+        debug: bool = False,
+        custom_ee_frame: Optional[str] = None,
+    ) -> Optional[np.ndarray]:
+        """Solve inverse kinematics appropriately (or at least try to) and get the joint position
+        that we will be moving to.
+
+        Note: When relative==True, the delta orientation is still defined in the world frame
+
+        Returns None if no solution is found, else returns an executable solution
+        """
+
+        pos_ee_curr, quat_ee_curr = self.get_ee_pose()
+        if quat is None:
+            quat = quat_ee_curr
+
+        # Compute IK goal: pose relative to base
+        pose_desired = posquat2sophus(np.array(pos), np.array(quat))
+
+        pose_base2ee_desired = pose_desired
+
+        pos_ik_goal, quat_ik_goal = sophus2posquat(pose_base2ee_desired)
+
+        # Execute joint command
+        if debug:
+            print("=== EE goto command ===")
+            print(f"Initial EE pose: pos={pos_ee_curr}; quat={quat_ee_curr}")
+            print(f"Input EE pose: pos={np.array(pos)}; quat={np.array(quat)}")
+            print(f"Desired EE pose: pos={pos_ik_goal}; quat={quat_ik_goal}")
+
+        # Perform IK
+        full_body_cfg, ik_success, ik_debug_info = self._robot_model.manip_ik(
+            (pos_ik_goal, quat_ik_goal),
+            q0=initial_cfg,
+            custom_ee_frame=custom_ee_frame,
+        )
+
+        # Expected to return None if we did not get a solution
+        if not ik_success or full_body_cfg is None:
+            return None
+        # Return a valid solution to the IK problem here
+        return full_body_cfg
+
+    def _extract_joint_pos(self, q):
+        """Helper to convert from the general-purpose config including full robot state, into the command space used in just the manip controller. Extracts just lift/arm/wrist information."""
+        return [
+            q[HelloStretchIdx.BASE_X],
+            q[HelloStretchIdx.LIFT],
+            q[HelloStretchIdx.ARM],
+            q[HelloStretchIdx.WRIST_YAW],
+            q[HelloStretchIdx.WRIST_PITCH],
+            q[HelloStretchIdx.WRIST_ROLL],
+        ]
+
     def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
         """Move the robot to a particular joint configuration."""
         next_action = {"joint": joint_angles, "manip_blocking": blocking}
@@ -309,7 +394,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             logger.warning(
                 f"Head tilt is restricted to be between {self._head_tilt_min} and {self._head_tilt_max} for safety: was{head_tilt}"
             )
-        head_pan = np.clip(head_pan, -np.pi, 0)
+        head_pan = np.clip(head_pan, self._head_pan_min, self._head_pan_max)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
         sent = self.send_action(next_action, timeout=timeout)
@@ -321,6 +406,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
             self._wait_for_head(whole_body_q, block_id=step)
 
+        time.sleep(0.3)
+
+    def look_front(self, blocking: bool = True, timeout: float = 10.0):
+        """Let robot look to its front."""
+        self.head_to(
+            constants.look_front[0], constants.look_front[1], blocking=blocking, timeout=timeout
+        )
+
+    def look_at_ee(self, blocking: bool = True, timeout: float = 10.0):
+        """Let robot look to its arm."""
+        self.head_to(
+            constants.look_at_ee[0], constants.look_at_ee[1], blocking=blocking, timeout=timeout
+        )
+
     def arm_to(
         self,
         joint_angles: Optional[np.ndarray] = None,
@@ -329,7 +428,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
-        min_time: float = 2.0,
+        min_time: float = 2.5,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
@@ -386,6 +485,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # If head is not specified, we need to set it to the right head position
             # In this case, we assume if moving arm you should look at ee
             _next_action["head_to"] = constants.look_at_ee
+            # cur_pan, cur_tilt = self.get_pan_tilt()
+            # _next_action["head_to"] = np.array([cur_pan, cur_tilt])
         _next_action["manip_blocking"] = blocking
         self.send_action(_next_action)
 
@@ -455,7 +556,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def navigate_to(
         self,
-        xyt: ContinuousNavigationAction,
+        xyt: Union[np.ndarray, ContinuousNavigationAction],
         relative=False,
         blocking=False,
         timeout: float = 10.0,
@@ -469,6 +570,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if self._rerun:
             self._rerun.update_nav_goal(xyt)
         self.send_action(next_action, timeout=timeout, verbose=verbose)
+
+    def set_velocity(self, v: float, w: float):
+        """Move to xyt in global coordinates or relative coordinates."""
+        next_action = {"v": v, "w": w}
+        self.send_action(next_action)
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -755,10 +861,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
-                print(
-                    f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
-                )
-                raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
+                print(f"Timeout waiting for block with step id = {block_id}")
+                break
+                # raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
@@ -843,6 +948,21 @@ class HomeRobotZmqClient(AbstractRobotClient):
             observation.seq_id = self._seq_id
         return observation
 
+    def get_images(self, compute_xyz=False):
+        obs = self.get_observation()
+        if compute_xyz:
+            return obs.rgb, obs.depth, obs.xyz
+        else:
+            return obs.rgb, obs.depth
+
+    def get_camera_K(self):
+        obs = self.get_observation()
+        return obs.camera_K
+
+    def get_head_pose(self):
+        obs = self.get_observation()
+        return obs.camera_pose
+
     def execute_trajectory(
         self,
         trajectory: List[np.ndarray],
@@ -853,6 +973,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         per_waypoint_timeout: float = 10.0,
         final_timeout: float = 10.0,
         relative: bool = False,
+        blocking: bool = False,
     ):
         """Execute a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
 
@@ -966,7 +1087,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
             time.sleep(0.01)
-            # TODO: why do we send the action twice?
+
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 

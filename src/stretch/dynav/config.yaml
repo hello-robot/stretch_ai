@@ -1,0 +1,12 @@
+# pickle_file_name: debug/debug_2024-07-23_11-28-58.pkl
+pickle_file_name: null
+
+rerun: true
+open_communication: true
+static: false
+
+min_depth: 0.25
+max_depth: 2.5
+
+# Add this key
+ui_server_address: "http://localhost:8080"
