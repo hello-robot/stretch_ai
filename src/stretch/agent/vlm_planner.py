@@ -85,7 +85,7 @@ class VLMPlanner:
             str: the plan
         """
 
-        query = self.agent.get_command()
+        query = self.agent.get_command() if not query else query
         world_representation = self.agent.get_object_centric_observations(
             task=query, current_pose=current_pose, show_prompts=show_prompts
         )

@@ -403,10 +403,10 @@ class RobotAgent:
         return True
 
     def get_command(self):
-        if (
-            "command" in self.parameters.data.keys()
-        ):  # TODO: this was breaking. Should this be a class method
-            return self.parameters["command"]
+        """Get a command from config file or from user input if not specified."""
+        task = self.parameters.get("task").get("command")
+        if task is not None and len(task) > 0:
+            return task
         else:
             return self.ask("Please type any task you want the robot to do: ")
 

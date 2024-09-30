@@ -128,9 +128,6 @@ trajectory_per_step_timeout: 3.0
 # User interface
 # Choose one of: (object_to_find, location_to_place), command, or chat
 # Don't use all of them!
-vlm:
-  vlm_context_length: 20  # How long messages sent to the vlm server can be if we are using it
-
 # High level stuff: commands to execute 
 exploration_steps: 50
 name: "stretch"

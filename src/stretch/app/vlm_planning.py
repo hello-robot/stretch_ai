@@ -23,7 +23,6 @@ import copy
 
 import numpy as np
 import open3d as o3d
-
 from stretch.agent import RobotAgent
 from stretch.agent.vlm_planner import VLMPlanner
 from stretch.core import get_parameters
@@ -111,7 +110,6 @@ def images_to_video(image_list, output_path, fps=30):
     "--config-path",
     "-c",
     type=click.Path(),
-    # default="default_planner.yaml",
     default="app/vlm_planning/multi_crop_vlm_planner.yaml",
     help="Path to planner config.",
 )
@@ -133,7 +131,6 @@ def images_to_video(image_list, output_path, fps=30):
 @click.option("--test-vlm", type=bool, is_flag=True, default=False)
 @click.option("--show-instances", type=bool, is_flag=True, default=False)
 @click.option("--api-key", type=str, default=None, help="your openai api key")
-# @click.option("--query", type=str, default=None)
 def main(
     input_path,
     config_path,
@@ -154,18 +151,27 @@ def main(
     dummy_robot = DummyStretchClient()
 
     print("- Load parameters")
-    parameters = get_parameters(config_path)
-    parameters.set("vlm_option", "gpt4")
+    vlm_parameters = get_parameters(config_path)
+    if not vlm_parameters.get("vlm_base_config"):
+        print("invalid config file")
+        return        
+    else:
+        base_config_file = vlm_parameters.get("vlm_base_config")
+        base_parameters = get_parameters(base_config_file)
+        base_parameters.data.update(vlm_parameters.data)
+        vlm_parameters.data = base_parameters.data
+        print(vlm_parameters.data)
+    
     if len(task) > 0:
-        parameters.set("command", task)
+        vlm_parameters.set("command", task)
 
     print("Creating semantic sensors...")
-    semantic_sensor = create_semantic_sensor(config_path=config_path)
+    semantic_sensor = create_semantic_sensor(parameters=vlm_parameters)
 
     print("Creating robot agent...")
     agent = RobotAgent(
         dummy_robot,
-        parameters,
+        vlm_parameters,
         voxel_map=loaded_voxel_map,
         semantic_sensor=semantic_sensor,
     )
@@ -221,16 +227,16 @@ def main(
         # create a new agent for planning with the updated map
         planning_agent = RobotAgent(
             dummy_robot,
-            parameters,
+            vlm_parameters,
             voxel_map=new_map,
             semantic_sensor=semantic_sensor,
         )
 
         print("\nPlan with the original map: ")
-        vlm_planner.plan(current_pose=x0, show_plan=True)
+        vlm_planner.plan(current_pose=x0, show_plan=True, query=task)
         print("\nPlan with the updated map: ")
         vlm_planner.set_agent(planning_agent)
-        vlm_planner.plan(current_pose=x0, show_plan=True)
+        vlm_planner.plan(current_pose=x0, show_plan=True, query=task)
 
 
 if __name__ == "__main__":
