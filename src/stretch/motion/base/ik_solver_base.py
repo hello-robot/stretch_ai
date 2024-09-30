@@ -31,7 +31,9 @@ class IKSolverBase(object):
         """returns number of controllable joints under this solver's purview"""
         raise NotImplementedError()
 
-    def compute_fk(self, q) -> Tuple[np.ndarray, np.ndarray]:
+    def compute_fk(
+        self, q, link_name=None, ignore_missing_joints=False
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """given joint values return end-effector position and quaternion associated with it"""
         raise NotImplementedError()
 
