@@ -31,6 +31,129 @@ else:
     from stretch.utils.torch_geometric import consecutive_cluster, voxel_grid
     from stretch.utils.torch_scatter import scatter
 
+from typing import Literal
+
+import torch
+from torch import Tensor
+
+
+def xyz_to_flat_index(xyz, grid_size):
+    """
+    Convert N x 3 tensor of XYZ coordinates to flat indices.
+
+    Args:
+    xyz (torch.Tensor): N x 3 tensor of XYZ coordinates
+    grid_size (torch.Tensor or list): Size of the grid in each dimension [X, Y, Z]
+
+    Returns:
+    torch.Tensor: N tensor of flat indices
+    """
+    if isinstance(grid_size, list):
+        grid_size = torch.tensor(grid_size)
+
+    return xyz[:, 0] + xyz[:, 1] * grid_size[0] + xyz[:, 2] * grid_size[0] * grid_size[1]
+
+
+def flat_index_to_xyz(flat_index, grid_size):
+    """
+    Convert flat indices to N x 3 tensor of XYZ coordinates.
+
+    Args:
+    flat_index (torch.Tensor): N tensor of flat indices
+    grid_size (torch.Tensor or list): Size of the grid in each dimension [X, Y, Z]
+
+    Returns:
+    torch.Tensor: N x 3 tensor of XYZ coordinates
+    """
+    if isinstance(grid_size, list):
+        grid_size = torch.tensor(grid_size)
+
+    z = flat_index // (grid_size[0] * grid_size[1])
+    y = (flat_index % (grid_size[0] * grid_size[1])) // grid_size[0]
+    x = flat_index % grid_size[0]
+
+    return torch.stack([x, y, z], dim=1)
+
+
+def merge_features(
+    idx: Tensor,
+    features: Tensor,
+    method: Union[str, Literal["sum", "min", "max", "mean"]] = "sum",
+    grid_dimensions: Optional[List[int]] = None,
+) -> Tuple[Tensor, Tensor]:
+    """
+    Merge features based on the given indices using the specified method.
+
+    This function takes a tensor of indices and a tensor of features, and merges
+    the features for duplicate indices according to the specified method.
+
+    Args:
+        idx (Tensor): A 1D integer tensor containing indices, possibly with duplicates.
+        features (Tensor): A 2D float tensor of shape (len(idx), feature_dim) containing
+                           feature vectors corresponding to each index.
+        method (Literal['sum', 'min', 'max', 'mean']): The method to use for merging
+                                                       features. Default is 'sum'.
+
+    Returns:
+        Tuple[Tensor, Tensor]: A tuple containing:
+            - A 2D tensor of shape (num_unique_idx, feature_dim) containing the
+              merged features.
+            - A 1D tensor of unique indices corresponding to the merged features.
+
+    Raises:
+        ValueError: If an invalid merge method is specified or if input tensors
+                    have incorrect dimensions.
+
+    Example:
+        >>> idx = torch.tensor([0, 1, 0, 2, 1])
+        >>> features = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [9.0, 10.0]])
+        >>> unique_idx, merged_features = merge_features(idx, features, method='sum')
+        >>> print(merged_features)
+        tensor([[ 6.0,  8.0],
+                [12.0, 14.0],
+                [ 7.0,  8.0]])
+        >>> print(unique_idx)
+        tensor([0, 1, 2])
+    """
+    if idx.dim() == 2 and idx.shape[-1] == 3:
+        # Convert from voxel indices
+        idx = xyz_to_flat_index(idx, grid_size=grid_dimensions)
+    elif idx.dim() != 1:
+        raise ValueError("idx must be a 1D tensor or a N x 3 tensor; was {}".format(idx.shape))
+    if features.dim() != 2 or features.size(0) != idx.size(0):
+        raise ValueError("features must be a 2D tensor with shape (len(idx), feature_dim)")
+
+    unique_idx, inverse_idx = torch.unique(idx, return_inverse=True)
+    num_unique = unique_idx.size(0)
+    feature_dim = features.size(1)
+
+    if method == "sum":
+        merged = torch.zeros(num_unique, feature_dim, dtype=features.dtype, device=features.device)
+        merged.index_add_(0, inverse_idx, features)
+    elif method == "min":
+        merged = torch.full(
+            (num_unique, feature_dim), float("inf"), dtype=features.dtype, device=features.device
+        )
+        merged = torch.min(merged.index_copy(0, inverse_idx, features), merged)
+    elif method == "max":
+        merged = torch.full(
+            (num_unique, feature_dim), -1, dtype=features.dtype, device=features.device
+        )
+        merged = torch.max(merged.index_copy(0, inverse_idx, features), merged)
+    elif method == "mean":
+        merged = torch.zeros(num_unique, feature_dim, dtype=features.dtype, device=features.device)
+        merged.index_add_(0, inverse_idx, features)
+        count = torch.zeros(num_unique, dtype=torch.int, device=features.device)
+        count.index_add_(0, inverse_idx, torch.ones_like(inverse_idx))
+        merged /= count.unsqueeze(1)
+    else:
+        raise ValueError("Invalid merge method. Choose from 'sum', 'min', 'max', or 'mean'.")
+
+    if grid_dimensions is not None:
+        unique_idx = flat_index_to_xyz(unique_idx, grid_size=grid_dimensions)
+
+    return unique_idx, merged
+
 
 class VoxelizedPointcloud:
     _INTERNAL_TENSORS = [
@@ -476,6 +599,9 @@ def scatter3d(voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int]
     assert voxel_indices.shape[0] == weights.shape[0], "weights and indices must match"
     assert len(grid_dimensions) == 3, "this is designed to work only in 3d"
     assert voxel_indices.shape[-1] == 3, "3d points expected for indices"
+
+    if len(voxel_indices) == 0:
+        return torch.zeros(*grid_dimensions, device=weights.device)
 
     N, F = weights.shape
     X, Y, Z = grid_dimensions

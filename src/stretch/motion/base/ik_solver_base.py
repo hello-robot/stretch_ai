@@ -46,7 +46,7 @@ class IKSolverBase(object):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
-        node_name: Optional[str] = None,
+        custom_ee_frame: Optional[str] = None,
     ) -> Tuple[np.ndarray, bool, dict]:
 
         """

@@ -37,10 +37,13 @@ def compute_tilt(camera_xyz, target_xyz):
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
-@click.option("--re", default=1, type=int)
+@click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)
+@click.option(
+    "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
+)
 @click.option(
     "--input-path",
     type=click.Path(),
@@ -57,6 +60,7 @@ def main(
     env: int = 1,
     test: int = 1,
     input_path: str = None,
+    robot_ip: str = "",
     **kwargs,
 ):
     """
@@ -66,7 +70,7 @@ def main(
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = RobotClient(robot_ip="100.79.44.11")
+    robot = RobotClient(robot_ip=robot_ip)
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
@@ -100,7 +104,9 @@ def main(
     # img_thread.start()
 
     while True:
-        mode = input("select mode? E/N/S")
+        print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
+        mode = input("select mode? E/N/S: ")
+        mode = mode.upper()
         if mode == "S":
             demo.image_processor.write_to_pickle()
             break

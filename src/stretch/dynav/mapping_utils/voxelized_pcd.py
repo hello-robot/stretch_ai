@@ -17,12 +17,19 @@ from typing import List, Optional, Tuple, Union
 import torch
 from torch import Tensor
 
-USE_TORCH_GEOMETRIC = True
+import stretch.utils.logger as logger
+from stretch.utils.voxel import merge_features
+
+USE_TORCH_GEOMETRIC = False
 if USE_TORCH_GEOMETRIC:
-    from torch_geometric.nn.pool.consecutive import consecutive_cluster
-    from torch_geometric.nn.pool.voxel_grid import voxel_grid
-    from torch_geometric.utils import scatter
-else:
+    try:
+        from torch_geometric.nn.pool.consecutive import consecutive_cluster
+        from torch_geometric.nn.pool.voxel_grid import voxel_grid
+        from torch_geometric.utils import scatter
+    except:
+        logger.warning("torch_geometric not found, falling back to custom implementation")
+        USE_TORCH_GEOMETRIC = False
+if not USE_TORCH_GEOMETRIC:
     from stretch.utils.torch_geometric import consecutive_cluster, voxel_grid
     from stretch.utils.torch_scatter import scatter
 
@@ -189,7 +196,11 @@ class VoxelizedPointcloud:
             if self._entity_ids is not None:
                 self._entity_ids = self._entity_ids[indices]
 
-            if self._entity_ids is not None and min_samples_clear is not None:
+            if (
+                self._entity_ids is not None
+                and min_samples_clear is not None
+                and min_samples_clear > 0
+            ):
                 dbscan = DBSCAN(eps=self.voxel_size * 4, min_samples=min_samples_clear)
                 cluster_vertices = torch.cat(
                     (
@@ -564,7 +575,7 @@ def reduce_pointcloud(
     )
 
 
-def scatter3d(
+def old_scatter3d(
     voxel_indices: Tensor,
     weights: Tensor,
     grid_dimensions: List[int],
@@ -600,6 +611,49 @@ def scatter3d(
         dim_size=grid_dimensions[0] * grid_dimensions[1] * grid_dimensions[2],
     )
     return voxel_weights.reshape(*grid_dimensions)
+
+
+def scatter3d(
+    voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int], method: Optional[str] = None
+) -> Tensor:
+    """Scatter weights into a 3d voxel grid of the appropriate size.
+
+    Args:
+        voxel_indices (LongTensor): [N, 3] indices to scatter values to.
+        weights (FloatTensor): [N] values of equal size to scatter through voxel map.
+        grid_dimenstions (List[int]): sizes of the resulting voxel map, should be 3d.
+
+    Returns:
+        voxels (FloatTensor): [grid_dimensions] voxel map containing combined weights."""
+
+    assert voxel_indices.shape[0] == weights.shape[0], "weights and indices must match"
+    assert len(grid_dimensions) == 3, "this is designed to work only in 3d"
+    assert voxel_indices.shape[-1] == 3, "3d points expected for indices"
+
+    if len(voxel_indices) == 0:
+        return torch.zeros(*grid_dimensions, device=weights.device)
+
+    N, F = weights.shape
+    X, Y, Z = grid_dimensions
+
+    # Compute voxel indices for each point
+    # voxel_indices = (points / voxel_size).long().clamp(min=0, max=torch.tensor(grid_size) - 1)
+    voxel_indices = voxel_indices.clamp(
+        min=torch.zeros(3), max=torch.tensor(grid_dimensions) - 1
+    ).long()
+
+    # Reduce according to min/max/mean or none
+    if method is not None and method != "any":
+        logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
+        merge_features(voxel_indices, weights, grid_dimensions=grid_dimensions, method=method)
+
+    # Create empty voxel grid
+    voxel_grid = torch.zeros(*grid_dimensions, F, device=weights.device)
+
+    # Scatter features into voxel grid
+    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = weights.float()
+    voxel_grid.squeeze_(-1)
+    return voxel_grid
 
 
 def drop_smallest_weight_points(

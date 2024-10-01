@@ -286,7 +286,7 @@ class HelloRobot:
         # print(f"final pos and quat {final_pos}\n {final_quat}")
 
         full_body_cfg = self.robot.solve_ik(
-            final_pos, final_quat, None, False, node_name=self.end_link
+            final_pos, final_quat, None, False, custom_ee_frame=self.end_link
         )
         if full_body_cfg is None:
             print("Warning: Cannot find an IK solution for desired EE pose!")

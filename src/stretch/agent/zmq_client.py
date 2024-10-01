@@ -33,7 +33,7 @@ from stretch.utils.geometry import angle_difference, posquat2sophus, sophus2posq
 from stretch.utils.image import Camera
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
-from stretch.visualization.rerun import RerunVsualizer
+from stretch.visualization.rerun import RerunVisualizer
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
@@ -181,7 +181,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._servo_lock = Lock()
 
         if enable_rerun_server:
-            self._rerun = RerunVsualizer()
+            self._rerun = RerunVisualizer()
         else:
             self._rerun = None
             self._rerun_thread = None
@@ -325,7 +325,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         quat: Optional[List[float]] = None,
         initial_cfg: np.ndarray = None,
         debug: bool = False,
-        node_name=None,
+        custom_ee_frame: Optional[str] = None,
     ) -> Optional[np.ndarray]:
         """Solve inverse kinematics appropriately (or at least try to) and get the joint position
         that we will be moving to.
@@ -355,7 +355,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # Perform IK
         full_body_cfg, ik_success, ik_debug_info = self._robot_model.manip_ik(
-            (pos_ik_goal, quat_ik_goal), q0=initial_cfg, node_name=node_name
+            (pos_ik_goal, quat_ik_goal),
+            q0=initial_cfg,
+            custom_ee_frame=custom_ee_frame,
         )
 
         # Expected to return None if we did not get a solution
@@ -404,7 +406,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
             self._wait_for_head(whole_body_q, block_id=step)
 
-        time.sleep(0.3)
+        # time.sleep(0.3)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""

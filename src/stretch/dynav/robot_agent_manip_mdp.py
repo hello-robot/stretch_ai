@@ -111,14 +111,16 @@ class RobotAgentMDP:
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
+        # Sleep some time so the robot rgbd observations are more likely to be updated
+        time.sleep(0.5)
+
         obs = self.robot.get_observation()
-        # self.image_sender.send_images(obs)
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        # start_time = time.time()
+        start_time = time.time()
         self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
-        # end_time = time.time()
-        # print('Image processing takes', end_time - start_time, 'seconds.')
+        end_time = time.time()
+        print("Image processing takes", end_time - start_time, "seconds.")
 
     def execute_action(
         self,

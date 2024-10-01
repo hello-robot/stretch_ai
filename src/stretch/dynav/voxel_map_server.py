@@ -38,6 +38,7 @@ from transformers import AutoModel, AutoProcessor
 # from transformers import AutoProcessor, OwlViTForObjectDetection
 from ultralytics import YOLOWorld
 
+import stretch.utils.logger as logger
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.mapping_utils.a_star import AStar
@@ -113,17 +114,18 @@ class ImageProcessor:
     def __init__(
         self,
         vision_method="mask*lip",
-        siglip=True,
-        device="cuda",
-        min_depth=0.25,
-        max_depth=2.5,
-        img_port=5558,
-        text_port=5556,
-        open_communication=True,
-        rerun=True,
-        static=True,
+        siglip: bool = True,
+        device: str = "cuda",
+        min_depth: float = 0.25,
+        max_depth: float = 2.5,
+        img_port: int = 5558,
+        text_port: int = 5556,
+        open_communication: bool = True,
+        rerun: bool = True,
+        static: bool = True,
         log=None,
         image_shape=(400, 300),
+        rerun_server_memory_limit: str = "4GB",
     ):
         self.static = static
         self.siglip = siglip
@@ -138,7 +140,10 @@ class ImageProcessor:
                 rr.init(self.log, spawn=False)
                 rr.connect("100.108.67.79:9876")
             else:
-                rr.init(self.log, spawn=True)
+                # rr.init(self.log, spawn=False)
+                # rr.connect("100.108.67.79:9876")
+                logger.info("Attempting to connect to existing rerun server.")
+
         self.min_depth = min_depth
         self.max_depth = max_depth
         self.obs_count = 0
@@ -533,28 +538,28 @@ class ImageProcessor:
     def run_mask_clip(self, rgb, mask, world_xyz):
 
         with torch.no_grad():
-            results = self.yolo_model.predict(
-                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False
-            )
-            xyxy_tensor = results[0].boxes.xyxy
-            if len(xyxy_tensor) == 0:
-                return
-            bounding_boxes = torch.stack(
-                sorted(
-                    xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-                ),
-                dim=0,
-            )
-            bbox_mask = torch.zeros_like(mask)
-            for box in bounding_boxes:
-                tl_x, tl_y, br_x, br_y = box
-                bbox_mask[
-                    max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                    max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                ] = 1
-            bbox_mask = bbox_mask.bool()
-            # print(mask, bbox_mask)
-            mask = torch.logical_or(mask, ~bbox_mask)
+            # results = self.yolo_model.predict(
+            #     rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False
+            # )
+            # xyxy_tensor = results[0].boxes.xyxy
+            # if len(xyxy_tensor) == 0:
+            #     return
+            # bounding_boxes = torch.stack(
+            #     sorted(
+            #         xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
+            #     ),
+            #     dim=0,
+            # )
+            # bbox_mask = torch.zeros_like(mask)
+            # for box in bounding_boxes:
+            #     tl_x, tl_y, br_x, br_y = box
+            #     bbox_mask[
+            #         max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
+            #         max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
+            #     ] = 1
+            # bbox_mask = bbox_mask.bool()
+            # # print(mask, bbox_mask)
+            # mask = torch.logical_or(mask, ~bbox_mask)
 
             if not self.siglip:
                 if self.device == "cpu":
@@ -743,9 +748,9 @@ class ImageProcessor:
 
         with self.voxel_map_lock:
             if self.vision_method == "mask&*lip":
-                min_samples_clear = 3
+                min_samples_clear = -1
             else:
-                min_samples_clear = 10
+                min_samples_clear = -1
             self.voxel_map_localizer.voxel_pcd.clear_points(
                 depth,
                 torch.from_numpy(intrinsics),
