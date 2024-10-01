@@ -32,24 +32,22 @@ https://github.com/hello-robot/lerobot/blob/stretch-act/lerobot/common/datasets/
 import json
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import liblzfse
 import numpy as np
 import torch
 import tqdm
-from datasets import Dataset, Features, Image, Sequence, Value
 
 import stretch.utils.logger as logger
 
 try:
-    from lerobot.common.datasets.push_dataset_to_hub.utils import concatenate_episodes
+    from lerobot.common.datasets import Dataset, Features, Image, Sequence, Value
     from lerobot.common.datasets.utils import hf_transform_to_torch
     from lerobot.common.datasets.video_utils import VideoFrame
 
     lerobot_found = True
 except ImportError:
-    logger.warning("lerobot not found. cannot export.")
     lerobot_found = False
 
 from PIL import Image as PILImage
@@ -110,7 +108,41 @@ STATE_ORDER = [
 #     "joint_wrist_yaw",
 #     "stretch_gripper",
 # ]
-def check_format(raw_dir):
+
+
+def concatenate_episodes(ep_dicts: list[Dict[str, Any]]) -> Dict[str, Any]:
+    """Concatenate episodes into a single dictionary.
+
+    Args:
+        ep_dicts (List[Dict[str, Any]]): List of episode dictionaries.
+
+    Returns:
+        Dict[str, Any]: Concatenated episode dictionary.
+    """
+    data_dict: Dict[str, torch.Tensor | List[torch.Tensor]] = {}
+
+    keys = ep_dicts[0].keys()
+    for key in keys:
+        if torch.is_tensor(ep_dicts[0][key][0]):
+            data_dict[key] = torch.cat([ep_dict[key] for ep_dict in ep_dicts])
+        else:
+            if key not in data_dict:
+                data_dict[key] = []
+            for ep_dict in ep_dicts:
+                for x in ep_dict[key]:
+                    data_dict[key].append(x)  # type: ignore
+
+    total_frames = data_dict["frame_index"].shape[0]  # type: ignore
+    data_dict["index"] = torch.arange(0, total_frames, 1)
+    return data_dict
+
+
+def check_format(raw_dir: Path) -> None:
+    """Check the format of the raw directory.
+
+    Args:
+        raw_dir (Path): Path to raw directory.
+    """
 
     print("Image sizes set as: ", IMAGE_SIZE)
 
@@ -183,7 +215,7 @@ def load_from_raw(
 
     # Set default fps
     if fps is None:
-        logger.warning("FPS not set. Defaulting to 15.")
+        logger.warning("[DATASET] FPS not set. Defaulting to 15.")
         fps = 15
 
     if max_episodes is not None and (max_episodes < 0 or max_episodes > len(episode_dirs)):
@@ -196,6 +228,7 @@ def load_from_raw(
     ep_metadata = []
     episode_data_index: Dict[str, Any] = {"from": [], "to": []}
 
+    # Go through all the episodes
     id_from = 0
     for ep_idx, ep_path in tqdm.tqdm(enumerate(episode_dirs), total=len(episode_dirs)):
 
@@ -251,8 +284,7 @@ def load_from_raw(
 
                 images = []
                 for file in rgb_png:
-                    with PILImage.open(file) as f:
-                        images.append(f)
+                    images.append(PILImage.open(file))
 
                 ep_dict[img_key] = images
 
@@ -308,8 +340,11 @@ def load_from_raw(
     return data_dict, episode_data_index, info
 
 
-def to_hf_dataset(data_dict, video=False) -> Dataset:
+def to_hf_dataset(data_dict, video=False) -> "Dataset":
     features = {}
+
+    if not lerobot_found:
+        raise ImportError("lerobot not found. Cannot export.")
 
     keys = [key for key in data_dict if "observation.images." in key]
     for key in keys:
@@ -354,6 +389,9 @@ def from_raw_to_lerobot_format(
         debug (bool, optional): Debug mode. Defaults to False.
     """
 
+    if not lerobot_found:
+        raise ImportError("lerobot not found. Cannot export.")
+
     if isinstance(raw_dir, str):
         raw_dir = Path(raw_dir)
 
@@ -396,8 +434,6 @@ if __name__ == "__main__":
     pil_head_image = data_dir["observation.images.head"][0]
     head_image = np.array(pil_head_image)
 
-    breakpoint()
-
     import matplotlib.pyplot as plt
 
     plt.subplot(1, 2, 1)
@@ -408,4 +444,5 @@ if __name__ == "__main__":
     plt.imshow(head_image)
     plt.title("Head Image")
     plt.axis("off")
+    plt.suptitle("Images")
     plt.show()
