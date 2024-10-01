@@ -134,6 +134,9 @@ class RobotAgent:
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
+        # Previously sampled goal during exploration
+        self._previous_goal = None
+
         # Create a simple motion planner
         self.planner = RRTConnect(self.space, self.space.is_valid)
         if parameters["motion_planner"]["shortcut_plans"]:
@@ -360,7 +363,11 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = False, full_sweep: bool = True
+        self,
+        steps: Optional[int] = -1,
+        visualize: bool = False,
+        verbose: bool = False,
+        full_sweep: bool = True,
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -499,7 +506,7 @@ class RobotAgent:
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
                 # check if the gps is close to the gps of the pose graph node
                 elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.1
+                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.3
                     and self.obs_history[idx].pose_graph_timestamp is None
                 ):
                     # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
@@ -565,12 +572,12 @@ class RobotAgent:
         # print(f"Total observation count: {len(self.obs_history)}")
 
         # Clear out observations that are too old and are not pose graph nodes
-        if len(self.obs_history) > 200:
+        if len(self.obs_history) > 500:
             # print("Clearing out old observations")
             # Remove 10 oldest observations that are not pose graph nodes
             del_count = 0
             del_idx = 0
-            while del_count < 10 and len(self.obs_history) > 0:
+            while del_count < 15 and len(self.obs_history) > 0 and del_idx < len(self.obs_history):
                 # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
                 if not self.obs_history[del_idx].is_pose_graph_node:
                     # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
@@ -1322,7 +1329,18 @@ class RobotAgent:
             for i, goal in enumerate(sampler):
                 if goal is None:
                     # No more positions to sample
+                    if verbose:
+                        print("No more frontiers to sample.")
                     break
+
+                # print("Sampled Goal is:", goal.cpu().numpy())
+                if self._previous_goal is not None:
+                    if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
+                        if verbose:
+                            print("Same goal as last time. Skipping.")
+                        self._previous_goal = goal.cpu().numpy()
+                        continue
+                self._previous_goal = goal.cpu().numpy()
 
                 if self.space.is_valid(goal.cpu().numpy(), verbose=True):
                     if verbose:
@@ -1336,11 +1354,18 @@ class RobotAgent:
                     np.random.seed(0)
                     random.seed(0)
 
+                # print("Pushing locations to stack...")
                 self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
+                # print("Planning to goal...")
+                self._obs_history_lock.acquire()
                 res = self.planner.plan(start, goal.cpu().numpy())
+                self._obs_history_lock.release()
                 if res.success:
+                    if verbose:
+                        print("Plan successful!")
                     return res
                 else:
+                    # print("Plan failed. Reason:", res.reason)
                     if verbose:
                         print("Plan failed. Reason:", res.reason)
         return PlanResult(False, reason="no valid plans found")
@@ -1381,7 +1406,9 @@ class RobotAgent:
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
+            self._obs_history_lock.acquire()
             start = self.robot.get_base_pose()
+            self._obs_history_lock.release()
             start_is_valid = self.space.is_valid(start, verbose=True)
             # if start is not valid move backwards a bit
             if not start_is_valid:
@@ -1422,7 +1449,7 @@ class RobotAgent:
                         rot_err_threshold=self.rot_err_threshold,
                     )
             else:
-                breakpoint()
+                # breakpoint()
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
                     print("Exploration failed. Try again!")
