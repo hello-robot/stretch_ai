@@ -77,8 +77,7 @@ class RobotAgent:
         self.obs_count = 0
         self.obs_history = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
-        self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
-        self.use_scene_graph = parameters["plan_with_scene_graph"]
+        self.use_scene_graph = parameters["use_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
 
@@ -1619,7 +1618,7 @@ class RobotAgent:
         return obs
 
     def get_object_centric_observations(
-        self, show_prompts: bool = False, task: Optional[str] = None, current_pose=None
+        self, show_prompts: bool = False, task: Optional[str] = None, current_pose=None, plan_with_reachable_instances=False, plan_with_scene_graph=False
     ) -> ObjectCentricObservations:
         """Get object-centric observations for the current state of the world. This is a list of images and associated object information.
 
@@ -1631,13 +1630,14 @@ class RobotAgent:
         Returns:
             ObjectCentricObservations: a list of object-centric observations
         """
-        if self.plan_with_reachable_instances:
+        if plan_with_reachable_instances:
             instances = self.get_all_reachable_instances(current_pose=current_pose)
         else:
             instances = self.voxel_map.get_instances()
 
         scene_graph = None
-        if self.use_scene_graph:
+        
+        if plan_with_scene_graph:
             scene_graph = self.extract_symbolic_spatial_info(instances)
 
         world_representation = self.get_object_centric_world_representation(

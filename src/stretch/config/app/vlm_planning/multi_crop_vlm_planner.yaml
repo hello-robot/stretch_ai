@@ -27,4 +27,4 @@ vlm:
   sample_strategy: "clip"
 
 task:
-  command: "pick up the basket"
+  command: "Pick up a basket."

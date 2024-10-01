@@ -71,6 +71,8 @@ class VLMPlanner:
         show_plan=False,
         plan_file: str = "vlm_plan.txt",
         query=None,
+        plan_with_reachable_instances=False,
+        plan_with_scene_graph=False,
     ) -> str:
         """This is a connection to a VLM for getting a plan based on language commands.
 
@@ -84,10 +86,8 @@ class VLMPlanner:
         Returns:
             str: the plan
         """
-
-        query = self.agent.get_command() if not query else query
         world_representation = self.agent.get_object_centric_observations(
-            task=query, current_pose=current_pose, show_prompts=show_prompts
+            task=query, current_pose=current_pose, show_prompts=show_prompts, plan_with_reachable_instances=plan_with_reachable_instances, plan_with_scene_graph=plan_with_scene_graph  
         )
         output = self.get_output_from_gpt(world_representation, task=query)
         if show_plan:
@@ -112,13 +112,14 @@ class VLMPlanner:
                     plt.title(action.split("(")[0] + f" instance {global_id}")
                     plt.axis("off")
                 plt.suptitle(f"Task: {query}")
+                plt.show()
                 plt.savefig("plan.png")
 
         if self.parameters.get("save_vlm_plan", True):
             with open(plan_file, "w") as f:
                 f.write(output)
             print(f"Task plan generated from VLMs has been written to {plan_file}")
-        return output
+        return actions, world_representation
 
     def get_output_from_gpt(self, world_rep, task: str):
 

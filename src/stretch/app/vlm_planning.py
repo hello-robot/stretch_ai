@@ -20,9 +20,8 @@ import matplotlib
 
 matplotlib.use("TkAgg")
 import copy
-
+import re
 import numpy as np
-import open3d as o3d
 from stretch.agent import RobotAgent
 from stretch.agent.vlm_planner import VLMPlanner
 from stretch.core import get_parameters
@@ -177,6 +176,9 @@ def main(
     )
     voxel_map = agent.voxel_map
     voxel_map.read_from_pickle(input_path, num_frames=frame, perception=semantic_sensor)
+    
+    # get the task
+    task = agent.get_command() if not task else task
 
     # or load from raw data
     # obs_history = pickle.load(input_path.open("rb"))
@@ -213,30 +215,85 @@ def main(
             print("you need to manually set the start pose to be valid")
             return
 
-        # manually remove an instance for testing planning. TODO: this should come from VLM.
-        new_map = copy.deepcopy(voxel_map)
-        pcd = o3d.geometry.PointCloud()
-        removed_instance = voxel_map.get_instances()[0]  # hopefully this is a stuffed animal
-        pcd.points = o3d.utility.Vector3dVector(removed_instance.point_cloud.numpy())
-        o3d.visualization.draw_geometries([pcd])
-        new_map.delete_instance(
-            removed_instance, force_update=True, min_bound_z=0.05, assume_explored=True
-        )
-        new_map.show()
+        print("\nFirst plan with the original map: ")
+        original_plan, world_rep = vlm_planner.plan(current_pose=x0, show_plan=True, query=task, plan_with_reachable_instances=False, plan_with_scene_graph=False)
 
-        # create a new agent for planning with the updated map
-        planning_agent = RobotAgent(
-            dummy_robot,
-            vlm_parameters,
-            voxel_map=new_map,
-            semantic_sensor=semantic_sensor,
-        )
+        # loop over the plan and check feasibilities for each action
+        preconditions = {}
+        while len(original_plan) > 0:
+            current_action = original_plan.pop(0)
+            
+            # navigation action only for now
+            if "goto" not in current_action:
+                continue
+            
+            # get the target object instance from the action
+            crop_id = int(re.search(r"img_(\d+)", current_action).group(1))
+            global_id = world_rep.object_images[crop_id].instance_id   
+            current_instance = voxel_map.get_instances()[global_id]
+            
+            print(f"Checking feasibility of action: {current_action}")
+            motion_plan = agent.plan_to_instance_for_manipulation(current_instance, start=np.array(start_xyz))
+            feasible = motion_plan.get_success()
+            
+            if feasible:
+                continue
+        
+            print(f"Action {current_action} is not feasible.")
+            print("Searching over the map and replanning...")
+            # loop over all instances in the map and try to find a feasible action
+            # TODO: This is highly inefficient and should be replaced with scene graph
+            planning_map = copy.deepcopy(voxel_map)
+            planning_xyz = start_xyz
+            for removed_instance in voxel_map.get_instances():
+                
+                # skip the current instance
+                if removed_instance == current_instance:
+                    continue
+                
+                # manually remove an instance for testing planning.
+                new_map = copy.deepcopy(planning_map)
+                new_map.delete_instance(
+                    removed_instance, force_update=True, min_bound_z=0.05, assume_explored=True
+                )          
+                
+                # # visulize the deleted_instance and the new map
+                # pcd = o3d.geometry.PointCloud()
+                # pcd.points = o3d.utility.Vector3dVector(removed_instance.point_cloud.numpy())
+                # o3d.visualization.draw_geometries([pcd])
+                # new_map.show()
 
-        print("\nPlan with the original map: ")
-        vlm_planner.plan(current_pose=x0, show_plan=True, query=task)
-        print("\nPlan with the updated map: ")
-        vlm_planner.set_agent(planning_agent)
-        vlm_planner.plan(current_pose=x0, show_plan=True, query=task)
+                # create a new agent for planning with the updated map
+                planning_agent = RobotAgent(
+                    dummy_robot,
+                    vlm_parameters,
+                    voxel_map=new_map,
+                    semantic_sensor=semantic_sensor,
+                )
+
+                # motion planning with the new map
+                motion_plan = planning_agent.plan_to_instance_for_manipulation(removed_instance, start=np.array(planning_xyz))
+                feasible = motion_plan.get_success()
+                if feasible:
+                    print(f"Found a feasible motion plan for action: {current_action} by removing instance {removed_instance.global_id}")
+                    planning_xyz = motion_plan.get_trajectory()[-1].state
+                    planning_map = new_map
+
+                    # find img_id of the removed instance
+                    for obj_im in world_rep.object_images:
+                        if obj_im.instance_id == removed_instance.global_id:
+                            removed_crop_id = obj_im.crop_id
+                            break
+                    
+                    # append preconditions
+                    preconditions[current_action] = removed_crop_id
+                    break
+        
+        print("\nPlan with the task with preconditions: ")
+        print(preconditions)
+        for action, crop_id in preconditions.items():
+            task += f" Before {action}, relocate img_{crop_id} to another instance."
+        vlm_planner.plan(current_pose=x0, show_plan=True, query=task, plan_with_reachable_instances=False, plan_with_scene_graph=False)
 
 
 if __name__ == "__main__":
