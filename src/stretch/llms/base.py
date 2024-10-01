@@ -10,6 +10,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from PIL import Image
+
 
 class AbstractPromptBuilder(ABC):
     """Abstract base class for a prompt generator."""
@@ -45,11 +47,13 @@ class AbstractLLMClient(ABC):
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        self.prompt_kwargs = prompt
+        self.prompt_kwargs = prompt_kwargs
         self.reset()
 
         # If the prompt is a string, use it as the prompt. Otherwise, generate the prompt string.
-        if isinstance(prompt, str):
+        if prompt is None:
+            self._prompt = ""
+        elif isinstance(prompt, str):
             self._prompt = prompt
         else:
             if prompt_kwargs is None:
@@ -95,7 +99,7 @@ class AbstractLLMClient(ABC):
         return history_str
 
     @abstractmethod
-    def __call__(self, command: str, verbose: bool = False):
+    def __call__(self, command: str, image: Optional[Image.Image] = None, verbose: bool = False):
         """Interact with the language model to generate a plan."""
 
     def parse(self, content: str) -> List[Tuple[str, str]]:

@@ -182,7 +182,7 @@ class RerunVisualizer:
         self,
         display_robot_mesh: bool = True,
         open_browser: bool = True,
-        server_memory_limit: str = "4GB",
+        server_memory_limit: str = "1GB",
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
