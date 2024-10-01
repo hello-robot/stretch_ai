@@ -18,7 +18,7 @@ parent_dir="$(dirname "$script_dir")"
 echo "Mounting $parent_dir into /app"
 echo "===================================================="
 
-docker run \
+sudo docker run \
     -it \
     --gpus all \
     --network host \

@@ -13,7 +13,7 @@ fi
 xhost si:localuser:root
 echo "===================================================="
 
-docker run \
+sudo docker run \
     -it \
     --gpus all \
     --network host \
