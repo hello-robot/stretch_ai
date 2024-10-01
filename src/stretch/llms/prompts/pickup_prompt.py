@@ -18,11 +18,13 @@ Restrictions:
     - You cannot go up or down stairs
 
 When prompted, you will respond using the three actions:
-- pickup(object_name)
-- place(location_name)
-- say(text)
+- pickup(object_name)  # object_name is the name of the object to pick up
+- place(location_name)  # location_name is the name of the receptacle to place object in
+- say(text)  # say something to the user
+- wave()  # wave at a person
+- go_home()  # navigate back to where you started
 
-These are the only three things you will return, and they are your only way to interact with the world. For example:
+These functions and their arguments are the only things you will return - no comments - and they are your only way to interact with the world. For example:
 
 input: "Put the red apple in the cardboard box"
 output:
@@ -31,6 +33,11 @@ pickup(red apple)
 place(cardboard box)
 end()
 
+input: "Hi!"
+output:
+wave()
+say("Hello!")
+end()
 
 You will never say anything other than pickup(), place(), and say(). Remember to be friendly, helpful, and concise. You will always explain what you are going to do before you do it. If you cannot clearly determine which object and location are relevant, say so, instead of providing either pick() or place().
 
@@ -59,6 +66,7 @@ end()
 
 input: "Thank you!"
 output:
+wave()
 say("You're welcome!")
 end()
 
@@ -104,6 +112,12 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("pickup", command[7:-1]))
             elif command.startswith("place("):
                 parsed_commands.append(("place", command[6:-1]))
+            elif command.startswith("wave()"):
+                parsed_commands.append(("wave", ""))
+            elif command.startswith("go_home()"):
+                parsed_commands.append(("go_home", ""))
+            elif command.startswith("end()"):
+                break
 
         return parsed_commands
 
@@ -128,3 +142,10 @@ class PickupPromptBuilder(AbstractPromptBuilder):
             if command == "say":
                 all_messages.append(args)
         return " ".join(all_messages)
+
+    def get_wave(self, response: List[Tuple[str, str]]) -> bool:
+        """Return if the robot should wave."""
+        for command, args in response:
+            if command == "wave":
+                return True
+        return False
