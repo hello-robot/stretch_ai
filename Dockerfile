@@ -72,6 +72,19 @@ RUN apt-get update && apt-get install  -y \
 
 
 SHELL ["mamba", "run", "-n", "stretch_ai", "/bin/bash", "-c"]
+
+# Create a shell script to run the desired commands
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'mamba init' >> /entrypoint.sh && \
+    echo 'source ~/.bashrc' >> /entrypoint.sh && \
+    echo 'micromamba activate stretch_ai' >> /entrypoint.sh && \
+    echo 'exec "$@"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/bin/bash"]
+
+
 # ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]
 
 # Copy requirements file (if you have one)
