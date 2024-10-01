@@ -176,7 +176,8 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
 
 class RerunVisualizer:
 
-    camera_point_radius = 0.01
+    camera_point_radius: float = 0.01
+    max_displayed_points_per_camera: int = 5000
 
     def __init__(
         self,
@@ -258,6 +259,11 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
             head_rgb = obs.rgb.reshape(-1, 3)
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(head_xyz.shape[0])
+                np.random.shuffle(idx)
+                head_xyz = head_xyz[idx[: self.max_displayed_points_per_camera]]
+                head_rgb = head_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/head_camera/points",
                 rr.Points3D(
@@ -339,6 +345,11 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
             ee_rgb = servo.ee_rgb.reshape(-1, 3)
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(ee_xyz.shape[0])
+                np.random.shuffle(idx)
+                ee_xyz = ee_xyz[idx[: self.max_displayed_points_per_camera]]
+                ee_rgb = ee_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/ee_camera/points",
                 rr.Points3D(
