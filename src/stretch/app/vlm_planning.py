@@ -289,11 +289,11 @@ def main(
                     preconditions[current_action] = removed_crop_id
                     break
         
-        print("\nPlan with the task with preconditions: ")
-        print(preconditions)
-        for action, crop_id in preconditions.items():
-            task += f" Before {action}, relocate img_{crop_id} to another instance."
-        vlm_planner.plan(current_pose=x0, show_plan=True, query=task, plan_with_reachable_instances=False, plan_with_scene_graph=False)
+            print("\nPlan with the task with preconditions: ")
+            print(preconditions)
+            for action, crop_id in preconditions.items():
+                task += f" Before {action}, relocate img_{crop_id} to another instance."
+            vlm_planner.plan(current_pose=x0, show_plan=True, query=task, plan_with_reachable_instances=False, plan_with_scene_graph=False)
 
 
 if __name__ == "__main__":
