@@ -22,6 +22,7 @@ import clip
 import cv2
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 import scipy
 import torch
 
@@ -112,6 +113,26 @@ def get_xyz(depth, pose, intrinsics):
     return xyz
 
 
+def setup_custom_blueprint(rerun_visualizer):
+    main = rrb.Horizontal(
+        rrb.Spatial3DView(name="3D View", origin="world"),
+        rrb.Vertical(
+            rrb.TextDocumentView(name="text", origin="robot_monologue"),
+            rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+        ),
+        # rrb.Vertical(
+        #     rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+        #     rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+        # ),
+        column_shares=[2, 1],
+    )
+    my_blueprint = rrb.Blueprint(
+        rrb.Vertical(main, rrb.TimePanel(state=True)),
+        collapse_panels=False,
+    )
+    rr.send_blueprint(my_blueprint)
+
+
 class ImageProcessor:
     def __init__(
         self,
@@ -142,13 +163,9 @@ class ImageProcessor:
         if self.rerun and self.rerun_visualizer is None:
             rr.init(self.log)
             logger.info("Starting a rerun server.")
-            # if self.static:
-            #     rr.init(self.log, spawn=False)
-            #     rr.connect("100.108.67.79:9876")
-            # else:
-            #     # rr.init(self.log, spawn=False)
-            #     # rr.connect("100.108.67.79:9876")
-            #     logger.info("Attempting to connect to existing rerun server.")
+        else:
+            setup_custom_blueprint(self.rerun_visualizer)
+            logger.info("Attempting to connect to existing rerun server.")
 
         self.min_depth = min_depth
         self.max_depth = max_depth
@@ -259,17 +276,17 @@ class ImageProcessor:
 
         if self.rerun:
             if self.rerun_visualizer is None:
-                rr.log("/object", rr.Clear(recursive=True))
-                rr.log("/robot_start_pose", rr.Clear(recursive=True))
-                rr.log("/direction", rr.Clear(recursive=True))
+                rr.log("world/object", rr.Clear(recursive=True))
+                rr.log("world/robot_start_pose", rr.Clear(recursive=True))
+                rr.log("world/direction", rr.Clear(recursive=True))
                 rr.log("robot_monologue", rr.Clear(recursive=True))
-                rr.log("/Past_observation_most_similar_to_text", rr.Clear(recursive=True))
+                rr.log("/observation_similar_to_text", rr.Clear(recursive=True))
             else:
-                self.rerun_visualizer.clear_identity("/object")
-                self.rerun_visualizer.clear_identity("/robot_start_pose")
-                self.rerun_visualizer.clear_identity("/direction")
+                self.rerun_visualizer.clear_identity("world/object")
+                self.rerun_visualizer.clear_identity("world/robot_start_pose")
+                self.rerun_visualizer.clear_identity("world/direction")
                 self.rerun_visualizer.clear_identity("robot_monologue")
-                self.rerun_visualizer.clear_identity("/Past_observation_most_similar_to_text")
+                self.rerun_visualizer.clear_identity("/observation_similar_to_text")
         debug_text = ""
         mode = "navigation"
         obs = None
@@ -296,7 +313,7 @@ class ImageProcessor:
                 if localized_point is not None:
                     if self.rerun and self.rerun_visualizer is None:
                         rr.log(
-                            "/object",
+                            "world/object",
                             rr.Points3D(
                                 [localized_point[0], localized_point[1], 1.5],
                                 colors=torch.Tensor([1, 0, 0]),
@@ -305,7 +322,7 @@ class ImageProcessor:
                         )
                     elif self.rerun:
                         self.rerun_visualizer.log_custom_pointcloud(
-                            "/object",
+                            "world/object",
                             [localized_point[0], localized_point[1], 1.5],
                             torch.Tensor([1, 0, 0]),
                             0.1,
@@ -347,10 +364,10 @@ class ImageProcessor:
                     cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
                 else:
                     if self.rerun and self.rerun_visualizer is None:
-                        rr.log("/Past_observation_most_similar_to_text", rr.Image(rgb))
+                        rr.log("/observation_similar_to_text", rr.Image(rgb))
                     elif self.rerun:
                         self.rerun_visualizer.log_custom_2d_image(
-                            "/Past_observation_most_similar_to_text", rgb
+                            "/observation_similar_to_text", rgb
                         )
 
             waypoints = None
@@ -409,13 +426,13 @@ class ImageProcessor:
                     )
             if self.rerun and self.rerun_visualizer is None:
                 rr.log(
-                    "/direction",
+                    "world/direction",
                     rr.Arrows3D(
                         origins=origins, vectors=vectors, colors=torch.Tensor([0, 1, 0]), radii=0.1
                     ),
                 )
                 rr.log(
-                    "/robot_start_pose",
+                    "world/robot_start_pose",
                     rr.Points3D(
                         [start_pose[0], start_pose[1], 1.5],
                         colors=torch.Tensor([0, 0, 1]),
@@ -424,10 +441,10 @@ class ImageProcessor:
                 )
             elif self.rerun:
                 self.rerun_visualizer.log_arrow3D(
-                    "/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+                    "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
                 )
                 self.rerun_visualizer.log_custom_pointcloud(
-                    "/robot_start_pose",
+                    "world/robot_start_pose",
                     [start_pose[0], start_pose[1], 1.5],
                     torch.Tensor([0, 0, 1]),
                     0.1,
@@ -804,7 +821,7 @@ class ImageProcessor:
             # rr.log('robot_pov', rr.Image(rgb.permute(1, 2, 0)), static = self.static)
             if self.voxel_map.voxel_pcd._points is not None:
                 rr.log(
-                    "Obstalce_map/pointcloud",
+                    "obstalce_map/pointcloud",
                     rr.Points3D(
                         self.voxel_map.voxel_pcd._points.detach().cpu(),
                         colors=self.voxel_map.voxel_pcd._rgb.detach().cpu() / 255.0,
@@ -814,7 +831,7 @@ class ImageProcessor:
                 )
             if self.voxel_map_localizer.voxel_pcd._points is not None:
                 rr.log(
-                    "Semantic_memory/pointcloud",
+                    "semantic_memory/pointcloud",
                     rr.Points3D(
                         self.voxel_map_localizer.voxel_pcd._points.detach().cpu(),
                         colors=self.voxel_map_localizer.voxel_pcd._rgb.detach().cpu() / 255.0,
@@ -828,7 +845,7 @@ class ImageProcessor:
                 self.rerun_visualizer.update_voxel_map(space=self.space)
             if self.voxel_map_localizer.voxel_pcd._points is not None:
                 self.rerun_visualizer.log_custom_pointcloud(
-                    "Semantic_memory/pointcloud",
+                    "world/semantic_memory/pointcloud",
                     self.voxel_map_localizer.voxel_pcd._points.detach().cpu(),
                     self.voxel_map_localizer.voxel_pcd._rgb.detach().cpu() / 255.0,
                     0.03,

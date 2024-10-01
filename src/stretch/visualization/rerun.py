@@ -584,17 +584,17 @@ class RerunVisualizer:
             rr.set_time_seconds("realtime", time.time())
             try:
                 t0 = timeit.default_timer()
-                self.log_robot_xyt(obs)
-                self.log_ee_frame(obs)
+                # self.log_robot_xyt(obs)
+                # self.log_ee_frame(obs)
 
-                # Cameras use the lower-res servo object
-                self.log_head_camera(servo)
-                self.log_ee_camera(servo)
+                # # Cameras use the lower-res servo object
+                # self.log_head_camera(servo)
+                # self.log_ee_camera(servo)
 
-                self.log_robot_state(obs)
+                # self.log_robot_state(obs)
 
-                if self.display_robot_mesh:
-                    self.log_robot_transforms(obs)
+                # if self.display_robot_mesh:
+                #     self.log_robot_transforms(obs)
                 t1 = timeit.default_timer()
                 sleep_time = self.step_delay_s - (t1 - t0)
                 if sleep_time > 0:
