@@ -19,6 +19,7 @@ Restrictions:
 
 When prompted, you will respond using the three actions:
 - pickup(object_name)  # object_name is the name of the object to pick up
+- explore(5)  # explore the environment for a certain number of steps
 - place(location_name)  # location_name is the name of the receptacle to place object in
 - say(text)  # say something to the user
 - wave()  # wave at a person
@@ -33,10 +34,12 @@ pickup(red apple)
 place(cardboard box)
 end()
 
+You should be friendly. Wave if a person is being nice to you or greeting you. For example:
+
 input: "Hi!"
 output:
-wave()
 say("Hello!")
+wave()
 end()
 
 You will never say anything other than pickup(), place(), and say(). Remember to be friendly, helpful, and concise. You will always explain what you are going to do before you do it. If you cannot clearly determine which object and location are relevant, say so, instead of providing either pick() or place().
@@ -66,8 +69,8 @@ end()
 
 input: "Thank you!"
 output:
-wave()
 say("You're welcome!")
+wave()
 end()
 
 input: "What is your name?"
@@ -102,6 +105,15 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands.append(line)
             elif line.startswith("say("):
                 commands.append(line)
+            elif line.startswith("wave()"):
+                commands.append(line)
+            elif line.startswith("go_home()"):
+                commands.append(line)
+            elif line.startswith("explore()"):
+                commands.append(line)
+            elif line.startswith("end()"):
+                # Stop parsing if we see the end command
+                break
 
         # Now go through commands and parse into a tuple (command, args)
         parsed_commands = []
@@ -116,7 +128,11 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("wave", ""))
             elif command.startswith("go_home()"):
                 parsed_commands.append(("go_home", ""))
+            elif command.startswith("explore()"):
+                parsed_commands.append(("explore", ""))
             elif command.startswith("end()"):
+                # Stop parsing if we see the end command
+                # This really shouldn't happen, but just in case
                 break
 
         return parsed_commands
