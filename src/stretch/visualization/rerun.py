@@ -182,7 +182,7 @@ class RerunVisualizer:
     def __init__(
         self,
         display_robot_mesh: bool = True,
-        open_browser: bool = True,
+        open_browser: bool = False,
         server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
@@ -195,8 +195,9 @@ class RerunVisualizer:
             server_memory_limit (str): Server memory limit E.g. 2GB or 20%
             collapse_panels (bool): Set to false to have customizable rerun panels
         """
-        rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
+        rr.init("Stretch_robot", spawn=(not open_browser))
+        if open_browser:
+            rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
         self.display_robot_mesh = display_robot_mesh
         self.show_cameras_in_3d_view = show_cameras_in_3d_view
