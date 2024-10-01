@@ -79,7 +79,9 @@ class RobotAgentMDP:
             from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
             self.image_processor = VoxelMapImageProcessor(
-                rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
+                rerun=True,
+                rerun_visualizer=self.robot._rerun,
+                log="env" + str(env_num) + "_" + str(test_num),
             )  # type: ignore
         elif method == "mllm":
             from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor

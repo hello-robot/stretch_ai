@@ -33,7 +33,8 @@ def compute_tilt(camera_xyz, target_xyz):
 
 
 @click.command()
-@click.option("--ip", default="100.108.67.79", type=str)
+# by default you are running these codes on your workstation, not on your robot.
+@click.option("--ip", default="127.0.0.1", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)

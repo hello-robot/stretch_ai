@@ -11,7 +11,7 @@
 
 import time
 import timeit
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import rerun as rr
@@ -244,6 +244,46 @@ class RerunVisualizer:
             collapse_panels=collapse_panels,
         )
         rr.send_blueprint(my_blueprint)
+
+    def clear_identity(self, identity_name: str):
+        rr.log(identity_name, rr.Clear(recursive=True))
+
+    def log_custom_2d_image(
+        self, identity_name: str, img: Union[List[list], np.ndarray, torch.Tensor]
+    ):
+        rr.log(identity_name, rr.Image(img))
+
+    def log_text(self, identity_name: str, text: str):
+        rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
+
+    def log_arrow3D(
+        self,
+        identity_name: str,
+        origins: Union[list, List[list], np.ndarray, torch.Tensor],
+        vectors: Union[list, List[list], np.ndarray, torch.Tensor],
+        colors: Union[list, List[list], np.ndarray, torch.Tensor],
+        radii: float,
+    ):
+        rr.log(
+            identity_name,
+            rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
+        )
+
+    def log_custom_pointcloud(
+        self,
+        identity_name: str,
+        points: Union[list, List[list], np.ndarray, torch.Tensor],
+        colors: Union[list, List[list], np.ndarray, torch.Tensor],
+        radii: float,
+    ):
+        rr.log(
+            identity_name,
+            rr.Points3D(
+                points,
+                colors=colors,
+                radii=radii,
+            ),
+        )
 
     def log_head_camera(self, obs: Observations):
         """Log head camera pose and images
