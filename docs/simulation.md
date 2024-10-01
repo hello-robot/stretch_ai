@@ -19,9 +19,31 @@ cd robocasa
 pip install -e .
 ```
 
+## Install Stretch Mujoco
+
+```bash
+cd ..
+git clone git@github.com:hello-robot/stretch_mujoco.git
+cd stretch_mujoco
+pip install -e .
+```
+
 ## Download assets
 
 ```bash
 python robocasa/scripts/download_kitchen_assets.py   # Caution: Assets to be downloaded are around 5GB.
 python robocasa/scripts/setup_macros.py              # Set up system variables.
+```
+
+## Run Robocasa
+
+In one terminal start the server:
+
+```bash
+python -m stretch.simulation.mujoco_server --use-robocasa
+```
+
+In another run an app, like mapping:
+
+```bash
 ```
