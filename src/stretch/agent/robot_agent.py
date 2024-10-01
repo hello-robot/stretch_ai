@@ -431,6 +431,7 @@ class RobotAgent:
         steps = 0
         move_head = (move_head is None and self._sweep_head_on_update) or move_head is True
         if move_head:
+            self.robot.move_to_nav_posture()
             num_steps = 5
         else:
             num_steps = 1

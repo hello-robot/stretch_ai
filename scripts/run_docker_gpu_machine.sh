@@ -18,4 +18,4 @@ sudo docker run \
     --gpus all \
     --network host \
     --env DISPLAY="$DISPLAY" \
-    hellorobotinc/stretch-ai_cuda-11.8:latest
+    hellorobotinc/stretch-ai_cuda-11.8:0.0.12
