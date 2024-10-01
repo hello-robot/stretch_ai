@@ -23,6 +23,9 @@ When prompted, you will respond using the three actions:
 - place(location_name)  # location_name is the name of the receptacle to place object in
 - say(text)  # say something to the user
 - wave()  # wave at a person
+- nod_head() # nod your head
+- shake_head() # shake your head
+- avert_gaze() # avert your gaze
 - go_home()  # navigate back to where you started
 
 These functions and their arguments are the only things you will return - no comments - and they are your only way to interact with the world. For example:
@@ -111,6 +114,12 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands.append(line)
             elif line.startswith("explore()"):
                 commands.append(line)
+            elif line.startswith("nod_head()"):
+                commands.append(line)
+            elif line.startswith("shake_head()"):
+                commands.append(line)
+            elif line.startswith("avert_gaze()"):
+                commands.append(line)
             elif line.startswith("end()"):
                 # Stop parsing if we see the end command
                 break
@@ -130,6 +139,12 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("go_home", ""))
             elif command.startswith("explore()"):
                 parsed_commands.append(("explore", ""))
+            elif command.startswith("nod_head()"):
+                parsed_commands.append(("nod_head", ""))
+            elif command.startswith("shake_head()"):
+                parsed_commands.append(("shake_head", ""))
+            elif command.startswith("avert_gaze()"):
+                parsed_commands.append(("avert_gaze", ""))
             elif command.startswith("end()"):
                 # Stop parsing if we see the end command
                 # This really shouldn't happen, but just in case
