@@ -148,7 +148,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 self.agent.reset_object_plans()
             else:
                 self.error("Failed to find a reachable frontier.")
-                raise RuntimeError("Failed to find a reachable frontier.")
+                self.agent.go_home()
         else:
             self.cheer(f"Found a receptacle!")
             view = self.agent.current_receptacle.get_best_view()
