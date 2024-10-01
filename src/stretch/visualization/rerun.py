@@ -176,13 +176,14 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
 
 class RerunVisualizer:
 
-    camera_point_radius = 0.01
+    camera_point_radius: float = 0.01
+    max_displayed_points_per_camera: int = 5000
 
     def __init__(
         self,
         display_robot_mesh: bool = True,
-        open_browser: bool = True,
-        server_memory_limit: str = "1GB",
+        open_browser: bool = False,
+        server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
@@ -194,8 +195,9 @@ class RerunVisualizer:
             server_memory_limit (str): Server memory limit E.g. 2GB or 20%
             collapse_panels (bool): Set to false to have customizable rerun panels
         """
-        rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
+        rr.init("Stretch_robot", spawn=(not open_browser))
+        if open_browser:
+            rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
         self.display_robot_mesh = display_robot_mesh
         self.show_cameras_in_3d_view = show_cameras_in_3d_view
@@ -298,6 +300,11 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
             head_rgb = obs.rgb.reshape(-1, 3)
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(head_xyz.shape[0])
+                np.random.shuffle(idx)
+                head_xyz = head_xyz[idx[: self.max_displayed_points_per_camera]]
+                head_rgb = head_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/head_camera/points",
                 rr.Points3D(
@@ -380,6 +387,11 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
             ee_rgb = servo.ee_rgb.reshape(-1, 3)
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(ee_xyz.shape[0])
+                np.random.shuffle(idx)
+                ee_xyz = ee_xyz[idx[: self.max_displayed_points_per_camera]]
+                ee_rgb = ee_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/ee_camera/points",
                 rr.Points3D(

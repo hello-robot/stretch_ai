@@ -145,6 +145,7 @@ class ZmqServer(BaseZmqServer):
             self.client.load_map(action["load_map"])
         elif "say" in action:
             # Text to speech from the robot, not the client/agent device
+            print("Saying:", action["say"])
             self.text_to_speech.say_async(action["say"])
         elif "xyt" in action:
             if self.verbose:

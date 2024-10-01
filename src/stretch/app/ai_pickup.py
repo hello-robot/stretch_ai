@@ -161,7 +161,7 @@ def main(
 
         if say_this is not None:
             chat_wrapper.say(say_this)
-            # agent.say(say_this)
+            agent.robot_say(say_this)
 
         if len(target_object) == 0 or len(receptacle) == 0:
             # logger.error("You need to enter a target object and receptacle")
