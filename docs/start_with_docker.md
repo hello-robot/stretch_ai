@@ -158,12 +158,12 @@ Stretch AI saves the `--robot_ip` parameter to a file; you should only need to p
 ### Mapping
 
 ```bash
-python -m stretch.app.mapping --explore_iter 0 --robot_ip $ROBOT_IP
+python -m stretch.app.mapping --explore-iter 0 --robot_ip $ROBOT_IP
 ```
 
-The variable `explore_iter` is the number of iterations the robot will explore the environment. The robot will move around and build a map of the environment, as long as it is possible.
+The variable `explore-iter` is the number of iterations the robot will explore the environment. The robot will move around and build a map of the environment, as long as it is possible.
 
-If you set `--explore_iter 0`, the robot will only turn in place.
+If you set `--explore-iter 0`, the robot will only turn in place.
 
 ### AI Pickup
 
