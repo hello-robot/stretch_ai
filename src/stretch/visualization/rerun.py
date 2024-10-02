@@ -11,7 +11,7 @@
 
 import time
 import timeit
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import rerun as rr
@@ -247,6 +247,79 @@ class RerunVisualizer:
         )
         rr.send_blueprint(my_blueprint)
 
+    def clear_identity(self, identity_name: str):
+        """Clear existing rerun identity.
+
+        This is useful if you want to clear a rerun identity and leave a blank there.
+        Args:
+            identity_name (str): rerun identity name
+        """
+        rr.log(identity_name, rr.Clear(recursive=True))
+
+    def log_custom_2d_image(self, identity_name: str, img: Union[np.ndarray, torch.Tensor]):
+        """Log custom 2d image
+
+        Args:
+            identity_name (str): rerun identity name
+            img (2D or 3D array): the 2d image you want to log into rerun
+        """
+        rr.log(identity_name, rr.Image(img))
+
+    def log_text(self, identity_name: str, text: str):
+        """Log a custom markdown text
+
+        Args:
+            identity_name (str): rerun identity name
+            text (str): Markdown codes you want to log in rerun
+        """
+        rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
+
+    def log_arrow3D(
+        self,
+        identity_name: str,
+        origins: Union[list, List[list], np.ndarray, torch.Tensor],
+        vectors: Union[list, List[list], np.ndarray, torch.Tensor],
+        colors: Union[list, List[list], np.ndarray, torch.Tensor],
+        radii: float,
+    ):
+        """Log custom 3D arrows
+
+        Args:
+            identity_name (str): rerun identity name
+            origins (a N x 3 array): origins of all 3D arrows
+            vectors (a N x 3 array): directions and lengths of all 3D arrows
+            colors (a N x 3 array): RGB colors of all 3D arrows
+            radii (float): size of the arrows
+        """
+        rr.log(
+            identity_name,
+            rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
+        )
+
+    def log_custom_pointcloud(
+        self,
+        identity_name: str,
+        points: Union[list, List[list], np.ndarray, torch.Tensor],
+        colors: Union[list, List[list], np.ndarray, torch.Tensor],
+        radii: float,
+    ):
+        """Log custom 3D pointcloud
+
+        Args:
+            identity_name (str): rerun identity name
+            points (a N x 3 array): xyz coordinates of all 3D points
+            colors (a N x 3 array): RGB colors of all 3D points
+            radii (float): size of the arrows
+        """
+        rr.log(
+            identity_name,
+            rr.Points3D(
+                points,
+                colors=colors,
+                radii=radii,
+            ),
+        )
+
     def log_head_camera(self, obs: Observations):
         """Log head camera pose and images
 
@@ -314,6 +387,7 @@ class RerunVisualizer:
                 rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=theta),
                 axis_length=0.7,
             ),
+            static=True,
         )
 
     def log_ee_frame(self, obs):
@@ -446,6 +520,7 @@ class RerunVisualizer:
                 radii=np.ones(points.shape[0]) * obstacle_radius,
                 colors=[255, 0, 0],
             ),
+            static=True,
         )
         rr.log(
             "world/explored",
@@ -454,6 +529,7 @@ class RerunVisualizer:
                 radii=np.ones(points.shape[0]) * explored_radius,
                 colors=[255, 255, 255],
             ),
+            static=True,
         )
         t6 = timeit.default_timer()
 

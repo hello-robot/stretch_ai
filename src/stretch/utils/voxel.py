@@ -78,7 +78,7 @@ def flat_index_to_xyz(flat_index, grid_size):
 def merge_features(
     idx: Tensor,
     features: Tensor,
-    method: str | Literal["sum", "min", "max", "mean"] = "sum",
+    method: Union[str, Literal["sum", "min", "max", "mean"]] = "sum",
     grid_dimensions: Optional[List[int]] = None,
 ) -> Tuple[Tensor, Tensor]:
     """

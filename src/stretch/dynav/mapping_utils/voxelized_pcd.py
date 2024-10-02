@@ -196,7 +196,11 @@ class VoxelizedPointcloud:
             if self._entity_ids is not None:
                 self._entity_ids = self._entity_ids[indices]
 
-            if self._entity_ids is not None and min_samples_clear is not None:
+            if (
+                self._entity_ids is not None
+                and min_samples_clear is not None
+                and min_samples_clear > 0
+            ):
                 dbscan = DBSCAN(eps=self.voxel_size * 4, min_samples=min_samples_clear)
                 cluster_vertices = torch.cat(
                     (
