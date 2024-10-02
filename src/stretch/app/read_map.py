@@ -83,6 +83,7 @@ def plan_to_deltas(xyt0, plan):
     default=False,
     help="test sampling instances and trying to plan to them.",
 )
+@click.option("--test-plan-to-home", "--test_plan_to_home", type=bool, is_flag=True, default=False)
 @click.option(
     "--test-plan-to-frontier",
     type=bool,
@@ -138,6 +139,7 @@ def main(
     test_planning: bool = False,
     test_plan_to_frontier: bool = False,
     test_sampling: bool = False,
+    test_plan_to_home: bool = False,
     test_vlm: bool = False,
     frame: int = -1,
     show_svm: bool = False,
@@ -296,6 +298,22 @@ def main(
                             footprint=footprint,
                         )
             print("... done sampling frontier points.")
+
+        if test_plan_to_home:
+            print("-" * 80)
+            print("Test planning to home.")
+            print("This version tests the agent's canned 'plan_to_home' function.")
+            print("It will try to plan to the home position.")
+            print("-" * 80)
+            res = agent.plan_to_home(x0)
+            print("... planning done. success =", res.success)
+            if res.success:
+                plan_to_deltas(x0, res)
+                goal = res.trajectory[-1].state
+                print("Plan found:")
+                print("start =", x0)
+                print("goal =", goal)
+
         if test_plan_to_frontier:
             print("-" * 80)
             print("Test planning to frontier.")
