@@ -100,8 +100,8 @@ scene_graph:
 
 # Navigation space - used for motion planning and computing goals.
 motion_planner:
-  step_size: 0.1
-  rotation_step_size: 0.2 
+  step_size: 0.025
+  rotation_step_size: 0.05
   simplify_plans: True
   shortcut_plans: True
   shortcut_iter: 100
