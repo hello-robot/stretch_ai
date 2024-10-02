@@ -432,6 +432,8 @@ class RobotAgent:
         move_head = (move_head is None and self._sweep_head_on_update) or move_head is True
         if move_head:
             self.robot.move_to_nav_posture()
+            # Pause a bit first to make sure the robot is in the right posture
+            time.sleep(0.25)
             num_steps = 5
         else:
             num_steps = 1
@@ -449,7 +451,7 @@ class RobotAgent:
                 pan = -1 * i * np.pi / 4
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
-                time.sleep(0.1)
+                time.sleep(0.25)
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
