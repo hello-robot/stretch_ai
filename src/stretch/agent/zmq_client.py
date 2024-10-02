@@ -386,6 +386,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             q[HelloStretchIdx.WRIST_PITCH],
             q[HelloStretchIdx.WRIST_ROLL],
         ]
+        
+    def get_pose_graph(self) -> np.ndarray:
+        """Get the robot's SLAM pose graph"""
+        return self._pose_graph
 
     def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
         """Move the robot to a particular joint configuration."""
@@ -590,6 +594,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Reset everything in the robot's internal state"""
         self._control_mode = None
         self._obs = None  # Full observation includes high res images and camera pose, no EE camera
+        self._pose_graph = None
         self._state = None  # Low level state includes joint angles and base XYT
         self._servo = None  # Visual servoing state includes smaller images
         self._thread = None
@@ -899,6 +904,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
 
+    def _update_pose_graph(self, obs):
+        """Update internal pose graph"""
+        with self._obs_lock:
+            self._pose_graph = obs["pose_graph"]
+
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
 
@@ -950,6 +960,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 rgb=self._obs["rgb"],
                 depth=self._obs["depth"],
                 xyz=self._obs["xyz"],
+                lidar_points=self._obs["lidar_points"],
+                lidar_timestamp=self._obs["lidar_timestamp"],
             )
             observation.joint = self._obs.get("joint", None)
             observation.ee_pose = self._obs.get("ee_pose", None)
@@ -1157,6 +1169,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 shown_point_cloud = True
 
             self._update_obs(output)
+            self._update_pose_graph(output)
 
             t1 = timeit.default_timer()
             dt = t1 - t0

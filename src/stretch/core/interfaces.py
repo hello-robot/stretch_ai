@@ -248,6 +248,10 @@ class Observations:
     # Optional third-person view from simulation
     third_person_image: Optional[np.ndarray] = None
 
+    # lidar
+    lidar_points: Optional[np.ndarray] = None
+    lidar_timestamp: Optional[int] = None
+
     # Proprioreception
     joint: Optional[np.ndarray] = None  # joint positions of the robot
     relative_resting_position: Optional[
@@ -265,6 +269,16 @@ class Observations:
 
     # True if in simulation
     is_simulation: bool = False
+
+    # True if matched with a pose graph node
+    is_pose_graph_node: bool = False
+
+    # Timestamp of matched pose graph node
+    pose_graph_timestamp: Optional[int] = None
+
+    # Initial pose graph pose. GPS and compass.
+    initial_pose_graph_gps: Optional[np.ndarray] = None
+    initial_pose_graph_compass: Optional[np.ndarray] = None
 
     def compute_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
         """Compute xyz from depth and camera intrinsics."""
