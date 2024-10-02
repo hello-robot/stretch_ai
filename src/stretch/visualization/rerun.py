@@ -174,10 +174,9 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
             print("Total time to log robot transforms (ms): ", 1000 * (t2 - t0))
 
 
-class RerunVisualizer:
+class RerunVsualizer:
 
-    camera_point_radius: float = 0.01
-    max_displayed_points_per_camera: int = 5000
+    camera_point_radius = 0.01
 
     def __init__(
         self,
@@ -327,17 +326,11 @@ class RerunVisualizer:
             obs (Observations): Observation dataclass
         """
         rr.set_time_seconds("realtime", time.time())
-        rr.log("world/head_camera/rgb", rr.Image(obs.rgb), static=True)
-        # rr.log("world/head_camera/depth", rr.DepthImage(obs["depth"]), static=True)
+        rr.log("world/head_camera/rgb", rr.Image(obs.rgb))
 
         if self.show_camera_point_clouds:
             head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
             head_rgb = obs.rgb.reshape(-1, 3)
-            if self.max_displayed_points_per_camera > 0:
-                idx = np.arange(head_xyz.shape[0])
-                np.random.shuffle(idx)
-                head_xyz = head_xyz[idx[: self.max_displayed_points_per_camera]]
-                head_rgb = head_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/head_camera/points",
                 rr.Points3D(
@@ -401,10 +394,6 @@ class RerunVisualizer:
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
-        # rr.log("world/ee/arrow", ee_arrow, static=True)
-        # rr.log(
-        #     "world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3), static=True
-        # )
         # rr.log("world/ee/arrow", ee_arrow)
         rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
@@ -415,16 +404,11 @@ class RerunVisualizer:
         """
         rr.set_time_seconds("realtime", time.time())
         # EE Camera
-        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb), static=True)
+        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
 
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
             ee_rgb = servo.ee_rgb.reshape(-1, 3)
-            if self.max_displayed_points_per_camera > 0:
-                idx = np.arange(ee_xyz.shape[0])
-                np.random.shuffle(idx)
-                ee_xyz = ee_xyz[idx[: self.max_displayed_points_per_camera]]
-                ee_rgb = ee_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/ee_camera/points",
                 rr.Points3D(
@@ -434,7 +418,7 @@ class RerunVisualizer:
                 ),
             )
         else:
-            rr.log("world/ee_camera/depth", rr.depthimage(servo.ee_depth), static=True)
+            rr.log("world/ee_camera/depth", rr.depthimage(servo.ee_depth))
 
         if self.show_cameras_in_3d_view:
             rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
@@ -489,9 +473,7 @@ class RerunVisualizer:
         rr.log(
             "world/point_cloud",
             rr.Points3D(
-                positions=points,
-                radii=np.ones(rgb.shape[0]) * world_radius,
-                colors=np.int64(rgb),
+                positions=points, radii=np.ones(rgb.shape[0]) * world_radius, colors=np.int64(rgb)
             ),
         )
 

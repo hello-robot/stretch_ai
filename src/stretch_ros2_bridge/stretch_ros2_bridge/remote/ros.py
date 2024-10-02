@@ -25,7 +25,7 @@ from geometry_msgs.msg import PointStamped, Pose, PoseStamped, Twist
 from hello_helpers.joint_qpos_conversion import get_Idx
 
 # from nav2_msgs.srv import LoadMap, SaveMap
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.clock import ClockType
@@ -138,6 +138,8 @@ class StretchRosInterface(Node):
 
         self._is_homed = None
         self._is_runstopped = None
+
+        self._pose_graph = []
 
         # Start the thread
         self._thread = threading.Thread(target=rclpy.spin, args=(self,), daemon=True)
@@ -422,6 +424,9 @@ class StretchRosInterface(Node):
             Bool, "goto_controller/at_goal", self._at_goal_callback, 1
         )
         self._mode_sub = self.create_subscription(String, "mode", self._mode_callback, 1)
+        self._pose_graph_sub = self.create_subscription(
+            Path, "slam_toolbox/pose_graph", self._pose_graph_callback, 1
+        )
 
         # Create trajectory client with which we can control the robot
         self.trajectory_client = ActionClient(
@@ -551,6 +556,18 @@ class StretchRosInterface(Node):
     def _mode_callback(self, msg):
         """get position or navigation mode from stretch ros"""
         self._current_mode = msg.data
+
+    def _pose_graph_callback(self, msg):
+        self._pose_graph = []
+
+        for pose in msg.poses:
+            p = [
+                pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9,
+                pose.pose.position.x,
+                pose.pose.position.y,
+                pose.pose.position.z,
+            ]
+            self._pose_graph.append(p)
 
     def _odom_callback(self, msg: Odometry):
         """odometry callback"""
@@ -693,6 +710,10 @@ class StretchRosInterface(Node):
 
     def _place_result_callback(self, msg):
         self.place_complete = True
+
+    def get_pose_graph(self) -> list:
+        """Get robot's pose graph"""
+        return self._pose_graph
 
     def trigger_placement(self, x, y, z):
         """Calls FUNMAP based placement"""
