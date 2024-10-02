@@ -757,19 +757,21 @@ class RobotAgent:
                 return True
         return False
 
-    def recover_from_invalid_start(self) -> bool:
+    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
         """Try to recover from an invalid start state.
 
         Returns:
             bool: whether the robot recovered from the invalid start state
         """
 
+        print("Recovering from invalid start state...")
+
         # Get current invalid pose
         start = self.robot.get_base_pose()
 
         # Apply relative transformation to XYT
-        forward = np.array([-0.1, 0, 0])
-        backward = np.array([0.1, 0, 0])
+        forward = np.array([-0.05, 0, 0])
+        backward = np.array([0.05, 0, 0])
 
         xyt_goal_forward = xyt_base_to_global(forward, start)
         xyt_goal_backward = xyt_base_to_global(backward, start)
