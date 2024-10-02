@@ -236,9 +236,7 @@ class InstanceMemory:
         Returns:
             Instance: The removed Instance object.
         """
-        print(len(self.instances[env_id]))
         instance = self.instances[env_id].pop(global_instance_id)
-        print(len(self.instances[env_id]))
         if not skip_reindex:
             self.reindex_global_instances(env_id=env_id)
         return instance
@@ -816,10 +814,9 @@ class InstanceMemory:
                     self.unprocessed_views[env_id][instance_id.item()] = instance_view
                     added = True
             else:
-                if verbose:
-                    logger.info(
-                        f"Skipping a small instance with {n_mask} pixels",
-                    )
+                logger.info(
+                    f"Skipping a small instance with {n_mask} pixels and {n_points} points",
+                )
 
             t1 = timeit.default_timer()
             if verbose:
