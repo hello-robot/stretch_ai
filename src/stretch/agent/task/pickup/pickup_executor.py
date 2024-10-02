@@ -17,9 +17,19 @@ from stretch.core import AbstractRobotClient
 class PickupExecutor:
     """This class parses commands from the pickup llm bot and sends them to the robot."""
 
-    def __init__(self, robot: AbstractRobotClient, agent: RobotAgent):
+    def __init__(
+        self, robot: AbstractRobotClient, agent: RobotAgent, dry_run: bool = False
+    ) -> None:
+        """Initialize the executor.
+
+        Args:
+            robot: The robot client.
+            agent: The robot agent.
+            dry_run: If true, don't actually execute the commands.
+        """
         self.robot = robot
         self.agent = agent
+        self.dry_run = dry_run
 
     def __call__(self, response: List[Tuple[str, str]]) -> None:
         """Execute the list of commands."""
