@@ -520,7 +520,6 @@ class RerunVisualizer:
                 radii=np.ones(points.shape[0]) * obstacle_radius,
                 colors=[255, 0, 0],
             ),
-            static=True,
         )
         rr.log(
             "world/explored",
@@ -529,7 +528,6 @@ class RerunVisualizer:
                 radii=np.ones(points.shape[0]) * explored_radius,
                 colors=[255, 255, 255],
             ),
-            static=True,
         )
         t6 = timeit.default_timer()
 
