@@ -248,14 +248,30 @@ class RerunVisualizer:
         rr.send_blueprint(my_blueprint)
 
     def clear_identity(self, identity_name: str):
+        """Clear existing rerun identity.
+
+        This is useful if you want to clear a rerun identity and leave a blank there.
+        Args:
+            identity_name (str): rerun identity name
+        """
         rr.log(identity_name, rr.Clear(recursive=True))
 
-    def log_custom_2d_image(
-        self, identity_name: str, img: Union[List[list], np.ndarray, torch.Tensor]
-    ):
+    def log_custom_2d_image(self, identity_name: str, img: Union[np.ndarray, torch.Tensor]):
+        """Log custom 2d image
+
+        Args:
+            identity_name (str): rerun identity name
+            img (2D or 3D array): the 2d image you want to log into rerun
+        """
         rr.log(identity_name, rr.Image(img))
 
     def log_text(self, identity_name: str, text: str):
+        """Log a custom markdown text
+
+        Args:
+            identity_name (str): rerun identity name
+            text (str): Markdown codes you want to log in rerun
+        """
         rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
 
     def log_arrow3D(
@@ -266,6 +282,15 @@ class RerunVisualizer:
         colors: Union[list, List[list], np.ndarray, torch.Tensor],
         radii: float,
     ):
+        """Log custom 3D arrows
+
+        Args:
+            identity_name (str): rerun identity name
+            origins (a N x 3 array): origins of all 3D arrows
+            vectors (a N x 3 array): directions and lengths of all 3D arrows
+            colors (a N x 3 array): RGB colors of all 3D arrows
+            radii (float): size of the arrows
+        """
         rr.log(
             identity_name,
             rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
@@ -278,6 +303,14 @@ class RerunVisualizer:
         colors: Union[list, List[list], np.ndarray, torch.Tensor],
         radii: float,
     ):
+        """Log custom 3D pointcloud
+
+        Args:
+            identity_name (str): rerun identity name
+            points (a N x 3 array): xyz coordinates of all 3D points
+            colors (a N x 3 array): RGB colors of all 3D points
+            radii (float): size of the arrows
+        """
         rr.log(
             identity_name,
             rr.Points3D(
@@ -584,17 +617,17 @@ class RerunVisualizer:
             rr.set_time_seconds("realtime", time.time())
             try:
                 t0 = timeit.default_timer()
-                # self.log_robot_xyt(obs)
-                # self.log_ee_frame(obs)
+                self.log_robot_xyt(obs)
+                self.log_ee_frame(obs)
 
-                # # Cameras use the lower-res servo object
-                # self.log_head_camera(servo)
-                # self.log_ee_camera(servo)
+                # Cameras use the lower-res servo object
+                self.log_head_camera(servo)
+                self.log_ee_camera(servo)
 
-                # self.log_robot_state(obs)
+                self.log_robot_state(obs)
 
-                # if self.display_robot_mesh:
-                #     self.log_robot_transforms(obs)
+                if self.display_robot_mesh:
+                    self.log_robot_transforms(obs)
                 t1 = timeit.default_timer()
                 sleep_time = self.step_delay_s - (t1 - t0)
                 if sleep_time > 0:
