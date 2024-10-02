@@ -303,9 +303,12 @@ def main(
             print("-" * 80)
             print("Test planning to home.")
             print("This version tests the agent's canned 'plan_to_home' function.")
-            print("It will try to plan to the home position.")
+            print("It will try to plan to the home position [0, 0, 0].")
             print("-" * 80)
-            res = agent.plan_to_home(x0)
+            # Get the default motion planner
+            planner = agent.planner
+            # Plan to home
+            res = planner.plan(x0, np.array([0, 0, 0]))
             print("... planning done. success =", res.success)
             if res.success:
                 plan_to_deltas(x0, res)
@@ -313,6 +316,13 @@ def main(
                 print("Plan found:")
                 print("start =", x0)
                 print("goal =", goal)
+            if show_svm:
+                voxel_map.show(
+                    instances=show_instances,
+                    orig=start_xyz,
+                    xyt=np.array([0, 0, 0]),
+                    footprint=footprint,
+                )
 
         if test_plan_to_frontier:
             print("-" * 80)
