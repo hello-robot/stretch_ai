@@ -20,7 +20,9 @@ from .base_encoder import BaseImageTextEncoder
 class Dinov2SigLIPEncoder(BaseImageTextEncoder):
     """Simple wrapper for encoding different things as text."""
 
-    def __init__(self, version="google/siglip-base-patch16-224", device: Optional[str] = None):
+    def __init__(
+        self, version="google/siglip-base-patch16-224", device: Optional[str] = None, **kwargs
+    ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
