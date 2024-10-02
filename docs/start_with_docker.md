@@ -151,19 +151,19 @@ The gripper will open and the arm will move, and then you will see the camera fe
 
 If this does not happen, the most likely thing is that you cannot connect to the robot over the network. Verify IP address and ping, and try again.
 
-Else, you can press `q` to quit, and run a different app. Two we recommend are below.
+Else, you can press `q` with any of the popup windows selected to quit, and run a different app. Two we recommend are below.
 
 Stretch AI saves the `--robot_ip` parameter to a file; you should only need to provide it once, but you can provide it every time if you prefer.
 
 ### Mapping
 
 ```bash
-python -m stretch.app.mapping --explore_iter 0 --robot_ip $ROBOT_IP
+python -m stretch.app.mapping --explore-iter 0 --robot_ip $ROBOT_IP
 ```
 
-The variable `explore_iter` is the number of iterations the robot will explore the environment. The robot will move around and build a map of the environment, as long as it is possible.
+The option `--explore-iter` is the number of iterations the robot will explore the environment. The robot will move around and build a map of the environment, as long as it is possible.
 
-If you set `--explore_iter 0`, the robot will only turn in place.
+If you set `--explore-iter 0`, the robot will only turn in place.
 
 ### AI Pickup
 
