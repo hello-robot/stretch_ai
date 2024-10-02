@@ -161,7 +161,7 @@ STRETCH_NAVIGATION_Q = np.array(
         -1.5,  # wrist pitch
         0.0,  # wrist yaw
         0.0,
-        math.radians(-55),
+        math.radians(-65),
     ]
 )
 
