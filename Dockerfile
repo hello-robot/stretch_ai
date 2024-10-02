@@ -77,8 +77,8 @@ SHELL ["mamba", "run", "-n", "stretch_ai", "/bin/bash", "-c"]
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
     echo 'mamba init' >> /entrypoint.sh && \
     echo 'source ~/.bashrc' >> /entrypoint.sh && \
-    echo 'micromamba activate stretch_ai' >> /entrypoint.sh && \
-    echo 'exec "$@"' >> /entrypoint.sh && \
+    echo 'mamba activate stretch_ai' >> /entrypoint.sh && \
+    echo 'exec bash"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
