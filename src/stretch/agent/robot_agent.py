@@ -862,16 +862,8 @@ class RobotAgent:
             )
 
             if self.robot.last_motion_failed():
-                print("!!!!!!!!!!!!!!!!!!!!!!")
-                print("ROBOT IS STUCK! Move back!")
-                r = np.random.randint(3)
-                if r == 0:
-                    self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
-                elif r == 1:
-                    self.robot.navigate_to([0, 0, np.pi / 4], relative=True, blocking=True)
-                elif r == 2:
-                    self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
-                return False
+                # We have a problem!
+                self.recover_from_invalid_start()
 
             time.sleep(1.0)
             self.robot.navigate_to([0, 0, np.pi / 2], relative=True)
