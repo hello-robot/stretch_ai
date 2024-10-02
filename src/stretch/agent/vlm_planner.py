@@ -87,7 +87,11 @@ class VLMPlanner:
             str: the plan
         """
         world_representation = self.agent.get_object_centric_observations(
-            task=query, current_pose=current_pose, show_prompts=show_prompts, plan_with_reachable_instances=plan_with_reachable_instances, plan_with_scene_graph=plan_with_scene_graph  
+            task=query,
+            current_pose=current_pose,
+            show_prompts=show_prompts,
+            plan_with_reachable_instances=plan_with_reachable_instances,
+            plan_with_scene_graph=plan_with_scene_graph,
         )
         output = self.get_output_from_gpt(world_representation, task=query)
         if show_plan:

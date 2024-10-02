@@ -1618,7 +1618,12 @@ class RobotAgent:
         return obs
 
     def get_object_centric_observations(
-        self, show_prompts: bool = False, task: Optional[str] = None, current_pose=None, plan_with_reachable_instances=False, plan_with_scene_graph=False
+        self,
+        show_prompts: bool = False,
+        task: Optional[str] = None,
+        current_pose=None,
+        plan_with_reachable_instances=False,
+        plan_with_scene_graph=False,
     ) -> ObjectCentricObservations:
         """Get object-centric observations for the current state of the world. This is a list of images and associated object information.
 
@@ -1636,7 +1641,7 @@ class RobotAgent:
             instances = self.voxel_map.get_instances()
 
         scene_graph = None
-        
+
         if plan_with_scene_graph:
             scene_graph = self.extract_symbolic_spatial_info(instances)
 
