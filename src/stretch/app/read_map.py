@@ -203,7 +203,9 @@ def main(
     if len(start) > 0:
         x0 = np.array([float(x) for x in start.split(",")])
     else:
+        print("- Using last observation as start pose. To override, use --start.")
         x0 = voxel_map.observations[-1].base_pose.numpy()
+    print("Start pose:", x0)
     assert len(x0) == 3, "start pose must be 3 values: x, y, theta"
     start_xyz = [x0[0], x0[1], 0]
 
