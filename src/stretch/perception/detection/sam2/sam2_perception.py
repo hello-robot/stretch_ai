@@ -80,8 +80,8 @@ class SAM2Perception(PerceptionModule):
         """
         # TODO: set model arg in config
         # Using the smallest model now.
-        checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_tiny.pt"
-        model_cfg = "sam2_hiera_t.yaml"
+        checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_large.pt"
+        model_cfg = "sam2_hiera_l.yaml"
         self.sam2_predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
 
         self.sam2_predictor = build_sam2(
@@ -144,6 +144,7 @@ class SAM2Perception(PerceptionModule):
 
         height, width, _ = rgb.shape
         image = rgb
+        image = np.array(image)
         if not image.dtype == np.uint8:
             if image.max() <= 1.0:
                 image = image * 255.0

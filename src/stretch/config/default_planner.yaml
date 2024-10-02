@@ -99,8 +99,7 @@ instance_memory:
 
 # TAMP parameters
 guarantee_instance_is_reachable: True
-plan_with_reachable_instances: True
-plan_with_scene_graph: True
+use_scene_graph: True
 scene_graph:
   max_near_distance: 0.3
   min_on_height: 0.05
@@ -108,8 +107,8 @@ scene_graph:
 
 # Navigation space - used for motion planning and computing goals.
 motion_planner:
-  step_size: 0.05
-  rotation_step_size: 0.1
+  step_size: 0.04
+  rotation_step_size: 0.05
   simplify_plans: True
   shortcut_plans: True
   shortcut_iter: 100
@@ -135,9 +134,6 @@ trajectory_per_step_timeout: 3.0
 # User interface
 # Choose one of: (object_to_find, location_to_place), command, or chat
 # Don't use all of them!
-vlm_context_length: 20  # How long messages sent to the vlm server can be if we are using it
-limited_obs_publish_sleep: 0.5
-
 # High level stuff: commands to execute 
 exploration_steps: 50
 name: "stretch"

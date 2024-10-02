@@ -77,7 +77,10 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
 
     # Start with our code's config
     config = Config()
-    config.merge_from_file(full_path)
+    try:
+        config.merge_from_file(full_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Config file not found: {path=}, {full_path=}")
 
     # Add command line arguments
     if opts is not None:
