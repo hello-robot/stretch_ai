@@ -34,6 +34,7 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
+from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
 
 
@@ -76,8 +77,7 @@ class RobotAgent:
         self.obs_count = 0
         self.obs_history = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
-        self.plan_with_reachable_instances = parameters["plan_with_reachable_instances"]
-        self.use_scene_graph = parameters["plan_with_scene_graph"]
+        self.use_scene_graph = parameters["use_scene_graph"]
         self.tts = get_text_to_speech(parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
 
@@ -402,12 +402,12 @@ class RobotAgent:
         return True
 
     def get_command(self):
-        if (
-            "command" in self.parameters.data.keys()
-        ):  # TODO: this was breaking. Should this be a class method
-            return self.parameters["command"]
+        """Get a command from config file or from user input if not specified."""
+        task = self.parameters.get("task").get("command")
+        if task is not None and len(task) > 0:
+            return task
         else:
-            return self.ask("please type any task you want the robot to do: ")
+            return self.ask("Please type any task you want the robot to do: ")
 
     def show_map(self):
         """Helper function to visualize the 3d map as it stands right now"""
@@ -970,9 +970,9 @@ class RobotAgent:
                 matching_instances.append((i, instance))
         return self.filter_matches(matching_instances, threshold=threshold)
 
-    def extract_symbolic_spatial_info(self, instances, debug=False):
+    def extract_symbolic_spatial_info(self, instances: List[Instance], debug=False):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""
-        scene_graph = SceneGraph(instances)
+        scene_graph = SceneGraph(parameters=self.parameters, instances=instances)
         return scene_graph.get_relationships()
 
     def get_all_reachable_instances(self, current_pose=None) -> List[Tuple[int, Instance]]:
@@ -1553,3 +1553,105 @@ class RobotAgent:
         except Exception as e:
             print(f"Failed to execute plan: {e}")
             return False
+
+    def get_object_centric_world_representation(
+        self,
+        instance_memory,
+        max_context_length: int,
+        sample_strategy: str,
+        task: str = None,
+        text_features=None,
+        scene_graph=None,
+    ) -> ObjectCentricObservations:
+        """Get version that LLM can handle - convert images into torch if not already in that format. This will also clip the number of instances to the max context length.
+
+        Args:
+            instance_memory: the instance memory
+            max_context_length: the maximum number of instances to consider
+            sample_strategy: the strategy to use for sampling instances
+            task: the task that the robot is trying to solve
+            text_features: the text features
+            scene_graph: the scene graph
+
+        Returns:
+            ObjectCentricObservations: a list of object-centric observations
+        """
+
+        obs = ObjectCentricObservations(object_images=[], scene_graph=scene_graph)
+        candidate_objects = []
+        for instance in instance_memory:
+            global_id = instance.global_id
+            crop = instance.get_best_view()
+            features = crop.embedding
+            crop = crop.cropped_image
+            if isinstance(crop, np.ndarray):
+                crop = torch.from_numpy(crop)
+            candidate_objects.append((crop, global_id, features))
+
+        if len(candidate_objects) >= max_context_length:
+            logger.warning(
+                f"\nWarning: VLMs can only handle limited size of crops -- ignoring instances using strategy: {sample_strategy}..."
+            )
+            if sample_strategy == "clip":
+                # clip ranking
+                if task:
+                    print(f"clip sampling based on task: {task}")
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                    image_features = []
+                    for obj in candidate_objects:
+                        image_features.append(obj[2])
+                    image_features = torch.stack(image_features).squeeze(1).to(device)
+                    similarity = (100.0 * text_features @ image_features.T).softmax(dim=-1)
+                    _, indices = similarity[0].topk(len(candidate_objects))
+                    sorted_objects = []
+                    for k in indices:
+                        sorted_objects.append(candidate_objects[k.item()])
+                    candidate_objects = sorted_objects
+            else:
+                raise NotImplementedError
+
+        for crop_id, obj in enumerate(
+            candidate_objects[: min(max_context_length, len(candidate_objects))]
+        ):
+            obs.object_images.append(
+                ObjectImage(crop_id=crop_id, image=obj[0].contiguous(), instance_id=obj[1])
+            )
+        return obs
+
+    def get_object_centric_observations(
+        self,
+        show_prompts: bool = False,
+        task: Optional[str] = None,
+        current_pose=None,
+        plan_with_reachable_instances=False,
+        plan_with_scene_graph=False,
+    ) -> ObjectCentricObservations:
+        """Get object-centric observations for the current state of the world. This is a list of images and associated object information.
+
+        Args:
+            show_prompts(bool): whether to show prompts to the user
+            task(str): the task that the robot is trying to solve
+            current_pose(np.ndarray): the current pose of the robot
+
+        Returns:
+            ObjectCentricObservations: a list of object-centric observations
+        """
+        if plan_with_reachable_instances:
+            instances = self.get_all_reachable_instances(current_pose=current_pose)
+        else:
+            instances = self.voxel_map.get_instances()
+
+        scene_graph = None
+
+        if plan_with_scene_graph:
+            scene_graph = self.extract_symbolic_spatial_info(instances)
+
+        world_representation = self.get_object_centric_world_representation(
+            instances,
+            self.parameters.get("vlm/vlm_context_length", 20),
+            self.parameters.get("vlm/sample_strategy", "clip"),
+            task,
+            self.encode_text(task),
+            scene_graph,
+        )
+        return world_representation
