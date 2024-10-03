@@ -902,8 +902,8 @@ class SparseVoxelMap(object):
             )[0, 0].bool()
 
             # Obstacles just get dilated and eroded
-            obstacles = binary_erosion(
-                binary_dilation(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
+            obstacles = binary_dilation(
+                binary_erosion(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
                 self.smooth_kernel,
             )[0, 0].bool()
 

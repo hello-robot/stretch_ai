@@ -88,6 +88,12 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Set to use voice input",
 )
+@click.option(
+    "--radius",
+    default=3.0,
+    type=float,
+    help="Radius of the circle around initial position where the robot is allowed to go.",
+)
 @click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",

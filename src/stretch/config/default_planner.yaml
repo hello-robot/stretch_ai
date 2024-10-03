@@ -35,7 +35,9 @@ detection:
 
 # Point cloud cleanup
 filters:
-  smooth_kernel_size: 3
+  # Use a simple convolutional filter
+  # smooth_kernel_size: 3
+  smooth_kernel_size: 4
   # smooth_kernel_size: 0
   use_median_filter: True
   median_filter_size: 5
@@ -115,7 +117,7 @@ motion_planner:
   # Parameters for frontier exploration using the motion planner.
   frontier:
     dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
-    dilate_obstacle_size: 7  # Used when selecting goals and computing what the "frontier" is 
+    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
     default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
