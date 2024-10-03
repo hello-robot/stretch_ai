@@ -28,7 +28,7 @@ jobs:
 
     # Use pre-built container for stretch AI
     container:
-      image: hellorobotinc/stretch-ai_cuda-11.8:0.0.13
+      image: hellorobotinc/stretch-ai_cuda-11.8:0.0.12
 
     steps:
     - uses: actions/checkout@v4
@@ -40,8 +40,6 @@ jobs:
       run: git lfs pull
     - name: Install dependencies and code
       run: |
-        . ~/.bashrc
-        mamba activate stretch_ai
         python -m pip install --upgrade pip
         python --version
         # Install torch
