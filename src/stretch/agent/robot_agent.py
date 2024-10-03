@@ -20,10 +20,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import zmq
 from PIL import Image
 
 import stretch.utils.logger as logger
 from stretch.audio.text_to_speech import get_text_to_speech
+from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
@@ -56,6 +58,7 @@ class RobotAgent:
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
         realtime_updates: bool = True,
+        obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -155,6 +158,11 @@ class RobotAgent:
             # Get observations thread
             self._get_observations_thread = Thread(target=self.get_observations_loop)
             self._get_observations_thread.start()
+
+            self.context = zmq.Context()
+            self.sub_socket = self.context.socket(zmq.SUB)
+            self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
+            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
     def __del__(self):
         self._update_map_thread.join()
@@ -452,7 +460,14 @@ class RobotAgent:
             self._obs_history_lock.acquire()
 
             while obs is None:
-                obs = self.robot.get_observation()
+                # obs = self.robot.get_observation()
+                obs = self.sub_socket.recv_pyobj()
+                # print(obs)
+                if obs is None:
+                    continue
+
+                obs = Observations.from_dict(obs)
+
                 if (len(self.obs_history) > 0) and (
                     obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
                 ):
@@ -1357,9 +1372,7 @@ class RobotAgent:
                 # print("Pushing locations to stack...")
                 self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
                 # print("Planning to goal...")
-                self._obs_history_lock.acquire()
                 res = self.planner.plan(start, goal.cpu().numpy())
-                self._obs_history_lock.release()
                 if res.success:
                     if verbose:
                         print("Plan successful!")
@@ -1406,9 +1419,7 @@ class RobotAgent:
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
-            self._obs_history_lock.acquire()
             start = self.robot.get_base_pose()
-            self._obs_history_lock.release()
             start_is_valid = self.space.is_valid(start, verbose=True)
             # if start is not valid move backwards a bit
             if not start_is_valid:
