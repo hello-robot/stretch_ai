@@ -1321,7 +1321,7 @@ class RobotAgent:
             # Get frontier sampler
             sampler = self.space.sample_closest_frontier(
                 start,
-                verbose=False,
+                verbose=True,
                 expand_size=self._default_expand_frontier_size,
                 min_dist=self._frontier_min_dist,
                 step_dist=self._frontier_step_dist,
