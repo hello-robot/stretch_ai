@@ -37,6 +37,13 @@ class PickupExecutor:
         """
         self.robot = robot
         self.agent = agent
+
+        # Do type checks
+        if not isinstance(self.robot, AbstractRobotClient):
+            raise TypeError(f"Expected AbstractRobotClient, got {type(self.robot)}")
+        if not isinstance(self.agent, RobotAgent):
+            raise TypeError(f"Expected RobotAgent, got {type(self.agent)}")
+
         self.dry_run = dry_run
 
         # Configuration
@@ -110,3 +117,5 @@ class PickupExecutor:
                 break
             else:
                 logger.error(f"Skipping unknown command: {command}")
+
+            i += 1

@@ -133,7 +133,7 @@ def main(
         agent.set_allowed_radius(radius)
 
     prompt = PickupPromptBuilder()
-    executor = PickupExecutor(agent, robot, dry_run=False)
+    executor = PickupExecutor(robot, agent, dry_run=False)
 
     # Get the LLM client
     llm_client = None
