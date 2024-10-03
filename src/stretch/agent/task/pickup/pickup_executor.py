@@ -11,7 +11,7 @@ from typing import List, Tuple
 
 import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupTask
+from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.core import AbstractRobotClient
 
 

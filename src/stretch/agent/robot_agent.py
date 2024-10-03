@@ -1120,6 +1120,15 @@ class RobotAgent:
                 best_score = goal_score
         return best_instance
 
+    def set_allowed_radius(self, radius: float):
+        """Set the allowed radius for the robot to move to. This is used to limit the robot's movement, particularly when exploring.
+
+        Args:
+            radius(float): the radius in meters
+        """
+        logger.info("[Agent] Setting allowed radius to", radius, "meters.")
+        logger.error("Setting allowed radius is not yet supported.")
+
     def plan_to_frontier(
         self,
         start: np.ndarray,

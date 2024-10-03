@@ -104,6 +104,7 @@ def main(
     use_llm: bool = False,
     use_voice: bool = False,
     open_loop: bool = False,
+    radius: float = 3.0,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -127,6 +128,9 @@ def main(
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
+
+    if radius is not None and radius > 0:
+        robot.set_allowed_radius(radius)
 
     prompt = PickupPromptBuilder()
     executor = PickupExecutor(agent, robot, dry_run=False)
