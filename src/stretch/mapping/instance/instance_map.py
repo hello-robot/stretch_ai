@@ -138,21 +138,12 @@ class InstanceMemory:
         self.instance_view_score_aggregation_mode = instance_view_score_aggregation_mode
         self.min_pixels_for_instance_view = min_pixels_for_instance_view
         self.min_percent_for_instance_view = min_percent_for_instance_view
-        # self.instance_association_within_class = instance_association_within_class
-        self.log_dir = log_dir
 
-        if log_dir is not None:
-            shutil.rmtree(self.save_dir, ignore_errors=True)
-            os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok)
+        # Logging instance memory
         self.log_dir = log_dir
-
-        # if open_vocab_cat_map_file:
-        #     with open(open_vocab_cat_map_file) as f:
-        #         open_vocab_cat_map = json.load(f)
-        #     self.open_vocab = list(
-        #         open_vocab_cat_map["obj_category_to_obj_category_id"].keys()
-        #     ) + list(open_vocab_cat_map["recep_category_to_recep_category_id"].keys())
-        #     self.open_vocab += ["wall", "ceiling", "floor", "others"]
+        if self.log_dir is not None:
+            shutil.rmtree(self.log_dir, ignore_errors=True)
+            os.makedirs(self.log_dir, exist_ok=log_dir_overwrite_ok)
 
         self.reset()
 
