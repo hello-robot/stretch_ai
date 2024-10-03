@@ -28,7 +28,7 @@ min_ang_error_tol: 0.05
 max_heading_ang: 0.7854  # 45 degrees
 
 # Maximum distance to goal at which the controller will opt for moving backwards over turning around
-max_rev_dist: 0.5
+max_rev_dist: 0.15
 
 # Time taken before we stop trying
 timeout: 30.0

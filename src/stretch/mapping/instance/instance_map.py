@@ -26,7 +26,7 @@ from torch import Tensor
 
 from stretch.mapping.instance import Instance, InstanceView
 from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
-from stretch.perception.encoders import ClipEncoder
+from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
     box3d_nms,
@@ -94,7 +94,7 @@ class InstanceMemory:
         max_instance_height: float = 1.8,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
-        encoder: Optional[ClipEncoder] = None,
+        encoder: Optional[BaseImageTextEncoder] = None,
     ):
         """See class definition for information about InstanceMemory
 
@@ -138,21 +138,12 @@ class InstanceMemory:
         self.instance_view_score_aggregation_mode = instance_view_score_aggregation_mode
         self.min_pixels_for_instance_view = min_pixels_for_instance_view
         self.min_percent_for_instance_view = min_percent_for_instance_view
-        # self.instance_association_within_class = instance_association_within_class
-        self.log_dir = log_dir
 
-        if log_dir is not None and os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok):
-            shutil.rmtree(self.save_dir, ignore_errors=True)
-            os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok)
+        # Logging instance memory
         self.log_dir = log_dir
-
-        # if open_vocab_cat_map_file:
-        #     with open(open_vocab_cat_map_file) as f:
-        #         open_vocab_cat_map = json.load(f)
-        #     self.open_vocab = list(
-        #         open_vocab_cat_map["obj_category_to_obj_category_id"].keys()
-        #     ) + list(open_vocab_cat_map["recep_category_to_recep_category_id"].keys())
-        #     self.open_vocab += ["wall", "ceiling", "floor", "others"]
+        if self.log_dir is not None:
+            shutil.rmtree(self.log_dir, ignore_errors=True)
+            os.makedirs(self.log_dir, exist_ok=log_dir_overwrite_ok)
 
         self.reset()
 
@@ -260,7 +251,7 @@ class InstanceMemory:
 
     def get_ids_to_instances(
         self, env_id: int, category_id: Optional[int] = None
-    ) -> List[Instance]:
+    ) -> Dict[int, Instance]:
         """
         Retrieve a Dict of IDs -> global instances for a given environment. If category_id is specified,
         only instances matching that category will be returned.
@@ -276,7 +267,7 @@ class InstanceMemory:
         # Get global instances
         global_instance_ids = self.get_global_instance_ids(env_id)
         if len(global_instance_ids) == 0:
-            return []
+            return {}
         global_instances = self.get_instances_by_ids(
             env_id=env_id, global_instance_idxs=global_instance_ids
         )
