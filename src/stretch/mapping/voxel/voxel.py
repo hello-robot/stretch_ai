@@ -263,7 +263,7 @@ class SparseVoxelMap(object):
 
     def reset(self) -> None:
         """Clear out the entire voxel map."""
-        self.observations = []
+        self.observations: List[Frame] = []
         # Create an instance memory to associate bounding boxes in space
         if self.use_instance_memory:
             self.instances = InstanceMemory(
@@ -368,7 +368,7 @@ class SparseVoxelMap(object):
             instance_scores=instance_scores,
             *args,
             **kwargs,
-        )
+        )  # type: ignore
 
     def add(
         self,
@@ -610,7 +610,7 @@ class SparseVoxelMap(object):
 
     def write_to_pickle(self, filename: str, compress: bool = True) -> None:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
-        data = {}
+        data: Dict[str, Any] = {}
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []
@@ -684,7 +684,7 @@ class SparseVoxelMap(object):
 
     def read_from_pickle(
         self,
-        filename: str,
+        filename: Union[str, Path],
         num_frames: int = -1,
         perception: Optional[OvmmPerception] = None,
         transform_pose: Optional[torch.Tensor] = None,
@@ -1274,7 +1274,3 @@ class SparseVoxelMap(object):
             },
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
-
-    def _get_instance_color(instance_id: int) -> List[float]:
-        """Get a color for an instance"""
-        return [np.random.random() for _ in range(3)]
