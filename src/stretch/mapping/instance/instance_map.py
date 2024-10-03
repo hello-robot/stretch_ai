@@ -26,7 +26,7 @@ from torch import Tensor
 
 from stretch.mapping.instance import Instance, InstanceView
 from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
-from stretch.perception.encoders import ClipEncoder
+from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
     box3d_nms,
@@ -94,7 +94,7 @@ class InstanceMemory:
         max_instance_height: float = 1.8,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
-        encoder: Optional[ClipEncoder] = None,
+        encoder: Optional[BaseImageTextEncoder] = None,
     ):
         """See class definition for information about InstanceMemory
 
@@ -141,7 +141,7 @@ class InstanceMemory:
         # self.instance_association_within_class = instance_association_within_class
         self.log_dir = log_dir
 
-        if log_dir is not None and os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok):
+        if log_dir is not None:
             shutil.rmtree(self.save_dir, ignore_errors=True)
             os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok)
         self.log_dir = log_dir
@@ -260,7 +260,7 @@ class InstanceMemory:
 
     def get_ids_to_instances(
         self, env_id: int, category_id: Optional[int] = None
-    ) -> List[Instance]:
+    ) -> Dict[int, Instance]:
         """
         Retrieve a Dict of IDs -> global instances for a given environment. If category_id is specified,
         only instances matching that category will be returned.
@@ -276,7 +276,7 @@ class InstanceMemory:
         # Get global instances
         global_instance_ids = self.get_global_instance_ids(env_id)
         if len(global_instance_ids) == 0:
-            return []
+            return {}
         global_instances = self.get_instances_by_ids(
             env_id=env_id, global_instance_idxs=global_instance_ids
         )

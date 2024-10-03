@@ -64,26 +64,11 @@ COPY . .
 RUN chmod +x install.sh
 RUN ./install.sh -y --no-version
 
-# Install ffmpeg dependencies
-RUN apt-get update && apt-get install  -y \
-    ffmpeg \
-    libsm6 \
-    libxext6
+# Configure mamba to start in the correct environment
+RUN mamba init
 
-
-SHELL ["mamba", "run", "-n", "stretch_ai", "/bin/bash", "-c"]
-
-# Create a shell script to run the desired commands
-RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'mamba init' >> /entrypoint.sh && \
-    echo 'source ~/.bashrc' >> /entrypoint.sh && \
-    echo 'micromamba activate stretch_ai' >> /entrypoint.sh && \
-    echo 'exec "$@"' >> /entrypoint.sh && \
-    chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["/bin/bash"]
-
+# Add to bashrc so that it starts into the correct environment
+RUN echo "mamba activate stretch_ai" >> ~/.bashrc
 
 # ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]
 
