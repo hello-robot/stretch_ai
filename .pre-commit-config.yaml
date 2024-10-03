@@ -40,8 +40,6 @@ repos:
             src/stretch_ros2_bridge|
             third_party/|
             src/stretch/agent|
-            src/stretch/agent/operations|
-            src/stretch/mapping|
             src/stretch/perception|
             src/stretch/visualization
           )
