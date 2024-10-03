@@ -180,9 +180,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._servo_lock = Lock()
 
         if enable_rerun_server:
-            from stretch.visualization.rerun import RerunVsualizer
+            from stretch.visualization.rerun import RerunVisualizer
 
-            self._rerun = RerunVsualizer()
+            self._rerun = RerunVisualizer()
         else:
             self._rerun = None
             self._rerun_thread = None
