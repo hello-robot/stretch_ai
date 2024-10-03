@@ -177,7 +177,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
 class RerunVisualizer:
 
     camera_point_radius: float = 0.01
-    max_displayed_points_per_camera: int = 5000
+    max_displayed_points_per_camera: int = 10000
 
     def __init__(
         self,
