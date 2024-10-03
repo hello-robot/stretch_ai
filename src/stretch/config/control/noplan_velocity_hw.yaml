@@ -29,7 +29,8 @@ max_heading_ang: 0.7854  # 45 degrees
 
 # Maximum distance to goal at which the controller will opt for moving backwards over turning around
 # This should be slightly larger than the distance it overshoots targets!
-max_rev_dist: 0.25
+# max_rev_dist: 0.25
+max_rev_dist: 0.5
 
 # Time taken before we stop trying
 timeout: 30.0
