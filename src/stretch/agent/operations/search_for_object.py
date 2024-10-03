@@ -58,6 +58,7 @@ class ManagedSearchOperation(ManagedOperation):
         return activation > self.agent.feature_match_threshold
 
     def is_match(self, instance: Instance) -> bool:
+        """Check if the instance is a match for the target object class."""
         if self.match_method == "feature":
             return self.is_match_by_feature(instance)
         elif self.match_method == "class":
@@ -65,6 +66,10 @@ class ManagedSearchOperation(ManagedOperation):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {instance.global_id} of class {name}")
             return self.is_name_match(name)
+        else:
+            self.error(f"Unknown match method {self.match_method}.")
+            raise ValueError(f"Unknown match method {self.match_method}.")
+        return False
 
     def is_name_match(self, name: str) -> bool:
         """Check if the name of the object is a match for the target object class. By default, we check if the object class is in the name of the object."""
