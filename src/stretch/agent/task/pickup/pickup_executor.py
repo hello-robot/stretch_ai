@@ -108,6 +108,7 @@ class PickupExecutor:
             elif command == "wave":
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
+                self.agent.move_to_manip_posture()
             elif command == "go_home":
                 self.agent.go_home()
             elif command == "explore":
