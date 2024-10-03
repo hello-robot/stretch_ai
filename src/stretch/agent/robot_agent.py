@@ -475,7 +475,7 @@ class RobotAgent:
                 t1 = timeit.default_timer()
                 if t1 - t0 > 10:
                     logger.error("Failed to get observation")
-                    return
+                    break
 
             # t1 = timeit.default_timer()
             self.obs_history.append(obs)
@@ -637,7 +637,7 @@ class RobotAgent:
             t1 = timeit.default_timer()
             if t1 - t0 > 10:
                 logger.error("Failed to get observation")
-                return
+                break
 
         tilt = -1 * np.pi / 4
         for i in range(num_steps):
