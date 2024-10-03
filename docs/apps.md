@@ -226,5 +226,3 @@ You can add the `--reset` flag to make it go back to the start position. The def
 ```
 python -m stretch.app.pickup --reset
 ```
-
-
