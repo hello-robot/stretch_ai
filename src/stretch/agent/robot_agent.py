@@ -1291,6 +1291,7 @@ class RobotAgent:
             print("Go back to (0, 0, 0) to finish...")
             start = self.robot.get_base_pose()
             goal = np.array([0, 0, 0])
+            self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
             res = self.planner.plan(start, goal)
             # if it fails, skip; else, execute a trajectory to this position
             if res.success:
