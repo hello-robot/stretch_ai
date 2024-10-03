@@ -881,6 +881,14 @@ class RobotAgent:
 
         return False
 
+    def move_to_manip_posture(self):
+        """Move the robot to manipulation posture."""
+        self.robot.move_to_manip_posture()
+
+    def move_to_nav_posture(self):
+        """Move the robot to navigation posture."""
+        self.robot.move_to_nav_posture()
+
     def print_found_classes(self, goal: Optional[str] = None):
         """Helper. print out what we have found according to detic."""
         if self.semantic_sensor is None:

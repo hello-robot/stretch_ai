@@ -9,10 +9,15 @@
 
 from typing import List, Tuple
 
-import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.core import AbstractRobotClient
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
+# Default to hiding info messages
+# logger.hide_info()
 
 
 class PickupExecutor:
@@ -45,6 +50,7 @@ class PickupExecutor:
             raise TypeError(f"Expected RobotAgent, got {type(self.agent)}")
 
         self.dry_run = dry_run
+        self.emote_task = EmoteTask(self.agent)
 
         # Configuration
         self._match_method = match_method
@@ -97,21 +103,21 @@ class PickupExecutor:
                     logger.info(f"[Pickup task] Place: {next_args}")
                 target_receptacle = next_args
                 self._pickup(target_object, target_receptacle)
-                breakpoint()
             elif command == "place":
                 logger.error("Place without pickup! Doing nothing.")
             elif command == "wave":
-                self.agent.wave()
+                self.agent.move_to_manip_posture()
+                self.emote_task.get_task("wave").run()
             elif command == "go_home":
                 self.agent.go_home()
             elif command == "explore":
                 self.agent.explore()
             elif command == "nod_head":
-                self.agent.nod_head()
+                self.emote_task.get_task("nod_head").run()
             elif command == "shake_head":
-                self.agent.shake_head()
+                self.emote_task.get_task("shake_head").run()
             elif command == "avert_gaze":
-                self.agent.avert_gaze()
+                self.emote_task.get_task("avert_gaze").run()
             elif command == "end":
                 logger.info("[Pickup task] Ending.")
                 break
