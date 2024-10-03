@@ -11,14 +11,22 @@ from typing import List, Tuple
 
 import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.pickup import PickupTask
 from stretch.core import AbstractRobotClient
 
 
 class PickupExecutor:
     """This class parses commands from the pickup llm bot and sends them to the robot."""
 
+    _pickup_task_mode = "one_shot"
+
     def __init__(
-        self, robot: AbstractRobotClient, agent: RobotAgent, dry_run: bool = False
+        self,
+        robot: AbstractRobotClient,
+        agent: RobotAgent,
+        match_method: str = "feature",
+        open_loop: bool = False,
+        dry_run: bool = False,
     ) -> None:
         """Initialize the executor.
 
@@ -31,8 +39,32 @@ class PickupExecutor:
         self.agent = agent
         self.dry_run = dry_run
 
+        # Configuration
+        self._match_method = match_method
+        self._open_loop = open_loop
+
+    def _pickup(self, target_object: str, target_receptacle: str) -> None:
+
+        # After the robot has started...
+        try:
+            pickup_task = PickupTask(
+                self.agent,
+                target_object=target_object,
+                target_receptacle=target_receptacle,
+                matching=self._match_method,
+                use_visual_servoing_for_grasp=not self._open_loop,
+            )
+            task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
     def __call__(self, response: List[Tuple[str, str]]) -> None:
-        """Execute the list of commands."""
+        """Execute the list of commands given by the LLM bot."""
         i = 0
 
         # Loop over every command we have been given
@@ -42,8 +74,11 @@ class PickupExecutor:
             command, args = response[i]
             logger.info(f"{i} {command} {args}")
             if command == "say":
+                # Use TTS to say the text
+                logger.info(f"[Pickup task] Saying: {args}")
                 self.agent.robot_say(args)
             elif command == "pickup":
+                logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
                 i += 1
                 next_command, next_args = response[i]
@@ -51,7 +86,10 @@ class PickupExecutor:
                     i -= 1
                     logger.error("Pickup without place! Doing nothing.")
                 else:
-                    logger.info(f"{i} {command} {args}")
+                    logger.info(f"{i} {next_command} {next_args}")
+                    logger.info(f"[Pickup task] Place: {next_args}")
+                target_receptacle = next_args
+                self._pickup(target_object, target_receptacle)
                 breakpoint()
             elif command == "place":
                 logger.error("Place without pickup! Doing nothing.")
@@ -68,6 +106,7 @@ class PickupExecutor:
             elif command == "avert_gaze":
                 self.agent.avert_gaze()
             elif command == "end":
+                logger.info("[Pickup task] Ending.")
                 break
             else:
                 logger.error(f"Skipping unknown command: {command}")

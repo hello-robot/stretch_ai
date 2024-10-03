@@ -13,7 +13,7 @@ import click
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupTask
+from stretch.agent.task.pickup import PickupExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
@@ -36,12 +36,6 @@ from stretch.perception import create_semantic_sensor
     default="feature",
     help="Method to match objects to pick up. Options: class, feature.",
     show_default=True,
-)
-@click.option(
-    "--mode",
-    default="one_shot",
-    help="Mode of operation for the robot.",
-    type=click.Choice(["one_shot", "all"]),
 )
 @click.option(
     "--llm",
@@ -105,7 +99,6 @@ def main(
     reset: bool = False,
     target_object: str = "",
     receptacle: str = "",
-    mode: str = "one_shot",
     match_method: str = "feature",
     llm: str = "gemma",
     use_llm: bool = False,
@@ -136,6 +129,7 @@ def main(
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     prompt = PickupPromptBuilder()
+    executor = PickupExecutor(agent, robot, dry_run=False)
 
     # Get the LLM client
     llm_client = None
@@ -157,39 +151,8 @@ def main(
         else:
             # Call the LLM client and parse
             llm_response = chat_wrapper.query()
-            target_object = prompt.get_object(llm_response)
-            receptacle = prompt.get_receptacle(llm_response)
-            say_this = prompt.get_say_this(llm_response)
-            # print("LLM response:", llm_response)
-            # print("Target object:", target_object)
-            # print("Receptacle:", receptacle)
-            # print("Say this:", say_this)
 
-        if say_this is not None:
-            chat_wrapper.say(say_this)
-            agent.robot_say(say_this)
-
-        if len(target_object) == 0 or len(receptacle) == 0:
-            # logger.error("You need to enter a target object and receptacle")
-            continue
-
-        # After the robot has started...
-        try:
-            pickup_task = PickupTask(
-                agent,
-                target_object=target_object,
-                target_receptacle=receptacle,
-                matching=match_method,
-                use_visual_servoing_for_grasp=not open_loop,
-            )
-            task = pickup_task.get_task(add_rotate=True, mode=mode)
-        except Exception as e:
-            print(f"Error creating task: {e}")
-            robot.stop()
-            raise e
-
-        # Execute the task
-        task.run()
+        executor(llm_response)
 
         if reset:
             # Send the robot home at the end!
