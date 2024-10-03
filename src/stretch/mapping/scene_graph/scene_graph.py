@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -54,7 +54,10 @@ class SceneGraph:
                 self.relationships.append((ins_a.global_id, "floor", "on"))
 
     def get_matching_relations(
-        self, id0: Optional[Union[int, str]], id1: Optional[Union[int, str]], relation: Optional[str]
+        self,
+        id0: Optional[Union[int, str]],
+        id1: Optional[Union[int, str]],
+        relation: Optional[str],
     ) -> List[Tuple[int, int, str]]:
         """Get all relationships between two instances.
 

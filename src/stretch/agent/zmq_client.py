@@ -13,7 +13,7 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import Any, Dict, List, Optional, Sized, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import numpy as np
@@ -456,7 +456,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def navigate_to(
         self,
-        xyt: Union[ContinuousNavigationAction, Sized],
+        xyt: Union[ContinuousNavigationAction, np.ndarray],
         relative=False,
         blocking=False,
         timeout: float = 10.0,
@@ -465,6 +465,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
             _xyt = xyt.xyt
+        else:
+            _xyt = xyt
         assert len(_xyt) == 3, "xyt must be a vector of size 3"
         next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
         if self._rerun:
