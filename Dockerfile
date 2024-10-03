@@ -71,18 +71,11 @@ RUN apt-get update && apt-get install  -y \
     libxext6
 
 
-SHELL ["mamba", "run", "-n", "stretch_ai", "/bin/bash", "-c"]
+SHELL ["mamba", "init"]
 
-# Create a shell script to run the desired commands
-RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'mamba init' >> /entrypoint.sh && \
-    echo 'source ~/.bashrc' >> /entrypoint.sh && \
-    echo 'mamba activate stretch_ai' >> /entrypoint.sh && \
-    echo 'exec bash"' >> /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+# Add to bashrc so that it starts into the correct environment
 
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["/bin/bash"]
+RUN echo "mamba activate stretch_ai" >> ~/.bashrc
 
 
 # ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]
