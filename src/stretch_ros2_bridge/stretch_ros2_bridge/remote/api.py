@@ -154,6 +154,7 @@ class StretchClient(AbstractRobotClient):
         self.stop()
 
     def stop(self):
+        """Stop the robot"""
         self.nav.disable()
         self.manip.disable()
         self._base_control_mode = ControlMode.IDLE
@@ -238,7 +239,7 @@ class StretchClient(AbstractRobotClient):
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        pan, tilt = self._robot_model.look_front
+        pan, tilt = self._robot_model.look_close
         pos = self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q)
         print("- go to configuration:", pos, "pan =", pan, "tilt =", tilt)
         self.manip.goto_joint_positions(pos, head_pan=pan, head_tilt=tilt, blocking=True)

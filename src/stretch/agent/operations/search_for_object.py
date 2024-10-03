@@ -7,12 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import torch
 from PIL import Image
 
+import stretch.core.status as status
 from stretch.agent.base import ManagedOperation
 from stretch.mapping.instance import Instance
 
@@ -58,6 +59,7 @@ class ManagedSearchOperation(ManagedOperation):
         return activation > self.agent.feature_match_threshold
 
     def is_match(self, instance: Instance) -> bool:
+        """Check if the instance is a match for the target object class."""
         if self.match_method == "feature":
             return self.is_match_by_feature(instance)
         elif self.match_method == "class":
@@ -65,6 +67,10 @@ class ManagedSearchOperation(ManagedOperation):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {instance.global_id} of class {name}")
             return self.is_name_match(name)
+        else:
+            self.error(f"Unknown match method {self.match_method}.")
+            raise ValueError(f"Unknown match method {self.match_method}.")
+        return False
 
     def is_name_match(self, name: str) -> bool:
         """Check if the name of the object is a match for the target object class. By default, we check if the object class is in the name of the object."""
@@ -83,6 +89,8 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
         # Update world map
         self.intro("Searching for a receptacle on the floor.")
+        self.set_status(status.RUNNING)
+
         # Must move to nav before we can do anything
         self.robot.move_to_nav_posture()
         # Now update the world
@@ -107,6 +115,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         if not self.navigation_space.is_valid(start):
             self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+            self.error(
+                "This means there was an issue with navigation. Please disable the robot and move it to a safe location."
             )
             breakpoint()
 
@@ -133,6 +144,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
         # If no receptacle, pick a random point nearby and just wander around
         if self.agent.current_receptacle is None:
+            self.set_status(status.EXPLORING)
             print("None found. Try moving to frontier.")
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
@@ -148,9 +160,11 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 self.agent.reset_object_plans()
             else:
                 self.error("Failed to find a reachable frontier.")
-                raise RuntimeError("Failed to find a reachable frontier.")
+                self.set_status(status.EXPLORATION_IMPOSSIBLE)
+                self.agent.go_home()
         else:
             self.cheer(f"Found a receptacle!")
+            self.set_status(status.SUCCEEDED)
             view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("receptacle.png")
@@ -235,7 +249,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         # Compute scene graph from instance memory so that we can use it
         scene_graph = self.agent.get_scene_graph()
 
-        receptacle_options = []
+        receptacle_options: List[Instance] = []
         print(f"Check explored instances for reachable {self.object_class} instances:")
         for i, instance in enumerate(instances):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)

@@ -11,7 +11,7 @@
 
 import time
 import timeit
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import rerun as rr
@@ -176,13 +176,14 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
 
 class RerunVisualizer:
 
-    camera_point_radius = 0.01
+    camera_point_radius: float = 0.01
+    max_displayed_points_per_camera: int = 10000
 
     def __init__(
         self,
         display_robot_mesh: bool = True,
-        open_browser: bool = True,
-        server_memory_limit: str = "1GB",
+        open_browser: bool = False,
+        server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
@@ -194,8 +195,9 @@ class RerunVisualizer:
             server_memory_limit (str): Server memory limit E.g. 2GB or 20%
             collapse_panels (bool): Set to false to have customizable rerun panels
         """
-        rr.init("Stretch_robot", spawn=False)
-        rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
+        rr.init("Stretch_robot", spawn=(not open_browser))
+        if open_browser:
+            rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
         self.display_robot_mesh = display_robot_mesh
         self.show_cameras_in_3d_view = show_cameras_in_3d_view
@@ -245,6 +247,79 @@ class RerunVisualizer:
         )
         rr.send_blueprint(my_blueprint)
 
+    def clear_identity(self, identity_name: str):
+        """Clear existing rerun identity.
+
+        This is useful if you want to clear a rerun identity and leave a blank there.
+        Args:
+            identity_name (str): rerun identity name
+        """
+        rr.log(identity_name, rr.Clear(recursive=True))
+
+    def log_custom_2d_image(self, identity_name: str, img: Union[np.ndarray, torch.Tensor]):
+        """Log custom 2d image
+
+        Args:
+            identity_name (str): rerun identity name
+            img (2D or 3D array): the 2d image you want to log into rerun
+        """
+        rr.log(identity_name, rr.Image(img))
+
+    def log_text(self, identity_name: str, text: str):
+        """Log a custom markdown text
+
+        Args:
+            identity_name (str): rerun identity name
+            text (str): Markdown codes you want to log in rerun
+        """
+        rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
+
+    def log_arrow3D(
+        self,
+        identity_name: str,
+        origins: Union[list, List[list], np.ndarray, torch.Tensor],
+        vectors: Union[list, List[list], np.ndarray, torch.Tensor],
+        colors: Union[list, List[list], np.ndarray, torch.Tensor],
+        radii: float,
+    ):
+        """Log custom 3D arrows
+
+        Args:
+            identity_name (str): rerun identity name
+            origins (a N x 3 array): origins of all 3D arrows
+            vectors (a N x 3 array): directions and lengths of all 3D arrows
+            colors (a N x 3 array): RGB colors of all 3D arrows
+            radii (float): size of the arrows
+        """
+        rr.log(
+            identity_name,
+            rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
+        )
+
+    def log_custom_pointcloud(
+        self,
+        identity_name: str,
+        points: Union[list, List[list], np.ndarray, torch.Tensor],
+        colors: Union[list, List[list], np.ndarray, torch.Tensor],
+        radii: float,
+    ):
+        """Log custom 3D pointcloud
+
+        Args:
+            identity_name (str): rerun identity name
+            points (a N x 3 array): xyz coordinates of all 3D points
+            colors (a N x 3 array): RGB colors of all 3D points
+            radii (float): size of the arrows
+        """
+        rr.log(
+            identity_name,
+            rr.Points3D(
+                points,
+                colors=colors,
+                radii=radii,
+            ),
+        )
+
     def log_head_camera(self, obs: Observations):
         """Log head camera pose and images
 
@@ -258,6 +333,11 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
             head_rgb = obs.rgb.reshape(-1, 3)
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(head_xyz.shape[0])
+                np.random.shuffle(idx)
+                head_xyz = head_xyz[idx[: self.max_displayed_points_per_camera]]
+                head_rgb = head_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/head_camera/points",
                 rr.Points3D(
@@ -307,6 +387,7 @@ class RerunVisualizer:
                 rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=theta),
                 axis_length=0.7,
             ),
+            static=True,
         )
 
     def log_ee_frame(self, obs):
@@ -339,6 +420,15 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
             ee_rgb = servo.ee_rgb.reshape(-1, 3)
+            # Remove points below z = 0
+            idx = np.where(ee_xyz[:, 2] > 0)
+            ee_xyz = ee_xyz[idx]
+            ee_rgb = ee_rgb[idx]
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(ee_xyz.shape[0])
+                np.random.shuffle(idx)
+                ee_xyz = ee_xyz[idx[: self.max_displayed_points_per_camera]]
+                ee_rgb = ee_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/ee_camera/points",
                 rr.Points3D(
@@ -418,12 +508,17 @@ class RerunVisualizer:
         # Get obstacles and explored points
         grid_resolution = space.voxel_map.grid_resolution
         obs_points = np.array(occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution))
+
+        # Move obs_points z up slightly to avoid z-fighting
+        obs_points[:, 2] += 0.01
         t4 = timeit.default_timer()
 
         # Get explored points
         explored_points = np.array(
             occupancy_map_to_3d_points(explored, grid_origin, grid_resolution)
         )
+        # Move explored z points down slightly to avoid z-fighting
+        explored_points[:, 2] -= 0.01
         t5 = timeit.default_timer()
 
         # Log points
@@ -434,6 +529,7 @@ class RerunVisualizer:
                 radii=np.ones(points.shape[0]) * obstacle_radius,
                 colors=[255, 0, 0],
             ),
+            static=True,
         )
         rr.log(
             "world/explored",
@@ -442,6 +538,7 @@ class RerunVisualizer:
                 radii=np.ones(points.shape[0]) * explored_radius,
                 colors=[255, 255, 255],
             ),
+            static=True,
         )
         t6 = timeit.default_timer()
 

@@ -113,10 +113,12 @@ class ZmqServer(BaseZmqServer):
         """Handle an action from the client."""
         if "posture" in action:
             if action["posture"] == "manipulation":
+                self.client.stop()
                 self.client.switch_to_busy_mode()
                 self.client.move_to_manip_posture()
                 self.client.switch_to_manipulation_mode()
             elif action["posture"] == "navigation":
+                self.client.stop()
                 self.client.switch_to_busy_mode()
                 self.client.move_to_nav_posture()
                 self.client.switch_to_navigation_mode()
@@ -145,6 +147,7 @@ class ZmqServer(BaseZmqServer):
             self.client.load_map(action["load_map"])
         elif "say" in action:
             # Text to speech from the robot, not the client/agent device
+            print("Saying:", action["say"])
             self.text_to_speech.say_async(action["say"])
         elif "xyt" in action:
             if self.verbose:

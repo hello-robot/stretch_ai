@@ -44,7 +44,7 @@ STRETCH_ARM_EXTENSION = 0.8
 STRETCH_ARM_LIFT = 0.8
 
 look_at_ee = np.array([-np.pi / 2, -np.pi / 4])
-look_front = np.array([0.0, math.radians(-30)])
+look_front = np.array([0.0, -np.pi / 4])
 look_ahead = np.array([0.0, 0.0])
 look_close = np.array([0.0, math.radians(-45)])
 look_down = np.array([0.0, math.radians(-58)])
@@ -161,7 +161,7 @@ STRETCH_NAVIGATION_Q = np.array(
         -1.5,  # wrist pitch
         0.0,  # wrist yaw
         0.0,
-        math.radians(-30),
+        look_close[1],
     ]
 )
 
