@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import torch
