@@ -508,6 +508,7 @@ class RerunVisualizer:
         # Get obstacles and explored points
         grid_resolution = space.voxel_map.grid_resolution
         obs_points = np.array(occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution))
+
         # Move obs_points z up slightly to avoid z-fighting
         obs_points[:, 2] += 0.01
         t4 = timeit.default_timer()

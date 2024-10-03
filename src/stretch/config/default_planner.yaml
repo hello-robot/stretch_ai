@@ -17,14 +17,14 @@ obs_min_density: 25  # This many points makes it an obstacle
 min_points_per_voxel: 25  # Drop things below this density per voxel
 
 # Padding
-pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
-min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
+pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacles
+min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
 add_local_every_step: False
 remove_visited_from_obstacles: False
 min_depth: 0.5
-max_depth: 2.5
+max_depth: 2.0
 
 # Object detection parameters
 detection:
