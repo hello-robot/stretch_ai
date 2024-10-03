@@ -13,7 +13,7 @@ import threading
 import time
 import timeit
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sized, Tuple, Union
 
 import click
 import numpy as np
@@ -27,7 +27,7 @@ import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
-from stretch.motion import PlanResult, RobotModel
+from stretch.motion import PlanResult
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference
 from stretch.utils.image import Camera
@@ -456,7 +456,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def navigate_to(
         self,
-        xyt: ContinuousNavigationAction,
+        xyt: Union[ContinuousNavigationAction, Sized],
         relative=False,
         blocking=False,
         timeout: float = 10.0,
@@ -464,11 +464,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
-            xyt = xyt.xyt
-        assert len(xyt) == 3, "xyt must be a vector of size 3"
-        next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
+            _xyt = xyt.xyt
+        assert len(_xyt) == 3, "xyt must be a vector of size 3"
+        next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
         if self._rerun:
-            self._rerun.update_nav_goal(xyt)
+            self._rerun.update_nav_goal(_xyt)
         self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def reset(self):
@@ -555,13 +555,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_action(next_action)
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
-
-    def in_navigation_mode(self) -> bool:
-        """Returns true if we are navigating (robot head forward, velocity control on)"""
-        return self._control_mode == "navigation"
-
-    def in_manipulation_mode(self) -> bool:
-        return self._control_mode == "manipulation"
 
     def switch_to_manipulation_mode(self):
         next_action = {"control_mode": "manipulation"}
@@ -766,14 +759,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return self._control_mode == "manipulation"
 
     def in_navigation_mode(self) -> bool:
-        """Is the robot to move around"""
+        """Returns true if we are navigating (robot head forward, velocity control on)"""
         return self._control_mode == "navigation"
 
     def last_motion_failed(self) -> bool:
         """Override this if you want to check to see if a particular motion failed, e.g. it was not reachable and we don't know why."""
         return False
 
-    def get_robot_model(self) -> RobotModel:
+    def get_robot_model(self):
         """return a model of the robot for planning"""
         return self._robot_model
 
@@ -1085,7 +1078,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def blocking_spin_servo(self, verbose: bool = False):
         """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
-        sum_time = 0
+        sum_time = 0.0
         steps = 0
         t0 = timeit.default_timer()
         while not self._finish:
@@ -1113,7 +1106,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 
-        sum_time = 0
+        sum_time = 0.0
         steps = 0
         t0 = timeit.default_timer()
 
@@ -1154,7 +1147,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
         if self._rerun:
-            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)
+            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)  # type: ignore
         self._finish = False
         self._thread.start()
         self._state_thread.start()

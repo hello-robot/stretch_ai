@@ -42,6 +42,8 @@ class AbstractRobotClient(ABC):
         xyt: Union[Iterable[float], ContinuousNavigationAction],
         relative=False,
         blocking=False,
+        verbose: bool = False,
+        timeout: Optional[float] = None,
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         raise NotImplementedError()

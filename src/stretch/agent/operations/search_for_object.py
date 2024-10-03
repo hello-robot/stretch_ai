@@ -240,7 +240,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         # Compute scene graph from instance memory so that we can use it
         scene_graph = self.agent.get_scene_graph()
 
-        receptacle_options = []
+        receptacle_options: List[Instance] = []
         print(f"Check explored instances for reachable {self.object_class} instances:")
         for i, instance in enumerate(instances):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
