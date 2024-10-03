@@ -13,8 +13,8 @@ obs_min_height: 0.15  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
 neg_obs_height: -0.05  # Things less than this height ARE obstacles
 use_negative_obstacles: True  # Use the negative height as an obstacle
-obs_min_density: 25  # This many points makes it an obstacle
-min_points_per_voxel: 25  # Drop things below this density per voxel
+obs_min_density: 10  # This many points makes it an obstacle
+min_points_per_voxel: 15  # Drop things below this density per voxel
 
 # Padding
 pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacles
@@ -115,7 +115,7 @@ motion_planner:
   # Parameters for frontier exploration using the motion planner.
   frontier:
     dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
-    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
+    dilate_obstacle_size: 7  # Used when selecting goals and computing what the "frontier" is 
     default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
