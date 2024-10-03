@@ -141,7 +141,7 @@ class InstanceMemory:
         # self.instance_association_within_class = instance_association_within_class
         self.log_dir = log_dir
 
-        if log_dir is not None and os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok):
+        if log_dir is not None:
             shutil.rmtree(self.save_dir, ignore_errors=True)
             os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok)
         self.log_dir = log_dir
