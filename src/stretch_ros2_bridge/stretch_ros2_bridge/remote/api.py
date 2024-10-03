@@ -154,6 +154,7 @@ class StretchClient(AbstractRobotClient):
         self.stop()
 
     def stop(self):
+        """Stop the robot"""
         self.nav.disable()
         self.manip.disable()
         self._base_control_mode = ControlMode.IDLE
