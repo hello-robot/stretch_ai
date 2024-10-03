@@ -130,7 +130,7 @@ def main(
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     if radius is not None and radius > 0:
-        robot.set_allowed_radius(radius)
+        agent.set_allowed_radius(radius)
 
     prompt = PickupPromptBuilder()
     executor = PickupExecutor(agent, robot, dry_run=False)
