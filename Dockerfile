@@ -71,7 +71,7 @@ RUN apt-get update && apt-get install  -y \
     libxext6
 
 
-SHELL ["mamba", "init"]
+RUN mamba init
 
 # Add to bashrc so that it starts into the correct environment
 
