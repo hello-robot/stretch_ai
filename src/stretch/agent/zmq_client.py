@@ -542,9 +542,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 ):
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
-                    print("Arm not moving, we are done")
-                    print("Arm joint velocities", joint_velocities)
-                    print(t1 - t0)
+                    logger.info("Arm not moving, we are done")
+                    logger.info("Arm joint velocities", joint_velocities)
+                    logger.info(t1 - t0)
                     # Arm stopped moving but did not reach goal
                     return False
                 else:
@@ -555,7 +555,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 time.sleep(0.01)
 
                 if t1 - t0 > timeout:
-                    print("[ZMQ CLIENT] Timeout waiting for arm to move")
+                    logger.error("Timeout waiting for arm to move")
                     break
                 steps += 1
             return False
