@@ -83,14 +83,6 @@ class UpdateOperation(ManagedOperation):
         # Delete observations near us, since they contain the arm!!
         self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7, force_update=True)
 
-        # Show the map so far
-        self.agent.voxel_map.show(
-            orig=np.zeros(3),
-            xyt=xyt,
-            footprint=self.robot_model.get_footprint(),
-            planner_visuals=True,
-        )
-
         # Notify and move the arm back to normal. Showing the map is optional.
         print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
         self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)

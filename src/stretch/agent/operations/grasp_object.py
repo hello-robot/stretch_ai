@@ -426,7 +426,6 @@ class GraspObjectOperation(ManagedOperation):
             latest_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
-            print("latest mask size:", np.sum(latest_mask.flatten()))
 
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
@@ -505,6 +504,7 @@ class GraspObjectOperation(ManagedOperation):
                 self.info("Not moving; try to grasp.")
                 success = self._grasp()
                 break
+
             # If we have a target mask, compute the median depth of the object
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None:
