@@ -1082,10 +1082,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # TODO: fix all of this - why do we need to do this?
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
-            time.sleep(0.01)
+            # time.sleep(0.01)
 
             # print("SENDING THIS ACTION:", next_action)
-            self.send_socket.send_pyobj(next_action)
+            # self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
             if "xyt" in next_action:
