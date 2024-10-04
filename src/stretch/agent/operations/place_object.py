@@ -25,9 +25,10 @@ class PlaceObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
-    place_step_size: float = 0.35
+    place_step_size: float = 0.4
     use_pitch_from_vertical: bool = True
     verbose: bool = True
+    talk: bool = True
 
     def configure(
         self,
@@ -192,6 +193,8 @@ class PlaceObjectOperation(ManagedOperation):
             pos=place_xyz, quat=ee_rot, joint_state=joint_state
         )
         self.attempt(f"Trying to place the object on the receptacle at {place_xyz}.")
+        if self.talk:
+            self.agent.robot_say("Trying to place the object on the receptacle.")
         if not success:
             self.error("Could not place object!")
             return
@@ -214,6 +217,7 @@ class PlaceObjectOperation(ManagedOperation):
         self.robot.move_to_nav_posture()
         self._successful = True
 
+        self.agent.robot_say("I am done placing the object.")
         self.cheer("We believe we successfully placed the object.")
 
     def was_successful(self):
