@@ -40,6 +40,7 @@ class GraspObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     servo_to_grasp: bool = False
     _success: bool = False
+    talk: bool = True
 
     # Task information
     match_method: str = "class"
@@ -119,6 +120,7 @@ class GraspObjectOperation(ManagedOperation):
         show_point_cloud: bool = False,
         reset_observation: bool = False,
         grasp_loose: bool = False,
+        talk: bool = True,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -129,6 +131,7 @@ class GraspObjectOperation(ManagedOperation):
             show_point_cloud (bool, optional): Show the point cloud. Defaults to False.
             reset_observation (bool, optional): Reset the observation. Defaults to False.
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
+            talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
         """
         self.target_object = target_object
         self.show_object_to_grasp = show_object_to_grasp
@@ -137,6 +140,7 @@ class GraspObjectOperation(ManagedOperation):
         self.show_point_cloud = show_point_cloud
         self.reset_observation = reset_observation
         self.grasp_loose = grasp_loose
+        self.talk = talk
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
@@ -302,7 +306,8 @@ class GraspObjectOperation(ManagedOperation):
     def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
-        self.agent.robot_say("Grasping the object!")
+        if self.talk:
+            self.agent.robot_say("Grasping the object!")
 
         if not self.open_loop:
             joint_state = self.robot.get_joint_positions()
@@ -674,6 +679,13 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.voxel_map.instances.pop_global_instance(
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
+
+        # Delete the object
+        self.agent.voxel_map.delete_instance(
+            self.agent.current_object.global_id, assume_explored=False
+        )
+        if self.talk:
+            self.agent.robot_say("I think I grasped the object.")
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
         """Move to a pregrasp position in an open loop manner.
