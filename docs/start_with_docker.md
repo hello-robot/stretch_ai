@@ -182,20 +182,4 @@ We provide an alternative startup script for development. This script runs the D
 ```bash
 ./scripts/dev_docker_gpu_machine.sh
 ```
-
-Now, you can run the apps as usual, but you may also run your local scripts.
-
-You may wish to start with an editable install:
-
-```bash
-mamba init && source ~/.bashrc && mamba activate stretch_ai
-pip install -e src
-```
-
-For example, try:
-
-```bash
-python src/stretch/app/view_images.py --robot_ip $ROBOT_IP
-```
-
-This will run the `view_images` app from your local installation, instead of the one in the container.
+Now, the apps will run from your local directory. You can edit the apps in your local directory and run them to see the result. 
