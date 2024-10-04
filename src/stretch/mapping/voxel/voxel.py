@@ -1076,9 +1076,13 @@ class SparseVoxelMap(object):
         # Create a combined point cloud
         # Do the other stuff we need to show instances
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
+        if points is None:
+            return []
+
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
         if orig is None:
             orig = np.zeros(3)
+
         geoms = create_visualization_geometries(pcd=pcd, orig=orig)
 
         # Get the explored/traversible area
