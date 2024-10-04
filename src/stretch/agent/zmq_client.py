@@ -23,7 +23,6 @@ from termcolor import colored
 import stretch.motion.constants as constants
 import stretch.motion.conversions as conversions
 import stretch.utils.compression as compression
-import stretch.utils.logger as logger
 from stretch.core.interfaces import ContinuousNavigationAction, Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
@@ -31,8 +30,11 @@ from stretch.motion import PlanResult
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import angle_difference, posquat2sophus, sophus2posquat
 from stretch.utils.image import Camera
+from stretch.utils.logger import Logger
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
+
+logger = Logger(__name__)
 
 # TODO: debug code - remove later if necessary
 # import faulthandler
