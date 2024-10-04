@@ -98,7 +98,7 @@ There are also some apps for [debugging](docs/debug.md).
 
 ## Installation
 
-Stretch AI supports Python 3.10. We recommend using \[mamba\]https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
+Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
 
 If you do not start with Docker, follow the [install guide](docs/install.md).
 
