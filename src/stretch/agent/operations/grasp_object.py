@@ -451,13 +451,6 @@ class GraspObjectOperation(ManagedOperation):
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
             if mask_center is None:
-                # if not aligned_once:
-                #     self.error(
-                #         "Lost track before even seeing object with EE camera. Just try open loop."
-                #     )
-                #     if self.show_servo_gui:
-                #         cv2.destroyAllWindows()
-                # return False
                 if failed_counter < self.max_failed_attempts:
                     mask_center = np.array([center_y, center_x])
                 else:
