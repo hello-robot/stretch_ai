@@ -71,6 +71,17 @@ from stretch.perception import create_semantic_sensor
     help="Name of the receptacle to place the object in",
 )
 @click.option(
+    "--input-path",
+    "-i",
+    "--input_file",
+    "--input-file",
+    "--input",
+    "--input_path",
+    type=click.Path(),
+    default="",
+    help="Path to a saved datafile from a previous exploration of the world.",
+)
+@click.option(
     "--use_llm",
     "--use-llm",
     is_flag=True,
@@ -105,6 +116,7 @@ def main(
     use_voice: bool = False,
     open_loop: bool = False,
     radius: float = 3.0,
+    input_path: str = "",
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -132,6 +144,13 @@ def main(
     if radius is not None and radius > 0:
         agent.set_allowed_radius(radius)
 
+    # Load a PKL file from a previous run and process it
+    # This will use ICP to match current observations to the previous ones
+    # ANd then update the map with the new observations
+    if input_path is not None and len(input_path) > 0:
+        agent.load_map(input_path)
+
+    # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
     executor = PickupExecutor(robot, agent, dry_run=False)
 
