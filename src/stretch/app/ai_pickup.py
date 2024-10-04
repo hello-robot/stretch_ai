@@ -182,8 +182,6 @@ def main(
             # Send the robot home at the end!
             agent.go_home()
 
-        break
-
     # At the end, disable everything
     robot.stop()
 

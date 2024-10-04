@@ -87,7 +87,7 @@ class PickupExecutor:
         """
         i = 0
 
-        if len(response) == 0:
+        if response is None or len(response) == 0:
             logger.error("No commands to execute!")
             self.agent.robot_say("I'm sorry, I didn't understand that.")
             return True
