@@ -24,4 +24,4 @@ sudo docker run \
     --network host \
     --env DISPLAY="$DISPLAY" \
     -v $parent_dir:/app \
-    hellorobotinc/stretch-ai_cuda-11.8:0.0.12
+    hellorobotinc/stretch-ai_cuda-11.8:0.0.13
