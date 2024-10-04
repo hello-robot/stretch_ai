@@ -1180,7 +1180,7 @@ class SparseVoxelMap(object):
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
-        force_update: Optional[bool] = False,
+        force_update: Optional[bool] = True,
         min_height: Optional[float] = None,
         min_bound_z: Optional[float] = 0.0,
         assume_explored: bool = False,
@@ -1191,9 +1191,9 @@ class SparseVoxelMap(object):
             bounds: 3x2 array of min and max bounds in xyz
             point: 3x1 array of point to delete
             radius: radius around point to delete
-            force_update: force update of 2d map
-            min_height: minimum height to delete
-            min_bound_z: minimum z bound to delete
+            force_update: force update of 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient.
+            min_height: minimum height to delete. Usually 0, for the floor plane.
+            min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
             assume_explored: assume deleted area is explored
         """
         self.voxel_pcd.remove(bounds, point, radius, min_height=min_height, min_bound_z=min_bound_z)

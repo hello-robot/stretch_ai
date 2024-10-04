@@ -81,7 +81,7 @@ class UpdateOperation(ManagedOperation):
         self.update(move_head=self.move_head)
 
         # Delete observations near us, since they contain the arm!!
-        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
+        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7, force_update=True)
 
         # Show the map so far
         self.agent.voxel_map.show(
