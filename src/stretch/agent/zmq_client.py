@@ -682,6 +682,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation", resend_action=next_action)
+        self._wait_for_arm(constants.STRETCH_NAVIGATION_Q)
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
@@ -690,6 +691,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
+        self._wait_for_arm(constants.STRETCH_PREGRASP_Q)
         assert self.in_manipulation_mode()
 
     def _wait_for_head(
@@ -753,13 +755,63 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 break
             time.sleep(0.01)
 
+    def _wait_for_arm(
+        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
+    ) -> bool:
+        """Wait for the arm to move to a particular configuration.
+
+        Args:
+            q(np.ndarray): The target joint angles
+            timeout(float): How long to wait for the arm to move
+            resend_action(dict): The action to resend if the arm is not moving. If none, do not resend.
+
+        Returns:
+            bool: Whether the arm successfully moved to the target configuration
+        """
+        t0 = timeit.default_timer()
+        while not self._finish:
+            joint_positions, joint_velocities, _ = self.get_joint_state()
+            if joint_positions is None:
+                continue
+
+            arm_diff = np.abs(joint_positions[HelloStretchIdx.ARM] - q[HelloStretchIdx.ARM])
+            lift_diff = np.abs(joint_positions[HelloStretchIdx.LIFT] - q[HelloStretchIdx.LIFT])
+
+            if arm_diff < self._arm_joint_tolerance and lift_diff < self._lift_joint_tolerance:
+                return True
+
+            if resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
+
+            t1 = timeit.default_timer()
+            if t1 - t0 > timeout:
+                logger.error(
+                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}"
+                )
+                return False
+
+        # This should never happen
+        return False
+
     def _wait_for_mode(
         self,
         mode,
         resend_action: Optional[Dict[str, Any]] = None,
         verbose: bool = False,
         timeout: float = 20.0,
-    ):
+    ) -> bool:
+        """
+        Wait for the robot to switch to a particular control mode. Will throw an exception if mode switch fails; probably means a packet was dropped.
+
+        Args:
+            mode(str): The mode to wait for
+            resend_action(dict): The action to resend if the robot is not moving. If none, do not resend.
+            verbose(bool): Whether to print out debug information
+            timeout(float): How long to wait for the robot to switch modes
+
+        Returns:
+            bool: Whether the robot successfully switched to the target mode
+        """
         t0 = timeit.default_timer()
         while True:
             with self._state_lock:
@@ -773,7 +825,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
+
         assert self._control_mode == mode
+        return True
 
     def _wait_for_action(
         self,
@@ -1057,7 +1111,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             dt = t2 - t1
             if t2 - t0 > timeout:
                 logger.warning(
-                    "[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: " + str(xyt)
+                    "[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: "
+                    + str(xyt)
+                    + " "
+                    + str(curr)
                 )
                 return False
             time.sleep(max(0, _delay - (dt)))
