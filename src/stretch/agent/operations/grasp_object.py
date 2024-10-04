@@ -21,6 +21,7 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
+import torch
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
@@ -83,6 +84,9 @@ class GraspObjectOperation(ManagedOperation):
     # wrist_pitch_step: float = 0.06
     # wrist_pitch_step: float = 0.05  # Too slow
     # ------------------------
+
+    # Tracked object features for making sure we are grabbing the right thing
+    tracked_object_features: Optional[torch.Tensor] = None
 
     # Parameters about how to grasp - less important
     grasp_loose: bool = False
@@ -213,6 +217,7 @@ class GraspObjectOperation(ManagedOperation):
             text_features = self.agent.encode_text(self.target_object)
             best_score = float("-inf")
             best_iid = None
+            all_matches = []
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -232,7 +237,21 @@ class GraspObjectOperation(ManagedOperation):
                 if score > best_score:
                     best_score = score
                     best_iid = iid
-                    mask = servo.instance == iid
+                if score > self.agent.is_match_threshold:
+                    all_matches.append((score, iid, features))
+            if len(all_matches) > 0:
+                print("All matches:")
+                for score, iid, features in all_matches:
+                    print(f" - Matched {iid} with score {score}.")
+            if len(all_matches) == 0:
+                print("No matches found.")
+            elif len(all_matches) == 1:
+                print("One match found. We are done.")
+                mask = servo.instance == best_iid
+            else:
+                # Check to see if we have
+                breakpoint()
+
         else:
             raise ValueError(f"Invalid matching method {self.match_method}.")
 
