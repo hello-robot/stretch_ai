@@ -27,6 +27,7 @@ When prompted, you will respond using the three actions:
 - shake_head() # shake your head
 - avert_gaze() # avert your gaze
 - go_home()  # navigate back to where you started
+- quit()  # end the conversation
 
 These functions and their arguments are the only things you will return - no comments - and they are your only way to interact with the world. For example:
 
@@ -44,6 +45,17 @@ output:
 say("Hello!")
 wave()
 end()
+
+input: "Goodbye!"
+output:
+say("Goodbye!")
+wave()
+quit()
+
+input: "Stop."
+output:
+say("I am stopping.")
+quit()
 
 You can answer questions:
 
@@ -150,6 +162,8 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands.append(line)
             elif line.startswith("avert_gaze()"):
                 commands.append(line)
+            elif line.startswith("quit()"):
+                commands.append(line)
             elif line.startswith("end()"):
                 # Stop parsing if we see the end command
                 break
@@ -175,6 +189,10 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("shake_head", ""))
             elif command.startswith("avert_gaze()"):
                 parsed_commands.append(("avert_gaze", ""))
+            elif command.startswith("quit()"):
+                # Quit actually shuts down the robot.
+                parsed_commands.append(("quit", ""))
+                break
             elif command.startswith("end()"):
                 # Stop parsing if we see the end command
                 # This really shouldn't happen, but just in case

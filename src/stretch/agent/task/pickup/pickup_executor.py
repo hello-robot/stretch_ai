@@ -76,8 +76,15 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]]) -> None:
-        """Execute the list of commands given by the LLM bot."""
+    def __call__(self, response: List[Tuple[str, str]]) -> bool:
+        """Execute the list of commands given by the LLM bot.
+
+        Args:
+            response: A list of tuples, where the first element is the command and the second is the argument.
+
+        Returns:
+            True if we should keep going, False if we should stop.
+        """
         i = 0
 
         # Loop over every command we have been given
@@ -119,6 +126,10 @@ class PickupExecutor:
                 self.emote_task.get_task("shake_head").run()
             elif command == "avert_gaze":
                 self.emote_task.get_task("avert_gaze").run()
+            elif command == "quit":
+                logger.info("[Pickup task] Quitting.")
+                self.robot.stop()
+                return False
             elif command == "end":
                 logger.info("[Pickup task] Ending.")
                 break
@@ -126,3 +137,5 @@ class PickupExecutor:
                 logger.error(f"Skipping unknown command: {command}")
 
             i += 1
+        # If we did not explicitly receive a quit command, we are not yet done.
+        return True

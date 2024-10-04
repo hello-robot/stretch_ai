@@ -161,7 +161,8 @@ def main(
         chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
 
     # Parse things and listen to the user
-    while robot.running:
+    ok = True
+    while robot.running and ok:
         agent.reset()
 
         say_this = None
@@ -175,7 +176,7 @@ def main(
             # Call the LLM client and parse
             llm_response = chat_wrapper.query()
 
-        executor(llm_response)
+        ok = executor(llm_response)
 
         if reset:
             # Send the robot home at the end!
