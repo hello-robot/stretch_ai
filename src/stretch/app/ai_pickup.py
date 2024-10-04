@@ -163,7 +163,7 @@ def main(
     # Parse things and listen to the user
     ok = True
     while robot.running and ok:
-        agent.reset()
+        # agent.reset()
 
         say_this = None
         if llm_client is None:

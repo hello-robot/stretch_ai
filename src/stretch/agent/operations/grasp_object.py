@@ -302,6 +302,7 @@ class GraspObjectOperation(ManagedOperation):
     def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
+        self.agent.robot_say("Grasping the object!")
 
         if not self.open_loop:
             joint_state = self.robot.get_joint_positions()
