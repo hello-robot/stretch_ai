@@ -14,6 +14,7 @@ from typing import Optional
 import numpy as np
 
 from stretch.agent.base import ManagedOperation
+from stretch.mapping.instance import Instance
 from stretch.motion import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
@@ -51,7 +52,8 @@ class PlaceObjectOperation(ManagedOperation):
         self.place_step_size = place_step_size
         self.use_pitch_from_vertical = use_pitch_from_vertical
 
-    def get_target(self):
+    def get_target(self) -> Instance:
+        """Get the target object to place."""
         return self.agent.current_receptacle
 
     def get_target_center(self):
