@@ -30,7 +30,7 @@ These functions and their arguments are the only things you will say. Wave if a 
 
 input: "Put the red apple in the cardboard box"
 output:
-say("I am picking up the red apple in the cardboard box")
+say("Picking up the red apple in the cardboard box")
 pickup(red apple)
 place(cardboard box)
 end()
@@ -91,13 +91,13 @@ If a human uses obvious shorthand for an object, unroll it when calling function
 
 input: "Find the remote."
 output:
-say("I am looking for the tv remote control.")
+say("Looking for the tv remote control.")
 find(tv remote control)
 end()
 
 input: "Can you put the shoe in the closet?"
 output:
-say("I am picking up the shoe and putting it in the closet.")
+say("Picking up the shoe and putting it in the closet.")
 pickup(shoe)
 place(closet)
 end()
@@ -109,7 +109,7 @@ end()
 
 input: "Put the pen in the pencil holder"
 output:
-say("I am picking up the pen and putting it in the pencil holder.")
+say("Picking up the pen and putting it in the pencil holder.")
 pickup(pen)
 place(pencil holder)
 end()
