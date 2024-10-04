@@ -87,6 +87,11 @@ class PickupExecutor:
         """
         i = 0
 
+        if len(response) == 0:
+            logger.error("No commands to execute!")
+            self.agent.robot_say("I'm sorry, I didn't understand that.")
+            return True
+
         # Loop over every command we have been given
         # Pull out pickup and place as a single arg if they are in a row
         # Else, execute things as they come
