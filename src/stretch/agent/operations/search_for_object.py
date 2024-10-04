@@ -35,6 +35,10 @@ class ManagedSearchOperation(ManagedOperation):
     def object_class(self) -> str:
         return self._object_class
 
+    @property
+    def sayable_object_class(self) -> str:
+        return self._object_class.replace("_", " ")
+
     def __init__(self, *args, match_method="feature", **kwargs):
         super().__init__(*args, **kwargs)
         self.match_method = match_method
@@ -164,6 +168,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 self.agent.go_home()
         else:
             self.cheer(f"Found a receptacle!")
+            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
             self.set_status(status.SUCCEEDED)
             view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
@@ -294,6 +299,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.agent.reset_object_plans()
         else:
             self.cheer(f"Found object of {self.object_class}!")
+            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
             view = self.agent.current_object.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("object.png")
