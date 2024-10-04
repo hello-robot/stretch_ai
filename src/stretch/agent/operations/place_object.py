@@ -24,7 +24,7 @@ class PlaceObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
-    place_step_size: float = 0.25
+    place_step_size: float = 0.35
     use_pitch_from_vertical: bool = True
     verbose: bool = True
 

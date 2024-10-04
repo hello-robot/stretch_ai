@@ -1135,10 +1135,21 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action: Dict[str, Any],
         timeout: float = 5.0,
         verbose: bool = False,
+        force_resend: bool = False,
     ) -> Dict[str, Any]:
-        """Send the next action to the robot"""
+        """Send the next action to the robot. Increment the step counter and wait for the action to finish if it is blocking.
+
+        Args:
+            next_action (dict): the action to send
+            timeout (float): how long to wait for the action to finish
+            verbose (bool): whether to print out debug information
+            force_resend (bool): whether to resend the action
+
+        Returns:
+            dict: copy of the action that was sent to the robot.
+        """
         if verbose:
-            print("-> sending", next_action)
+            logger.info("-> sending", next_action)
         blocking = False
         block_id = None
         with self._act_lock:
@@ -1154,7 +1165,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 
-            if self._resend_all_actions:
+            if self._resend_all_actions or force_resend:
                 time.sleep(0.01)
 
                 print("SENDING THIS ACTION:", next_action)
