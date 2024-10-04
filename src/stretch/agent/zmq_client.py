@@ -681,7 +681,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"posture": "navigation", "step": self._iter}
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
-        self._wait_for_mode("navigation")
+        self._wait_for_mode("navigation", resend_action=next_action)
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
@@ -753,7 +753,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 break
             time.sleep(0.01)
 
-    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
+    def _wait_for_mode(
+        self,
+        mode,
+        resend_action: Optional[Dict[str, Any]] = None,
+        verbose: bool = False,
+        timeout: float = 20.0,
+    ):
         t0 = timeit.default_timer()
         while True:
             with self._state_lock:
@@ -761,6 +767,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if self._control_mode == mode:
                     break
+            if resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
             time.sleep(0.1)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:

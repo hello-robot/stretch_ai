@@ -62,7 +62,8 @@ class GraspObjectOperation(ManagedOperation):
     # align_x_threshold: int = 10
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 15
+    # align_x_threshold: int = 15
+    align_x_threshold: int = 20
     align_y_threshold: int = 15
 
     # pregrasp_distance_from_object: float = 0.075
@@ -681,9 +682,7 @@ class GraspObjectOperation(ManagedOperation):
             )
 
         # Delete the object
-        self.agent.voxel_map.delete_instance(
-            self.agent.current_object.global_id, assume_explored=False
-        )
+        self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
             self.agent.robot_say("I think I grasped the object.")
 

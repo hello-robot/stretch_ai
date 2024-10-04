@@ -47,6 +47,9 @@ class RobotAgent:
     update_rerun_every_time: bool = True
     normalize_embeddings: bool = False
 
+    _before_head_motion_sleep_t = 0.25
+    _after_head_motion_sleep_t = 0.1
+
     def __init__(
         self,
         robot: AbstractRobotClient,
@@ -440,7 +443,7 @@ class RobotAgent:
         if move_head:
             self.robot.move_to_nav_posture()
             # Pause a bit first to make sure the robot is in the right posture
-            time.sleep(0.25)
+            time.sleep(self._before_head_motion_sleep_t)
             num_steps = 5
         else:
             num_steps = 1
@@ -458,7 +461,7 @@ class RobotAgent:
                 pan = -1 * i * np.pi / 4
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
-                time.sleep(0.1)
+                time.sleep(self._after_head_motion_sleep_t)
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
