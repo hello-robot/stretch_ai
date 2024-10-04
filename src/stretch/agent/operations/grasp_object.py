@@ -122,6 +122,7 @@ class GraspObjectOperation(ManagedOperation):
         reset_observation: bool = False,
         grasp_loose: bool = False,
         talk: bool = True,
+        match_method: str = "class",
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -133,6 +134,7 @@ class GraspObjectOperation(ManagedOperation):
             reset_observation (bool, optional): Reset the observation. Defaults to False.
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
             talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
+            match_method (str, optional): Matching method. Defaults to "class". This is how the policy determines which object mask it should try to grasp.
         """
         self.target_object = target_object
         self.show_object_to_grasp = show_object_to_grasp
@@ -142,6 +144,11 @@ class GraspObjectOperation(ManagedOperation):
         self.reset_observation = reset_observation
         self.grasp_loose = grasp_loose
         self.talk = talk
+        self.match_method = match_method
+        if self.match_method not in ["class", "feature"]:
+            raise ValueError(
+                f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
+            )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
