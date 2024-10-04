@@ -76,10 +76,20 @@ class UpdateOperation(ManagedOperation):
             time.sleep(2.0)
         self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
         xyt = self.robot.get_base_pose()
+
         # Now update the world
         self.update(move_head=self.move_head)
+
         # Delete observations near us, since they contain the arm!!
         self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7)
+
+        # Show the map so far
+        self.agent.voxel_map.show(
+            orig=np.zeros(3),
+            xyt=xyt,
+            footprint=self.robot_model.get_footprint(),
+            planner_visuals=True,
+        )
 
         # Notify and move the arm back to normal. Showing the map is optional.
         print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")

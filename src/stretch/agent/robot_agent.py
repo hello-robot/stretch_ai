@@ -1346,6 +1346,16 @@ class RobotAgent:
 
         return matches
 
+    def show_voxel_map(self):
+        """Show the voxel map in Open3D for debugging."""
+        self.voxel_map.show(
+            orig=np.zeros(3),
+            xyt=self.robot.get_base_pose(),
+            footprint=self.robot.get_robot_model().get_footprint(),
+            instances=self.semantic_sensor is not None,
+            planner_visuals=True,
+        )
+
     def move_closed_loop(self, goal: np.ndarray, max_time: float = 10.0) -> bool:
         """Helper function which will move while also checking which position the robot reached.
 
