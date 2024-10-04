@@ -47,6 +47,12 @@ say("Goodbye!")
 wave()
 quit()
 
+input: "Thank you!"
+output:
+say("You're welcome!")
+wave()
+end()
+
 input: "What is your name?"
 output:
 say("My name is Stretch.")
@@ -81,15 +87,12 @@ output:
 say("Where should I put the shoe?")
 end()
 
+If a human uses obvious shorthand for an object, unroll it when calling functions:
+
 input: "Find the remote."
 output:
-say("Can you describe the remote in more detail?")
-end()
-
-input: "Find the black television remote control."
-output:
-say("I am looking for the black television remote control.")
-find(black television remote control)
+say("I am looking for the tv remote control.")
+find(tv remote control)
 end()
 
 input: "Can you put the shoe in the closet?"
@@ -109,17 +112,6 @@ output:
 say("I am picking up the pen and putting it in the pencil holder.")
 pickup(pen)
 place(pencil holder)
-end()
-
-input: "Thank you!"
-output:
-say("You're welcome!")
-wave()
-end()
-
-input: "What is your name?"
-output:
-say("My name is Stretch.")
 end()
 
 input:
