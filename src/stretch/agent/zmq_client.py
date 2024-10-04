@@ -578,7 +578,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
         if self._rerun:
             self._rerun.update_nav_goal(_xyt)
-        self.send_action(next_action, timeout=timeout, verbose=verbose, force_resend=True)
+        # If we are not in navigation mode, switch to it
+        # Send an action to the robot
+        # Resend it to make sure it arrives, if we are not making a relative motion
+        # If we are blocking, wait for the action to complete with a timeout
+        self.send_action(next_action, timeout=timeout, verbose=verbose, force_resend=(not relative))
 
     def set_velocity(self, v: float, w: float):
         """Move to xyt in global coordinates or relative coordinates."""
@@ -1168,7 +1172,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if self._resend_all_actions or force_resend:
                 time.sleep(0.01)
 
-                print("SENDING THIS ACTION:", next_action)
+                logger.info("RESENDING THIS ACTION:", next_action)
                 self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
