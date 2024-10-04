@@ -1146,9 +1146,20 @@ class SparseVoxelMap(object):
             geoms.append(wireframe)
 
     def delete_instance(
-        self, instance: Instance, force_update=False, min_bound_z=0, assume_explored: bool = False
+        self,
+        instance: Instance,
+        force_update: bool = True,
+        min_bound_z: float = 0,
+        assume_explored: bool = False,
     ) -> None:
-        """Remove an instance from the map"""
+        """Remove an instance from the map.
+
+        Args:
+            instance: instance to remove
+            force_update: force update of cached 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient.
+            min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
+            assume_explored: assume deleted area is explored or not. If True, will mark the area as explored, so that the robot can plan past this position. If False, the area will be marked as unexplored, and the robot will have to re-explore it.
+        """
         print("Deleting instance", instance.global_id)
         print("Bounds: ", instance.bounds)
         self.delete_obstacles(instance.bounds, force_update=force_update, min_bound_z=min_bound_z)

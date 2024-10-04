@@ -24,7 +24,7 @@ class UpdateOperation(ManagedOperation):
     clear_voxel_map: bool = False
     move_head: Optional[bool] = None
     target_object: str = "cup"
-    match_method: str = "name"
+    match_method: str = "feature"
 
     def set_target_object_class(self, object_class: str):
         """Set the target object class for the operation.
@@ -45,6 +45,7 @@ class UpdateOperation(ManagedOperation):
         show_map_so_far=False,
         clear_voxel_map=False,
         target_object: str = "cup",
+        match_method: str = "feature",
     ):
         """Configure the operation with the given parameters."""
         self.move_head = move_head
@@ -52,15 +53,20 @@ class UpdateOperation(ManagedOperation):
         self.show_map_so_far = show_map_so_far
         self.clear_voxel_map = clear_voxel_map
         self.target_object = target_object
+        self.match_method = match_method
+        if self.match_method not in ["class", "feature"]:
+            raise ValueError(f"Unknown match method {self.match_method}.")
         print("---- CONFIGURING UPDATE OPERATION ----")
         print("Move head is set to", self.move_head)
         print("Show instances detected is set to", self.show_instances_detected)
         print("Show map so far is set to", self.show_map_so_far)
         print("Clear voxel map is set to", self.clear_voxel_map)
         print("Target object is set to", self.target_object)
+        print("Match method is set to", self.match_method)
         print("--------------------------------------")
 
     def run(self):
+        """Run the operation."""
         self.intro("Updating the world model.")
         if self.clear_voxel_map:
             self.agent.reset()
@@ -114,7 +120,7 @@ class UpdateOperation(ManagedOperation):
         if self.match_method == "class":
             instances = self.agent.voxel_map.instances.get_instances_by_class(self.target_object)
             scores = np.ones(len(instances))
-        elif self.match_method == "name":
+        elif self.match_method == "feature":
             scores, instances = self.agent.get_instances_from_text(self.target_object)
             # self.agent.voxel_map.show(orig=np.zeros(3), xyt=start, footprint=self.robot_model.get_footprint(), planner_visuals=True)
         else:
