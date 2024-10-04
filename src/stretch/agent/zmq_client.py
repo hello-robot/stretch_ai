@@ -578,7 +578,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
         if self._rerun:
             self._rerun.update_nav_goal(_xyt)
-        self.send_action(next_action, timeout=timeout, verbose=verbose)
+        self.send_action(next_action, timeout=timeout, verbose=verbose, force_resend=True)
 
     def set_velocity(self, v: float, w: float):
         """Move to xyt in global coordinates or relative coordinates."""
