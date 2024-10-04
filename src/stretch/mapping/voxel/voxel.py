@@ -1160,7 +1160,7 @@ class SparseVoxelMap(object):
 
         Args:
             instance: instance to remove
-            force_update: force update of cached 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient.
+            force_update: force update of cached 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient. Defaults to True.
             min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
             assume_explored: assume deleted area is explored or not. If True, will mark the area as explored, so that the robot can plan past this position. If False, the area will be marked as unexplored, and the robot will have to re-explore it.
         """
@@ -1191,7 +1191,7 @@ class SparseVoxelMap(object):
             bounds: 3x2 array of min and max bounds in xyz
             point: 3x1 array of point to delete
             radius: radius around point to delete
-            force_update: force update of 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient.
+            force_update: force update of 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient. Defaults to True.
             min_height: minimum height to delete. Usually 0, for the floor plane.
             min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
             assume_explored: assume deleted area is explored
