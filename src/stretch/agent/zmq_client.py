@@ -86,6 +86,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         manip_mode_controlled_joints: Optional[List[str]] = None,
         start_immediately: bool = True,
         enable_rerun_server: bool = True,
+        resend_all_actions: bool = False,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -110,6 +111,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._iter = -1  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
         self._started = False
+
+        # Resend all actions immediately - helps if we are losing packets or something?
+        self._resend_all_actions = resend_all_actions
 
         if parameters is None:
             parameters = get_parameters("default_planner.yaml")
@@ -1082,10 +1086,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # TODO: fix all of this - why do we need to do this?
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
-            # time.sleep(0.01)
 
-            # print("SENDING THIS ACTION:", next_action)
-            # self.send_socket.send_pyobj(next_action)
+            if self._resend_all_actions:
+                time.sleep(0.01)
+
+                print("SENDING THIS ACTION:", next_action)
+                self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
             if "xyt" in next_action:
