@@ -182,4 +182,5 @@ We provide an alternative startup script for development. This script runs the D
 ```bash
 ./scripts/dev_docker_gpu_machine.sh
 ```
-Now, the apps will run from your local directory. You can edit the apps in your local directory and run them to see the result. 
+
+Now, the apps will run from your local directory. You can edit the apps in your local directory and run them to see the result.
