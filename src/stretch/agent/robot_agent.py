@@ -1454,7 +1454,8 @@ class RobotAgent:
         self.tts.say_async(msg)
 
     def robot_say(self, msg: str):
-        """Hae the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
+        """Have the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
+        msg = msg.strip('"' + "'")
         self.robot.say(msg)
 
     def ask(self, msg: str) -> str:
