@@ -366,6 +366,25 @@ class SparseVoxelMapNavigationSpace(XYT):
         # TODO: was this:
         # expanded_mask = expanded_mask & less_explored & ~obstacles
 
+        # target_pt = self.voxel_map.xy_to_grid_coords(np.array([point[0], point[1]]))
+
+        # if len(selected_targets) != 0:
+        #     inds = torch.tensor([
+        #         self.compute_s1(target_pt, selected_target)
+        #         + self.compute_s2(target_pt, selected_target, weight = 8, ideal_dis = 4)
+        #         + self.compute_s3(selected_target, weight = 8, avoid = 3)
+        #         for selected_target in selected_targets
+        #     ])
+        #     ind = torch.argmin(inds)
+        #     end_pt = selected_targets[ind]
+        # else:
+        #     return None
+
+        # selected_x, selected_y = planner.to_xy([end_pt[0], end_pt[1]])
+        # theta = self.compute_theta(selected_x, selected_y, point[0], point[1])
+
+        # return np.array([selected_x, selected_y, theta])
+
         for selected_target in selected_targets:
             selected_x, selected_y = planner.to_xy([selected_target[0], selected_target[1]])
             theta = self.compute_theta(selected_x, selected_y, point[0], point[1])
@@ -394,16 +413,37 @@ class SparseVoxelMapNavigationSpace(XYT):
                 index_j = int(selected_target[1].int() + j)
                 if obstacles[index_i][index_j]:
                     target_is_valid = False
-            # elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
-            #     for i in [-1, 0, 1]:
-            #         for j in [-1, 0, 1]:
-            #             if obstacles[selected_target[0] + i][selected_target[1] + j]:
-            #                 target_is_valid = False
+
             if not target_is_valid:
                 continue
 
             return np.array([selected_x, selected_y, theta])
+
         return None
+
+    def compute_dis(self, a: tuple[int, int], b: tuple[int, int]):
+        return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
+    def compute_obstacle_punishment(self, a: tuple[int, int], weight: int, avoid: int) -> float:
+        obstacles, explored = self.voxel_map.get_2d_map()
+        navigable = (~obstacles) & explored
+        obstacle_punishment = 0
+        for i in range(-avoid, avoid + 1):
+            for j in range(-avoid, avoid + 1):
+                if not navigable[a[0] + i, a[1] + j]:
+                    b = [a[0] + i, a[1] + j]
+                    obs_dis = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+                    obstacle_punishment = max((weight / max(obs_dis, 1)), obstacle_punishment)
+        return obstacle_punishment
+
+    def compute_s1(self, a: tuple[int, int], obj: tuple[int, int]) -> float:
+        return self.compute_dis(a, obj)
+
+    def compute_s2(self, a: tuple[int, int], obj: tuple[int, int], weight=8, ideal_dis=4) -> float:
+        return weight * (ideal_dis - min(self.compute_dis(a, obj), ideal_dis))
+
+    def compute_s3(self, a: tuple[int, int], weight=8, avoid=1) -> float:
+        return self.compute_obstacle_punishment(a, weight, avoid)
 
     def sample_near_mask(
         self,
@@ -634,7 +674,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             alignments_heuristics = None
             total_heuristics = time_heuristics
 
-        rounded_heuristics = np.ceil(total_heuristics * 100) / 100
+        rounded_heuristics = np.ceil(total_heuristics * 1000) / 1000
         max_heuristic = rounded_heuristics.max()
         indices = np.column_stack(np.where(rounded_heuristics == max_heuristic))
         closest_index = np.argmin(
@@ -661,7 +701,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         alignments,
         outside_frontier,
         alignment_smooth=50,
-        alignment_threshold=0.12,
+        alignment_threshold=0.13,
         debug=False,
     ):
         alignments = np.ma.masked_array(alignments, ~outside_frontier)
@@ -678,7 +718,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         return alignment_heuristics
 
     def _time_heuristic(
-        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=15, debug=False
+        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=220, debug=False
     ):
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         time_heuristics = history_soft.max() - history_soft

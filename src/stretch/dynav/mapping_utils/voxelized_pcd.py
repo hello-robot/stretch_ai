@@ -20,7 +20,7 @@ from torch import Tensor
 import stretch.utils.logger as logger
 from stretch.utils.voxel import merge_features
 
-USE_TORCH_GEOMETRIC = False
+USE_TORCH_GEOMETRIC = True
 if USE_TORCH_GEOMETRIC:
     try:
         from torch_geometric.nn.pool.consecutive import consecutive_cluster
@@ -168,7 +168,7 @@ class VoxelizedPointcloud:
                         proj_depth < 0.01,
                         # depth is too large
                         # (~depth_is_valid)[valid_xys[:, 0], valid_xys[:, 1]],
-                        proj_depth > 2.0,
+                        proj_depth > 3.0,
                     ],
                     dim=0,
                 ),

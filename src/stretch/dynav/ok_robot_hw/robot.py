@@ -231,11 +231,11 @@ class HelloRobot:
             target1[1] = min(1.1, target_state[1] + 0.2)
             self.robot.arm_to(target1, blocking=True, head=np.array([self.pan, self.tilt]))
 
-        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        self.robot.arm_to(target_state, blocking=True)
         self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
 
-        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
-        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
+        # self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
 
         # print('pan tilt after', self.robot.get_pan_tilt())
         # print(f"current state {self.robot.get_six_joints()}")

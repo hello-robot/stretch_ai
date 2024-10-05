@@ -320,10 +320,10 @@ class AStar:
         # assert len(goal) == self.space.dof, "invalid goal dimensions"
         # self.start_time = time.time()
         self.reset()
-        if not self.space.is_valid(goal):
-            if verbose:
-                print("[Planner] invalid goal")
-            return PlanResult(False, reason="[Planner] invalid goal")
+        # if not self.space.is_valid(goal):
+        #     if verbose:
+        #         print("[Planner] invalid goal")
+        #     return PlanResult(False, reason="[Planner] invalid goal")
         # Add start to the tree
         # print('Start running A* ', time.time() - self.start_time, ' seconds after path planning starts')
         waypoints = self.run_astar(start[:2], goal[:2])

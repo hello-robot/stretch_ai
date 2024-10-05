@@ -120,15 +120,15 @@ def setup_custom_blueprint(rerun_visualizer):
             rrb.TextDocumentView(name="text", origin="robot_monologue"),
             rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
         ),
-        # rrb.Vertical(
-        #     rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
-        #     rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
-        # ),
-        column_shares=[2, 1],
+        rrb.Vertical(
+            rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+            rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+        ),
+        column_shares=[2, 1, 1],
     )
     my_blueprint = rrb.Blueprint(
         rrb.Vertical(main, rrb.TimePanel(state=True)),
-        collapse_panels=False,
+        collapse_panels=True,
     )
     rr.send_blueprint(my_blueprint)
 
@@ -140,14 +140,14 @@ class ImageProcessor:
         siglip: bool = True,
         device: str = "cuda",
         min_depth: float = 0.25,
-        max_depth: float = 2.5,
+        max_depth: float = 3.0,
         img_port: int = 5558,
         text_port: int = 5556,
         open_communication: bool = True,
         rerun: bool = True,
         # static: bool = True,
         log=None,
-        image_shape=(400, 300),
+        image_shape=(464, 348),
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
     ):
@@ -163,7 +163,7 @@ class ImageProcessor:
         if self.rerun and self.rerun_visualizer is None:
             rr.init(self.log)
             logger.info("Starting a rerun server.")
-        else:
+        elif self.rerun:
             setup_custom_blueprint(self.rerun_visualizer)
             logger.info("Attempting to connect to existing rerun server.")
 
@@ -179,8 +179,11 @@ class ImageProcessor:
             device = "cpu"
         self.device = device
 
+        print("HELLO!")
         self.create_obstacle_map()
+        print("HELLO!")
         self.create_vision_model()
+        print("HELLO!")
 
         self.voxel_map_lock = (
             threading.Lock()
@@ -473,6 +476,7 @@ class ImageProcessor:
         if goal is not None:
             goal_pt = self.planner.to_pt(goal)
             plt.scatter(goal_pt[1], goal_pt[0], s=10, c="g")
+        # plt.show()
         return goal
 
     def sample_frontier(self, start_pose=[0, 0, 0], text=None):
@@ -790,9 +794,9 @@ class ImageProcessor:
 
         with self.voxel_map_lock:
             if self.vision_method == "mask&*lip":
-                min_samples_clear = -1
+                min_samples_clear = 3
             else:
-                min_samples_clear = -1
+                min_samples_clear = 10
             self.voxel_map_localizer.voxel_pcd.clear_points(
                 depth,
                 torch.from_numpy(intrinsics),

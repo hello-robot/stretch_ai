@@ -179,13 +179,13 @@ def pickup(
     print(f"pin final rotation {pin_final_rotation}")
 
     rpy_angles = pin.rpy.matrixToRpy(pin_final_rotation)
-    print("pan, tilt before", robot.robot.get_pan_tilt())
+    # print("pan, tilt before", robot.robot.get_pan_tilt())
     robot.move_to_pose(
         [0, 0, 0],
         [rpy_angles[0], rpy_angles[1], rpy_angles[2]],
         [1],
     )
-    print("pan, tilt after", robot.robot.get_pan_tilt())
+    # print("pan, tilt after", robot.robot.get_pan_tilt())
 
     # Final grasping point relative to camera
     pin_cam2gripper_transform = robot.get_joint_transform(base_node, gripper_node)
@@ -204,14 +204,14 @@ def pickup(
     ref_diff = diff_value
 
     # Moving gripper to a point that is 0.2m away from the pose center in the line of gripper
-    print("pan, tilt before", robot.robot.get_pan_tilt())
+    # print("pan, tilt before", robot.robot.get_pan_tilt())
     robot.move_to_pose(
         [pin_transformed_point1[0], pin_transformed_point1[1], pin_transformed_point1[2] - 0.2],
         [0, 0, 0],
         [1],
         move_mode=1,
     )
-    print("pan, tilt after", robot.robot.get_pan_tilt())
+    # print("pan, tilt after", robot.robot.get_pan_tilt())
 
     # Z-Axis of link_straight_gripper points in line of gripper
     # So, the z co-ordiante of point w.r.t gripper gives the distance of point from gripper
@@ -226,7 +226,7 @@ def pickup(
         dist = diff - 0.08
         state = robot.robot.get_six_joints()
         state[1] += 0.02
-        state[0] -= 0.02
+        # state[0] -= 0.015
         robot.robot.arm_to(state, blocking=True)
         robot.move_to_pose([0, 0, dist], [0, 0, 0], [1])
         diff = diff - dist

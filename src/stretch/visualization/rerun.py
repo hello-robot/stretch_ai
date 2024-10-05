@@ -194,6 +194,7 @@ class RerunVisualizer:
             server_memory_limit (str): Server memory limit E.g. 2GB or 20%
             collapse_panels (bool): Set to false to have customizable rerun panels
         """
+        self.open_browser = open_browser
         rr.init("Stretch_robot", spawn=(not open_browser))
         if open_browser:
             rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
@@ -262,6 +263,7 @@ class RerunVisualizer:
             identity_name (str): rerun identity name
             img (2D or 3D array): the 2d image you want to log into rerun
         """
+        # rr.init("Stretch_robot", spawn=(not self.open_browser))
         rr.log(identity_name, rr.Image(img))
 
     def log_text(self, identity_name: str, text: str):
@@ -271,6 +273,7 @@ class RerunVisualizer:
             identity_name (str): rerun identity name
             text (str): Markdown codes you want to log in rerun
         """
+        # rr.init("Stretch_robot", spawn=(not self.open_browser))
         rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
 
     def log_arrow3D(
@@ -290,6 +293,7 @@ class RerunVisualizer:
             colors (a N x 3 array): RGB colors of all 3D arrows
             radii (float): size of the arrows
         """
+        # rr.init("Stretch_robot", spawn=(not self.open_browser))
         rr.log(
             identity_name,
             rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
@@ -310,6 +314,7 @@ class RerunVisualizer:
             colors (a N x 3 array): RGB colors of all 3D points
             radii (float): size of the arrows
         """
+        # rr.init("Stretch_robot", spawn=(not self.open_browser))
         rr.log(
             identity_name,
             rr.Points3D(
@@ -325,6 +330,7 @@ class RerunVisualizer:
         Args:
             obs (Observations): Observation dataclass
         """
+        # rr.init("Stretch_robot", spawn=(not self.open_browser))
         rr.set_time_seconds("realtime", time.time())
         rr.log("world/head_camera/rgb", rr.Image(obs.rgb))
 
@@ -358,7 +364,7 @@ class RerunVisualizer:
 
     def log_robot_xyt(self, obs: Observations):
         """Log robot world pose"""
-        rr.set_time_seconds("realtime", time.time())
+        # rr.set_time_seconds("realtime", time.time())
         xy = obs["gps"]
         theta = obs["compass"]
         rb_arrow = rr.Arrows3D(
@@ -388,7 +394,7 @@ class RerunVisualizer:
         Args:
             obs (Observations): Observation dataclass
         """
-        rr.set_time_seconds("realtime", time.time())
+        # rr.set_time_seconds("realtime", time.time())
         # EE Frame
         rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
         ee_arrow = rr.Arrows3D(

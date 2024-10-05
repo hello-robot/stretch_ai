@@ -174,7 +174,7 @@ def main(
                 demo.place(text, theta)
                 robot.move_to_nav_posture()
 
-            demo.save()
+            # demo.save()
 
 
 if __name__ == "__main__":

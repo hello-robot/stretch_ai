@@ -426,8 +426,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
             self._wait_for_head(whole_body_q, block_id=step)
 
-        time.sleep(0.1)
-
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
         self.head_to(
@@ -448,7 +446,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         blocking: bool = False,
         timeout: float = 10.0,
         verbose: bool = False,
-        min_time: float = 2.5,
+        min_time: float = 2.0,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.

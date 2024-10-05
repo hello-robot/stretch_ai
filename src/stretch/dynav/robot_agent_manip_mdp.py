@@ -114,7 +114,7 @@ class RobotAgentMDP:
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         # Sleep some time so the robot rgbd observations are more likely to be updated
-        time.sleep(0.3)
+        time.sleep(0.7)
 
         obs = self.robot.get_observation()
         self.obs_count += 1
