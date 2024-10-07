@@ -11,15 +11,16 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import datetime
 import random
 import time
 import timeit
 from pathlib import Path
+from threading import Lock, Thread
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import zmq
 from PIL import Image
 
 import stretch.utils.logger as logger
@@ -60,6 +61,8 @@ class RobotAgent:
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
+        realtime_updates: bool = False,
+        obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -87,6 +90,7 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
+        self._realtime_updates = realtime_updates
 
         # ==============================================
         # Update configuration
@@ -137,6 +141,9 @@ class RobotAgent:
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
+        # Previously sampled goal during exploration
+        self._previous_goal = None
+
         # Create a simple motion planner
         self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
         if parameters["motion_planner"]["shortcut_plans"]:
@@ -144,7 +151,25 @@ class RobotAgent:
         if parameters["motion_planner"]["simplify_plans"]:
             self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
 
-        timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
+        if self._realtime_updates:
+            # Locks
+            self._robot_lock = Lock()
+            self._obs_history_lock = Lock()
+            # Map updates
+            self._update_map_thread = Thread(target=self.update_map_loop)
+            self._update_map_thread.start()
+
+            # Get observations thread
+            self._get_observations_thread = Thread(target=self.get_observations_loop)
+            self._get_observations_thread.start()
+
+            self.context = zmq.Context()
+            self.sub_socket = self.context.socket(zmq.SUB)
+            self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
+            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+
+    def __del__(self):
+        self._update_map_thread.join()
 
     def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
         """Create a voxel map from parameters.
@@ -355,7 +380,11 @@ class RobotAgent:
         return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
 
     def rotate_in_place(
-        self, steps: Optional[int] = -1, visualize: bool = False, verbose: bool = False
+        self,
+        steps: Optional[int] = -1,
+        visualize: bool = False,
+        verbose: bool = False,
+        full_sweep: bool = True,
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -375,6 +404,9 @@ class RobotAgent:
         x, y, theta = self.robot.get_base_pose()
         if verbose:
             print(f"==== ROTATE IN PLACE at {x}, {y} ====")
+
+        if full_sweep:
+            steps += 1
         while i < steps:
             t0 = timeit.default_timer()
             self.robot.navigate_to(
@@ -396,7 +428,8 @@ class RobotAgent:
                 print(" - Navigation took", t1 - t0, "seconds")
                 print(f"---- UPDATE {i+1} at {x}, {y}----")
             t0 = timeit.default_timer()
-            self.update()
+            if not self._realtime_updates:
+                self.update()
             t1 = timeit.default_timer()
             if verbose:
                 print("Update took", t1 - t0, "seconds")
@@ -428,6 +461,169 @@ class RobotAgent:
             instances=self.semantic_sensor is not None,
         )
 
+    def get_observations_loop(self):
+        while True:
+            obs = None
+            t0 = timeit.default_timer()
+
+            self._obs_history_lock.acquire()
+
+            while obs is None:
+                # obs = self.robot.get_observation()
+                obs = self.sub_socket.recv_pyobj()
+                # print(obs)
+                if obs is None:
+                    continue
+
+                obs = Observations.from_dict(obs)
+
+                if (len(self.obs_history) > 0) and (
+                    obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
+                ):
+                    obs = None
+                t1 = timeit.default_timer()
+                if t1 - t0 > 10:
+                    logger.error("Failed to get observation")
+                    break
+
+            # t1 = timeit.default_timer()
+            self.obs_history.append(obs)
+            self._obs_history_lock.release()
+            self.obs_count += 1
+            time.sleep(0.05)
+
+    def update_map_with_pose_graph(self):
+        """Update our voxel map using a pose graph"""
+
+        t0 = timeit.default_timer()
+        self.pose_graph = self.robot.get_pose_graph()
+
+        t1 = timeit.default_timer()
+
+        # Update past observations based on our new pose graph
+        # print("Updating past observations")
+        self._obs_history_lock.acquire()
+        for idx in range(len(self.obs_history)):
+            lidar_timestamp = self.obs_history[idx].lidar_timestamp
+            gps_past = self.obs_history[idx].gps
+
+            for vertex in self.pose_graph:
+                if abs(vertex[0] - lidar_timestamp) < 0.05:
+                    # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+
+                    self.obs_history[idx].is_pose_graph_node = True
+                    self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
+                    self.obs_history[idx].compass = np.array(
+                        [
+                            vertex[3],
+                        ]
+                    )
+
+                    # print(
+                    #     f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
+                    # )
+
+                    if (
+                        self.obs_history[idx].task_observations is None
+                        and self.semantic_sensor is not None
+                    ):
+                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
+                # check if the gps is close to the gps of the pose graph node
+                elif (
+                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.3
+                    and self.obs_history[idx].pose_graph_timestamp is None
+                ):
+                    # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+
+                    self.obs_history[idx].is_pose_graph_node = True
+                    self.obs_history[idx].pose_graph_timestamp = vertex[0]
+                    self.obs_history[idx].initial_pose_graph_gps = np.array([vertex[1], vertex[2]])
+                    self.obs_history[idx].initial_pose_graph_compass = np.array(
+                        [
+                            vertex[3],
+                        ]
+                    )
+
+                    if (
+                        self.obs_history[idx].task_observations is None
+                        and self.semantic_sensor is not None
+                    ):
+                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
+
+                elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
+                    # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
+                    delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
+                    delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
+
+                    # Calculate new gps and compass
+                    new_gps = self.obs_history[idx].gps + delta_gps
+                    new_compass = self.obs_history[idx].compass + delta_compass
+
+                    # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
+                    self.obs_history[idx].gps = new_gps
+                    self.obs_history[idx].compass = new_compass
+
+        t2 = timeit.default_timer()
+        # print(f"Done updating past observations. Time: {t2- t1}")
+
+        # print("Updating voxel map")
+        t3 = timeit.default_timer()
+        self.voxel_map.reset()
+        for obs in self.obs_history:
+            if obs.is_pose_graph_node:
+                self.voxel_map.add_obs(obs)
+
+        self._obs_history_lock.release()
+
+        robot_center = np.zeros(3)
+        robot_center[:2] = self.robot.get_base_pose()[:2]
+
+        t4 = timeit.default_timer()
+        # print(f"Done updating voxel map. Time: {t4 - t3}")
+
+        if self.use_scene_graph:
+            self._update_scene_graph()
+            self.scene_graph.get_relationships()
+
+        if len(self.voxel_map.observations) > 0:
+            self.update_rerun()
+
+        t5 = timeit.default_timer()
+        # print(f"Done updating scene graph. Time: {t5 - t4}")
+
+        self._obs_history_lock.acquire()
+
+        # print(f"Total observation count: {len(self.obs_history)}")
+
+        # Clear out observations that are too old and are not pose graph nodes
+        if len(self.obs_history) > 500:
+            # print("Clearing out old observations")
+            # Remove 10 oldest observations that are not pose graph nodes
+            del_count = 0
+            del_idx = 0
+            while del_count < 15 and len(self.obs_history) > 0 and del_idx < len(self.obs_history):
+                # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
+                if not self.obs_history[del_idx].is_pose_graph_node:
+                    # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
+                    del self.obs_history[del_idx]
+                    del_count += 1
+                else:
+                    del_idx += 1
+
+                    if del_idx >= len(self.obs_history):
+                        break
+
+        t6 = timeit.default_timer()
+        # print(f"Done clearing out old observations. Time: {t6 - t5}")
+        self._obs_history_lock.release()
+
+    def update_map_loop(self):
+        """Threaded function that updates our voxel map in real-time"""
+        while True:
+            with self._robot_lock:
+                self.update_map_with_pose_graph()
+            time.sleep(0.5)
+
     def update(
         self,
         visualize_map: bool = False,
@@ -453,7 +649,7 @@ class RobotAgent:
             t1 = timeit.default_timer()
             if t1 - t0 > 10:
                 logger.error("Failed to get observation")
-                return
+                break
 
         tilt = -1 * np.pi / 4
         for i in range(num_steps):
@@ -465,7 +661,11 @@ class RobotAgent:
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
+            if self._realtime_updates:
+                self._obs_history_lock.acquire()
             self.obs_history.append(obs)
+            if self._realtime_updates:
+                self._obs_history_lock.release()
             self.obs_count += 1
             # Optionally do this
             if self.semantic_sensor is not None:
@@ -534,7 +734,8 @@ class RobotAgent:
         """Update the rerun server with the latest observations."""
         if self.robot._rerun:
             self.robot._rerun.update_voxel_map(self.space)
-            self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+            if self.use_scene_graph:
+                self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
         else:
             logger.error("No rerun server available!")
@@ -940,7 +1141,8 @@ class RobotAgent:
 
         # Add some debugging stuff - show what 3d point clouds look like
         if visualize_map_at_start:
-            self.update(visualize_map=False)  # Append latest observations
+            if not self._realtime_updates:
+                self.update(visualize_map=False)  # Append latest observations
             print("- Visualize map after updating")
             self.voxel_map.show(
                 orig=np.zeros(3),
@@ -1100,7 +1302,7 @@ class RobotAgent:
         if res.success:
             print("- executing full plan to home!")
             self.robot.execute_trajectory([pt.state for pt in res.trajectory])
-            print("Done!")
+            print("Went home!")
         else:
             print("Can't go home; planning failed!")
 
@@ -1176,7 +1378,18 @@ class RobotAgent:
             for i, goal in enumerate(sampler):
                 if goal is None:
                     # No more positions to sample
+                    if verbose:
+                        print("No more frontiers to sample.")
                     break
+
+                # print("Sampled Goal is:", goal.cpu().numpy())
+                if self._previous_goal is not None:
+                    if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
+                        if verbose:
+                            print("Same goal as last time. Skipping.")
+                        self._previous_goal = goal.cpu().numpy()
+                        continue
+                self._previous_goal = goal.cpu().numpy()
 
                 if self.space.is_valid(goal.cpu().numpy(), verbose=True):
                     if verbose:
@@ -1190,11 +1403,16 @@ class RobotAgent:
                     np.random.seed(0)
                     random.seed(0)
 
+                # print("Pushing locations to stack...")
                 self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
+                # print("Planning to goal...")
                 res = self.planner.plan(start, goal.cpu().numpy())
                 if res.success:
+                    if verbose:
+                        print("Plan successful!")
                     return res
                 else:
+                    # print("Plan failed. Reason:", res.reason)
                     if verbose:
                         print("Plan failed. Reason:", res.reason)
         return PlanResult(False, reason="no valid plans found")
@@ -1276,6 +1494,7 @@ class RobotAgent:
                         rot_err_threshold=self.rot_err_threshold,
                     )
             else:
+                # breakpoint()
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
                     print("Exploration failed. Try again!")
@@ -1305,7 +1524,8 @@ class RobotAgent:
                     self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
 
             # Append latest observations
-            self.update()
+            if not self._realtime_updates:
+                self.update()
             # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
             if visualize:
                 # After doing everything - show where we will move to

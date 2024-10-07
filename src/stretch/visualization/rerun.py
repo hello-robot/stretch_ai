@@ -174,9 +174,9 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
             print("Total time to log robot transforms (ms): ", 1000 * (t2 - t0))
 
 
-class RerunVisualizer:
+class RerunVsualizer:
 
-    camera_point_radius: float = 0.01
+    camera_point_radius = 0.01
     max_displayed_points_per_camera: int = 10000
 
     def __init__(

@@ -99,6 +99,9 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
         """Return the current pose of the robot."""
         return np.array([0.0, 0.0, 0.0])
 
+    def get_pose_graph(self) -> np.ndarray:
+        return np.empty((3, 4))
+
     def load_map(self, filename: str):
         """Load a map from a file."""
         return True
