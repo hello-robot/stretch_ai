@@ -29,7 +29,7 @@ from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.motion import PlanResult
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
-from stretch.utils.geometry import angle_difference
+from stretch.utils.geometry import angle_difference, xyt_base_to_global
 from stretch.utils.image import Camera
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
@@ -468,7 +468,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         else:
             _xyt = xyt
         assert len(_xyt) == 3, "xyt must be a vector of size 3"
-        next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
+        # If it's relative, compute the relative position right now - this helps handle network issues
+        if relative:
+            current_xyt = self.get_base_pose()
+            _xyt = xyt_base_to_global(_xyt, current_xyt)
+
+        # We never send a relative motion over wireless - this is because we can run into timing issues.
+        # Instead, we always send the absolute position and let the robot handle the motions itself.
+        next_action = {"xyt": _xyt, "nav_relative": False, "nav_blocking": blocking}
         if self._rerun:
             self._rerun.update_nav_goal(_xyt)
         self.send_action(next_action, timeout=timeout, verbose=verbose)
