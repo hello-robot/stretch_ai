@@ -154,66 +154,21 @@ class PickupPromptBuilder(AbstractPromptBuilder):
     def parse_response(self, response: str):
         """Parse the pickup, place, and say commands from the response into a list."""
         commands = [line for line in response.split("\n") if line]
-        # for line in response.split("\n"):
-        #     if line.startswith("pickup("):
-        #         commands.append(line)
-        #     elif line.startswith("place("):
-        #         commands.append(line)
-        #     elif line.startswith("say("):
-        #         commands.append(line)
-        #     elif line.startswith("wave()"):
-        #         commands.append(line)
-        #     elif line.startswith("go_home()"):
-        #         commands.append(line)
-        #     elif line.startswith("explore()"):
-        #         commands.append(line)
-        #     elif line.startswith("nod_head()"):
-        #         commands.append(line)
-        #     elif line.startswith("shake_head()"):
-        #         commands.append(line)
-        #     elif line.startswith("avert_gaze()"):
-        #         commands.append(line)
-        #     elif line.startswith("quit()"):
-        #         commands.append(line)
-        #     elif line.startswith("find("):
-        #         commands.append(line)
-        #     elif line.startswith("end()"):
-        #         # Stop parsing if we see the end command
-        #         break
-
-        # # Now go through commands and parse into a tuple (command, args)
-        # parsed_commands = []
-        # for command in commands:
-        #     if command.startswith("say("):
-        #         parsed_commands.append(("say", command[4:-1]))
-        #     elif command.startswith("pickup("):
-        #         parsed_commands.append(("pickup", command[7:-1]))
-        #     elif command.startswith("place("):
-        #         parsed_commands.append(("place", command[6:-1]))
-        #     elif command.startswith("wave()"):
-        #         parsed_commands.append(("wave", ""))
-        #     elif command.startswith("go_home()"):
-        #         parsed_commands.append(("go_home", ""))
-        #     elif command.startswith("explore()"):
-        #         parsed_commands.append(("explore", ""))
-        #     elif command.startswith("nod_head()"):
-        #         parsed_commands.append(("nod_head", ""))
-        #     elif command.startswith("shake_head()"):
-        #         parsed_commands.append(("shake_head", ""))
-        #     elif command.startswith("avert_gaze()"):
-        #         parsed_commands.append(("avert_gaze", ""))
-        #     elif command.startswith("find("):
-        #         parsed_commands.append(("find", command[5:-1]))
-        #     elif command.startswith("quit()"):
-        #         # Quit actually shuts down the robot.
-        #         parsed_commands.append(("quit", ""))
-        #         break
-        #     elif command.startswith("end()"):
-        #         # Stop parsing if we see the end command
-        #         # This really shouldn't happen, but just in case
-        #         break
-
         return commands
+    
+    def get_available_actions(self) -> List[str]:
+        return super().get_available_actions() + [
+            "pickup",
+            "place",
+            "say",
+            "wave",
+            "go_home",
+            "explore",
+            "nod_head",
+            "shake_head",
+            "avert_gaze",
+            "find",
+        ]
 
     def get_object(self, response: List[Tuple[str, str]]) -> str:
         """Return the object from the response."""

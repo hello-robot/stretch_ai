@@ -10,16 +10,21 @@
 from typing import List, Tuple
 
 from stretch.agent.operations import (
+    AvertGazeOperation,
+    ExploreOperation,
+    GoHomeOperation,
     GoToNavOperation,
     GoToOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
+    NodHeadOperation,
     OpenLoopGraspObjectOperation,
     PreGraspObjectOperation,
     PlaceObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
     SearchForReceptacleOperation,
+    ShakeHeadOperation,
     SpeakOperation,
     WaveOperation,
 )
@@ -44,6 +49,7 @@ class PickupExecutor:
         self,
         robot: AbstractRobotClient,
         agent: RobotAgent,
+        available_actions: List[str],
         match_method: str = "feature",
         open_loop: bool = False,
         dry_run: bool = False,
@@ -74,6 +80,7 @@ class PickupExecutor:
         # Managed task
         self._task = Task()
         self._operation_count = 0
+        self.available_actions = available_actions
 
 
     def say(self, text: str) -> None:
@@ -206,6 +213,51 @@ class PickupExecutor:
 
         self._task.connect_on_cannot_start(go_to_object.name, search_for_object.name)
 
+    def wave(self) -> None:
+        """Wave to the user."""
+        wave_operation = WaveOperation(f"{str(self._operation_count)}_wave", self.agent, robot=self.robot)
+        self._task.add_operation(wave_operation, True)
+        self._operation_count += 1
+
+    def go_home(self) -> None:
+        """Go back to the home position."""
+        go_home_operation = GoHomeOperation(f"{str(self._operation_count)}_go_home", self.agent, robot=self.robot)
+        self._task.add_operation(go_home_operation, True)
+        self._operation_count += 1
+
+    def explore(self) -> None:
+        """Explore the environment."""
+        explore_operation = ExploreOperation(f"{str(self._operation_count)}_explore", self.agent, robot=self.robot)
+        self._task.add_operation(explore_operation, True)
+        self._operation_count += 1
+
+    def nod_head(self) -> None:
+        """Nod the head."""
+        nod_head_operation = NodHeadOperation(f"{str(self._operation_count)}_nod_head", self.agent, robot=self.robot)
+        self._task.add_operation(nod_head_operation, True)
+        self._operation_count += 1
+
+    def shake_head(self) -> None:
+        """Shake the head."""
+        shake_head_operation = ShakeHeadOperation(f"{str(self._operation_count)}_shake_head", self.agent, robot=self.robot)
+        self._task.add_operation(shake_head_operation, True)
+        self._operation_count += 1
+
+    def avert_gaze(self) -> None:
+        """Avert the gaze."""
+        avert_gaze_operation = AvertGazeOperation(f"{str(self._operation_count)}_avert_gaze", self.agent, robot=self.robot)
+        self._task.add_operation(avert_gaze_operation, True)
+        self._operation_count += 1
+
+    def find(self, object_name: str) -> None:
+        """Find the object."""
+        speak_not_implemented = SpeakOperation(
+            f"{str(self._operation_count)}_find_" + object_name, agent=self.agent, robot=self.robot
+        )
+        speak_not_implemented.configure(message="Find operation not implemented")
+        self._task.add_operation(speak_not_implemented, True)
+        self._operation_count += 1
+
     def _pickup(self, target_object: str, target_receptacle: str) -> None:
 
         # After the robot has started...
@@ -248,49 +300,21 @@ class PickupExecutor:
         while i < len(response):
             command, args = response[i]
             logger.info(f"{i} {command} {args}")
-            if command == "say":
-                # Use TTS to say the text
-                logger.info(f"[Pickup task] Saying: {args}")
-                self.agent.robot_say(args)
-            elif command == "pickup":
-                logger.info(f"[Pickup task] Pickup: {args}")
-                target_object = args
-                i += 1
-                next_command, next_args = response[i]
-                if next_command != "place":
-                    i -= 1
-                    logger.error("Pickup without place! Doing nothing.")
+
+            if command in self.available_actions:
+                command_with_args = "self." + command + "(" + args + ")"
+
+                if command == "pickup":
+                    if (i + 1 < len(response)) and (response[i + 1][0] == "place"):
+                        eval(command_with_args)
+                        i += 1
+                    else:
+                        logger.error("Pickup without place! Doing nothing.")
                 else:
-                    logger.info(f"{i} {next_command} {next_args}")
-                    logger.info(f"[Pickup task] Place: {next_args}")
-                target_receptacle = next_args
-                self._pickup(target_object, target_receptacle)
-            elif command == "place":
-                logger.error("Place without pickup! Doing nothing.")
-            elif command == "wave":
-                self.agent.move_to_manip_posture()
-                self.emote_task.get_task("wave").run()
-                self.agent.move_to_manip_posture()
-            elif command == "go_home":
-                self.agent.go_home()
-            elif command == "explore":
-                self.agent.explore()
-            elif command == "nod_head":
-                self.emote_task.get_task("nod_head").run()
-            elif command == "shake_head":
-                self.emote_task.get_task("shake_head").run()
-            elif command == "avert_gaze":
-                self.emote_task.get_task("avert_gaze").run()
-            elif command == "quit":
-                logger.info("[Pickup task] Quitting.")
-                self.robot.stop()
-                return False
-            elif command == "end":
-                logger.info("[Pickup task] Ending.")
-                break
+                    eval(command_with_args)
             else:
                 logger.error(f"Skipping unknown command: {command}")
-
+            
             i += 1
-        # If we did not explicitly receive a quit command, we are not yet done.
+
         return True
