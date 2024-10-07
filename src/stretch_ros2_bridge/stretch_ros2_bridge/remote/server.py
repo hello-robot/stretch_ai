@@ -27,11 +27,12 @@ from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 class ZmqServer(BaseZmqServer):
     @override
-    def __init__(self, *args, **kwargs):
+    def __init__(self, use_d405: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # ROS2 client interface
-        self.client = StretchClient(d405=True)
+        self.client = StretchClient(d405=use_d405)
+        self.use_d405 = use_d405
 
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
@@ -247,7 +248,10 @@ class ZmqServer(BaseZmqServer):
         return d405_output
 
     def get_servo_message(self) -> Dict[str, Any]:
-        d405_output = self._get_ee_cam_message()
+        if self.use_d405:
+            d405_output = self._get_ee_cam_message()
+        else:
+            d405_output = {}
 
         obs = self.client.get_observation(compute_xyz=False)
         head_color_image, head_depth_image = self._rescale_color_and_depth(
