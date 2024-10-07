@@ -15,6 +15,7 @@ import click
 import cv2
 import numpy as np
 
+import stretch.utils.logger as logger
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.perception import create_semantic_sensor
@@ -74,7 +75,7 @@ def main(
         aruco_detector = GripperArucoDetector()
     else:
         aruco_detector = None
-
+    print("This code is running from a file outside of the Docker image!")
     print("Starting the robot...")
     robot.start()
     robot.move_to_manip_posture()
@@ -85,6 +86,7 @@ def main(
 
     # Initialize variables
     first_time = True
+    warning_ee = False
     colors = {}
 
     # Loop and read in images
@@ -106,12 +108,13 @@ def main(
             print("No servo observation. Skipping.")
             continue
         if servo.ee_rgb is None:
-            print("No end effector image. Skipping.")
-            continue
+            if not warning_ee:
+                logger.warning("No end effector image.")
+            warning_ee = True
         if servo.ee_depth is None:
-            print("No end effector depth image. Skipping.")
-            # servo.ee_depth = np.zeros_like(servo.ee_rgb)
-            continue
+            if not warning_ee:
+                logger.warning("No end effector depth image.")
+            warning_ee = True
 
         # First time info
         if first_time:
@@ -119,8 +122,9 @@ def main(
             print("Full (slow) observation:")
             print(" - RGB image shape:", repr(obs.rgb.shape))
             print("Servo observation:")
-            print(" - ee rgb shape:", repr(servo.ee_rgb.shape))
-            print(" - ee depth shape:", repr(servo.ee_depth.shape))
+            if servo.ee_rgb is not None:
+                print(" - ee rgb shape:", repr(servo.ee_rgb.shape))
+                print(" - ee depth shape:", repr(servo.ee_depth.shape))
             print(" - head rgb shape:", repr(servo.rgb.shape))
             print(" - head depth shape:", repr(servo.depth.shape))
             print()
@@ -128,10 +132,12 @@ def main(
             first_time = False
 
         # Run segmentation if you want
-        servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
+        if servo.ee_rgb is not None:
+            servo.ee_rgb = adjust_gamma(servo.ee_rgb, gamma)
+
         if run_semantic_segmentation:
             # Run the prediction on end effector camera!
-            use_ee = segment_ee
+            use_ee = segment_ee and servo.ee_rgb is not None
             use_full_obs = False
             if use_full_obs:
                 use_ee = False
@@ -159,9 +165,12 @@ def main(
         viz_depth = cv2.normalize(servo.depth, None, 0, 255, cv2.NORM_MINMAX)
         viz_depth = viz_depth.astype(np.uint8)
         viz_depth = cv2.applyColorMap(viz_depth, cv2.COLORMAP_JET)
-        viz_ee_depth = cv2.normalize(servo.ee_depth, None, 0, 255, cv2.NORM_MINMAX)
-        viz_ee_depth = viz_ee_depth.astype(np.uint8)
-        viz_ee_depth = cv2.applyColorMap(viz_ee_depth, cv2.COLORMAP_JET)
+
+        # Visualize end effector depth
+        if servo.ee_depth is not None:
+            viz_ee_depth = cv2.normalize(servo.ee_depth, None, 0, 255, cv2.NORM_MINMAX)
+            viz_ee_depth = viz_ee_depth.astype(np.uint8)
+            viz_ee_depth = cv2.applyColorMap(viz_ee_depth, cv2.COLORMAP_JET)
 
         # This is the head image
         image = obs.rgb
@@ -172,15 +181,18 @@ def main(
         cv2.imshow("head camera image", image)
         servo_head_rgb = cv2.cvtColor(servo.rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow("servo: head camera image", servo_head_rgb)
-        servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
 
-        if aruco_detector is not None:
-            servo_corners, servo_ids, servo_ee_rgb = aruco_detector.detect_and_draw_aruco_markers(
-                servo_ee_rgb
-            )
-        cv2.imshow("servo: ee camera image", servo_ee_rgb)
+        if servo.ee_rgb is not None:
+            servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+            if aruco_detector is not None:
+                (
+                    servo_corners,
+                    servo_ids,
+                    servo_ee_rgb,
+                ) = aruco_detector.detect_and_draw_aruco_markers(servo_ee_rgb)
+            cv2.imshow("servo: ee camera image", servo_ee_rgb)
+            cv2.imshow("servo: ee depth image", viz_ee_depth)
 
-        cv2.imshow("servo: ee depth image", viz_ee_depth)
         cv2.imshow("servo: head depth image", viz_depth)
         if run_semantic_segmentation:
             cv2.imshow("semantic_segmentation", semantic_segmentation)

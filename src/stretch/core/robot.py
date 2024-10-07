@@ -111,6 +111,11 @@ class AbstractRobotClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def get_pose_graph(self) -> np.ndarray:
+        """Get the robot's SLAM pose graph"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def at_goal(self) -> bool:
         """Is the robot at a goal?"""
         raise NotImplementedError()

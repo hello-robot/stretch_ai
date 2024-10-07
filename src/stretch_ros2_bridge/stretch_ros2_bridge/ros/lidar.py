@@ -15,6 +15,7 @@ import threading
 
 import numpy as np
 import rclpy
+import rclpy.time
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
 
@@ -31,10 +32,13 @@ class RosLidar(object):
         self._lock = threading.Lock()
         self._t = Time()
 
+        # print(f"robot client is: {type(robot_client)}")
+
         self._ros_client = ros_client
         self._subscriber = self._ros_client.create_subscription(
             LaserScan, self.name, self._lidar_scan_callback, 10
         )
+        print("Done!!!!")
 
     def _lidar_scan_callback(self, scan_msg):
         # Get range and angle data from the scan message
@@ -54,12 +58,15 @@ class RosLidar(object):
         if self.verbose:
             print("[LIDAR] Lidar points:")
             print(lidar_points)
+            print("[LIDAR] lidar time stamp:")
+            print(scan_msg.header.stamp)
 
         with self._lock:
-            self._t = scan_msg.header.stamp
+            # self._t = rclpy.time.Time()
+            self._t = rclpy.time.Time.from_msg(scan_msg.header.stamp)
             self._points = lidar_points
 
-    def get_time(self):
+    def get_time(self) -> rclpy.time.Time:
         """Get time image was received last"""
         return self._t
 
@@ -77,3 +84,24 @@ class RosLidar(object):
                 if self._points is not None:
                     break
             rate.sleep()
+
+
+if __name__ == "__main__":
+    import time
+
+    from stretch_ros2_bridge.remote import StretchClient
+
+    rclpy.init()
+
+    client = StretchClient()
+
+    print("Creating a lidar object..")
+    time.sleep(5)
+    lidar = RosLidar(ros_client=client.get_ros_client(), verbose=True)
+    lidar.wait_for_scan()
+    # rclpy.spin_once(client.get_ros_client())
+
+    # print(lidar.get())
+    # print(lidar.get_time())
+
+    print("Ending main loop")

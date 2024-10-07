@@ -193,6 +193,7 @@ def demo_main(
                 manual_wait,
                 explore_iter=parameters["exploration_steps"],
                 task_goal=object_to_find,
+                random_goals=False,
                 go_home_at_end=navigate_home,
                 visualize=show_intermediate_maps,
             )
