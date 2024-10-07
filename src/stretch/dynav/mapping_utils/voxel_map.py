@@ -106,7 +106,9 @@ class SparseVoxelMapNavigationSpace(XYT):
         Args:
             orientation_resolution: number of bins to break it into
         """
-        self._footprint = Footprint(width=0.34, length=0.33, width_offset=0.0, length_offset=-0.1)
+        self._footprint = Footprint(
+            width=0.34 / 3, length=0.33 / 3, width_offset=0.0, length_offset=-0.1
+        )
         self._orientation_resolution = 64
         self._oriented_masks = []
 
@@ -674,7 +676,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             alignments_heuristics = None
             total_heuristics = time_heuristics
 
-        rounded_heuristics = np.ceil(total_heuristics * 1000) / 1000
+        rounded_heuristics = np.ceil(total_heuristics * 100) / 100
         max_heuristic = rounded_heuristics.max()
         indices = np.column_stack(np.where(rounded_heuristics == max_heuristic))
         closest_index = np.argmin(
@@ -700,8 +702,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         self,
         alignments,
         outside_frontier,
-        alignment_smooth=50,
-        alignment_threshold=0.13,
+        alignment_smooth=8,
+        alignment_threshold=0.14,
         debug=False,
     ):
         alignments = np.ma.masked_array(alignments, ~outside_frontier)
@@ -718,7 +720,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         return alignment_heuristics
 
     def _time_heuristic(
-        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=220, debug=False
+        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=100, debug=False
     ):
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         time_heuristics = history_soft.max() - history_soft

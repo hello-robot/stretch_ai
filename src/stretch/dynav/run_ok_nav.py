@@ -129,13 +129,12 @@ def main(
                 if point is None:
                     print("Navigation Failure!")
                 cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
-
-            if input("You want to run manipulation: y/n") != "n":
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking=True)
 
+            if input("You want to run manipulation: y/n") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter object name: ")
@@ -156,13 +155,12 @@ def main(
                 if point is None:
                     print("Navigation Failure")
                 cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
-
-            if input("You want to run placing: y/n") != "n":
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking=True)
 
+            if input("You want to run placing: y/n") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter receptacle name: ")
@@ -174,7 +172,7 @@ def main(
                 demo.place(text, theta)
                 robot.move_to_nav_posture()
 
-            # demo.save()
+            demo.save()
 
 
 if __name__ == "__main__":

@@ -168,7 +168,7 @@ class VoxelizedPointcloud:
                         proj_depth < 0.01,
                         # depth is too large
                         # (~depth_is_valid)[valid_xys[:, 0], valid_xys[:, 1]],
-                        proj_depth > 3.0,
+                        proj_depth > 2.5,
                     ],
                     dim=0,
                 ),

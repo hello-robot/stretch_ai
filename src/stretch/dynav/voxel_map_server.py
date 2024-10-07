@@ -113,7 +113,7 @@ def get_xyz(depth, pose, intrinsics):
     return xyz
 
 
-def setup_custom_blueprint(rerun_visualizer):
+def setup_custom_blueprint():
     main = rrb.Horizontal(
         rrb.Spatial3DView(name="3D View", origin="world"),
         rrb.Vertical(
@@ -140,14 +140,15 @@ class ImageProcessor:
         siglip: bool = True,
         device: str = "cuda",
         min_depth: float = 0.25,
-        max_depth: float = 3.0,
+        max_depth: float = 2.5,
         img_port: int = 5558,
         text_port: int = 5556,
         open_communication: bool = True,
         rerun: bool = True,
         # static: bool = True,
         log=None,
-        image_shape=(464, 348),
+        image_shape=(480, 360),
+        # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
     ):
@@ -164,7 +165,7 @@ class ImageProcessor:
             rr.init(self.log)
             logger.info("Starting a rerun server.")
         elif self.rerun:
-            setup_custom_blueprint(self.rerun_visualizer)
+            setup_custom_blueprint()
             logger.info("Attempting to connect to existing rerun server.")
 
         self.min_depth = min_depth
@@ -179,11 +180,8 @@ class ImageProcessor:
             device = "cpu"
         self.device = device
 
-        print("HELLO!")
         self.create_obstacle_map()
-        print("HELLO!")
         self.create_vision_model()
-        print("HELLO!")
 
         self.voxel_map_lock = (
             threading.Lock()
@@ -625,6 +623,11 @@ class ImageProcessor:
                 input = self.clip_preprocess(images=rgb, padding="max_length", return_tensors="pt")
                 for i in input:
                     input[i] = input[i].to(self.device)
+            if self.image_shape is not None:
+                rgb = F.interpolate(
+                    rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+                ).squeeze()
+
             features = self.extract_mask_clip_features(input, rgb.shape[-2:])[0].cpu()
 
         valid_xyz = world_xyz[~mask]
@@ -636,7 +639,7 @@ class ImageProcessor:
     def run_owl_sam_clip(self, rgb, mask, world_xyz):
         with torch.no_grad():
             results = self.yolo_model.predict(
-                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False
+                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False
             )
             xyxy_tensor = results[0].boxes.xyxy
             if len(xyxy_tensor) == 0:
@@ -716,6 +719,21 @@ class ImageProcessor:
                 features = self.clip_model.get_image_features(**inputs)
             features = F.normalize(features, dim=-1).cpu()
 
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
+            masks = (
+                F.interpolate(
+                    masks.unsqueeze(0).float(),
+                    size=self.image_shape,
+                    mode="bilinear",
+                    align_corners=False,
+                )
+                .squeeze()
+                .bool()
+            )
+
         for idx, (sam_mask, feature) in enumerate(zip(masks.cpu(), features.cpu())):
             valid_mask = torch.logical_and(~mask, sam_mask)
             valid_xyz = world_xyz[valid_mask]
@@ -748,6 +766,11 @@ class ImageProcessor:
             )
 
     def process_rgbd_images(self, rgb, depth, intrinsics, pose):
+
+        # if self.rerun:
+        #     rr.init('Stretch_robot', spawn = True)
+        #     setup_custom_blueprint()
+
         # import time
         # start_time = time.time()
         if not os.path.exists(self.log):
@@ -766,9 +789,9 @@ class ImageProcessor:
         if self.image_shape is not None:
             h, w = self.image_shape
             h_image, w_image = depth.shape
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
+            # rgb = F.interpolate(
+            #     rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            # ).squeeze()
             depth = F.interpolate(
                 depth.unsqueeze(0).unsqueeze(0),
                 size=self.image_shape,
@@ -811,6 +834,11 @@ class ImageProcessor:
             self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
         else:
             self.run_mask_clip(rgb, ~valid_depth, world_xyz)
+
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
 
         self.voxel_map.add(
             camera_pose=torch.Tensor(pose),
