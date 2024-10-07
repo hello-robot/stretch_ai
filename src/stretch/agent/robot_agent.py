@@ -57,7 +57,7 @@ class RobotAgent:
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        realtime_updates: bool = True,
+        realtime_updates: bool = False,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
