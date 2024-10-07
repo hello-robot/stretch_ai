@@ -40,6 +40,11 @@ RUN apt-get update && apt-get install -y \
     libportaudiocpp0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install ping for network testing
+RUN apt-get update && apt-get install -y \
+    iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
 # Add espeak for text-to-speech
 RUN apt-get update && apt-get install -y \
     espeak \
@@ -57,13 +62,15 @@ ENV PATH /root/miniforge3/bin:$PATH
 # Run our installation script
 COPY . .
 RUN chmod +x install.sh
-RUN ./install.sh -y
+RUN ./install.sh -y --no-version
 
-# Install ffmpeg dependencies
-RUN apt-get update && apt-get install  -y \
-    ffmpeg \
-    libsm6 \
-    libxext6
+# Configure mamba to start in the correct environment
+RUN mamba init
+
+# Add to bashrc so that it starts into the correct environment
+RUN echo "mamba activate stretch_ai" >> ~/.bashrc
+
+# ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]
 
 # Copy requirements file (if you have one)
 # COPY requirements.txt .

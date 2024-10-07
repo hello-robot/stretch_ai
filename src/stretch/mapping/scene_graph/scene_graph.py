@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -23,12 +23,12 @@ class SceneGraph:
     def __init__(self, parameters: Parameters, instances: List[Instance]):
         self.parameters = parameters
         self.instances = instances
-        self.relationships = []
+        self.relationships: List[Tuple[int, int, str]] = []
         self.update(instances)
 
     def update(self, instances):
         """Extract pairwise symbolic spatial relationship between instances using heurisitcs"""
-        self.relationships = []
+        self.relationships: List[Tuple[int, int, str]] = []
         self.instances = instances
         for idx_a, ins_a in enumerate(instances):
             for idx_b, ins_b in enumerate(instances):
@@ -54,9 +54,21 @@ class SceneGraph:
                 self.relationships.append((ins_a.global_id, "floor", "on"))
 
     def get_matching_relations(
-        self, id0: Optional[int], id1: Optional[int], relation: Optional[str]
+        self,
+        id0: Optional[Union[int, str]],
+        id1: Optional[Union[int, str]],
+        relation: Optional[str],
     ) -> List[Tuple[int, int, str]]:
-        """Get all relationships between two instances"""
+        """Get all relationships between two instances.
+
+        Args:
+            id0: The first instance id
+            id1: The second instance id
+            relation: The relationship between the two instances
+
+        Returns:
+            List of relationships in the form (idx_a, idx_b, relation)
+        """
         if isinstance(id1, Instance):
             id1 = id1.global_id
         if isinstance(id0, Instance):
