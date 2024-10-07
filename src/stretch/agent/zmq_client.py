@@ -69,6 +69,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         return recv_socket
 
+    def _create_pub_obs_socket(self, port: int):
+        send_socket = self.context.socket(zmq.PUB)
+        send_socket.setsockopt(zmq.SNDHWM, 1)
+        send_socket.setsockopt(zmq.RCVHWM, 1)
+
+        # Publish within the computer
+        send_address = "tcp://*:" + str(port)
+        print(f"Binding to {send_address} to send action messages...")
+        send_socket.bind(send_address)
+        print("...bound.")
+
+        return send_socket
+
     def __init__(
         self,
         robot_ip: str = "",
@@ -76,6 +89,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         send_port: int = 4402,
         recv_state_port: int = 4403,
         recv_servo_port: int = 4404,
+        pub_obs_port: int = 4450,
         parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
@@ -160,6 +174,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.recv_servo_socket = self._create_recv_socket(
             recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
         )
+
+        self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
 
         # SEnd actions back to the robot for execution
         self.send_socket = self.context.socket(zmq.PUB)
@@ -292,6 +308,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
                         return None
                 xyt = self._state["base_pose"]
         return xyt
+
+    def get_pose_graph(self) -> np.ndarray:
+        """Get the robot's SLAM pose graph"""
+        return self._pose_graph
 
     def robot_to(self, joint_angles: np.ndarray, blocking: bool = False, timeout: float = 10.0):
         """Move the robot to a particular joint configuration."""
@@ -477,6 +497,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Reset everything in the robot's internal state"""
         self._control_mode = None
         self._obs = None  # Full observation includes high res images and camera pose, no EE camera
+        self._pose_graph = None
         self._state = None  # Low level state includes joint angles and base XYT
         self._servo = None  # Visual servoing state includes smaller images
         self._thread = None
@@ -776,9 +797,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
+            self.pub_obs_socket.send_pyobj(obs)
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
+
+    def _update_pose_graph(self, obs):
+        """Update internal pose graph"""
+        with self._obs_lock:
+            self._pose_graph = obs["pose_graph"]
 
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
@@ -831,6 +858,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 rgb=self._obs["rgb"],
                 depth=self._obs["depth"],
                 xyz=self._obs["xyz"],
+                lidar_points=self._obs["lidar_points"],
+                lidar_timestamp=self._obs["lidar_timestamp"],
             )
             observation.joint = self._obs.get("joint", None)
             observation.ee_pose = self._obs.get("ee_pose", None)
@@ -1022,6 +1051,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 shown_point_cloud = True
 
             self._update_obs(output)
+            self._update_pose_graph(output)
 
             t1 = timeit.default_timer()
             dt = t1 - t0
