@@ -37,7 +37,7 @@ filters:
   smooth_kernel_size: 2
   # smooth_kernel_size: 0
   use_median_filter: True
-  median_filter_size: 2
+  median_filter_size: 4
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
@@ -66,7 +66,7 @@ motion:
 agent:
   #in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   #sweep_head_on_update: False
-  in_place_rotation_steps: 2
+  in_place_rotation_steps: 4
   sweep_head_on_update: True
 
 # Instance memory parameters

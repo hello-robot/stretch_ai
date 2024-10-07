@@ -72,27 +72,25 @@ robot.navigate_to([0, 0, -3.14159/2], relative=True)
 After [installation](#installation), on the robot, run the server:
 
 ```bash
+# If you did a manual install
 ros2 launch stretch_ros2_bridge server.launch.py
+
+# Alternately, via Docker -- will be slow the first time when image is downloaded!
+./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-Then, first try these apps to make sure connections are working properly:
+Then, try the `view_images` app to make sure connections are working properly:
 
-- [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
-- [Print Joint States](#print-joint-states) - Print the joint states of the robot.
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
-- [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
-- [Gripper](#use-the-gripper) - Open and close the gripper.
-- [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
-- [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
-Advanced:
+Next you can run the AI demo:
 
-- [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
-- [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
 
 Finally:
 
+- [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
+- [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 
@@ -100,169 +98,26 @@ There are also some apps for [debugging](docs/debug.md).
 
 ## Installation
 
-### System Dependencies
+Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
 
-You need git-lfs:
+If you do not start with Docker, follow the [install guide](docs/install.md).
+
+In short, on the PC you will:
 
 ```bash
+# Install Git LFS
 sudo apt-get install git-lfs
 git lfs install
-```
 
-You also need some system audio dependencies. These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
-
-```bash
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-```
-
-### Install Stretch AI
-
-On both your PC and your robot, clone and install the package:
-
-```bash
+# Clone the repository
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
-```
 
-#### Install On PC
+# Install system dependencies
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
 
-The installation script will install the package and its dependencies, as well as (optionally) some perception modules.
-
-```bash
-cd stretch_ai
+# Run install script to create a conda environment and install dependencies
 ./install.sh
 ```
-
-#### Install On the Robot
-
-Robot installation can be tricky, because we use some features from [ROS2](https://docs.ros.org/en/humble/index.html), specifically the [Nav2](https://github.com/ros-navigation/navigation2) package for LIDAR slam.
-
-You will need to link Stretch AI into your ROS workspace. There are two ways to do this; either install stretch AI in your base python environment, or link the conda environment into ROS (advanced). Either way, you will then need to [set up the ROS2 bridge](#set-up-ament-workspace) in your Ament workspace.
-
-*Why all this complexity?* We run a set of ROS2 nodes based on the [HomeRobot](https://github.com/facebookresearch/home-robot) and [OK-Robot](https://ok-robot.github.io/) codebases for mobile manipulation and localization. In particular, this allows us to use [Nav2](https://docs.nav2.org/), a very well-tested ROS2 navigation stack, for localization, which makes it easier to build complex applications. You do not need to understand ROS2 to use this stack.
-
-##### Option 1: Install Stretch AI in Base Python Environment
-
-To install in the base python environment, you need to make sure build tools are up to date:
-
-```bash
-conda deactivate  # only if you are in a conda environment
-pip install --upgrade pip setuptools packaging build meson ninja
-```
-
-This is particularly an issue for scikit-fmm, which is used for motion planning. After this is done, you can install the package as normal:
-
-```bash
-pip install ./src
-```
-
-Then, [set up the ROS2 bridge](#set-up-ament-workspace-on-the-robot).
-
-##### Option 2: Link Conda Environment into ROS (Advanced).
-
-If you are using a conda environment, you can link the conda environment into ROS. This is a bit more advanced, but can be useful if you want to keep your ROS and conda environments separate.
-
-Install using the installation script, but using the `--cpu` flag for a CPU-only installation:
-
-```bash
-./install.sh --cpu
-```
-
-Then, activate the conda environment:
-
-```bash
-conda activate stretch_ai_$VERSION_cpu
-```
-
-Then, [link the package into your ament workspace](#set-up-ament-workspace-on-the-robot) and install the package:
-
-```bash
-colcon build --cmake-args -DPYTHON_EXECUTABLE=$(which python)
-```
-
-Some ROS python repositories might be missing - specifically `empy` and `catkin_pkg`. You can install these with:
-
-```bash
-python -m pip install empy catkin_pkg
-```
-
-#### Set Up Ament Workspace on the Robot
-
-On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
-
-```bash
-cd stretch_ai
-ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
-cd ~/ament_ws
-colcon build --packages-select stretch_ros2_bridge
-```
-
-You need to rebuild the ROS2 bridge every time you update the codebase. You can do this with:
-
-```bash
-cd ~/ament_ws
-colcon build --packages-select stretch_ros2_bridge
-```
-
-#### Experimental: Install ORB-SLAM3 On the Robot (Advanced)
-
-[ORB-SLAM3](https://arxiv.org/pdf/2007.11898) is an open-source VSLAM (visual slam) library. Using it in conjunction with LIDAR-based localization can improve performance in many environments. Installation is documented in a [separate file](docs/orbslam3.md).
-
-*Installation is not required to use Stretch AI.* If you chose to do so, you can then then use the ORB-SLAM3 version of the server launch file:
-
-```
-ros2 launch stretch_ros2_bridge server_orbslam3.launch.py
-```
-
-### Using LLMs
-
-We use many open-source LLMs from [Huggingface](https://huggingface.co/). TO use them, you will need to make sure `transformers` is installed and up to date. You can install it with:
-
-```bash
-pip install transformers --upgrade
-```
-
-You will need to go to the associated websites and accept their license agreements.
-
-- [Gemma 2](https://huggingface.co/google/gemma-2b)
-- [Llama 3.1](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B)
-
-Then you need to login to the huggingface CLI:
-
-```bash
-huggingface-cli login
-```
-
-This will require a personal access token created on the Huggingface website. After this, you can test LLM chat APIs via:
-
-```bash
-# Start a local chat with Gamma 2-2B -- requires ~5gb GPU memory
-python -m stretch.llms.gemma_client
-
-# Start a local chat with Llama 3.1 8B -- requires a bigger GPU
-python -m stretch.llms.llama_client
-```
-
-### Using OVMM
-
-You can use the LLMs above to plan long-horizon tasks by generating code as robot policies:
-
-```bash
-python -m stretch.app.ovmm
-```
-
-The robot will start exploring its workspace and will soon ask you for a text command.
-
-### Advanced Installation (PC Only)
-
-If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
-
-```
-./install.sh
-```
-
-Caution, it may take a while! Several libraries are built from source to avoid potential compatibility issues.
-
-You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8. For issues, see [docs/about_advanced_installation.md](docs/about_advanced_installation.md).
 
 ## Stretch AI Apps
 
@@ -275,35 +130,6 @@ All of these take the `--robot_ip` flag to specify the robot's IP address. You s
 ```bash
 export ROBOT_IP=192.168.1.15
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
-```
-
-### Debugging Tools
-
-#### Keyboard Teleop
-
-Use the WASD keys to move the robot around.
-
-```bash
-python -m stretch.app.keyboard_teleop --robot_ip $ROBOT_IP
-
-# You may also run in a headless mode without the OpenCV gui
-python -m stretch.app.keyboard_teleop --headless
-```
-
-Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
-
-#### Print Joint States
-
-To make sure the robot is connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
-
-```bash
-python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
-```
-
-You can also print out just one specific joint. For example, to just get arm extension in a loop, run:
-
-```
-python -m stretch.app.print_joint_states --joint arm
 ```
 
 #### Visualization and Streaming Video
@@ -324,59 +150,6 @@ You can visualize gripper Aruco markers as well; the aruco markers can be used t
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
-```
-
-#### Show Point Cloud
-
-Show a joint point cloud from the end effector and head cameras. This will open an Open3d window with the point cloud, aggregated between the two cameras and displayed in world frame. It will additionally show the map's origin with a small coordinate axis; the blue arrow points up (z), the red arrow points right (x), and the green arrow points forward (y).
-
-```bash
-python -m stretch.app.show_point_cloud
-```
-
-You can use the `--reset` flag to put the robot into its default manipulation posture on the origin (0, 0, 0). Note that this is a blind, unsafe motion! Use with care.
-
-```bash
-python -m stretch.app.show_point_cloud --reset
-```
-
-#### Use the Gripper
-
-Open and close the gripper:
-
-```
-python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
-python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
-```
-
-Alternately:
-
-```
-python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
-python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
-```
-
-#### Rerun Web Server
-
-We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
-
-```bash
-python -m stretch.app.rerun --robot_ip $ROBOT_IP
-```
-
-You should see something like this:
-
-```
-[2024-07-29T17:58:34Z INFO  re_ws_comms::server] Hosting a WebSocket server on ws://localhost:9877. You can connect to this with a native viewer (`rerun ws://localhost:9877`) or the web viewer (with `?url=ws://localhost:9877`).
-[2024-07-29T17:58:34Z INFO  re_sdk::web_viewer] Hosting a web-viewer at http://localhost:9090?url=ws://localhost:9877
-```
-
-### Voice Chat
-
-Chat with the robot using LLMs.
-
-```bash
-python -m stretch.app.voice_chat
 ```
 
 ### Dex Teleop for Data Collection

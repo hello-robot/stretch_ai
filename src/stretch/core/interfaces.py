@@ -248,6 +248,10 @@ class Observations:
     # Optional third-person view from simulation
     third_person_image: Optional[np.ndarray] = None
 
+    # lidar
+    lidar_points: Optional[np.ndarray] = None
+    lidar_timestamp: Optional[int] = None
+
     # Proprioreception
     joint: Optional[np.ndarray] = None  # joint positions of the robot
     relative_resting_position: Optional[
@@ -265,6 +269,16 @@ class Observations:
 
     # True if in simulation
     is_simulation: bool = False
+
+    # True if matched with a pose graph node
+    is_pose_graph_node: bool = False
+
+    # Timestamp of matched pose graph node
+    pose_graph_timestamp: Optional[int] = None
+
+    # Initial pose graph pose. GPS and compass.
+    initial_pose_graph_gps: Optional[np.ndarray] = None
+    initial_pose_graph_compass: Optional[np.ndarray] = None
 
     def compute_xyz(self, scaling: float = 1e-3) -> Optional[np.ndarray]:
         """Compute xyz from depth and camera intrinsics."""
@@ -320,3 +334,38 @@ class Observations:
         assert points.shape[-1] == 3, "Points should be in 3D"
         assert pose.shape == (4, 4), "Pose should be a 4x4 matrix"
         return np.dot(points, pose[:3, :3].T) + pose[:3, 3]
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Observations":
+        """Create observations from dictionary."""
+        return cls(
+            gps=data.get("gps"),
+            compass=data.get("compass"),
+            rgb=data.get("rgb"),
+            depth=data.get("depth"),
+            xyz=data.get("xyz"),
+            semantic=data.get("semantic"),
+            camera_K=data.get("camera_K"),
+            camera_pose=data.get("camera_pose"),
+            ee_rgb=data.get("ee_rgb"),
+            ee_depth=data.get("ee_depth"),
+            ee_xyz=data.get("ee_xyz"),
+            ee_semantic=data.get("ee_semantic"),
+            ee_camera_K=data.get("ee_camera_K"),
+            ee_camera_pose=data.get("ee_camera_pose"),
+            ee_pose=data.get("ee_pose"),
+            instance=data.get("instance"),
+            third_person_image=data.get("third_person_image"),
+            lidar_points=data.get("lidar_points"),
+            lidar_timestamp=data.get("lidar_timestamp"),
+            joint=data.get("joint"),
+            relative_resting_position=data.get("relative_resting_position"),
+            is_holding=data.get("is_holding"),
+            task_observations=data.get("task_observations"),
+            seq_id=data.get("seq_id"),
+            is_simulation=data.get("is_simulation"),
+            is_pose_graph_node=data.get("is_pose_graph_node"),
+            pose_graph_timestamp=data.get("pose_graph_timestamp"),
+            initial_pose_graph_gps=data.get("initial_pose_graph_gps"),
+            initial_pose_graph_compass=data.get("initial_pose_graph_compass"),
+        )

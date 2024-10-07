@@ -27,7 +27,12 @@ class UpdateOperation(ManagedOperation):
     match_method: str = "name"
 
     def set_target_object_class(self, object_class: str):
-        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")
+        """Set the target object class for the operation.
+
+        Args:
+            object_class (str): The object class to set as the target.
+        """
+        self.warn(f"Overwriting target object class from {self.object_class} to {object_class}.")  # type: ignore
         self.object_class = object_class
 
     def can_start(self):

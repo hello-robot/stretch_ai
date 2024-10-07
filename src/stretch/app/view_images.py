@@ -124,7 +124,7 @@ def main(
             print(" - head rgb shape:", repr(servo.rgb.shape))
             print(" - head depth shape:", repr(servo.depth.shape))
             print()
-            print("Press 'q' to quit.")
+            print("Press 'q' with a window selected to quit.")
             first_time = False
 
         # Run segmentation if you want

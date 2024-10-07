@@ -154,7 +154,7 @@ class OvmmPerception:
         rgb: torch.Tensor,
         depth: torch.Tensor,
         base_pose: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
         """Predict segmentation masks from RGB and depth images.
 
         Args:

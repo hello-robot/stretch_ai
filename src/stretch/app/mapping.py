@@ -33,7 +33,12 @@ from stretch.perception import create_semantic_sensor
 @click.option("--show-final-map", default=False, is_flag=True)
 @click.option("--show-paths", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
-@click.option("--explore-iter", default=-1)
+@click.option(
+    "--explore-iter",
+    "--explore_iter",
+    default=-1,
+    help="Number of exploration steps, i.e. times the robot will try to move to an unexplored frontier",
+)
 @click.option("--navigate-home", default=False, is_flag=True)
 @click.option("--force-explore", default=False, is_flag=True)
 @click.option("--no-manip", default=False, is_flag=True)
@@ -188,6 +193,7 @@ def demo_main(
                 manual_wait,
                 explore_iter=parameters["exploration_steps"],
                 task_goal=object_to_find,
+                random_goals=False,
                 go_home_at_end=navigate_home,
                 visualize=show_intermediate_maps,
             )
