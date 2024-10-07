@@ -577,6 +577,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
+        self._wait_for_arm(constants.STRETCH_NAVIGATION_Q)
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
@@ -647,6 +648,44 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 print("Timeout waiting for head to move")
                 break
             time.sleep(0.01)
+
+    def _wait_for_arm(
+        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
+    ) -> bool:
+        """Wait for the arm to move to a particular configuration.
+
+        Args:
+            q(np.ndarray): The target joint angles
+            timeout(float): How long to wait for the arm to move
+            resend_action(dict): The action to resend if the arm is not moving. If none, do not resend.
+
+        Returns:
+            bool: Whether the arm successfully moved to the target configuration
+        """
+        t0 = timeit.default_timer()
+        while not self._finish:
+            joint_positions, joint_velocities, _ = self.get_joint_state()
+            if joint_positions is None:
+                continue
+
+            arm_diff = np.abs(joint_positions[HelloStretchIdx.ARM] - q[HelloStretchIdx.ARM])
+            lift_diff = np.abs(joint_positions[HelloStretchIdx.LIFT] - q[HelloStretchIdx.LIFT])
+
+            if arm_diff < self._arm_joint_tolerance and lift_diff < self._lift_joint_tolerance:
+                return True
+
+            if resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
+
+            t1 = timeit.default_timer()
+            if t1 - t0 > timeout:
+                logger.error(
+                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}"
+                )
+                return False
+
+        # This should never happen
+        return False
 
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
