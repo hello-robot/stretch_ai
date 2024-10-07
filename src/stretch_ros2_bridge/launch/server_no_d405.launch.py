@@ -20,7 +20,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     start_server = Node(
         package="stretch_ros2_bridge",
-        executable="server",
+        executable="server_no_d405",
         name="ros2_zmq_server",
         output="screen",
         on_exit=launch.actions.Shutdown(),
@@ -30,7 +30,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory("stretch_ros2_bridge"),
-                "launch/cameras.launch.py",
+                "launch/cameras_d435_only.launch.py",
             )
         )
     )
