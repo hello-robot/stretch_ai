@@ -10,8 +10,8 @@
 from stretch.agent import RobotClient
 
 print("Initialize the robot client")
-print('robot = RobotClient(robot_ip="192.168.86.47")')
-robot = RobotClient(robot_ip="192.168.86.47")  # Replace with your robot's IP
+print("robot = RobotClient()")
+robot = RobotClient()
 print("Done")
 # On future connection attempts, the IP address can be left blank
 
