@@ -1068,10 +1068,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return
 
         # color_image = compression.from_webp(message["ee_cam/color_image"])
-        color_image = compression.from_jpg(message["ee_cam/color_image"])
-        depth_image = compression.from_jp2(message["ee_cam/depth_image"])
-        depth_image = depth_image / 1000
-        image_scaling = message["ee_cam/image_scaling"]
+        if "ee_cam/color_image" in message:
+            color_image = compression.from_jpg(message["ee_cam/color_image"])
+            depth_image = compression.from_jp2(message["ee_cam/depth_image"])
+            depth_image = depth_image / 1000
+        else:
+            color_image = None
+            depth_image = None
+            image_scaling = None
 
         # Get head information from the message as well
         head_color_image = compression.from_jpg(message["head_cam/color_image"])
@@ -1090,13 +1094,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 ee_xyz=None,
                 joint=joint,
             )
-            observation.camera_K = message["head_cam/depth_camera_K"]
-            observation.ee_camera_K = message["ee_cam/depth_camera_K"]
-            observation.camera_pose = message["head_cam/pose"]
-            observation.ee_camera_pose = message["ee_cam/pose"]
+
+            # We may not have the camera information yet
+            # Some robots do not have the d405
+            if "ee_cam/depth_camera_K" in message:
+                observation.ee_camera_K = message["ee_cam/depth_camera_K"]
+                observation.ee_camera_pose = message["ee_cam/pose"]
+                observation.ee_depth_scaling = message["ee_cam/image_scaling"]
+
             observation.ee_pose = message["ee/pose"]
             observation.depth_scaling = message["head_cam/depth_scaling"]
-            observation.ee_depth_scaling = message["ee_cam/image_scaling"]
+            observation.camera_K = message["head_cam/depth_camera_K"]
+            observation.camera_pose = message["head_cam/pose"]
             if "is_simulation" in message:
                 observation.is_simulation = message["is_simulation"]
             else:
