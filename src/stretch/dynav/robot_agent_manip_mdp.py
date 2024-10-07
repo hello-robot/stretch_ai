@@ -18,7 +18,16 @@ from stretch.agent import RobotClient
 from stretch.core.parameters import Parameters
 from stretch.dynav.communication_util import recv_array, send_array, send_everything
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
-from stretch.dynav.ok_robot_hw.global_parameters import *
+from stretch.dynav.ok_robot_hw.global_parameters import (
+    INIT_ARM_POS,
+    INIT_HEAD_PAN,
+    INIT_HEAD_TILT,
+    INIT_LIFT_POS,
+    INIT_WRIST_PITCH,
+    INIT_WRIST_ROLL,
+    INIT_WRIST_YAW,
+    TOP_CAMERA_NODE,
+)
 from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,

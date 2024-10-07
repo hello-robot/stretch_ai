@@ -75,19 +75,44 @@ class AStar:
         self.start_time = time.time()
 
     def point_is_occupied(self, x: int, y: int) -> bool:
+        """Checks if a point is occupied.
+
+        Args:
+            x: The x coordinate.
+            y: The y coordinate.
+
+        Returns:
+            Whether the point is occupied.
+        """
         return not bool(self._navigable[x][y])
 
     def to_pt(self, xy: Tuple[float, float]) -> Tuple[int, int]:
+        """Converts a point from continuous, world xy coordinates to grid coordinates.
+
+        Args:
+            xy: The point in continuous xy coordinates.
+
+        Returns:
+            The point in discrete grid coordinates.
+        """
         # # type: ignore to bypass mypy checking
         xy = np.array([xy[0], xy[1]])  # type: ignore
         pt = self.space.voxel_map.xy_to_grid_coords(xy)  # type: ignore
-        return tuple(pt.tolist())
+        return int(pt[0]), int(pt[1])
 
     def to_xy(self, pt: Tuple[int, int]) -> Tuple[float, float]:
+        """Converts a point from grid coordinates to continuous, world xy coordinates.
+
+        Args:
+            pt: The point in grid coordinates.
+
+        Returns:
+            The point in continuous xy coordinates.
+        """
         # # type: ignore to bypass mypy checking
         pt = np.array([pt[0], pt[1]])  # type: ignore
         xy = self.space.voxel_map.grid_coords_to_xy(pt)  # type: ignore
-        return tuple(xy.tolist())
+        return float(xy[0]), float(xy[1])
 
     def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
