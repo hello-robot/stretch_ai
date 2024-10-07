@@ -286,7 +286,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return joint_velocities
 
     def get_joint_efforts(self, timeout: float = 5.0) -> np.ndarray:
-        """Get the current joint efforts"""
+        """Get the current joint efforts from the robot.
+
+        Args:
+            timeout: How long to wait for the observation
+
+        Returns:
+            np.ndarray: The joint efforts as an array of floats
+        """
+
         t0 = timeit.default_timer()
         with self._state_lock:
             while self._state is None:
@@ -298,7 +306,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return joint_efforts
 
     def get_base_pose(self, timeout: float = 5.0) -> np.ndarray:
-        """Get the current pose of the base"""
+        """Get the current pose of the base.
+
+        Args:
+            timeout: How long to wait for the observation
+
+        Returns:
+            np.ndarray: The base pose as [x, y, theta]
+        """
         t0 = timeit.default_timer()
         if self.update_base_pose_from_full_obs:
             with self._obs_lock:
