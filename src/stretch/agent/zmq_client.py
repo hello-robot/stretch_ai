@@ -361,7 +361,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return pos, quat
 
     def get_frame_pose(self, q, node_a: str, node_b: str):
-        """Get the pose of frame b relative to frame a."""
+        """Get the pose of frame b relative to frame a.
+
+        Args:
+            q: The joint positions
+            node_a: The name of the first frame
+            node_b: The name of the second frame
+        """
+        # TODO: get this working properly and update the documentation
         return self._robot_model.manip_ik_solver.get_frame_pose(q, node_a, node_b)
 
     def solve_ik(
