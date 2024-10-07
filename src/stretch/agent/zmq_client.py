@@ -852,7 +852,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def _update_pose_graph(self, obs):
         """Update internal pose graph"""
         with self._obs_lock:
-            self._pose_graph = obs["pose_graph"]
+            if "pose_graph" in obs:
+                self._pose_graph = obs["pose_graph"]
 
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
