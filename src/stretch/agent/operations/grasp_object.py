@@ -226,11 +226,6 @@ class GraspObjectOperation(ManagedOperation):
 
                 rgb = servo.ee_rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
 
-                # TODO: remove debug code
-                #  import matplotlib.pyplot as plt
-                # plt.imshow(rgb)
-                # plt.show()
-
                 features = self.agent.encode_image(rgb)
                 score = self.agent.compare_features(text_features, features)
                 print(f" - Score for {iid} is {score}")
@@ -263,19 +258,17 @@ class GraspObjectOperation(ManagedOperation):
                             best_score = score
                             best_iid = iid
                             best_features = features
+                    self.tracked_object_features = best_features
                 else:
                     best_score = float("-inf")
                     best_iid = None
-                    best_features = None
-                    for score, iid, features in all_matches:
+                    for score, iid, _ in all_matches:
                         if score > best_score:
                             best_score = score
                             best_iid = iid
-                            best_features = features
 
                 # Set the mask
                 mask = servo.instance == best_iid
-                self.tracked_object_features = best_features
         else:
             raise ValueError(f"Invalid matching method {self.match_method}.")
 

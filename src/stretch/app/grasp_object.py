@@ -39,9 +39,9 @@ def get_task(robot, demo, target_object):
         )
         grasp_object.configure(
             target_object=target_object,
-            show_object_to_grasp=True,
+            show_object_to_grasp=False,
             servo_to_grasp=True,
-            show_servo_gui=True,
+            show_servo_gui=False,
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
             match_method="feature",
