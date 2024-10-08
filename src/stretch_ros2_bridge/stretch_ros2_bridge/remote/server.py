@@ -160,6 +160,8 @@ class ZmqServer(BaseZmqServer):
                     self.client.in_navigation_mode(),
                 )
                 print(f"{action['xyt']} {action['nav_relative']} {action['nav_blocking']}")
+            if not self.client.in_navigation_mode():
+                self.client.switch_to_navigation_mode()
             self.client.navigate_to(
                 action["xyt"],
                 relative=action["nav_relative"],
