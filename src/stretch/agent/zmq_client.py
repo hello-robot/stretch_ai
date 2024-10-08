@@ -795,6 +795,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Wait for the head to move
         # If the head is not moving, we are done
         # Head must be stationary for at least min_wait_time
+        verbose = True
+        prev_joint_positions = None
+        prev_t = None
+        prev_xyt = None
         while not self._finish:
             joint_positions, joint_velocities, _ = self.get_joint_state()
 
@@ -816,9 +820,37 @@ class HomeRobotZmqClient(AbstractRobotClient):
             head_speed = np.linalg.norm(
                 joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
             )
+
+            current_xyt = self.get_base_pose()
+            if prev_xyt is not None:
+                xyt_diff = np.linalg.norm(prev_xyt - current_xyt)
+            else:
+                xyt_diff = float("inf")
+
+            # Save the current xyt to compute speed
+            prev_xyt = current_xyt
+
+            if prev_joint_positions is not None:
+                head_speed_v2 = np.linalg.norm(
+                    joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+                    - prev_joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+                ) / (timeit.default_timer() - prev_t)
+            else:
+                head_speed_v2 = float("inf")
+
+            # Take the max of the two speeds
+            # This is to handle the case where we're getting weird measurements
+            head_speed = max(head_speed, head_speed_v2, xyt_diff)
+
+            # Save the current joint positions to compute speed
+            prev_joint_positions = joint_positions
+            prev_t = timeit.default_timer()
+
             if verbose:
                 print("Waiting for head to move", pan_err, tilt_err, "head speed =", head_speed)
-            if pan_err < self._head_pan_tolerance and tilt_err < self._head_tilt_tolerance:
+            if head_speed > self._head_not_moving_tolerance:
+                at_goal = False
+            elif pan_err < self._head_pan_tolerance and tilt_err < self._head_tilt_tolerance:
                 at_goal = True
                 at_goal_t = timeit.default_timer()
             elif resend_action is not None:
@@ -826,7 +858,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             else:
                 at_goal = False
 
-            if at_goal and timeit.default_timer() - at_goal_t > min_wait_time:
+            if (
+                at_goal
+                and timeit.default_timer() - at_goal_t > min_wait_time
+                and head_speed < self._head_not_moving_tolerance
+            ):
                 break
 
             t1 = timeit.default_timer()
