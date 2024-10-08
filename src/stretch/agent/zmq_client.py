@@ -491,9 +491,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
+            time.sleep(0.25)
             self._wait_for_head(whole_body_q, block_id=step)
-
-        time.sleep(0.1)
+            time.sleep(0.25)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
