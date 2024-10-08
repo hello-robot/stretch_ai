@@ -163,13 +163,18 @@ class RobotAgent:
             self._get_observations_thread = Thread(target=self.get_observations_loop)
             self._get_observations_thread.start()
 
-            self.context = zmq.Context()
+            # Set up ZMQ subscriber
+            self.context = self.robot.get_zmq_context()
             self.sub_socket = self.context.socket(zmq.SUB)
             self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
             self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        else:
+            self._update_map_thread = None
+            self._get_observations_thread = None
 
     def __del__(self):
-        self._update_map_thread.join()
+        if self._update_map_thread is not None and self._update_map_thread.is_alive():
+            self._update_map_thread.join()
 
     def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
         """Create a voxel map from parameters.
@@ -452,8 +457,8 @@ class RobotAgent:
         else:
             return self.ask("Please type any task you want the robot to do: ")
 
-    def show_map(self):
-        """Helper function to visualize the 3d map as it stands right now"""
+    def show_map(self) -> None:
+        """Helper function to visualize the 3d map as it stands right now."""
         self.voxel_map.show(
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
@@ -461,8 +466,10 @@ class RobotAgent:
             instances=self.semantic_sensor is not None,
         )
 
-    def get_observations_loop(self):
-        while True:
+    def get_observations_loop(self) -> None:
+        """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
+
+        while self.robot.running:
             obs = None
             t0 = timeit.default_timer()
 
@@ -618,8 +625,8 @@ class RobotAgent:
         self._obs_history_lock.release()
 
     def update_map_loop(self):
-        """Threaded function that updates our voxel map in real-time"""
-        while True:
+        """Threaded function that updates our voxel map in real-time."""
+        while self.robot.running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
             time.sleep(0.5)

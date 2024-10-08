@@ -71,6 +71,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         return recv_socket
 
+    def get_zmq_context(self) -> zmq.Context:
+        """Get the ZMQ context for the client.
+
+        Returns:
+            zmq.Context: The ZMQ context
+        """
+        return self.context
+
     def _create_pub_obs_socket(self, port: int):
         send_socket = self.context.socket(zmq.PUB)
         send_socket.setsockopt(zmq.SNDHWM, 1)
