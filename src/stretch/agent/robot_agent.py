@@ -48,7 +48,10 @@ class RobotAgent:
     update_rerun_every_time: bool = True
     normalize_embeddings: bool = False
 
+    # Sleep times
+    # This sleep is before starting a head sweep
     _before_head_motion_sleep_t = 0.25
+    # much longer sleeps - do they fix things?
     _after_head_motion_sleep_t = 0.1
 
     def __init__(

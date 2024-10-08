@@ -139,10 +139,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # Resend all actions immediately - helps if we are losing packets or something?
         self._resend_all_actions = resend_all_actions
-        self._publish_observations = publish_observations
+        self._publish_observations = (
+            publish_observations or self.parameters["agent"]["use_realtime_updates"]
+        )
 
         if parameters is None:
             parameters = get_parameters("default_planner.yaml")
+
         self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
@@ -795,7 +798,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Wait for the head to move
         # If the head is not moving, we are done
         # Head must be stationary for at least min_wait_time
-        verbose = True
         prev_joint_positions = None
         prev_t = None
         prev_xyt = None
