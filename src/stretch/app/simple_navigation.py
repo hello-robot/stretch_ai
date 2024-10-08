@@ -39,12 +39,12 @@ print("Done")
 # navigate_to() is only allowed in navigation mode
 print("Move the robot back to origin")
 print("robot.navigate_to([0, 0, 0])")
-robot.navigate_to([0, 0, 0])
+robot.navigate_to([0, 0, 0], blocking=True)
 print("Done")
 
 # Move the robot 0.5m forward
-print("Move the robot 0.5m forward")
-print("robot.navigate_to([0.5, 0, 0], relative=True, blocking=True)")
+print("Move the robot 0.25m forward")
+print("robot.navigate_to([0.25, 0, 0], relative=True, blocking=True)")
 robot.navigate_to([0.5, 0, 0], relative=True, blocking=True)
 print("Done")
 
