@@ -1456,15 +1456,33 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     @property
     def is_homed(self) -> bool:
-        return self._state is not None and self._state["is_homed"]
+        """Is the robot homed?
+
+        Returns:
+            bool: whether the robot is homed
+        """
+        # This is not really thread safe
+        with self._state_lock:
+            return self._state is not None and self._state["is_homed"]
 
     @property
     def is_runstopped(self) -> bool:
-        return self._state is not None and self._state["is_runstopped"]
+        """Is the robot runstopped?
+
+        Returns:
+            bool: whether the robot is runstopped
+        """
+        with self._state_lock:
+            return self._state is not None and self._state["is_runstopped"]
 
     def start(self) -> bool:
-        """Start running blocking thread in a separate thread"""
+        """Start running blocking thread in a separate thread. This will wait for observations to come in and update internal state.
+
+        Returns:
+            bool: whether the client was started successfully
+        """
         if self._started:
+            # Already started
             return True
 
         self._thread = threading.Thread(target=self.blocking_spin)
@@ -1523,9 +1541,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return True
 
     def __del__(self):
+        """Destructor to make sure we stop the client when it is deleted"""
         self.stop()
 
     def stop(self):
+        """Stop the client and close all sockets"""
         self._finish = True
         if self._thread is not None:
             self._thread.join()
