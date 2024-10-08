@@ -1391,12 +1391,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._servo = observation
 
     def get_servo_observation(self):
-        """Get the current servo observation"""
+        """Get the current servo observation.
+
+        Returns:
+            Observations: the current servo observation
+        """
         with self._servo_lock:
             return self._servo
 
     def blocking_spin_servo(self, verbose: bool = False):
-        """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
+        """Listen for servo messages coming from the robot, i.e. low res images for ML state. This is intended to be run in a separate thread.
+
+        Args:
+            verbose (bool): whether to print out debug information
+        """
         sum_time = 0.0
         steps = 0
         t0 = timeit.default_timer()
@@ -1415,11 +1423,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     @property
     def running(self) -> bool:
-        """Is the client running"""
+        """Is the client running? Best practice is to check this during while loops.
+
+        Returns:
+            bool: whether the client is running
+        """
         return not self._finish
 
     def is_running(self) -> bool:
-        """Is the client running"""
+        """Is the client running? Best practice is to check this during while loops.
+
+        Returns:
+            bool: whether the client is running
+        """
         return not self._finish
 
     def say(self, text: str):
