@@ -140,9 +140,18 @@ class PinocchioIKSolver(IKSolverBase):
         node_a: str,
         node_b: str,
         ignore_missing_joints: bool = False,
-    ):
+    ) -> np.ndarray:
         """
         Get a transformation matrix transforming from node_a frame to node_b frame
+
+        Args:
+            config: joint values
+            node_a: name of the first node
+            node_b: name of the second node
+            ignore_missing_joints: whether to ignore missing joints in the configuration
+
+        Returns:
+            transformation matrix from node_a to node_b
         """
         q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
         # print('q_model', q_model)

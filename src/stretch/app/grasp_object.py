@@ -31,6 +31,7 @@ def get_task(robot, demo, target_object):
             show_map_so_far=False,
             clear_voxel_map=True,
             show_instances_detected=False,
+            match_method="feature",
         )
         grasp_object = GraspObjectOperation(
             "grasp_the_object",
@@ -43,6 +44,7 @@ def get_task(robot, demo, target_object):
             show_servo_gui=True,
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
+            match_method="feature",
         )
         grasp_object.set_target_object_class(target_object)
         task.add_operation(update)

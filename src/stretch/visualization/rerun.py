@@ -177,6 +177,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
 class RerunVisualizer:
 
     camera_point_radius = 0.01
+    max_displayed_points_per_camera: int = 10000
 
     def __init__(
         self,
@@ -415,6 +416,15 @@ class RerunVisualizer:
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
             ee_rgb = servo.ee_rgb.reshape(-1, 3)
+            # Remove points below z = 0
+            idx = np.where(ee_xyz[:, 2] > 0)
+            ee_xyz = ee_xyz[idx]
+            ee_rgb = ee_rgb[idx]
+            if self.max_displayed_points_per_camera > 0:
+                idx = np.arange(ee_xyz.shape[0])
+                np.random.shuffle(idx)
+                ee_xyz = ee_xyz[idx[: self.max_displayed_points_per_camera]]
+                ee_rgb = ee_rgb[idx[: self.max_displayed_points_per_camera]]
             rr.log(
                 "world/ee_camera/points",
                 rr.Points3D(
@@ -492,12 +502,17 @@ class RerunVisualizer:
         # Get obstacles and explored points
         grid_resolution = space.voxel_map.grid_resolution
         obs_points = np.array(occupancy_map_to_3d_points(obstacles, grid_origin, grid_resolution))
+
+        # Move obs_points z up slightly to avoid z-fighting
+        obs_points[:, 2] += 0.01
         t4 = timeit.default_timer()
 
         # Get explored points
         explored_points = np.array(
             occupancy_map_to_3d_points(explored, grid_origin, grid_resolution)
         )
+        # Move explored z points down slightly to avoid z-fighting
+        explored_points[:, 2] -= 0.01
         t5 = timeit.default_timer()
 
         # Log points

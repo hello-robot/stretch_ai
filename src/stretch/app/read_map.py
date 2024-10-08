@@ -83,6 +83,7 @@ def plan_to_deltas(xyt0, plan):
     default=False,
     help="test sampling instances and trying to plan to them.",
 )
+@click.option("--test-plan-to-home", "--test_plan_to_home", type=bool, is_flag=True, default=False)
 @click.option(
     "--test-plan-to-frontier",
     type=bool,
@@ -138,6 +139,7 @@ def main(
     test_planning: bool = False,
     test_plan_to_frontier: bool = False,
     test_sampling: bool = False,
+    test_plan_to_home: bool = False,
     test_vlm: bool = False,
     frame: int = -1,
     show_svm: bool = False,
@@ -203,7 +205,9 @@ def main(
     if len(start) > 0:
         x0 = np.array([float(x) for x in start.split(",")])
     else:
+        print("- Using last observation as start pose. To override, use --start.")
         x0 = voxel_map.observations[-1].base_pose.numpy()
+    print("Start pose:", x0)
     assert len(x0) == 3, "start pose must be 3 values: x, y, theta"
     start_xyz = [x0[0], x0[1], 0]
 
@@ -294,6 +298,32 @@ def main(
                             footprint=footprint,
                         )
             print("... done sampling frontier points.")
+
+        if test_plan_to_home:
+            print("-" * 80)
+            print("Test planning to home.")
+            print("This version tests the agent's canned 'plan_to_home' function.")
+            print("It will try to plan to the home position [0, 0, 0].")
+            print("-" * 80)
+            # Get the default motion planner
+            planner = agent.planner
+            # Plan to home
+            res = planner.plan(x0, np.array([0, 0, 0]))
+            print("... planning done. success =", res.success)
+            if res.success:
+                plan_to_deltas(x0, res)
+                goal = res.trajectory[-1].state
+                print("Plan found:")
+                print("start =", x0)
+                print("goal =", goal)
+            if show_svm:
+                voxel_map.show(
+                    instances=show_instances,
+                    orig=start_xyz,
+                    xyt=np.array([0, 0, 0]),
+                    footprint=footprint,
+                )
+
         if test_plan_to_frontier:
             print("-" * 80)
             print("Test planning to frontier.")

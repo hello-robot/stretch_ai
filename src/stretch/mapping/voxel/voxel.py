@@ -264,7 +264,7 @@ class SparseVoxelMap(object):
 
     def reset(self) -> None:
         """Clear out the entire voxel map."""
-        self.observations = []
+        self.observations: List[Frame] = []
         # Create an instance memory to associate bounding boxes in space
         if self.use_instance_memory:
             self.instances = InstanceMemory(
@@ -369,7 +369,7 @@ class SparseVoxelMap(object):
             instance_scores=instance_scores,
             *args,
             **kwargs,
-        )
+        )  # type: ignore
 
     def add(
         self,
@@ -611,7 +611,7 @@ class SparseVoxelMap(object):
 
     def write_to_pickle(self, filename: str, compress: bool = True) -> None:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
-        data = {}
+        data: Dict[str, Any] = {}
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []
@@ -685,7 +685,7 @@ class SparseVoxelMap(object):
 
     def read_from_pickle(
         self,
-        filename: str,
+        filename: Union[str, Path],
         num_frames: int = -1,
         perception: Optional[OvmmPerception] = None,
         transform_pose: Optional[torch.Tensor] = None,
@@ -902,8 +902,8 @@ class SparseVoxelMap(object):
             )[0, 0].bool()
 
             # Obstacles just get dilated and eroded
-            obstacles = binary_erosion(
-                binary_dilation(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
+            obstacles = binary_dilation(
+                binary_erosion(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
                 self.smooth_kernel,
             )[0, 0].bool()
 
@@ -1076,9 +1076,13 @@ class SparseVoxelMap(object):
         # Create a combined point cloud
         # Do the other stuff we need to show instances
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
+        if points is None:
+            return []
+
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
         if orig is None:
             orig = np.zeros(3)
+
         geoms = create_visualization_geometries(pcd=pcd, orig=orig)
 
         # Get the explored/traversible area
@@ -1146,9 +1150,20 @@ class SparseVoxelMap(object):
             geoms.append(wireframe)
 
     def delete_instance(
-        self, instance: Instance, force_update=False, min_bound_z=0, assume_explored: bool = False
+        self,
+        instance: Instance,
+        force_update: bool = True,
+        min_bound_z: float = 0,
+        assume_explored: bool = False,
     ) -> None:
-        """Remove an instance from the map"""
+        """Remove an instance from the map.
+
+        Args:
+            instance: instance to remove
+            force_update: force update of cached 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient. Defaults to True.
+            min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
+            assume_explored: assume deleted area is explored or not. If True, will mark the area as explored, so that the robot can plan past this position. If False, the area will be marked as unexplored, and the robot will have to re-explore it.
+        """
         print("Deleting instance", instance.global_id)
         print("Bounds: ", instance.bounds)
         self.delete_obstacles(instance.bounds, force_update=force_update, min_bound_z=min_bound_z)
@@ -1165,7 +1180,7 @@ class SparseVoxelMap(object):
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
-        force_update: Optional[bool] = False,
+        force_update: Optional[bool] = True,
         min_height: Optional[float] = None,
         min_bound_z: Optional[float] = 0.0,
         assume_explored: bool = False,
@@ -1176,9 +1191,9 @@ class SparseVoxelMap(object):
             bounds: 3x2 array of min and max bounds in xyz
             point: 3x1 array of point to delete
             radius: radius around point to delete
-            force_update: force update of 2d map
-            min_height: minimum height to delete
-            min_bound_z: minimum z bound to delete
+            force_update: force update of 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient. Defaults to True.
+            min_height: minimum height to delete. Usually 0, for the floor plane.
+            min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
             assume_explored: assume deleted area is explored
         """
         self.voxel_pcd.remove(bounds, point, radius, min_height=min_height, min_bound_z=min_bound_z)
@@ -1277,7 +1292,3 @@ class SparseVoxelMap(object):
             },
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
-
-    def _get_instance_color(instance_id: int) -> List[float]:
-        """Get a color for an instance"""
-        return [np.random.random() for _ in range(3)]

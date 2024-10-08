@@ -259,9 +259,9 @@ class ImageProcessor:
                 sam_config, sam_checkpoint, device=self.device, apply_postprocessing=False
             )
             self.mask_predictor = SAM2ImagePredictor(sam2_model)
-        self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
-        self.texts = CLASS_LABELS_200
-        self.yolo_model.set_classes(self.texts)
+            self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
+            self.texts = CLASS_LABELS_200
+            self.yolo_model.set_classes(self.texts)
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
             clip_model=self.clip_model,
@@ -274,6 +274,8 @@ class ImageProcessor:
         """
         Process the text query and return the trajectory for the robot to follow.
         """
+
+        print("Processing", text)
 
         if self.rerun:
             if self.rerun_visualizer is None:
@@ -297,9 +299,12 @@ class ImageProcessor:
         if text is not None and text != "" and self.traj is not None:
             print("saved traj", self.traj)
             traj_target_point = self.traj[-1]
-            if self.voxel_map_localizer.verify_point(text, traj_target_point):
-                localized_point = traj_target_point
-                debug_text += "## Last visual grounding results looks fine so directly use it.\n"
+            with self.voxel_map_lock:
+                if self.voxel_map_localizer.verify_point(text, traj_target_point):
+                    localized_point = traj_target_point
+                    debug_text += (
+                        "## Last visual grounding results looks fine so directly use it.\n"
+                    )
 
         if waypoints is None:
             # Do visual grounding
@@ -342,21 +347,6 @@ class ImageProcessor:
 
             point = self.sample_navigation(start_pose, localized_point)
 
-            # if self.rerun:
-            #     buf = BytesIO()
-            #     plt.savefig(buf, format="png")
-            #     buf.seek(0)
-            #     img = Image.open(buf)
-            #     img = np.array(img)
-            #     buf.close()
-            #     rr.log("2d_map", rr.Image(img), static=self.static)
-            # else:
-            #     if text != "":
-            #         plt.savefig(self.log + "/debug_" + text + str(self.obs_count) + ".png")
-            #     else:
-            #         plt.savefig(self.log + "/debug_exploration" + str(self.obs_count) + ".png")
-            # plt.clf()
-
             if obs is not None and mode == "navigation":
                 rgb = self.voxel_map.observations[obs - 1].rgb
                 if not self.rerun:
@@ -377,7 +367,8 @@ class ImageProcessor:
                 print("Unable to find any target point, some exception might happen")
             else:
                 print("Target point is", point)
-                res = self.planner.plan(start_pose, point)
+                with self.voxel_map_lock:
+                    res = self.planner.plan(start_pose, point)
             if res.success:
                 waypoints = [pt.state for pt in res.trajectory]
             else:
@@ -388,10 +379,10 @@ class ImageProcessor:
         traj = []
         if waypoints is not None:
             finished = len(waypoints) <= 10 and mode == "navigation"
-            if finished:
-                self.traj = None
-            else:
-                self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            # if finished:
+            #     self.traj = None
+            # else:
+            #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
                 waypoints = waypoints[:8]
             traj = self.planner.clean_path_for_xy(waypoints)
@@ -835,17 +826,28 @@ class ImageProcessor:
         else:
             self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
+        if self.vision_method == "mask&*lip":
+            self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
+        else:
+            self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
-        self.voxel_map.add(
-            camera_pose=torch.Tensor(pose),
-            rgb=torch.Tensor(rgb).permute(1, 2, 0),
-            depth=torch.Tensor(depth),
-            camera_K=torch.Tensor(intrinsics),
-        )
+            if self.image_shape is not None:
+                rgb = F.interpolate(
+                    rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+                ).squeeze()
+
+            self.voxel_map.add(
+                camera_pose=torch.Tensor(pose),
+                rgb=torch.Tensor(rgb).permute(1, 2, 0),
+                depth=torch.Tensor(depth),
+                camera_K=torch.Tensor(intrinsics),
+            )
+
+        if self.vision_method == "mask&*lip":
+            self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
+        else:
+            self.run_mask_clip(rgb, ~valid_depth, world_xyz)
+
         obs, exp = self.voxel_map.get_2d_map()
         if self.rerun and self.rerun_visualizer is None:
             # if not self.static:

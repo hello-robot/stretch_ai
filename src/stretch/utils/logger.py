@@ -10,29 +10,60 @@
 from termcolor import colored
 
 
-def _flatten(args: tuple) -> str:
-    """Flatten a tuple of arguments into a string joined by spaces.
+class Logger:
+    def __init__(self, name: str, hide_info: bool = False) -> None:
+        self.name = name
+        self._hide_info = hide_info
 
-    Args:
-        args (tuple): Tuple of arguments to flatten.
+    def hide_info(self) -> None:
+        self._hide_info = True
 
-    Returns:
-        str: Flattened string.
-    """
-    return " ".join([str(arg) for arg in args])
+    def _flatten(self, args: tuple) -> str:
+        """Flatten a tuple of arguments into a string joined by spaces.
+
+        Args:
+            args (tuple): Tuple of arguments to flatten.
+
+        Returns:
+            str: Flattened string.
+        """
+        text = " ".join([str(arg) for arg in args])
+        if self.name is not None:
+            text = f"[{self.name}] {text}"
+        return text
+
+    def error(self, *args) -> None:
+        text = self._flatten(args)
+        print(colored(text, "red"))
+
+    def info(self, *args) -> None:
+        if not self._hide_info:
+            text = self._flatten(args)
+            print(colored(text, "white"))
+
+    def warning(self, *args) -> None:
+        text = self._flatten(args)
+        print(colored(text, "yellow"))
+
+    def alert(self, *args) -> None:
+        text = self._flatten(args)
+        print(colored(text, "green"))
+
+
+_default_logger = Logger(None)
 
 
 def error(*args) -> None:
-    print(colored(_flatten(args), "red"))
+    _default_logger.error(*args)
 
 
 def info(*args) -> None:
-    print(*args)
+    _default_logger.info(*args)
 
 
 def warning(*args) -> None:
-    print(colored(_flatten(args), "yellow"))
+    _default_logger.warning(*args)
 
 
 def alert(*args) -> None:
-    print(colored(_flatten(args), "green"))
+    _default_logger.alert(*args)

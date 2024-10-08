@@ -21,6 +21,7 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
+import torch
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
@@ -40,6 +41,7 @@ class GraspObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     servo_to_grasp: bool = False
     _success: bool = False
+    talk: bool = True
 
     # Task information
     match_method: str = "class"
@@ -61,7 +63,8 @@ class GraspObjectOperation(ManagedOperation):
     # align_x_threshold: int = 10
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 15
+    # align_x_threshold: int = 15
+    align_x_threshold: int = 20
     align_y_threshold: int = 15
 
     # pregrasp_distance_from_object: float = 0.075
@@ -81,6 +84,9 @@ class GraspObjectOperation(ManagedOperation):
     # wrist_pitch_step: float = 0.06
     # wrist_pitch_step: float = 0.05  # Too slow
     # ------------------------
+
+    # Tracked object features for making sure we are grabbing the right thing
+    tracked_object_features: Optional[torch.Tensor] = None
 
     # Parameters about how to grasp - less important
     grasp_loose: bool = False
@@ -119,6 +125,8 @@ class GraspObjectOperation(ManagedOperation):
         show_point_cloud: bool = False,
         reset_observation: bool = False,
         grasp_loose: bool = False,
+        talk: bool = True,
+        match_method: str = "class",
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -129,6 +137,8 @@ class GraspObjectOperation(ManagedOperation):
             show_point_cloud (bool, optional): Show the point cloud. Defaults to False.
             reset_observation (bool, optional): Reset the observation. Defaults to False.
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
+            talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
+            match_method (str, optional): Matching method. Defaults to "class". This is how the policy determines which object mask it should try to grasp.
         """
         self.target_object = target_object
         self.show_object_to_grasp = show_object_to_grasp
@@ -137,6 +147,12 @@ class GraspObjectOperation(ManagedOperation):
         self.show_point_cloud = show_point_cloud
         self.reset_observation = reset_observation
         self.grasp_loose = grasp_loose
+        self.talk = talk
+        self.match_method = match_method
+        if self.match_method not in ["class", "feature"]:
+            raise ValueError(
+                f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
+            )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
@@ -201,6 +217,7 @@ class GraspObjectOperation(ManagedOperation):
             text_features = self.agent.encode_text(self.target_object)
             best_score = float("-inf")
             best_iid = None
+            all_matches = []
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -220,7 +237,21 @@ class GraspObjectOperation(ManagedOperation):
                 if score > best_score:
                     best_score = score
                     best_iid = iid
-                    mask = servo.instance == iid
+                if score > self.agent.is_match_threshold:
+                    all_matches.append((score, iid, features))
+            if len(all_matches) > 0:
+                print("All matches:")
+                for score, iid, features in all_matches:
+                    print(f" - Matched {iid} with score {score}.")
+            if len(all_matches) == 0:
+                print("No matches found.")
+            elif len(all_matches) == 1:
+                print("One match found. We are done.")
+                mask = servo.instance == best_iid
+            else:
+                # Check to see if we have
+                breakpoint()
+
         else:
             raise ValueError(f"Invalid matching method {self.match_method}.")
 
@@ -302,6 +333,8 @@ class GraspObjectOperation(ManagedOperation):
     def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
+        if self.talk:
+            self.agent.robot_say("Grasping the object!")
 
         if not self.open_loop:
             joint_state = self.robot.get_joint_positions()
@@ -412,7 +445,6 @@ class GraspObjectOperation(ManagedOperation):
             latest_mask = self.get_target_mask(
                 servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
-            print("latest mask size:", np.sum(latest_mask.flatten()))
 
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
@@ -438,13 +470,6 @@ class GraspObjectOperation(ManagedOperation):
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
             if mask_center is None:
-                # if not aligned_once:
-                #     self.error(
-                #         "Lost track before even seeing object with EE camera. Just try open loop."
-                #     )
-                #     if self.show_servo_gui:
-                #         cv2.destroyAllWindows()
-                # return False
                 if failed_counter < self.max_failed_attempts:
                     mask_center = np.array([center_y, center_x])
                 else:
@@ -491,6 +516,7 @@ class GraspObjectOperation(ManagedOperation):
                 self.info("Not moving; try to grasp.")
                 success = self._grasp()
                 break
+
             # If we have a target mask, compute the median depth of the object
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None:
@@ -673,6 +699,11 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.voxel_map.instances.pop_global_instance(
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
+
+        # Delete the object
+        self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+        if self.talk:
+            self.agent.robot_say("I think I grasped the object.")
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
         """Move to a pregrasp position in an open loop manner.

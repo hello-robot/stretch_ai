@@ -32,10 +32,17 @@ repos:
     rev: v0.981
     hooks:
       - id: mypy
-        entry: mypy
         types: [python]
-        language: system
-        exclude: ^src/stretch/perception/detection/detic/Detic|^src/stretch/app|^src/stretch_ros2_bridge|^third_party/|^src/stretch/agent|^src/stretch/mapping|^src/stretch/perception|^src/stretch/visualization
+        exclude: >
+          (?x)^(
+            src/stretch/perception/detection/detic/Detic|
+            src/stretch/app|
+            src/stretch_ros2_bridge|
+            third_party/|
+            src/stretch/agent|
+            src/stretch/perception|
+            src/stretch/visualization
+          )
         args:
           - --ignore-missing-imports
           - --install-types
