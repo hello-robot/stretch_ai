@@ -111,6 +111,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         start_immediately: bool = True,
         enable_rerun_server: bool = True,
         resend_all_actions: bool = False,
+        publish_observations: bool = False,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -138,6 +139,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # Resend all actions immediately - helps if we are losing packets or something?
         self._resend_all_actions = resend_all_actions
+        self._publish_observations = publish_observations
 
         if parameters is None:
             parameters = get_parameters("default_planner.yaml")
@@ -189,7 +191,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
         )
 
-        self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
+        if self._publish_observations:
+            self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
+        else:
+            self.pub_obs_socket = None
 
         # SEnd actions back to the robot for execution
         self.send_socket = self.context.socket(zmq.PUB)
@@ -1037,7 +1042,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            self.pub_obs_socket.send_pyobj(obs)
+            if self._publish_observations:
+                self.pub_obs_socket.send_pyobj(obs)
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
@@ -1535,6 +1541,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.recv_state_socket.close()
         self.recv_servo_socket.close()
         self.send_socket.close()
+        if self.pub_obs_socket is not None:
+            self.pub_obs_socket.close()
         self.context.term()
 
 
