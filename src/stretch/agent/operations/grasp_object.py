@@ -237,7 +237,7 @@ class GraspObjectOperation(ManagedOperation):
                 if score > best_score:
                     best_score = score
                     best_iid = iid
-                if score > self.agent.is_match_threshold:
+                if score > self.agent.feature_match_threshold:
                     all_matches.append((score, iid, features))
             if len(all_matches) > 0:
                 print("All matches:")
@@ -248,10 +248,34 @@ class GraspObjectOperation(ManagedOperation):
             elif len(all_matches) == 1:
                 print("One match found. We are done.")
                 mask = servo.instance == best_iid
+                # Set the tracked features
+                self.tracked_object_features = all_matches[0][2]
             else:
-                # Check to see if we have
-                breakpoint()
+                # Check to see if we have tracked features
+                if self.tracked_object_features is not None:
+                    # Find the closest match
+                    best_score = float("-inf")
+                    best_iid = None
+                    best_features = None
+                    for _, iid, features in all_matches:
+                        score = self.agent.compare_features(self.tracked_object_features, features)
+                        if score > best_score:
+                            best_score = score
+                            best_iid = iid
+                            best_features = features
+                else:
+                    best_score = float("-inf")
+                    best_iid = None
+                    best_features = None
+                    for score, iid, features in all_matches:
+                        if score > best_score:
+                            best_score = score
+                            best_iid = iid
+                            best_features = features
 
+                # Set the mask
+                mask = servo.instance == best_iid
+                self.tracked_object_features = best_features
         else:
             raise ValueError(f"Invalid matching method {self.match_method}.")
 
@@ -264,6 +288,12 @@ class GraspObjectOperation(ManagedOperation):
             target_object (str): Target object class
         """
         self.target_object = target_object
+
+    def reset(self):
+        """Reset the operation. This clears the history and sets the success flag to False. It also clears the tracked object features."""
+        self._success = False
+        self.tracked_object_features = None
+        self.observations.clear_history()
 
     def get_target_mask(
         self,
@@ -657,6 +687,9 @@ class GraspObjectOperation(ManagedOperation):
         if self.show_object_to_grasp:
             self.show_instance(self.agent.current_object)
 
+        # Clear the observation history
+        self.reset()
+
         assert self.target_object is not None, "Target object must be set before running."
 
         # Now we should be able to see the object if we orient gripper properly
@@ -694,7 +727,6 @@ class GraspObjectOperation(ManagedOperation):
 
         # clear observations
         if self.reset_observation:
-            self.observations.clear_history()
             self.agent.reset_object_plans()
             self.agent.voxel_map.instances.pop_global_instance(
                 env_id=0, global_instance_id=self.agent.current_object.global_id
