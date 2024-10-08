@@ -71,6 +71,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         return recv_socket
 
+    def get_zmq_context(self) -> zmq.Context:
+        """Get the ZMQ context for the client.
+
+        Returns:
+            zmq.Context: The ZMQ context
+        """
+        return self.context
+
     def _create_pub_obs_socket(self, port: int):
         send_socket = self.context.socket(zmq.PUB)
         send_socket.setsockopt(zmq.SNDHWM, 1)
@@ -103,6 +111,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         start_immediately: bool = True,
         enable_rerun_server: bool = True,
         resend_all_actions: bool = False,
+        publish_observations: bool = False,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -130,6 +139,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         # Resend all actions immediately - helps if we are losing packets or something?
         self._resend_all_actions = resend_all_actions
+        self._publish_observations = publish_observations
 
         if parameters is None:
             parameters = get_parameters("default_planner.yaml")
@@ -181,7 +191,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
         )
 
-        self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
+        if self._publish_observations:
+            self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
+        else:
+            self.pub_obs_socket = None
 
         # SEnd actions back to the robot for execution
         self.send_socket = self.context.socket(zmq.PUB)
@@ -871,6 +884,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         resend_action: Optional[Dict[str, Any]] = None,
         verbose: bool = False,
         timeout: float = 20.0,
+        time_required: float = 0.05,
     ) -> bool:
         """
         Wait for the robot to switch to a particular control mode. Will throw an exception if mode switch fails; probably means a packet was dropped.
@@ -885,12 +899,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
             bool: Whether the robot successfully switched to the target mode
         """
         t0 = timeit.default_timer()
+        mode_t0 = None
         while True:
             with self._state_lock:
                 if verbose:
-                    print(f"Waiting for mode {mode} current mode {self._control_mode}")
-                if self._control_mode == mode:
-                    break
+                    print(f"Waiting for mode {mode} current mode {self._control_mode} {mode_t0}")
+                if self._control_mode == mode and mode_t0 is None:
+                    mode_t0 = timeit.default_timer()
+                elif self._control_mode != mode:
+                    mode_t0 = None
+            # Make sure we are in the mode for at least time_required seconds
+            # This is to handle network delays
+            if mode_t0 is not None and timeit.default_timer() - mode_t0 > time_required:
+                break
             if resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
             time.sleep(0.1)
@@ -1021,7 +1042,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            self.pub_obs_socket.send_pyobj(obs)
+            if self._publish_observations:
+                self.pub_obs_socket.send_pyobj(obs)
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
@@ -1519,6 +1541,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.recv_state_socket.close()
         self.recv_servo_socket.close()
         self.send_socket.close()
+        if self.pub_obs_socket is not None:
+            self.pub_obs_socket.close()
         self.context.term()
 
 

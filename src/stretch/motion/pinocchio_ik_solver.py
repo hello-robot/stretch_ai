@@ -17,8 +17,12 @@ import numpy as np
 import pinocchio
 from scipy.spatial.transform import Rotation as R
 
-import stretch.utils.logger as logger
 from stretch.motion.base.ik_solver_base import IKSolverBase
+from stretch.utils.logger import Logger
+
+# Create a logger and suppress info messages
+logger = Logger(__name__)
+logger.hide_info()
 
 # --DEFAULTS--
 # Error tolerances
