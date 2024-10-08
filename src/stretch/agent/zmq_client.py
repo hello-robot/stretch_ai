@@ -871,6 +871,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         resend_action: Optional[Dict[str, Any]] = None,
         verbose: bool = False,
         timeout: float = 20.0,
+        time_required: float = 0.05,
     ) -> bool:
         """
         Wait for the robot to switch to a particular control mode. Will throw an exception if mode switch fails; probably means a packet was dropped.
@@ -885,12 +886,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
             bool: Whether the robot successfully switched to the target mode
         """
         t0 = timeit.default_timer()
+        mode_t0 = None
         while True:
             with self._state_lock:
                 if verbose:
-                    print(f"Waiting for mode {mode} current mode {self._control_mode}")
-                if self._control_mode == mode:
-                    break
+                    print(f"Waiting for mode {mode} current mode {self._control_mode} {mode_t0}")
+                if self._control_mode == mode and mode_t0 is None:
+                    mode_t0 = timeit.default_timer()
+                elif self._control_mode != mode:
+                    mode_t0 = None
+            # Make sure we are in the mode for at least time_required seconds
+            # This is to handle network delays
+            if mode_t0 is not None and timeit.default_timer() - mode_t0 > time_required:
+                break
             if resend_action is not None:
                 self.send_socket.send_pyobj(resend_action)
             time.sleep(0.1)

@@ -535,6 +535,8 @@ class GraspObjectOperation(ManagedOperation):
                 servo_ee_rgb = cv2.circle(
                     servo_ee_rgb, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
                 )
+                print("-- show a window")
+                cv2.namedWindow("servo_ee_rgb", cv2.WINDOW_NORMAL)
                 cv2.imshow("servo_ee_rgb", servo_ee_rgb)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
