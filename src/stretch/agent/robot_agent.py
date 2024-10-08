@@ -58,7 +58,6 @@ class RobotAgent:
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
-        debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
         realtime_updates: bool = False,
@@ -73,7 +72,6 @@ class RobotAgent:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
         self.grasp_client = grasp_client
-        self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
