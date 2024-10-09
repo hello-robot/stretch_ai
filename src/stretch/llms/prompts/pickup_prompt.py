@@ -155,7 +155,7 @@ class PickupPromptBuilder(AbstractPromptBuilder):
         """Parse the pickup, place, and say commands from the response into a list."""
         commands = [line for line in response.split("\n") if line]
         return commands
-    
+
     def get_available_actions(self) -> List[str]:
         return super().get_available_actions() + [
             "pickup",

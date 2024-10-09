@@ -37,7 +37,7 @@ class AbstractPromptBuilder(ABC):
     def parse_response(self, response: str) -> Any:
         """Parse the response from the LLM. Usually does nothing."""
         return response
-    
+
     def get_available_actions(self) -> List[str]:
         """Return a list of available actions."""
         return []

@@ -14,13 +14,12 @@ from stretch.agent.operations import (
     ExploreOperation,
     GoHomeOperation,
     GoToNavOperation,
-    GoToOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
     NodHeadOperation,
     OpenLoopGraspObjectOperation,
-    PreGraspObjectOperation,
     PlaceObjectOperation,
+    PreGraspObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
     SearchForReceptacleOperation,
@@ -32,7 +31,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.core import AbstractRobotClient
-from stretch.core.task import Operation, Task
+from stretch.core.task import Task
 from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
@@ -82,10 +81,11 @@ class PickupExecutor:
         self._operation_count = 0
         self.available_actions = available_actions
 
-
     def say(self, text: str) -> None:
         """Use the robot to say the text."""
-        say_operation = SpeakOperation(f"{str(self._operation_count)}_say_" + text, agent=self.agent, robot=self.robot)
+        say_operation = SpeakOperation(
+            f"{str(self._operation_count)}_say_" + text, agent=self.agent, robot=self.robot
+        )
         say_operation.configure(message=text)
         self._task.add_operation(say_operation, True)
         self._operation_count += 1
@@ -100,7 +100,9 @@ class PickupExecutor:
 
         # Spin in place to find objects.
         rotate_in_place = RotateInPlaceOperation(
-            f"{str(self._operation_count)}_rotate_in_place", self.agent, parent=go_to_navigation_mode
+            f"{str(self._operation_count)}_rotate_in_place",
+            self.agent,
+            parent=go_to_navigation_mode,
         )
         self._operation_count += 1
 
@@ -187,7 +189,9 @@ class PickupExecutor:
             self._operation_count += 1
 
         place_object_on_receptacle = PlaceObjectOperation(
-            f"{str(self._operation_count)}_place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
+            f"{str(self._operation_count)}_place_object_on_receptacle",
+            self.agent,
+            on_cannot_start=go_to_receptacle,
         )
         self._operation_count += 1
 
@@ -215,37 +219,49 @@ class PickupExecutor:
 
     def wave(self) -> None:
         """Wave to the user."""
-        wave_operation = WaveOperation(f"{str(self._operation_count)}_wave", self.agent, robot=self.robot)
+        wave_operation = WaveOperation(
+            f"{str(self._operation_count)}_wave", self.agent, robot=self.robot
+        )
         self._task.add_operation(wave_operation, True)
         self._operation_count += 1
 
     def go_home(self) -> None:
         """Go back to the home position."""
-        go_home_operation = GoHomeOperation(f"{str(self._operation_count)}_go_home", self.agent, robot=self.robot)
+        go_home_operation = GoHomeOperation(
+            f"{str(self._operation_count)}_go_home", self.agent, robot=self.robot
+        )
         self._task.add_operation(go_home_operation, True)
         self._operation_count += 1
 
     def explore(self) -> None:
         """Explore the environment."""
-        explore_operation = ExploreOperation(f"{str(self._operation_count)}_explore", self.agent, robot=self.robot)
+        explore_operation = ExploreOperation(
+            f"{str(self._operation_count)}_explore", self.agent, robot=self.robot
+        )
         self._task.add_operation(explore_operation, True)
         self._operation_count += 1
 
     def nod_head(self) -> None:
         """Nod the head."""
-        nod_head_operation = NodHeadOperation(f"{str(self._operation_count)}_nod_head", self.agent, robot=self.robot)
+        nod_head_operation = NodHeadOperation(
+            f"{str(self._operation_count)}_nod_head", self.agent, robot=self.robot
+        )
         self._task.add_operation(nod_head_operation, True)
         self._operation_count += 1
 
     def shake_head(self) -> None:
         """Shake the head."""
-        shake_head_operation = ShakeHeadOperation(f"{str(self._operation_count)}_shake_head", self.agent, robot=self.robot)
+        shake_head_operation = ShakeHeadOperation(
+            f"{str(self._operation_count)}_shake_head", self.agent, robot=self.robot
+        )
         self._task.add_operation(shake_head_operation, True)
         self._operation_count += 1
 
     def avert_gaze(self) -> None:
         """Avert the gaze."""
-        avert_gaze_operation = AvertGazeOperation(f"{str(self._operation_count)}_avert_gaze", self.agent, robot=self.robot)
+        avert_gaze_operation = AvertGazeOperation(
+            f"{str(self._operation_count)}_avert_gaze", self.agent, robot=self.robot
+        )
         self._task.add_operation(avert_gaze_operation, True)
         self._operation_count += 1
 
@@ -288,6 +304,8 @@ class PickupExecutor:
             True if we should keep going, False if we should stop.
         """
         i = 0
+        self._task = Task()
+        self._operation_count = 0
 
         if response is None or len(response) == 0:
             logger.error("No commands to execute!")
@@ -314,7 +332,9 @@ class PickupExecutor:
                     eval(command_with_args)
             else:
                 logger.error(f"Skipping unknown command: {command}")
-            
+
             i += 1
+
+        self._task.run()
 
         return True

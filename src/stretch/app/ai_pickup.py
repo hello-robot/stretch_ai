@@ -152,7 +152,9 @@ def main(
 
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
-    executor = PickupExecutor(robot, agent, available_actions=prompt.get_available_actions(), dry_run=False)
+    executor = PickupExecutor(
+        robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+    )
 
     # Get the LLM client
     llm_client = None
