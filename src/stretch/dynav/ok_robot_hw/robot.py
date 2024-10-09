@@ -60,7 +60,7 @@ class HelloRobot:
 
         # Initialize StretchClient controller
         self.robot = robot
-        self.robot.switch_to_manipulation_mode()
+        # self.robot.switch_to_manipulation_mode()
         # time.sleep(2)
 
         # Constraining the robots movement

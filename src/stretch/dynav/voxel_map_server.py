@@ -147,7 +147,7 @@ class ImageProcessor:
         rerun: bool = True,
         # static: bool = True,
         log=None,
-        image_shape=(480, 360),
+        image_shape=(360, 270),
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
@@ -275,7 +275,7 @@ class ImageProcessor:
         Process the text query and return the trajectory for the robot to follow.
         """
 
-        print("Processing", text)
+        print("Processing", text, "starts")
 
         if self.rerun:
             if self.rerun_visualizer is None:
@@ -306,6 +306,8 @@ class ImageProcessor:
                         "## Last visual grounding results looks fine so directly use it.\n"
                     )
 
+        print("Target verification finished")
+
         if waypoints is None:
             # Do visual grounding
             if text is not None and text != "" and localized_point is None:
@@ -316,6 +318,7 @@ class ImageProcessor:
                         obs,
                         pointcloud,
                     ) = self.voxel_map_localizer.localize_A(text, debug=True, return_debug=True)
+                print("Target point selected!")
                 if localized_point is not None:
                     if self.rerun and self.rerun_visualizer is None:
                         rr.log(
@@ -346,6 +349,8 @@ class ImageProcessor:
                 localized_point = np.array([localized_point[0], localized_point[1], 0])
 
             point = self.sample_navigation(start_pose, localized_point)
+
+            print("Navigation endpoint selected")
 
             if obs is not None and mode == "navigation":
                 rgb = self.voxel_map.observations[obs - 1].rgb
@@ -378,13 +383,13 @@ class ImageProcessor:
         # the object so that we can make sure the robot looks at the object after navigation
         traj = []
         if waypoints is not None:
-            finished = len(waypoints) <= 10 and mode == "navigation"
+            finished = len(waypoints) <= 6 and mode == "navigation"
             # if finished:
             #     self.traj = None
             # else:
             #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
-                waypoints = waypoints[:8]
+                waypoints = waypoints[:6]
             traj = self.planner.clean_path_for_xy(waypoints)
             if finished:
                 traj.append([np.nan, np.nan, np.nan])
@@ -485,11 +490,8 @@ class ImageProcessor:
                 )
                 alignments_heuristics = time_heuristics
 
-        obstacles, explored = self.voxel_map.get_2d_map()
-        # plt.clf()
-        # plt.imshow(obstacles * 0.5 + explored * 0.5)
-        # plt.scatter(index[1], index[0], s = 20, c = 'r')
-        return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
+            obstacles, explored = self.voxel_map.get_2d_map()
+            return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
 
     def _recv_image(self):
         while True:
