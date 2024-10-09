@@ -33,6 +33,7 @@ from stretch.utils.image import Camera
 from stretch.utils.logger import Logger
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
+from stretch.visualization.rerun import RerunVisualizer
 
 logger = Logger(__name__)
 
@@ -102,7 +103,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         manip_mode_controlled_joints: Optional[List[str]] = None,
         start_immediately: bool = True,
         enable_rerun_server: bool = True,
-        resend_all_actions: bool = False,
     ):
         """
         Create a client to communicate with the robot over ZMQ.
@@ -127,9 +127,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._iter = -1  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
         self._started = False
-
-        # Resend all actions immediately - helps if we are losing packets or something?
-        self._resend_all_actions = resend_all_actions
 
         if parameters is None:
             parameters = get_parameters("default_planner.yaml")
@@ -202,8 +199,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._servo_lock = Lock()
 
         if enable_rerun_server:
-            from stretch.visualization.rerun import RerunVisualizer
-
             self._rerun = RerunVisualizer()
         else:
             self._rerun = None
@@ -607,9 +602,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 ):
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
-                    logger.info("Arm not moving, we are done")
-                    logger.info("Arm joint velocities", joint_velocities)
-                    logger.info(t1 - t0)
+                    print("Arm not moving, we are done")
+                    print("Arm joint velocities", joint_velocities)
+                    print(t1 - t0)
                     # Arm stopped moving but did not reach goal
                     return False
                 else:
@@ -620,7 +615,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 time.sleep(0.01)
 
                 if t1 - t0 > timeout:
-                    logger.error("Timeout waiting for arm to move")
+                    print("[ZMQ CLIENT] Timeout waiting for arm to move")
                     break
                 steps += 1
             return False
@@ -636,18 +631,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
-            _xyt = xyt.xyt
-        else:
-            _xyt = xyt
-        assert len(_xyt) == 3, "xyt must be a vector of size 3"
-        next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
+            xyt = xyt.xyt
+        assert len(xyt) == 3, "xyt must be a vector of size 3"
+        next_action = {"xyt": xyt, "nav_relative": relative, "nav_blocking": blocking}
         if self._rerun:
-            self._rerun.update_nav_goal(_xyt)
-        # If we are not in navigation mode, switch to it
-        # Send an action to the robot
-        # Resend it to make sure it arrives, if we are not making a relative motion
-        # If we are blocking, wait for the action to complete with a timeout
-        self.send_action(next_action, timeout=timeout, verbose=verbose, force_resend=(not relative))
+            self._rerun.update_nav_goal(xyt)
+        self.send_action(next_action, timeout=timeout, verbose=verbose)
 
     def set_velocity(self, v: float, w: float):
         """Move to xyt in global coordinates or relative coordinates."""
@@ -740,6 +729,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
+    def in_navigation_mode(self) -> bool:
+        """Returns true if we are navigating (robot head forward, velocity control on)"""
+        return self._control_mode == "navigation"
+
+    def in_manipulation_mode(self) -> bool:
+        return self._control_mode == "manipulation"
+
     def switch_to_manipulation_mode(self):
         next_action = {"control_mode": "manipulation"}
         self.send_action(next_action)
@@ -751,8 +747,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"posture": "navigation", "step": self._iter}
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
-        self._wait_for_mode("navigation", resend_action=next_action)
-        self._wait_for_arm(constants.STRETCH_NAVIGATION_Q)
+        self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
@@ -761,7 +756,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
-        self._wait_for_arm(constants.STRETCH_PREGRASP_Q)
         assert self.in_manipulation_mode()
 
     def _wait_for_head(
@@ -825,63 +819,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 break
             time.sleep(0.01)
 
-    def _wait_for_arm(
-        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
-    ) -> bool:
-        """Wait for the arm to move to a particular configuration.
-
-        Args:
-            q(np.ndarray): The target joint angles
-            timeout(float): How long to wait for the arm to move
-            resend_action(dict): The action to resend if the arm is not moving. If none, do not resend.
-
-        Returns:
-            bool: Whether the arm successfully moved to the target configuration
-        """
-        t0 = timeit.default_timer()
-        while not self._finish:
-            joint_positions, joint_velocities, _ = self.get_joint_state()
-            if joint_positions is None:
-                continue
-
-            arm_diff = np.abs(joint_positions[HelloStretchIdx.ARM] - q[HelloStretchIdx.ARM])
-            lift_diff = np.abs(joint_positions[HelloStretchIdx.LIFT] - q[HelloStretchIdx.LIFT])
-
-            if arm_diff < self._arm_joint_tolerance and lift_diff < self._lift_joint_tolerance:
-                return True
-
-            if resend_action is not None:
-                self.send_socket.send_pyobj(resend_action)
-
-            t1 = timeit.default_timer()
-            if t1 - t0 > timeout:
-                logger.error(
-                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}"
-                )
-                return False
-
-        # This should never happen
-        return False
-
-    def _wait_for_mode(
-        self,
-        mode,
-        resend_action: Optional[Dict[str, Any]] = None,
-        verbose: bool = False,
-        timeout: float = 20.0,
-    ) -> bool:
-        """
-        Wait for the robot to switch to a particular control mode. Will throw an exception if mode switch fails; probably means a packet was dropped.
-
-        Args:
-            mode(str): The mode to wait for
-            resend_action(dict): The action to resend if the robot is not moving. If none, do not resend.
-            verbose(bool): Whether to print out debug information
-            timeout(float): How long to wait for the robot to switch modes
-
-        Returns:
-            bool: Whether the robot successfully switched to the target mode
-        """
+    def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
         while True:
             with self._state_lock:
@@ -889,15 +827,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     print(f"Waiting for mode {mode} current mode {self._control_mode}")
                 if self._control_mode == mode:
                     break
-            if resend_action is not None:
-                self.send_socket.send_pyobj(resend_action)
             time.sleep(0.1)
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 raise RuntimeError(f"Timeout waiting for mode {mode}: {t1 - t0} seconds")
-
         assert self._control_mode == mode
-        return True
 
     def _wait_for_action(
         self,
@@ -1189,10 +1123,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             dt = t2 - t1
             if t2 - t0 > timeout:
                 logger.warning(
-                    "[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: "
-                    + str(xyt)
-                    + " "
-                    + str(curr)
+                    "[WAIT FOR WAYPOINT] WARNING! Could not reach goal in time: " + str(xyt)
                 )
                 return False
             time.sleep(max(0, _delay - (dt)))
@@ -1213,21 +1144,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action: Dict[str, Any],
         timeout: float = 5.0,
         verbose: bool = False,
-        force_resend: bool = False,
     ) -> Dict[str, Any]:
-        """Send the next action to the robot. Increment the step counter and wait for the action to finish if it is blocking.
-
-        Args:
-            next_action (dict): the action to send
-            timeout (float): how long to wait for the action to finish
-            verbose (bool): whether to print out debug information
-            force_resend (bool): whether to resend the action
-
-        Returns:
-            dict: copy of the action that was sent to the robot.
-        """
+        """Send the next action to the robot"""
         if verbose:
-            logger.info("-> sending", next_action)
+            print("-> sending", next_action)
         blocking = False
         block_id = None
         with self._act_lock:
@@ -1243,11 +1163,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # print("SENDING THIS ACTION:", next_action)
             self.send_socket.send_pyobj(next_action)
 
-            if self._resend_all_actions or force_resend:
-                time.sleep(0.01)
-
-                logger.info("RESENDING THIS ACTION:", next_action)
-                self.send_socket.send_pyobj(next_action)
+            # print("SENDING THIS ACTION:", next_action)
+            self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
             if "xyt" in next_action:
@@ -1373,7 +1290,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def blocking_spin_servo(self, verbose: bool = False):
         """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
-        sum_time = 0.0
+        sum_time = 0
         steps = 0
         t0 = timeit.default_timer()
         while not self._finish:
@@ -1406,7 +1323,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 
-        sum_time = 0.0
+        sum_time = 0
         steps = 0
         t0 = timeit.default_timer()
 
@@ -1447,7 +1364,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
         if self._rerun:
-            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)  # type: ignore
+            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)
         self._finish = False
         self._thread.start()
         self._state_thread.start()
