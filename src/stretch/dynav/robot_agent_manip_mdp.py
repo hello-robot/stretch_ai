@@ -28,7 +28,7 @@ from stretch.dynav.ok_robot_hw.global_parameters import (
     INIT_WRIST_YAW,
     TOP_CAMERA_NODE,
 )
-from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
+from stretch.dynav.ok_robot_hw.robot import HelloRobot as ManipulationWrapper
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,
     move_to_point,
@@ -70,7 +70,7 @@ class RobotAgentMDP:
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = Manipulation_Wrapper(
+        self.manip_wrapper = ManipulationWrapper(
             self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
         )
         self.robot.move_to_nav_posture()

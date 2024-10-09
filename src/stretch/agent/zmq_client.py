@@ -759,11 +759,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
-    def switch_to_manipulation_mode(self):
+    def switch_to_manipulation_mode(self, verbose: bool = False):
         next_action = {"control_mode": "manipulation"}
         self.send_action(next_action)
         time.sleep(0.1)
-        self._wait_for_mode("manipulation")
+        if verbose:
+            logger.info("Waiting for manipulation mode")
+        self._wait_for_mode("manipulation", verbose=verbose)
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):

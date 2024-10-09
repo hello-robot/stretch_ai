@@ -34,7 +34,7 @@ def compute_tilt(camera_xyz, target_xyz):
 
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
-@click.option("--ip", default="127.0.0.1", type=str)
+@click.option("--ip", default="", type=str, help="IP address for the MDP agent")
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
@@ -72,6 +72,7 @@ def main(
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
     robot = RobotClient(robot_ip=robot_ip)
+    robot.move_to_nav_posture()
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
