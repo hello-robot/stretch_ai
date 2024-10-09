@@ -801,7 +801,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Head must be stationary for at least min_wait_time
         prev_joint_positions = None
         prev_t = None
-        prev_xyt = None
         while not self._finish:
             joint_positions, joint_velocities, _ = self.get_joint_state()
 
@@ -824,15 +823,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
             )
 
-            current_xyt = self.get_base_pose()
-            if prev_xyt is not None:
-                xyt_diff = np.linalg.norm(prev_xyt - current_xyt)
-            else:
-                xyt_diff = float("inf")
-
-            # Save the current xyt to compute speed
-            prev_xyt = current_xyt
-
             if prev_joint_positions is not None:
                 head_speed_v2 = np.linalg.norm(
                     joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
@@ -843,7 +833,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             # Take the max of the two speeds
             # This is to handle the case where we're getting weird measurements
-            head_speed = max(head_speed, head_speed_v2, xyt_diff)
+            head_speed = max(head_speed, head_speed_v2)
 
             # Save the current joint positions to compute speed
             prev_joint_positions = joint_positions
