@@ -132,6 +132,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_port = send_port
         self.reset()
 
+        # Load parameters
+        if parameters is None:
+            parameters = get_parameters("default_planner.yaml")
+        self._parameters = parameters
+
         # Variables we set here should not change
         self._iter = -1  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
@@ -143,10 +148,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             publish_observations or self.parameters["agent"]["use_realtime_updates"]
         )
 
-        if parameters is None:
-            parameters = get_parameters("default_planner.yaml")
-
-        self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
