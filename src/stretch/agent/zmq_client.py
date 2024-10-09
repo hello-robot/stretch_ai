@@ -755,15 +755,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def switch_to_navigation_mode(self):
         """Velocity control of the robot base."""
         next_action = {"control_mode": "navigation"}
-        self.send_action(next_action)
-        self._wait_for_mode("navigation")
+        action = self.send_action(next_action)
+        self._wait_for_mode("navigation", resend_action=action)
         assert self.in_navigation_mode()
 
-    def switch_to_manipulation_mode(self):
+    def switch_to_manipulation_mode(self, verbose: bool = False):
         next_action = {"control_mode": "manipulation"}
-        self.send_action(next_action)
+        action = self.send_action(next_action)
         time.sleep(0.1)
-        self._wait_for_mode("manipulation")
+        if verbose:
+            logger.info("Waiting for manipulation mode")
+        self._wait_for_mode("manipulation", resend_action=action, verbose=verbose)
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
@@ -951,7 +953,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert self._control_mode == mode
         return True
 
-    def _wait_for_action(
+    def _wait_for_base_motion(
         self,
         block_id: int,
         verbose: bool = False,
@@ -979,6 +981,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         print("=" * 20, f"Waiting for {block_id} at goal", "=" * 20)
         last_pos = None
         last_ang = None
+        last_obs_t = None
         not_moving_count = 0
         if moving_threshold is None:
             moving_threshold = self._moving_threshold
@@ -1002,22 +1005,31 @@ class HomeRobotZmqClient(AbstractRobotClient):
             xyt = self.get_base_pose()
             pos = xyt[:2]
             ang = xyt[2]
+            obs_t = timeit.default_timer()
 
             if not self.at_goal():
                 t0 = timeit.default_timer()
                 continue
 
-            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else float("inf")
+            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else float("inf")
             if goal_angle is not None:
                 angle_dist_to_goal = angle_difference(ang, goal_angle)
                 at_goal = angle_dist_to_goal < goal_angle_threshold
             else:
                 at_goal = True
+
+            moved_speed = (
+                moved_dist / (obs_t - last_obs_t) if last_obs_t is not None else float("inf")
+            )
+            angle_speed = (
+                angle_dist / (obs_t - last_obs_t) if last_obs_t is not None else float("inf")
+            )
+
             not_moving = (
                 last_pos is not None
-                and moved_dist < moving_threshold
-                and angle_dist < angle_threshold
+                and moved_speed < moving_threshold
+                and angle_speed < angle_threshold
             )
             if not_moving:
                 not_moving_count += 1
@@ -1028,6 +1040,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # If we are at the goal, we can stop if we are not moving
             last_pos = pos
             last_ang = ang
+            last_obs_t = obs_t
             close_to_goal = at_goal
             if verbose:
                 print(
@@ -1315,7 +1328,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # time.sleep(0.1)
         if blocking:
             # Wait for the command to finish
-            self._wait_for_action(
+            self._wait_for_base_motion(
                 block_id,
                 goal_angle=goal_angle,
                 verbose=verbose,

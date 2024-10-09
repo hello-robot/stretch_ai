@@ -24,6 +24,7 @@ import zmq
 from PIL import Image
 
 import stretch.utils.logger as logger
+import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
@@ -1293,7 +1294,12 @@ class RobotAgent:
         return filtered_matches
 
     def go_home(self):
-        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there."""
+        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there. This is a blocking call, so it will return when the robot is at home.
+
+        If the robot is not able to plan to home, it will print a message and return without moving the robot.
+
+        If the start state is invalid, it will try to recover from the invalid start state before planning to home. If it fails to recover, it will print a message and return without moving the robot.
+        """
         print("Go back to (0, 0, 0) to finish...")
         print("- change posture and switch to navigation mode")
         self.current_state = "NAV_TO_HOME"
@@ -1305,6 +1311,15 @@ class RobotAgent:
         print(f"- Current pose is valid: {self.space.is_valid(self.robot.get_base_pose())}")
         print(f"-   start pose is valid: {self.space.is_valid(start)}")
         print(f"-    goal pose is valid: {self.space.is_valid(goal)}")
+
+        # If the start is invalid, try to recover
+        if not self.space.is_valid(start):
+            print("Start is not valid. Trying to recover...")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                print("Failed to recover from invalid start state!")
+                return
+
         res = self.planner.plan(start, goal)
         # if it fails, skip; else, execute a trajectory to this position
         if res.success:
@@ -1315,6 +1330,17 @@ class RobotAgent:
             print("Can't go home; planning failed!")
 
     def choose_best_goal_instance(self, goal: str, debug: bool = False) -> Instance:
+        """Choose the best instance to move to based on the goal. This is done by comparing the goal to the embeddings of the instances in the world. The instance with the highest score is returned. If debug is true, we also print out the scores for the goal and two negative examples. These examples are:
+        - "the color purple"
+        - "a blank white wall"
+
+        Args:
+            goal(str): the goal to move to
+            debug(bool): whether to print out debug information
+
+        Returns:
+            Instance: the best instance to move to
+        """
         instances = self.voxel_map.get_instances()
         goal_emb = self.encode_text(goal)
         if debug:
@@ -1331,10 +1357,10 @@ class RobotAgent:
             img_emb = instance.get_image_embedding(
                 aggregation_method="mean", normalize=self.normalize_embeddings
             )
-            goal_score = torch.matmul(goal_emb, img_emb).item()
+            goal_score = self.compare_embeddings(goal_emb, img_emb)
             if debug:
-                neg1_score = torch.matmul(neg1_emb, img_emb).item()
-                neg2_score = torch.matmul(neg2_emb, img_emb).item()
+                neg1_score = self.compare_embeddings(neg1_emb, img_emb)
+                neg2_score = self.compare_embeddings(neg2_emb, img_emb)
                 print("scores =", goal_score, neg1_score, neg2_score)
             if goal_score > best_score:
                 best_instance = instance
@@ -1359,7 +1385,19 @@ class RobotAgent:
         fix_random_seed: bool = False,
         verbose: bool = True,
     ) -> PlanResult:
-        """Motion plan to a frontier location."""
+        """Motion plan to a frontier location. This is a location that is on the edge of the explored space. We use the voxel grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
+
+        Args:
+            start(np.ndarray): the start position
+            manual_wait(bool): whether to wait for user input
+            random_goals(bool): whether to sample random goals
+            try_to_plan_iter(int): the number of tries to find a plan
+            fix_random_seed(bool): whether to fix the random seed
+            verbose(bool): extra info is printed
+
+        Returns:
+            PlanResult: the result of the motion planner
+        """
         start_is_valid = self.space.is_valid(start, verbose=True)
         # if start is not valid move backwards a bit
         if not start_is_valid:
@@ -1930,3 +1968,18 @@ class RobotAgent:
             scene_graph,
         )
         return world_representation
+
+    def save_map(self, filename: Optional[str] = None) -> None:
+        """Save the current map to a file.
+
+        Args:
+            filename(str): the name of the file to save the map to
+        """
+        if filename is None or filename == "":
+            filename = memory.get_path_to_saved_map()
+
+        # Backup the saved map
+        memory.backup_saved_map()
+
+        # Write the new map to the file
+        self.voxel_map.save_to_pickle(filename)

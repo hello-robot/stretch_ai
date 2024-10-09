@@ -24,13 +24,17 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-import stretch.utils.logger as logger
+import stretch.utils.memory as memory
 from stretch.agent import RobotAgent
 from stretch.core import get_parameters
 from stretch.mapping import SparseVoxelMap
 from stretch.perception import create_semantic_sensor
 from stretch.utils.dummy_stretch_client import DummyStretchClient
 from stretch.utils.geometry import xyt_global_to_base
+from stretch.utils.logger import Logger
+
+# Set up logging for the script
+logger = Logger(__name__)
 
 
 def plan_to_deltas(xyt0, plan):
@@ -50,8 +54,8 @@ def plan_to_deltas(xyt0, plan):
     "--input-path",
     "-i",
     type=click.Path(),
-    default="output.pkl",
-    help="Input path with default value 'output.npy'",
+    default="",
+    help="Input path to the PKL file. If none is provided, try to load the default PKL.",
 )
 @click.option(
     "--config-path",
@@ -153,6 +157,10 @@ def main(
     test_remove: bool = False,
 ):
     """Simple script to load a voxel map"""
+    if len(input_path) == 0:
+        # Load the default path
+        input_path = memory.get_path_to_saved_map()
+
     input_path = Path(input_path)
     print("Loading:", input_path)
     if pkl_is_svm:
