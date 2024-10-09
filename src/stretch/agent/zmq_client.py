@@ -760,6 +760,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert self.in_navigation_mode()
 
     def switch_to_manipulation_mode(self, verbose: bool = False):
+        """Move the robot to manipulation mode.
+
+        Args:
+            verbose: Whether to print out debug information
+        """
         next_action = {"control_mode": "manipulation"}
         action = self.send_action(next_action)
         time.sleep(0.1)
