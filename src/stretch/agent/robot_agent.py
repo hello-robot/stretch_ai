@@ -1384,7 +1384,19 @@ class RobotAgent:
         fix_random_seed: bool = False,
         verbose: bool = True,
     ) -> PlanResult:
-        """Motion plan to a frontier location."""
+        """Motion plan to a frontier location. This is a location that is on the edge of the explored space. We use the voxel grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
+
+        Args:
+            start(np.ndarray): the start position
+            manual_wait(bool): whether to wait for user input
+            random_goals(bool): whether to sample random goals
+            try_to_plan_iter(int): the number of tries to find a plan
+            fix_random_seed(bool): whether to fix the random seed
+            verbose(bool): extra info is printed
+
+        Returns:
+            PlanResult: the result of the motion planner
+        """
         start_is_valid = self.space.is_valid(start, verbose=True)
         # if start is not valid move backwards a bit
         if not start_is_valid:
