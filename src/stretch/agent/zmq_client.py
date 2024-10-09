@@ -755,17 +755,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def switch_to_navigation_mode(self):
         """Velocity control of the robot base."""
         next_action = {"control_mode": "navigation"}
-        self.send_action(next_action)
-        self._wait_for_mode("navigation")
+        action = self.send_action(next_action)
+        self._wait_for_mode("navigation", resend_action=action)
         assert self.in_navigation_mode()
 
     def switch_to_manipulation_mode(self, verbose: bool = False):
         next_action = {"control_mode": "manipulation"}
-        self.send_action(next_action)
+        action = self.send_action(next_action)
         time.sleep(0.1)
         if verbose:
             logger.info("Waiting for manipulation mode")
-        self._wait_for_mode("manipulation", verbose=verbose)
+        self._wait_for_mode("manipulation", resend_action=action, verbose=verbose)
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
