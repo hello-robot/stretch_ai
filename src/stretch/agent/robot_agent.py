@@ -1305,6 +1305,15 @@ class RobotAgent:
         print(f"- Current pose is valid: {self.space.is_valid(self.robot.get_base_pose())}")
         print(f"-   start pose is valid: {self.space.is_valid(start)}")
         print(f"-    goal pose is valid: {self.space.is_valid(goal)}")
+
+        # If the start is invalid, try to recover
+        if not self.space.is_valid(start):
+            print("Start is not valid. Trying to recover...")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                print("Failed to recover from invalid start state!")
+                return
+
         res = self.planner.plan(start, goal)
         # if it fails, skip; else, execute a trajectory to this position
         if res.success:
