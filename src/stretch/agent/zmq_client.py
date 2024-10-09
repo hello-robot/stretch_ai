@@ -132,6 +132,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_port = send_port
         self.reset()
 
+        # Load parameters
+        if parameters is None:
+            parameters = get_parameters("default_planner.yaml")
+        self._parameters = parameters
+
         # Variables we set here should not change
         self._iter = -1  # Tracks number of actions set, never reset this
         self._seq_id = 0  # Number of messages we received
@@ -143,10 +148,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             publish_observations or self.parameters["agent"]["use_realtime_updates"]
         )
 
-        if parameters is None:
-            parameters = get_parameters("default_planner.yaml")
-
-        self._parameters = parameters
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
         self._min_steps_not_moving = parameters["motion"]["min_steps_not_moving"]
@@ -800,7 +801,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Head must be stationary for at least min_wait_time
         prev_joint_positions = None
         prev_t = None
-        prev_xyt = None
         while not self._finish:
             joint_positions, joint_velocities, _ = self.get_joint_state()
 
@@ -823,15 +823,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
             )
 
-            current_xyt = self.get_base_pose()
-            if prev_xyt is not None:
-                xyt_diff = np.linalg.norm(prev_xyt - current_xyt)
-            else:
-                xyt_diff = float("inf")
-
-            # Save the current xyt to compute speed
-            prev_xyt = current_xyt
-
             if prev_joint_positions is not None:
                 head_speed_v2 = np.linalg.norm(
                     joint_positions[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
@@ -842,7 +833,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             # Take the max of the two speeds
             # This is to handle the case where we're getting weird measurements
-            head_speed = max(head_speed, head_speed_v2, xyt_diff)
+            head_speed = max(head_speed, head_speed_v2)
 
             # Save the current joint positions to compute speed
             prev_joint_positions = joint_positions
@@ -1308,7 +1299,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if self._resend_all_actions or force_resend:
                 time.sleep(0.01)
 
-                logger.info("RESENDING THIS ACTION:", next_action)
+                logger.debug("RESENDING THIS ACTION:", next_action)
                 self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
