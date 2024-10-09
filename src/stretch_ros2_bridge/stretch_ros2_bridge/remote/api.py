@@ -118,6 +118,10 @@ class StretchClient(AbstractRobotClient):
 
         return result_pre and result_post
 
+    @property
+    def base_control_mode(self) -> ControlMode:
+        return self._base_control_mode
+
     def switch_to_busy_mode(self) -> bool:
         """Switch to a mode that says we are occupied doing something blocking"""
         self._base_control_mode = ControlMode.BUSY
