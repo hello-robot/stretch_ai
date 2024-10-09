@@ -11,12 +11,22 @@ from termcolor import colored
 
 
 class Logger:
-    def __init__(self, name: str, hide_info: bool = False) -> None:
+    def __init__(self, name: str, hide_info: bool = False, hide_debug: bool = True) -> None:
         self.name = name
         self._hide_info = hide_info
+        self._hide_debug = hide_debug
 
     def hide_info(self) -> None:
         self._hide_info = True
+
+    def hide_debug(self) -> None:
+        self._hide_debug = True
+
+    def show_info(self) -> None:
+        self._hide_info = False
+
+    def show_debug(self) -> None:
+        self._hide_debug = False
 
     def _flatten(self, args: tuple) -> str:
         """Flatten a tuple of arguments into a string joined by spaces.
@@ -38,6 +48,11 @@ class Logger:
 
     def info(self, *args) -> None:
         if not self._hide_info:
+            text = self._flatten(args)
+            print(colored(text, "white"))
+
+    def debug(self, *args) -> None:
+        if not self._hide_debug:
             text = self._flatten(args)
             print(colored(text, "white"))
 
@@ -67,3 +82,7 @@ def warning(*args) -> None:
 
 def alert(*args) -> None:
     _default_logger.alert(*args)
+
+
+def debug(*args) -> None:
+    _default_logger.debug(*args)

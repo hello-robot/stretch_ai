@@ -1309,7 +1309,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if self._resend_all_actions or force_resend:
                 time.sleep(0.01)
 
-                # logger.info("RESENDING THIS ACTION:", next_action)
+                logger.debug("RESENDING THIS ACTION:", next_action)
                 self.send_socket.send_pyobj(next_action)
 
             # For tracking goal
