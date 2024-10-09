@@ -1329,6 +1329,17 @@ class RobotAgent:
             print("Can't go home; planning failed!")
 
     def choose_best_goal_instance(self, goal: str, debug: bool = False) -> Instance:
+        """Choose the best instance to move to based on the goal. This is done by comparing the goal to the embeddings of the instances in the world. The instance with the highest score is returned. If debug is true, we also print out the scores for the goal and two negative examples. These examples are:
+        - "the color purple"
+        - "a blank white wall"
+
+        Args:
+            goal(str): the goal to move to
+            debug(bool): whether to print out debug information
+
+        Returns:
+            Instance: the best instance to move to
+        """
         instances = self.voxel_map.get_instances()
         goal_emb = self.encode_text(goal)
         if debug:
@@ -1345,10 +1356,10 @@ class RobotAgent:
             img_emb = instance.get_image_embedding(
                 aggregation_method="mean", normalize=self.normalize_embeddings
             )
-            goal_score = torch.matmul(goal_emb, img_emb).item()
+            goal_score = self.compare_embeddings(goal_emb, img_emb)
             if debug:
-                neg1_score = torch.matmul(neg1_emb, img_emb).item()
-                neg2_score = torch.matmul(neg2_emb, img_emb).item()
+                neg1_score = self.compare_embeddings(neg1_emb, img_emb)
+                neg2_score = self.compare_embeddings(neg2_emb, img_emb)
                 print("scores =", goal_score, neg1_score, neg2_score)
             if goal_score > best_score:
                 best_instance = instance
