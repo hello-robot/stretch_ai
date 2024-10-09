@@ -218,6 +218,8 @@ def demo_main(
             print(f"Write pkl to {output_pkl_filename}...")
             demo.voxel_map.write_to_pickle(output_pkl_filename)
 
+        demo.save_map()
+
         if write_instance_images:
             demo.save_instance_images(".")
 

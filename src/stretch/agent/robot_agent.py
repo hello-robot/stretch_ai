@@ -24,6 +24,7 @@ import zmq
 from PIL import Image
 
 import stretch.utils.logger as logger
+import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
@@ -1967,3 +1968,18 @@ class RobotAgent:
             scene_graph,
         )
         return world_representation
+
+    def save_map(self, filename: Optional[str] = None) -> None:
+        """Save the current map to a file.
+
+        Args:
+            filename(str): the name of the file to save the map to
+        """
+        if filename is None or filename == "":
+            filename = memory.get_path_to_saved_map()
+
+        # Backup the saved map
+        memory.backup_saved_map()
+
+        # Write the new map to the file
+        self.voxel_map.save_to_pickle(filename)
