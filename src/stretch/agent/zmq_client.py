@@ -774,6 +774,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert self.in_manipulation_mode()
 
     def move_to_nav_posture(self):
+        """Move the robot to the navigation posture. This is where the head is looking forward and the arm is tucked in."""
         next_action = {"posture": "navigation", "step": self._iter}
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
@@ -782,6 +783,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
+        """This is the pregrasp posture where the head is looking down and right and the arm is tucked in."""
         next_action = {"posture": "manipulation", "step": self._iter}
         self.send_action(next_action)
         time.sleep(0.1)
