@@ -1293,7 +1293,12 @@ class RobotAgent:
         return filtered_matches
 
     def go_home(self):
-        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there."""
+        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there. This is a blocking call, so it will return when the robot is at home.
+
+        If the robot is not able to plan to home, it will print a message and return without moving the robot.
+
+        If the start state is invalid, it will try to recover from the invalid start state before planning to home. If it fails to recover, it will print a message and return without moving the robot.
+        """
         print("Go back to (0, 0, 0) to finish...")
         print("- change posture and switch to navigation mode")
         self.current_state = "NAV_TO_HOME"
