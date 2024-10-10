@@ -36,28 +36,28 @@ robot.move_to_nav_posture()
 print("Done")
 
 # Move the robot back to origin
-# navigate_to() is only allowed in navigation mode
+# move_base_to() is only allowed in navigation mode
 print("Move the robot back to origin")
-print("robot.navigate_to([0, 0, 0])")
-robot.navigate_to([0, 0, 0], blocking=True)
+print("robot.move_base_to([0, 0, 0])")
+robot.move_base_to([0, 0, 0])
 print("Done")
 
 # Move the robot 0.5m forward
 print("Move the robot 0.25m forward")
-print("robot.navigate_to([0.25, 0, 0], relative=True, blocking=True)")
-robot.navigate_to([0.5, 0, 0], relative=True, blocking=True)
+print("robot.move_base_to([0.25, 0, 0], relative=True)")
+robot.move_base_to([0.5, 0, 0], relative=True)
 print("Done")
 
 # Rotate the robot 90 degrees to the left
 print("Rotate the robot 90 degrees to the left")
-print("robot.navigate_to([0, 0, 3.14159/2], relative=True, blocking=True)")
-robot.navigate_to([0, 0, 3.14159 / 2], relative=True, blocking=True)
+print("robot.move_base_to([0, 0, 3.14159/2], relative=True)")
+robot.move_base_to([0, 0, 3.14159 / 2], relative=True)
 print("Done")
 
 # And to the right
 print("Rotate the robot 90 degrees to the right")
-print("robot.navigate_to([0, 0, -3.14159/2], relative=True, blocking=True)")
-robot.navigate_to([0, 0, -3.14159 / 2], relative=True, blocking=True)
+print("robot.move_base_to([0, 0, -3.14159/2], relative=True, blocking=True)")
+robot.move_base_to([0, 0, -3.14159 / 2], relative=True)
 
 print("Stop the robot")
 print("robot.stop()")
