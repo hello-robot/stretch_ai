@@ -95,8 +95,6 @@ class RobotAgent:
         self._realtime_updates = (
             enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]
         )
-        if self._realtime_updates:
-            logger.alert("Using real-time updates")
         if not enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]:
             logger.warning(
                 "Real-time updates are not enabled but the agent is configured to use them."
@@ -169,6 +167,8 @@ class RobotAgent:
             )
 
         if self._realtime_updates:
+            logger.alert("Using real-time updates!")
+
             # Locks
             self._robot_lock = Lock()
             self._obs_history_lock = Lock()
@@ -419,7 +419,7 @@ class RobotAgent:
         logger.info("Rotate in place")
         if steps is None or steps <= 0:
             # Read the number of steps from the parameters
-            if self.parameters["agent"]["use_realtime_updates"]:
+            if self._realtime_updates:
                 steps = self.parameters["agent"]["realtime_rotation_steps"]
             else:
                 steps = self.parameters["agent"]["in_place_rotation_steps"]
