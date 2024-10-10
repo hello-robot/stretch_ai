@@ -132,11 +132,8 @@ def main(
         verbose=verbose,
     )
 
-    # Start moving the robot around
-    grasp_client = None
-
     # Agents wrap the robot high level planning interface for now
-    agent = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    agent = RobotAgent(robot, parameters, semantic_sensor)
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
@@ -174,6 +171,7 @@ def main(
                 target_object = input("Enter the target object: ")
             if len(receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
+            llm_response = [("pickup", target_object), ("place", receptacle)]
         else:
             # Call the LLM client and parse
             llm_response = chat_wrapper.query()
