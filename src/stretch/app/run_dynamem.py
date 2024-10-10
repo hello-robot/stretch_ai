@@ -11,7 +11,7 @@ import click
 import cv2
 import numpy as np
 
-from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
 # Mapping and perception

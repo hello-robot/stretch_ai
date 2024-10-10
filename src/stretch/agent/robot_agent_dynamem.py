@@ -105,6 +105,8 @@ class RobotAgent:
             self.encoder = get_encoder(
                 self.parameters["encoder"], self.parameters.get("encoder_args", {})
             )
+        else:
+            self.encoder = None
         self.obs_count = 0
         self.obs_history: List[Observations] = []
 
