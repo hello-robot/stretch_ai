@@ -87,7 +87,6 @@ class ZmqServer(BaseZmqServer):
             "lidar_points": obs.lidar_points,
             "lidar_timestamp": obs.lidar_timestamp,
             "pose_graph": self.client.get_pose_graph(),
-            "control_mode": self.get_control_mode(),
             "last_motion_failed": self.client.last_motion_failed(),
             "recv_address": self.recv_address,
             "step": self._last_step,
@@ -160,6 +159,8 @@ class ZmqServer(BaseZmqServer):
                     self.client.in_navigation_mode(),
                 )
                 print(f"{action['xyt']} {action['nav_relative']} {action['nav_blocking']}")
+            if not self.client.in_navigation_mode():
+                self.client.switch_to_navigation_mode()
             self.client.navigate_to(
                 action["xyt"],
                 relative=action["nav_relative"],

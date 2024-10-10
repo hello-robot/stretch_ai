@@ -20,6 +20,10 @@ from torch import Tensor
 from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
 from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud
+from stretch.utils.logger import Logger
+
+# Create a logger
+logger = Logger(__name__)
 
 
 def get_inv_intrinsics(intrinsics):
@@ -85,6 +89,8 @@ def get_xyz(depth, pose, intrinsics):
 
 
 class VoxelMapLocalizer:
+    """This localizes a query in the voxel map."""
+
     def __init__(
         self,
         voxel_map_wrapper=None,
@@ -94,7 +100,7 @@ class VoxelMapLocalizer:
         device="cuda",
         siglip=True,
     ):
-        print("Localizer V3")
+        logger.info("Localizer V3")
         self.voxel_map_wrapper = voxel_map_wrapper
         self.device = device
         # self.clip_model, self.preprocessor = clip.load(model_config, device=device)
@@ -114,7 +120,7 @@ class VoxelMapLocalizer:
         # self.exist_model = YOLOWorld("yolov8l-worldv2.pt")
         self.existence_checking_model = exist_model
         if exist_model:
-            print("WE ARE USING OWLV2!")
+            logger.info("WE ARE USING OWLV2!")
             self.exist_processor = AutoProcessor.from_pretrained(
                 "google/owlv2-base-patch16-ensemble"
             )
@@ -122,7 +128,7 @@ class VoxelMapLocalizer:
                 "google/owlv2-base-patch16-ensemble"
             ).to(self.device)
         else:
-            print("YOU ARE USING NOTHING!")
+            logger.info("YOU ARE USING NOTHING!")
 
     def add(
         self,
@@ -131,8 +137,16 @@ class VoxelMapLocalizer:
         rgb: Optional[Tensor],
         weights: Optional[Tensor] = None,
         obs_count: Optional[Tensor] = None,
-        # weight_decay: float = 0.95
     ):
+        """Adds a pointcloud to the voxel map.
+
+        Args:
+            points: The points tensor, with shape (N, 3)
+            features: The features tensor, with shape (N, C)
+            rgb: The RGB tensor, with shape (N, 3)
+            weights: The weights tensor, with shape (N)
+            obs_count: The observation count tensor, with shape (N)
+        """
         points = points.to(self.device)
         if features is not None:
             features = features.to(self.device)

@@ -38,6 +38,10 @@ class AbstractPromptBuilder(ABC):
         """Parse the response from the LLM. Usually does nothing."""
         return response
 
+    def get_available_actions(self) -> List[str]:
+        """Return a list of available actions."""
+        return []
+
 
 class AbstractLLMClient(ABC):
     """Abstract base class for a client that interacts with a language model."""

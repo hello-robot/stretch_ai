@@ -34,7 +34,7 @@ def compute_tilt(camera_xyz, target_xyz):
 
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
-@click.option("--ip", default="127.0.0.1", type=str)
+@click.option("--server_ip", default="", type=str, help="IP address for the MDP agent")
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
@@ -52,7 +52,7 @@ def compute_tilt(camera_xyz, target_xyz):
     help="Input path with default value 'output.npy'",
 )
 def main(
-    ip,
+    server_ip,
     manual_wait,
     navigate_home: bool = False,
     explore_iter: int = 5,
@@ -72,6 +72,7 @@ def main(
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
     robot = RobotClient(robot_ip=robot_ip)
+    robot.move_to_nav_posture()
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
@@ -83,7 +84,9 @@ def main(
     robot.set_velocity(v=30.0, w=15.0)
 
     print("- Start robot agent with data collection")
-    demo = RobotAgentMDP(robot, parameters, ip=ip, re=re, env_num=env, test_num=test, method=method)
+    demo = RobotAgentMDP(
+        robot, parameters, server_ip=server_ip, re=re, env_num=env, test_num=test, method=method
+    )
 
     if input_path is None:
         demo.rotate_in_place()

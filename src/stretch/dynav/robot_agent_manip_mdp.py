@@ -30,7 +30,7 @@ from stretch.dynav.ok_robot_hw.global_parameters import (
     INIT_WRIST_YAW,
     TOP_CAMERA_NODE,
 )
-from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
+from stretch.dynav.ok_robot_hw.robot import HelloRobot as ManipulationWrapper
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,
     move_to_point,
@@ -47,7 +47,7 @@ class RobotAgentMDP:
         self,
         robot: RobotClient,
         parameters: Dict[str, Any],
-        ip: str,
+        server_ip: str,
         image_port: int = 5558,
         text_port: int = 5556,
         manip_port: int = 5557,
@@ -72,7 +72,7 @@ class RobotAgentMDP:
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = Manipulation_Wrapper(
+        self.manip_wrapper = ManipulationWrapper(
             self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
         )
         self.robot.move_to_nav_posture()
@@ -84,7 +84,7 @@ class RobotAgentMDP:
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
 
         self.image_sender = ImageSender(
-            ip=ip, image_port=image_port, text_port=text_port, manip_port=manip_port
+            server_ip=server_ip, image_port=image_port, text_port=text_port, manip_port=manip_port
         )
         if method == "dynamem":
             from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
@@ -350,7 +350,7 @@ class ImageSender:
     def __init__(
         self,
         stop_and_photo=False,
-        ip="100.108.67.79",
+        server_ip="100.108.67.79",
         image_port=5560,
         text_port=5561,
         manip_port=5557,
@@ -362,11 +362,11 @@ class ImageSender:
     ):
         context = zmq.Context()
         self.img_socket = context.socket(zmq.REQ)
-        self.img_socket.connect("tcp://" + str(ip) + ":" + str(image_port))
+        self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(image_port))
         self.text_socket = context.socket(zmq.REQ)
-        self.text_socket.connect("tcp://" + str(ip) + ":" + str(text_port))
+        self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(text_port))
         self.manip_socket = context.socket(zmq.REQ)
-        self.manip_socket.connect("tcp://" + str(ip) + ":" + str(manip_port))
+        self.manip_socket.connect("tcp://" + str(server_ip) + ":" + str(manip_port))
 
     def query_text(self, text, start):
         self.text_socket.send_string(text)
