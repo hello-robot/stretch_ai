@@ -175,6 +175,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
         )
 
+        # Create this pub obs socket to send observations locally
+        # TODO: do we actually need this?
         self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
 
         # SEnd actions back to the robot for execution
@@ -1300,6 +1302,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._servo_thread.join()
         if self._rerun_thread is not None:
             self._rerun_thread.join()
+
+        # Delete pub obs socket
+        self.pub_obs_socket.close()
 
         # Close the sockets and context
         self.recv_socket.close()

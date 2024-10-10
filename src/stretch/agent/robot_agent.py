@@ -135,6 +135,9 @@ class RobotAgent:
 
         self.reset_object_plans()
 
+        # Is this still running?
+        self._running = True
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -164,8 +167,13 @@ class RobotAgent:
             self.sub_socket = self.context.socket(zmq.SUB)
             self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
             self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        else:
+            self._update_map_thread = None
+            self._get_observations_thread = None
 
     def __del__(self):
+        if self._update_map_thread is not None and self._update_map_thread.is_alive():
+            self._update_map_thread.join()
         self._update_map_thread.join()
 
     def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
@@ -459,7 +467,8 @@ class RobotAgent:
         )
 
     def get_observations_loop(self):
-        while True:
+        """Threaded function that gets observations in real-time."""
+        while self.robot.running and self._running:
             obs = None
             t0 = timeit.default_timer()
 
@@ -615,8 +624,8 @@ class RobotAgent:
         self._obs_history_lock.release()
 
     def update_map_loop(self):
-        """Threaded function that updates our voxel map in real-time"""
-        while True:
+        """Threaded function that updates our voxel map in real-time."""
+        while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
             time.sleep(0.5)
