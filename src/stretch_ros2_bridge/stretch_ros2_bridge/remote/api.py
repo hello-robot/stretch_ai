@@ -282,7 +282,7 @@ class StretchClient(AbstractRobotClient):
         """Open-loop trajectory execution wrapper. Executes a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
         return self.nav.execute_trajectory(*args, **kwargs)
 
-    def navigate_to(
+    def move_base_to(
         self,
         xyt: Iterable[float],
         relative: bool = False,
@@ -291,7 +291,7 @@ class StretchClient(AbstractRobotClient):
         """
         Move to xyt in global coordinates or relative coordinates. Cannot be used in manipulation mode.
         """
-        return self.nav.navigate_to(xyt, relative=relative, blocking=blocking)
+        return self.nav.move_base_to(xyt, relative=relative, blocking=blocking)
 
     def get_observation(
         self,
