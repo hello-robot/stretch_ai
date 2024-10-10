@@ -1496,6 +1496,7 @@ class RobotAgent:
         # Explore some number of times
         matches = []
         no_success_explore = True
+        rotated = False
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1517,6 +1518,7 @@ class RobotAgent:
 
             # if it succeeds, execute a trajectory to this position
             if res.success:
+                rotated = False
                 no_success_explore = False
                 print("Plan successful!")
                 for i, pt in enumerate(res.trajectory):
@@ -1540,6 +1542,12 @@ class RobotAgent:
                         rot_err_threshold=self.rot_err_threshold,
                     )
             else:
+                # Try rotating in place if we can't find a decent frontier to get to
+                if not rotated:
+                    self.rotate_in_place()
+                    rotate = True
+                    continue
+
                 # breakpoint()
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
