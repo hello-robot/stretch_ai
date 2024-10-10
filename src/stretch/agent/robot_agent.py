@@ -498,23 +498,31 @@ class RobotAgent:
         """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
 
         while self.robot.running:
+            obs = None
             t0 = timeit.default_timer()
 
             self._obs_history_lock.acquire()
 
-            obs = self.robot.get_observation()
-            if obs is None:
-                time.sleep(0.1)
-                continue
+            while obs is None:
+                obs = self.robot.get_observation()
+                # obs = self.sub_socket.recv_pyobj()
+                # print(obs)
+                if obs is None:
+                    continue
 
-            if (len(self.obs_history) > 0) and (
-                obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
-            ):
-                obs = None
-            t1 = timeit.default_timer()
-            if t1 - t0 > 10:
-                logger.error("Failed to get observation")
-                break
+                # obs = Observations.from_dict(obs)
+
+                if (len(self.obs_history) > 0) and (
+                    obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
+                ):
+                    obs = None
+                t1 = timeit.default_timer()
+                if t1 - t0 > 10:
+                    logger.error("Failed to get observation")
+                    break
+
+                # Add a delay to make sure we don't get too many observations
+                time.sleep(0.05)
 
             # t1 = timeit.default_timer()
             self.obs_history.append(obs)
@@ -522,7 +530,7 @@ class RobotAgent:
             self.obs_count += 1
             time.sleep(0.1)
 
-    def update_map_with_pose_graph(self):
+    def update_map_with_pose_graph(self, verbose: bool = True):
         """Update our voxel map using a pose graph"""
 
         t0 = timeit.default_timer()
@@ -539,7 +547,8 @@ class RobotAgent:
 
             for vertex in self.pose_graph:
                 if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
-                    # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+                    if verbose:
+                        print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
 
                     self.obs_history[idx].is_pose_graph_node = True
                     self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
@@ -549,9 +558,10 @@ class RobotAgent:
                         ]
                     )
 
-                    # print(
-                    #     f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                    # )
+                    if verbose:
+                        print(
+                            f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
+                        )
 
                     if (
                         self.obs_history[idx].task_observations is None
@@ -564,7 +574,8 @@ class RobotAgent:
                     < self._realtime_matching_distance
                     and self.obs_history[idx].pose_graph_timestamp is None
                 ):
-                    # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+                    if verbose:
+                        print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
 
                     self.obs_history[idx].is_pose_graph_node = True
                     self.obs_history[idx].pose_graph_timestamp = vertex[0]
@@ -595,14 +606,21 @@ class RobotAgent:
                     self.obs_history[idx].compass = new_compass
 
         t2 = timeit.default_timer()
-        # print(f"Done updating past observations. Time: {t2- t1}")
+        if verbose:
+            print(f"Done updating past observations. Time: {t2- t1}")
 
-        # print("Updating voxel map")
+            print("Updating voxel map")
+
         t3 = timeit.default_timer()
         self.voxel_map.reset()
+        added = 0
         for obs in self.obs_history:
             if obs.is_pose_graph_node:
                 self.voxel_map.add_obs(obs)
+                added += 1
+        if verbose:
+            print("----")
+            print(f"Added {added} observations to voxel map")
 
         self._obs_history_lock.release()
 
@@ -1912,10 +1930,10 @@ class RobotAgent:
     def get_object_centric_world_representation(
         self,
         instance_memory,
-        max_context_length: int,
-        sample_strategy: str,
         task: str = None,
         text_features=None,
+        max_context_length=20,
+        sample_strategy="clip",
         scene_graph=None,
     ) -> ObjectCentricObservations:
         """Get version that LLM can handle - convert images into torch if not already in that format. This will also clip the number of instances to the max context length.
