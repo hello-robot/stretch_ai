@@ -151,7 +151,13 @@ class RobotAgent:
         if parameters["motion_planner"]["shortcut_plans"]:
             self.planner = Shortcut(self.planner, parameters["motion_planner"]["shortcut_iter"])
         if parameters["motion_planner"]["simplify_plans"]:
-            self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
+            self.planner = SimplifyXYT(
+                self.planner,
+                min_step=parameters["motion_planner"]["simplify"]["min_step"],
+                max_step=parameters["motion_planner"]["simplify"]["max_step"],
+                num_steps=parameters["motion_planner"]["simplify"]["num_steps"],
+                min_angle=parameters["motion_planner"]["simplify"]["min_angle"],
+            )
 
         if self._realtime_updates:
             # Locks

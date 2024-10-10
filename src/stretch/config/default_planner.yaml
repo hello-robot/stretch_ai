@@ -116,6 +116,11 @@ motion_planner:
   rotation_step_size: 0.1
   simplify_plans: True
   shortcut_plans: True
+  simplify:
+    max_step: 0.5
+    min_step: 0.05
+    num_steps: 8
+    min_angle: 0.1
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
