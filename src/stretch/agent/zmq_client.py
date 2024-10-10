@@ -79,19 +79,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """
         return self.context
 
-    def _create_pub_obs_socket(self, port: int):
-        send_socket = self.context.socket(zmq.PUB)
-        send_socket.setsockopt(zmq.SNDHWM, 1)
-        send_socket.setsockopt(zmq.RCVHWM, 1)
-
-        # Publish within the computer
-        send_address = "tcp://*:" + str(port)
-        print(f"Binding to {send_address} to send action messages...")
-        send_socket.bind(send_address)
-        print("...bound.")
-
-        return send_socket
-
     def __init__(
         self,
         robot_ip: str = "",
@@ -195,12 +182,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
         )
 
-        if self._publish_observations:
-            self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
-        else:
-            self.pub_obs_socket = None
-
-        # SEnd actions back to the robot for execution
+        # Send actions back to the robot for execution
         self.send_socket = self.context.socket(zmq.PUB)
         self.send_socket.setsockopt(zmq.SNDHWM, 1)
         self.send_socket.setsockopt(zmq.RCVHWM, 1)
@@ -1092,8 +1074,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Update observation internally with lock"""
         with self._obs_lock:
             self._obs = obs
-            if self._publish_observations:
-                self.pub_obs_socket.send_pyobj(obs)
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
@@ -1627,8 +1607,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.recv_state_socket.close()
         self.recv_servo_socket.close()
         self.send_socket.close()
-        if self.pub_obs_socket is not None:
-            self.pub_obs_socket.close()
         self.context.term()
 
 

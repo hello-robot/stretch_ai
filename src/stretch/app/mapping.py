@@ -52,7 +52,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--enable-realtime-updates",
-    "--enable-realtime-updates",
+    "--enable_realtime_updates",
     is_flag=True,
     help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
 )

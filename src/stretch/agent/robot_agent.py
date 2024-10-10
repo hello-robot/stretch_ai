@@ -20,7 +20,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-import zmq
 from PIL import Image
 
 import stretch.utils.logger as logger
@@ -181,10 +180,10 @@ class RobotAgent:
             self._get_observations_thread.start()
 
             # Set up ZMQ subscriber
-            self.context = self.robot.get_zmq_context()
-            self.sub_socket = self.context.socket(zmq.SUB)
-            self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
-            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+            # self.context = self.robot.get_zmq_context()
+            # self.sub_socket = self.context.socket(zmq.SUB)
+            # self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
+            # self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
         else:
             self._update_map_thread = None
             self._get_observations_thread = None
@@ -499,34 +498,29 @@ class RobotAgent:
         """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
 
         while self.robot.running:
-            obs = None
             t0 = timeit.default_timer()
 
             self._obs_history_lock.acquire()
 
-            while obs is None:
-                # obs = self.robot.get_observation()
-                obs = self.sub_socket.recv_pyobj()
-                # print(obs)
-                if obs is None:
-                    continue
+            obs = self.robot.get_observation()
+            if obs is None:
+                time.sleep(0.1)
+                continue
 
-                obs = Observations.from_dict(obs)
-
-                if (len(self.obs_history) > 0) and (
-                    obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
-                ):
-                    obs = None
-                t1 = timeit.default_timer()
-                if t1 - t0 > 10:
-                    logger.error("Failed to get observation")
-                    break
+            if (len(self.obs_history) > 0) and (
+                obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
+            ):
+                obs = None
+            t1 = timeit.default_timer()
+            if t1 - t0 > 10:
+                logger.error("Failed to get observation")
+                break
 
             # t1 = timeit.default_timer()
             self.obs_history.append(obs)
             self._obs_history_lock.release()
             self.obs_count += 1
-            time.sleep(0.05)
+            time.sleep(0.1)
 
     def update_map_with_pose_graph(self):
         """Update our voxel map using a pose graph"""
