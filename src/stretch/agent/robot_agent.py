@@ -126,6 +126,8 @@ class RobotAgent:
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
+        self._realtime_matching_distance = parameters["agent"]["realtime"]["matching_distance"]
+        self._realtime_temporal_threshold = parameters["agent"]["realtime"]["temporal_threshold"]
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -542,7 +544,7 @@ class RobotAgent:
             gps_past = self.obs_history[idx].gps
 
             for vertex in self.pose_graph:
-                if abs(vertex[0] - lidar_timestamp) < 0.05:
+                if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
                     # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
 
                     self.obs_history[idx].is_pose_graph_node = True
@@ -564,7 +566,8 @@ class RobotAgent:
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
                 # check if the gps is close to the gps of the pose graph node
                 elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.3
+                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
+                    < self._realtime_matching_distance
                     and self.obs_history[idx].pose_graph_timestamp is None
                 ):
                     # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
