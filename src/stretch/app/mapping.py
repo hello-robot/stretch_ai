@@ -51,6 +51,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option("--enable-realtime-updates", is_flag=True, help="Enable real-time updates")
+@click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
     visualize,
     manual_wait,
@@ -71,6 +72,7 @@ def main(
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
     enable_realtime_updates: bool = False,
+    save: bool = True,
     **kwargs,
 ):
 
@@ -105,6 +107,7 @@ def main(
         parameter_file=parameter_file,
         enable_realtime_updates=enable_realtime_updates,
         reset=reset,
+        save=save,
         **kwargs,
     )
 
@@ -129,6 +132,7 @@ def demo_main(
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
     enable_realtime_updates: bool = False,
+    save: bool = True,
     **kwargs,
 ):
     """
@@ -223,7 +227,8 @@ def demo_main(
             print(f"Write pkl to {output_pkl_filename}...")
             demo.voxel_map.write_to_pickle(output_pkl_filename)
 
-        demo.save_map()
+        if save:
+            demo.save_map()
 
         if write_instance_images:
             demo.save_instance_images(".")

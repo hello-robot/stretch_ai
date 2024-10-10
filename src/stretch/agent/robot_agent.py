@@ -28,7 +28,7 @@ import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
-from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
+from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
@@ -60,7 +60,6 @@ class RobotAgent:
         robot: AbstractRobotClient,
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
-        grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
@@ -75,7 +74,6 @@ class RobotAgent:
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.grasp_client = grasp_client
         self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
@@ -188,6 +186,14 @@ class RobotAgent:
         else:
             self._update_map_thread = None
             self._get_observations_thread = None
+
+    def get_robot(self) -> AbstractRobotClient:
+        """Return the robot in use by this model"""
+        return self.robot
+
+    def get_voxel_map(self) -> SparseVoxelMap:
+        """Return the voxel map in use by this model"""
+        return self.voxel_map
 
     def __del__(self):
         if self._update_map_thread is not None and self._update_map_thread.is_alive():
