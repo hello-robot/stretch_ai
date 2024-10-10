@@ -79,7 +79,7 @@ class NavigateToObjectOperation(ManagedOperation):
             theta = math.atan2(
                 xyz[1] - self.robot.get_base_pose()[1], xyz[0] - self.robot.get_base_pose()[0]
             )
-            self.robot.navigate_to(
+            self.robot.move_base_to(
                 np.array([start_xyz[0], start_xyz[1], theta + np.pi / 2]),
                 blocking=True,
                 timeout=30.0,
@@ -94,10 +94,10 @@ class NavigateToObjectOperation(ManagedOperation):
 
         # Orient the robot towards the object and use the end effector camera to pick it up
         xyt = self.plan.trajectory[-1].state
-        # self.robot.navigate_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
+        # self.robot.move_base_to(xyt + np.array([0, 0, np.pi / 2]), blocking=True, timeout=30.0)
         if self.be_precise:
             self.warn("Moving again to make sure we're close enough to the goal.")
-            self.robot.navigate_to(xyt, blocking=True, timeout=30.0)
+            self.robot.move_base_to(xyt, blocking=True, timeout=30.0)
 
     def was_successful(self):
         """This will be successful if we got within a reasonable distance of the target object."""

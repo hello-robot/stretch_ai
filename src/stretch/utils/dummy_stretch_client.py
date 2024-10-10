@@ -56,7 +56,7 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
         self._robot_model = self
         self.dof = 3 + 2 + 4 + 2
 
-    def navigate_to(self, xyt, relative=False, blocking=False):
+    def move_base_to(self, xyt, relative=False, blocking=False):
         """Move to xyt in global coordinates or relative coordinates."""
         raise NotImplementedError()
 

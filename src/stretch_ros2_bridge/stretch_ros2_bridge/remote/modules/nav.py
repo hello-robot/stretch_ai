@@ -138,7 +138,7 @@ class StretchNavigationClient(AbstractControlModule):
                 len(pt) == 3 or len(pt) == 2
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
             just_xy = len(pt) == 2
-            self.navigate_to(pt, relative, position_only=just_xy, blocking=False)
+            self.move_base_to(pt, relative, position_only=just_xy, blocking=False)
             self.wait_for_waypoint(
                 pt,
                 pos_err_threshold=pos_err_threshold,
@@ -147,7 +147,7 @@ class StretchNavigationClient(AbstractControlModule):
                 verbose=verbose,
                 timeout=per_waypoint_timeout,
             )
-        self.navigate_to(pt, blocking=True)
+        self.move_base_to(pt, blocking=True)
 
     @enforce_enabled
     def set_velocity(self, v, w):
@@ -162,7 +162,7 @@ class StretchNavigationClient(AbstractControlModule):
         self._ros_client.velocity_pub.publish(msg)
 
     @enforce_enabled
-    def navigate_to(
+    def move_base_to(
         self,
         xyt: List[float],
         relative: bool = False,
@@ -214,7 +214,7 @@ class StretchNavigationClient(AbstractControlModule):
 
     @enforce_enabled
     def home(self):
-        self.navigate_to([0.0, 0.0, 0.0], blocking=True)
+        self.move_base_to([0.0, 0.0, 0.0], blocking=True)
 
     # Helper methods
 

@@ -29,7 +29,7 @@ from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.motion import PlanResult
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
-from stretch.utils.geometry import angle_difference
+from stretch.utils.geometry import angle_difference, xyt_base_to_global
 from stretch.utils.image import Camera
 from stretch.utils.memory import lookup_address
 from stretch.utils.point_cloud import show_point_cloud
@@ -175,6 +175,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             recv_servo_port, robot_ip, use_remote_computer, message_type="visual servoing data"
         )
 
+        # Create this pub obs socket to send observations locally
+        # TODO: do we actually need this?
         self.pub_obs_socket = self._create_pub_obs_socket(pub_obs_port)
 
         # SEnd actions back to the robot for execution
@@ -347,7 +349,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         joint_angles: Optional[np.ndarray] = None,
         gripper: float = None,
         head: Optional[np.ndarray] = None,
-        blocking: bool = False,
+        blocking: bool = True,
         timeout: float = 10.0,
         verbose: bool = False,
         min_time: float = 2.0,
@@ -474,11 +476,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return False
         return True
 
-    def navigate_to(
+    def move_base_to(
         self,
         xyt: Union[ContinuousNavigationAction, np.ndarray],
-        relative=False,
-        blocking=False,
+        relative: bool = False,
+        blocking: bool = True,
         timeout: float = 10.0,
         verbose: bool = False,
     ):
@@ -488,10 +490,35 @@ class HomeRobotZmqClient(AbstractRobotClient):
         else:
             _xyt = xyt
         assert len(_xyt) == 3, "xyt must be a vector of size 3"
-        next_action = {"xyt": _xyt, "nav_relative": relative, "nav_blocking": blocking}
+        # If it's relative, compute the relative position right now - this helps handle network issues
+        if relative:
+            current_xyt = self.get_base_pose()
+            if verbose:
+                print("Current pose", current_xyt)
+            _xyt = xyt_base_to_global(_xyt, current_xyt)
+            if verbose:
+                print("Goal pose in global coordinates", _xyt)
+
+        # We never send a relative motion over wireless - this is because we can run into timing issues.
+        # Instead, we always send the absolute position and let the robot handle the motions itself.
+        next_action = {"xyt": _xyt, "nav_relative": False, "nav_blocking": blocking}
         if self._rerun:
             self._rerun.update_nav_goal(_xyt)
-        self.send_action(next_action, timeout=timeout, verbose=verbose)
+        action = self.send_action(next_action, timeout=timeout, verbose=verbose)
+
+        # Make sure we had time to read
+        if blocking:
+            block_id = action["step"]
+            time.sleep(0.1)
+            # Now, wait for the command to finish
+            self._wait_for_action(
+                block_id,
+                goal_angle=_xyt[2],
+                verbose=verbose,
+                timeout=timeout,
+                # resend_action=action,
+                # resend_action=current_action,
+            )
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -591,6 +618,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_action(next_action)
         self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
         self._wait_for_mode("navigation")
+        self._wait_for_arm(constants.STRETCH_NAVIGATION_Q)
         assert self.in_navigation_mode()
 
     def move_to_manip_posture(self):
@@ -599,6 +627,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         time.sleep(0.1)
         self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
         self._wait_for_mode("manipulation")
+        self._wait_for_arm(constants.STRETCH_PREGRASP_Q)
         assert self.in_manipulation_mode()
 
     def _wait_for_head(
@@ -662,6 +691,44 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 break
             time.sleep(0.01)
 
+    def _wait_for_arm(
+        self, q: np.ndarray, timeout: float = 10.0, resend_action: Optional[dict] = None
+    ) -> bool:
+        """Wait for the arm to move to a particular configuration.
+
+        Args:
+            q(np.ndarray): The target joint angles
+            timeout(float): How long to wait for the arm to move
+            resend_action(dict): The action to resend if the arm is not moving. If none, do not resend.
+
+        Returns:
+            bool: Whether the arm successfully moved to the target configuration
+        """
+        t0 = timeit.default_timer()
+        while not self._finish:
+            joint_positions, joint_velocities, _ = self.get_joint_state()
+            if joint_positions is None:
+                continue
+
+            arm_diff = np.abs(joint_positions[HelloStretchIdx.ARM] - q[HelloStretchIdx.ARM])
+            lift_diff = np.abs(joint_positions[HelloStretchIdx.LIFT] - q[HelloStretchIdx.LIFT])
+
+            if arm_diff < self._arm_joint_tolerance and lift_diff < self._lift_joint_tolerance:
+                return True
+
+            if resend_action is not None:
+                self.send_socket.send_pyobj(resend_action)
+
+            t1 = timeit.default_timer()
+            if t1 - t0 > timeout:
+                logger.error(
+                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}"
+                )
+                return False
+
+        # This should never happen
+        return False
+
     def _wait_for_mode(self, mode, verbose: bool = False, timeout: float = 20.0):
         t0 = timeit.default_timer()
         while True:
@@ -683,7 +750,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         moving_threshold: Optional[float] = None,
         angle_threshold: Optional[float] = None,
-        min_steps_not_moving: Optional[int] = 1,
+        min_steps_not_moving: Optional[int] = None,
         goal_angle: Optional[float] = None,
         goal_angle_threshold: Optional[float] = 0.15,
         resend_action: Optional[dict] = None,
@@ -732,8 +799,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 t0 = timeit.default_timer()
                 continue
 
-            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else float("inf")
+            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else float("inf")
             if goal_angle is not None:
                 angle_dist_to_goal = angle_difference(ang, goal_angle)
                 at_goal = angle_dist_to_goal < goal_angle_threshold
@@ -805,7 +872,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def _update_pose_graph(self, obs):
         """Update internal pose graph"""
         with self._obs_lock:
-            self._pose_graph = obs["pose_graph"]
+            if "pose_graph" in obs:
+                self._pose_graph = obs["pose_graph"]
 
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
@@ -889,9 +957,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 len(pt) == 3 or len(pt) == 2
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
             # just_xy = len(pt) == 2
-            # self.navigate_to(pt, relative, position_only=just_xy, blocking=False)
+            # self.move_base_to(pt, relative, position_only=just_xy, blocking=False)
             last_waypoint = i == len(trajectory) - 1
-            self.navigate_to(
+            self.move_base_to(
                 pt,
                 relative,
                 blocking=last_waypoint,
@@ -1003,18 +1071,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             # Empty it out for the next one
             current_action = next_action
-
-        # Make sure we had time to read
-        # time.sleep(0.1)
-        if blocking:
-            # Wait for the command to finish
-            self._wait_for_action(
-                block_id,
-                goal_angle=goal_angle,
-                verbose=verbose,
-                timeout=timeout,
-                # resend_action=current_action,
-            )
 
         # Returns the current action in case we want to do something with it like resend
         return current_action
@@ -1252,6 +1308,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._servo_thread.join()
         if self._rerun_thread is not None:
             self._rerun_thread.join()
+
+        # Delete pub obs socket
+        self.pub_obs_socket.close()
 
         # Close the sockets and context
         self.recv_socket.close()
