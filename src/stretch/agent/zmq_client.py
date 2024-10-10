@@ -504,7 +504,21 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"xyt": _xyt, "nav_relative": False, "nav_blocking": blocking}
         if self._rerun:
             self._rerun.update_nav_goal(_xyt)
-        self.send_action(next_action, timeout=timeout, verbose=verbose)
+        action = self.send_action(next_action, timeout=timeout, verbose=verbose)
+
+        # Make sure we had time to read
+        if blocking:
+            block_id = action["step"]
+            time.sleep(0.1)
+            # Now, wait for the command to finish
+            self._wait_for_action(
+                block_id,
+                goal_angle=_xyt[2],
+                verbose=verbose,
+                timeout=timeout,
+                # resend_action=action,
+                # resend_action=current_action,
+            )
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -785,8 +799,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 t0 = timeit.default_timer()
                 continue
 
-            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else 0
-            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else 0
+            moved_dist = np.linalg.norm(pos - last_pos) if last_pos is not None else float("inf")
+            angle_dist = angle_difference(ang, last_ang) if last_ang is not None else float("inf")
             if goal_angle is not None:
                 angle_dist_to_goal = angle_difference(ang, goal_angle)
                 at_goal = angle_dist_to_goal < goal_angle_threshold
@@ -1057,18 +1071,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             # Empty it out for the next one
             current_action = next_action
-
-        # Make sure we had time to read
-        # time.sleep(0.1)
-        if blocking:
-            # Wait for the command to finish
-            self._wait_for_action(
-                block_id,
-                goal_angle=goal_angle,
-                verbose=verbose,
-                timeout=timeout,
-                # resend_action=current_action,
-            )
 
         # Returns the current action in case we want to do something with it like resend
         return current_action
