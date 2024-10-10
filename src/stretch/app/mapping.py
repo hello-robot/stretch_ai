@@ -52,7 +52,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--enable-realtime-updates",
-    "--enable_realtime_updates",
+    "--enable_realtime-updates",
     is_flag=True,
     help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
 )
@@ -219,6 +219,10 @@ def demo_main(
     except Exception as e:
         raise (e)
     finally:
+
+        # Stop updating the map
+        demo.stop_realtime_updates()
+
         if show_final_map:
             pc_xyz, pc_rgb = demo.voxel_map.show()
         else:

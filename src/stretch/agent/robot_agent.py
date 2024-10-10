@@ -536,7 +536,7 @@ class RobotAgent:
             self.obs_count += 1
             time.sleep(0.1)
 
-    def stop_updates(self):
+    def stop_realtime_updates(self):
         """Stop the update threads."""
         self._running = False
 
