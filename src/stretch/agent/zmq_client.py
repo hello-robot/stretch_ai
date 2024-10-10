@@ -933,14 +933,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 break
                 # raise RuntimeError(f"Timeout waiting for block with step id = {block_id}")
 
-    def in_manipulation_mode(self) -> bool:
-        """is the robot ready to grasp"""
-        return self._control_mode == "manipulation"
-
-    def in_navigation_mode(self) -> bool:
-        """Returns true if we are navigating (robot head forward, velocity control on)"""
-        return self._control_mode == "navigation"
-
     def last_motion_failed(self) -> bool:
         """Override this if you want to check to see if a particular motion failed, e.g. it was not reachable and we don't know why."""
         return False
@@ -1289,8 +1281,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return self._servo
 
     def blocking_spin_servo(self, verbose: bool = False):
-        """Listen for servo messages coming from the robot, i.e. low res images for ML state"""
-        sum_time = 0
+        """Listen for servo messages coming from the robot, i.e. low res images for ML state. This is intended to be run in a separate thread.
+
+        Args:
+            verbose (bool): whether to print out debug information
+        """
+        sum_time = 0.0
         steps = 0
         t0 = timeit.default_timer()
         while not self._finish:
@@ -1323,7 +1319,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 
-        sum_time = 0
+        sum_time = 0.0
         steps = 0
         t0 = timeit.default_timer()
 
@@ -1356,15 +1352,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return self._state is not None and self._state["is_runstopped"]
 
     def start(self) -> bool:
-        """Start running blocking thread in a separate thread"""
+        """Start running blocking thread in a separate thread. This will wait for observations to come in and update internal state.
+
+        Returns:
+            bool: whether the client was started successfully
+        """
         if self._started:
+            # Already started
             return True
 
         self._thread = threading.Thread(target=self.blocking_spin)
         self._state_thread = threading.Thread(target=self.blocking_spin_state)
         self._servo_thread = threading.Thread(target=self.blocking_spin_servo)
         if self._rerun:
-            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)
+            self._rerun_thread = threading.Thread(target=self.blocking_spin_rerun)  # type: ignore
         self._finish = False
         self._thread.start()
         self._state_thread.start()

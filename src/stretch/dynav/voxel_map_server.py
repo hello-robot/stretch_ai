@@ -813,6 +813,7 @@ class ImageProcessor:
                 min_samples_clear = 3
             else:
                 min_samples_clear = 10
+
             self.voxel_map_localizer.voxel_pcd.clear_points(
                 depth,
                 torch.from_numpy(intrinsics),
@@ -828,27 +829,18 @@ class ImageProcessor:
         else:
             self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
-        if self.vision_method == "mask&*lip":
-            self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
-        else:
-            self.run_mask_clip(rgb, ~valid_depth, world_xyz)
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
 
-            if self.image_shape is not None:
-                rgb = F.interpolate(
-                    rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-                ).squeeze()
-
+        with self.voxel_map_lock:
             self.voxel_map.add(
                 camera_pose=torch.Tensor(pose),
                 rgb=torch.Tensor(rgb).permute(1, 2, 0),
                 depth=torch.Tensor(depth),
                 camera_K=torch.Tensor(intrinsics),
             )
-
-        if self.vision_method == "mask&*lip":
-            self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
-        else:
-            self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
         obs, exp = self.voxel_map.get_2d_map()
         if self.rerun and self.rerun_visualizer is None:
