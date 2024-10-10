@@ -474,11 +474,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return False
         return True
 
-    def navigate_to(
+    def move_base_to(
         self,
         xyt: Union[ContinuousNavigationAction, np.ndarray],
-        relative=False,
-        blocking=False,
+        relative: bool = False,
+        blocking: bool = True,
         timeout: float = 10.0,
         verbose: bool = False,
     ):
@@ -937,9 +937,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 len(pt) == 3 or len(pt) == 2
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
             # just_xy = len(pt) == 2
-            # self.navigate_to(pt, relative, position_only=just_xy, blocking=False)
+            # self.move_base_to(pt, relative, position_only=just_xy, blocking=False)
             last_waypoint = i == len(trajectory) - 1
-            self.navigate_to(
+            self.move_base_to(
                 pt,
                 relative,
                 blocking=last_waypoint,
