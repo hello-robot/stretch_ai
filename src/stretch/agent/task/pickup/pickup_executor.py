@@ -320,15 +320,14 @@ class PickupExecutor:
             logger.info(f"{i} {command} {args}")
 
             if command in self.available_actions:
-                command_with_args = "self." + command + "(" + args + ")"
-
                 if command == "pickup":
                     if (i + 1 < len(response)) and (response[i + 1][0] == "place"):
-                        eval(command_with_args)
+                        self._pickup(args, response[i + 1][1])
                         i += 1
                     else:
                         logger.error("Pickup without place! Doing nothing.")
                 else:
+                    command_with_args = "self." + command + '("' + args + '")'
                     eval(command_with_args)
             else:
                 logger.error(f"Skipping unknown command: {command}")
