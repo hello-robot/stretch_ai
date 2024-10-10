@@ -1009,6 +1009,7 @@ class RobotAgent:
             xyt_goal_backward = xyt_base_to_global(backward, start)
 
             # Is this valid?
+            logger.warning(f"Trying to recover with step of {step}...")
             if self.space.is_valid(xyt_goal_backward, verbose=True):
                 logger.warning("Trying to move backwards...")
                 # Compute the position forward or backward from the robot
@@ -1416,7 +1417,6 @@ class RobotAgent:
             if verbose:
                 print("Start not valid. Try to recover.")
             ok = self.recover_from_invalid_start()
-            breakpoint()
             if not ok:
                 return PlanResult(False, reason="invalid start state")
         else:
@@ -1519,9 +1519,13 @@ class RobotAgent:
             # if start is not valid move backwards a bit
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
-                print(f"robot base pose: {self.robot.get_base_pose()}")
-                self.robot.navigate_to([-0.1, 0, 0], relative=True)
-                continue
+                ok = self.recover_from_invalid_start()
+                if ok:
+                    start = self.robot.get_base_pose()
+                    start_is_valid = self.space.is_valid(start, verbose=True)
+                if not start_is_valid:
+                    print("Failed to recover from invalid start state!")
+                    break
 
             # Now actually plan to the frontier
             print("       Start:", start)
