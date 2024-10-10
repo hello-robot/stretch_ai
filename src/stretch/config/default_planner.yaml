@@ -9,7 +9,7 @@ tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.04 # Size of a voxel in meters
-obs_min_height: 0.15  # Ignore things less than this high when planning motions
+obs_min_height: 0.10  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
 neg_obs_height: -0.05  # Things less than this height ARE obstacles
 use_negative_obstacles: True  # Use the negative height as an obstacle
@@ -41,7 +41,7 @@ filters:
   # smooth_kernel_size: 0
   use_median_filter: True
   # median_filter_size: 4
-  median_filter_size: 5
+  median_filter_size: 2
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
@@ -66,18 +66,20 @@ motion:
     # wrist_roll: 0.25
     # wrist_pitch: 0.25
     # wrist_yaw: 0.05
-    head_pan: 0.1
-    head_tilt: 0.1
+    head_pan: 0.01
+    head_tilt: 0.01
   joint_thresholds:
     head_not_moving_tolerance: 1.0e-4
     gripper_open_threshold: 0.3
 
 # Exploration
 agent:
-  #in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
-  #sweep_head_on_update: False
-  in_place_rotation_steps: 4
-  sweep_head_on_update: True
+  use_realtime_updates: True
+  realtime_update_rotation_steps: 4
+  in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
+  sweep_head_on_update: False
+  # in_place_rotation_steps: 4
+  # sweep_head_on_update: True
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
@@ -114,12 +116,17 @@ motion_planner:
   rotation_step_size: 0.1
   simplify_plans: True
   shortcut_plans: True
+  simplify:
+    max_step: 0.5
+    min_step: 0.05
+    num_steps: 8
+    min_angle: 0.1
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
-    dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
-    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
-    default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
+    dilate_frontier_size: 2  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
+    default_expand_frontier_size: 12  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
