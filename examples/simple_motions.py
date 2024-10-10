@@ -24,7 +24,7 @@ print("Done")
 # Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
 print("Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height")
 print("robot.arm_to([0.1, 0.5, 0, 0, 0, 0], blocking=True)")
-robot.arm_to([0.1, 0.5, 0, 0, 0, 0], blocking=True)
+robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
 print("Done")
 
 # Turn head towards robot's base and switch base to navigation mode
