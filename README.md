@@ -54,17 +54,17 @@ robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
 robot.move_to_nav_posture()
 
 # Move the robot back to origin
-# navigate_to() is only allowed in navigation mode
-robot.navigate_to([0, 0, 0])
+# move_base_to() is only allowed in navigation mode
+robot.move_base_to([0, 0, 0])
 
 # Move the robot 0.5m forward
-robot.navigate_to([0.5, 0, 0], relative=True)
+robot.move_base_to([0.5, 0, 0], relative=True)
 
 # Rotate the robot 90 degrees to the left
-robot.navigate_to([0, 0, 3.14159/2], relative=True)
+robot.move_base_to([0, 0, 3.14159/2], relative=True)
 
 # And to the right
-robot.navigate_to([0, 0, -3.14159/2], relative=True)
+robot.move_base_to([0, 0, -3.14159/2], relative=True)
 ```
 
 ## Apps
