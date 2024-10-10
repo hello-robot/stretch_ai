@@ -998,25 +998,29 @@ class RobotAgent:
         # Get current invalid pose
         start = self.robot.get_base_pose()
 
-        # Apply relative transformation to XYT
-        forward = np.array([-0.05, 0, 0])
-        backward = np.array([0.05, 0, 0])
+        steps = [0.05, 0.1]
 
-        xyt_goal_forward = xyt_base_to_global(forward, start)
-        xyt_goal_backward = xyt_base_to_global(backward, start)
+        for step in steps:
+            # Apply relative transformation to XYT
+            forward = np.array([-1 * step, 0, 0])
+            backward = np.array([step, 0, 0])
 
-        # Is this valid?
-        if self.space.is_valid(xyt_goal_backward, verbose=True):
-            logger.warning("Trying to move backwards...")
-            # Compute the position forward or backward from the robot
-            self.robot.navigate_to(xyt_goal_backward, relative=False)
-        elif self.space.is_valid(xyt_goal_forward, verbose=True):
-            logger.warning("Trying to move forward...")
-            # Compute the position forward or backward from the robot
-            self.robot.navigate_to(xyt_goal_forward, relative=False)
-        else:
-            logger.warning("Could not recover from invalid start state!")
-            return False
+            xyt_goal_forward = xyt_base_to_global(forward, start)
+            xyt_goal_backward = xyt_base_to_global(backward, start)
+
+            # Is this valid?
+            if self.space.is_valid(xyt_goal_backward, verbose=True):
+                logger.warning("Trying to move backwards...")
+                # Compute the position forward or backward from the robot
+                self.robot.navigate_to(xyt_goal_backward, relative=False)
+                break
+            elif self.space.is_valid(xyt_goal_forward, verbose=True):
+                logger.warning("Trying to move forward...")
+                # Compute the position forward or backward from the robot
+                self.robot.navigate_to(xyt_goal_forward, relative=False)
+                break
+            else:
+                logger.warning(f"Could not recover from invalid start state with step of {step}!")
 
         # Get the current position in case we are still invalid
         start = self.robot.get_base_pose()
@@ -1410,8 +1414,9 @@ class RobotAgent:
         # if start is not valid move backwards a bit
         if not start_is_valid:
             if verbose:
-                print("Start not valid. back up a bit.")
+                print("Start not valid. Try to recover.")
             ok = self.recover_from_invalid_start()
+            breakpoint()
             if not ok:
                 return PlanResult(False, reason="invalid start state")
         else:
