@@ -11,11 +11,11 @@ import click
 import cv2
 import numpy as np
 
-from stretch.agent import RobotClient
+from stretch.agent.robot_agent_dynamem import RobotAgent
+from stretch.agent.zmq_client import HomeRobotZmqClient
 
 # Mapping and perception
 from stretch.core.parameters import get_parameters
-from stretch.dynav import RobotAgentMDP
 
 
 def compute_tilt(camera_xyz, target_xyz):
@@ -34,10 +34,10 @@ def compute_tilt(camera_xyz, target_xyz):
 
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
-@click.option("--server_ip", default="", type=str, help="IP address for the MDP agent")
+@click.option("--ip", default="127.0.0.1", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
-@click.option("--explore-iter", default=-1)
+@click.option("--explore-iter", default=3)
 @click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
 @click.option("--env", default=1, type=int)
@@ -52,10 +52,10 @@ def compute_tilt(camera_xyz, target_xyz):
     help="Input path with default value 'output.npy'",
 )
 def main(
-    server_ip,
+    ip,
     manual_wait,
     navigate_home: bool = False,
-    explore_iter: int = 5,
+    explore_iter: int = 3,
     re: int = 1,
     method: str = "dynamem",
     env: int = 1,
@@ -71,22 +71,25 @@ def main(
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = RobotClient(robot_ip=robot_ip)
-    robot.move_to_nav_posture()
+    robot = HomeRobotZmqClient(robot_ip=robot_ip)
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
     # print(parameters)
-    if explore_iter >= 0:
-        parameters["exploration_steps"] = explore_iter
+    # if explore_iter >= 0:
+    #     parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = None, None
     robot.move_to_nav_posture()
     robot.set_velocity(v=30.0, w=15.0)
 
+    semantic_sensor = None
+
     print("- Start robot agent with data collection")
-    demo = RobotAgentMDP(
-        robot, parameters, server_ip=server_ip, re=re, env_num=env, test_num=test, method=method
-    )
+    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
+    parameters["encoder"] = ""
+
+    print("- Start robot agent with data collection")
+    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
 
     if input_path is None:
         demo.rotate_in_place()
@@ -94,18 +97,6 @@ def main(
         demo.image_processor.read_from_pickle(input_path)
 
     demo.save()
-
-    # def keep_looking_around():
-    #     while True:
-    #         # We don't want too many images in our memory
-    #         time.sleep(0.8)
-    #         if robot.get_six_joints()[2] > 0.7 or not robot.in_navigation_mode():
-    #             continue
-    #         demo.update()
-
-    # img_thread = threading.Thread(target=keep_looking_around)
-    # img_thread.daemon = True
-    # img_thread.start()
 
     while True:
         print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
