@@ -347,7 +347,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         joint_angles: Optional[np.ndarray] = None,
         gripper: float = None,
         head: Optional[np.ndarray] = None,
-        blocking: bool = False,
+        blocking: bool = True,
         timeout: float = 10.0,
         verbose: bool = False,
         min_time: float = 2.0,

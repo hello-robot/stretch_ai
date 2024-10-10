@@ -67,6 +67,8 @@ robot.move_base_to([0, 0, 3.14159/2], relative=True)
 robot.move_base_to([0, 0, -3.14159/2], relative=True)
 ```
 
+You can find this code in [examples/simple_navigation.py](examples/simple_navigation.py).
+
 ## Apps
 
 After [installation](#installation), on the robot, run the server:
