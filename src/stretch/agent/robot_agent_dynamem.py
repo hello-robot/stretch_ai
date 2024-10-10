@@ -84,6 +84,7 @@ class RobotAgent:
         realtime_updates: bool = True,
         obs_sub_port: int = 4450,
         re: int = 3,
+        manip_port: int = 5557,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -154,6 +155,7 @@ class RobotAgent:
             rerun_visualizer=self.robot._rerun,
             log="test",
         )  # type: ignore
+        self.manip_port = manip_port
 
         if re == 1 or re == 2:
             stretch_gripper_max = 0.3
@@ -619,7 +621,7 @@ class RobotAgent:
 
         self._obs_history_lock.release()
 
-        if obs is not None:
+        if obs is not None and self.robot.in_navigation_mode():
             self.image_processor.process_rgbd_images(
                 obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
             )
@@ -2207,7 +2209,7 @@ class RobotAgent:
             camera=camera,
             mode="place",
             obj=text,
-            socket=self.image_sender.manip_socket,
+            socket=self.manip_port,
             hello_robot=self.manip_wrapper,
         )
 
@@ -2272,7 +2274,7 @@ class RobotAgent:
             camera=camera,
             mode="pick",
             obj=text,
-            socket=self.image_sender.manip_socket,
+            socket=self.manip_port,
             hello_robot=self.manip_wrapper,
         )
 
