@@ -158,6 +158,7 @@ class PickupPromptBuilder(AbstractPromptBuilder):
         commands_with_args = []
 
         for command in commands:
+            print(command)
             if command.startswith("pickup("):
                 commands_with_args.append(("pickup", command[7:-1]))
             elif command.startswith("place("):
@@ -180,6 +181,8 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands_with_args.append(("find", command[5:-1]))
             elif command.startswith("quit()"):
                 commands_with_args.append(("quit", ""))
+            elif command.startswith("end()"):
+                break
             else:
                 raise ValueError(f"Unknown command: {command}")
 

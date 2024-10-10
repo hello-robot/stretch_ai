@@ -307,6 +307,8 @@ class PickupExecutor:
         self._task = Task()
         self._operation_count = 0
 
+        print(response)
+
         if response is None or len(response) == 0:
             logger.error("No commands to execute!")
             self.agent.robot_say("I'm sorry, I didn't understand that.")
@@ -322,7 +324,7 @@ class PickupExecutor:
             if command in self.available_actions:
                 if command == "pickup":
                     if (i + 1 < len(response)) and (response[i + 1][0] == "place"):
-                        self._pickup(args, response[i + 1][1])
+                        self.pickup(args, response[i + 1][1])
                         i += 1
                     else:
                         logger.error("Pickup without place! Doing nothing.")
