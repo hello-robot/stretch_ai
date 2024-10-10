@@ -1384,6 +1384,7 @@ class RobotAgent:
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
         verbose: bool = True,
+        push_locations_to_stack: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location. This is a location that is on the edge of the explored space. We use the voxel grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
 
@@ -1394,6 +1395,7 @@ class RobotAgent:
             try_to_plan_iter(int): the number of tries to find a plan
             fix_random_seed(bool): whether to fix the random seed
             verbose(bool): extra info is printed
+            push_locations_to_stack(bool): whether to push visited locations to planning stack. can help get you unstuck, maybe?
 
         Returns:
             PlanResult: the result of the motion planner
@@ -1449,8 +1451,9 @@ class RobotAgent:
                     np.random.seed(0)
                     random.seed(0)
 
-                # print("Pushing locations to stack...")
-                self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
+                if push_locations_to_stack:
+                    print("Pushing visited locations to stack...")
+                    self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
                 # print("Planning to goal...")
                 res = self.planner.plan(start, goal.cpu().numpy())
                 if res.success:
