@@ -99,10 +99,10 @@ class PickupExecutor:
         # Else, execute things as they come
         while i < len(response):
             command, args = response[i]
-            logger.info(f"{i} {command} {args}")
+            logger.info(f"Command: {i} {command} {args}")
             if command == "say":
                 # Use TTS to say the text
-                logger.info(f"[Pickup task] Saying: {args}")
+                logger.info(f"Saying: {args}")
                 self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
