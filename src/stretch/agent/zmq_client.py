@@ -477,8 +477,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def move_base_to(
         self,
         xyt: Union[ContinuousNavigationAction, np.ndarray],
-        relative=False,
-        blocking=False,
+        relative: bool = False,
+        blocking: bool = True,
         timeout: float = 10.0,
         verbose: bool = False,
     ):
