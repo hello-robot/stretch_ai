@@ -410,7 +410,10 @@ class RobotAgent:
         logger.info("Rotate in place")
         if steps is None or steps <= 0:
             # Read the number of steps from the parameters
-            steps = self.parameters["agent"]["in_place_rotation_steps"]
+            if self.parameters["agent"]["use_realtime_updates"]:
+                steps = self.parameters["agent"]["realtime_rotation_steps"]
+            else:
+                steps = self.parameters["agent"]["in_place_rotation_steps"]
 
         step_size = 2 * np.pi / steps
         i = 0
