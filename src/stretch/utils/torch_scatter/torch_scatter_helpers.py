@@ -109,6 +109,18 @@ def scatter_min(
     return torch.ops.torch_scatter.scatter_min(src, index, dim, out, dim_size)
 
 
+def manual_scatter_max(src, index, dim=-1, out=None, dim_size=None):
+    if out is None:
+        size = list(src.size())
+        if dim_size is not None:
+            size[dim] = dim_size
+        else:
+            size[dim] = int(index.max()) + 1
+        out = src.new_zeros(size)
+
+    return out.scatter_reduce(dim, index, src, reduce="amax")
+
+
 def scatter_max(
     src: torch.Tensor,
     index: torch.Tensor,
@@ -209,7 +221,8 @@ def _scatter(
     elif reduce == "min":
         return scatter_min(src, index, dim, out, dim_size)[0]
     elif reduce == "max":
-        return scatter_max(src, index, dim, out, dim_size)[0]
+        # return scatter_max(src, index, dim, out, dim_size)[0]
+        return manual_scatter_max(src, index, dim, out, dim_size)
     else:
         raise ValueError
 

@@ -8,6 +8,8 @@
 # license information maybe found below, if so.
 
 import os
+import shutil
+from datetime import datetime
 
 path = os.path.expanduser("~/.stretch")
 
@@ -68,3 +70,36 @@ def get_path_to_debug(name: str) -> str:
 def get_path_to_default_credentials() -> str:
     """Gets the path to the default credentials file"""
     return os.path.join(path, "credentials.json")
+
+
+def get_path_to_saved_map() -> str:
+    """Gets the path to the saved map file"""
+    return os.path.join(path, "map.pkl")
+
+
+def get_path_to_backup_saved_map(timestamp: str) -> str:
+    """Backup the saved map file"""
+    return os.path.join(path, "backup", f"map_{timestamp}.pkl")
+
+
+def backup_saved_map() -> bool:
+    """Backup the saved map file to a new location.
+
+    Returns:
+        True if the file is backed up, False otherwise
+    """
+
+    # Create a timestamp for the backup
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    # Ensure the path exists
+    _ensure_path_exists()
+
+    # Create a backup directory if it doesn't exist
+    os.makedirs(os.path.join(path, "backup"), exist_ok=True)
+
+    # Check to see if a file exists first
+    if os.path.exists(get_path_to_saved_map()):
+        shutil.copyfile(get_path_to_saved_map(), get_path_to_backup_saved_map(timestamp))
+        return True
+    return False

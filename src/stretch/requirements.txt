@@ -1,0 +1,66 @@
+torch_cluster == 1.6.2
+torch_geometric
+ultralytics
+wget
+# SAM2
+# conda install pyg -c pyg
+google-generativeai
+
+# openai
+# zmq
+# torch
+# ultralytics
+# rerun-sdk
+# numpy <1.24 # certain deprecated operations were used in other deps
+# scipy
+# opencv-python
+# pybullet
+# trimesh
+# pytest
+# open3d
+# scikit-image
+# scikit-fmm
+# scikit-learn
+# numpy-quaternion
+# natsort
+# # Neural networks
+# openai-clip
+# timm
+# pandas >= 2.1.3
+# mss
+# # visualizations and debugging
+# matplotlib
+# # Command line tools
+# click
+# transformers
+# data tools
+# yacs
+# # h5py
+# imageio
+# pygifsicle
+# pynput
+# torch_geometric
+# torch_cluster
+# atomicwrites
+# lxml
+# transforms3d
+
+# git+https://github.com/facebookresearch/segment-anything-2.git
+
+# accelerate
+# wget
+# setuptools==69.5.1
+# loguru
+# sophuspy==1.2.0
+# sentencepiece
+# protobuf
+# packaging
+# pyparsing
+# cycler
+# kiwisolver
+# six
+# importlib_metadata
+# pytz
+# psutil
+# transforms3d
+# lxml

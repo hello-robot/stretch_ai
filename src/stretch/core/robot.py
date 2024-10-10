@@ -57,6 +57,10 @@ class AbstractRobotClient(ABC):
     def switch_to_navigation_mode(self):
         raise NotImplementedError()
 
+    @property
+    def control_mode(self):
+        return self._base_control_mode
+
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
         return self._base_control_mode == ControlMode.MANIPULATION

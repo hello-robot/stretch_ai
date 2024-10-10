@@ -14,6 +14,7 @@ from typing import Optional
 import numpy as np
 
 from stretch.agent.base import ManagedOperation
+from stretch.mapping.instance import Instance
 from stretch.motion import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
@@ -24,9 +25,10 @@ class PlaceObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
-    place_step_size: float = 0.25
+    place_step_size: float = 0.35
     use_pitch_from_vertical: bool = True
     verbose: bool = True
+    talk: bool = True
 
     def configure(
         self,
@@ -51,7 +53,8 @@ class PlaceObjectOperation(ManagedOperation):
         self.place_step_size = place_step_size
         self.use_pitch_from_vertical = use_pitch_from_vertical
 
-    def get_target(self):
+    def get_target(self) -> Instance:
+        """Get the target object to place."""
         return self.agent.current_receptacle
 
     def get_target_center(self):
@@ -190,6 +193,8 @@ class PlaceObjectOperation(ManagedOperation):
             pos=place_xyz, quat=ee_rot, joint_state=joint_state
         )
         self.attempt(f"Trying to place the object on the receptacle at {place_xyz}.")
+        if self.talk:
+            self.agent.robot_say("Trying to place the object on the receptacle.")
         if not success:
             self.error("Could not place object!")
             return
@@ -212,6 +217,7 @@ class PlaceObjectOperation(ManagedOperation):
         self.robot.move_to_nav_posture()
         self._successful = True
 
+        self.agent.robot_say("I am done placing the object.")
         self.cheer("We believe we successfully placed the object.")
 
     def was_successful(self):

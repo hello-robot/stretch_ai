@@ -21,11 +21,18 @@ import trimesh.transformations as tra
 from scipy.spatial import cKDTree
 
 
-def numpy_to_pcd(xyz: np.ndarray, rgb: np.ndarray = None) -> o3d.geometry.PointCloud:
+def numpy_to_pcd(
+    xyz: np.ndarray, rgb: np.ndarray = None, max_points: int = -1
+) -> o3d.geometry.PointCloud:
     """Create an open3d pointcloud from a single xyz/rgb pair"""
     xyz = xyz.reshape(-1, 3)
     if rgb is not None:
         rgb = rgb.reshape(-1, 3)
+    if max_points > 0:
+        idx = np.random.choice(xyz.shape[0], max_points, replace=False)
+        xyz = xyz[idx]
+        if rgb is not None:
+            rgb = rgb[idx]
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(xyz)
     if rgb is not None:
@@ -48,13 +55,14 @@ def show_point_cloud(
     save: str = None,
     grasps: list = None,
     size: float = 0.1,
+    max_points: int = 10000,
 ):
     """Shows the point-cloud described by np.ndarrays xyz & rgb.
     Optional origin and rotation params are for showing origin coordinate.
     Optional grasps param for showing a list of 6D poses as coordinate frames.
     size controls scale of coordinate frame's size
     """
-    pcd = numpy_to_pcd(xyz, rgb)
+    pcd = numpy_to_pcd(xyz, rgb, max_points=max_points)
     show_pcd(pcd, orig=orig, R=R, save=save, grasps=grasps, size=size)
 
 
