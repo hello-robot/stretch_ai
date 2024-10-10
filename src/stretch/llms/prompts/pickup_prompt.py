@@ -154,7 +154,36 @@ class PickupPromptBuilder(AbstractPromptBuilder):
     def parse_response(self, response: str):
         """Parse the pickup, place, and say commands from the response into a list."""
         commands = [line for line in response.split("\n") if line]
-        return commands
+
+        commands_with_args = []
+
+        for command in commands:
+            if command.startswith("pickup("):
+                commands_with_args.append(("pickup", command[7:-1]))
+            elif command.startswith("place("):
+                commands_with_args.append(("place", command[6:-1]))
+            elif command.startswith("say("):
+                commands_with_args.append(("say", command[4:-1]))
+            elif command.startswith("wave()"):
+                commands_with_args.append(("wave", ""))
+            elif command.startswith("go_home()"):
+                commands_with_args.append(("go_home", ""))
+            elif command.startswith("explore("):
+                commands_with_args.append(("explore", command[8:-1]))
+            elif command.startswith("nod_head()"):
+                commands_with_args.append(("nod_head", ""))
+            elif command.startswith("shake_head()"):
+                commands_with_args.append(("shake_head", ""))
+            elif command.startswith("avert_gaze()"):
+                commands_with_args.append(("avert_gaze", ""))
+            elif command.startswith("find("):
+                commands_with_args.append(("find", command[5:-1]))
+            elif command.startswith("quit()"):
+                commands_with_args.append(("quit", ""))
+            else:
+                raise ValueError(f"Unknown command: {command}")
+
+        return commands_with_args
 
     def get_available_actions(self) -> List[str]:
         return super().get_available_actions() + [
