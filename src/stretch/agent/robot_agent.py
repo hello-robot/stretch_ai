@@ -2057,5 +2057,6 @@ class RobotAgent:
         # Backup the saved map
         memory.backup_saved_map()
 
-        # Write the new map to the file
-        self.voxel_map.write_to_pickle(filename)
+        with self._map_lock:
+            # Write the new map to the file
+            self.voxel_map.write_to_pickle(filename)
