@@ -64,7 +64,7 @@ class RobotAgent:
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        realtime_updates: bool = False,
+        enable_realtime_updates: bool = True,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
@@ -92,7 +92,16 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = realtime_updates
+        self._realtime_updates = (
+            enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]
+        )
+        if self._realtime_updates:
+            logger.alert("Using real-time updates")
+        if not enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]:
+            logger.warning(
+                "Real-time updates are not enabled but the agent is configured to use them."
+            )
+            logger.warning("We will not be able to update the map in real-time.")
 
         # ==============================================
         # Update configuration
