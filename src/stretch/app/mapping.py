@@ -50,6 +50,7 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
+@click.option("--enable-realtime-updates", is_flag=True, help="Enable real-time updates")
 def main(
     visualize,
     manual_wait,
@@ -69,6 +70,7 @@ def main(
     local: bool = True,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
+    enable_realtime_updates: bool = False,
     **kwargs,
 ):
 
@@ -80,6 +82,7 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
         enable_rerun_server=True,
+        publish_observations=enable_realtime_updates,
     )
     # Call demo_main with all the arguments
     demo_main(
@@ -100,6 +103,7 @@ def main(
         explore_iter=explore_iter,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
+        enable_realtime_updates=enable_realtime_updates,
         reset=reset,
         **kwargs,
     )
@@ -124,6 +128,7 @@ def demo_main(
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
+    enable_realtime_updates: bool = False,
     **kwargs,
 ):
     """
@@ -163,9 +168,9 @@ def demo_main(
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
-
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    demo = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+    )
     demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
     if reset:
         demo.move_closed_loop([0, 0, 0], max_time=60.0)

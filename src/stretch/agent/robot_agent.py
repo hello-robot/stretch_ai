@@ -64,7 +64,7 @@ class RobotAgent:
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        enable_realtime_updates: bool = True,
+        enable_realtime_updates: bool = False,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
