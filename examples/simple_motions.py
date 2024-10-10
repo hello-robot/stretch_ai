@@ -51,13 +51,13 @@ print("Done")
 # Rotate the robot 90 degrees to the left
 print("Rotate the robot 90 degrees to the left")
 print("robot.move_base_to([0, 0, 3.14159/2], relative=True)")
-robot.move_base_to([0, 0, 3.14159 / 2], relative=True)
+robot.move_base_to([0, 0, 3.14159 / 2], relative=True, verbose=True)
 print("Done")
 
 # And to the right
 print("Rotate the robot 90 degrees to the right")
 print("robot.move_base_to([0, 0, -3.14159/2], relative=True, blocking=True)")
-robot.move_base_to([0, 0, -3.14159 / 2], relative=True)
+robot.move_base_to([0, 0, -3.14159 / 2], relative=True, verbose=True)
 
 print("Stop the robot")
 print("robot.stop()")

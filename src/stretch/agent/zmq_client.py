@@ -493,7 +493,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # If it's relative, compute the relative position right now - this helps handle network issues
         if relative:
             current_xyt = self.get_base_pose()
+            if verbose:
+                print("Current pose", current_xyt)
             _xyt = xyt_base_to_global(_xyt, current_xyt)
+            if verbose:
+                print("Goal pose in global coordinates", _xyt)
 
         # We never send a relative motion over wireless - this is because we can run into timing issues.
         # Instead, we always send the absolute position and let the robot handle the motions itself.
