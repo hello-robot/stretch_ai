@@ -16,7 +16,7 @@ import numpy as np
 import rerun as rr
 import zmq
 
-from stretch.agent import RobotClient
+# from stretch.agent import RobotClient
 from stretch.core.parameters import Parameters
 from stretch.dynav.communication_util import recv_array, send_array, send_everything
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
@@ -45,7 +45,7 @@ class RobotAgentMDP:
 
     def __init__(
         self,
-        robot: RobotClient,
+        robot,
         parameters: Dict[str, Any],
         server_ip: str,
         image_port: int = 5558,

@@ -17,7 +17,7 @@ from typing import Optional
 import click
 
 # Mapping and perception
-from stretch.agent.robot_agent_dynamem import RobotAgent
+from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import AbstractRobotClient, Parameters, get_parameters
 from stretch.perception import create_semantic_sensor
