@@ -750,7 +750,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         moving_threshold: Optional[float] = None,
         angle_threshold: Optional[float] = None,
-        min_steps_not_moving: Optional[int] = 1,
+        min_steps_not_moving: Optional[int] = None,
         goal_angle: Optional[float] = None,
         goal_angle_threshold: Optional[float] = 0.15,
         resend_action: Optional[dict] = None,
