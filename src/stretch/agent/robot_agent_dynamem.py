@@ -179,13 +179,10 @@ class RobotAgent(RobotAgentBase):
 
             self._obs_history_lock.acquire()
             while obs is None:
-                # obs = self.robot.get_observation()
-                obs = self.sub_socket.recv_pyobj()
-                # print(obs)
+                obs = self.robot.get_observation()
+                # obs = self.sub_socket.recv_pyobj()
                 if obs is None:
                     continue
-
-                obs = Observations.from_dict(obs)
 
                 if (len(self.obs_history) > 0) and (
                     obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
@@ -195,12 +192,13 @@ class RobotAgent(RobotAgentBase):
                 if t1 - t0 > 10:
                     logger.error("Failed to get observation")
                     break
+                time.sleep(0.05)
 
             # t1 = timeit.default_timer()
             self.obs_history.append(obs)
             self._obs_history_lock.release()
             self.obs_count += 1
-            time.sleep(0.05)
+            time.sleep(0.1)
 
     def update_map_with_pose_graph(self):
         """Update our voxel map using a pose graph"""
