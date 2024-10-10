@@ -421,6 +421,7 @@ class RobotAgent:
             # Read the number of steps from the parameters
             if self._realtime_updates:
                 steps = self.parameters["agent"]["realtime_rotation_steps"]
+                logger.info(f"Using real-time rotation steps: {steps}")
             else:
                 steps = self.parameters["agent"]["in_place_rotation_steps"]
 

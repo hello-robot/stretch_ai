@@ -175,6 +175,7 @@ def main(
 
     print("- Load parameters")
     parameters = get_parameters(config_path)
+    parameters["agent"]["use_realtime_updates"] = False
 
     if run_segmentation:
         print("- Preparing perception pipeline")

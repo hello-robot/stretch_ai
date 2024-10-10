@@ -74,7 +74,7 @@ motion:
 
 # Exploration
 agent:
-  use_realtime_updates: True
+  use_realtime_updates: False
   realtime_update_rotation_steps: 4
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   sweep_head_on_update: False
