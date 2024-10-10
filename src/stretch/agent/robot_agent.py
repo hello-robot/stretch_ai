@@ -621,6 +621,7 @@ class RobotAgent:
         if verbose:
             print("----")
             print(f"Added {added} observations to voxel map")
+            print()
 
         self._obs_history_lock.release()
 
