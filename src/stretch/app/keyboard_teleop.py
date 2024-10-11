@@ -46,7 +46,7 @@ def key_pressed(robot: HomeRobotZmqClient, key):
         goal_xyt[2] = 0.2
     elif key == "d":
         goal_xyt[2] = -0.2
-    robot.navigate_to(goal_xyt, relative=True)
+    robot.move_base_to(goal_xyt, relative=True)
 
 
 def getch():

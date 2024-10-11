@@ -309,7 +309,7 @@ def demo_main(
             blocking=True,
         )
         robot.switch_to_navigation_mode()
-        robot.navigate_to([0.20, 0, 1.1], relative=True)
+        robot.move_base_to([0.20, 0, 1.1], relative=True)
 
         robot.switch_to_manipulation_mode()
         robot.arm_to(
@@ -324,7 +324,7 @@ def demo_main(
             blocking=True,
         )
         robot.switch_to_navigation_mode()
-        robot.navigate_to([0, 0, -1.5], relative=True)
+        robot.move_base_to([0, 0, -1.5], relative=True)
 
         print("- Task finished, going home...")
         res = planner.plan(robot.get_base_pose(), start_location)
