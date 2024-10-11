@@ -336,12 +336,6 @@ class RobotAgent(RobotAgentBase):
         # print(f"Done clearing out old observations. Time: {t6 - t5}")
         self._obs_history_lock.release()
 
-    def update_map_loop(self):
-        """Threaded function that updates our voxel map in real-time"""
-        while True:
-            self.update_map_with_pose_graph()
-            time.sleep(0.5)
-
     def execute_action(
         self,
         text: str,
