@@ -197,7 +197,7 @@ class VoxelMapLocalizer:
         alignments = self.find_alignment_over_model(A).cpu()
         return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
 
-    def compute_coord(self, text, obs_id, threshold=0.2):
+    def compute_coord(self, text, obs_id, threshold=0.25):
         # print(obs_id, len(self.voxel_map_wrapper.observations))
         if obs_id <= 0 or obs_id > len(self.voxel_map_wrapper.observations):
             return None
@@ -315,7 +315,7 @@ class VoxelMapLocalizer:
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
             if self.siglip:
-                cosine_similarity_check = alignments.max().item() > 0.14
+                cosine_similarity_check = alignments.max().item() > 0.135
             else:
                 cosine_similarity_check = alignments.max().item() > 0.3
             if cosine_similarity_check:

@@ -197,7 +197,9 @@ class VoxelizedPointcloud:
                 self._entity_ids = self._entity_ids[indices]
 
             if (
-                self._entity_ids is not None
+                self._points is not None
+                and len(self._points) > 0
+                and self._entity_ids is not None
                 and min_samples_clear is not None
                 and min_samples_clear > 0
             ):
@@ -644,7 +646,7 @@ def scatter3d(
 
     # Reduce according to min/max/mean or none
     if method is not None and method != "any":
-        logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
+        # logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
         merge_features(voxel_indices, weights, grid_dimensions=grid_dimensions, method=method)
 
     # Create empty voxel grid
