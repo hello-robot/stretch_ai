@@ -134,6 +134,7 @@ class RobotAgent(RobotAgentBase):
             rerun_visualizer=self.robot._rerun,
             log="test",
         )  # type: ignore
+        self.encoder = self.image_processor.get_encoder()
         self.manip_port = manip_port
 
         if re == 1 or re == 2:
