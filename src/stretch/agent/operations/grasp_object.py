@@ -99,7 +99,7 @@ class GraspObjectOperation(ManagedOperation):
     # Move the arm forward by this amount when grasping
     _grasp_arm_offset: float = 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = -0.10
+    _grasp_lift_offset: float = -0.05
 
     # Visual servoing config
     track_image_center: bool = False

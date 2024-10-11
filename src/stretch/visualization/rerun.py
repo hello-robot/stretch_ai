@@ -417,7 +417,10 @@ class RerunVisualizer:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
             ee_rgb = servo.ee_rgb.reshape(-1, 3)
             # Remove points below z = 0
-            idx = np.where(ee_xyz[:, 2] > 0)
+            # and where distance from camera > 2 meters
+            idx_depth = servo.ee_depth.reshape(-1) < 2
+            idx_z = np.where(ee_xyz[:, 2] > 0)
+            idx = np.intersect1d(idx_depth, idx_z)
             ee_xyz = ee_xyz[idx]
             ee_rgb = ee_rgb[idx]
             if self.max_displayed_points_per_camera > 0:
