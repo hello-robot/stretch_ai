@@ -153,6 +153,9 @@ class RobotAgent(RobotAgentBase):
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
+        # Placeholder for the robot navigation space (not used)
+        self.space = None
+
         # Previously sampled goal during exploration
         self._previous_goal = None
 
@@ -451,7 +454,17 @@ class RobotAgent(RobotAgentBase):
         )
         return True
 
-    def manipulate(self, text, init_tilt=INIT_HEAD_TILT, base_node=TOP_CAMERA_NODE):
+    def get_voxel_map(self):
+        """Return the voxel map"""
+        return self.image_processor.voxel_map
+
+    def manipulate(
+        self,
+        text,
+        init_tilt=INIT_HEAD_TILT,
+        base_node=TOP_CAMERA_NODE,
+        skip_confirmation: bool = False,
+    ):
         """
         An API for running manipulation. By calling this API, human will ask the robot to pick up objects
         specified by text queries A
@@ -498,7 +511,7 @@ class RobotAgent(RobotAgentBase):
         else:
             gripper_width = 1
 
-        if input("Do you want to do this manipulation? Y or N ") != "N":
+        if skip_confirmation or input("Do you want to do this manipulation? Y or N ") != "N":
             pickup(
                 self.manip_wrapper,
                 rotation,

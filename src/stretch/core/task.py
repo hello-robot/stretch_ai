@@ -12,6 +12,10 @@ from typing import Optional
 
 from termcolor import colored
 
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
+
 
 class Operation(abc.ABC):
     """An operation is a single unit of work that can be executed. It can be part of a task. It
@@ -93,9 +97,11 @@ class Operation(abc.ABC):
 
     def __call__(self, **kwargs) -> bool:
         """Run the operation."""
+        self.configure(**kwargs)
         if self.can_start():
             self.run()
         else:
+            logger.error(f"Operation {self.name} cannot start.")
             return False
         self.run()
         return self.was_successful()

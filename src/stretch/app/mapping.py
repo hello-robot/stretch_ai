@@ -42,6 +42,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--navigate-home", default=False, is_flag=True)
 @click.option("--force-explore", default=False, is_flag=True)
 @click.option("--no-manip", default=False, is_flag=True)
+@click.option("--device-id", default=0, help="Device ID for the semantic sensor")
 @click.option(
     "--write-instance-images",
     default=False,

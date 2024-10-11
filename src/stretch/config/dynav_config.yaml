@@ -22,6 +22,13 @@ remove_visited_from_obstacles: False
 min_depth: 0.25
 max_depth: 2.5
 
+# Object detection parameters
+detection:
+  module: "detic"
+  # module: "yolo"
+  category_map_file: example_cat_map.json
+  use_detic_viz: False
+
 # Point cloud cleanup
 filters:
         smooth_kernel_size: 2

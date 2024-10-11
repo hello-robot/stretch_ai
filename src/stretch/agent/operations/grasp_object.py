@@ -46,6 +46,7 @@ class GraspObjectOperation(ManagedOperation):
     # Task information
     match_method: str = "class"
     target_object: Optional[str] = None
+    _object_xyz: Optional[np.ndarray] = None
 
     # Should we use the previous mask at all?
     use_prev_mask: bool = False
@@ -118,9 +119,10 @@ class GraspObjectOperation(ManagedOperation):
 
     def configure(
         self,
-        target_object: str,
+        target_object: Optional[str] = None,
+        object_xyz: Optional[np.ndarray] = None,
         show_object_to_grasp: bool = False,
-        servo_to_grasp: bool = False,
+        servo_to_grasp: bool = True,
         show_servo_gui: bool = True,
         show_point_cloud: bool = False,
         reset_observation: bool = False,
@@ -140,7 +142,11 @@ class GraspObjectOperation(ManagedOperation):
             talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
             match_method (str, optional): Matching method. Defaults to "class". This is how the policy determines which object mask it should try to grasp.
         """
-        self.target_object = target_object
+        if target_object is not None:
+            self.target_object = target_object
+        if object_xyz is not None:
+            assert len(object_xyz) == 3, "Object xyz must be a 3D point."
+            self._object_xyz = object_xyz
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
         self.show_servo_gui = show_servo_gui
@@ -178,7 +184,9 @@ class GraspObjectOperation(ManagedOperation):
         if not self.robot.in_manipulation_mode():
             self.robot.switch_to_manipulation_mode()
 
-        return self.agent.current_object is not None and self.robot.in_manipulation_mode()
+        return (
+            self.agent.current_object is not None or self._object_xyz is not None
+        ) and self.robot.in_manipulation_mode()
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
         """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
@@ -291,7 +299,6 @@ class GraspObjectOperation(ManagedOperation):
     def get_target_mask(
         self,
         servo: Observations,
-        instance: Instance,
         center: Tuple[int, int],
         prev_mask: Optional[np.ndarray] = None,
     ) -> Optional[np.ndarray]:
@@ -299,7 +306,6 @@ class GraspObjectOperation(ManagedOperation):
 
         Args:
             servo (Observations): Servo observation
-            instance (Instance): Instance we are trying to grasp
             prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
 
         Returns:
@@ -401,7 +407,13 @@ class GraspObjectOperation(ManagedOperation):
     ) -> bool:
         """Use visual servoing to grasp the object."""
 
-        self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
+        if instance is not None:
+            self.intro(
+                f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}."
+            )
+        else:
+            self.intro("Visual servoing to grasp {self.target_object} at {self._object_xyz}.")
+
         if self.show_servo_gui:
             self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
 
@@ -426,7 +438,7 @@ class GraspObjectOperation(ManagedOperation):
         if not pregrasp_done:
             # Move to pregrasp position
             self.pregrasp_open_loop(
-                instance.get_center(), distance_from_object=self.pregrasp_distance_from_object
+                self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
             )
             pregrasp_done = True
 
@@ -466,7 +478,7 @@ class GraspObjectOperation(ManagedOperation):
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(
-                servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
+                servo, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
 
             # dilate mask
@@ -676,6 +688,18 @@ class GraspObjectOperation(ManagedOperation):
             cv2.destroyAllWindows()
         return success
 
+    def get_object_xyz(self) -> np.ndarray:
+        """Get the object xyz location. If we have a target object, we will use that. Otherwise, we will use the object xyz location that's been manually set.
+
+        Returns:
+            np.ndarray: Object xyz location
+        """
+        if self._object_xyz is None:
+            object_xyz = self.agent.current_object.get_center()
+        else:
+            object_xyz = self._object_xyz
+        return object_xyz
+
     def run(self) -> None:
         self.intro("Grasping the object.")
         self._success = False
@@ -700,7 +724,7 @@ class GraspObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
 
         # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
-        object_xyz = self.agent.current_object.get_center()
+        object_xyz = self.get_object_xyz()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
@@ -728,7 +752,9 @@ class GraspObjectOperation(ManagedOperation):
             )
 
         # Delete the object
-        self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+        voxel_map = self.agent.get_voxel_map()
+        if voxel_map is not None:
+            self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
             self.agent.robot_say("I think I grasped the object.")
 
