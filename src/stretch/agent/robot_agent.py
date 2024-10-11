@@ -152,9 +152,6 @@ class RobotAgent:
         # Previously sampled goal during exploration
         self._previous_goal = None
 
-        # Track if we are still running
-        self._running = True
-
         # Create a simple motion planner
         self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
         if parameters["motion_planner"]["shortcut_plans"]:
@@ -167,6 +164,14 @@ class RobotAgent:
                 num_steps=parameters["motion_planner"]["simplify"]["num_steps"],
                 min_angle=parameters["motion_planner"]["simplify"]["min_angle"],
             )
+
+        self._start_threads()
+
+    def _start_threads(self):
+        """Create threads and locks for real-time updates."""
+
+        # Track if we are still running
+        self._running = True
 
         # Locks
         self._robot_lock = Lock()

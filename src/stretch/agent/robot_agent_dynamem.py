@@ -13,13 +13,11 @@
 # LICENSE file in the root directory of this source tree.
 import time
 import timeit
-from threading import Lock, Thread
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
 import rerun as rr
-import zmq
 
 import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
@@ -93,9 +91,6 @@ class RobotAgent(RobotAgentBase):
         else:
             self.encoder: BaseImageTextEncoder = None
 
-        # Track if we are still running
-        self._running = True
-
         # ==============================================
         self.obs_count = 0
         self.obs_history: List[Observations] = []
@@ -164,21 +159,7 @@ class RobotAgent(RobotAgentBase):
         # Previously sampled goal during exploration
         self._previous_goal = None
 
-        if self._realtime_updates:
-            self.context = zmq.Context()
-            self.sub_socket = self.context.socket(zmq.SUB)
-            self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
-            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
-            # Locks
-            # self._robot_lock = Lock()
-            self._obs_history_lock = Lock()
-            # Map updates
-            self._update_map_thread = Thread(target=self.update_map_loop)
-            self._update_map_thread.start()
-
-            # Get observations thread
-            self._get_observations_thread = Thread(target=self.get_observations_loop)
-            self._get_observations_thread.start()
+        self._start_threads()
 
     def get_observations_loop(self):
         while True:
