@@ -129,7 +129,7 @@ def main(
         else:
             text = None
             point = None
-            if input("You want to run manipulation? (y/n): ") != "n":
+            if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
                 text = input("Enter object name: ")
@@ -142,7 +142,7 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking=True)
 
-            if input("You want to run manipulation? (y/n): ") != "n":
+            if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter object name: ")
@@ -155,10 +155,13 @@ def main(
                 # Grasp the object using operation if it's available
                 if grasp_object is not None:
                     print("Using operation to grasp object:", text)
+                    print(" - Point:", point)
+                    print(" - Theta:", theta)
                     grasp_object(
                         target_object=text,
+                        object_xyz=point,
                         match_method="feature",
-                        show_object_to_grasp=(not skip_confirmations),
+                        show_object_to_grasp=False,
                     )
                 else:
                     # Otherwise, use the agent's manipulation method
@@ -169,7 +172,7 @@ def main(
 
             text = None
             point = None
-            if input("You want to run placement? (y/n): ") != "n":
+            if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_navigation_mode()
                 text = input("Enter receptacle name: ")
                 point = agent.navigate(text)
@@ -181,7 +184,7 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking=True)
 
-            if input("You want to run placement? (y/n): ") != "n":
+            if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter receptacle name: ")
