@@ -172,9 +172,9 @@ class RobotAgent:
             self._get_observations_thread = None
 
     def __del__(self):
+        """Destructor. Clean up threads."""
         if self._update_map_thread is not None and self._update_map_thread.is_alive():
             self._update_map_thread.join()
-        self._update_map_thread.join()
 
     def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
         """Create a voxel map from parameters.
