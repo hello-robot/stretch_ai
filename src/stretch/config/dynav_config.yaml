@@ -1,6 +1,6 @@
 # Encoder setup
 # Encoder is used to compute per-object embeddings.
-encoder: ""
+encoder: "siglip"
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 

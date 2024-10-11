@@ -73,6 +73,8 @@ def get_mode(mode: str) -> str:
 @click.option(
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
+@click.option("--target_object", type=str, default=None, help="Target object to grasp")
+@click.option("--target_receptacle", type=str, default=None, help="Target receptacle to place")
 @click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
@@ -96,6 +98,8 @@ def main(
     visual_servo: bool = False,
     skip_confirmations: bool = False,
     device_id: int = 0,
+    target_object: str = None,
+    target_receptacle: str = None,
     **kwargs,
 ):
     """
@@ -116,9 +120,8 @@ def main(
     robot.move_to_nav_posture()
     robot.set_velocity(v=30.0, w=15.0)
 
-    print("- Start robot agent with data collection")
-    parameters["encoder"] = ""
-
+    # Create semantic sensor if visual servoing is enabled
+    print("- Create semantic sensor if visual servoing is enabled")
     if visual_servo:
         semantic_sensor = create_semantic_sensor(
             parameters=parameters,
@@ -126,10 +129,12 @@ def main(
             verbose=False,
         )
     else:
+        parameters["encoder"] = None
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
     agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent.start()
 
     if visual_servo:
         grasp_object = GraspObjectOperation(
@@ -146,7 +151,7 @@ def main(
 
     agent.save()
 
-    while True:
+    while agent.running:
         mode = get_mode(mode)
         mode = mode.upper()
         if mode == "S":
@@ -165,7 +170,10 @@ def main(
             if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
-                text = input("Enter object name: ")
+                if target_object is not None:
+                    text = target_object
+                else:
+                    text = input("Enter object name: ")
                 point = agent.navigate(text)
                 if point is None:
                     print("Navigation Failure!")
@@ -195,6 +203,8 @@ def main(
                         object_xyz=point,
                         match_method="feature",
                         show_object_to_grasp=False,
+                        show_servo_gui=True,
+                        delete_object_after_grasp=False,
                     )
                 else:
                     # Otherwise, use the agent's manipulation method
@@ -207,7 +217,10 @@ def main(
             point = None
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_navigation_mode()
-                text = input("Enter receptacle name: ")
+                if target_receptacle is not None:
+                    text = target_receptacle
+                else:
+                    text = input("Enter receptacle name: ")
                 point = agent.navigate(text)
                 if point is None:
                     print("Navigation Failure")

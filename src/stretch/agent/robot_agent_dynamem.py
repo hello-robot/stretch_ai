@@ -13,13 +13,11 @@
 # LICENSE file in the root directory of this source tree.
 import time
 import timeit
-from threading import Lock, Thread
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
 import rerun as rr
-import zmq
 
 import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
@@ -47,19 +45,12 @@ from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
 from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMap
+from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 
 
 class RobotAgent(RobotAgentBase):
     """Basic demo code. Collects everything that we need to make this work."""
-
-    _retry_on_fail: bool = False
-    debug_update_timing: bool = False
-    update_rerun_every_time: bool = True
-    normalize_embeddings: bool = False
-
-    _before_head_motion_sleep_t = 0.25
-    _after_head_motion_sleep_t = 0.1
 
     def __init__(
         self,
@@ -92,6 +83,15 @@ class RobotAgent(RobotAgentBase):
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
+
+        if self.parameters.get("encoder", None) is not None:
+            self.encoder: BaseImageTextEncoder = get_encoder(
+                self.parameters["encoder"], self.parameters.get("encoder_args", {})
+            )
+        else:
+            self.encoder: BaseImageTextEncoder = None
+
+        # ==============================================
         self.obs_count = 0
         self.obs_history: List[Observations] = []
 
@@ -134,6 +134,7 @@ class RobotAgent(RobotAgentBase):
             rerun_visualizer=self.robot._rerun,
             log="test",
         )  # type: ignore
+        self.encoder = self.image_processor.get_encoder()
         self.manip_port = manip_port
 
         if re == 1 or re == 2:
@@ -159,21 +160,7 @@ class RobotAgent(RobotAgentBase):
         # Previously sampled goal during exploration
         self._previous_goal = None
 
-        if self._realtime_updates:
-            self.context = zmq.Context()
-            self.sub_socket = self.context.socket(zmq.SUB)
-            self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
-            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
-            # Locks
-            # self._robot_lock = Lock()
-            self._obs_history_lock = Lock()
-            # Map updates
-            self._update_map_thread = Thread(target=self.update_map_loop)
-            self._update_map_thread.start()
-
-            # Get observations thread
-            self._get_observations_thread = Thread(target=self.get_observations_loop)
-            self._get_observations_thread.start()
+        self._start_threads()
 
     def get_observations_loop(self):
         while True:
@@ -333,12 +320,6 @@ class RobotAgent(RobotAgentBase):
         t6 = timeit.default_timer()
         # print(f"Done clearing out old observations. Time: {t6 - t5}")
         self._obs_history_lock.release()
-
-    def update_map_loop(self):
-        """Threaded function that updates our voxel map in real-time"""
-        while True:
-            self.update_map_with_pose_graph()
-            time.sleep(0.5)
 
     def execute_action(
         self,

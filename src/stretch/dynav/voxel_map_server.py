@@ -35,7 +35,7 @@ from matplotlib import pyplot as plt
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from torchvision import transforms
-from transformers import AutoModel, AutoProcessor
+from transformers import AutoModel, AutoProcessor, AutoTokenizer
 
 # from segment_anything import sam_model_registry, SamPredictor
 # from transformers import AutoProcessor, OwlViTForObjectDetection
@@ -49,6 +49,7 @@ from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.scannet import CLASS_LABELS_200
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
+from stretch.perception.encoders import CustomImageTextEncoder
 
 
 def get_inv_intrinsics(intrinsics):
@@ -240,12 +241,14 @@ class ImageProcessor:
     def create_vision_model(self):
         if not self.siglip:
             self.clip_model, self.clip_preprocess = clip.load("ViT-B/16", device=self.device)
+            self.clip_tokenizer = clip.tokenize
             self.clip_model.eval()
         else:
             self.clip_model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(
                 self.device
             )
             self.clip_preprocess = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
+            self.clip_tokenizer = AutoTokenizer.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
         if self.vision_method != "mask*lip":
             sam_checkpoint = f"./sam2_hiera_small.pt"
@@ -262,12 +265,18 @@ class ImageProcessor:
             self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
             self.texts = CLASS_LABELS_200
             self.yolo_model.set_classes(self.texts)
+
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
             clip_model=self.clip_model,
             processor=self.clip_preprocess,
             device=self.device,
             siglip=self.siglip,
+        )
+
+    def get_encoder(self) -> CustomImageTextEncoder:
+        return CustomImageTextEncoder(
+            self.clip_model, self.clip_preprocess, self.clip_tokenizer, device=self.device
         )
 
     def process_text(self, text, start_pose):

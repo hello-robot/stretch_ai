@@ -15,6 +15,7 @@ from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
 from .clip_encoder import ClipEncoder, NormalizedClipEncoder
+from .custom import CustomImageTextEncoder
 from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
 from .siglip_encoder import SiglipEncoder
 

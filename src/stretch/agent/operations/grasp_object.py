@@ -43,6 +43,9 @@ class GraspObjectOperation(ManagedOperation):
     _success: bool = False
     talk: bool = True
 
+    offset_from_vertical = -np.pi / 2
+    # offset_from_vertical = -np.pi / 4
+
     # Task information
     match_method: str = "class"
     target_object: Optional[str] = None
@@ -55,6 +58,7 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
     show_point_cloud: bool = False
+    delete_object_after_grasp: bool = False
 
     # ------------------------
     # These are the most important parameters for tuning to make the grasping "feel" nice
@@ -95,7 +99,7 @@ class GraspObjectOperation(ManagedOperation):
     # Move the arm forward by this amount when grasping
     _grasp_arm_offset: float = 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = -0.10
+    _grasp_lift_offset: float = -0.05
 
     # Visual servoing config
     track_image_center: bool = False
@@ -129,6 +133,7 @@ class GraspObjectOperation(ManagedOperation):
         grasp_loose: bool = False,
         talk: bool = True,
         match_method: str = "class",
+        delete_object_after_grasp: bool = True,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -152,6 +157,7 @@ class GraspObjectOperation(ManagedOperation):
         self.show_servo_gui = show_servo_gui
         self.show_point_cloud = show_point_cloud
         self.reset_observation = reset_observation
+        self.delete_object_after_grasp = delete_object_after_grasp
         self.grasp_loose = grasp_loose
         self.talk = talk
         self.match_method = match_method
@@ -723,21 +729,22 @@ class GraspObjectOperation(ManagedOperation):
         # Get the current base pose of the robot
         xyt = self.robot.get_base_pose()
 
-        # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
+        # Note that these are in the robot's current coordinate frame;
+        # they're not global coordinates, so this is ok to use to compute motions.
         object_xyz = self.get_object_xyz()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
-            ee_pos, ee_rot = model.manip_fk(joint_state)
-            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
-            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            head_pos = obs.camera_pose[:3, 3]
+            dy = np.abs(head_pos[1] - relative_object_xyz[1])
+            dz = np.abs(head_pos[2] - relative_object_xyz[2])
             pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
@@ -752,9 +759,10 @@ class GraspObjectOperation(ManagedOperation):
             )
 
         # Delete the object
-        voxel_map = self.agent.get_voxel_map()
-        if voxel_map is not None:
-            self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+        if self.delete_object_after_grasp:
+            voxel_map = self.agent.get_voxel_map()
+            if voxel_map is not None:
+                voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
             self.agent.robot_say("I think I grasped the object.")
 
