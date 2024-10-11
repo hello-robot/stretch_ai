@@ -151,7 +151,7 @@ def main(
 
     agent.save()
 
-    while agent.running:
+    while agent.is_running():
         mode = get_mode(mode)
         mode = mode.upper()
         if mode == "S":
