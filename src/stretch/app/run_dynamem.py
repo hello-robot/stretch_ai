@@ -11,6 +11,7 @@ import click
 import cv2
 import numpy as np
 
+from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
@@ -43,8 +44,12 @@ def compute_tilt(camera_xyz, target_xyz):
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)
 @click.option(
+    "--visual_servo", "--vs", "-V", default=False, is_flag=True, help="Use visual servoing grasp"
+)
+@click.option(
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
+@click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
     type=click.Path(),
@@ -62,6 +67,8 @@ def main(
     test: int = 1,
     input_path: str = None,
     robot_ip: str = "",
+    visual_servo: bool = False,
+    skip_confirmations: bool = False,
     **kwargs,
 ):
     """
@@ -89,6 +96,14 @@ def main(
 
     print("- Start robot agent with data collection")
     agent = RobotAgent(robot, parameters, semantic_sensor)
+
+    if visual_servo:
+        grasp_object = GraspObjectOperation(
+            "grasp_the_object",
+            agent,
+        )
+    else:
+        grasp_object = None
 
     if input_path is None:
         agent.rotate_in_place()
@@ -136,7 +151,18 @@ def main(
                     theta = compute_tilt(camera_xyz, point)
                 else:
                     theta = -0.6
-                agent.manipulate(text, theta)
+
+                # Grasp the object using operation if it's available
+                if grasp_object is not None:
+                    grasp_object(
+                        target_object=text,
+                        match_method="feature",
+                        show_object_to_grasp=(not skip_confirmations),
+                    )
+                else:
+                    # Otherwise, use the agent's manipulation method
+                    # This is from OK Robot
+                    agent.manipulate(text, theta, skip_confirmations=skip_confirmations)
                 robot.look_front()
 
             text = None

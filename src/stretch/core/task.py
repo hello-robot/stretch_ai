@@ -93,6 +93,7 @@ class Operation(abc.ABC):
 
     def __call__(self, **kwargs) -> bool:
         """Run the operation."""
+        self.configure(**kwargs)
         if self.can_start():
             self.run()
         else:

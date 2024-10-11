@@ -451,7 +451,13 @@ class RobotAgent(RobotAgentBase):
         )
         return True
 
-    def manipulate(self, text, init_tilt=INIT_HEAD_TILT, base_node=TOP_CAMERA_NODE):
+    def manipulate(
+        self,
+        text,
+        init_tilt=INIT_HEAD_TILT,
+        base_node=TOP_CAMERA_NODE,
+        skip_confirmation: bool = False,
+    ):
         """
         An API for running manipulation. By calling this API, human will ask the robot to pick up objects
         specified by text queries A
@@ -498,7 +504,7 @@ class RobotAgent(RobotAgentBase):
         else:
             gripper_width = 1
 
-        if input("Do you want to do this manipulation? Y or N ") != "N":
+        if skip_confirmation or input("Do you want to do this manipulation? Y or N ") != "N":
             pickup(
                 self.manip_wrapper,
                 rotation,

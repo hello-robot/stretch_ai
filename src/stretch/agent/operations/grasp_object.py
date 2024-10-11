@@ -118,7 +118,7 @@ class GraspObjectOperation(ManagedOperation):
 
     def configure(
         self,
-        target_object: str,
+        target_object: Optional[str] = None,
         show_object_to_grasp: bool = False,
         servo_to_grasp: bool = False,
         show_servo_gui: bool = True,
@@ -140,7 +140,8 @@ class GraspObjectOperation(ManagedOperation):
             talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
             match_method (str, optional): Matching method. Defaults to "class". This is how the policy determines which object mask it should try to grasp.
         """
-        self.target_object = target_object
+        if target_object is not None:
+            self.target_object = target_object
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
         self.show_servo_gui = show_servo_gui
