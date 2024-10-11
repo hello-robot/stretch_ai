@@ -299,7 +299,6 @@ class GraspObjectOperation(ManagedOperation):
     def get_target_mask(
         self,
         servo: Observations,
-        instance: Instance,
         center: Tuple[int, int],
         prev_mask: Optional[np.ndarray] = None,
     ) -> Optional[np.ndarray]:
@@ -307,7 +306,6 @@ class GraspObjectOperation(ManagedOperation):
 
         Args:
             servo (Observations): Servo observation
-            instance (Instance): Instance we are trying to grasp
             prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
 
         Returns:
@@ -409,7 +407,13 @@ class GraspObjectOperation(ManagedOperation):
     ) -> bool:
         """Use visual servoing to grasp the object."""
 
-        self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
+        if instance is not None:
+            self.intro(
+                f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}."
+            )
+        else:
+            self.intro("Visual servoing to grasp {self.target_object} at {self._object_xyz}.")
+
         if self.show_servo_gui:
             self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
 
@@ -434,7 +438,7 @@ class GraspObjectOperation(ManagedOperation):
         if not pregrasp_done:
             # Move to pregrasp position
             self.pregrasp_open_loop(
-                instance.get_center(), distance_from_object=self.pregrasp_distance_from_object
+                self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
             )
             pregrasp_done = True
 
@@ -474,7 +478,7 @@ class GraspObjectOperation(ManagedOperation):
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(
-                servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
+                servo, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
 
             # dilate mask
