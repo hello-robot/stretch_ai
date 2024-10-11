@@ -122,7 +122,7 @@ class GraspObjectOperation(ManagedOperation):
         target_object: Optional[str] = None,
         object_xyz: Optional[np.ndarray] = None,
         show_object_to_grasp: bool = False,
-        servo_to_grasp: bool = False,
+        servo_to_grasp: bool = True,
         show_servo_gui: bool = True,
         show_point_cloud: bool = False,
         reset_observation: bool = False,
@@ -748,7 +748,9 @@ class GraspObjectOperation(ManagedOperation):
             )
 
         # Delete the object
-        self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+        voxel_map = self.agent.get_voxel_map()
+        if voxel_map is not None:
+            self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
             self.agent.robot_say("I think I grasped the object.")
 

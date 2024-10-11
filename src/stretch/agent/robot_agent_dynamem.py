@@ -454,6 +454,10 @@ class RobotAgent(RobotAgentBase):
         )
         return True
 
+    def get_voxel_map(self):
+        """Return the voxel map"""
+        return self.image_processor.voxel_map
+
     def manipulate(
         self,
         text,
