@@ -43,8 +43,8 @@ class GraspObjectOperation(ManagedOperation):
     _success: bool = False
     talk: bool = True
 
-    # offset_from_vertical = -np.pi / 2
-    offset_from_vertical = -np.pi / 4
+    offset_from_vertical = -np.pi / 2
+    # offset_from_vertical = -np.pi / 4
 
     # Task information
     match_method: str = "class"
@@ -736,9 +736,9 @@ class GraspObjectOperation(ManagedOperation):
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
-            ee_pos, ee_rot = model.manip_fk(joint_state)
-            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
-            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            head_pos = obs.camera_pose[:3, 3]
+            dy = np.abs(head_pos[1] - relative_object_xyz[1])
+            dz = np.abs(head_pos[2] - relative_object_xyz[2])
             pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
