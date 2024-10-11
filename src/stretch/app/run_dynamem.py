@@ -117,8 +117,8 @@ def main(
     robot.move_to_nav_posture()
     robot.set_velocity(v=30.0, w=15.0)
 
-    print("- Start robot agent with data collection")
-
+    # Create semantic sensor if visual servoing is enabled
+    print("- Create semantic sensor if visual servoing is enabled")
     if visual_servo:
         semantic_sensor = create_semantic_sensor(
             parameters=parameters,
