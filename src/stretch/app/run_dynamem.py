@@ -73,6 +73,7 @@ def get_mode(mode: str) -> str:
 @click.option(
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
+@click.option("--target_object", type=str, default=None, help="Target object to grasp")
 @click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
@@ -117,7 +118,6 @@ def main(
     robot.set_velocity(v=30.0, w=15.0)
 
     print("- Start robot agent with data collection")
-    parameters["encoder"] = ""
 
     if visual_servo:
         semantic_sensor = create_semantic_sensor(
@@ -126,6 +126,7 @@ def main(
             verbose=False,
         )
     else:
+        parameters["encoder"] = ""
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
