@@ -601,15 +601,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def switch_to_navigation_mode(self):
         """Velocity control of the robot base."""
-        next_action = {"control_mode": "navigation"}
+        next_action = {"control_mode": "navigation", "step": self._iter}
         self.send_action(next_action)
         self._wait_for_mode("navigation")
         assert self.in_navigation_mode()
 
     def switch_to_manipulation_mode(self):
-        next_action = {"control_mode": "manipulation"}
+        next_action = {"control_mode": "manipulation", "step": self._iter}
         self.send_action(next_action)
-        time.sleep(0.1)
         self._wait_for_mode("manipulation")
         assert self.in_manipulation_mode()
 
@@ -1073,16 +1072,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
         block_id = None
         with self._act_lock:
 
-            # Get blocking
-            blocking = next_action.get("nav_blocking", False)
-            block_id = self._iter
             # Send it
+            block_id = max(self._iter, self._last_step + 1)
             next_action["step"] = block_id
-            self._iter += 1
+            self._iter = block_id + 1
 
             # TODO: fix all of this - why do we need to do this?
             # print("SENDING THIS ACTION:", next_action)
+            # print(self._last_step, block_id)
             while self._last_step < block_id:
+                # print(next_action)
                 self.send_socket.send_pyobj(next_action)
                 time.sleep(0.01)
 
