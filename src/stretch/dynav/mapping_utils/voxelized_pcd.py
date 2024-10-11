@@ -197,7 +197,9 @@ class VoxelizedPointcloud:
                 self._entity_ids = self._entity_ids[indices]
 
             if (
-                self._entity_ids is not None
+                self._points is not None
+                and len(self._points) > 0
+                and self._entity_ids is not None
                 and min_samples_clear is not None
                 and min_samples_clear > 0
             ):
