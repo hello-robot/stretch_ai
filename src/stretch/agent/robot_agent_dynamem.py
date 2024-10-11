@@ -47,6 +47,7 @@ from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
 from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMap
+from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 
 
@@ -92,6 +93,15 @@ class RobotAgent(RobotAgentBase):
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
+
+        if self.parameters.get("encoder", None) is not None:
+            self.encoder: BaseImageTextEncoder = get_encoder(
+                self.parameters["encoder"], self.parameters.get("encoder_args", {})
+            )
+        else:
+            self.encoder: BaseImageTextEncoder = None
+
+        # ==============================================
         self.obs_count = 0
         self.obs_history: List[Observations] = []
 

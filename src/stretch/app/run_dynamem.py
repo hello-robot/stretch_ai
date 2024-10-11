@@ -129,7 +129,7 @@ def main(
             verbose=False,
         )
     else:
-        parameters["encoder"] = ""
+        parameters["encoder"] = None
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
