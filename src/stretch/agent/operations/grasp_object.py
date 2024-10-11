@@ -723,7 +723,8 @@ class GraspObjectOperation(ManagedOperation):
         # Get the current base pose of the robot
         xyt = self.robot.get_base_pose()
 
-        # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
+        # Note that these are in the robot's current coordinate frame;
+        # they're not global coordinates, so this is ok to use to compute motions.
         object_xyz = self.get_object_xyz()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
