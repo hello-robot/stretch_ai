@@ -154,6 +154,7 @@ def main(
 
                 # Grasp the object using operation if it's available
                 if grasp_object is not None:
+                    print("Using operation to grasp object:", text)
                     grasp_object(
                         target_object=text,
                         match_method="feature",
@@ -162,6 +163,7 @@ def main(
                 else:
                     # Otherwise, use the agent's manipulation method
                     # This is from OK Robot
+                    print("Using agent to grasp object:", text)
                     agent.manipulate(text, theta, skip_confirmations=skip_confirmations)
                 robot.look_front()
 

@@ -153,6 +153,9 @@ class RobotAgent(RobotAgentBase):
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
+        # Placeholder for the robot navigation space (not used)
+        self.space = None
+
         # Previously sampled goal during exploration
         self._previous_goal = None
 
