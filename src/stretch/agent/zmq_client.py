@@ -615,8 +615,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
     def move_to_nav_posture(self):
         next_action = {"posture": "navigation", "step": self._iter}
-        self.send_action(next_action)
-        self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action={"posture": "navigation"})
+        next_action = self.send_action(next_action)
+        self._wait_for_head(constants.STRETCH_NAVIGATION_Q, resend_action=next_action)
         self._wait_for_mode("navigation")
         self._wait_for_arm(constants.STRETCH_NAVIGATION_Q)
         assert self.in_navigation_mode()
@@ -625,7 +625,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"posture": "manipulation", "step": self._iter}
         self.send_action(next_action)
         time.sleep(0.1)
-        self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action={"posture": "manipulation"})
+        self._wait_for_head(constants.STRETCH_PREGRASP_Q, resend_action=next_action)
         self._wait_for_mode("manipulation")
         self._wait_for_arm(constants.STRETCH_PREGRASP_Q)
         assert self.in_manipulation_mode()
@@ -903,6 +903,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             state (dict): state message from the robot
         """
         with self._state_lock:
+            if "step" in state:
+                self._last_step = max(self._last_step, state["step"])
+                if state["step"] < self._last_step:
+                    logger.warning("Dropping out-of-date state message")
             self._state = state
             self._control_mode = state["control_mode"]
             self._at_goal = state["at_goal"]
