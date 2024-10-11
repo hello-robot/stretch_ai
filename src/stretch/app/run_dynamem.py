@@ -74,6 +74,7 @@ def get_mode(mode: str) -> str:
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
 @click.option("--target_object", type=str, default=None, help="Target object to grasp")
+@click.option("--target_receptacle", type=str, default=None, help="Target receptacle to place")
 @click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
@@ -97,6 +98,8 @@ def main(
     visual_servo: bool = False,
     skip_confirmations: bool = False,
     device_id: int = 0,
+    target_object: str = None,
+    target_receptacle: str = None,
     **kwargs,
 ):
     """
@@ -166,7 +169,10 @@ def main(
             if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
-                text = input("Enter object name: ")
+                if target_object is not None:
+                    text = target_object
+                else:
+                    text = input("Enter object name: ")
                 point = agent.navigate(text)
                 if point is None:
                     print("Navigation Failure!")
@@ -208,7 +214,10 @@ def main(
             point = None
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_navigation_mode()
-                text = input("Enter receptacle name: ")
+                if target_receptacle is not None:
+                    text = target_receptacle
+                else:
+                    text = input("Enter receptacle name: ")
                 point = agent.navigate(text)
                 if point is None:
                     print("Navigation Failure")
