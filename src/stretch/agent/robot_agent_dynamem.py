@@ -93,6 +93,9 @@ class RobotAgent(RobotAgentBase):
         else:
             self.encoder: BaseImageTextEncoder = None
 
+        # Track if we are still running
+        self._running = True
+
         # ==============================================
         self.obs_count = 0
         self.obs_history: List[Observations] = []
