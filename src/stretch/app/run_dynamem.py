@@ -34,7 +34,7 @@ def compute_tilt(camera_xyz, target_xyz):
 
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
-@click.option("--ip", default="127.0.0.1", type=str)
+@click.option("--server_ip", "--server-ip", default="127.0.0.1", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=3)
@@ -52,7 +52,7 @@ def compute_tilt(camera_xyz, target_xyz):
     help="Input path with default value 'output.npy'",
 )
 def main(
-    ip,
+    server_ip,
     manual_wait,
     navigate_home: bool = False,
     explore_iter: int = 3,
@@ -85,41 +85,40 @@ def main(
     semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
     parameters["encoder"] = ""
 
     print("- Start robot agent with data collection")
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    agent = RobotAgent(robot, parameters, semantic_sensor)
 
     if input_path is None:
-        demo.rotate_in_place()
+        agent.rotate_in_place()
     else:
-        demo.image_processor.read_from_pickle(input_path)
+        agent.image_processor.read_from_pickle(input_path)
 
-    demo.save()
+    agent.save()
 
     while True:
         print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
         mode = input("select mode? E/N/S: ")
         mode = mode.upper()
         if mode == "S":
-            demo.image_processor.write_to_pickle()
+            agent.image_processor.write_to_pickle()
             break
         if mode == "E":
             robot.switch_to_navigation_mode()
             for epoch in range(explore_iter):
                 print("\n", "Exploration epoch ", epoch, "\n")
-                if not demo.run_exploration():
+                if not agent.run_exploration():
                     print("Exploration failed! Quitting!")
                     continue
         else:
             text = None
             point = None
-            if input("You want to run manipulation: y/n") != "n":
+            if input("You want to run manipulation? (y/n): ") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
                 text = input("Enter object name: ")
-                point = demo.navigate(text)
+                point = agent.navigate(text)
                 if point is None:
                     print("Navigation Failure!")
                 cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
@@ -128,7 +127,7 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking=True)
 
-            if input("You want to run manipulation: y/n") != "n":
+            if input("You want to run manipulation? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter object name: ")
@@ -137,15 +136,15 @@ def main(
                     theta = compute_tilt(camera_xyz, point)
                 else:
                     theta = -0.6
-                demo.manipulate(text, theta)
+                agent.manipulate(text, theta)
                 robot.look_front()
 
             text = None
             point = None
-            if input("You want to run placing: y/n") != "n":
+            if input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_navigation_mode()
                 text = input("Enter receptacle name: ")
-                point = demo.navigate(text)
+                point = agent.navigate(text)
                 if point is None:
                     print("Navigation Failure")
                 cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
@@ -154,7 +153,7 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.navigate_to(xyt, blocking=True)
 
-            if input("You want to run placing: y/n") != "n":
+            if input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter receptacle name: ")
@@ -163,10 +162,10 @@ def main(
                     theta = compute_tilt(camera_xyz, point)
                 else:
                     theta = -0.6
-                demo.place(text, theta)
+                agent.place(text, theta)
                 robot.move_to_nav_posture()
 
-            demo.save()
+            agent.save()
 
 
 if __name__ == "__main__":
