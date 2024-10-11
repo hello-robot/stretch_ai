@@ -13,7 +13,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -31,8 +31,25 @@ class IKSolverBase(object):
         """returns number of controllable joints under this solver's purview"""
         raise NotImplementedError()
 
-    def compute_fk(self, q) -> Tuple[np.ndarray, np.ndarray]:
+    def compute_fk(
+        self, q, link_name=None, ignore_missing_joints=False
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """given joint values return end-effector position and quaternion associated with it"""
+        raise NotImplementedError()
+
+    def get_frame_pose(
+        self, q: Union[np.ndarray, List[float], dict], node_a: str, node_b: str
+    ) -> np.ndarray:
+        """Given joint values, return the pose of the frame attached to node_a in the frame of node_b.
+
+        Args:
+            q: joint values
+            node_a: name of the node where the frame is attached
+            node_b: name of the node in whose frame the pose is desired
+
+        Returns:
+            4x4 np.ndarray: the pose of the frame attached to node_a in the frame of node_b
+        """
         raise NotImplementedError()
 
     def compute_ik(
@@ -44,6 +61,7 @@ class IKSolverBase(object):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
+        custom_ee_frame: Optional[str] = None,
     ) -> Tuple[np.ndarray, bool, dict]:
 
         """

@@ -54,6 +54,47 @@ def xyt_global_to_base(XYT, current_pose):
     return sophus2xyt(pose_base2target)
 
 
+def pose_global_to_base(pose, current_pose):
+    """
+    Transforms the point cloud into geocentric frame to account for
+    camera position
+    Input:
+        XYZ                     : ...x3
+        current_pose            : base position (x, y, theta (radians))
+    Output:
+        XYZ : ...x3
+    """
+    pose_world2target = pose2sophus(pose)
+    pose_world2base = xyt2sophus(current_pose)
+    pose_base2target = pose_world2base.inverse() * pose_world2target
+    return sophus2pose(pose_base2target)
+
+
+def pose2sophus(pose: np.ndarray) -> sp.SE3:
+    """Convert a 4x4 matrix in se(3) into a Sophus SE3 object.
+
+    Args:
+        pose: np.ndarray of shape (4, 4)
+
+    Returns:
+        sp.SE3
+    """
+    return sp.SE3(pose[:3, :3], pose[:3, 3])
+
+
+def sophus2pose(pose: sp.SE3) -> np.ndarray:
+    """Convert a Sophus SE3 object into a 4x4 matrix in se(3).
+
+    Args:
+        pose: sp.SE3
+
+    Returns:
+        np.ndarray of shape (4, 4)
+    """
+    pose_mat = pose.matrix()
+    return pose_mat
+
+
 def pose_global_to_base_xyt(pose_world2target: Pose, pose_world2base: Pose) -> np.ndarray:
     """Transform a pose from global to base frame, getting the relative xyt.
     Input:

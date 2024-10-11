@@ -46,6 +46,22 @@ class Operation(abc.ABC):
                 )
             self.on_failure = self
 
+        self.status = "idle"
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def get_status(self) -> str:
+        """Return the status of the operation."""
+        return self.status
+
+    def set_status(self, status: str):
+        """Set the status of the operation."""
+        self.status = status
+
     @property
     def name(self) -> str:
         """Return the name of the operation."""

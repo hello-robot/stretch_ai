@@ -13,7 +13,7 @@ import click
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupTask
+from stretch.agent.task.pickup import PickupExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
@@ -36,12 +36,6 @@ from stretch.perception import create_semantic_sensor
     default="feature",
     help="Method to match objects to pick up. Options: class, feature.",
     show_default=True,
-)
-@click.option(
-    "--mode",
-    default="one_shot",
-    help="Mode of operation for the robot.",
-    type=click.Choice(["one_shot", "all"]),
 )
 @click.option(
     "--llm",
@@ -77,6 +71,17 @@ from stretch.perception import create_semantic_sensor
     help="Name of the receptacle to place the object in",
 )
 @click.option(
+    "--input-path",
+    "-i",
+    "--input_file",
+    "--input-file",
+    "--input",
+    "--input_path",
+    type=click.Path(),
+    default="",
+    help="Path to a saved datafile from a previous exploration of the world.",
+)
+@click.option(
     "--use_llm",
     "--use-llm",
     is_flag=True,
@@ -87,6 +92,12 @@ from stretch.perception import create_semantic_sensor
     "--use-voice",
     is_flag=True,
     help="Set to use voice input",
+)
+@click.option(
+    "--radius",
+    default=3.0,
+    type=float,
+    help="Radius of the circle around initial position where the robot is allowed to go.",
 )
 @click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
@@ -99,12 +110,13 @@ def main(
     reset: bool = False,
     target_object: str = "",
     receptacle: str = "",
-    mode: str = "one_shot",
     match_method: str = "feature",
     llm: str = "gemma",
     use_llm: bool = False,
     use_voice: bool = False,
     open_loop: bool = False,
+    radius: float = 3.0,
+    input_path: str = "",
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -120,16 +132,26 @@ def main(
         verbose=verbose,
     )
 
-    # Start moving the robot around
-    grasp_client = None
-
     # Agents wrap the robot high level planning interface for now
-    agent = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    agent = RobotAgent(robot, parameters, semantic_sensor)
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
+    if radius is not None and radius > 0:
+        agent.set_allowed_radius(radius)
+
+    # Load a PKL file from a previous run and process it
+    # This will use ICP to match current observations to the previous ones
+    # ANd then update the map with the new observations
+    if input_path is not None and len(input_path) > 0:
+        agent.load_map(input_path)
+
+    # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
+    executor = PickupExecutor(
+        robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+    )
 
     # Get the LLM client
     llm_client = None
@@ -138,8 +160,9 @@ def main(
         chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
 
     # Parse things and listen to the user
-    while robot.running:
-        agent.reset()
+    ok = True
+    while robot.running and ok:
+        # agent.reset()
 
         say_this = None
         if llm_client is None:
@@ -148,48 +171,19 @@ def main(
                 target_object = input("Enter the target object: ")
             if len(receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
+            llm_response = [("pickup", target_object), ("place", receptacle)]
         else:
             # Call the LLM client and parse
             llm_response = chat_wrapper.query()
-            target_object = prompt.get_object(llm_response)
-            receptacle = prompt.get_receptacle(llm_response)
-            say_this = prompt.get_say_this(llm_response)
-            # print("LLM response:", llm_response)
-            # print("Target object:", target_object)
-            # print("Receptacle:", receptacle)
-            # print("Say this:", say_this)
 
-        if say_this is not None:
-            chat_wrapper.say(say_this)
-            # agent.say(say_this)
-
-        if len(target_object) == 0 or len(receptacle) == 0:
-            # logger.error("You need to enter a target object and receptacle")
-            continue
-
-        # After the robot has started...
-        try:
-            pickup_task = PickupTask(
-                agent,
-                target_object=target_object,
-                target_receptacle=receptacle,
-                matching=match_method,
-                use_visual_servoing_for_grasp=not open_loop,
-            )
-            task = pickup_task.get_task(add_rotate=True, mode=mode)
-        except Exception as e:
-            print(f"Error creating task: {e}")
-            robot.stop()
-            raise e
-
-        # Execute the task
-        task.run()
+        ok = executor(llm_response)
 
         if reset:
             # Send the robot home at the end!
             agent.go_home()
 
-        break
+        if llm_client is None:
+            break
 
     # At the end, disable everything
     robot.stop()

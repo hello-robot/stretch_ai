@@ -17,7 +17,10 @@ import numpy as np
 import urchin as urdf_loader
 from trimesh import Trimesh
 
+from stretch.motion import HelloStretchIdx
+
 pkg_path = str(importlib_resources.files("stretch_urdf"))
+
 model_name = "SE3"  # RE1V0, RE2V0, SE3
 tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
 urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
@@ -137,3 +140,10 @@ class URDFVisualizer:
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
         return self.urdf.link_fk(lk_cfg, link=link_name)
+
+    def get_transform_fk(self, q, link_name):
+        state = q.copy()
+        cfg = {}
+        for k in HelloStretchIdx.name_to_idx:
+            cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
+        return self.get_transform(cfg, link_name)

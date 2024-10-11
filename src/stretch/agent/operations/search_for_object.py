@@ -13,6 +13,7 @@ import numpy as np
 import torch
 from PIL import Image
 
+import stretch.core.status as status
 from stretch.agent.base import ManagedOperation
 from stretch.mapping.instance import Instance
 
@@ -33,6 +34,10 @@ class ManagedSearchOperation(ManagedOperation):
     @property
     def object_class(self) -> str:
         return self._object_class
+
+    @property
+    def sayable_object_class(self) -> str:
+        return self._object_class.replace("_", " ")
 
     def __init__(self, *args, match_method="feature", **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,6 +93,8 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
         # Update world map
         self.intro("Searching for a receptacle on the floor.")
+        self.set_status(status.RUNNING)
+
         # Must move to nav before we can do anything
         self.robot.move_to_nav_posture()
         # Now update the world
@@ -112,6 +119,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         if not self.navigation_space.is_valid(start):
             self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
+            )
+            self.error(
+                "This means there was an issue with navigation. Please disable the robot and move it to a safe location."
             )
             breakpoint()
 
@@ -138,6 +148,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
         # If no receptacle, pick a random point nearby and just wander around
         if self.agent.current_receptacle is None:
+            self.set_status(status.EXPLORING)
             print("None found. Try moving to frontier.")
             # Find a point on the frontier and move there
             res = self.agent.plan_to_frontier(start=start)
@@ -153,9 +164,12 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 self.agent.reset_object_plans()
             else:
                 self.error("Failed to find a reachable frontier.")
-                raise RuntimeError("Failed to find a reachable frontier.")
+                self.set_status(status.EXPLORATION_IMPOSSIBLE)
+                self.agent.go_home()
         else:
             self.cheer(f"Found a receptacle!")
+            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+            self.set_status(status.SUCCEEDED)
             view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("receptacle.png")
@@ -285,6 +299,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.agent.reset_object_plans()
         else:
             self.cheer(f"Found object of {self.object_class}!")
+            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
             view = self.agent.current_object.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("object.png")

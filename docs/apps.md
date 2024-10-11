@@ -226,3 +226,13 @@ You can add the `--reset` flag to make it go back to the start position. The def
 ```
 python -m stretch.app.pickup --reset
 ```
+
+## Experimental
+
+### VLM Planning
+
+This is an experimental app that uses the voxel map to plan a path to a goal. It is not yet fully functional.
+
+```bash
+python -m stretch.app.vlm_planning
+```

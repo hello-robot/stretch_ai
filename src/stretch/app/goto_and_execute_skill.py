@@ -204,7 +204,6 @@ def demo_main(
         semantic_sensor = None
 
     print("- Start robot agent")
-    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
 
     pos_err_threshold = parameters["trajectory_pos_err_threshold"]
     rot_err_threshold = parameters["trajectory_rot_err_threshold"]
@@ -215,7 +214,7 @@ def demo_main(
     input_path = Path(input_path)
     print("Loading:", input_path)
 
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client, voxel_map=None)
+    demo = RobotAgent(robot, parameters, semantic_sensor, voxel_map=None)
     voxel_map = demo.voxel_map
     print("Reading from pkl file of raw observations...")
     voxel_map.read_from_pickle(input_path, num_frames=-1)

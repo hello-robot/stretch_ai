@@ -17,8 +17,12 @@ import numpy as np
 import pinocchio
 from scipy.spatial.transform import Rotation as R
 
-import stretch.utils.logger as logger
 from stretch.motion.base.ik_solver_base import IKSolverBase
+from stretch.utils.logger import Logger
+
+# Create a logger and suppress info messages
+logger = Logger(__name__)
+logger.hide_info()
 
 # --DEFAULTS--
 # Error tolerances
@@ -99,7 +103,7 @@ class PinocchioIKSolver(IKSolverBase):
         return [self.model.names[i + 1] for i in range(self.model.nq)]
 
     def _qmap_control2model(
-        self, q_input: np.ndarray, ignore_missing_joints: bool = False
+        self, q_input: Union[np.ndarray, dict], ignore_missing_joints: bool = False
     ) -> np.ndarray:
         """returns a full joint configuration from a partial joint configuration"""
         q_out = self.q_neutral.copy()
@@ -133,6 +137,44 @@ class PinocchioIKSolver(IKSolverBase):
                 q_out[i] = q_input[joint_idx]
 
         return q_out
+
+    def get_frame_pose(
+        self,
+        config: Union[np.ndarray, dict],
+        node_a: str,
+        node_b: str,
+        ignore_missing_joints: bool = False,
+    ) -> np.ndarray:
+        """
+        Get a transformation matrix transforming from node_a frame to node_b frame
+
+        Args:
+            config: joint values
+            node_a: name of the first node
+            node_b: name of the second node
+            ignore_missing_joints: whether to ignore missing joints in the configuration
+
+        Returns:
+            transformation matrix from node_a to node_b
+        """
+        q_model = self._qmap_control2model(config, ignore_missing_joints=ignore_missing_joints)
+        # print('q_model', q_model)
+        pinocchio.forwardKinematics(self.model, self.data, q_model)
+        frame_idx1 = [f.name for f in self.model.frames].index(node_a)
+        frame_idx2 = [f.name for f in self.model.frames].index(node_b)
+        # print(frame_idx1)
+        # print(frame_idx2)
+        # print(self.model.getFrameId(node_a))
+        # print(self.model.getFrameId(node_b))
+        # frame_idx1 = self.model.getFrameId(node_a)
+        # frame_idx2 = self.model.getFrameId(node_b)
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx1)
+        placement_frame1 = self.data.oMf[frame_idx1]
+        pinocchio.updateFramePlacement(self.model, self.data, frame_idx2)
+        placement_frame2 = self.data.oMf[frame_idx2]
+        # print('pin 1', placement_frame1)
+        # print('pin 2', placement_frame2)
+        return placement_frame2.inverse() * placement_frame1
 
     def compute_fk(
         self, config: np.ndarray, link_name: str = None, ignore_missing_joints: bool = False
@@ -171,6 +213,7 @@ class PinocchioIKSolver(IKSolverBase):
         num_attempts: int = 1,
         verbose: bool = False,
         ignore_missing_joints: bool = False,
+        custom_ee_frame: Optional[str] = None,
     ) -> Tuple[np.ndarray, bool, dict]:
         """given end-effector position and quaternion, return joint values.
 
@@ -181,6 +224,10 @@ class PinocchioIKSolver(IKSolverBase):
             max iterations: time budget in number of steps; included for compatibility with pb
         """
         i = 0
+        if custom_ee_frame is not None:
+            _ee_frame_idx = [f.name for f in self.model.frames].index(custom_ee_frame)
+        else:
+            _ee_frame_idx = self.ee_frame_idx
 
         if q_init is None:
             q = self.q_neutral.copy()
@@ -196,9 +243,8 @@ class PinocchioIKSolver(IKSolverBase):
         desired_ee_pose = pinocchio.SE3(R.from_quat(quat_desired).as_matrix(), pos_desired)
         while True:
             pinocchio.forwardKinematics(self.model, self.data, q)
-            pinocchio.updateFramePlacement(self.model, self.data, self.ee_frame_idx)
-
-            dMi = desired_ee_pose.actInv(self.data.oMf[self.ee_frame_idx])
+            pinocchio.updateFramePlacement(self.model, self.data, _ee_frame_idx)
+            dMi = desired_ee_pose.actInv(self.data.oMf[_ee_frame_idx])
             err = pinocchio.log(dMi).vector
             if verbose:
                 print(f"[pinocchio_ik_solver] iter={i}; error={err}")
@@ -212,7 +258,7 @@ class PinocchioIKSolver(IKSolverBase):
                 self.model,
                 self.data,
                 q,
-                self.ee_frame_idx,
+                _ee_frame_idx,
                 pinocchio.ReferenceFrame.LOCAL,
             )
             v = -J.T.dot(np.linalg.solve(J.dot(J.T) + self.DAMP * np.eye(6), err))
