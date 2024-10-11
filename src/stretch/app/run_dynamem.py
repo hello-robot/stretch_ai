@@ -17,6 +17,7 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 
 # Mapping and perception
 from stretch.core.parameters import get_parameters
+from stretch.perception import create_semantic_sensor
 
 
 def compute_tilt(camera_xyz, target_xyz):
@@ -33,6 +34,28 @@ def compute_tilt(camera_xyz, target_xyz):
     return -np.arctan2(vector[2], np.linalg.norm(vector[:2]))
 
 
+def get_mode(mode: str) -> str:
+
+    if mode == "navigation":
+        return "N"
+    elif mode == "explore":
+        return "E"
+    elif mode == "manipulation":
+        return "manipulation"
+    elif mode == "save":
+        return "S"
+    else:
+        mode = None
+        print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
+        while mode is None:
+            mode = input("select mode? E/N/S: ")
+            if mode == "E" or mode == "N" or mode == "S":
+                break
+            else:
+                print("Invalid mode. Please select again.")
+        return mode
+
+
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
 @click.option("--server_ip", "--server-ip", default="127.0.0.1", type=str)
@@ -41,6 +64,7 @@ def compute_tilt(camera_xyz, target_xyz):
 @click.option("--explore-iter", default=3)
 @click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
+@click.option("--mode", default="", type=click.Choice(["navigation", "manipulation", "save", ""]))
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)
 @click.option(
@@ -56,12 +80,14 @@ def compute_tilt(camera_xyz, target_xyz):
     default=None,
     help="Input path with default value 'output.npy'",
 )
+@click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
 def main(
     server_ip,
     manual_wait,
     navigate_home: bool = False,
     explore_iter: int = 3,
     re: int = 1,
+    mode: str = "navigation",
     method: str = "dynamem",
     env: int = 1,
     test: int = 1,
@@ -69,6 +95,7 @@ def main(
     robot_ip: str = "",
     visual_servo: bool = False,
     skip_confirmations: bool = False,
+    device_id: int = 0,
     **kwargs,
 ):
     """
@@ -89,10 +116,17 @@ def main(
     robot.move_to_nav_posture()
     robot.set_velocity(v=30.0, w=15.0)
 
-    semantic_sensor = None
-
     print("- Start robot agent with data collection")
     parameters["encoder"] = ""
+
+    if visual_servo:
+        semantic_sensor = create_semantic_sensor(
+            parameters=parameters,
+            device_id=device_id,
+            verbose=False,
+        )
+    else:
+        semantic_sensor = None
 
     print("- Start robot agent with data collection")
     agent = RobotAgent(robot, parameters, semantic_sensor)
@@ -113,8 +147,7 @@ def main(
     agent.save()
 
     while True:
-        print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
-        mode = input("select mode? E/N/S: ")
+        mode = get_mode(mode)
         mode = mode.upper()
         if mode == "S":
             agent.image_processor.write_to_pickle()
