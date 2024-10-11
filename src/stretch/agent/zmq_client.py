@@ -1082,11 +1082,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             # TODO: fix all of this - why do we need to do this?
             # print("SENDING THIS ACTION:", next_action)
-            self.send_socket.send_pyobj(next_action)
-            time.sleep(0.01)
-            # TODO: why do we send the action twice?
-            # print("SENDING THIS ACTION:", next_action)
-            self.send_socket.send_pyobj(next_action)
+            while self._last_step < block_id:
+                self.send_socket.send_pyobj(next_action)
+                time.sleep(0.01)
 
             # For tracking goal
             if "xyt" in next_action:
