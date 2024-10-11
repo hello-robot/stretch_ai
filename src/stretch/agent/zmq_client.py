@@ -1200,6 +1200,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """Is the client running"""
         return not self._finish
 
+    def say(self, text: str):
+        """Send a text message to the robot to say. Will be spoken by the robot's text-to-speech system asynchronously."""
+        next_action = {"say": text}
+        self.send_action(next_action)
+
     def blocking_spin_state(self, verbose: bool = False):
         """Listen for incoming observations and update internal state"""
 

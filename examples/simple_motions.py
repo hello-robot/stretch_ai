@@ -38,27 +38,32 @@ print("Done")
 # Move the robot back to origin
 # move_base_to() is only allowed in navigation mode
 print("Move the robot back to origin")
+robot.say("Moving to origin")
 print("robot.move_base_to([0, 0, 0])")
 robot.move_base_to([0, 0, 0])
 print("Done")
 
 # Move the robot 0.5m forward
 print("Move the robot 0.25m forward")
+robot.say("Moving forward 0.25 meters")
 print("robot.move_base_to([0.25, 0, 0], relative=True)")
 robot.move_base_to([0.5, 0, 0], relative=True)
 print("Done")
 
 # Rotate the robot 90 degrees to the left
 print("Rotate the robot 90 degrees to the left")
+robot.say("Rotating 90 degrees to the left")
 print("robot.move_base_to([0, 0, 3.14159/2], relative=True)")
 robot.move_base_to([0, 0, 3.14159 / 2], relative=True, verbose=True)
 print("Done")
 
 # And to the right
 print("Rotate the robot 90 degrees to the right")
+robot.say("Rotating 90 degrees to the right")
 print("robot.move_base_to([0, 0, -3.14159/2], relative=True, blocking=True)")
 robot.move_base_to([0, 0, -3.14159 / 2], relative=True, verbose=True)
 
 print("Stop the robot")
+robot.say("Stopping")
 print("robot.stop()")
 robot.stop()
