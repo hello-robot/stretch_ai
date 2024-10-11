@@ -33,7 +33,7 @@ def compute_tilt(camera_xyz, target_xyz):
 
 
 @click.command()
-@click.option("--ip", default="100.108.67.79", type=str)
+@click.option("--server-ip", "--server_ip", default="127.0.0.1", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=-1)
@@ -45,7 +45,7 @@ def compute_tilt(camera_xyz, target_xyz):
     help="Input path with default value 'output.npy'",
 )
 def main(
-    ip,
+    server_ip,
     manual_wait,
     navigate_home: bool = False,
     explore_iter: int = 5,
@@ -69,7 +69,7 @@ def main(
         parameters["exploration_steps"] = explore_iter
 
     print("- Start robot agent with data collection")
-    demo = RobotAgentMDP(robot, parameters, ip=ip, re=re)
+    demo = RobotAgentMDP(robot, parameters, server_ip=server_ip, re=re)
 
     while input("STOP? Y/N") != "Y":
         if input("You want to run manipulation: y/n") == "y":
