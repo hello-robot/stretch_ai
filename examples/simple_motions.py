@@ -75,6 +75,15 @@ time.sleep(0.5)
 print("robot.move_base_to([0, 0, -3.14159/2], relative=True, blocking=True)")
 robot.move_base_to([0, 0, -3.14159 / 2], relative=True, verbose=True)
 
+# Move the robot back to origin
+# move_base_to() is only allowed in navigation mode
+print("Move the robot back to origin")
+robot.say("Moving back to origin to finish")
+time.sleep(0.5)
+print("robot.move_base_to([0, 0, 0])")
+robot.move_base_to([0, 0, 0])
+print("Done")
+
 print("Stop the robot")
 robot.say("Stopping")
 print("robot.stop()")
