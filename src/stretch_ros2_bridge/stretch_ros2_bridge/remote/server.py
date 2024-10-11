@@ -109,12 +109,14 @@ class ZmqServer(BaseZmqServer):
             "at_goal": self.client.at_goal(),
             "is_homed": self.client.is_homed,
             "is_runstopped": self.client.is_runstopped,
+            "step": self._last_step,
         }
         return message
 
     @override
     def handle_action(self, action: Dict[str, Any]):
         """Handle an action from the client."""
+
         if "posture" in action:
             if action["posture"] == "manipulation":
                 self.client.switch_to_busy_mode()
@@ -276,6 +278,7 @@ class ZmqServer(BaseZmqServer):
             "head_cam/depth_scaling": self.depth_scaling,
             "head_cam/pose": self.client.head_camera_pose,
             "robot/config": obs.joint,
+            "step": self._last_step,
         }
         message.update(d405_output)
         return message
