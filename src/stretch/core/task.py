@@ -188,6 +188,7 @@ class Task:
                         self.info(f"Transitioning to {self.current_operation.name}")
                 else:
                     # And if we failed
+                    self.info(f"Operation {self.current_operation.name} failed.")
                     self.current_operation = self.current_operation.on_failure
             else:
                 self.info(f"Operation {self.current_operation.name} cannot start.")

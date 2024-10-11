@@ -32,6 +32,7 @@ def get_task(robot, demo, target_object):
             clear_voxel_map=True,
             show_instances_detected=False,
             match_method="feature",
+            arm_height=0.6,
         )
         grasp_object = GraspObjectOperation(
             "grasp_the_object",
@@ -96,11 +97,8 @@ def main(
         confidence_threshold=0.3,
     )
 
-    # Start moving the robot around
-    grasp_client = None
-
     # Agents wrap the robot high level planning interface for now
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    demo = RobotAgent(robot, parameters, semantic_sensor)
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
     task = get_task(robot, demo, target_object)

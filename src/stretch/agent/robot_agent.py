@@ -505,6 +505,10 @@ class RobotAgent:
             instances=self.semantic_sensor is not None,
         )
 
+    def is_running(self) -> bool:
+        """Return whether the robot agent is still running."""
+        return self._running and self.robot.running
+
     def get_observations_loop(self) -> None:
         """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
 

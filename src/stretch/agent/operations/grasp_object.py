@@ -43,6 +43,9 @@ class GraspObjectOperation(ManagedOperation):
     _success: bool = False
     talk: bool = True
 
+    # offset_from_vertical = -np.pi / 2
+    offset_from_vertical = -np.pi / 4
+
     # Task information
     match_method: str = "class"
     target_object: Optional[str] = None
@@ -55,6 +58,7 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = True
     show_point_cloud: bool = False
+    delete_object_after_grasp: bool = False
 
     # ------------------------
     # These are the most important parameters for tuning to make the grasping "feel" nice
@@ -129,6 +133,7 @@ class GraspObjectOperation(ManagedOperation):
         grasp_loose: bool = False,
         talk: bool = True,
         match_method: str = "class",
+        delete_object_after_grasp: bool = True,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -152,6 +157,7 @@ class GraspObjectOperation(ManagedOperation):
         self.show_servo_gui = show_servo_gui
         self.show_point_cloud = show_point_cloud
         self.reset_observation = reset_observation
+        self.delete_object_after_grasp = delete_object_after_grasp
         self.grasp_loose = grasp_loose
         self.talk = talk
         self.match_method = match_method
@@ -738,7 +744,7 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
@@ -753,9 +759,10 @@ class GraspObjectOperation(ManagedOperation):
             )
 
         # Delete the object
-        voxel_map = self.agent.get_voxel_map()
-        if voxel_map is not None:
-            voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+        if self.delete_object_after_grasp:
+            voxel_map = self.agent.get_voxel_map()
+            if voxel_map is not None:
+                voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
             self.agent.robot_say("I think I grasped the object.")
 

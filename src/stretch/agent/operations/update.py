@@ -25,6 +25,8 @@ class UpdateOperation(ManagedOperation):
     move_head: Optional[bool] = None
     target_object: str = "cup"
     match_method: str = "feature"
+    arm_height: float = 0.4
+    on_floor_only: bool = False
 
     def set_target_object_class(self, object_class: str):
         """Set the target object class for the operation.
@@ -46,6 +48,7 @@ class UpdateOperation(ManagedOperation):
         clear_voxel_map=False,
         target_object: str = "cup",
         match_method: str = "feature",
+        arm_height: float = 0.4,
     ):
         """Configure the operation with the given parameters."""
         self.move_head = move_head
@@ -54,6 +57,7 @@ class UpdateOperation(ManagedOperation):
         self.clear_voxel_map = clear_voxel_map
         self.target_object = target_object
         self.match_method = match_method
+        self.arm_height = arm_height
         if self.match_method not in ["class", "feature"]:
             raise ValueError(f"Unknown match method {self.match_method}.")
         print("---- CONFIGURING UPDATE OPERATION ----")
@@ -63,6 +67,7 @@ class UpdateOperation(ManagedOperation):
         print("Clear voxel map is set to", self.clear_voxel_map)
         print("Target object is set to", self.target_object)
         print("Match method is set to", self.match_method)
+        print("Arm height is set to", self.arm_height)
         print("--------------------------------------")
 
     def run(self):
@@ -74,7 +79,7 @@ class UpdateOperation(ManagedOperation):
             self.warn("Robot is not in manipulation mode. Moving to manip posture.")
             self.robot.move_to_manip_posture()
             time.sleep(2.0)
-        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        self.robot.arm_to([0.0, self.arm_height, 0.05, 0, -np.pi / 4, 0], blocking=True)
         xyt = self.robot.get_base_pose()
 
         # Now update the world
@@ -85,7 +90,7 @@ class UpdateOperation(ManagedOperation):
 
         # Notify and move the arm back to normal. Showing the map is optional.
         print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
-        self.robot.arm_to([0.0, 0.4, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        self.robot.arm_to([0.0, self.arm_height, 0.05, 0, -np.pi / 4, 0], blocking=True)
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
@@ -134,18 +139,25 @@ class UpdateOperation(ManagedOperation):
         print("Check explored instances for reachable receptacles:")
         for i, (score, instance) in enumerate(zip(scores, instances)):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
-            print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
+            print(
+                f" - Found instance {i} with name {name} and global id {instance.global_id}: score = {score}."
+            )
 
             if self.show_instances_detected:
                 self.show_instance(instance)
 
-            relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
-            if len(relations) == 0:
-                # This may or may not be what we want, but it certainly is not on the floor
-                continue
+            if self.on_floor_only:
+                relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
+                if len(relations) == 0:
+                    # This may or may not be what we want, but it certainly is not on the floor
+                    continue
 
             object_options.append(instance)
             dist = np.linalg.norm(instance.point_cloud.mean(axis=0).cpu().numpy()[:2] - start[:2])
+            if dist < 1.0:
+                self.agent.current_object = instance
+                return
+
             plan = self.plan_to_instance_for_manipulation(instance, start=start)
             if plan.success:
                 print(f" - Found a reachable object at {instance.get_best_view().get_pose()}.")

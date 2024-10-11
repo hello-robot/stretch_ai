@@ -134,6 +134,7 @@ def main(
 
     print("- Start robot agent with data collection")
     agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent.start()
 
     if visual_servo:
         grasp_object = GraspObjectOperation(
@@ -150,7 +151,7 @@ def main(
 
     agent.save()
 
-    while True:
+    while agent.running:
         mode = get_mode(mode)
         mode = mode.upper()
         if mode == "S":
@@ -203,6 +204,7 @@ def main(
                         match_method="feature",
                         show_object_to_grasp=False,
                         show_servo_gui=True,
+                        delete_object_after_grasp=False,
                     )
                 else:
                     # Otherwise, use the agent's manipulation method
