@@ -116,6 +116,11 @@ class ZmqServer(BaseZmqServer):
     @override
     def handle_action(self, action: Dict[str, Any]):
         """Handle an action from the client."""
+
+        if action["step"] <= self._last_step:
+            logger.warning(f"Skipping duplicate action with step = {action['step']}")
+            return
+
         if "posture" in action:
             if action["posture"] == "manipulation":
                 self.client.switch_to_busy_mode()
