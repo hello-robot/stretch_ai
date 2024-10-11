@@ -202,7 +202,7 @@ def main(
                         object_xyz=point,
                         match_method="feature",
                         show_object_to_grasp=False,
-                        show_servo_gui=False,
+                        show_servo_gui=True,
                     )
                 else:
                     # Otherwise, use the agent's manipulation method
