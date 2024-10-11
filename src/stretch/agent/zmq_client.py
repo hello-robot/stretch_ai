@@ -196,6 +196,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._act_lock = Lock()
         self._state_lock = Lock()
         self._servo_lock = Lock()
+        self._send_lock = Lock()
 
         if enable_rerun_server:
             from stretch.visualization.rerun import RerunVsualizer
@@ -672,7 +673,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 at_goal = True
                 at_goal_t = timeit.default_timer()
             elif resend_action is not None:
-                self.send_socket.send_pyobj(resend_action)
+                self.send_message(resend_action)
             else:
                 at_goal = False
 
@@ -716,7 +717,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 return True
 
             if resend_action is not None:
-                self.send_socket.send_pyobj(resend_action)
+                self.send_message(resend_action)
 
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
@@ -844,7 +845,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # Resend the action if we are not moving for some reason and it's been provided
             if resend_action is not None and not close_to_goal:
                 # Resend the action
-                self.send_socket.send_pyobj(resend_action)
+                self.send_action(resend_action)
 
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
@@ -888,6 +889,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 and self._obs["step"] >= self._iter - 1
             )
         return obs_ok
+
+    def send_message(self, message: dict):
+        """Send a message to the robot"""
+        with self._send_lock:
+            self.send_socket.send_pyobj(message)
 
     def _update_pose_graph(self, obs):
         """Update internal pose graph"""
@@ -1082,7 +1088,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # print(self._last_step, block_id)
             while self._last_step < block_id:
                 # print(next_action)
-                self.send_socket.send_pyobj(next_action)
+                self.send_message(next_action)
                 time.sleep(0.01)
 
             # For tracking goal
