@@ -786,8 +786,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # Minor delay at the end - give it time to get new messages
             time.sleep(0.01)
 
+            if not self.is_up_to_date():
+                if verbose:
+                    print("Waiting for client to receive and process action")
+                continue
+
             with self._state_lock:
                 if self._state is None:
+                    print("waiting for obs")
+                    continue
+
+            with self._obs_lock:
+                if self._obs is None:
                     print("waiting for obs")
                     continue
 
@@ -868,6 +878,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
             self._last_step = obs["step"]
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
+
+    def is_up_to_date(self):
+        """Check if the robot is up to date with the latest observation"""
+        with self._obs_lock:
+            # print("obs", self._obs["step"], self._last_step, self._iter)
+            obs_ok = (
+                self._obs is not None
+                and self._obs["step"] >= self._last_step
+                and self._obs["step"] >= self._iter - 1
+            )
+        return obs_ok
 
     def _update_pose_graph(self, obs):
         """Update internal pose graph"""
