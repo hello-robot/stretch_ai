@@ -54,14 +54,6 @@ from stretch.perception.wrapper import OvmmPerception
 class RobotAgent(RobotAgentBase):
     """Basic demo code. Collects everything that we need to make this work."""
 
-    _retry_on_fail: bool = False
-    debug_update_timing: bool = False
-    update_rerun_every_time: bool = True
-    normalize_embeddings: bool = False
-
-    _before_head_motion_sleep_t = 0.25
-    _after_head_motion_sleep_t = 0.1
-
     def __init__(
         self,
         robot: AbstractRobotClient,
