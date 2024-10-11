@@ -17,12 +17,14 @@ print("Done")
 
 # Turn head towards robot's hand
 print("Turn head towards robot's hand")
+robot.say("Moving head to look at hand")
 print("robot.move_to_manip_posture()")
 robot.move_to_manip_posture()
 print("Done")
 
 # Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
 print("Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height")
+robot.say("Moving in manipulation mode")
 print("robot.arm_to([0.1, 0.5, 0, 0, 0, 0], blocking=True)")
 robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
 print("Done")
@@ -31,6 +33,7 @@ print("Done")
 # In navigation mode, we can stream velocity commands to the base for smooth motions, and base
 # rotations are enabled
 print("Turn head towards robot's base and switch base to navigation mode")
+robot.say("Switching to navigation mode")
 print("robot.move_to_nav_posture()")
 robot.move_to_nav_posture()
 print("Done")
