@@ -754,7 +754,7 @@ class GraspObjectOperation(ManagedOperation):
         # Delete the object
         voxel_map = self.agent.get_voxel_map()
         if voxel_map is not None:
-            self.agent.voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+            voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
             self.agent.robot_say("I think I grasped the object.")
 
