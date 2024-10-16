@@ -702,8 +702,8 @@ class SparseVoxelMapNavigationSpace(XYT):
         self,
         alignments,
         outside_frontier,
-        alignment_smooth=8,
-        alignment_threshold=0.14,
+        alignment_smooth=15,
+        alignment_threshold=0.13,
         debug=False,
     ):
         alignments = np.ma.masked_array(alignments, ~outside_frontier)

@@ -210,7 +210,7 @@ def main(
                     # Otherwise, use the agent's manipulation method
                     # This is from OK Robot
                     print("Using agent to grasp object:", text)
-                    agent.manipulate(text, theta, skip_confirmations=skip_confirmations)
+                    agent.manipulate(text, theta, skip_confirmation=skip_confirmations)
                 robot.look_front()
 
             text = None

@@ -69,8 +69,8 @@ class GraspObjectOperation(ManagedOperation):
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
     # align_x_threshold: int = 15
-    align_x_threshold: int = 20
-    align_y_threshold: int = 15
+    align_x_threshold: int = 50
+    align_y_threshold: int = 50
 
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.25
@@ -673,7 +673,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)

@@ -36,9 +36,6 @@ from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from torchvision import transforms
 from transformers import AutoModel, AutoProcessor, AutoTokenizer
-
-# from segment_anything import sam_model_registry, SamPredictor
-# from transformers import AutoProcessor, OwlViTForObjectDetection
 from ultralytics import YOLOWorld
 
 import stretch.utils.logger as logger
@@ -148,7 +145,7 @@ class ImageProcessor:
         rerun: bool = True,
         # static: bool = True,
         log=None,
-        image_shape=(480, 360),
+        image_shape=(360, 270),
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
@@ -392,13 +389,13 @@ class ImageProcessor:
         # the object so that we can make sure the robot looks at the object after navigation
         traj = []
         if waypoints is not None:
-            finished = len(waypoints) <= 6 and mode == "navigation"
+            finished = len(waypoints) <= 5 and mode == "navigation"
             # if finished:
             #     self.traj = None
             # else:
             #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
-                waypoints = waypoints[:6]
+                waypoints = waypoints[:5]
             traj = self.planner.clean_path_for_xy(waypoints)
             if finished:
                 traj.append([np.nan, np.nan, np.nan])
@@ -584,29 +581,6 @@ class ImageProcessor:
     def run_mask_clip(self, rgb, mask, world_xyz):
 
         with torch.no_grad():
-            # results = self.yolo_model.predict(
-            #     rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False
-            # )
-            # xyxy_tensor = results[0].boxes.xyxy
-            # if len(xyxy_tensor) == 0:
-            #     return
-            # bounding_boxes = torch.stack(
-            #     sorted(
-            #         xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-            #     ),
-            #     dim=0,
-            # )
-            # bbox_mask = torch.zeros_like(mask)
-            # for box in bounding_boxes:
-            #     tl_x, tl_y, br_x, br_y = box
-            #     bbox_mask[
-            #         max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-            #         max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-            #     ] = 1
-            # bbox_mask = bbox_mask.bool()
-            # # print(mask, bbox_mask)
-            # mask = torch.logical_or(mask, ~bbox_mask)
-
             if not self.siglip:
                 if self.device == "cpu":
                     input = (
@@ -629,6 +603,29 @@ class ImageProcessor:
                 rgb = F.interpolate(
                     rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
                 ).squeeze()
+
+            # results = self.yolo_model.predict(
+            #     rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False
+            # )
+            # xyxy_tensor = results[0].boxes.xyxy
+            # if len(xyxy_tensor) == 0:
+            #     return
+            # bounding_boxes = torch.stack(
+            #     sorted(
+            #         xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
+            #     ),
+            #     dim=0,
+            # )
+            # bbox_mask = torch.zeros_like(mask)
+            # for box in bounding_boxes:
+            #     tl_x, tl_y, br_x, br_y = box
+            #     bbox_mask[
+            #         max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
+            #         max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
+            #     ] = 1
+            # bbox_mask = bbox_mask.bool()
+            # # print(mask, bbox_mask)
+            # mask = torch.logical_or(mask, ~bbox_mask)
 
             features = self.extract_mask_clip_features(input, rgb.shape[-2:])[0].cpu()
 
@@ -819,9 +816,9 @@ class ImageProcessor:
 
         with self.voxel_map_lock:
             if self.vision_method == "mask&*lip":
-                min_samples_clear = 3
+                min_samples_clear = -1
             else:
-                min_samples_clear = 10
+                min_samples_clear = -1
 
             self.voxel_map_localizer.voxel_pcd.clear_points(
                 depth,
@@ -968,7 +965,7 @@ class ImageProcessor:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
         if not os.path.exists("debug"):
             os.mkdir("debug")
-        filename = "debug/" + self.log + ".pkl"
+        filename = self.log + ".pkl"
         data = {}
         data["camera_poses"] = []
         data["camera_K"] = []

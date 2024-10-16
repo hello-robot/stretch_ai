@@ -320,6 +320,8 @@ class RobotAgentMDP:
             gripper_width = 0.45
         elif width < 0.075 and self.re == 3:
             gripper_width = 0.6
+        elif width < 0.09 and self.re == 3:
+            gripper_width = 0.85
         else:
             gripper_width = 1
 

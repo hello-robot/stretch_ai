@@ -778,7 +778,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def _wait_for_head(
         self,
         q: np.ndarray,
-        timeout: float = 10.0,
+        timeout: float = 3.0,
         min_wait_time: float = 0.5,
         resend_action: Optional[dict] = None,
         block_id: int = -1,
@@ -799,11 +799,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if joint_positions is None:
                 continue
 
-            if self._last_step < block_id:
-                # TODO: remove debug info
-                # print("Waiting for step", block_id, "to be processed; currently on:", self._last_step)
-                time.sleep(0.05)
-                continue
+            # if self._last_step < block_id:
+            #     # TODO: remove debug info
+            #     print("Waiting for step", block_id, "to be processed; currently on:", self._last_step)
+            #     time.sleep(0.05)
+            #     continue
 
             pan_err = np.abs(
                 joint_positions[HelloStretchIdx.HEAD_PAN] - q[HelloStretchIdx.HEAD_PAN]

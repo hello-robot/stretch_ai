@@ -7,17 +7,22 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import time
 import timeit
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
+import cv2
 import numpy as np
 import rerun as rr
+import zmq
 
 import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
@@ -129,13 +134,18 @@ class RobotAgent(RobotAgentBase):
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
 
+        if not os.path.exists("dynamem_log"):
+            os.makedirs("dynamem_log")
+
         self.image_processor = VoxelMapImageProcessor(
             rerun=True,
             rerun_visualizer=self.robot._rerun,
-            log="test",
+            log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
         )  # type: ignore
         self.encoder = self.image_processor.get_encoder()
-        self.manip_port = manip_port
+        context = zmq.Context()
+        self.manip_socket = context.socket(zmq.REQ)
+        self.manip_socket.connect("tcp://100.108.67.79:" + str(manip_port))
 
         if re == 1 or re == 2:
             stretch_gripper_max = 0.3
@@ -189,6 +199,32 @@ class RobotAgent(RobotAgentBase):
             self._obs_history_lock.release()
             self.obs_count += 1
             time.sleep(0.1)
+
+    def compute_blur_metric(self, image):
+        """
+        Computes a blurriness metric for an image tensor using gradient magnitudes.
+
+        Parameters:
+        - image (torch.Tensor): The input image tensor. Shape is [H, W, C].
+
+        Returns:
+        - blur_metric (float): The computed blurriness metric.
+        """
+
+        # Convert the image to grayscale
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Compute gradients using the Sobel operator
+        Gx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
+        Gy = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
+
+        # Compute gradient magnitude
+        G = cv2.magnitude(Gx, Gy)
+
+        # Compute the mean of gradient magnitudes
+        blur_metric = G.mean()
+
+        return blur_metric
 
     def update_map_with_pose_graph(self):
         """Update our voxel map using a pose graph"""
@@ -271,7 +307,10 @@ class RobotAgent(RobotAgentBase):
         #     if obs.is_pose_graph_node:
         #         self.voxel_map.add_obs(obs)
         if len(self.obs_history) > 0:
-            obs = self.obs_history[-1]
+            obs_history = self.obs_history[-5:]
+            blurness = [self.compute_blur_metric(obs.rgb) for obs in obs_history]
+            obs = obs_history[blurness.index(max(blurness))]
+            # obs = self.obs_history[-1]
         else:
             obs = None
 
@@ -321,6 +360,13 @@ class RobotAgent(RobotAgentBase):
         # print(f"Done clearing out old observations. Time: {t6 - t5}")
         self._obs_history_lock.release()
 
+    def look_around(self):
+        for pan in [0.4, -0.4, -1.2, -1.6]:
+            for tilt in [-0.65]:
+                self.robot.head_to(pan, tilt, blocking=True)
+                time.sleep(0.3)
+        self.robot.head_to(0, -0.7, blocking=True)
+
     def execute_action(
         self,
         text: str,
@@ -347,13 +393,15 @@ class RobotAgent(RobotAgentBase):
 
                 return True, res[-1]
             else:
+                # print(res)
+                # res[-1][2] += np.pi / 2
                 self.robot.execute_trajectory(
                     res,
                     pos_err_threshold=self.pos_err_threshold,
                     rot_err_threshold=self.rot_err_threshold,
-                    blocking=False,
+                    blocking=True,
                 )
-
+                # self.look_around()
                 return False, None
         else:
             print("Failed. Try again!")
@@ -403,7 +451,7 @@ class RobotAgent(RobotAgentBase):
             camera=camera,
             mode="place",
             obj=text,
-            socket=self.manip_port,
+            socket=self.manip_socket,
             hello_robot=self.manip_wrapper,
         )
 
@@ -478,7 +526,7 @@ class RobotAgent(RobotAgentBase):
             camera=camera,
             mode="pick",
             obj=text,
-            socket=self.manip_port,
+            socket=self.manip_socket,
             hello_robot=self.manip_wrapper,
         )
 
