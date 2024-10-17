@@ -28,15 +28,9 @@ import torch
 
 # from stretch.utils.morphology import get_edges
 import torch.nn.functional as F
-import wget
 from matplotlib import pyplot as plt
-
-# from PIL import Image
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
 from torchvision import transforms
 from transformers import AutoModel, AutoProcessor, AutoTokenizer
-from ultralytics import YOLOWorld
 
 import stretch.utils.logger as logger
 from stretch.core import get_parameters
@@ -44,7 +38,6 @@ from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
-from stretch.dynav.scannet import CLASS_LABELS_200
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
 from stretch.perception.encoders import CustomImageTextEncoder
 
@@ -134,7 +127,6 @@ def setup_custom_blueprint():
 class ImageProcessor:
     def __init__(
         self,
-        vision_method="mask*lip",
         siglip: bool = True,
         device: str = "cuda",
         min_depth: float = 0.25,
@@ -169,10 +161,6 @@ class ImageProcessor:
         self.min_depth = min_depth
         self.max_depth = max_depth
         self.obs_count = 0
-        # There are three vision methods:
-        # 1. 'mask*lip' Following the idea of https://arxiv.org/abs/2112.01071, remove the last layer of any VLM and obtain the dense features
-        # 2. 'mask&*lip' Following the idea of https://mahis.life/clip-fields/, extract segmentation mask and assign a vision-language feature to it
-        self.vision_method = vision_method
         # If cuda is not available, then device will be forced to be cpu
         if not torch.cuda.is_available():
             device = "cpu"
@@ -247,21 +235,6 @@ class ImageProcessor:
             self.clip_preprocess = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_tokenizer = AutoTokenizer.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
-        if self.vision_method != "mask*lip":
-            sam_checkpoint = f"./sam2_hiera_small.pt"
-            sam_config = "sam2_hiera_s.yaml"
-            if not os.path.exists(sam_checkpoint):
-                wget.download(
-                    "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt",
-                    out=sam_checkpoint,
-                )
-            sam2_model = build_sam2(
-                sam_config, sam_checkpoint, device=self.device, apply_postprocessing=False
-            )
-            self.mask_predictor = SAM2ImagePredictor(sam2_model)
-            self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
-            self.texts = CLASS_LABELS_200
-            self.yolo_model.set_classes(self.texts)
 
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
@@ -604,29 +577,6 @@ class ImageProcessor:
                     rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
                 ).squeeze()
 
-            # results = self.yolo_model.predict(
-            #     rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False
-            # )
-            # xyxy_tensor = results[0].boxes.xyxy
-            # if len(xyxy_tensor) == 0:
-            #     return
-            # bounding_boxes = torch.stack(
-            #     sorted(
-            #         xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-            #     ),
-            #     dim=0,
-            # )
-            # bbox_mask = torch.zeros_like(mask)
-            # for box in bounding_boxes:
-            #     tl_x, tl_y, br_x, br_y = box
-            #     bbox_mask[
-            #         max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-            #         max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-            #     ] = 1
-            # bbox_mask = bbox_mask.bool()
-            # # print(mask, bbox_mask)
-            # mask = torch.logical_or(mask, ~bbox_mask)
-
             features = self.extract_mask_clip_features(input, rgb.shape[-2:])[0].cpu()
 
         valid_xyz = world_xyz[~mask]
@@ -634,113 +584,6 @@ class ImageProcessor:
         valid_rgb = rgb.permute(1, 2, 0)[~mask]
         if len(valid_xyz) != 0:
             self.add_to_voxel_pcd(valid_xyz, features, valid_rgb)
-
-    def run_owl_sam_clip(self, rgb, mask, world_xyz):
-        with torch.no_grad():
-            results = self.yolo_model.predict(
-                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False
-            )
-            xyxy_tensor = results[0].boxes.xyxy
-            if len(xyxy_tensor) == 0:
-                return
-
-            self.mask_predictor.set_image(rgb.permute(1, 2, 0).numpy())
-            # bounding_boxes = torch.stack(sorted(results[0]['boxes'], key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse = True), dim = 0)
-            bounding_boxes = torch.stack(
-                sorted(
-                    xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-                ),
-                dim=0,
-            )
-            # transformed_boxes = self.mask_predictor.transform.apply_boxes_torch(bounding_boxes.detach().to(self.device), rgb.shape[-2:])
-            # masks, _, _= self.mask_predictor.predict_torch(
-            masks, _, _ = self.mask_predictor.predict(
-                point_coords=None,
-                point_labels=None,
-                # boxes=transformed_boxes,
-                box=bounding_boxes,
-                multimask_output=False,
-            )
-            if masks.ndim == 3:
-                masks = torch.Tensor(masks).bool()
-            else:
-                masks = torch.Tensor(masks[:, 0, :, :]).bool()
-
-            # Debug code, visualize all bounding boxes and segmentation masks
-
-            image_vis = np.ascontiguousarray(np.array(rgb.permute(1, 2, 0)).astype(np.uint8))
-            segmentation_color_map = np.zeros(image_vis.shape, dtype=np.uint8)
-            # cv2.imwrite('clean_' + str(self.obs_count) + '.jpg', cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR))
-            for idx, box in enumerate(bounding_boxes):
-                tl_x, tl_y, br_x, br_y = box
-                tl_x, tl_y, br_x, br_y = tl_x.item(), tl_y.item(), br_x.item(), br_y.item()
-                cv2.rectangle(
-                    image_vis, (int(tl_x), int(tl_y)), (int(br_x), int(br_y)), (255, 0, 0), 2
-                )
-            image_vis = cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR)
-            for vis_mask in masks:
-                segmentation_color_map[vis_mask.detach().cpu().numpy()] = [0, 255, 0]
-            image_vis = cv2.addWeighted(image_vis, 0.7, segmentation_color_map, 0.3, 0)
-            if not self.rerun:
-                cv2.imwrite(self.log + "/seg" + str(self.obs_count) + ".jpg", image_vis)
-            # else:
-            #     rr.log('Segmentation mask', rr.Image(image_vis[:, :, [2, 1, 0]]))
-
-            crops = []
-            if not self.siglip:
-                for (box, mask) in zip(bounding_boxes, masks):
-                    tl_x, tl_y, br_x, br_y = box
-                    crops.append(
-                        self.clip_preprocess(
-                            transforms.ToPILImage()(
-                                rgb[
-                                    :,
-                                    max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                                    max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                                ]
-                            )
-                        )
-                    )
-                features = self.clip_model.encode_image(torch.stack(crops, dim=0).to(self.device))
-            else:
-                for box in bounding_boxes:
-                    tl_x, tl_y, br_x, br_y = box
-                    crops.append(
-                        rgb[
-                            :,
-                            max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                            max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                        ]
-                    )
-                inputs = self.clip_preprocess(
-                    images=crops, padding="max_length", return_tensors="pt"
-                ).to(self.device)
-                features = self.clip_model.get_image_features(**inputs)
-            features = F.normalize(features, dim=-1).cpu()
-
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
-            masks = (
-                F.interpolate(
-                    masks.unsqueeze(0).float(),
-                    size=self.image_shape,
-                    mode="bilinear",
-                    align_corners=False,
-                )
-                .squeeze()
-                .bool()
-            )
-
-        for idx, (sam_mask, feature) in enumerate(zip(masks.cpu(), features.cpu())):
-            valid_mask = torch.logical_and(~mask, sam_mask)
-            valid_xyz = world_xyz[valid_mask]
-            if valid_xyz.shape[0] == 0:
-                continue
-            feature = feature.repeat(valid_xyz.shape[0], 1)
-            valid_rgb = rgb.permute(1, 2, 0)[valid_mask]
-            self.add_to_voxel_pcd(valid_xyz, feature, valid_rgb)
 
     def add_to_voxel_pcd(self, valid_xyz, feature, valid_rgb, weights=None, threshold=0.95):
         # Adding all points to voxelizedPointCloud is useless and expensive, we should exclude threshold of all points
@@ -815,25 +658,15 @@ class ImageProcessor:
         )
 
         with self.voxel_map_lock:
-            if self.vision_method == "mask&*lip":
-                min_samples_clear = -1
-            else:
-                min_samples_clear = -1
 
             self.voxel_map_localizer.voxel_pcd.clear_points(
-                depth,
-                torch.from_numpy(intrinsics),
-                torch.from_numpy(pose),
-                min_samples_clear=min_samples_clear,
+                depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)
             )
             self.voxel_map.voxel_pcd.clear_points(
                 depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)
             )
 
-        if self.vision_method == "mask&*lip":
-            self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
-        else:
-            self.run_mask_clip(rgb, ~valid_depth, world_xyz)
+        self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
         if self.image_shape is not None:
             rgb = F.interpolate(
@@ -884,8 +717,6 @@ class ImageProcessor:
                     self.voxel_map_localizer.voxel_pcd._rgb.detach().cpu() / 255.0,
                     0.03,
                 )
-        # end_time = time.time()
-        # print('image processing takes ' + str(end_time - start_time) + ' seconds.')
 
     def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
         print("Reading from ", pickle_file_name)
@@ -929,23 +760,6 @@ class ImageProcessor:
                 base_pose=base_pose,
                 camera_K=K,
             )
-            # points = self.voxel_map.voxel_pcd._points.detach().cpu()
-            # rgb = self.voxel_map.voxel_pcd._rgb.detach().cpu() / 255.
-            # rr.log("Obstalce_map/pointcloud", rr.Points3D(points[points[:, 2] > 0.1], \
-            #                                                   colors=rgb[points[:, 2] > 0.1], radii=0.03))
-            # plt.clf()
-            # obstacles, _ = self.voxel_map.get_2d_map()
-            # plt.imshow(obstacles)
-            # grid_coord = self.voxel_map.xy_to_grid_coords(camera_pose[:2, 3])
-            # plt.scatter(grid_coord[0], grid_coord[1], color = 'r')
-            # buf = BytesIO()
-            # plt.savefig(buf, format='png')
-            # buf.seek(0)
-            # img = Image.open(buf)
-            # img = np.array(img)
-            # buf.close()
-            # rr.log('2d_map', rr.Image(img))
-            # rr.log('robot_point', rr.Points3D(camera_pose[:3, 3], colors=[1, 0, 0], radii=0.2))
 
             self.obs_count += 1
         self.voxel_map_localizer.voxel_pcd._points = data["combined_xyz"]
@@ -953,7 +767,6 @@ class ImageProcessor:
         self.voxel_map_localizer.voxel_pcd._weights = data["combined_weights"]
         self.voxel_map_localizer.voxel_pcd._rgb = data["combined_rgb"]
         self.voxel_map_localizer.voxel_pcd._obs_counts = data["obs_id"]
-        self.voxel_map_localizer.voxel_pcd._entity_ids = data["entity_id"]
         self.voxel_map_localizer.voxel_pcd.obs_count = max(
             self.voxel_map_localizer.voxel_pcd._obs_counts
         ).item()
@@ -997,7 +810,6 @@ class ImageProcessor:
             data["combined_rgb"],
         ) = self.voxel_map_localizer.voxel_pcd.get_pointcloud()
         data["obs_id"] = self.voxel_map_localizer.voxel_pcd._obs_counts
-        data["entity_id"] = self.voxel_map_localizer.voxel_pcd._entity_ids
         with open(filename, "wb") as f:
             pickle.dump(data, f)
         print("write all data to", filename)
