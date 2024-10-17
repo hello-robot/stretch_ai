@@ -596,7 +596,7 @@ class SparseVoxelMap(object):
         alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
         alignment_heuristics = torch.max(alignment_heuristics, dim=-1).values
         alignment_heuristics = torch.from_numpy(
-            maximum_filter(alignment_heuristics.numpy(), size=7)
+            maximum_filter(alignment_heuristics.numpy(), size=5)
         )
         return alignment_heuristics
 
@@ -654,7 +654,7 @@ class SparseVoxelMap(object):
 
         history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
-        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=7))
+        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=5))
 
         if self._remove_visited_from_obstacles:
             # Remove "visited" points containing observations of the robot
