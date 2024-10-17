@@ -60,7 +60,7 @@ def main(
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = RobotClient(robot_ip="100.76.87.51")
+    robot = RobotClient(robot_ip="100.79.44.11")
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")

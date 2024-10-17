@@ -7,14 +7,17 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import datetime
+import os
 import time
+from datetime import datetime
 from typing import Any, Dict
+from uuid import uuid4
 
 import numpy as np
+import rerun as rr
 import zmq
 
-from stretch.agent import RobotClient
+# from stretch.agent import RobotClient
 from stretch.core.parameters import Parameters
 from stretch.dynav.communication_util import recv_array, send_array, send_everything
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
@@ -43,7 +46,7 @@ class RobotAgentMDP:
 
     def __init__(
         self,
-        robot: RobotClient,
+        robot,
         parameters: Dict[str, Any],
         server_ip: str,
         image_port: int = 5558,
@@ -84,30 +87,36 @@ class RobotAgentMDP:
         self.image_sender = ImageSender(
             server_ip=server_ip, image_port=image_port, text_port=text_port, manip_port=manip_port
         )
+
+        if not os.path.exists("dynamem_log"):
+            os.makedirs("dynamem_log")
+
         if method == "dynamem":
             from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
             self.image_processor = VoxelMapImageProcessor(
                 rerun=True,
                 rerun_visualizer=self.robot._rerun,
-                log="env" + str(env_num) + "_" + str(test_num),
+                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
             )  # type: ignore
         elif method == "mllm":
             from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
 
             self.image_processor = mLLMImageProcessor(
-                rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
+                rerun=True,
+                static=False,
+                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
             )  # type: ignore
 
         self.look_around_times: list[float] = []
         self.execute_times: list[float] = []
 
-        timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
+        timestamp = f"{datetime.now():%Y-%m-%d-%H-%M-%S}"
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.4, -0.4, -1.2]:
-            for tilt in [-0.6]:
+        for pan in [0.4, -0.4, -1.2, -1.6]:
+            for tilt in [-0.65]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 
@@ -123,7 +132,7 @@ class RobotAgentMDP:
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         # Sleep some time so the robot rgbd observations are more likely to be updated
-        time.sleep(0.3)
+        time.sleep(0.5)
 
         obs = self.robot.get_observation()
         self.obs_count += 1
@@ -209,7 +218,8 @@ class RobotAgentMDP:
             return False
         return True
 
-    def navigate(self, text, max_step=10):
+    def navigate(self, text, max_step=5):
+        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         finished = False
         step = 0
         end_point = None
@@ -317,6 +327,8 @@ class RobotAgentMDP:
             gripper_width = 0.45
         elif width < 0.075 and self.re == 3:
             gripper_width = 0.6
+        elif width < 0.09 and self.re == 3:
+            gripper_width = 0.85
         else:
             gripper_width = 1
 

@@ -19,8 +19,8 @@ from torch import Tensor
 # from ultralytics import YOLOWorld
 from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
-from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud
 from stretch.utils.logger import Logger
+from stretch.utils.voxel import VoxelizedPointcloud
 
 # Create a logger
 logger = Logger(__name__)

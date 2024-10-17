@@ -60,7 +60,7 @@ class HelloRobot:
 
         # Initialize StretchClient controller
         self.robot = robot
-        self.robot.switch_to_manipulation_mode()
+        # self.robot.switch_to_manipulation_mode()
         # time.sleep(2)
 
         # Constraining the robots movement
@@ -131,15 +131,7 @@ class HelloRobot:
         if not wrist_roll is None:
             target_state[5] = wrist_roll
 
-        # Actual Movement
-        print("Expected", target_state)
-        print("Actual", self.robot.get_six_joints())
-        print("Error", target_state - self.robot.get_six_joints())
-        # print('Target Position', target_state)
-        # print('pan tilt before', self.robot.get_pan_tilt())
         self.robot.arm_to(target_state, blocking=blocking, head=np.array([self.pan, self.tilt]))
-        # print('pan tilt after', self.robot.get_pan_tilt())
-        # print('Actual location', self.robot.get_six_joints())
 
         # Head state update and Movement
         # target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
@@ -152,6 +144,9 @@ class HelloRobot:
             target_head_pan = head_pan
             self.pan = head_pan
         self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
+        # print("Expected", target_state)
+        # print("Actual", self.robot.get_six_joints())
+        # print("Error", target_state - self.robot.get_six_joints())
         # self.pan, self.tilt = self.robot.get_pan_tilt()
         # time.sleep(0.7)
 
@@ -231,11 +226,11 @@ class HelloRobot:
             target1[1] = min(1.1, target_state[1] + 0.2)
             self.robot.arm_to(target1, blocking=True, head=np.array([self.pan, self.tilt]))
 
-        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        self.robot.arm_to(target_state, blocking=True)
         self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
 
-        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
-        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
+        # self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
 
         # print('pan tilt after', self.robot.get_pan_tilt())
         # print(f"current state {self.robot.get_six_joints()}")

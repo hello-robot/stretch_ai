@@ -20,7 +20,7 @@ from torch import Tensor
 import stretch.utils.logger as logger
 from stretch.utils.voxel import merge_features
 
-USE_TORCH_GEOMETRIC = False
+USE_TORCH_GEOMETRIC = True
 if USE_TORCH_GEOMETRIC:
     try:
         from torch_geometric.nn.pool.consecutive import consecutive_cluster
@@ -168,7 +168,7 @@ class VoxelizedPointcloud:
                         proj_depth < 0.01,
                         # depth is too large
                         # (~depth_is_valid)[valid_xys[:, 0], valid_xys[:, 1]],
-                        proj_depth > 2.0,
+                        proj_depth > 2.5,
                     ],
                     dim=0,
                 ),
@@ -197,7 +197,9 @@ class VoxelizedPointcloud:
                 self._entity_ids = self._entity_ids[indices]
 
             if (
-                self._entity_ids is not None
+                self._points is not None
+                and len(self._points) > 0
+                and self._entity_ids is not None
                 and min_samples_clear is not None
                 and min_samples_clear > 0
             ):
@@ -614,7 +616,11 @@ def old_scatter3d(
 
 
 def scatter3d(
-    voxel_indices: Tensor, weights: Tensor, grid_dimensions: List[int], method: Optional[str] = None
+    voxel_indices: Tensor,
+    weights: Tensor,
+    grid_dimensions: List[int],
+    method: Optional[str] = None,
+    verbose: bool = False,
 ) -> Tensor:
     """Scatter weights into a 3d voxel grid of the appropriate size.
 
@@ -622,6 +628,7 @@ def scatter3d(
         voxel_indices (LongTensor): [N, 3] indices to scatter values to.
         weights (FloatTensor): [N] values of equal size to scatter through voxel map.
         grid_dimenstions (List[int]): sizes of the resulting voxel map, should be 3d.
+        verbose (bool): Print warnings if any. Defaults to False.
 
     Returns:
         voxels (FloatTensor): [grid_dimensions] voxel map containing combined weights."""
@@ -644,7 +651,8 @@ def scatter3d(
 
     # Reduce according to min/max/mean or none
     if method is not None and method != "any":
-        logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
+        if verbose:
+            logger.warning(f"Scattering {N} points into {X}x{Y}x{Z} grid, method={method}")
         merge_features(voxel_indices, weights, grid_dimensions=grid_dimensions, method=method)
 
     # Create empty voxel grid

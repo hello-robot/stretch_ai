@@ -32,6 +32,7 @@ def get_task(robot, demo, target_object):
             clear_voxel_map=True,
             show_instances_detected=False,
             match_method="feature",
+            arm_height=0.6,
         )
         grasp_object = GraspObjectOperation(
             "grasp_the_object",
@@ -39,9 +40,9 @@ def get_task(robot, demo, target_object):
         )
         grasp_object.configure(
             target_object=target_object,
-            show_object_to_grasp=False,
+            show_object_to_grasp=True,
             servo_to_grasp=True,
-            show_servo_gui=False,
+            show_servo_gui=True,
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
             match_method="feature",
@@ -96,11 +97,8 @@ def main(
         confidence_threshold=0.3,
     )
 
-    # Start moving the robot around
-    grasp_client = None
-
     # Agents wrap the robot high level planning interface for now
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    demo = RobotAgent(robot, parameters, semantic_sensor)
     demo.start(visualize_map_at_start=show_intermediate_maps)
 
     task = get_task(robot, demo, target_object)
