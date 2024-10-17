@@ -8,6 +8,7 @@
 # license information maybe found below, if so.
 
 import datetime
+import os
 import time
 from typing import Any, Dict
 from uuid import uuid4
@@ -86,19 +87,25 @@ class RobotAgentMDP:
         self.image_sender = ImageSender(
             server_ip=server_ip, image_port=image_port, text_port=text_port, manip_port=manip_port
         )
+
+        if not os.path.exists("dynamem_log"):
+            os.makedirs("dynamem_log")
+
         if method == "dynamem":
             from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
             self.image_processor = VoxelMapImageProcessor(
                 rerun=True,
                 rerun_visualizer=self.robot._rerun,
-                log="env" + str(env_num) + "_" + str(test_num),
+                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
             )  # type: ignore
         elif method == "mllm":
             from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
 
             self.image_processor = mLLMImageProcessor(
-                rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
+                rerun=True,
+                static=False,
+                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
             )  # type: ignore
 
         self.look_around_times: list[float] = []
