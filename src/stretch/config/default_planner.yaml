@@ -18,11 +18,7 @@ min_points_per_voxel: 15  # Drop things below this density per voxel
 
 # Padding
 pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacles
-<<<<<<< HEAD
 min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
-=======
-min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
->>>>>>> 694a6a6fb704995b5b3a2730473637680ba20da8
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
 add_local_every_step: False
