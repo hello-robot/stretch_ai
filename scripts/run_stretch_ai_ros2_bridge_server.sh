@@ -1,7 +1,9 @@
 #!/bin/bash
 echo "Starting Stretch AI ROS2 Bridge Server on $HELLO_FLEET_ID"
 echo "========================================================="
-VERSION=`python src/stretch/version.py`
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+parent_dir="$(dirname "$script_dir")"
+VERSION=`python $parent_dir/src/stretch/version.py`
 echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
 sudo docker run -it \
     --net=host \
