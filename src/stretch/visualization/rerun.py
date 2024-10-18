@@ -562,7 +562,8 @@ class RerunVisualizer:
 
             t0 = timeit.default_timer()
             for idx, instance in enumerate(scene_graph.instances):
-                if semantic_sensor.is_segmentation():
+                if semantic_sensor.is_semantic():
+                    # Names only exist if we are using a semantic sensor
                     name = semantic_sensor.get_class_name_for_id(instance.category_id)
                 else:
                     name = None

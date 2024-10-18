@@ -24,9 +24,13 @@ class MobileSAMPerception(PerceptionModule):
     def __init__(
         self,
         verbose: bool = True,
+        min_score: float = 0.5,
+        min_area: int = 100,
     ):
         super().__init__()
         self._verbose = verbose
+        self.min_score = min_score
+        self.min_area = min_area
 
         self.model_type = "vit_t"
         sam_checkpoint = "./weights/mobile_sam.pt"
@@ -65,7 +69,7 @@ class MobileSAMPerception(PerceptionModule):
         """
 
         if self._verbose:
-            print("SAM is segmenting the image...")
+            print("Mobile SAM is segmenting the image...")
 
         t0 = timeit.default_timer()
         # masks, scores, logits = self.segment(rgb)
@@ -76,12 +80,23 @@ class MobileSAMPerception(PerceptionModule):
         semantic = np.zeros((height, width), dtype=np.uint8)
         instance = np.zeros((height, width), dtype=np.uint8)
 
+        # Sort results by score from low to high
+        results = sorted(results, key=lambda x: x["stability_score"], reverse=True)
         for i, result in enumerate(results):
             mask = result["segmentation"]
             score = result["stability_score"]
+
+            if score < self.min_score:
+                continue
+            if np.sum(mask) < self.min_area:
+                continue
+
             scores.append(score)
             semantic[mask > 0] = i + 1
             instance[mask > 0] = i + 1
+
+            if self._verbose:
+                logger.info(f"Object {i + 1} has a stability score of {score}")
 
         task_observations = dict()
         task_observations["semantic_frame"] = semantic
