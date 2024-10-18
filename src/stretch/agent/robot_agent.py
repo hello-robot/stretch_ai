@@ -212,8 +212,6 @@ class RobotAgent:
     def __del__(self):
         """Destructor. Clean up threads."""
         self._running = False
-        if self._update_map_thread is not None and self._update_map_thread.is_alive():
-            self._update_map_thread.join()
         # if self._update_map_thread is not None and self._update_map_thread.is_alive():
         #    self._update_map_thread.join()
 
