@@ -16,7 +16,7 @@ from .siglip_encoder import SiglipEncoder
 
 
 class MaskSiglipEncoder(SiglipEncoder):
-    def __init__(device: Optional[str] = None, **kwargs) -> None:
+    def __init__(self, device: Optional[str] = None) -> None:
         super().__init__(normalize=True, device=device)
 
     def forward_one_block_(self, resblocks, x):
@@ -52,9 +52,10 @@ class MaskSiglipEncoder(SiglipEncoder):
         input = self.processor(images=image, padding="max_length", return_tensors="pt")
         for i in input:
             input[i] = input[i].to(self.device)
-        image = F.interpolate(
-            image.unsqueeze(0), size=image_shape, mode="bilinear", align_corners=False
-        ).squeeze()
+        if image_shape is not None:
+            image = F.interpolate(
+                image.unsqueeze(0), size=image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
         features = self.extract_mask_siglip_features(input, image.shape[-2:])[0].cpu()
 
         return image, features

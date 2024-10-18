@@ -18,7 +18,6 @@ import time
 # from io import BytesIO
 from pathlib import Path
 
-import clip
 import cv2
 import numpy as np
 import rerun as rr
@@ -29,8 +28,6 @@ import torch
 # from stretch.utils.morphology import get_edges
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
-from torchvision import transforms
-from transformers import AutoModel, AutoProcessor, AutoTokenizer
 
 import stretch.utils.logger as logger
 from stretch.core import get_parameters
@@ -39,7 +36,7 @@ from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
-from stretch.perception.encoders import CustomImageTextEncoder
+from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
 
 def get_inv_intrinsics(intrinsics):
@@ -127,7 +124,6 @@ def setup_custom_blueprint():
 class ImageProcessor:
     def __init__(
         self,
-        siglip: bool = True,
         device: str = "cuda",
         min_depth: float = 0.25,
         max_depth: float = 2.5,
@@ -135,15 +131,12 @@ class ImageProcessor:
         text_port: int = 5556,
         open_communication: bool = True,
         rerun: bool = True,
-        # static: bool = True,
         log=None,
         image_shape=(360, 270),
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
     ):
-        # self.static = static
-        self.siglip = siglip
         self.rerun_visualizer = rerun_visualizer
         current_datetime = datetime.datetime.now()
         if log is None:
@@ -224,30 +217,18 @@ class ImageProcessor:
         self.value_map = torch.zeros(self.voxel_map.grid_size)
 
     def create_vision_model(self):
-        if not self.siglip:
-            self.clip_model, self.clip_preprocess = clip.load("ViT-B/16", device=self.device)
-            self.clip_tokenizer = clip.tokenize
-            self.clip_model.eval()
-        else:
-            self.clip_model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(
-                self.device
-            )
-            self.clip_preprocess = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
-            self.clip_tokenizer = AutoTokenizer.from_pretrained("google/siglip-so400m-patch14-384")
-            self.clip_model.eval()
+        self.encoder = MaskSiglipEncoder(device=self.device)
 
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
-            clip_model=self.clip_model,
-            processor=self.clip_preprocess,
+            clip_model=self.encoder.model,
+            processor=self.encoder.processor,
             device=self.device,
-            siglip=self.siglip,
+            siglip=True,
         )
 
     def get_encoder(self) -> CustomImageTextEncoder:
-        return CustomImageTextEncoder(
-            self.clip_model, self.clip_preprocess, self.clip_tokenizer, device=self.device
-        )
+        return self.encoder
 
     def process_text(self, text, start_pose):
         """
@@ -483,101 +464,9 @@ class ImageProcessor:
             print("Image processing takes", process_time, "seconds")
             print("processing took " + str(process_time) + " seconds")
 
-    def forward_one_block(self, resblocks, x):
-        q, k, v = None, None, None
-        y = resblocks.ln_1(x)
-        y = F.linear(y, resblocks.attn.in_proj_weight, resblocks.attn.in_proj_bias)
-        N, L, C = y.shape
-        y = y.view(N, L, 3, C // 3).permute(2, 0, 1, 3).reshape(3 * N, L, C // 3)
-        y = F.linear(y, resblocks.attn.out_proj.weight, resblocks.attn.out_proj.bias)
-        q, k, v = y.tensor_split(3, dim=0)
-        v += x
-        v = v + resblocks.mlp(resblocks.ln_2(v))
-
-        return v
-
-    def forward_one_block_siglip(self, resblocks, x):
-        q, k, v = None, None, None
-        x = F.linear(x, resblocks.in_proj_weight, resblocks.in_proj_bias)
-        N, L, C = x.shape
-        x = x.view(N, L, 3, C // 3).permute(2, 0, 1, 3).reshape(3 * N, L, C // 3)
-        x = F.linear(x, resblocks.out_proj.weight, resblocks.out_proj.bias)
-        q, k, v = x.tensor_split(3, dim=0)
-
-        return v
-
-    def extract_mask_clip_features(self, x, image_shape):
-        if self.siglip:
-            with torch.no_grad():
-                output = self.clip_model.vision_model(x["pixel_values"], output_hidden_states=True)
-            feat = output.last_hidden_state
-            feat = self.forward_one_block_siglip(self.clip_model.vision_model.head.attention, feat)
-            feat = self.clip_model.vision_model.head.layernorm(feat)
-            feat = feat + self.clip_model.vision_model.head.mlp(feat)
-            feat = feat.detach().cpu()
-            with torch.no_grad():
-                N, L, H, W = self.clip_model.vision_model.embeddings.patch_embedding(
-                    x["pixel_values"]
-                ).shape
-            feat = feat.reshape(N, H, W, L).permute(0, 3, 1, 2)
-        else:
-            with torch.no_grad():
-                x = self.clip_model.visual.conv1(x)
-                N, L, H, W = x.shape
-                x = x.reshape(x.shape[0], x.shape[1], -1)
-                x = x.permute(0, 2, 1)
-                x = torch.cat(
-                    [
-                        self.clip_model.visual.class_embedding.to(x.dtype)
-                        + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device),
-                        x,
-                    ],
-                    dim=1,
-                )
-                x = x + self.clip_model.visual.positional_embedding.to(x.dtype)
-                x = self.clip_model.visual.ln_pre(x)
-                x = x.permute(1, 0, 2)
-                for idx in range(self.clip_model.visual.transformer.layers):
-                    if idx == self.clip_model.visual.transformer.layers - 1:
-                        break
-                    x = self.clip_model.visual.transformer.resblocks[idx](x)
-                x = self.forward_one_block(self.clip_model.visual.transformer.resblocks[-1], x)
-                x = x[1:]
-                x = x.permute(1, 0, 2)
-                x = self.clip_model.visual.ln_post(x)
-                x = x @ self.clip_model.visual.proj
-                feat = x.reshape(N, H, W, -1).permute(0, 3, 1, 2)
-        feat = F.interpolate(feat, image_shape, mode="bilinear", align_corners=True)
-        feat = F.normalize(feat, dim=1)
-        return feat.permute(0, 2, 3, 1)
-
     def run_mask_clip(self, rgb, mask, world_xyz):
-
         with torch.no_grad():
-            if not self.siglip:
-                if self.device == "cpu":
-                    input = (
-                        self.clip_preprocess(transforms.ToPILImage()(rgb))
-                        .unsqueeze(0)
-                        .to(self.device)
-                    )
-                else:
-                    input = (
-                        self.clip_preprocess(transforms.ToPILImage()(rgb))
-                        .unsqueeze(0)
-                        .to(self.device)
-                        .half()
-                    )
-            else:
-                input = self.clip_preprocess(images=rgb, padding="max_length", return_tensors="pt")
-                for i in input:
-                    input[i] = input[i].to(self.device)
-            if self.image_shape is not None:
-                rgb = F.interpolate(
-                    rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-                ).squeeze()
-
-            features = self.extract_mask_clip_features(input, rgb.shape[-2:])[0].cpu()
+            rgb, features = self.encoder.run_mask_siglip(rgb, self.image_shape)
 
         valid_xyz = world_xyz[~mask]
         features = features[~mask]
