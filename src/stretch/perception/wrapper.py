@@ -81,6 +81,22 @@ class OvmmPerception:
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
 
+    def is_semantic_segmentation(self) -> bool:
+        """Whether the perception model is a semantic segmentation model."""
+        return self._segmentation.is_semantic()
+
+    def is_semantic(self) -> bool:
+        """Whether the perception model is a semantic segmentation model."""
+        return self.is_semantic_segmentation()
+
+    def is_instance_segmentation(self) -> bool:
+        """Whether the perception model is an instance segmentation model."""
+        return self._segmentation.is_instance()
+
+    def is_instance(self) -> bool:
+        """Whether the perception model is an instance segmentation model."""
+        return self.is_instance_segmentation()
+
     @property
     def current_vocabulary_id(self) -> int:
         return self._current_vocabulary_id
