@@ -18,10 +18,12 @@ from stretch.core.abstract_perception import PerceptionModule
 
 
 class SAMPerception(PerceptionModule):
-    def __init__(self, model_type="vit_h", checkpoint_name="sam_vit_h_4b8939.pth", verbose=False):
+    def __init__(self, model_type="vit_h", checkpoint_name: Optional[str] = None, verbose=False):
         super().__init__()
         self._verbose = verbose
         self.model_type = model_type
+        if checkpoint_name is None:
+            checkpoint_name = f"sam_{self.model_type}_4b8939.pth"
         self.checkpoint_name = checkpoint_name
         self.checkpoint_url = (
             f"https://dl.fbaipublicfiles.com/segment_anything/{self.checkpoint_name}"

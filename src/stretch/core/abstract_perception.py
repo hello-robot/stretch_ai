@@ -37,6 +37,15 @@ class PerceptionModule(ABC):
         """
         pass
 
+    def reset_vocab(self, vocab):
+        """
+        Reset the vocabulary of the perception model.
+
+        Arguments:
+            vocab: list of strings
+        """
+        pass
+
     @abstractmethod
     def predict(
         self,
