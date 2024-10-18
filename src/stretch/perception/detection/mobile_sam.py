@@ -129,8 +129,8 @@ class MobileSAMPerception(PerceptionModule):
             semantic[mask > 0] = i + 1
             instance[mask > 0] = i + 1
 
-            if self._verbose:
-                logger.info(f"Object {i + 1} has a stability score of {score}")
+            # if self._verbose:
+            #     logger.info(f"Object {i + 1} has a stability score of {score}")
 
         # Second pass - remove small objects
         for i in range(1, instance.max() + 1):
