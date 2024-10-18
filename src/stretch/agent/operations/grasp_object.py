@@ -72,8 +72,11 @@ class GraspObjectOperation(ManagedOperation):
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
     # align_x_threshold: int = 15
-    align_x_threshold: int = 50
-    align_y_threshold: int = 50
+    # These were the settings Peiqi used:
+    # align_x_threshold: int = 50
+    # align_y_threshold: int = 50
+    align_x_threshold: int = 25
+    align_y_threshold: int = 20
 
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.25
@@ -372,11 +375,21 @@ class GraspObjectOperation(ManagedOperation):
         else:
             return prev_mask
 
+    def sayable_target_object(self) -> str:
+        """Get the target object in a sayable format.
+
+        Returns:
+            str: Sayable target object
+        """
+
+        # Replace underscores, etc
+        return self.target_object.replace("_", " ")
+
     def _grasp(self) -> bool:
         """Helper function to close gripper around object."""
         self.cheer("Grasping object!")
         if self.talk:
-            self.agent.robot_say("Grasping the object!")
+            self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
         if not self.open_loop:
             joint_state = self.robot.get_joint_positions()
@@ -401,10 +414,10 @@ class GraspObjectOperation(ManagedOperation):
                 head=constants.look_at_ee,
                 blocking=True,
             )
-            time.sleep(0.5)
+            time.sleep(0.1)
 
         self.robot.close_gripper(loose=self.grasp_loose, blocking=True)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         # Get a joint state for the object
         joint_state = self.robot.get_joint_positions()
@@ -782,7 +795,7 @@ class GraspObjectOperation(ManagedOperation):
             if voxel_map is not None:
                 voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
         if self.talk:
-            self.agent.robot_say("I think I grasped the object.")
+            self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
         """Move to a pregrasp position in an open loop manner.
