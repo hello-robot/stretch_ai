@@ -926,7 +926,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 logger.error(
-                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}"
+                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}: {t1 - t0} seconds, arm_diff={arm_diff}, lift_diff={lift_diff}"
                 )
                 return False
 
