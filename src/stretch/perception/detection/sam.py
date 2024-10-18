@@ -17,7 +17,7 @@ from segment_anything import SamPredictor, sam_model_registry
 from stretch.core.abstract_perception import PerceptionModule
 
 
-class SAM2Perception(PerceptionModule):
+class SAMPerception(PerceptionModule):
     def __init__(self, model_type="vit_h", checkpoint_name="sam_vit_h_4b8939.pth", verbose=False):
         super().__init__()
         self._verbose = verbose
@@ -68,4 +68,48 @@ class SAM2Perception(PerceptionModule):
         if self._verbose:
             print("SAM is segmenting the image...")
 
+        masks, scores, logits = self.segment(rgb)
+        breakpoint()
+
         height, width, _ = rgb.shape
+
+    def segment(self, rgb, point_coords=None, point_labels=None, box=None, multimask_output=True):
+        """Segment the image using loaded Segment Anything Model.
+
+        Arguments:
+            rgb: image of shape (H, W, 3)
+            point_coords: coordinates of points to segment
+            point_labels: labels of points to segment
+            box: bounding box to segment
+            multimask_output: whether to output multiple masks
+
+        Returns:
+            masks: masks of shape (N, H, W)
+            scores: scores of the masks
+            logits: logits of the masks
+        """
+
+        self.predictor.set_image(rgb)
+
+        if point_coords is not None and point_labels is not None:
+            masks, scores, logits = self.predictor.predict(
+                point_coords=point_coords,
+                point_labels=point_labels,
+                multimask_output=multimask_output,
+            )
+        elif box is not None:
+            masks, scores, logits = self.predictor.predict(
+                box=box, multimask_output=multimask_output
+            )
+        else:
+            raise ValueError("Either point_coords and point_labels, or box must be provided")
+
+        return masks, scores, logits
+
+    def is_semantic(self):
+        """Whether the perception model is a semantic segmentation model."""
+        return False
+
+    def is_instance(self):
+        """Whether the perception model is an instance segmentation model."""
+        return True
