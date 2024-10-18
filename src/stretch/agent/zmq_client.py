@@ -784,18 +784,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
         Args:
             verbose: Whether to print out debug information
         """
-        next_action = {"control_mode": "manipulation"}
+        next_action = {"control_mode": "manipulation", "step": self._iter}
         action = self.send_action(next_action)
-        time.sleep(0.1)
         if verbose:
             logger.info("Waiting for manipulation mode")
-        self._wait_for_mode("manipulation", resend_action=action, verbose=verbose)
-
-    def switch_to_manipulation_mode(self):
-        next_action = {"control_mode": "manipulation", "step": self._iter}
-        self.send_action(next_action)
-        self._wait_for_mode("manipulation")
-        assert self.in_manipulation_mode()
+        self._wait_for_mode("manipulation", verbose=verbose)
 
     def move_to_nav_posture(self) -> None:
         """Move the robot to the navigation posture. This is where the head is looking forward and the arm is tucked in."""

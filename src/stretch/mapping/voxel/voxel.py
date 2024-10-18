@@ -825,7 +825,7 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
-    def get_pointcloud(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def get_pointcloud(self) -> Tuple[torch.Tensor, ...]:
         """Get the current point cloud"""
         return self.voxel_pcd.get_pointcloud()
 
