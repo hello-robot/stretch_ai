@@ -562,7 +562,11 @@ class RerunVisualizer:
 
             t0 = timeit.default_timer()
             for idx, instance in enumerate(scene_graph.instances):
-                name = semantic_sensor.get_class_name_for_id(instance.category_id)
+                if semantic_sensor.is_semantic():
+                    # Names only exist if we are using a semantic sensor
+                    name = semantic_sensor.get_class_name_for_id(instance.category_id)
+                else:
+                    name = None
                 if name not in self.bbox_colors_memory:
                     self.bbox_colors_memory[name] = np.random.randint(0, 255, 3)
                 best_view = instance.get_best_view()
@@ -579,7 +583,8 @@ class RerunVisualizer:
                 pose = scene_graph.get_ins_center_pos(idx)
                 confidence = best_view.score
                 centers.append(rr.components.PoseTranslation3D(pose))
-                labels.append(f"{name} {confidence:.2f}")
+                if name is not None:
+                    labels.append(f"{name} {confidence:.2f}")
                 colors.append(self.bbox_colors_memory[name])
             rr.log(
                 "world/objects",

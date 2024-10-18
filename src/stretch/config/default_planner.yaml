@@ -28,8 +28,8 @@ max_depth: 2.0
 
 # Object detection parameters
 detection:
-  module: "mobile_sam"
-  # module: "detic"
+  # module: "mobile_sam"
+  module: "detic"
   # module: "yolo"
   category_map_file: example_cat_map.json
   use_detic_viz: False

@@ -673,7 +673,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             block_id = action["step"]
             time.sleep(0.1)
             # Now, wait for the command to finish
-            self._wait_for_action(
+            self._wait_for_base_motion(
                 block_id,
                 goal_angle=_xyt[2],
                 verbose=verbose,
@@ -926,7 +926,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             t1 = timeit.default_timer()
             if t1 - t0 > timeout:
                 logger.error(
-                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}"
+                    f"Timeout waiting for arm to move to arm={q[HelloStretchIdx.ARM]}, lift={q[HelloStretchIdx.LIFT]}: {t1 - t0} seconds, arm_diff={arm_diff}, lift_diff={lift_diff}"
                 )
                 return False
 
