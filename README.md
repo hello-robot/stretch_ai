@@ -71,6 +71,8 @@ You can find this code in [examples/simple_navigation.py](examples/simple_naviga
 
 ## Apps
 
+A large number of [apps](docs/apps.md) are available for the Stretch robot, providing various features and an easy way to get started using the robot.
+
 After [installation](#installation), on the robot, run the server:
 
 ```bash
@@ -96,7 +98,7 @@ Finally:
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 
-There are also some apps for [debugging](docs/debug.md).
+See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
 
 ## Installation
 
