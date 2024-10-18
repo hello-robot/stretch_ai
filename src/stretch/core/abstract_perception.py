@@ -14,9 +14,9 @@
 
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
 
-from .interfaces import Observations
+import numpy as np
 
 
 class PerceptionModule(ABC):
@@ -24,5 +24,39 @@ class PerceptionModule(ABC):
         pass
 
     @abstractmethod
-    def predict(self, obs: Observations) -> Any:
+    def is_semantic(self):
+        """
+        Whether the perception model is a semantic segmentation model.
+        """
+        pass
+
+    @abstractmethod
+    def is_instance(self):
+        """
+        Whether the perception model is an instance segmentation model.
+        """
+        pass
+
+    @abstractmethod
+    def predict(
+        self,
+        rgb=None,
+        depth=None,
+        depth_threshold: Optional[float] = None,
+        draw_instance_predictions: bool = False,
+    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+        """
+        Run the perception model on the input images. Return semantic and instance labels for each point in the input image. Optionally filter out objects based on depth.
+
+        Arguments:
+            rgb: image of shape (H, W, 3)
+            depth: depth image of shape (H, W)
+            depth_threshold: threshold for depth image to filter out objects
+            draw_instance_predictions: whether to draw instance predictions
+
+        Returns:
+            semantic: semantic segmentation of shape (H, W)
+            instance: instance segmentation of shape (H, W)
+            metadata: metadata of the prediction (dict)
+        """
         pass

@@ -180,3 +180,9 @@ class SAM2Perception(PerceptionModule):
         task_observations["instance_scores"] = np.ones(len(masks))
         task_observations["semantic_frame"] = None
         return semantic_map.astype(int), instance_map.astype(int), task_observations
+
+    def is_semantic(self):
+        return True
+
+    def is_instance(self):
+        return True
