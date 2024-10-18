@@ -1,0 +1,25 @@
+FROM hellorobotinc/stretch-install-image
+# Start from the Stretch install image
+# We need to install the ROS2 Bridge and Stretch AI package
+
+RUN echo "Installing Stretch AI package"
+RUN pip install --upgrade pip setuptools packaging build meson ninja
+RUN git clone https://github.com/hello-robot/stretch_ai
+WORKDIR /home/hello-robot/stretch_ai
+RUN pip install -e src/
+
+RUN echo "Setting up ROS2 Bridge"
+RUN ln -s `pwd`/src/stretch_ros2_bridge /home/hello-robot/ament_ws/src/stretch_ros2_bridge
+
+RUN echo "Updating Stretch ROS2"
+WORKDIR /home/hello-robot/ament_ws/src/stretch_ros2
+RUN git checkout humble
+RUN git pull
+
+RUN echo "Building ROS2 Bridge"
+WORKDIR /home/hello-robot/ament_ws
+RUN colcon build --packages-select stretch_ros2_bridge stretch_core stretch_nav2 stretch_description
+
+WORKDIR /home/hello-robot/stretch_ai
+
+CMD ["/bin/bash"]

@@ -28,7 +28,8 @@ max_depth: 2.0
 
 # Object detection parameters
 detection:
-  module: "detic"
+  module: "sam"
+  # module: "detic"
   # module: "yolo"
   category_map_file: example_cat_map.json
   use_detic_viz: False
@@ -52,7 +53,7 @@ filters:
 motion:
   moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
   angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
-  min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
+  min_steps_not_moving: 5  # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
     arm: 0.02
     base_x: 0.02

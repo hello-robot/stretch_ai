@@ -180,7 +180,7 @@ You can develop with the Docker container by mounting your local directory into 
 We provide an alternative startup script for development. This script runs the Docker container with your local copy of the Stretch AI repository `../stretch_ai` mounted to the `/app` container directory. To use the script, run the following command on your desktop or laptop:
 
 ```bash
-./scripts/dev_docker_gpu_machine.sh
+./scripts/run_docker_gpu_machine.sh --dev
 ```
 
 Now, the apps will run from your local directory. You can edit the apps in your local directory and run them to see the result.
