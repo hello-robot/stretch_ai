@@ -518,6 +518,7 @@ class GraspObjectOperation(ManagedOperation):
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
             if mask_center is None:
+                failed_counter += 1
                 if failed_counter < self.max_failed_attempts:
                     mask_center = np.array([center_y, center_x])
                 else:
@@ -531,6 +532,8 @@ class GraspObjectOperation(ManagedOperation):
                     if self._try_open_loop:
                         return self.grasp_open_loop(current_xyz)
                     else:
+                        if self.talk:
+                            self.agent.robot_say(f"I can't see the {self.target_object}.")
                         self._success = False
                         return False
             else:
@@ -577,7 +580,7 @@ class GraspObjectOperation(ManagedOperation):
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
-                print("detected classes:", np.unique(servo.ee_semantic))
+                # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
                     success = self._grasp()
                 continue
