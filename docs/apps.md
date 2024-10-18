@@ -141,7 +141,9 @@ python -m stretch.app.voice_chat
 
 ### Dex Teleop for Data Collection
 
-Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit).
+[![Dex Teleop](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://youtu.be/ZQQWOkSkw5o)
+
+Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit). You can see an example of the system in action in the [Dex Teleop video on YouTube](https://youtu.be/ZQQWOkSkw5o).
 
 You need to install mediapipe for hand tracking:
 
