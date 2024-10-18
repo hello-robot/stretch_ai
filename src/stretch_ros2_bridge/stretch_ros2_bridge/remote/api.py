@@ -118,6 +118,10 @@ class StretchClient(AbstractRobotClient):
 
         return result_pre and result_post
 
+    @property
+    def base_control_mode(self) -> ControlMode:
+        return self._base_control_mode
+
     def switch_to_busy_mode(self) -> bool:
         """Switch to a mode that says we are occupied doing something blocking"""
         self._base_control_mode = ControlMode.BUSY
@@ -154,6 +158,7 @@ class StretchClient(AbstractRobotClient):
         self.stop()
 
     def stop(self):
+        """Stop the robot"""
         self.nav.disable()
         self.manip.disable()
         self._base_control_mode = ControlMode.IDLE
@@ -246,7 +251,7 @@ class StretchClient(AbstractRobotClient):
 
         # First retract the robot's joints
         self.switch_to_manipulation_mode()
-        pan, tilt = self._robot_model.look_front
+        pan, tilt = self._robot_model.look_close
         pos = self.manip._extract_joint_pos(STRETCH_NAVIGATION_Q)
         print("- go to configuration:", pos, "pan =", pan, "tilt =", tilt)
         self.manip.goto_joint_positions(pos, head_pan=pan, head_tilt=tilt, blocking=True)
@@ -282,7 +287,7 @@ class StretchClient(AbstractRobotClient):
         """Open-loop trajectory execution wrapper. Executes a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""
         return self.nav.execute_trajectory(*args, **kwargs)
 
-    def navigate_to(
+    def move_base_to(
         self,
         xyt: Iterable[float],
         relative: bool = False,
@@ -291,7 +296,7 @@ class StretchClient(AbstractRobotClient):
         """
         Move to xyt in global coordinates or relative coordinates. Cannot be used in manipulation mode.
         """
-        return self.nav.navigate_to(xyt, relative=relative, blocking=blocking)
+        return self.nav.move_base_to(xyt, relative=relative, blocking=blocking)
 
     def get_observation(
         self,

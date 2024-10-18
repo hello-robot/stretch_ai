@@ -27,11 +27,12 @@ from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 class ZmqServer(BaseZmqServer):
     @override
-    def __init__(self, *args, **kwargs):
+    def __init__(self, use_d405: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # ROS2 client interface
-        self.client = StretchClient(d405=True)
+        self.client = StretchClient(d405=use_d405)
+        self.use_d405 = use_d405
 
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
@@ -86,7 +87,6 @@ class ZmqServer(BaseZmqServer):
             "lidar_points": obs.lidar_points,
             "lidar_timestamp": obs.lidar_timestamp,
             "pose_graph": self.client.get_pose_graph(),
-            "control_mode": self.get_control_mode(),
             "last_motion_failed": self.client.last_motion_failed(),
             "recv_address": self.recv_address,
             "step": self._last_step,
@@ -108,18 +108,22 @@ class ZmqServer(BaseZmqServer):
             "at_goal": self.client.at_goal(),
             "is_homed": self.client.is_homed,
             "is_runstopped": self.client.is_runstopped,
+            "step": self._last_step,
         }
         return message
 
     @override
     def handle_action(self, action: Dict[str, Any]):
         """Handle an action from the client."""
+
         if "posture" in action:
             if action["posture"] == "manipulation":
+                self.client.stop()
                 self.client.switch_to_busy_mode()
                 self.client.move_to_manip_posture()
                 self.client.switch_to_manipulation_mode()
             elif action["posture"] == "navigation":
+                self.client.stop()
                 self.client.switch_to_busy_mode()
                 self.client.move_to_nav_posture()
                 self.client.switch_to_navigation_mode()
@@ -148,6 +152,7 @@ class ZmqServer(BaseZmqServer):
             self.client.load_map(action["load_map"])
         elif "say" in action:
             # Text to speech from the robot, not the client/agent device
+            print("Saying:", action["say"])
             self.text_to_speech.say_async(action["say"])
         elif "xyt" in action:
             if self.verbose:
@@ -156,7 +161,7 @@ class ZmqServer(BaseZmqServer):
                     self.client.in_navigation_mode(),
                 )
                 print(f"{action['xyt']} {action['nav_relative']} {action['nav_blocking']}")
-            self.client.navigate_to(
+            self.client.move_base_to(
                 action["xyt"],
                 relative=action["nav_relative"],
             )
@@ -246,7 +251,10 @@ class ZmqServer(BaseZmqServer):
         return d405_output
 
     def get_servo_message(self) -> Dict[str, Any]:
-        d405_output = self._get_ee_cam_message()
+        if self.use_d405:
+            d405_output = self._get_ee_cam_message()
+        else:
+            d405_output = {}
 
         obs = self.client.get_observation(compute_xyz=False)
         head_color_image, head_depth_image = self._rescale_color_and_depth(
@@ -272,6 +280,7 @@ class ZmqServer(BaseZmqServer):
             "head_cam/depth_scaling": self.depth_scaling,
             "head_cam/pose": self.client.head_camera_pose,
             "robot/config": obs.joint,
+            "step": self._last_step,
         }
         message.update(d405_output)
         return message

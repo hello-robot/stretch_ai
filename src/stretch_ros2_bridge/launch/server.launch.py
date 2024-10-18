@@ -26,6 +26,15 @@ def generate_launch_description():
         on_exit=launch.actions.Shutdown(),
     )
 
+    stretch_cameras_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("stretch_ros2_bridge"),
+                "launch/cameras.launch.py",
+            )
+        )
+    )
+
     base_slam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
@@ -37,6 +46,7 @@ def generate_launch_description():
 
     ld = LaunchDescription(
         [
+            stretch_cameras_launch,
             base_slam_launch,
             start_server,
         ]

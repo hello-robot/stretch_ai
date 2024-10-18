@@ -8,13 +8,10 @@
 # license information maybe found below, if so.
 
 import numpy as np
-import zmq
 from PIL import Image as PILImage
 
 from stretch.dynav.ok_robot_hw.utils.communication_utils import (
     recv_array,
-    recv_depth_img,
-    recv_rgb_img,
     send_array,
     send_depth_img,
     send_rgb_img,

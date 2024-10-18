@@ -21,7 +21,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.llm_plan import LLMPlanTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llms.openai_client import OpenaiClient
+from stretch.llms import get_llm_choices, get_llm_client
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
 
@@ -57,10 +57,12 @@ from stretch.perception import create_semantic_sensor
 # This threshold seems to work ok for Siglip - will not work for e.g. CLIP
 @click.option("--threshold", default=0.05, help="Threshold for similarity when using --all-matches")
 @click.option(
-    "--stationary",
-    is_flag=True,
-    help="Don't move the robot to the instance, if using real robot instead of offline data",
+    "--llm",
+    default="openai",
+    help="Client to use for language model.",
+    type=click.Choice(get_llm_choices()),
 )
+@click.option("--explore-iter", default=10, type=int, help="Number of iterations to explore")
 @click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
 def main(
     device_id: int = 0,
@@ -79,10 +81,10 @@ def main(
     frame: int = -1,
     text: str = "",
     yes: bool = False,
-    stationary: bool = False,
     all_matches: bool = False,
     threshold: float = 0.5,
     target_object: str = "toy",
+    llm: str = "openai",
 ):
 
     print("- Load parameters")
@@ -111,25 +113,30 @@ def main(
     # agent.voxel_map.read_from_pickle(input_file)
 
     prompt = ObjectManipNavPromptBuilder()
-    client = OpenaiClient(prompt)
+    client = get_llm_client(llm, prompt=prompt)
 
     print("Starting robot exploration...")
 
     agent.run_exploration(
-        rate=10,
         manual_wait=False,
-        explore_iter=20,
+        explore_iter=explore_iter,
         task_goal=target_object,  # arbitrary object to collect
         # as many instances as possible
         go_home_at_end=True,
         visualize=False,
     )
 
-    while True:
+    while robot.running:
+
+        # Get a plan from the language model
         text = input("Enter a long horizon task: ")
         plan = client(text)
         print(f"Generated plan: \n{plan}")
-        proceed = input("Proceed with plan? [y/n]: ")
+
+        if yes:
+            proceed = True
+        else:
+            proceed = input("Proceed with plan? [y/n]: ")
 
         if plan.startswith("```python"):
             plan = plan.split("\n", 1)[1]

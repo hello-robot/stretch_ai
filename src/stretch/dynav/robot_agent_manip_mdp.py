@@ -7,39 +7,36 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-import copy
-import datetime
 import os
-import pickle
-import threading
 import time
-from multiprocessing import Process
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict
+from uuid import uuid4
 
-import cv2
 import numpy as np
-import torch
+import rerun as rr
 import zmq
-from matplotlib import pyplot as plt
 
-from stretch.agent import RobotClient
-from stretch.core.parameters import Parameters, get_parameters
+# from stretch.agent import RobotClient
+from stretch.core.parameters import Parameters
+from stretch.dynav.communication_util import recv_array, send_array, send_everything
 from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
-from stretch.dynav.ok_robot_hw.global_parameters import *
-from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
-from stretch.dynav.ok_robot_hw.utils.communication_utils import recv_array, send_array
+from stretch.dynav.ok_robot_hw.global_parameters import (
+    INIT_ARM_POS,
+    INIT_HEAD_PAN,
+    INIT_HEAD_TILT,
+    INIT_LIFT_POS,
+    INIT_WRIST_PITCH,
+    INIT_WRIST_ROLL,
+    INIT_WRIST_YAW,
+    TOP_CAMERA_NODE,
+)
+from stretch.dynav.ok_robot_hw.robot import HelloRobot as ManipulationWrapper
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,
     move_to_point,
     pickup,
 )
-
-# from stretch.dynav.llm_server import ImageProcessor
 
 
 class RobotAgentMDP:
@@ -49,9 +46,9 @@ class RobotAgentMDP:
 
     def __init__(
         self,
-        robot: RobotClient,
+        robot,
         parameters: Dict[str, Any],
-        ip: str,
+        server_ip: str,
         image_port: int = 5558,
         text_port: int = 5556,
         manip_port: int = 5557,
@@ -76,7 +73,7 @@ class RobotAgentMDP:
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = Manipulation_Wrapper(
+        self.manip_wrapper = ManipulationWrapper(
             self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
         )
         self.robot.move_to_nav_posture()
@@ -85,40 +82,42 @@ class RobotAgentMDP:
         self.pos_err_threshold = 0.35
         self.rot_err_threshold = 0.4
         self.obs_count = 0
-        self.obs_history = []
         self.guarantee_instance_is_reachable = parameters.guarantee_instance_is_reachable
 
         self.image_sender = ImageSender(
-            ip=ip, image_port=image_port, text_port=text_port, manip_port=manip_port
+            server_ip=server_ip, image_port=image_port, text_port=text_port, manip_port=manip_port
         )
-        if method == "dynamem":
-            from stretch.dynav.voxel_map_server import ImageProcessor
 
-            self.image_processor = ImageProcessor(
-                rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
-            )
-        elif method == "mllm":
-            from stretch.dynav.llm_server import ImageProcessor
+        if not os.path.exists("dynamem_log"):
+            os.makedirs("dynamem_log")
 
-            self.image_processor = ImageProcessor(
-                rerun=True, static=False, log="env" + str(env_num) + "_" + str(test_num)
-            )
+        # if method == "dynamem":
+        #     from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
-        self.look_around_times = []
-        self.execute_times = []
+        #     self.image_processor = VoxelMapImageProcessor(
+        #         rerun=True,
+        #         rerun_visualizer=self.robot._rerun,
+        #         log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     )  # type: ignore
+        # elif method == "mllm":
+        #     from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
 
-        timestamp = f"{datetime.datetime.now():%Y-%m-%d-%H-%M-%S}"
+        #     self.image_processor = mLLMImageProcessor(
+        #         rerun=True,
+        #         static=False,
+        #         log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     )  # type: ignore
 
-        # self.head_lock = threading.Lock()
+        self.look_around_times: list[float] = []
+        self.execute_times: list[float] = []
+
+        timestamp = f"{datetime.now():%Y-%m-%d-%H-%M-%S}"
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.4, -0.4, -1.2]:
-            for tilt in [-0.6]:
-                start_time = time.time()
+        for pan in [0.4, -0.4, -1.2, -1.6]:
+            for tilt in [-0.65]:
                 self.robot.head_to(pan, tilt, blocking=True)
-                end_time = time.time()
-                print("moving head takes ", end_time - start_time, "seconds.")
                 self.update()
 
     def rotate_in_place(self):
@@ -132,15 +131,21 @@ class RobotAgentMDP:
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
+        # Sleep some time so the robot rgbd observations are more likely to be updated
+        # time.sleep(0.5)
+
+        # obs = self.robot.get_observation()
+        # self.obs_count += 1
+        # rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
+        # start_time = time.time()
+        # self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        # end_time = time.time()
+        # print("Image processing takes", end_time - start_time, "seconds.")
+
         obs = self.robot.get_observation()
-        # self.image_sender.send_images(obs)
         self.obs_history.append(obs)
         self.obs_count += 1
-        rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        # start_time = time.time()
-        self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
-        # end_time = time.time()
-        # print('Image processing takes', end_time - start_time, 'seconds.')
+        self.image_sender.send_images(obs)
 
     def execute_action(
         self,
@@ -218,7 +223,8 @@ class RobotAgentMDP:
             return False
         return True
 
-    def navigate(self, text, max_step=10):
+    def navigate(self, text, max_step=5):
+        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         finished = False
         step = 0
         end_point = None
@@ -276,7 +282,7 @@ class RobotAgentMDP:
         self.manip_wrapper.move_to_position(gripper_pos=1, lift_pos=1.05, arm_pos=0)
         self.manip_wrapper.move_to_position(wrist_pitch=-1.57)
 
-        # Shift the base back to the original point as we are certain that orginal point is navigable in navigation obstacle map
+        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
         self.manip_wrapper.move_to_position(
             base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
         )
@@ -326,6 +332,8 @@ class RobotAgentMDP:
             gripper_width = 0.45
         elif width < 0.075 and self.re == 3:
             gripper_width = 0.6
+        elif width < 0.09 and self.re == 3:
+            gripper_width = 0.85
         else:
             gripper_width = 1
 
@@ -340,7 +348,7 @@ class RobotAgentMDP:
                 gripper_width=gripper_width,
             )
 
-        # Shift the base back to the original point as we are certain that orginal point is navigable in navigation obstacle map
+        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
         self.manip_wrapper.move_to_position(
             base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
         )
@@ -352,85 +360,11 @@ class RobotAgentMDP:
             self.image_processor.write_to_pickle()
 
 
-def send_array(socket, A, flags=0, copy=True, track=False):
-    """send a numpy array with metadata"""
-    A = np.array(A)
-    md = dict(
-        dtype=str(A.dtype),
-        shape=A.shape,
-    )
-    socket.send_json(md, flags | zmq.SNDMORE)
-    return socket.send(np.ascontiguousarray(A), flags, copy=copy, track=track)
-
-
-def recv_array(socket, flags=0, copy=True, track=False):
-    """recv a numpy array"""
-    md = socket.recv_json(flags=flags)
-    msg = socket.recv(flags=flags, copy=copy, track=track)
-    A = np.frombuffer(msg, dtype=md["dtype"])
-    return A.reshape(md["shape"])
-
-
-def send_rgb_img(socket, img):
-    img = img.astype(np.uint8)
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
-    _, img_encoded = cv2.imencode(".jpg", img, encode_param)
-    socket.send(img_encoded.tobytes())
-
-
-def recv_rgb_img(socket):
-    img = socket.recv()
-    img = np.frombuffer(img, dtype=np.uint8)
-    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
-    return img
-
-
-def send_depth_img(socket, depth_img):
-    depth_img = (depth_img * 1000).astype(np.uint16)
-    encode_param = [
-        int(cv2.IMWRITE_PNG_COMPRESSION),
-        3,
-    ]  # Compression level from 0 (no compression) to 9 (max compression)
-    _, depth_img_encoded = cv2.imencode(".png", depth_img, encode_param)
-    socket.send(depth_img_encoded.tobytes())
-
-
-def recv_depth_img(socket):
-    depth_img = socket.recv()
-    depth_img = np.frombuffer(depth_img, dtype=np.uint8)
-    depth_img = cv2.imdecode(depth_img, cv2.IMREAD_UNCHANGED)
-    depth_img = depth_img / 1000.0
-    return depth_img
-
-
-def send_everything(socket, rgb, depth, intrinsics, pose):
-    send_rgb_img(socket, rgb)
-    socket.recv_string()
-    send_depth_img(socket, depth)
-    socket.recv_string()
-    send_array(socket, intrinsics)
-    socket.recv_string()
-    send_array(socket, pose)
-    socket.recv_string()
-
-
-def recv_everything(socket):
-    rgb = recv_rgb_img(socket)
-    socket.send_string("")
-    depth = recv_depth_img(socket)
-    socket.send_string("")
-    intrinsics = recv_array(socket)
-    socket.send_string("")
-    pose = recv_array(socket)
-    socket.send_string("")
-    return rgb, depth, intrinsics, pose
-
-
 class ImageSender:
     def __init__(
         self,
         stop_and_photo=False,
-        ip="100.108.67.79",
+        server_ip="100.108.67.79",
         image_port=5560,
         text_port=5561,
         manip_port=5557,
@@ -442,11 +376,11 @@ class ImageSender:
     ):
         context = zmq.Context()
         self.img_socket = context.socket(zmq.REQ)
-        self.img_socket.connect("tcp://" + str(ip) + ":" + str(image_port))
+        self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(image_port))
         self.text_socket = context.socket(zmq.REQ)
-        self.text_socket.connect("tcp://" + str(ip) + ":" + str(text_port))
+        self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(text_port))
         self.manip_socket = context.socket(zmq.REQ)
-        self.manip_socket.connect("tcp://" + str(ip) + ":" + str(manip_port))
+        self.manip_socket.connect("tcp://" + str(server_ip) + ":" + str(manip_port))
 
     def query_text(self, text, start):
         self.text_socket.send_string(text)

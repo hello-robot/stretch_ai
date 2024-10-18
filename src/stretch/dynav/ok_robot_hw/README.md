@@ -1,6 +1,6 @@
 # Robot Side Code
 
-Most of the heavy code will be running in the workstation and will communicate with the robot through sockets.
+Most of the heavy code will be running in the workstation and will communicate with the robot through sockets
 
 ## Preparation to run robot side codes
 
@@ -10,7 +10,7 @@ You need to install the home-robot on stretch robot following instructions provi
 
 To check whether home-robot is installed properly and got familiar with running home-robot based codes, we recommend you try to run [these test scripts](https://github.com/facebookresearch/home-robot/blob/main/tests/hw_manual_test.py).
 
-Once you finished installing Home Robot, follow [these steps](../docs/robot-installation.md) to enable OK-Robot use home-robot controllers.
+Once you finished installing home-robot, follow [these steps](../docs/robot-installation.md) to enable OK-Robot use home-robot controllers.
 
 The success of OK-Robot system also depends on robot calibration and accurate urdf file, so make sure you follow [these calibration steps](../docs/robot-calibration.md) to obtain an accurate urdf file for your robot.
 
@@ -26,8 +26,6 @@ roslaunch home_robot_hw startup_stretch_hector_slam.launch
 ```
 python run.py -x1 [x1] -y1 [y1] -x2 [x2] -y2 [y2] -ip [your workstation ip]
 ```
-
-\<\<\<\<\<\<\< HEAD
 
 - **\[x1, y1\]** - Coordinated of tape on which the base of the robot is on
 - **\[x2, y2\]** - Coordinates of the secondary tape.

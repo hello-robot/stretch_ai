@@ -7,16 +7,19 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 import heapq
 import math
 import time
-from random import random
-from typing import Callable, List, Optional, Set, Tuple
+from typing import List, Set, Tuple
 
 import numpy as np
-import torch
 
-from stretch.dynav.mapping_utils import SparseVoxelMapNavigationSpace
+from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.motion import PlanResult
 
 
@@ -71,25 +74,45 @@ class AStar:
         # self._navigable = ~obs
         self.start_time = time.time()
 
-    def verify_path(self, path) -> bool:
-        self.reset()
-        for i in range(max(10, len(path))):
-            if self.point_is_occupied(*self.to_pt(path[i][:2])):
-                return False
-            return True
-
     def point_is_occupied(self, x: int, y: int) -> bool:
+        """Checks if a point is occupied.
+
+        Args:
+            x: The x coordinate.
+            y: The y coordinate.
+
+        Returns:
+            Whether the point is occupied.
+        """
         return not bool(self._navigable[x][y])
 
     def to_pt(self, xy: Tuple[float, float]) -> Tuple[int, int]:
-        xy = torch.tensor([xy[0], xy[1]])
-        pt = self.space.voxel_map.xy_to_grid_coords(xy)
-        return tuple(pt.tolist())
+        """Converts a point from continuous, world xy coordinates to grid coordinates.
+
+        Args:
+            xy: The point in continuous xy coordinates.
+
+        Returns:
+            The point in discrete grid coordinates.
+        """
+        # # type: ignore to bypass mypy checking
+        xy = np.array([xy[0], xy[1]])  # type: ignore
+        pt = self.space.voxel_map.xy_to_grid_coords(xy)  # type: ignore
+        return int(pt[0]), int(pt[1])
 
     def to_xy(self, pt: Tuple[int, int]) -> Tuple[float, float]:
-        pt = torch.tensor([pt[0], pt[1]])
-        xy = self.space.voxel_map.grid_coords_to_xy(pt)
-        return tuple(xy.tolist())
+        """Converts a point from grid coordinates to continuous, world xy coordinates.
+
+        Args:
+            pt: The point in grid coordinates.
+
+        Returns:
+            The point in continuous xy coordinates.
+        """
+        # # type: ignore to bypass mypy checking
+        pt = np.array([pt[0], pt[1]])  # type: ignore
+        xy = self.space.voxel_map.grid_coords_to_xy(pt)  # type: ignore
+        return float(xy[0]), float(xy[1])
 
     def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
@@ -322,10 +345,10 @@ class AStar:
         # assert len(goal) == self.space.dof, "invalid goal dimensions"
         # self.start_time = time.time()
         self.reset()
-        if not self.space.is_valid(goal):
-            if verbose:
-                print("[Planner] invalid goal")
-            return PlanResult(False, reason="[Planner] invalid goal")
+        # if not self.space.is_valid(goal):
+        #     if verbose:
+        #         print("[Planner] invalid goal")
+        #     return PlanResult(False, reason="[Planner] invalid goal")
         # Add start to the tree
         # print('Start running A* ', time.time() - self.start_time, ' seconds after path planning starts')
         waypoints = self.run_astar(start[:2], goal[:2])

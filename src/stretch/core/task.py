@@ -12,6 +12,10 @@ from typing import Optional
 
 from termcolor import colored
 
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
+
 
 class Operation(abc.ABC):
     """An operation is a single unit of work that can be executed. It can be part of a task. It
@@ -46,6 +50,22 @@ class Operation(abc.ABC):
                 )
             self.on_failure = self
 
+        self.status = "idle"
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def get_status(self) -> str:
+        """Return the status of the operation."""
+        return self.status
+
+    def set_status(self, status: str):
+        """Set the status of the operation."""
+        self.status = status
+
     @property
     def name(self) -> str:
         """Return the name of the operation."""
@@ -77,9 +97,11 @@ class Operation(abc.ABC):
 
     def __call__(self, **kwargs) -> bool:
         """Run the operation."""
+        self.configure(**kwargs)
         if self.can_start():
             self.run()
         else:
+            logger.error(f"Operation {self.name} cannot start.")
             return False
         self.run()
         return self.was_successful()
@@ -166,6 +188,7 @@ class Task:
                         self.info(f"Transitioning to {self.current_operation.name}")
                 else:
                     # And if we failed
+                    self.info(f"Operation {self.current_operation.name} failed.")
                     self.current_operation = self.current_operation.on_failure
             else:
                 self.info(f"Operation {self.current_operation.name} cannot start.")

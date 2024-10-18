@@ -7,11 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import math
 import os
-import random
-import sys
-import time
 
 import numpy as np
 import pinocchio as pin
@@ -23,7 +19,7 @@ from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.utils import transform_joint_array
 from stretch.motion.kinematics import HelloStretchIdx
 
-OVERRIDE_STATES = {}
+OVERRIDE_STATES: dict[str, float] = {}
 
 
 class HelloRobot:
@@ -64,7 +60,7 @@ class HelloRobot:
 
         # Initialize StretchClient controller
         self.robot = robot
-        self.robot.switch_to_manipulation_mode()
+        # self.robot.switch_to_manipulation_mode()
         # time.sleep(2)
 
         # Constraining the robots movement
@@ -135,19 +131,7 @@ class HelloRobot:
         if not wrist_roll is None:
             target_state[5] = wrist_roll
 
-        # Actual Movement
-<<<<<<< HEAD
-        self.robot.arm_to(target_state, blocking = blocking)
-        print('Expected', target_state)
-        print('Actual', self.robot.get_six_joints())
-        print('Error', target_state - self.robot.get_six_joints())
-=======
-        # print('Target Position', target_state)
-        # print('pan tilt before', self.robot.get_pan_tilt())
         self.robot.arm_to(target_state, blocking=blocking, head=np.array([self.pan, self.tilt]))
-        # print('pan tilt after', self.robot.get_pan_tilt())
-        # print('Actual location', self.robot.get_six_joints())
->>>>>>> bd400ba42984a5606fbad1044950d8f36ce190ea
 
         # Head state update and Movement
         # target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
@@ -160,13 +144,16 @@ class HelloRobot:
             target_head_pan = head_pan
             self.pan = head_pan
         self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
+        # print("Expected", target_state)
+        # print("Actual", self.robot.get_six_joints())
+        # print("Error", target_state - self.robot.get_six_joints())
         # self.pan, self.tilt = self.robot.get_pan_tilt()
         # time.sleep(0.7)
 
     def pickup(self, width):
         """
         Code for grasping the object
-        Gripper closes gradually until it encounters resistence
+        Gripper closes gradually until it encounters resistance
         """
         next_gripper_pos = width
         while True:
@@ -186,7 +173,7 @@ class HelloRobot:
 
     def updateJoints(self):
         """
-        update all the current poisitions of joints
+        update all the current positions of joints
         """
         state = self.robot.get_six_joints()
         origin_dist = state[0]
@@ -212,7 +199,7 @@ class HelloRobot:
     # following function is used to move the robot to a desired joint configuration
     def move_to_joints(self, joints, gripper, mode=0):
         """
-        Given the desrired joints movement this fucntion will the joints accordingly
+        Given the desired joints movement this function will the joints accordingly
         """
         state = self.robot.get_six_joints()
 
@@ -238,9 +225,17 @@ class HelloRobot:
             target1[0] = target_state[0]
             target1[1] = min(1.1, target_state[1] + 0.2)
             self.robot.arm_to(target1, blocking=True, head=np.array([self.pan, self.tilt]))
-            
-        self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+
+        self.robot.arm_to(target_state, blocking=True)
         self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
+
+        # self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
+        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
+
+        # print('pan tilt after', self.robot.get_pan_tilt())
+        # print(f"current state {self.robot.get_six_joints()}")
+        # print(f"target state {target_state}")
+        # time.sleep(1)
 
         # NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
         OVERRIDE_STATES["wrist_pitch"] = joints["joint_wrist_pitch"]
@@ -250,7 +245,7 @@ class HelloRobot:
         This function takes two nodes from a robot URDF file as input and
         outputs the coordinate frame of node2 relative to the coordinate frame of node1.
 
-        Mainly used for transforming co-ordinates from camera frame to gripper frame.
+        Mainly used for transforming coordinates from camera frame to gripper frame.
         """
 
         # return frame_transform, frame2, frame1
@@ -286,7 +281,7 @@ class HelloRobot:
         # print(f"final pos and quat {final_pos}\n {final_quat}")
 
         full_body_cfg = self.robot.solve_ik(
-            final_pos, final_quat, False, None, False, node_name=self.end_link
+            final_pos, final_quat, None, False, custom_ee_frame=self.end_link
         )
         if full_body_cfg is None:
             print("Warning: Cannot find an IK solution for desired EE pose!")

@@ -95,7 +95,7 @@ CLASS_LABELS_200 = (
     "tray",
     "bowl",
     "speaker",
-    "crate",
+    "crates",
     "projector",
     "book",
     "school bag",

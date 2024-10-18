@@ -15,7 +15,9 @@ from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
 from .clip_encoder import ClipEncoder, NormalizedClipEncoder
+from .custom import CustomImageTextEncoder
 from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
+from .masksiglip_encoder import MaskSiglipEncoder
 from .siglip_encoder import SiglipEncoder
 
 encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]

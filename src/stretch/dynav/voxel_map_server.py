@@ -14,54 +14,29 @@ import threading
 
 # import wget
 import time
-from io import BytesIO
+
+# from io import BytesIO
 from pathlib import Path
 
-import clip
 import cv2
-import hydra
 import numpy as np
-import open3d as o3d
 import rerun as rr
+import rerun.blueprint as rrb
 import scipy
 import torch
 
 # from stretch.utils.morphology import get_edges
 import torch.nn.functional as F
-import torchvision.transforms.functional as V
-import wget
-import zmq
 from matplotlib import pyplot as plt
-from PIL import Image
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-from torchvision import transforms
-from transformers import AutoModel, AutoProcessor
 
-# from segment_anything import sam_model_registry, SamPredictor
-# from transformers import AutoProcessor, OwlViTForObjectDetection
-from ultralytics import SAM, YOLO, YOLOWorld
-
+import stretch.utils.logger as logger
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import (
-    load_socket,
-    recv_array,
-    recv_depth_img,
-    recv_everything,
-    recv_rgb_img,
-    send_array,
-    send_depth_img,
-    send_everything,
-    send_rgb_img,
-)
-from stretch.dynav.mapping_utils import (
-    AStar,
-    SparseVoxelMap,
-    SparseVoxelMapNavigationSpace,
-    VoxelizedPointcloud,
-)
-from stretch.dynav.scannet import CLASS_LABELS_200
+from stretch.dynav.communication_util import load_socket, recv_everything
+from stretch.dynav.mapping_utils.a_star import AStar
+from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
+from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
+from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
 
 def get_inv_intrinsics(intrinsics):
@@ -126,43 +101,59 @@ def get_xyz(depth, pose, intrinsics):
     return xyz
 
 
+def setup_custom_blueprint():
+    main = rrb.Horizontal(
+        rrb.Spatial3DView(name="3D View", origin="world"),
+        rrb.Vertical(
+            rrb.TextDocumentView(name="text", origin="robot_monologue"),
+            rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+        ),
+        rrb.Vertical(
+            rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+            rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+        ),
+        column_shares=[2, 1, 1],
+    )
+    my_blueprint = rrb.Blueprint(
+        rrb.Vertical(main, rrb.TimePanel(state=True)),
+        collapse_panels=True,
+    )
+    rr.send_blueprint(my_blueprint)
+
+
 class ImageProcessor:
     def __init__(
         self,
-        vision_method="mask*lip",
-        siglip=True,
-        device="cuda",
-        min_depth=0.25,
-        max_depth=2.5,
-        img_port=5558,
-        text_port=5556,
-        open_communication=True,
-        rerun=True,
-        static=True,
+        device: str = "cuda",
+        min_depth: float = 0.25,
+        max_depth: float = 2.5,
+        img_port: int = 5558,
+        text_port: int = 5556,
+        open_communication: bool = True,
+        rerun: bool = True,
         log=None,
-        image_shape=(450, 350),
+        image_shape=(360, 270),
+        # image_shape=None,
+        rerun_server_memory_limit: str = "4GB",
+        rerun_visualizer=None,
     ):
-        self.static = static
-        self.siglip = siglip
+        self.rerun_visualizer = rerun_visualizer
         current_datetime = datetime.datetime.now()
         if log is None:
             self.log = "debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         else:
             self.log = log
         self.rerun = rerun
-        if self.rerun:
-            if self.static:
-                rr.init(self.log, spawn=False)
-                rr.connect("100.108.67.79:9876")
-            else:
-                rr.init(self.log, spawn=True)
+        if self.rerun and self.rerun_visualizer is None:
+            rr.init(self.log)
+            logger.info("Starting a rerun server.")
+        elif self.rerun:
+            setup_custom_blueprint()
+            logger.info("Attempting to connect to existing rerun server.")
+
         self.min_depth = min_depth
         self.max_depth = max_depth
         self.obs_count = 0
-        # There are three vision methods:
-        # 1. 'mask*lip' Following the idea of https://arxiv.org/abs/2112.01071, remove the last layer of any VLM and obtain the dense features
-        # 2. 'mask&*lip' Following the idea of https://mahis.life/clip-fields/, extract segmentation mask and assign a vision-language feature to it
-        self.vision_method = vision_method
         # If cuda is not available, then device will be forced to be cpu
         if not torch.cuda.is_available():
             device = "cpu"
@@ -226,51 +217,39 @@ class ImageProcessor:
         self.value_map = torch.zeros(self.voxel_map.grid_size)
 
     def create_vision_model(self):
-        if not self.siglip:
-            self.clip_model, self.clip_preprocess = clip.load("ViT-B/16", device=self.device)
-            self.clip_model.eval()
-        else:
-            self.clip_model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(
-                self.device
-            )
-            self.clip_preprocess = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
-            self.clip_model.eval()
-        if self.vision_method != "mask*lip":
-            sam_checkpoint = f"./sam2_hiera_small.pt"
-            sam_config = "sam2_hiera_s.yaml"
-            if not os.path.exists(sam_checkpoint):
-                wget.download(
-                    "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt",
-                    out=sam_checkpoint,
-                )
-            sam2_model = build_sam2(
-                sam_config, sam_checkpoint, device=self.device, apply_postprocessing=False
-            )
-            self.mask_predictor = SAM2ImagePredictor(sam2_model)
-        self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
-        self.texts = CLASS_LABELS_200
-        self.yolo_model.set_classes(self.texts)
+        self.encoder = MaskSiglipEncoder(device=self.device)
+
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
-            clip_model=self.clip_model,
-            processor=self.clip_preprocess,
+            clip_model=self.encoder.model,
+            processor=self.encoder.processor,
             device=self.device,
-            siglip=self.siglip,
+            siglip=True,
         )
 
+    def get_encoder(self) -> CustomImageTextEncoder:
+        return self.encoder
+
     def process_text(self, text, start_pose):
+        """
+        Process the text query and return the trajectory for the robot to follow.
+        """
+
+        print("Processing", text, "starts")
+
         if self.rerun:
-            rr.log("/object", rr.Clear(recursive=True), static=self.static)
-            rr.log("/robot_start_pose", rr.Clear(recursive=True), static=self.static)
-            rr.log("/direction", rr.Clear(recursive=True), static=self.static)
-            rr.log("robot_monologue", rr.Clear(recursive=True), static=self.static)
-            rr.log(
-                "/Past_observation_most_similar_to_text",
-                rr.Clear(recursive=True),
-                static=self.static,
-            )
-            if not self.static:
-                rr.connect("100.108.67.79:9876")
+            if self.rerun_visualizer is None:
+                rr.log("world/object", rr.Clear(recursive=True))
+                rr.log("world/robot_start_pose", rr.Clear(recursive=True))
+                rr.log("world/direction", rr.Clear(recursive=True))
+                rr.log("robot_monologue", rr.Clear(recursive=True))
+                rr.log("/observation_similar_to_text", rr.Clear(recursive=True))
+            else:
+                self.rerun_visualizer.clear_identity("world/object")
+                self.rerun_visualizer.clear_identity("world/robot_start_pose")
+                self.rerun_visualizer.clear_identity("world/direction")
+                self.rerun_visualizer.clear_identity("robot_monologue")
+                self.rerun_visualizer.clear_identity("/observation_similar_to_text")
         debug_text = ""
         mode = "navigation"
         obs = None
@@ -280,12 +259,14 @@ class ImageProcessor:
         if text is not None and text != "" and self.traj is not None:
             print("saved traj", self.traj)
             traj_target_point = self.traj[-1]
-            if self.voxel_map_localizer.verify_point(text, traj_target_point):
-                localized_point = traj_target_point
-                debug_text += "## Last visual grounding results looks fine so directly use it.\n"
-                # if self.planner.verify_path(self.traj[:-2]):
-                #     waypoints = self.traj[:-2]
-                #     debug_text += '## Last path planning results looks fine so directly use it.\n'
+            with self.voxel_map_lock:
+                if self.voxel_map_localizer.verify_point(text, traj_target_point):
+                    localized_point = traj_target_point
+                    debug_text += (
+                        "## Last visual grounding results looks fine so directly use it.\n"
+                    )
+
+        print("Target verification finished")
 
         if waypoints is None:
             # Do visual grounding
@@ -297,27 +278,29 @@ class ImageProcessor:
                         obs,
                         pointcloud,
                     ) = self.voxel_map_localizer.localize_A(text, debug=True, return_debug=True)
+                print("Target point selected!")
                 if localized_point is not None:
-                    rr.log(
-                        "/object",
-                        rr.Points3D(
+                    if self.rerun and self.rerun_visualizer is None:
+                        rr.log(
+                            "world/object",
+                            rr.Points3D(
+                                [localized_point[0], localized_point[1], 1.5],
+                                colors=torch.Tensor([1, 0, 0]),
+                                radii=0.1,
+                            ),
+                        )
+                    elif self.rerun:
+                        self.rerun_visualizer.log_custom_pointcloud(
+                            "world/object",
                             [localized_point[0], localized_point[1], 1.5],
-                            colors=torch.Tensor([1, 0, 0]),
-                            radii=0.1,
-                        ),
-                        static=self.static,
-                    )
+                            torch.Tensor([1, 0, 0]),
+                            0.1,
+                        )
             # Do Frontier based exploration
             if text is None or text == "" or localized_point is None:
                 debug_text += "## Navigation fails, so robot starts exploring environments.\n"
                 localized_point = self.sample_frontier(start_pose, text)
                 mode = "exploration"
-                rr.log(
-                    "/object",
-                    rr.Points3D([0, 0, 0], colors=torch.Tensor([1, 0, 0]), radii=0),
-                    static=self.static,
-                )
-                print("\n", localized_point, "\n")
 
             if localized_point is None:
                 return []
@@ -327,20 +310,7 @@ class ImageProcessor:
 
             point = self.sample_navigation(start_pose, localized_point)
 
-            if self.rerun:
-                buf = BytesIO()
-                plt.savefig(buf, format="png")
-                buf.seek(0)
-                img = Image.open(buf)
-                img = np.array(img)
-                buf.close()
-                rr.log("2d_map", rr.Image(img), static=self.static)
-            else:
-                if text != "":
-                    plt.savefig(self.log + "/debug_" + text + str(self.obs_count) + ".png")
-                else:
-                    plt.savefig(self.log + "/debug_exploration" + str(self.obs_count) + ".png")
-            plt.clf()
+            print("Navigation endpoint selected")
 
             if obs is not None and mode == "navigation":
                 rgb = self.voxel_map.observations[obs - 1].rgb
@@ -349,32 +319,37 @@ class ImageProcessor:
                         rgb = np.array(rgb)
                     cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
                 else:
-                    rr.log(
-                        "/Past_observation_most_similar_to_text", rr.Image(rgb), static=self.static
-                    )
+                    if self.rerun and self.rerun_visualizer is None:
+                        rr.log("/observation_similar_to_text", rr.Image(rgb))
+                    elif self.rerun:
+                        self.rerun_visualizer.log_custom_2d_image(
+                            "/observation_similar_to_text", rgb
+                        )
+
             waypoints = None
 
             if point is None:
                 print("Unable to find any target point, some exception might happen")
             else:
                 print("Target point is", point)
-                res = self.planner.plan(start_pose, point)
+                with self.voxel_map_lock:
+                    res = self.planner.plan(start_pose, point)
             if res.success:
                 waypoints = [pt.state for pt in res.trajectory]
             else:
                 waypoints = None
                 print("[FAILURE]", res.reason)
-        # If we are navigating to some object of interst, send (x, y, z) of
+        # If we are navigating to some object of interest, send (x, y, z) of
         # the object so that we can make sure the robot looks at the object after navigation
         traj = []
         if waypoints is not None:
-            finished = len(waypoints) <= 10 and mode == "navigation"
-            if finished:
-                self.traj = None
-            else:
-                self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            finished = len(waypoints) <= 5 and mode == "navigation"
+            # if finished:
+            #     self.traj = None
+            # else:
+            #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
-                waypoints = waypoints[:8]
+                waypoints = waypoints[:5]
             traj = self.planner.clean_path_for_xy(waypoints)
             if finished:
                 traj.append([np.nan, np.nan, np.nan])
@@ -389,11 +364,13 @@ class ImageProcessor:
             else:
                 debug_text = "### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n"
             debug_text = "# Robot's monologue: \n" + debug_text
-            rr.log(
-                "robot_monologue",
-                rr.TextDocument(debug_text, media_type=rr.MediaType.MARKDOWN),
-                static=self.static,
-            )
+            if self.rerun and self.rerun_visualizer is None:
+                rr.log(
+                    "robot_monologue",
+                    rr.TextDocument(debug_text, media_type=rr.MediaType.MARKDOWN),
+                )
+            elif self.rerun:
+                self.rerun_visualizer.log_text("robot_monologue", debug_text)
 
         if traj is not None:
             origins = []
@@ -404,135 +381,34 @@ class ImageProcessor:
                     vectors.append(
                         [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
                     )
-            rr.log(
-                "/direction",
-                rr.Arrows3D(
-                    origins=origins, vectors=vectors, colors=torch.Tensor([0, 1, 0]), radii=0.1
-                ),
-                static=self.static,
-            )
-            rr.log(
-                "/robot_start_pose",
-                rr.Points3D(
-                    [start_pose[0], start_pose[1], 1.5], colors=torch.Tensor([0, 0, 1]), radii=0.1
-                ),
-                static=self.static,
-            )
+            if self.rerun and self.rerun_visualizer is None:
+                rr.log(
+                    "world/direction",
+                    rr.Arrows3D(
+                        origins=origins, vectors=vectors, colors=torch.Tensor([0, 1, 0]), radii=0.1
+                    ),
+                )
+                rr.log(
+                    "world/robot_start_pose",
+                    rr.Points3D(
+                        [start_pose[0], start_pose[1], 1.5],
+                        colors=torch.Tensor([0, 0, 1]),
+                        radii=0.1,
+                    ),
+                )
+            elif self.rerun:
+                self.rerun_visualizer.log_arrow3D(
+                    "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+                )
+                self.rerun_visualizer.log_custom_pointcloud(
+                    "world/robot_start_pose",
+                    [start_pose[0], start_pose[1], 1.5],
+                    torch.Tensor([0, 0, 1]),
+                    0.1,
+                )
 
         # self.write_to_pickle()
         return traj
-
-    # def process_text(self, text, start_pose):
-    #     if self.rerun:
-    #         # if not self.static:
-    #         #     rr.set_time_sequence("frame", self.obs_count)
-    #         rr.log('/object', rr.Clear(recursive = True), static = self.static)
-    #         rr.log('/robot_start_pose', rr.Clear(recursive = True), static = self.static)
-    #         rr.log('/direction', rr.Clear(recursive = True), static = self.static)
-    #         rr.log('robot_monologue', rr.Clear(recursive = True), static = self.static)
-    #         rr.log('/Past_observation_most_similar_to_text', rr.Clear(recursive = True), static = self.static)
-    #         if not self.static:
-    #             rr.connect('100.108.67.79:9876')
-
-    #     debug_text = ''
-    #     mode = 'navigation'
-    #     obs = None
-    #     # Do visual grounding
-    #     if text is not None and text != '':
-    #         with self.voxel_map_lock:
-    #             localized_point, debug_text, obs, pointcloud = self.voxel_map_localizer.localize_A(text, debug = True, return_debug = True)
-    #         if localized_point is not None:
-    #             rr.log("/object", rr.Points3D([localized_point[0], localized_point[1], 1.5], colors=torch.Tensor([1, 0, 0]), radii=0.1), static = self.static)
-    #     # Do Frontier based exploration
-    #     if text is None or text == '' or localized_point is None:
-    #         debug_text += '## Navigation fails, so robot starts exploring environments.\n'
-    #         localized_point = self.sample_frontier(start_pose, text)
-    #         mode = 'exploration'
-    #         rr.log("/object", rr.Points3D([0, 0, 0], colors=torch.Tensor([1, 0, 0]), radii=0), static = self.static)
-    #         print('\n', localized_point, '\n')
-
-    #     if localized_point is None:
-    #         return []
-
-    #     if len(localized_point) == 2:
-    #         localized_point = np.array([localized_point[0], localized_point[1], 0])
-
-    #     point = self.sample_navigation(start_pose, localized_point, mode = mode)
-    #     # if mode == 'navigation' and torch.linalg.norm(torch.Tensor(point)[:2] - torch.linalg.norm(localized_point[:2])) > 2.0:
-    #     #     localized_point = self.sample_frontier(start_pose, None)
-    #     #     mode = 'exploration'
-    #     #     point = self.sample_navigation(start_pose, localized_point)
-    #     #     debug_text += '## All reachable points of robot are too far from the target object, explore to find new paths. \n'
-
-    #     if self.rerun:
-    #         buf = BytesIO()
-    #         plt.savefig(buf, format='png')
-    #         buf.seek(0)
-    #         img = Image.open(buf)
-    #         img = np.array(img)
-    #         buf.close()
-    #         rr.log('2d_map', rr.Image(img), static = self.static)
-    #     else:
-    #         if text != '':
-    #             plt.savefig(self.log + '/debug_' + text + str(self.obs_count) + '.png')
-    #         else:
-    #             plt.savefig(self.log + '/debug_exploration' + str(self.obs_count) + '.png')
-    #     plt.clf()
-
-    #     if self.rerun:
-    #         if text is not None and text != '':
-    #             debug_text = '### The goal is to navigate to ' + text + '.\n' + debug_text
-    #         else:
-    #             debug_text = '### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n'
-    #         debug_text = '# Robot\'s monologue: \n' + debug_text
-    #         rr.log("robot_monologue", rr.TextDocument(debug_text, media_type = rr.MediaType.MARKDOWN), static = self.static)
-
-    #     if obs is not None and mode == 'navigation':
-    #         rgb = self.voxel_map.observations[obs - 1].rgb
-    #         if not self.rerun:
-    #             cv2.imwrite(self.log + '/debug_' + text + '.png', rgb[:, :, [2, 1, 0]])
-    #         else:
-    #             rr.log('/Past_observation_most_similar_to_text', rr.Image(rgb), static = self.static)
-    #     traj = []
-    #     waypoints = None
-    #     if point is None:
-    #         print('Unable to find any target point, some exception might happen')
-    #     else:
-    #         print('Target point is', point)
-    #         res = self.planner.plan(start_pose, point)
-    #         if res.success:
-    #             waypoints = [pt.state for pt in res.trajectory]
-    #             # If we are navigating to some object of interst, send (x, y, z) of
-    #             # the object so that we can make sure the robot looks at the object after navigation
-    #             print(waypoints)
-    #             # finished = (len(waypoints) <= 4 or torch.linalg.norm(torch.Tensor(point)[:2] - torch.Tensor(start_pose[:2])) > 0.8) and mode == 'navigation'
-    #             # finished = mode == 'navigation'
-    #             finished = len(waypoints) <= 4 and mode == 'navigation'
-    #             if not finished:
-    #                 waypoints = waypoints[:4]
-    #             traj = self.planner.clean_path_for_xy(waypoints)
-    #             # traj = traj[1:]
-    #             if finished:
-    #                 traj.append([np.nan, np.nan, np.nan])
-    #                 if isinstance(localized_point, torch.Tensor):
-    #                     localized_point = localized_point.tolist()
-    #                 traj.append(localized_point)
-    #             print('Planned trajectory:', traj)
-    #         else:
-    #             print('[FAILURE]', res.reason)
-
-    #     if traj is not None:
-    #         origins = []
-    #         vectors = []
-    #         for idx in range(len(traj)):
-    #             if idx != len(traj) - 1:
-    #                 origins.append([traj[idx][0], traj[idx][1], 1.5])
-    #                 vectors.append([traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0])
-    #         rr.log("/direction", rr.Arrows3D(origins = origins, vectors = vectors, colors=torch.Tensor([0, 1, 0]), radii=0.05), static = self.static)
-    #         rr.log("/robot_start_pose", rr.Points3D([start_pose[0], start_pose[1], 1.5], colors=torch.Tensor([0, 0, 1]), radii=0.1), static = self.static)
-
-    #     self.write_to_pickle()
-    #     return traj
 
     def sample_navigation(self, start, point, mode="navigation"):
         # plt.clf()
@@ -554,6 +430,7 @@ class ImageProcessor:
         if goal is not None:
             goal_pt = self.planner.to_pt(goal)
             plt.scatter(goal_pt[1], goal_pt[0], s=10, c="g")
+        # plt.show()
         return goal
 
     def sample_frontier(self, start_pose=[0, 0, 0], text=None):
@@ -573,11 +450,8 @@ class ImageProcessor:
                 )
                 alignments_heuristics = time_heuristics
 
-        obstacles, explored = self.voxel_map.get_2d_map()
-        # plt.clf()
-        # plt.imshow(obstacles * 0.5 + explored * 0.5)
-        # plt.scatter(index[1], index[0], s = 20, c = 'r')
-        return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
+            obstacles, explored = self.voxel_map.get_2d_map()
+            return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
 
     def _recv_image(self):
         while True:
@@ -590,217 +464,15 @@ class ImageProcessor:
             print("Image processing takes", process_time, "seconds")
             print("processing took " + str(process_time) + " seconds")
 
-    def forward_one_block(self, resblocks, x):
-        q, k, v = None, None, None
-        y = resblocks.ln_1(x)
-        y = F.linear(y, resblocks.attn.in_proj_weight, resblocks.attn.in_proj_bias)
-        N, L, C = y.shape
-        y = y.view(N, L, 3, C // 3).permute(2, 0, 1, 3).reshape(3 * N, L, C // 3)
-        y = F.linear(y, resblocks.attn.out_proj.weight, resblocks.attn.out_proj.bias)
-        q, k, v = y.tensor_split(3, dim=0)
-        v += x
-        v = v + resblocks.mlp(resblocks.ln_2(v))
-
-        return v
-
-    def forward_one_block_siglip(self, resblocks, x):
-        q, k, v = None, None, None
-        x = F.linear(x, resblocks.in_proj_weight, resblocks.in_proj_bias)
-        N, L, C = x.shape
-        x = x.view(N, L, 3, C // 3).permute(2, 0, 1, 3).reshape(3 * N, L, C // 3)
-        x = F.linear(x, resblocks.out_proj.weight, resblocks.out_proj.bias)
-        q, k, v = x.tensor_split(3, dim=0)
-
-        return v
-
-    def extract_mask_clip_features(self, x, image_shape):
-        if self.siglip:
-            with torch.no_grad():
-                output = self.clip_model.vision_model(x["pixel_values"], output_hidden_states=True)
-            feat = output.last_hidden_state
-            feat = self.forward_one_block_siglip(self.clip_model.vision_model.head.attention, feat)
-            feat = self.clip_model.vision_model.head.layernorm(feat)
-            feat = feat + self.clip_model.vision_model.head.mlp(feat)
-            feat = feat.detach().cpu()
-            with torch.no_grad():
-                N, L, H, W = self.clip_model.vision_model.embeddings.patch_embedding(
-                    x["pixel_values"]
-                ).shape
-            feat = feat.reshape(N, H, W, L).permute(0, 3, 1, 2)
-        else:
-            with torch.no_grad():
-                x = self.clip_model.visual.conv1(x)
-                N, L, H, W = x.shape
-                x = x.reshape(x.shape[0], x.shape[1], -1)
-                x = x.permute(0, 2, 1)
-                x = torch.cat(
-                    [
-                        self.clip_model.visual.class_embedding.to(x.dtype)
-                        + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device),
-                        x,
-                    ],
-                    dim=1,
-                )
-                x = x + self.clip_model.visual.positional_embedding.to(x.dtype)
-                x = self.clip_model.visual.ln_pre(x)
-                x = x.permute(1, 0, 2)
-                for idx in range(self.clip_model.visual.transformer.layers):
-                    if idx == self.clip_model.visual.transformer.layers - 1:
-                        break
-                    x = self.clip_model.visual.transformer.resblocks[idx](x)
-                x = self.forward_one_block(self.clip_model.visual.transformer.resblocks[-1], x)
-                x = x[1:]
-                x = x.permute(1, 0, 2)
-                x = self.clip_model.visual.ln_post(x)
-                x = x @ self.clip_model.visual.proj
-                feat = x.reshape(N, H, W, -1).permute(0, 3, 1, 2)
-        feat = F.interpolate(feat, image_shape, mode="bilinear", align_corners=True)
-        feat = F.normalize(feat, dim=1)
-        return feat.permute(0, 2, 3, 1)
-
     def run_mask_clip(self, rgb, mask, world_xyz):
-
         with torch.no_grad():
-            results = self.yolo_model.predict(
-                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False
-            )
-            xyxy_tensor = results[0].boxes.xyxy
-            if len(xyxy_tensor) == 0:
-                return
-            bounding_boxes = torch.stack(
-                sorted(
-                    xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-                ),
-                dim=0,
-            )
-            bbox_mask = torch.zeros_like(mask)
-            for box in bounding_boxes:
-                tl_x, tl_y, br_x, br_y = box
-                bbox_mask[
-                    max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                    max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                ] = 1
-            bbox_mask = bbox_mask.bool()
-            # print(mask, bbox_mask)
-            mask = torch.logical_or(mask, ~bbox_mask)
-
-            if not self.siglip:
-                if self.device == "cpu":
-                    input = (
-                        self.clip_preprocess(transforms.ToPILImage()(rgb))
-                        .unsqueeze(0)
-                        .to(self.device)
-                    )
-                else:
-                    input = (
-                        self.clip_preprocess(transforms.ToPILImage()(rgb))
-                        .unsqueeze(0)
-                        .to(self.device)
-                        .half()
-                    )
-            else:
-                input = self.clip_preprocess(images=rgb, padding="max_length", return_tensors="pt")
-                for i in input:
-                    input[i] = input[i].to(self.device)
-            features = self.extract_mask_clip_features(input, rgb.shape[-2:])[0].cpu()
+            rgb, features = self.encoder.run_mask_siglip(rgb, self.image_shape)
 
         valid_xyz = world_xyz[~mask]
         features = features[~mask]
         valid_rgb = rgb.permute(1, 2, 0)[~mask]
         if len(valid_xyz) != 0:
             self.add_to_voxel_pcd(valid_xyz, features, valid_rgb)
-
-    def run_owl_sam_clip(self, rgb, mask, world_xyz):
-        with torch.no_grad():
-            results = self.yolo_model.predict(
-                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.1, verbose=False
-            )
-            xyxy_tensor = results[0].boxes.xyxy
-            if len(xyxy_tensor) == 0:
-                return
-
-            self.mask_predictor.set_image(rgb.permute(1, 2, 0).numpy())
-            # bounding_boxes = torch.stack(sorted(results[0]['boxes'], key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse = True), dim = 0)
-            bounding_boxes = torch.stack(
-                sorted(
-                    xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-                ),
-                dim=0,
-            )
-            # transformed_boxes = self.mask_predictor.transform.apply_boxes_torch(bounding_boxes.detach().to(self.device), rgb.shape[-2:])
-            # masks, _, _= self.mask_predictor.predict_torch(
-            masks, _, _ = self.mask_predictor.predict(
-                point_coords=None,
-                point_labels=None,
-                # boxes=transformed_boxes,
-                box=bounding_boxes,
-                multimask_output=False,
-            )
-            if masks.ndim == 3:
-                masks = torch.Tensor(masks).bool()
-            else:
-                masks = torch.Tensor(masks[:, 0, :, :]).bool()
-
-            # Debug code, visualize all bounding boxes and segmentation masks
-
-            image_vis = np.array(rgb.permute(1, 2, 0))
-            segmentation_color_map = np.zeros(image_vis.shape, dtype=np.uint8)
-            # cv2.imwrite('clean_' + str(self.obs_count) + '.jpg', cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR))
-            for idx, box in enumerate(bounding_boxes):
-                tl_x, tl_y, br_x, br_y = box
-                tl_x, tl_y, br_x, br_y = tl_x.item(), tl_y.item(), br_x.item(), br_y.item()
-                cv2.rectangle(
-                    image_vis, (int(tl_x), int(tl_y)), (int(br_x), int(br_y)), (255, 0, 0), 2
-                )
-            image_vis = cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR)
-            for vis_mask in masks:
-                segmentation_color_map[vis_mask.detach().cpu().numpy()] = [0, 255, 0]
-            image_vis = cv2.addWeighted(image_vis, 0.7, segmentation_color_map, 0.3, 0)
-            if not self.rerun:
-                cv2.imwrite(self.log + "/seg" + str(self.obs_count) + ".jpg", image_vis)
-            # else:
-            #     rr.log('Segmentation mask', rr.Image(image_vis[:, :, [2, 1, 0]]))
-
-            crops = []
-            if not self.siglip:
-                for (box, mask) in zip(bounding_boxes, masks):
-                    tl_x, tl_y, br_x, br_y = box
-                    crops.append(
-                        self.clip_preprocess(
-                            transforms.ToPILImage()(
-                                rgb[
-                                    :,
-                                    max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                                    max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                                ]
-                            )
-                        )
-                    )
-                features = self.clip_model.encode_image(torch.stack(crops, dim=0).to(self.device))
-            else:
-                for box in bounding_boxes:
-                    tl_x, tl_y, br_x, br_y = box
-                    crops.append(
-                        rgb[
-                            :,
-                            max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                            max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                        ]
-                    )
-                inputs = self.clip_preprocess(
-                    images=crops, padding="max_length", return_tensors="pt"
-                ).to(self.device)
-                features = self.clip_model.get_image_features(**inputs)
-            features = F.normalize(features, dim=-1).cpu()
-
-        for idx, (sam_mask, feature) in enumerate(zip(masks.cpu(), features.cpu())):
-            valid_mask = torch.logical_and(~mask, sam_mask)
-            valid_xyz = world_xyz[valid_mask]
-            if valid_xyz.shape[0] == 0:
-                continue
-            feature = feature.repeat(valid_xyz.shape[0], 1)
-            valid_rgb = rgb.permute(1, 2, 0)[valid_mask]
-            self.add_to_voxel_pcd(valid_xyz, feature, valid_rgb)
 
     def add_to_voxel_pcd(self, valid_xyz, feature, valid_rgb, weights=None, threshold=0.95):
         # Adding all points to voxelizedPointCloud is useless and expensive, we should exclude threshold of all points
@@ -825,6 +497,11 @@ class ImageProcessor:
             )
 
     def process_rgbd_images(self, rgb, depth, intrinsics, pose):
+
+        # if self.rerun:
+        #     rr.init('Stretch_robot', spawn = True)
+        #     setup_custom_blueprint()
+
         # import time
         # start_time = time.time()
         if not os.path.exists(self.log):
@@ -840,27 +517,24 @@ class ImageProcessor:
         rgb, depth = torch.from_numpy(rgb), torch.from_numpy(depth)
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
 
-        h, w = self.image_shape
-        h_image, w_image = depth.shape
-        rgb = F.interpolate(
-            rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-        ).squeeze(0)
-        depth = (
-            F.interpolate(
+        if self.image_shape is not None:
+            h, w = self.image_shape
+            h_image, w_image = depth.shape
+            # rgb = F.interpolate(
+            #     rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            # ).squeeze()
+            depth = F.interpolate(
                 depth.unsqueeze(0).unsqueeze(0),
                 size=self.image_shape,
                 mode="bilinear",
                 align_corners=False,
-            )
-            .squeeze(0)
-            .squeeze(0)
-        )
-        intrinsics[0, 0] *= w / w_image
-        intrinsics[1, 1] *= h / h_image
-        intrinsics[0, 2] *= w / w_image
-        intrinsics[1, 2] *= h / h_image
+            ).squeeze()
+            intrinsics[0, 0] *= w / w_image
+            intrinsics[1, 1] *= h / h_image
+            intrinsics[0, 2] *= w / w_image
+            intrinsics[1, 2] *= h / h_image
 
-        world_xyz = get_xyz(depth, pose, intrinsics).squeeze(0)
+        world_xyz = get_xyz(depth, pose, intrinsics).squeeze()
 
         median_depth = torch.from_numpy(scipy.ndimage.median_filter(depth, size=5))
         median_filter_error = (depth - median_depth).abs()
@@ -873,39 +547,37 @@ class ImageProcessor:
         )
 
         with self.voxel_map_lock:
-            if self.vision_method == "mask&*lip":
-                min_samples_clear = 3
-            else:
-                min_samples_clear = 10
+
             self.voxel_map_localizer.voxel_pcd.clear_points(
-                depth,
-                torch.from_numpy(intrinsics),
-                torch.from_numpy(pose),
-                min_samples_clear=min_samples_clear,
+                depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)
             )
             self.voxel_map.voxel_pcd.clear_points(
                 depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)
             )
 
-        if self.vision_method == "mask&*lip":
-            self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
-        else:
-            self.run_mask_clip(rgb, ~valid_depth, world_xyz)
+        self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
-        self.voxel_map.add(
-            camera_pose=torch.Tensor(pose),
-            rgb=torch.Tensor(rgb).permute(1, 2, 0),
-            depth=torch.Tensor(depth),
-            camera_K=torch.Tensor(intrinsics),
-        )
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
+
+        with self.voxel_map_lock:
+            self.voxel_map.add(
+                camera_pose=torch.Tensor(pose),
+                rgb=torch.Tensor(rgb).permute(1, 2, 0),
+                depth=torch.Tensor(depth),
+                camera_K=torch.Tensor(intrinsics),
+            )
+
         obs, exp = self.voxel_map.get_2d_map()
-        if self.rerun:
+        if self.rerun and self.rerun_visualizer is None:
             # if not self.static:
             #     rr.set_time_sequence("frame", self.obs_count)
             # rr.log('robot_pov', rr.Image(rgb.permute(1, 2, 0)), static = self.static)
             if self.voxel_map.voxel_pcd._points is not None:
                 rr.log(
-                    "Obstalce_map/pointcloud",
+                    "obstalce_map/pointcloud",
                     rr.Points3D(
                         self.voxel_map.voxel_pcd._points.detach().cpu(),
                         colors=self.voxel_map.voxel_pcd._rgb.detach().cpu() / 255.0,
@@ -915,7 +587,7 @@ class ImageProcessor:
                 )
             if self.voxel_map_localizer.voxel_pcd._points is not None:
                 rr.log(
-                    "Semantic_memory/pointcloud",
+                    "semantic_memory/pointcloud",
                     rr.Points3D(
                         self.voxel_map_localizer.voxel_pcd._points.detach().cpu(),
                         colors=self.voxel_map_localizer.voxel_pcd._rgb.detach().cpu() / 255.0,
@@ -924,13 +596,16 @@ class ImageProcessor:
                     static=self.static,
                 )
             # rr.log("Obstalce_map/2D_obs_map", rr.Image(obs.int() * 127 + exp.int() * 127))
-        else:
-            cv2.imwrite(
-                self.log + "/debug_" + str(self.obs_count) + ".jpg",
-                np.asarray(obs.int() * 127 + exp.int() * 127),
-            )
-        # end_time = time.time()
-        # print('image processing takes ' + str(end_time - start_time) + ' seconds.')
+        elif self.rerun:
+            if self.voxel_map.voxel_pcd._points is not None:
+                self.rerun_visualizer.update_voxel_map(space=self.space)
+            if self.voxel_map_localizer.voxel_pcd._points is not None:
+                self.rerun_visualizer.log_custom_pointcloud(
+                    "world/semantic_memory/pointcloud",
+                    self.voxel_map_localizer.voxel_pcd._points.detach().cpu(),
+                    self.voxel_map_localizer.voxel_pcd._rgb.detach().cpu() / 255.0,
+                    0.03,
+                )
 
     def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
         print("Reading from ", pickle_file_name)
@@ -974,23 +649,6 @@ class ImageProcessor:
                 base_pose=base_pose,
                 camera_K=K,
             )
-            # points = self.voxel_map.voxel_pcd._points.detach().cpu()
-            # rgb = self.voxel_map.voxel_pcd._rgb.detach().cpu() / 255.
-            # rr.log("Obstalce_map/pointcloud", rr.Points3D(points[points[:, 2] > 0.1], \
-            #                                                   colors=rgb[points[:, 2] > 0.1], radii=0.03))
-            # plt.clf()
-            # obstacles, _ = self.voxel_map.get_2d_map()
-            # plt.imshow(obstacles)
-            # grid_coord = self.voxel_map.xy_to_grid_coords(camera_pose[:2, 3])
-            # plt.scatter(grid_coord[0], grid_coord[1], color = 'r')
-            # buf = BytesIO()
-            # plt.savefig(buf, format='png')
-            # buf.seek(0)
-            # img = Image.open(buf)
-            # img = np.array(img)
-            # buf.close()
-            # rr.log('2d_map', rr.Image(img))
-            # rr.log('robot_point', rr.Points3D(camera_pose[:3, 3], colors=[1, 0, 0], radii=0.2))
 
             self.obs_count += 1
         self.voxel_map_localizer.voxel_pcd._points = data["combined_xyz"]
@@ -998,7 +656,6 @@ class ImageProcessor:
         self.voxel_map_localizer.voxel_pcd._weights = data["combined_weights"]
         self.voxel_map_localizer.voxel_pcd._rgb = data["combined_rgb"]
         self.voxel_map_localizer.voxel_pcd._obs_counts = data["obs_id"]
-        self.voxel_map_localizer.voxel_pcd._entity_ids = data["entity_id"]
         self.voxel_map_localizer.voxel_pcd.obs_count = max(
             self.voxel_map_localizer.voxel_pcd._obs_counts
         ).item()
@@ -1010,7 +667,7 @@ class ImageProcessor:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
         if not os.path.exists("debug"):
             os.mkdir("debug")
-        filename = "debug/" + self.log + ".pkl"
+        filename = self.log + ".pkl"
         data = {}
         data["camera_poses"] = []
         data["camera_K"] = []
@@ -1042,25 +699,6 @@ class ImageProcessor:
             data["combined_rgb"],
         ) = self.voxel_map_localizer.voxel_pcd.get_pointcloud()
         data["obs_id"] = self.voxel_map_localizer.voxel_pcd._obs_counts
-        data["entity_id"] = self.voxel_map_localizer.voxel_pcd._entity_ids
         with open(filename, "wb") as f:
             pickle.dump(data, f)
         print("write all data to", filename)
-
-
-# @hydra.main(version_base="1.2", config_path=".", config_name="config.yaml")
-# def main(cfg):
-#     torch.manual_seed(1)
-#     imageProcessor = ImageProcessor(rerun = False, static = False, min_depth = 0., max_depth = 2.5)
-# imageProcessor = ImageProcessor(rerun = cfg.rerun, static = cfg.static, min_depth = cfg.min_depth, max_depth = cfg.max_depth)
-# if not cfg.pickle_file_name is None:
-#     imageProcessor.read_from_pickle(cfg.pickle_file_name)
-# print(imageProcessor.voxel_map_localizer.voxel_pcd._points)
-# if cfg.open_communication:
-#     while True:
-#         imageProcessor.recv_text()
-# imageProcessor.read_from_pickle('env.pkl', -1)
-# imageProcessor.write_to_pickle()
-
-if __name__ == "__main__":
-    main(None)

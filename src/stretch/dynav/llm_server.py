@@ -11,9 +11,6 @@ import datetime
 import os
 import pickle
 import threading
-
-# import wget
-# import wget
 import time
 from io import BytesIO
 from pathlib import Path
@@ -29,7 +26,9 @@ from PIL import Image
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.llm_localizer import LLM_Localizer
-from stretch.dynav.mapping_utils import AStar, SparseVoxelMap, SparseVoxelMapNavigationSpace
+from stretch.dynav.mapping_utils.a_star import AStar
+from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
+from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 
 
 def get_inv_intrinsics(intrinsics):
@@ -389,7 +388,6 @@ class ImageProcessor:
 
     def _recv_image(self):
         while True:
-            # data = recv_array(self.img_socket)
             rgb, depth, intrinsics, pose = recv_everything(self.img_socket)
             start_time = time.time()
             self.process_rgbd_images(rgb, depth, intrinsics, pose)

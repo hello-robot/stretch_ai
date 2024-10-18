@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -80,13 +80,14 @@ class SAM2Perception(PerceptionModule):
         """
         # TODO: set model arg in config
         # Using the smallest model now.
-        checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_tiny.pt"
-        model_cfg = "sam2_hiera_t.yaml"
+        checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_large.pt"
+        model_cfg = "sam2_hiera_l.yaml"
         self.sam2_predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
 
         self.sam2_predictor = build_sam2(
             model_cfg, checkpoint, device=DEVICE, apply_postprocessing=False
         )
+        self._verbose = verbose
 
         self.mask_generator = SAM2AutomaticMaskGenerator(self.sam2_predictor)
 
@@ -132,7 +133,7 @@ class SAM2Perception(PerceptionModule):
         depth=None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = False,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
         """
         Get masks using SAM
         Arguments:
@@ -140,10 +141,12 @@ class SAM2Perception(PerceptionModule):
         Returns:
             masks: masks of shape (N, H, W)
         """
-        print("SAM2 is segmenting the image...")
+        if self._verbose:
+            print("SAM2 is segmenting the image...")
 
         height, width, _ = rgb.shape
         image = rgb
+        image = np.array(image)
         if not image.dtype == np.uint8:
             if image.max() <= 1.0:
                 image = image * 255.0
@@ -177,3 +180,9 @@ class SAM2Perception(PerceptionModule):
         task_observations["instance_scores"] = np.ones(len(masks))
         task_observations["semantic_frame"] = None
         return semantic_map.astype(int), instance_map.astype(int), task_observations
+
+    def is_semantic(self):
+        return True
+
+    def is_instance(self):
+        return True

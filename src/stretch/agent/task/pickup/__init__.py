@@ -8,4 +8,5 @@
 # license information maybe found below, if so.
 
 from .multi_pickup_task import MultiPickupTask
+from .pickup_executor import PickupExecutor
 from .pickup_task import PickupTask

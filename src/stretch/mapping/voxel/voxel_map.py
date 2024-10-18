@@ -13,7 +13,7 @@
 # LICENSE file in the root directory of this source tree.
 import math
 from collections import deque
-from typing import Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -66,7 +66,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self.grid = grid
 
         # Create a stack for storing states to sample
-        self._stack = deque()
+        self._stack: deque[np.ndarray] = deque()
 
         # Always use 3d states
         self.use_orientation = use_orientation
@@ -75,7 +75,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             self.dof = 2
 
-        self._kernels = {}
+        self._kernels: Dict[int, torch.nn.Parameter] = {}
 
         if dilate_frontier_size > 0:
             self.dilate_explored_kernel = torch.nn.Parameter(

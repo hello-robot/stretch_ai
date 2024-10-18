@@ -17,7 +17,6 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
 
 
 class RealSenseCamera:
@@ -33,7 +32,7 @@ class RealSenseCamera:
         self.cx = intrinsics[1, 2]
         print(self.fx, self.fy, self.cx, self.cy)
 
-        # selected ix and iy co-ordinates
+        # selected ix and iy coordinates
         self.ix, self.iy = None, None
 
     def capture_image(self, visualize=False):
@@ -67,8 +66,3 @@ class RealSenseCamera:
 
     def pixel2d_to_point3d(self, ix, iy):
         return self.points[iy, ix][[1, 0, 2]]
-
-
-if __name__ == "__main__":
-    camera = RealSenseCamera()
-    camera.capture_image()

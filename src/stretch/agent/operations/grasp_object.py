@@ -21,6 +21,7 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
+import torch
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
@@ -40,18 +41,27 @@ class GraspObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     servo_to_grasp: bool = False
     _success: bool = False
+    talk: bool = True
+
+    offset_from_vertical = -np.pi / 2
+    # offset_from_vertical = -np.pi / 4
 
     # Task information
     match_method: str = "class"
     target_object: Optional[str] = None
+    _object_xyz: Optional[np.ndarray] = None
 
     # Should we use the previous mask at all?
     use_prev_mask: bool = False
 
     # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = True
+    show_servo_gui: bool = False
     show_point_cloud: bool = False
+    delete_object_after_grasp: bool = False
+
+    # Should we try grasping open-loop or not?
+    _try_open_loop: bool = False
 
     # ------------------------
     # These are the most important parameters for tuning to make the grasping "feel" nice
@@ -61,8 +71,12 @@ class GraspObjectOperation(ManagedOperation):
     # align_x_threshold: int = 10
     # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 15
-    align_y_threshold: int = 15
+    # align_x_threshold: int = 15
+    # These were the settings Peiqi used:
+    # align_x_threshold: int = 50
+    # align_y_threshold: int = 50
+    align_x_threshold: int = 25
+    align_y_threshold: int = 20
 
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.25
@@ -82,13 +96,16 @@ class GraspObjectOperation(ManagedOperation):
     # wrist_pitch_step: float = 0.05  # Too slow
     # ------------------------
 
+    # Tracked object features for making sure we are grabbing the right thing
+    tracked_object_features: Optional[torch.Tensor] = None
+
     # Parameters about how to grasp - less important
     grasp_loose: bool = False
     reset_observation: bool = False
     # Move the arm forward by this amount when grasping
     _grasp_arm_offset: float = 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = -0.10
+    _grasp_lift_offset: float = -0.05
 
     # Visual servoing config
     track_image_center: bool = False
@@ -112,13 +129,18 @@ class GraspObjectOperation(ManagedOperation):
 
     def configure(
         self,
-        target_object: str,
+        target_object: Optional[str] = None,
+        object_xyz: Optional[np.ndarray] = None,
         show_object_to_grasp: bool = False,
-        servo_to_grasp: bool = False,
+        servo_to_grasp: bool = True,
         show_servo_gui: bool = True,
         show_point_cloud: bool = False,
         reset_observation: bool = False,
         grasp_loose: bool = False,
+        talk: bool = True,
+        match_method: str = "class",
+        delete_object_after_grasp: bool = True,
+        try_open_loop: bool = False,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -129,14 +151,30 @@ class GraspObjectOperation(ManagedOperation):
             show_point_cloud (bool, optional): Show the point cloud. Defaults to False.
             reset_observation (bool, optional): Reset the observation. Defaults to False.
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
+            talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
+            match_method (str, optional): Matching method. Defaults to "class". This is how the policy determines which object mask it should try to grasp.
+            delete_object_after_grasp (bool, optional): Delete the object after grasping. Defaults to True.
+            try_open_loop (bool, optional): Try open loop grasping. Defaults to False.
         """
-        self.target_object = target_object
+        if target_object is not None:
+            self.target_object = target_object
+        if object_xyz is not None:
+            assert len(object_xyz) == 3, "Object xyz must be a 3D point."
+            self._object_xyz = object_xyz
         self.show_object_to_grasp = show_object_to_grasp
         self.servo_to_grasp = servo_to_grasp
         self.show_servo_gui = show_servo_gui
         self.show_point_cloud = show_point_cloud
         self.reset_observation = reset_observation
+        self.delete_object_after_grasp = delete_object_after_grasp
         self.grasp_loose = grasp_loose
+        self.talk = talk
+        self.match_method = match_method
+        self._try_open_loop = try_open_loop
+        if self.match_method not in ["class", "feature"]:
+            raise ValueError(
+                f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
+            )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
         """Show the point cloud for debugging purposes.
@@ -162,7 +200,9 @@ class GraspObjectOperation(ManagedOperation):
         if not self.robot.in_manipulation_mode():
             self.robot.switch_to_manipulation_mode()
 
-        return self.agent.current_object is not None and self.robot.in_manipulation_mode()
+        return (
+            self.agent.current_object is not None or self._object_xyz is not None
+        ) and self.robot.in_manipulation_mode()
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
         """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
@@ -201,6 +241,7 @@ class GraspObjectOperation(ManagedOperation):
             text_features = self.agent.encode_text(self.target_object)
             best_score = float("-inf")
             best_iid = None
+            all_matches = []
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -209,18 +250,49 @@ class GraspObjectOperation(ManagedOperation):
 
                 rgb = servo.ee_rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
 
-                # TODO: remove debug code
-                #  import matplotlib.pyplot as plt
-                # plt.imshow(rgb)
-                # plt.show()
-
                 features = self.agent.encode_image(rgb)
                 score = self.agent.compare_features(text_features, features)
                 print(f" - Score for {iid} is {score}")
                 if score > best_score:
                     best_score = score
                     best_iid = iid
-                    mask = servo.instance == iid
+                if score > self.agent.feature_match_threshold:
+                    all_matches.append((score, iid, features))
+            if len(all_matches) > 0:
+                print("All matches:")
+                for score, iid, features in all_matches:
+                    print(f" - Matched {iid} with score {score}.")
+            if len(all_matches) == 0:
+                print("No matches found.")
+            elif len(all_matches) == 1:
+                print("One match found. We are done.")
+                mask = servo.instance == best_iid
+                # Set the tracked features
+                self.tracked_object_features = all_matches[0][2]
+            else:
+                # Check to see if we have tracked features
+                if self.tracked_object_features is not None:
+                    # Find the closest match
+                    best_score = float("-inf")
+                    best_iid = None
+                    best_features = None
+                    for _, iid, features in all_matches:
+                        score = self.agent.compare_features(self.tracked_object_features, features)
+                        if score > best_score:
+                            best_score = score
+                            best_iid = iid
+                            best_features = features
+                    self.tracked_object_features = best_features
+                else:
+                    best_score = float("-inf")
+                    best_iid = None
+                    for score, iid, _ in all_matches:
+                        if score > best_score:
+                            best_score = score
+                            best_iid = iid
+
+                # Set the mask
+                mask = servo.instance == best_iid
         else:
             raise ValueError(f"Invalid matching method {self.match_method}.")
 
@@ -234,10 +306,15 @@ class GraspObjectOperation(ManagedOperation):
         """
         self.target_object = target_object
 
+    def reset(self):
+        """Reset the operation. This clears the history and sets the success flag to False. It also clears the tracked object features."""
+        self._success = False
+        self.tracked_object_features = None
+        self.observations.clear_history()
+
     def get_target_mask(
         self,
         servo: Observations,
-        instance: Instance,
         center: Tuple[int, int],
         prev_mask: Optional[np.ndarray] = None,
     ) -> Optional[np.ndarray]:
@@ -245,7 +322,6 @@ class GraspObjectOperation(ManagedOperation):
 
         Args:
             servo (Observations): Servo observation
-            instance (Instance): Instance we are trying to grasp
             prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
 
         Returns:
@@ -299,9 +375,26 @@ class GraspObjectOperation(ManagedOperation):
         else:
             return prev_mask
 
+    def sayable_target_object(self) -> str:
+        """Get the target object in a sayable format.
+
+        Returns:
+            str: Sayable target object
+        """
+
+        # Replace underscores, etc
+        return self.target_object.replace("_", " ")
+
     def _grasp(self) -> bool:
-        """Helper function to close gripper around object."""
+        """Helper function to close gripper around object.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+
         self.cheer("Grasping object!")
+        if self.talk:
+            self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
         if not self.open_loop:
             joint_state = self.robot.get_joint_positions()
@@ -326,10 +419,10 @@ class GraspObjectOperation(ManagedOperation):
                 head=constants.look_at_ee,
                 blocking=True,
             )
-            time.sleep(0.5)
+            time.sleep(0.1)
 
         self.robot.close_gripper(loose=self.grasp_loose, blocking=True)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         # Get a joint state for the object
         joint_state = self.robot.get_joint_positions()
@@ -345,7 +438,13 @@ class GraspObjectOperation(ManagedOperation):
     ) -> bool:
         """Use visual servoing to grasp the object."""
 
-        self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
+        if instance is not None:
+            self.intro(
+                f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}."
+            )
+        else:
+            self.intro("Visual servoing to grasp {self.target_object} at {self._object_xyz}.")
+
         if self.show_servo_gui:
             self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
 
@@ -370,7 +469,7 @@ class GraspObjectOperation(ManagedOperation):
         if not pregrasp_done:
             # Move to pregrasp position
             self.pregrasp_open_loop(
-                instance.get_center(), distance_from_object=self.pregrasp_distance_from_object
+                self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
             )
             pregrasp_done = True
 
@@ -410,9 +509,8 @@ class GraspObjectOperation(ManagedOperation):
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(
-                servo, instance, prev_mask=prev_target_mask, center=(center_x, center_y)
+                servo, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
-            print("latest mask size:", np.sum(latest_mask.flatten()))
 
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
@@ -438,13 +536,7 @@ class GraspObjectOperation(ManagedOperation):
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
             if mask_center is None:
-                # if not aligned_once:
-                #     self.error(
-                #         "Lost track before even seeing object with EE camera. Just try open loop."
-                #     )
-                #     if self.show_servo_gui:
-                #         cv2.destroyAllWindows()
-                # return False
+                failed_counter += 1
                 if failed_counter < self.max_failed_attempts:
                     mask_center = np.array([center_y, center_x])
                 else:
@@ -455,7 +547,14 @@ class GraspObjectOperation(ManagedOperation):
                         current_xyz[2] += self.open_loop_z_offset
                     if self.show_servo_gui:
                         cv2.destroyAllWindows()
-                    return self.grasp_open_loop(current_xyz)
+                    if self._try_open_loop:
+                        return self.grasp_open_loop(current_xyz)
+                    else:
+                        if self.talk:
+                            self.agent.robot_say(f"I can't see the {self.target_object}.")
+                        self._success = False
+                        return False
+                continue
             else:
                 failed_counter = 0
                 mask_center = mask_center.astype(int)
@@ -480,6 +579,8 @@ class GraspObjectOperation(ManagedOperation):
                 servo_ee_rgb = cv2.circle(
                     servo_ee_rgb, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
                 )
+                print("-- show a window")
+                cv2.namedWindow("servo_ee_rgb", cv2.WINDOW_NORMAL)
                 cv2.imshow("servo_ee_rgb", servo_ee_rgb)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
@@ -491,15 +592,19 @@ class GraspObjectOperation(ManagedOperation):
                 self.info("Not moving; try to grasp.")
                 success = self._grasp()
                 break
+
             # If we have a target mask, compute the median depth of the object
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None:
                 object_depth = servo.ee_depth[target_mask]
                 median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
             else:
-                print("detected classes:", np.unique(servo.ee_semantic))
+                # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
                     success = self._grasp()
+                else:
+                    # Could not find the object
+                    failed_counter += 1
                 continue
 
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
@@ -604,7 +709,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
@@ -625,11 +730,26 @@ class GraspObjectOperation(ManagedOperation):
             cv2.destroyAllWindows()
         return success
 
+    def get_object_xyz(self) -> np.ndarray:
+        """Get the object xyz location. If we have a target object, we will use that. Otherwise, we will use the object xyz location that's been manually set.
+
+        Returns:
+            np.ndarray: Object xyz location
+        """
+        if self._object_xyz is None:
+            object_xyz = self.agent.current_object.get_center()
+        else:
+            object_xyz = self._object_xyz
+        return object_xyz
+
     def run(self) -> None:
         self.intro("Grasping the object.")
         self._success = False
         if self.show_object_to_grasp:
             self.show_instance(self.agent.current_object)
+
+        # Clear the observation history
+        self.reset()
 
         assert self.target_object is not None, "Target object must be set before running."
 
@@ -645,21 +765,22 @@ class GraspObjectOperation(ManagedOperation):
         # Get the current base pose of the robot
         xyt = self.robot.get_base_pose()
 
-        # Note that these are in the robot's current coordinate frame; they're not global coordinates, so this is ok to use to compute motions.
-        object_xyz = self.agent.current_object.get_center()
+        # Note that these are in the robot's current coordinate frame;
+        # they're not global coordinates, so this is ok to use to compute motions.
+        object_xyz = self.get_object_xyz()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
-            ee_pos, ee_rot = model.manip_fk(joint_state)
-            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
-            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            head_pos = obs.camera_pose[:3, 3]
+            dy = np.abs(head_pos[1] - relative_object_xyz[1])
+            dz = np.abs(head_pos[2] - relative_object_xyz[2])
             pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[HelloStretchIdx.WRIST_PITCH] = -np.pi / 2 + pitch_from_vertical
+        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
@@ -668,11 +789,18 @@ class GraspObjectOperation(ManagedOperation):
 
         # clear observations
         if self.reset_observation:
-            self.observations.clear_history()
             self.agent.reset_object_plans()
             self.agent.voxel_map.instances.pop_global_instance(
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
+
+        # Delete the object
+        if self.delete_object_after_grasp:
+            voxel_map = self.agent.get_voxel_map()
+            if voxel_map is not None:
+                voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+        if self.talk:
+            self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
         """Move to a pregrasp position in an open loop manner.
