@@ -343,13 +343,13 @@ class ImageProcessor:
         # the object so that we can make sure the robot looks at the object after navigation
         traj = []
         if waypoints is not None:
-            finished = len(waypoints) <= 5 and mode == "navigation"
+            finished = len(waypoints) <= 8 and mode == "navigation"
             # if finished:
             #     self.traj = None
             # else:
             #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
-                waypoints = waypoints[:5]
+                waypoints = waypoints[:8]
             traj = self.planner.clean_path_for_xy(waypoints)
             if finished:
                 traj.append([np.nan, np.nan, np.nan])
