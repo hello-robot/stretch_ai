@@ -65,7 +65,7 @@ class HelloRobot:
 
         # Constraining the robots movement
         self.clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
-        self.pan, self.tilt = self.robot.get_pan_tilt()
+        # self.pan, self.tilt = self.robot.get_pan_tilt()
 
     def set_end_link(self, link):
         if link == GRIPPER_FINGERTIP_LEFT_NODE or GRIPPER_FINGERTIP_RIGHT_NODE:

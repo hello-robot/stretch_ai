@@ -118,7 +118,7 @@ def main(
     #     parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = None, None
     robot.move_to_nav_posture()
-    robot.set_velocity(v=30.0, w=15.0)
+    robot.set_base_velocity(forward=30.0, rotational=15.0)
 
     # Create semantic sensor if visual servoing is enabled
     print("- Create semantic sensor if visual servoing is enabled")
@@ -181,17 +181,18 @@ def main(
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking=True)
+                robot.move_base_to(xyt, blocking=True)
 
             if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter object name: ")
-                camera_xyz = robot.get_head_pose()[:3, 3]
-                if point is not None:
-                    theta = compute_tilt(camera_xyz, point)
-                else:
-                    theta = -0.6
+                # camera_xyz = robot.get_head_pose()[:3, 3]
+                # if point is not None:
+                #     theta = compute_tilt(camera_xyz, point)
+                # else:
+                #     theta = -0.6
+                theta = -0.6
 
                 # Grasp the object using operation if it's available
                 if grasp_object is not None:
@@ -228,17 +229,18 @@ def main(
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking=True)
+                robot.move_base_to(xyt, blocking=True)
 
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter receptacle name: ")
-                camera_xyz = robot.get_head_pose()[:3, 3]
-                if point is not None:
-                    theta = compute_tilt(camera_xyz, point)
-                else:
-                    theta = -0.6
+                # camera_xyz = robot.get_head_pose()[:3, 3]
+                # if point is not None:
+                #     theta = compute_tilt(camera_xyz, point)
+                # else:
+                #     theta = -0.6
+                theta = -0.6
                 agent.place(text, theta)
                 robot.move_to_nav_posture()
 
