@@ -110,7 +110,6 @@ class SparseVoxelMap(object):
     )
     debug_valid_depth: bool = False
     debug_instance_memory_processing_time: bool = False
-    use_negative_obstacles: bool = False
 
     def __init__(
         self,
@@ -144,6 +143,7 @@ class SparseVoxelMap(object):
         prune_detected_objects: bool = False,
         add_local_radius_every_step: bool = False,
         min_points_per_voxel: int = 10,
+        use_negative_obstacles: bool = False,
     ):
         """
         Args:
@@ -199,6 +199,7 @@ class SparseVoxelMap(object):
         self.median_filter_size = median_filter_size
         self.use_median_filter = use_median_filter
         self.median_filter_max_error = median_filter_max_error
+        self.use_negative_obstacles = use_negative_obstacles
 
         # Derivative filter params
         self.use_derivative_filter = use_derivative_filter
@@ -824,8 +825,12 @@ class SparseVoxelMap(object):
                 **frame.info,
             )
 
-    def get_pointcloud(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Get the current point cloud"""
+    def get_pointcloud(self) -> Tuple[torch.Tensor, ...]:
+        """Get the current point cloud.
+
+        Returns:
+            Tuple[torch.Tensor, ...]: xyz, feats, counts, rgb
+        """
         return self.voxel_pcd.get_pointcloud()
 
     def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
@@ -855,12 +860,13 @@ class SparseVoxelMap(object):
 
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
+        xyz = xyz[obs_mask, :]
+        counts = counts[obs_mask][:, None]
+
         if self.use_negative_obstacles:
             neg_height = int(self.neg_obs_height / self.grid_resolution)
             negative_obstacles = xyz[:, -1] < neg_height
-            obs_mask = obs_mask | negative_obstacles
-        xyz = xyz[obs_mask, :]
-        counts = counts[obs_mask][:, None]
+            xyz[negative_obstacles, -1] = min_height + 1
 
         # voxels[x_coords, y_coords, z_coords] = 1
         voxels = scatter3d(xyz, counts, grid_size).squeeze()
@@ -900,8 +906,8 @@ class SparseVoxelMap(object):
             )[0, 0].bool()
 
             # Obstacles just get dilated and eroded
-            obstacles = binary_erosion(
-                binary_dilation(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
+            obstacles = binary_dilation(
+                binary_erosion(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
                 self.smooth_kernel,
             )[0, 0].bool()
 
@@ -1074,9 +1080,13 @@ class SparseVoxelMap(object):
         # Create a combined point cloud
         # Do the other stuff we need to show instances
         points, _, _, rgb = self.voxel_pcd.get_pointcloud()
+        if points is None:
+            return []
+
         pcd = numpy_to_pcd(points.detach().cpu().numpy(), (rgb / norm).detach().cpu().numpy())
         if orig is None:
             orig = np.zeros(3)
+
         geoms = create_visualization_geometries(pcd=pcd, orig=orig)
 
         # Get the explored/traversible area
@@ -1144,9 +1154,20 @@ class SparseVoxelMap(object):
             geoms.append(wireframe)
 
     def delete_instance(
-        self, instance: Instance, force_update=False, min_bound_z=0, assume_explored: bool = False
+        self,
+        instance: Instance,
+        force_update: bool = True,
+        min_bound_z: float = 0,
+        assume_explored: bool = False,
     ) -> None:
-        """Remove an instance from the map"""
+        """Remove an instance from the map.
+
+        Args:
+            instance: instance to remove
+            force_update: force update of cached 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient. Defaults to True.
+            min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
+            assume_explored: assume deleted area is explored or not. If True, will mark the area as explored, so that the robot can plan past this position. If False, the area will be marked as unexplored, and the robot will have to re-explore it.
+        """
         print("Deleting instance", instance.global_id)
         print("Bounds: ", instance.bounds)
         self.delete_obstacles(instance.bounds, force_update=force_update, min_bound_z=min_bound_z)
@@ -1163,7 +1184,7 @@ class SparseVoxelMap(object):
         bounds: Optional[np.ndarray] = None,
         point: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
-        force_update: Optional[bool] = False,
+        force_update: Optional[bool] = True,
         min_height: Optional[float] = None,
         min_bound_z: Optional[float] = 0.0,
         assume_explored: bool = False,
@@ -1174,9 +1195,9 @@ class SparseVoxelMap(object):
             bounds: 3x2 array of min and max bounds in xyz
             point: 3x1 array of point to delete
             radius: radius around point to delete
-            force_update: force update of 2d map
-            min_height: minimum height to delete
-            min_bound_z: minimum z bound to delete
+            force_update: force update of 2d map. Can be disabled if you're planning to do multiple deletions in order to be slightly more efficient. Defaults to True.
+            min_height: minimum height to delete. Usually 0, for the floor plane.
+            min_bound_z: minimum z bound to delete. Usually 0, for the floor plane.
             assume_explored: assume deleted area is explored
         """
         self.voxel_pcd.remove(bounds, point, radius, min_height=min_height, min_bound_z=min_bound_z)
@@ -1232,7 +1253,6 @@ class SparseVoxelMap(object):
             grid_resolution=parameters["voxel_size"],
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
-            neg_obs_height=parameters["neg_obs_height"],
             min_depth=parameters["min_depth"],
             max_depth=parameters["max_depth"],
             add_local_radius_every_step=parameters["add_local_every_step"],
@@ -1250,6 +1270,8 @@ class SparseVoxelMap(object):
             median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            use_negative_obstacles=parameters.get("use_negative_obstacles", False),
+            neg_obs_height=parameters.get("neg_obs_height", -0.10),
             use_instance_memory=use_instance_memory,
             instance_memory_kwargs={
                 "min_pixels_for_instance_view": parameters.get("min_pixels_for_instance_view", 100),

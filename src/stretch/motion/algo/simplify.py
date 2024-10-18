@@ -36,7 +36,7 @@ class SimplifyXYT(Planner):
         self,
         planner: Planner,
         min_step: float = 0.1,
-        max_step: float = 1.0,
+        max_step: float = 0.5,
         num_steps: int = 6,
         min_angle: float = np.deg2rad(5),
     ):

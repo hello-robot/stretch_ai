@@ -17,7 +17,7 @@ import argparse
 import pathlib
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -28,7 +28,6 @@ from detectron2.engine.defaults import DefaultPredictor
 from detectron2.utils.visualizer import ColorMode, Visualizer
 
 from stretch.core.abstract_perception import PerceptionModule
-from stretch.core.interfaces import Observations
 from stretch.perception.detection.utils import filter_depth, overlay_masks
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "Detic/third_party/CenterNet2/"))
@@ -191,7 +190,7 @@ class DeticPerception(PerceptionModule):
         depth: Optional[np.ndarray] = None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = True,
-    ) -> Observations:
+    ) -> Tuple[np.ndarray, np.ndarray, dict]:
         """
         Arguments:
             obs.rgb: image of shape (H, W, 3) (in RGB order - Detic expects BGR)
@@ -247,6 +246,12 @@ class DeticPerception(PerceptionModule):
         task_observations["instance_scores"] = scores
 
         return semantic, instance, task_observations
+
+    def is_semantic(self):
+        return True
+
+    def is_instance(self):
+        return True
 
 
 def setup_cfg(args, verbose: bool = False, confidence_threshold: Optional[float] = None):

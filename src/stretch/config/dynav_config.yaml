@@ -1,0 +1,132 @@
+# Encoder setup
+# Encoder is used to compute per-object embeddings.
+encoder: "siglip"
+open_vocab_category_map_file: example_cat_map.json
+tts_engine: "gTTS"
+
+# Sparse Voxel Map parameters
+voxel_size: 0.1
+obs_min_height: 0.2  # Ignore things less than this high when planning motions
+obs_max_height: 1.5  # Ignore things over this height (eg ceilings)
+obs_min_density: 5  # This many points makes it an obstacle
+exp_min_density: 1
+min_points_per_voxel: 15  # Drop things below this density per voxel
+
+# Padding
+pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
+min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
+
+local_radius: 0.5  # Area around the robot to mark as explored (kind of a hack)
+add_local_every_step: False
+remove_visited_from_obstacles: False
+min_depth: 0.25
+max_depth: 2.5
+
+# Object detection parameters
+detection:
+  module: "detic"
+  # module: "yolo"
+  category_map_file: example_cat_map.json
+  use_detic_viz: False
+
+# Point cloud cleanup
+filters:
+        smooth_kernel_size: 2
+        use_median_filter: True
+        median_filter_size: 2
+        median_filter_max_error: 0.01
+        use_derivative_filter: True
+        derivative_filter_threshold: 0.2
+        # use_voxel_filter: True
+
+# Exploration
+# in_place_rotation_steps: 8
+in_place_rotation_steps: 0
+
+# TAMP parameters
+guarantee_instance_is_reachable: True
+use_scene_graph: False
+scene_graph:
+  max_near_distance: 0.3
+  min_on_height: 0.05
+  max_on_height: 0.2
+
+# Navigation space - used for motion planning and computing goals.
+step_size: 0.1
+rotation_step_size: 0.2 
+dilate_frontier_size: 2  # Used to shrink the frontier back from the edges of the world
+dilate_obstacle_size: 0  # Used when selecting navigation goals 
+default_expand_frontier_size: 5  # margin along the frontier where final robot position can be
+# Navigation space - used for motion planning and computing goals.
+motion_planner:
+  step_size: 0.05
+  rotation_step_size: 0.1
+  simplify_plans: True
+  shortcut_plans: True
+  shortcut_iter: 100
+  # Parameters for frontier exploration using the motion planner.
+  frontier:
+    dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
+    default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
+    # Distance away you search for frontier points
+    min_dist: 0.1
+    # Subsampling frontier space at this discretization
+    step_dist: 0.2
+  goals:
+    manipulation_radius: 0.45
+
+# Trajectory following - how closely we follow intermediate waypoints
+# These should be less strict than whatever parameters the low-level controller is using; this will
+# make sure that the motions end up looking smooth.
+trajectory_pos_err_threshold: 0.15
+trajectory_rot_err_threshold: 0.3
+trajectory_per_step_timeout: 3.0
+
+agent:
+  realtime:
+    # This is the distance to pose graph nodes
+    matching_distance: 0.5
+    # This was 0.05 in Atharva's exerimetns
+    # It is how close lidar spins have to be to be considered the same
+    temporal_threshold: 0.1
+  realtime_rotation_steps: 4
+  in_place_rotation_steps: 4
+  sweep_head_on_update: True
+
+# User interface
+# Choose one of: (object_to_find, location_to_place), command, or chat
+# Don't use all of them!
+name: "stretch_demo"  # for logging - currently not used
+chat: False
+start_ui_server: False
+vlm_context_length: 20  # How long messages sent to the vlm server can be if we are using it
+limited_obs_publish_sleep: 0.5
+
+# High level stuff: commands to execute 
+command: "pick up a bottle and put it on the chair"
+name: "stretch"
+exploration_steps: 10
+object_to_find: "bottle"
+location_to_place: "chair"
+
+
+# These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
+instance_memory:
+  min_instance_thickness: 0.01
+  min_instance_vol: 1e-6
+  max_instance_vol: 10.0
+  min_instance_height: 0.01
+  max_instance_height: 1.8
+  min_pixels_for_instance_view: 100
+  min_percent_for_instance_view: 0.1
+  # Should we remove the background from the instance views?
+  # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
+  # It will have an effect on performance.
+  mask_cropped_instances: False  # Should we remove the background from the instance views?
+  matching:
+    # Feature matching threshold for if something is considered a particular class
+    # Set this value by experimting with:
+    #   python -m stretch.app.query --threshold 0.05
+    # You can change the threshold to anything that makes sense.
+    feature_match_threshold: 0.05

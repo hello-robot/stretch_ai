@@ -15,7 +15,8 @@ from stretch.utils.config import get_full_config_path
 
 # Stretch stuff
 PLANNER_STRETCH_URDF = get_full_config_path("urdf/planner_calibrated.urdf")
-MANIP_STRETCH_URDF = get_full_config_path("urdf/stretch_manip_mode.urdf")
+# MANIP_STRETCH_URDF = get_full_config_path("urdf/stretch_manip_mode.urdf")
+MANIP_STRETCH_URDF = get_full_config_path("urdf/stretch.urdf")
 
 # This is the gripper, and the distance in the gripper frame to where the fingers will roughly meet
 STRETCH_GRASP_FRAME = "link_grasp_center"
@@ -43,7 +44,7 @@ STRETCH_ARM_EXTENSION = 0.8
 STRETCH_ARM_LIFT = 0.8
 
 look_at_ee = np.array([-np.pi / 2, -np.pi / 4])
-look_front = np.array([0.0, math.radians(-30)])
+look_front = np.array([0.0, -np.pi / 4])
 look_ahead = np.array([0.0, 0.0])
 look_close = np.array([0.0, math.radians(-45)])
 look_down = np.array([0.0, math.radians(-58)])
@@ -153,7 +154,7 @@ STRETCH_NAVIGATION_Q = np.array(
         0,  # x
         0,  # y
         0,  # theta
-        0.78,  # lift
+        0.6,  # lift
         0.01,  # arm
         0.0,  # gripper rpy
         0.0,  # wrist roll

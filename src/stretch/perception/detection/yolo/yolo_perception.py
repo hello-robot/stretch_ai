@@ -151,6 +151,12 @@ class YoloPerception(PerceptionModule):
 
         return semantic, instance, task_observations
 
+    def is_semantic(self):
+        return True
+
+    def is_instance(self):
+        return True
+
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
