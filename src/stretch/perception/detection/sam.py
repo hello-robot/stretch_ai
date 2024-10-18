@@ -30,10 +30,10 @@ checkpoint_names = {
 class SAMPerception(PerceptionModule):
     def __init__(
         self,
-        model_type="vit_l",
+        model_type="vit_b",
         checkpoint_name: Optional[str] = None,
         verbose: bool = True,
-        default_spacing: int = 32,
+        default_spacing: int = 64,
     ):
         super().__init__()
         self._verbose = verbose
