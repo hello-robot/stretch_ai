@@ -8,6 +8,7 @@
 # license information maybe found below, if so.
 
 import os
+import timeit
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -27,7 +28,9 @@ checkpoint_names = {
 
 
 class SAMPerception(PerceptionModule):
-    def __init__(self, model_type="vit_b", checkpoint_name: Optional[str] = None, verbose=False):
+    def __init__(
+        self, model_type="vit_b", checkpoint_name: Optional[str] = None, verbose: bool = True
+    ):
         super().__init__()
         self._verbose = verbose
         self.model_type = model_type
@@ -116,6 +119,7 @@ class SAMPerception(PerceptionModule):
             logits: logits of the masks
         """
 
+        t0 = timeit.default_timer()
         self.predictor.set_image(rgb)
 
         if point_coords is not None and point_labels is not None:
@@ -133,6 +137,9 @@ class SAMPerception(PerceptionModule):
             masks, scores, logits = self.predictor.predict(
                 box=np.array([0, 0, rgb.shape[1], rgb.shape[0]]), multimask_output=multimask_output
             )
+        t1 = timeit.default_timer()
+        if self._verbose:
+            print(f"Segmentation took {t1 - t0:.2f} seconds.")
 
         return masks, scores, logits
 
