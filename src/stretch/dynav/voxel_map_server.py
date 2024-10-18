@@ -702,3 +702,17 @@ class ImageProcessor:
         with open(filename, "wb") as f:
             pickle.dump(data, f)
         print("write all data to", filename)
+
+
+# @hydra.main(version_base="1.2", config_path=".", config_name="config.yaml")
+def main():
+    torch.manual_seed(1)
+    imageProcessor = ImageProcessor(
+        log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    )
+    # imageProcessor.read_from_pickle(cfg.pickle_file_name)
+    try:
+        while True:
+            imageProcessor.recv_text()
+    except KeyboardInterrupt:
+        imageProcessor.write_to_pickle()
