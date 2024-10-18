@@ -536,6 +536,7 @@ class GraspObjectOperation(ManagedOperation):
                             self.agent.robot_say(f"I can't see the {self.target_object}.")
                         self._success = False
                         return False
+                continue
             else:
                 failed_counter = 0
                 mask_center = mask_center.astype(int)
@@ -583,6 +584,9 @@ class GraspObjectOperation(ManagedOperation):
                 # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
                     success = self._grasp()
+                else:
+                    # Could not find the object
+                    failed_counter += 1
                 continue
 
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
