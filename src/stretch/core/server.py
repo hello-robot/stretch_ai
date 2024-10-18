@@ -28,6 +28,7 @@ class BaseZmqServer(CommsNode, ABC):
     report_steps = 1000
     fast_report_steps = 10000
     servo_report_steps = 1000
+    skip_duplicate_steps: bool = True
 
     def __init__(
         self,
@@ -212,7 +213,13 @@ class BaseZmqServer(CommsNode, ABC):
                 if self.verbose:
                     logger.info(f" - Action received: {action}")
                 # Tracking step number -- should never go backwards
-                self._last_step = max(action.get("step", -1), self._last_step)
+                action_step = action.get("step", -1)
+                if self.skip_duplicate_steps and action_step <= self._last_step:
+                    logger.warning(
+                        f"Skipping duplicate action {action_step}, last step = {self._last_step}"
+                    )
+                    continue
+                self._last_step = max(action_step, self._last_step)
                 logger.info(
                     f"Action #{self._last_step} received:",
                     [str(key) for key in action.keys()],

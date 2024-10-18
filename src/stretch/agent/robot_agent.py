@@ -135,6 +135,9 @@ class RobotAgent:
 
         self.reset_object_plans()
 
+        # Is this still running?
+        self._running = True
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -164,9 +167,14 @@ class RobotAgent:
             self.sub_socket = self.context.socket(zmq.SUB)
             self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
             self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        else:
+            self._update_map_thread = None
+            self._get_observations_thread = None
 
     def __del__(self):
-        self._update_map_thread.join()
+        """Destructor. Clean up threads."""
+        if self._update_map_thread is not None and self._update_map_thread.is_alive():
+            self._update_map_thread.join()
 
     def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
         """Create a voxel map from parameters.
@@ -406,7 +414,7 @@ class RobotAgent:
             steps += 1
         while i < steps:
             t0 = timeit.default_timer()
-            self.robot.navigate_to(
+            self.robot.move_base_to(
                 [x, y, theta + (i * step_size)],
                 relative=False,
                 blocking=True,
@@ -459,7 +467,8 @@ class RobotAgent:
         )
 
     def get_observations_loop(self):
-        while True:
+        """Threaded function that gets observations in real-time."""
+        while self.robot.running and self._running:
             obs = None
             t0 = timeit.default_timer()
 
@@ -615,8 +624,8 @@ class RobotAgent:
         self._obs_history_lock.release()
 
     def update_map_loop(self):
-        """Threaded function that updates our voxel map in real-time"""
-        while True:
+        """Threaded function that updates our voxel map in real-time."""
+        while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
             time.sleep(0.5)
@@ -989,11 +998,11 @@ class RobotAgent:
         if self.space.is_valid(xyt_goal_backward, verbose=True):
             logger.warning("Trying to move backwards...")
             # Compute the position forward or backward from the robot
-            self.robot.navigate_to(xyt_goal_backward, relative=False)
+            self.robot.move_base_to(xyt_goal_backward, relative=False)
         elif self.space.is_valid(xyt_goal_forward, verbose=True):
             logger.warning("Trying to move forward...")
             # Compute the position forward or backward from the robot
-            self.robot.navigate_to(xyt_goal_forward, relative=False)
+            self.robot.move_base_to(xyt_goal_forward, relative=False)
         else:
             logger.warning("Could not recover from invalid start state!")
             return False
@@ -1074,15 +1083,15 @@ class RobotAgent:
                 print("ROBOT IS STUCK! Move back!")
                 r = np.random.randint(3)
                 if r == 0:
-                    self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
+                    self.robot.move_base_to([-0.1, 0, 0], relative=True, blocking=True)
                 elif r == 1:
-                    self.robot.navigate_to([0, 0, np.pi / 4], relative=True, blocking=True)
+                    self.robot.move_base_to([0, 0, np.pi / 4], relative=True, blocking=True)
                 elif r == 2:
-                    self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
+                    self.robot.move_base_to([0, 0, -np.pi / 4], relative=True, blocking=True)
                 return False
 
             time.sleep(1.0)
-            self.robot.navigate_to([0, 0, np.pi / 2], relative=True)
+            self.robot.move_base_to([0, 0, np.pi / 2], relative=True)
             self.robot.move_to_manip_posture()
             return True
 
@@ -1445,7 +1454,7 @@ class RobotAgent:
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
                 print(f"robot base pose: {self.robot.get_base_pose()}")
-                self.robot.navigate_to([-0.1, 0, 0], relative=True)
+                self.robot.move_base_to([-0.1, 0, 0], relative=True)
                 continue
 
             # Now actually plan to the frontier
@@ -1503,11 +1512,11 @@ class RobotAgent:
 
                 r = np.random.randint(3)
                 if r == 0:
-                    self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
+                    self.robot.move_base_to([-0.1, 0, 0], relative=True, blocking=True)
                 elif r == 1:
-                    self.robot.navigate_to([0, 0, np.pi / 4], relative=True, blocking=True)
+                    self.robot.move_base_to([0, 0, np.pi / 4], relative=True, blocking=True)
                 elif r == 2:
-                    self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
+                    self.robot.move_base_to([0, 0, -np.pi / 4], relative=True, blocking=True)
 
             # Append latest observations
             if not self._realtime_updates:
@@ -1564,7 +1573,7 @@ class RobotAgent:
         t0 = timeit.default_timer()
         self.robot.move_to_nav_posture()
         while True:
-            self.robot.navigate_to(goal, blocking=False, timeout=30.0)
+            self.robot.move_base_to(goal, blocking=False, timeout=30.0)
             if self.robot.last_motion_failed():
                 return False
             position = self.robot.get_base_pose()

@@ -50,7 +50,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = True
+    show_servo_gui: bool = False
     show_point_cloud: bool = False
 
     # ------------------------
