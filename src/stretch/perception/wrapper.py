@@ -58,10 +58,17 @@ class OvmmPerception:
                 confidence_threshold=confidence_threshold,
                 **module_kwargs,
             )
+
+        elif self._detection_module == "sam":
+            from stretch.perception.detection.sam import SAMPerception
+
+            self._segmentation = SAMPerception()
+
         elif self._detection_module == "sam2":
             from stretch.perception.detection.sam2 import SAM2Perception
 
             self._segmentation = SAM2Perception()
+
         elif self._detection_module == "yolo":
             from stretch.perception.detection.yolo.yolo_perception import YoloPerception
 

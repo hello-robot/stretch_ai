@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -87,6 +87,7 @@ class SAM2Perception(PerceptionModule):
         self.sam2_predictor = build_sam2(
             model_cfg, checkpoint, device=DEVICE, apply_postprocessing=False
         )
+        self._verbose = verbose
 
         self.mask_generator = SAM2AutomaticMaskGenerator(self.sam2_predictor)
 
@@ -132,7 +133,7 @@ class SAM2Perception(PerceptionModule):
         depth=None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = False,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
         """
         Get masks using SAM
         Arguments:
@@ -140,7 +141,8 @@ class SAM2Perception(PerceptionModule):
         Returns:
             masks: masks of shape (N, H, W)
         """
-        print("SAM2 is segmenting the image...")
+        if self._verbose:
+            print("SAM2 is segmenting the image...")
 
         height, width, _ = rgb.shape
         image = rgb
