@@ -60,6 +60,9 @@ class GraspObjectOperation(ManagedOperation):
     show_point_cloud: bool = False
     delete_object_after_grasp: bool = False
 
+    # Should we try grasping open-loop or not?
+    _try_open_loop: bool = False
+
     # ------------------------
     # These are the most important parameters for tuning to make the grasping "feel" nice
     # This is almost certainly worth tuning a bit.
@@ -134,6 +137,7 @@ class GraspObjectOperation(ManagedOperation):
         talk: bool = True,
         match_method: str = "class",
         delete_object_after_grasp: bool = True,
+        try_open_loop: bool = False,
     ):
         """Configure the operation with the given keyword arguments.
 
@@ -146,6 +150,8 @@ class GraspObjectOperation(ManagedOperation):
             grasp_loose (bool, optional): Grasp loosely. Useful for grasping some objects like cups. Defaults to False.
             talk (bool, optional): Talk as the robot tries to grab stuff. Defaults to True.
             match_method (str, optional): Matching method. Defaults to "class". This is how the policy determines which object mask it should try to grasp.
+            delete_object_after_grasp (bool, optional): Delete the object after grasping. Defaults to True.
+            try_open_loop (bool, optional): Try open loop grasping. Defaults to False.
         """
         if target_object is not None:
             self.target_object = target_object
@@ -161,6 +167,7 @@ class GraspObjectOperation(ManagedOperation):
         self.grasp_loose = grasp_loose
         self.talk = talk
         self.match_method = match_method
+        self._try_open_loop = try_open_loop
         if self.match_method not in ["class", "feature"]:
             raise ValueError(
                 f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
@@ -521,7 +528,11 @@ class GraspObjectOperation(ManagedOperation):
                         current_xyz[2] += self.open_loop_z_offset
                     if self.show_servo_gui:
                         cv2.destroyAllWindows()
-                    return self.grasp_open_loop(current_xyz)
+                    if self._try_open_loop:
+                        return self.grasp_open_loop(current_xyz)
+                    else:
+                        self._success = False
+                        return False
             else:
                 failed_counter = 0
                 mask_center = mask_center.astype(int)
