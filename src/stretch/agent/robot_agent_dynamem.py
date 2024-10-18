@@ -388,7 +388,6 @@ class RobotAgent(RobotAgentBase):
                         res[:-2],
                         pos_err_threshold=self.pos_err_threshold,
                         rot_err_threshold=self.rot_err_threshold,
-                        blocking=True,
                     )
 
                 return True, res[-1]
@@ -399,7 +398,6 @@ class RobotAgent(RobotAgentBase):
                     res,
                     pos_err_threshold=self.pos_err_threshold,
                     rot_err_threshold=self.rot_err_threshold,
-                    blocking=True,
                 )
                 # self.look_around()
                 return False, None
