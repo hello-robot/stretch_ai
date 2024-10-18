@@ -1071,12 +1071,12 @@ class RobotAgent:
             if self.space.is_valid(xyt_goal_backward, verbose=True):
                 logger.warning("Trying to move backwards...")
                 # Compute the position forward or backward from the robot
-                self.robot.navigate_to(xyt_goal_backward, relative=False)
+                self.robot.move_base_to(xyt_goal_backward, relative=False)
                 break
             elif self.space.is_valid(xyt_goal_forward, verbose=True):
                 logger.warning("Trying to move forward...")
                 # Compute the position forward or backward from the robot
-                self.robot.navigate_to(xyt_goal_forward, relative=False)
+                self.robot.move_base_to(xyt_goal_forward, relative=False)
                 break
             else:
                 logger.warning(f"Could not recover from invalid start state with step of {step}!")
