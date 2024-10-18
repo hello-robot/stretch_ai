@@ -64,6 +64,10 @@ class OvmmPerception:
 
             self._segmentation = SAMPerception()
 
+        elif self._detection_module == "mobile_sam":
+            from stretch.perception.detection.mobile_sam import MobileSAMPerception
+
+            self._segmentation = MobileSAMPerception()
         elif self._detection_module == "sam2":
             from stretch.perception.detection.sam2 import SAM2Perception
 
