@@ -1,6 +1,6 @@
 #!/bin/bash
 VERSION=`python src/stretch/version.py`
-echo "Building docker image with tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
+echo "Building docker image with tag hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
 SKIP_ASKING="false"
 for arg in "$@"
 do
@@ -26,7 +26,7 @@ if [ "$SKIP_ASKING" == "false" ]; then
     fi
 fi
 # Build the docker image with the current tag.
-docker build -t hellorobotinc/stretch-ai_cuda-11.8:$VERSION . -f docker/Dockerfile.cuda-11.8
-docker push hellorobotinc/stretch-ai_cuda-11.8:$VERSION
-docker tag hellorobotinc/stretch-ai_cuda-11.8:$VERSION hellorobotinc/stretch-ai_cuda-11.8:latest
-docker push hellorobotinc/stretch-ai_cuda-11.8:latest
+docker build -t hellorobotinc/stretch-ai-ros2-bridge:$VERSION . -f docker/Dockerfile.ros2
+docker push hellorobotinc/stretch-ai-ros2-bridge:$VERSION
+docker tag hellorobotinc/stretch-ai-ros2-bridge:$VERSION hellorobotinc/stretch-ai-ros2-bridge:latest
+docker push hellorobotinc/stretch-ai-ros2-bridge:latest

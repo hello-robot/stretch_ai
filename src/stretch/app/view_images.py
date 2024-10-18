@@ -37,7 +37,11 @@ from stretch.utils.image import adjust_gamma
 )
 @click.option("--gamma", type=float, default=1.0, help="Gamma correction factor for EE rgb images")
 @click.option(
-    "--run_semantic_segmentation", is_flag=True, help="Run semantic segmentation on EE rgb images"
+    "--run_semantic_segmentation",
+    "--segment",
+    "-s",
+    is_flag=True,
+    help="Run semantic segmentation on EE rgb images",
 )
 @click.option("--segment_ee", is_flag=True, help="Run semantic segmentation on EE rgb images")
 @click.option("--aruco", is_flag=True, help="Run aruco detection on EE rgb images")
@@ -75,7 +79,7 @@ def main(
         aruco_detector = GripperArucoDetector()
     else:
         aruco_detector = None
-    print("This code is running from a file outside of the Docker image!")
+
     print("Starting the robot...")
     robot.start()
     robot.move_to_manip_posture()
@@ -148,7 +152,14 @@ def main(
             semantic_segmentation = np.zeros(
                 (_obs.semantic.shape[0], _obs.semantic.shape[1], 3)
             ).astype(np.uint8)
-            for cls in np.unique(_obs.semantic):
+            if semantic_sensor.is_semantic():
+                segmentation = _obs.semantic
+            elif semantic_sensor.is_instance():
+                segmentation = _obs.instance
+            else:
+                raise ValueError("Unknown perception model type")
+
+            for cls in np.unique(segmentation):
                 if cls > 0:
                     if cls not in colors:
                         colors[cls] = (np.random.rand(3) * 255).astype(np.uint8)
