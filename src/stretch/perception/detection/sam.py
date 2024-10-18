@@ -19,14 +19,24 @@ from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
 
+checkpoint_names = {
+    "vit_b": "sam_vit_b_01ec64.pth",
+    "vit_l": "sam_vit_l_0b3195.pth",
+    "vit_h": "sam_vit_h_4b8939.pth",
+}
+
 
 class SAMPerception(PerceptionModule):
-    def __init__(self, model_type="vit_h", checkpoint_name: Optional[str] = None, verbose=False):
+    def __init__(self, model_type="vit_b", checkpoint_name: Optional[str] = None, verbose=False):
         super().__init__()
         self._verbose = verbose
         self.model_type = model_type
         if checkpoint_name is None:
-            checkpoint_name = f"sam_{self.model_type}_4b8939.pth"
+            if model_type not in checkpoint_names:
+                raise ValueError(
+                    f"Model type {model_type} not supported. Choose from {checkpoint_names.keys()}"
+                )
+            checkpoint_name = checkpoint_names[model_type]
         self.checkpoint_name = checkpoint_name
         self.checkpoint_url = (
             f"https://dl.fbaipublicfiles.com/segment_anything/{self.checkpoint_name}"
