@@ -673,7 +673,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             block_id = action["step"]
             time.sleep(0.1)
             # Now, wait for the command to finish
-            self._wait_for_action(
+            self._wait_for_base_motion(
                 block_id,
                 goal_angle=_xyt[2],
                 verbose=verbose,
