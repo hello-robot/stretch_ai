@@ -32,11 +32,13 @@ class SiglipEncoder(BaseImageTextEncoder):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.normalize = normalize
-        self.processor = AutoProcessor.from_pretrained("google/siglip-base-patch16-224")
-        self.tokenizer = AutoTokenizer.from_pretrained("google/siglip-base-patch16-224")
-        self.model = AutoModel.from_pretrained("google/siglip-base-patch16-224").to(self.device)
+        self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
+        self.tokenizer = AutoTokenizer.from_pretrained("google/siglip-so400m-patch14-384")
+        self.model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(self.device)
 
-    def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
+    def encode_image(
+        self, image: Union[torch.tensor, np.ndarray], image_shape=(360, 270)
+    ) -> torch.Tensor:
         """Encode this input image to a feature vector"""
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy()
