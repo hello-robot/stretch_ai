@@ -146,6 +146,9 @@ class RobotAgent:
 
         self.reset_object_plans()
 
+        # Is this still running?
+        self._running = True
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -207,7 +210,10 @@ class RobotAgent:
         return self.voxel_map
 
     def __del__(self):
+        """Destructor. Clean up threads."""
         self._running = False
+        if self._update_map_thread is not None and self._update_map_thread.is_alive():
+            self._update_map_thread.join()
         # if self._update_map_thread is not None and self._update_map_thread.is_alive():
         #    self._update_map_thread.join()
 
@@ -453,7 +459,7 @@ class RobotAgent:
             steps += 1
         while i < steps:
             t0 = timeit.default_timer()
-            self.robot.navigate_to(
+            self.robot.move_base_to(
                 [x, y, theta + (i * step_size)],
                 relative=False,
                 blocking=True,
@@ -511,7 +517,6 @@ class RobotAgent:
 
     def get_observations_loop(self) -> None:
         """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
-
         while self.robot.running and self._running:
             obs = None
             t0 = timeit.default_timer()
@@ -1157,7 +1162,7 @@ class RobotAgent:
                 self.recover_from_invalid_start()
 
             time.sleep(1.0)
-            self.robot.navigate_to([0, 0, np.pi / 2], relative=True)
+            self.robot.move_base_to([0, 0, np.pi / 2], relative=True)
             self.robot.move_to_manip_posture()
             return True
 
@@ -1648,11 +1653,11 @@ class RobotAgent:
 
                 r = np.random.randint(3)
                 if r == 0:
-                    self.robot.navigate_to([-0.1, 0, 0], relative=True, blocking=True)
+                    self.robot.move_base_to([-0.1, 0, 0], relative=True, blocking=True)
                 elif r == 1:
-                    self.robot.navigate_to([0, 0, np.pi / 4], relative=True, blocking=True)
+                    self.robot.move_base_to([0, 0, np.pi / 4], relative=True, blocking=True)
                 elif r == 2:
-                    self.robot.navigate_to([0, 0, -np.pi / 4], relative=True, blocking=True)
+                    self.robot.move_base_to([0, 0, -np.pi / 4], relative=True, blocking=True)
 
             # Append latest observations
             if not self._realtime_updates:
@@ -1720,7 +1725,7 @@ class RobotAgent:
         t0 = timeit.default_timer()
         self.robot.move_to_nav_posture()
         while True:
-            self.robot.navigate_to(goal, blocking=False, timeout=30.0)
+            self.robot.move_base_to(goal, blocking=False, timeout=30.0)
             if self.robot.last_motion_failed():
                 return False
             position = self.robot.get_base_pose()

@@ -58,9 +58,7 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
         self.dof = 3 + 2 + 4 + 2
         self.xyt = np.zeros(3)
 
-    def navigate_to(
-        self, xyt, relative: bool = False, blocking: bool = False, verbose: bool = False
-    ):
+    def move_base_to(self, xyt, relative=False, blocking=True, verbose: bool = False):
         """Move to xyt in global coordinates or relative coordinates."""
         if relative:
             xyt_goal = xyt_base_to_global(xyt, self.xyt)
