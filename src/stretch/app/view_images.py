@@ -75,7 +75,7 @@ def main(
         aruco_detector = GripperArucoDetector()
     else:
         aruco_detector = None
-    print("This code is running from a file outside of the Docker image!")
+
     print("Starting the robot...")
     robot.start()
     robot.move_to_manip_posture()
