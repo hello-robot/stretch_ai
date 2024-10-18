@@ -386,7 +386,12 @@ class GraspObjectOperation(ManagedOperation):
         return self.target_object.replace("_", " ")
 
     def _grasp(self) -> bool:
-        """Helper function to close gripper around object."""
+        """Helper function to close gripper around object.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+
         self.cheer("Grasping object!")
         if self.talk:
             self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
