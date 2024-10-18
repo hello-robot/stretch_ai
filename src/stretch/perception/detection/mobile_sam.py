@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import timeit
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -14,6 +15,9 @@ import torch
 from mobile_sam import SamAutomaticMaskGenerator, SamPredictor, sam_model_registry
 
 from stretch.core import PerceptionModule
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
 
 
 class MobileSAMPerception(PerceptionModule):
@@ -63,19 +67,28 @@ class MobileSAMPerception(PerceptionModule):
         if self._verbose:
             print("SAM is segmenting the image...")
 
+        t0 = timeit.default_timer()
         # masks, scores, logits = self.segment(rgb)
-        masks = self.mask_generator.generate(rgb)
+        results = self.mask_generator.generate(rgb)
+        scores = []
 
         height, width, _ = rgb.shape
         semantic = np.zeros((height, width), dtype=np.uint8)
         instance = np.zeros((height, width), dtype=np.uint8)
 
-        for i, mask in enumerate(masks):
+        for i, result in enumerate(results):
+            mask = result["segmentation"]
+            score = result["stability_score"]
+            scores.append(score)
             semantic[mask > 0] = i + 1
             instance[mask > 0] = i + 1
 
         task_observations = dict()
         task_observations["semantic_frame"] = semantic
+        t1 = timeit.default_timer()
+
+        if self._verbose:
+            logger.info(f"Segmentation took {t1 - t0:.2f} seconds")
 
         return semantic, instance, task_observations
 
