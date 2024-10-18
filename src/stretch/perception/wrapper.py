@@ -230,6 +230,13 @@ def build_vocab_from_category_map(
 ) -> RearrangeDETICCategories:
     """
     Build vocabulary from category maps that can be used for semantic sensor and visualizations.
+
+    Args:
+        obj_id_to_name_mapping: mapping from object category IDs to object category names
+        rec_id_to_name_mapping: mapping from receptacle category IDs to receptacle category names
+
+    Returns:
+        RearrangeDETICCategories: vocabulary object
     """
     obj_rec_combined_mapping = {}
     for i in range(len(obj_id_to_name_mapping) + len(rec_id_to_name_mapping)):
@@ -253,7 +260,21 @@ def create_semantic_sensor(
     confidence_threshold: float = 0.5,
     **kwargs,
 ):
-    """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
+    """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes.
+
+    Args:
+        parameters: Parameters object
+        category_map_file: path to category map file
+        device_id: GPU device ID
+        verbose: whether to print debug information
+        module_kwargs: additional arguments to pass to the segmentation model
+        config_path: path to config file
+        confidence_threshold: confidence threshold for detection
+        **kwargs: additional arguments
+
+    Returns:
+        OvmmPerception: segmentation sensor
+    """
     if verbose:
         print("[PERCEPTION] Loading configuration")
     if parameters is None:
