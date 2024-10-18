@@ -67,7 +67,7 @@ r.manip.goto_joint_positions(state)
 
 # Navigation
 r.switch_to_navigation_mode()
-r.nav.navigate_to([0.5, 0, 0]) # For Navigation
+r.nav.move_base_to([0.5, 0, 0]) # For Navigation
 ```
 
 ### Running with ORB_SLAM3

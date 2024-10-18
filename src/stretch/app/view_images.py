@@ -75,7 +75,7 @@ def main(
         aruco_detector = GripperArucoDetector()
     else:
         aruco_detector = None
-
+    print("This code is running from a file outside of the Docker image!")
     print("Starting the robot...")
     robot.start()
     robot.move_to_manip_posture()
@@ -95,8 +95,12 @@ def main(
         # Get image from robot
         obs = robot.get_observation()
         if obs is None:
+            print("Waiting for observation...")
+            time.sleep(0.1)
             continue
         if obs.rgb is None:
+            print("Waiting for RGB image...")
+            time.sleep(0.1)
             continue
         # Low res images used for visual servoing and ML
         servo = robot.get_servo_observation()
