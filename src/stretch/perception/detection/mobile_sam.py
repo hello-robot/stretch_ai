@@ -95,3 +95,11 @@ class MobileSAMPerception(PerceptionModule):
             logits: logits of the masks
         """
         return self.predictor.segment(rgb, point_coords, point_labels, box, multimask_output)
+
+    def is_instance(self) -> bool:
+        """Return True if the perception module is an instance segmentation model."""
+        return True
+
+    def is_semantic(self) -> bool:
+        """Return True if the perception module is a semantic segmentation model."""
+        return True
