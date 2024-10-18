@@ -191,12 +191,6 @@ class RobotAgent:
             # Get observations thread
             self._get_observations_thread = Thread(target=self.get_observations_loop)
             self._get_observations_thread.start()
-
-            # Set up ZMQ subscriber
-            # self.context = self.robot.get_zmq_context()
-            # self.sub_socket = self.context.socket(zmq.SUB)
-            # self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
-            # self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
         else:
             self._update_map_thread = None
             self._get_observations_thread = None
@@ -642,6 +636,7 @@ class RobotAgent:
                 if obs.is_pose_graph_node:
                     self.voxel_map.add_obs(obs)
                     added += 1
+
         if verbose:
             print("----")
             print(f"Added {added} observations to voxel map")
@@ -1061,6 +1056,8 @@ class RobotAgent:
 
         steps = [0.05, 0.1]
 
+        self._map_lock.acquire()
+
         for step in steps:
             # Apply relative transformation to XYT
             forward = np.array([-1 * step, 0, 0])
@@ -1087,6 +1084,10 @@ class RobotAgent:
         # Get the current position in case we are still invalid
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
+
+        # We can now allow the map to be updated
+        self._map_lock.release()
+
         if not start_is_valid:
             logger.warning("Tried and failed to recover from invalid start state!")
             return False
