@@ -18,7 +18,11 @@ min_points_per_voxel: 15  # Drop things below this density per voxel
 
 # Padding
 pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacles
+<<<<<<< HEAD
 min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
+=======
+min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
+>>>>>>> 694a6a6fb704995b5b3a2730473637680ba20da8
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
 add_local_every_step: False
@@ -52,7 +56,7 @@ filters:
 motion:
   moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
   angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
-  min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
+  min_steps_not_moving: 5  # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
     arm: 0.02
     base_x: 0.02

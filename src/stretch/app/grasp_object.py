@@ -109,7 +109,7 @@ def main(
 
     if reset:
         robot.move_to_nav_posture()
-        robot.navigate_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
+        robot.move_base_to([0.0, 0.0, 0.0], blocking=True, timeout=30.0)
 
     robot.stop()
 
