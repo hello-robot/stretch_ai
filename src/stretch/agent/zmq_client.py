@@ -1657,9 +1657,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if self._rerun_thread is not None:
             self._rerun_thread.join()
 
-        # Delete pub obs socket
-        self.pub_obs_socket.close()
-
         # Close the sockets and context
         self.recv_socket.close()
         self.recv_state_socket.close()
