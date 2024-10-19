@@ -90,8 +90,8 @@ def main(
 
     if input_path is None:
         demo.rotate_in_place()
-    else:
-        demo.image_processor.read_from_pickle(input_path)
+    # else:
+    #     demo.image_processor.read_from_pickle(input_path)
 
     demo.save()
 
@@ -112,7 +112,7 @@ def main(
         mode = input("select mode? E/N/S: ")
         mode = mode.upper()
         if mode == "S":
-            demo.image_processor.write_to_pickle()
+            # demo.image_processor.write_to_pickle()
             break
         if mode == "E":
             robot.switch_to_navigation_mode()

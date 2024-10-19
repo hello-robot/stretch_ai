@@ -49,7 +49,7 @@ class RobotAgentMDP:
         robot,
         parameters: Dict[str, Any],
         server_ip: str,
-        image_port: int = 5558,
+        image_port: int = 5555,
         text_port: int = 5556,
         manip_port: int = 5557,
         re: int = 1,
@@ -116,7 +116,7 @@ class RobotAgentMDP:
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.5, -0.3, -1.1, -1.9]:
-            for tilt in [-0.65]:
+            for tilt in [-0.6]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 
@@ -132,11 +132,9 @@ class RobotAgentMDP:
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         # Sleep some time so the robot rgbd observations are more likely to be updated
-        # time.sleep(0.5)
+        time.sleep(0.3)
 
         obs = self.robot.get_observation()
-        self.obs_history.append(obs)
-        self.obs_count += 1
         self.image_sender.send_images(obs)
 
     def execute_action(
@@ -152,10 +150,10 @@ class RobotAgentMDP:
 
         start = self.robot.get_base_pose()
         # print("       Start:", start)
-        # res = self.image_sender.query_text(text, start)
-        res = self.image_processor.process_text(text, start)
-        if len(res) == 0 and text != "" and text is not None:
-            res = self.image_processor.process_text("", start)
+        res = self.image_sender.query_text(text, start)
+        # res = self.image_processor.process_text(text, start)
+        # if len(res) == 0 and text != "" and text is not None:
+        #     res = self.image_processor.process_text("", start)
 
         look_around_finish = time.time()
         look_around_take = look_around_finish - start_time
@@ -348,8 +346,9 @@ class RobotAgentMDP:
         return True
 
     def save(self):
-        with self.image_processor.voxel_map_lock:
-            self.image_processor.write_to_pickle()
+        pass
+        # with self.image_processor.voxel_map_lock:
+        #     self.image_processor.write_to_pickle()
 
 
 class ImageSender:
@@ -357,8 +356,8 @@ class ImageSender:
         self,
         stop_and_photo=False,
         server_ip="100.108.67.79",
-        image_port=5560,
-        text_port=5561,
+        image_port=5555,
+        text_port=5556,
         manip_port=5557,
         color_name="/camera/color",
         depth_name="/camera/aligned_depth_to_color",
