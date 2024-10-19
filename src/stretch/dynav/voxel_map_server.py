@@ -17,6 +17,7 @@ import time
 
 # from io import BytesIO
 from pathlib import Path
+from uuid import uuid4
 
 import cv2
 import numpy as np
@@ -31,7 +32,7 @@ from matplotlib import pyplot as plt
 
 import stretch.utils.logger as logger
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import load_socket, recv_everything
+from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
 from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
@@ -127,7 +128,7 @@ class ImageProcessor:
         device: str = "cuda",
         min_depth: float = 0.25,
         max_depth: float = 2.5,
-        img_port: int = 5558,
+        img_port: int = 5555,
         text_port: int = 5556,
         open_communication: bool = True,
         rerun: bool = True,
@@ -137,6 +138,7 @@ class ImageProcessor:
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
     ):
+        self.static = True
         self.rerun_visualizer = rerun_visualizer
         current_datetime = datetime.datetime.now()
         if log is None:
@@ -145,7 +147,7 @@ class ImageProcessor:
             self.log = log
         self.rerun = rerun
         if self.rerun and self.rerun_visualizer is None:
-            rr.init(self.log)
+            rr.init(self.log, recording_id=uuid4(), spawn=True)
             logger.info("Starting a rerun server.")
         elif self.rerun:
             setup_custom_blueprint()
@@ -229,6 +231,13 @@ class ImageProcessor:
 
     def get_encoder(self) -> CustomImageTextEncoder:
         return self.encoder
+
+    def recv_text(self):
+        text = self.text_socket.recv_string()
+        self.text_socket.send_string("Text received, waiting for robot pose")
+        start_pose = recv_array(self.text_socket)
+        res = self.process_text(text, start_pose)
+        send_array(self.text_socket, res)
 
     def process_text(self, text, start_pose):
         """
@@ -457,6 +466,12 @@ class ImageProcessor:
         while True:
             # data = recv_array(self.img_socket)
             rgb, depth, intrinsics, pose = recv_everything(self.img_socket)
+            rgb, depth, intrinsics, pose = (
+                np.array(rgb),
+                np.array(depth),
+                np.array(intrinsics),
+                np.array(pose),
+            )
             print("Image received")
             start_time = time.time()
             self.process_rgbd_images(rgb, depth, intrinsics, pose)
@@ -716,3 +731,7 @@ def main():
             imageProcessor.recv_text()
     except KeyboardInterrupt:
         imageProcessor.write_to_pickle()
+
+
+if __name__ == "__main__":
+    main()
