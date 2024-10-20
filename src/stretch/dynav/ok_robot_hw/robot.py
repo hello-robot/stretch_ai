@@ -135,7 +135,8 @@ class HelloRobot:
         # self.r.goto_joint_positions(target_state, blocking = True)
 
         self.robot.arm_to(target_state, blocking=blocking, head=np.array([self.pan, self.tilt]))
-        time.sleep(0.5)
+        # self.robot.arm_to(target_state, blocking=False)
+        # time.sleep(0.5)
 
         # Head state update and Movement
         # target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
@@ -150,7 +151,9 @@ class HelloRobot:
             self.pan = head_pan
 
         self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
-        time.sleep(0.5)
+        # self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=False)
+        # time.sleep(0.3)
+        
         # print("Expected", target_state)
         # print("Actual", self.robot.get_six_joints())
         # print("Error", target_state - self.robot.get_six_joints())

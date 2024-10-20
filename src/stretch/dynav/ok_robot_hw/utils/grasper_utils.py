@@ -222,10 +222,11 @@ def pickup(
     # The distance between gripper and point is covered gradullay to allow for velocity control when it approaches the object
     # Lower velocity helps is not topping the light objects
     diff = abs(curr_diff - ref_diff)
-    if diff > 0.07:
-        dist = diff - 0.07
+    if diff > 0.08:
+        dist = diff - 0.08
         state = robot.robot.get_six_joints()
         state[1] += 0.02
+        state[2] += 0.02
         # state[0] -= 0.015
         robot.robot.arm_to(state, blocking=True)
         robot.move_to_pose([0, 0, dist], [0, 0, 0], [1])
