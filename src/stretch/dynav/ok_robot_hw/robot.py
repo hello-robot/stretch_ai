@@ -18,6 +18,7 @@ from scipy.spatial.transform import Rotation as R
 from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.utils import transform_joint_array
 from stretch.motion.kinematics import HelloStretchIdx
+import time
 
 OVERRIDE_STATES: dict[str, float] = {}
 
@@ -131,10 +132,14 @@ class HelloRobot:
         if not wrist_roll is None:
             target_state[5] = wrist_roll
 
+        # self.r.goto_joint_positions(target_state, blocking = True)
+
         self.robot.arm_to(target_state, blocking=blocking, head=np.array([self.pan, self.tilt]))
+        time.sleep(0.5)
 
         # Head state update and Movement
         # target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
+
         target_head_pan = self.pan
         target_head_tilt = self.tilt
         if not head_tilt is None:
@@ -143,7 +148,9 @@ class HelloRobot:
         if not head_pan is None:
             target_head_pan = head_pan
             self.pan = head_pan
+
         self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
+        time.sleep(0.5)
         # print("Expected", target_state)
         # print("Actual", self.robot.get_six_joints())
         # print("Error", target_state - self.robot.get_six_joints())

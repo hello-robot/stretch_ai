@@ -51,13 +51,13 @@ filters:
 # Motion convergence parameters
 # These are to make sure the robot is not doing anything weird
 motion:
-  moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
-  angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
-  min_steps_not_moving: 5  # How many steps the robot has to not move before we consider it "stopped"
+  moving_threshold: 0.01  # How much the robot has to move to be considered "moving"
+  angle_threshold: 0.1  # How much the robot has to rotate to be considered "rotating"
+  min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
-    arm: 0.02
-    base_x: 0.02
-    lift: 0.02
+    arm: 0.01
+    base_x: 0.01
+    lift: 0.01
     wrist_roll: 0.1
     wrist_pitch: 0.1
     wrist_yaw: 0.1

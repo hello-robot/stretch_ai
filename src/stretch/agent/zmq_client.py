@@ -451,7 +451,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             q[HelloStretchIdx.WRIST_PITCH],
             q[HelloStretchIdx.WRIST_ROLL],
         ]
-
+    
     def get_pose_graph(self) -> np.ndarray:
         """Get the robot's SLAM pose graph"""
         return self._pose_graph
@@ -483,9 +483,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
-            time.sleep(0.25)
+            time.sleep(0.1)
             self._wait_for_head(whole_body_q, block_id=step)
-            time.sleep(0.25)
+            time.sleep(0.1)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
@@ -1080,6 +1080,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 print(
                     f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
                 )
+                print(min_steps_not_moving, self._last_step, at_goal)
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
