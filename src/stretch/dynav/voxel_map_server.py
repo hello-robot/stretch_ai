@@ -37,6 +37,8 @@ from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
+
+# from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder, MaskEvaClipEncoder
 from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
 
@@ -133,7 +135,7 @@ class ImageProcessor:
         open_communication: bool = True,
         rerun: bool = True,
         log=None,
-        image_shape=(360, 270),
+        image_shape=(480, 360),
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
@@ -220,6 +222,7 @@ class ImageProcessor:
 
     def create_vision_model(self):
         self.encoder = MaskSiglipEncoder(device=self.device)
+        # self.encoder = MaskEvaClipEncoder(device=self.device)
 
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
