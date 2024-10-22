@@ -892,11 +892,10 @@ class RobotAgent:
         instance: Instance,
         start: np.ndarray,
         verbose: bool = False,
-        instance_id: int = -1,
         max_tries: int = 10,
         radius_m: float = 0.5,
         rotation_offset: float = 0.0,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found.
 
@@ -907,40 +906,55 @@ class RobotAgent:
             rotation_offset(float): added to rotation of goal to change final relative orientation
         """
 
+        instance_id = instance.global_id
+
+        if self.realtime_updates:
+            use_cache = False
+
+        res = None
+        if verbose:
+            for j, view in enumerate(instance.instance_views):
+                print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
+
         with self._map_lock:
-            res = None
-            if verbose:
-                for j, view in enumerate(instance.instance_views):
-                    print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
-
             start_is_valid = self.space.is_valid(start, verbose=False)
-            if not start_is_valid:
-                return PlanResult(success=False, reason="invalid start state")
+        if not start_is_valid:
+            return PlanResult(success=False, reason="invalid start state")
 
-            # plan to the sampled goal
-            has_plan = False
-            if use_cache and instance_id >= 0 and instance_id in self._cached_plans:
-                res = self._cached_plans[instance_id]
-                has_plan = res.success
-                if verbose:
-                    print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
+        # plan to the sampled goal
+        has_plan = False
+        if use_cache and instance_id >= 0 and instance_id in self._cached_plans:
+            res = self._cached_plans[instance_id]
+            has_plan = res.success
+            if verbose:
+                print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
 
-            # Plan to the instance
-            if not has_plan:
-                # Call planner
-                res = self.plan_to_bounds(
-                    instance.bounds,
-                    start,
-                    verbose,
-                    max_tries,
-                    radius_m,
-                    rotation_offset=rotation_offset,
-                )
-                if instance_id >= 0:
-                    self._cached_plans[instance_id] = res
+        # Plan to the instance
+        if not has_plan:
+            # Call planner
+            print(
+                "planning to instance: ",
+                instance_id,
+                "max_tries: ",
+                max_tries,
+                "radius: ",
+                radius_m,
+                "rotation_offset: ",
+                rotation_offset,
+            )
+            res = self.plan_to_bounds(
+                instance.bounds,
+                start,
+                verbose,
+                max_tries,
+                radius_m,
+                rotation_offset=rotation_offset,
+            )
+            if instance_id >= 0:
+                self._cached_plans[instance_id] = res
 
-            # Finally, return plan result
-            return res
+        # Finally, return plan result
+        return res
 
     def plan_to_bounds(
         self,

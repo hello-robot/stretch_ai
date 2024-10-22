@@ -136,8 +136,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
             # Find the object we care about
             if self.is_match(instance):
+                print(" - Found a matching instance. Try to plan to it...")
                 # Check to see if we can motion plan to box or not
-                plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                plan = self.agent.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
                     self.agent.current_receptacle = instance
@@ -274,7 +275,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                    plan = self.agent.plan_to_instance_for_manipulation(instance, start=start)
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
