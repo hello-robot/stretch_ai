@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import time
 from typing import List, Optional
 
 import numpy as np
@@ -30,6 +31,9 @@ class ManagedSearchOperation(ManagedOperation):
 
     # How to choose the features from multiple views
     aggregation_method: str = "mean"
+
+    # Whether to talk or not
+    talk: bool = True
 
     @property
     def object_class(self) -> str:
@@ -169,7 +173,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 self.agent.go_home()
         else:
             self.cheer(f"Found a receptacle!")
-            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+            if self.talk:
+                self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+                time.sleep(2.0)
             self.set_status(status.SUCCEEDED)
             view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
@@ -300,7 +306,9 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.agent.reset_object_plans()
         else:
             self.cheer(f"Found object of {self.object_class}!")
-            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+            if self.talk:
+                self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+                time.sleep(2.0)
             view = self.agent.current_object.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("object.png")
