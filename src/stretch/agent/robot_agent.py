@@ -22,7 +22,6 @@ import numpy as np
 import torch
 from PIL import Image
 
-import stretch.utils.logger as logger
 import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -36,8 +35,11 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
+from stretch.utils.logger import Logger
 from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
+
+logger = Logger(__name__)
 
 
 class RobotAgent:
@@ -908,7 +910,9 @@ class RobotAgent:
 
         instance_id = instance.global_id
 
-        if self.realtime_updates:
+        if self._realtime_updates:
+            if use_cache:
+                logger.warning("Cannot use cache with real-time updates")
             use_cache = False
 
         res = None
