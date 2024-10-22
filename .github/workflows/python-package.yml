@@ -30,16 +30,18 @@ jobs:
       run: git config --global --add safe.directory `pwd`
     - name: Get LFS objects
       run: git lfs pull
-    - name: Set up Python 3.11
+    - name: Set up Python 3.10
       uses: actions/setup-python@v5
       with:
-        python-version: "3.11"
+        python-version: "3.10"
     - name: Install dependencies and code
       run: |
         python --version
         python -m pip install --upgrade pip setuptools packaging build meson ninja wheel
         python --version
-        python -m pip install git+https://github.com/scikit-fmm/scikit-fmm.git
+        find /usr -name Python.h
+        CFLAGS="-I/usr/include/python3.10" pip install scikit-fmm
+        python -m pip install scikit-fmm
         # Install torch
         python -m pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
         # scikit-fmm
