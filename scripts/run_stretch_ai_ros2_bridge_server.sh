@@ -1,9 +1,17 @@
 #!/bin/bash
+# Description: Run the docker container with GPU support
+
+# Make sure it fails if we see any errors
+set -e
+
 echo "Starting Stretch AI ROS2 Bridge Server on $HELLO_FLEET_ID"
 echo "========================================================="
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 parent_dir="$(dirname "$script_dir")"
+
+echo "Reading version from $parent_dir/src/stretch/version.py"
 VERSION=`python $parent_dir/src/stretch/version.py`
+
 echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
 sudo docker run -it \
     --net=host \
