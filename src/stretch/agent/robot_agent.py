@@ -248,7 +248,11 @@ class RobotAgent:
         self.unreachable_instances = set()
 
     def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
-        """Mark an instance as unreachable."""
+        """Mark an instance as unreachable.
+
+        Args:
+            instance(Union[int, Instance]): the instance to mark as unreachable
+        """
         if isinstance(instance, Instance):
             instance_id = instance.id
         elif isinstance(instance, int):
@@ -258,7 +262,11 @@ class RobotAgent:
         self.unreachable_instances.add(instance_id)
 
     def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
-        """Check if an instance is unreachable."""
+        """Check if an instance is unreachable.
+
+        Args:
+            instance(Union[int, Instance]): the instance to check
+        """
         if isinstance(instance, Instance):
             instance_id = instance.id
         elif isinstance(instance, int):
@@ -833,7 +841,7 @@ class RobotAgent:
 
     def plan_to_instance_for_manipulation(
         self,
-        instance: Instance,
+        instance: Union[Instance, int],
         start: np.ndarray,
         max_tries: int = 100,
         verbose: bool = True,
@@ -851,8 +859,14 @@ class RobotAgent:
         Returns:
             PlanResult: the result of the motion planner
         """
+
+        if isinstance(instance, int):
+            _instance = self.voxel_map.get_instance(instance)
+        else:
+            _instance = instance
+
         return self.plan_to_instance(
-            instance,
+            _instance,
             start=start,
             rotation_offset=np.pi / 2,
             radius_m=self._manipulation_radius,
