@@ -12,6 +12,7 @@ Stretch AI comes with several apps that you can run to test the robot's capabili
 
 Advanced:
 
+- [Grasp Object](#grasp-an-object) - Have the robot grasp an object.
 - [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
@@ -140,7 +141,9 @@ python -m stretch.app.voice_chat
 
 ### Dex Teleop for Data Collection
 
-Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit).
+[![Dex Teleop](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://youtu.be/ZQQWOkSkw5o)
+
+Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit). You can see an example of the system in action in the [Dex Teleop video on YouTube](https://youtu.be/ZQQWOkSkw5o).
 
 You need to install mediapipe for hand tracking:
 
@@ -155,6 +158,16 @@ python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x -
 [Read the data collection documentation](docs/data_collection.md) for more details.
 
 After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
+
+### Grasp an Object
+
+[![Grasp Object](https://img.youtube.com/vi/YmJKvmYRQ9o/0.jpg)](https://youtu.be/YmJKvmYRQ9o)
+
+This app has the robot grasp an object positioned in front of its arm, on the floor, about a meter away. You can see the [grasp practice video on YouTube](https://youtu.be/YmJKvmYRQ9o) to see how it works.
+
+```bash
+python -m stretch.app.grasp_object --robot_ip $ROBOT_IP --target_object "object description"
+```
 
 ### Automatic 3d Mapping
 
