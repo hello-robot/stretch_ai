@@ -44,7 +44,8 @@ class Qwen25Client(AbstractLLMClient):
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype="auto", device_map=device
+            model_name,
+            torch_dtype="auto",
         )
         self.pipe = pipeline(
             "text-generation", model=self.model, tokenizer=self.tokenizer, device=device
