@@ -49,7 +49,7 @@ setuptools.setup(
         "pyusb",
         "schema",
         "overrides",
-        # "wget",
+        "wget",
         # From openai
         "openai",
         "openai-clip",
