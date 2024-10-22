@@ -53,9 +53,11 @@ class Qwen25Client(AbstractLLMClient):
 
     def __call__(self, command: str, verbose: bool = False):
         if self.is_first_message():
-            new_message = {"role": "user", "content": self.system_prompt + command}
-        else:
-            new_message = {"role": "user", "content": command}
+            system_message = {"role": "system", "content": self.system_prompt}
+            self.add_history(system_message)
+
+        # Prepare the messages including the conversation history
+        new_message = {"role": "user", "content": command}
 
         self.add_history(new_message)
         messages = self.get_history()
@@ -68,7 +70,7 @@ class Qwen25Client(AbstractLLMClient):
         outputs = self.pipe(text, max_new_tokens=self.max_tokens)
         t1 = timeit.default_timer()
 
-        assistant_response = outputs[0]["generated_text"].split("Assistant:")[-1].strip()
+        assistant_response = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
         self.add_history({"role": "assistant", "content": assistant_response})
         if verbose:
