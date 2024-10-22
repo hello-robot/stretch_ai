@@ -1155,7 +1155,7 @@ class RobotAgent:
             while tries <= max_try_per_instance:
                 print("Checking instance", i)
                 # TODO: this is a bad name for this variable
-                res = self.plan_to_instance(match, start, instance_id=i)
+                res = self.plan_to_instance(match, start, instance=i)
                 tries += 1
                 if res is not None and res.success:
                     break
@@ -1310,7 +1310,7 @@ class RobotAgent:
         start = self.robot.get_base_pose() if current_pose is None else current_pose
         for i, instance in enumerate(self.voxel_map.get_instances()):
             if i not in self._cached_plans.keys():
-                res = self.plan_to_instance(instance, start, instance_id=i)
+                res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
             else:
                 res = self._cached_plans[i]
@@ -1368,7 +1368,7 @@ class RobotAgent:
             # compute its mask
             # see if this mask's area is explored and reachable from the current robot
             if self.guarantee_instance_is_reachable:
-                res = self.plan_to_instance(instance, start, instance_id=i)
+                res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
                 if res.success:
                     reachable_matches.append(instance)
