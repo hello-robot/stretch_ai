@@ -34,6 +34,7 @@ class ManagedSearchOperation(ManagedOperation):
 
     # Whether to talk or not
     talk: bool = True
+    talk_t: float = 3.0
 
     @property
     def object_class(self) -> str:
@@ -175,7 +176,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
             self.cheer(f"Found a receptacle!")
             if self.talk:
                 self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
-                time.sleep(2.0)
+                time.sleep(self.talk_t)
             self.set_status(status.SUCCEEDED)
             view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
@@ -308,7 +309,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.cheer(f"Found object of {self.object_class}!")
             if self.talk:
                 self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
-                time.sleep(2.0)
+                time.sleep(self.talk_t)
             view = self.agent.current_object.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("object.png")
