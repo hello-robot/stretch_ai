@@ -41,10 +41,10 @@ jobs:
         python --version
         # Install torch
         python -m pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        # scikit-fmm
+        python -m pip install scikit-fmm
         # Install the core package
         python -m pip install -e ./src[dev]
-        # Install the tools for linting and testing
-        python -m pip install mypy flake8 pytest 
     ## Run pre-commit and try to apply fixes
     - name: Set up pre-commit cache
       uses: actions/cache@v3
