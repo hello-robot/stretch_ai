@@ -82,11 +82,13 @@ if __name__ == "__main__":
     from stretch.llms.prompts.pickup_prompt import PickupPromptBuilder
 
     prompt = PickupPromptBuilder()
-    client = Qwen25Client(prompt, model_size="1.5B", fine_tuning="Instruct")
+    client = Qwen25Client(prompt, model_size="3B", fine_tuning="Instruct")
     for _ in range(50):
         msg = input("Enter a message (empty to quit): ")
         if len(msg) == 0:
             break
         response = client(msg, verbose=True)
+        print()
+        print("-" * 80)
         print(colored("You said:", "green"), msg)
         print(colored("Response", "blue"), response)
