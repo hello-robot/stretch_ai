@@ -32,10 +32,10 @@ from matplotlib import pyplot as plt
 import stretch.utils.logger as logger
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_everything
-from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
+from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
 
