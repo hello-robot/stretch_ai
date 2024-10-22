@@ -42,6 +42,14 @@ llms = {
     "qwen25": Qwen25Client,
 }
 
+
+# Add all the various Qwen25 variants
+qwen_variants = []
+for model_size in ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]:
+    for fine_tuning in ["Instruct", "Coder", "Math"]:
+        qwen_variants.append(f"qwen25-{model_size}-{fine_tuning}")
+        llms.update({variant: Qwen25Client for variant in qwen_variants})
+
 prompts = {
     "simple": SimpleStretchPromptBuilder,
     "object_manip_nav": ObjectManipNavPromptBuilder,
