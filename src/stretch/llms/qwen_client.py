@@ -78,10 +78,11 @@ class Qwen25Client(AbstractLLMClient):
 
 
 if __name__ == "__main__":
-    from stretch.llms.prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
+    # from stretch.llms.prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
+    from stretch.llms.prompts.pickup_prompt import PickupPromptBuilder
 
-    prompt = ObjectManipNavPromptBuilder()
-    client = Qwen25Client(prompt, model_size="7B", fine_tuning="Instruct")
+    prompt = PickupPromptBuilder()
+    client = Qwen25Client(prompt, model_size="0.5B", fine_tuning="Instruct")
     for _ in range(50):
         msg = input("Enter a message (empty to quit): ")
         if len(msg) == 0:
