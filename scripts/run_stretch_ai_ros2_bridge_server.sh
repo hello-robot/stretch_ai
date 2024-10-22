@@ -1,4 +1,9 @@
 #!/bin/bash
+# Description: Run the docker container with GPU support
+
+# Make sure it fails if we see any errors
+set -e
+
 echo "Starting Stretch AI ROS2 Bridge Server on $HELLO_FLEET_ID"
 echo "========================================================="
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
