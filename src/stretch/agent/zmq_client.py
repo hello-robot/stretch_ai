@@ -700,6 +700,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._state = None  # Low level state includes joint angles and base XYT
         self._servo = None  # Visual servoing state includes smaller images
         self._thread = None
+        self._state_thread = None
         self._finish = False
         self._last_step = -1
 

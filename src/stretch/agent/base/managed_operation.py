@@ -15,7 +15,6 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.robot import AbstractRobotClient
 from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
-from stretch.motion import PlanResult
 
 
 class ManagedOperation(Operation):
@@ -72,10 +71,6 @@ class ManagedOperation(Operation):
     def cheer(self, message: str):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))
-
-    def plan_to_instance_for_manipulation(self, instance, start) -> PlanResult:
-        """Manipulation planning wrapper. Plan to instance with a radius around it, ensuring a base location can be found in explored space."""
-        return self.agent.plan_to_instance_for_manipulation(instance, start=start)
 
     def show_instance_segmentation_image(self):
         # Show the last instance image
