@@ -24,7 +24,7 @@ VERSION=`python3 $parent_dir/src/stretch/version.py`
 
 echo "Running docker image hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
 
-# Vérifier si le drapeau --dev est présent
+# Check dev flag
 if [[ "$*" == *"--dev"* ]]; then
     mount_option="-v $parent_dir:/app"
     echo "Mounting $parent_dir into /app"
