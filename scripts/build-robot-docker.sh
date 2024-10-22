@@ -1,6 +1,13 @@
 #!/bin/bash
-VERSION=`python src/stretch/version.py`
+# This script builds the docker image for the Stretch AI ROS2 bridge.
+
+# Exit on error.
+set -e
+
+# Get the current version of the package.
+VERSION=`python3 src/stretch/version.py`
 echo "Building docker image with tag hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
+
 SKIP_ASKING="false"
 for arg in "$@"
 do
