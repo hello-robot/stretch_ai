@@ -14,6 +14,9 @@ xhost si:localuser:root
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 parent_dir="$(dirname "$script_dir")"
+
+# Get the version of the docker image
+echo "Reading version from $parent_dir/src/stretch/version.py"
 VERSION=`python $parent_dir/src/stretch/version.py`
 
 echo "Running docker image hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
