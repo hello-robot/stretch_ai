@@ -39,10 +39,8 @@ jobs:
         python --version
         python -m pip install --upgrade pip setuptools packaging build meson ninja wheel
         find /usr -name Python.h
-        # CFLAGS="-I/usr/include/python3.10" pip install scikit-fmm
         # Install torch
         python -m pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
-        # scikit-fmm
         # Install the core package
         python -m pip install -e ./src[dev]
     ## Run pre-commit and try to apply fixes
