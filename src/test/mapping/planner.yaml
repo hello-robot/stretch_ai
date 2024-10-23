@@ -65,6 +65,7 @@ motion:
 
 # Exploration
 agent:
+  use_realtime_updates: False
   in_place_rotation_steps: 2
   sweep_head_on_update: True
 
