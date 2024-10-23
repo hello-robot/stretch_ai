@@ -1155,7 +1155,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if "step" in state:
                 self._last_step = max(self._last_step, state["step"])
                 if state["step"] < self._last_step:
-                    logger.warning("Dropping out-of-date state message")
+                    logger.warning(
+                        f"Dropping out-of-date state message: {state['step']} < {self._last_step}"
+                    )
             self._state = state
             self._control_mode = state["control_mode"]
             self._at_goal = state["at_goal"]
