@@ -1155,7 +1155,7 @@ class RobotAgent:
             while tries <= max_try_per_instance:
                 print("Checking instance", i)
                 # TODO: this is a bad name for this variable
-                res = self.plan_to_instance(match, start, instance=i)
+                res = self.plan_to_instance(match, start)
                 tries += 1
                 if res is not None and res.success:
                     break
