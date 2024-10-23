@@ -32,11 +32,16 @@ class Parameters(object):
         Returns:
             Any: the value of the key
         """
+        original_key = key
         data = self.data
         if "/" in key:
             keys = key.split("/")
             for key in keys[:-1]:
                 if key not in data:
+                    print(
+                        "[Parameters] Key not found: " + str(original_key) + "; using default:",
+                        default,
+                    )
                     return default
                 data = data[key]
             key = keys[-1]
