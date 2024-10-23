@@ -91,7 +91,7 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = enable_realtime_updates and self.parameters(
+        self._realtime_updates = enable_realtime_updates and self.parameters.get(
             "agent/use_realtime_updates", False
         )
         if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
