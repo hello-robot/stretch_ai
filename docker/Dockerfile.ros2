@@ -5,6 +5,14 @@ FROM hellorobotinc/stretch-install-image
 # USE BASH
 SHELL ["/bin/bash", "-c"]
 
+echo "Install audio dependencies"
+RUN apt-get update && apt-get install -y \
+    alsa-utils \
+    libasound2 \
+    libasound2-dev \
+    pulseaudio \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN echo "Installing Stretch AI package"
 RUN pip install --upgrade pip setuptools packaging build meson ninja
 RUN git clone https://github.com/hello-robot/stretch_ai
