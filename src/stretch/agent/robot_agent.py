@@ -91,10 +91,10 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = (
-            enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]
+        self._realtime_updates = enable_realtime_updates and self.parameters(
+            "agent/use_realtime_updates", False
         )
-        if not enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]:
+        if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
             logger.warning(
                 "Real-time updates are not enabled but the agent is configured to use them."
             )
@@ -103,7 +103,7 @@ class RobotAgent:
         # ==============================================
         # Update configuration
         # If true, the head will sweep on update, collecting more information.
-        self._sweep_head_on_update = parameters["agent"]["sweep_head_on_update"]
+        self._sweep_head_on_update = parameters.get("agent/sweep_head_on_update", False)
 
         # ==============================================
         # Task-level parameters
@@ -127,8 +127,8 @@ class RobotAgent:
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
-        self._realtime_matching_distance = parameters["agent"]["realtime"]["matching_distance"]
-        self._realtime_temporal_threshold = parameters["agent"]["realtime"]["temporal_threshold"]
+        self._realtime_matching_distance = parameters.get("agent/realtime/matching_distance", 0.5)
+        self._realtime_temporal_threshold = parameters.get("agent/realtime/temporal_threshold", 0.1)
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
