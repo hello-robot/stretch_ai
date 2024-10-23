@@ -16,6 +16,7 @@ from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
+import cv2
 import numpy as np
 import zmq
 from termcolor import colored
@@ -451,7 +452,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             q[HelloStretchIdx.WRIST_PITCH],
             q[HelloStretchIdx.WRIST_ROLL],
         ]
-    
+
     def get_pose_graph(self) -> np.ndarray:
         """Get the robot's SLAM pose graph"""
         return self._pose_graph
@@ -1189,26 +1190,41 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"load_map": filename}
         self.send_action(next_action)
 
-    def get_observation(self):
+    def get_observation(self, timeout: float = 2.5, threshold=250, verbose=True):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
+        t0 = timeit.default_timer()
         with self._obs_lock:
-            if self._obs is None:
-                return None
-            observation = Observations(
-                gps=self._obs["gps"],
-                compass=self._obs["compass"],
-                rgb=self._obs["rgb"],
-                depth=self._obs["depth"],
-                xyz=self._obs["xyz"],
-                lidar_points=self._obs["lidar_points"],
-                lidar_timestamp=self._obs["lidar_timestamp"],
-            )
-            observation.joint = self._obs.get("joint", None)
-            observation.ee_pose = self._obs.get("ee_pose", None)
-            observation.camera_K = self._obs.get("camera_K", None)
-            observation.camera_pose = self._obs.get("camera_pose", None)
-            observation.seq_id = self._seq_id
-        return observation
+            while True:
+                if self._obs is None:
+                    return None
+                observation = Observations(
+                    gps=self._obs["gps"],
+                    compass=self._obs["compass"],
+                    rgb=self._obs["rgb"],
+                    depth=self._obs["depth"],
+                    xyz=self._obs["xyz"],
+                    lidar_points=self._obs["lidar_points"],
+                    lidar_timestamp=self._obs["lidar_timestamp"],
+                )
+                observation.joint = self._obs.get("joint", None)
+                observation.ee_pose = self._obs.get("ee_pose", None)
+                observation.camera_K = self._obs.get("camera_K", None)
+                observation.camera_pose = self._obs.get("camera_pose", None)
+                observation.seq_id = self._seq_id
+                t1 = timeit.default_timer()
+                image = np.asarray(self._obs["rgb"])
+                image = np.asarray(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)).astype(np.uint8)
+                print(np.asarray(image))
+                if (t1 - t0) > timeout or cv2.Laplacian(image, cv2.CV_64F).var() > threshold:
+                    if cv2.Laplacian(image, cv2.CV_64F).var() > threshold and verbose:
+                        print("Observation has high quality!")
+                    elif verbose:
+                        print("Timeout")
+                    return observation
+                time.sleep(0.1)
+                if verbose:
+                    print(cv2.Laplacian(np.asarray(self._obs["rgb"]), cv2.CV_64F).var())
+                    print("Observation is blurry. Try again!")
 
     def get_images(self, compute_xyz=False):
         obs = self.get_observation()
