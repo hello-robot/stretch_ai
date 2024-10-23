@@ -4,6 +4,9 @@
 #encoder_args:
 #  version: "ViT-B/32"
 encoder: "siglip"
+encoder_args:
+  # version: "ViT-B/32"
+  version: "so400m"
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
