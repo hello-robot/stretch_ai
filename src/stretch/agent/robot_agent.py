@@ -845,7 +845,7 @@ class RobotAgent:
         start: np.ndarray,
         max_tries: int = 100,
         verbose: bool = True,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found. This function is specifically for manipulation tasks: it plans to a rotation that's rotated 90 degrees from the default.
 

@@ -36,10 +36,8 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies and code
       run: |
-        apt-get install python3-dev
         python --version
         python -m pip install --upgrade pip setuptools packaging build meson ninja wheel
-        python --version
         find /usr -name Python.h
         # CFLAGS="-I/usr/include/python3.10" pip install scikit-fmm
         # Install torch
