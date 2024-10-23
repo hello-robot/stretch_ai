@@ -25,7 +25,7 @@ queries = [
     ("cardboard box", True),
     ("photo of an elephant", False),
     ("photo of a lizard", False),
-    # ("pink elephant", False),
+    ("pink elephant", False),
 ]
 
 similarity_threshold = 0.05
