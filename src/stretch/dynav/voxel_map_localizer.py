@@ -270,8 +270,10 @@ class VoxelMapLocalizer:
         # if len(centroids) == 0:
         #     if not debug:
         #         return None
-        #     else:
+        #     elif not return_debug:
         #         return None, debug_text
+        #     else:
+        #         return None, debug_text, None, None
         # target_point = None
         # obs = None
         # similarity = None
@@ -303,6 +305,7 @@ class VoxelMapLocalizer:
         #     return target_point, debug_text
         # else:
         #     return target_point, debug_text, obs, point
+
         points, _, _, _ = self.voxel_pcd.get_pointcloud()
         alignments = self.find_alignment_over_model(A).cpu()
         # alignments = alignments[0, points[:, -1] >= 0.1]
