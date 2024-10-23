@@ -78,7 +78,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
         # Query the SVM - make sure we can find motion plan to a cardboard box
         score, instance_id, instance = instances[0]
         print(f"Query: {query} Score: {score} Instance ID: {instance_id}")
-        assert instance_id is not None, "Failed to find instance ID"
+        assert instance_id is not None, f"Failed to find instance ID for {query}"
         if expected_result:
             assert (
                 score > similarity_threshold
@@ -94,7 +94,9 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             # Try motion planning to matching instances
             for i, (score, instance_id, instance) in enumerate(instances):
                 if score < similarity_threshold:
-                    assert False, "Failed to find instance with acceptable score"
+                    assert (
+                        False
+                    ), f"Failed to find instance with acceptable score for {query}: {score} < {similarity_threshold}"
                 res = agent.plan_to_instance(instance, start_pos, verbose=False, radius_m=0.3)
                 # print(f"Plan to instance {i}={instance.global_id} = {res.success}")
                 if res.success:
