@@ -26,7 +26,7 @@ queries = [
     ("photo of an elephant", False),
 ]
 
-similarity_threshold = 0.05
+similarity_threshold = 0.1
 debug = False
 
 
@@ -96,7 +96,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
                 if score < similarity_threshold:
                     assert False, "Failed to find instance with acceptable score"
                 res = agent.plan_to_instance(instance, start_pos, verbose=False, radius_m=0.3)
-                print(f"Plan to instance {i}={instance.global_id} = {res.success}")
+                # print(f"Plan to instance {i}={instance.global_id} = {res.success}")
                 if res.success:
                     break
             else:
