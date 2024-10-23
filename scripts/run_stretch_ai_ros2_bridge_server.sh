@@ -12,6 +12,9 @@ parent_dir="$(dirname "$script_dir")"
 echo "Reading version from $parent_dir/src/stretch/version.py"
 VERSION=`python3 $parent_dir/src/stretch/version.py`
 
+# sudo chown -R $USER:$USER /home/$USER/stretch_user
+# sudo chown -R $USER:$USER /home/$USER/ament_ws/install/stretch_description/share/stretch_description/urdf
+
 echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
 sudo docker run -it \
     --net=host \
