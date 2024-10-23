@@ -23,10 +23,12 @@ LARGE_DATA_START = np.array([4.5, 1.4, 0.0])
 
 queries = [
     ("cardboard box", True),
-    ("photo of an elephant", False),
+    # ("photo of an elephant", False),
+    ("photo of a cat", False),
+    ("pink elephant", False),
 ]
 
-similarity_threshold = 0.1
+similarity_threshold = 0.05
 debug = False
 
 
