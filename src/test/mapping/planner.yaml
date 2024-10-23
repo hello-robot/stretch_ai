@@ -101,6 +101,11 @@ motion_planner:
   dilate_frontier_size: 3  # Used to shrink the frontier back from the edges of the world
   dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
   simplify_plans: True
+  simplify:
+    max_step: 0.5
+    min_step: 0.05
+    num_steps: 8
+    min_angle: 0.1
   shortcut_plans: True
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.

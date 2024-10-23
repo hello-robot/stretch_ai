@@ -36,6 +36,8 @@ class Parameters(object):
         if "/" in key:
             keys = key.split("/")
             for key in keys[:-1]:
+                if key not in data:
+                    return default
                 data = data[key]
             key = keys[-1]
         if default is not None and key not in data:
