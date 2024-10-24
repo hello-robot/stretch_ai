@@ -24,7 +24,7 @@ import zmq
 from PIL import Image
 
 import stretch.utils.logger as logger
-from stretch.audio.text_to_speech import get_text_to_speech
+# from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
@@ -85,7 +85,7 @@ class RobotAgent:
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
-        self.tts = get_text_to_speech(self.parameters["tts_engine"])
+        # self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
         self._realtime_updates = realtime_updates
 

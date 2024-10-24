@@ -17,6 +17,7 @@ from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
 from stretch.motion import PlanResult
 
+import os
 
 class ManagedOperation(Operation):
     """Placeholder node for an example in a task plan. Contains some functions to make it easier to print out different messages with color for interpretability, and also provides some utilities for making the robot do different tasks."""
@@ -40,6 +41,9 @@ class ManagedOperation(Operation):
 
         # Get the robot kinematic model
         self.robot_model = self.robot.get_robot_model()
+
+        # Determine whether machine is headless
+        self.headless_machine = 'DISPLAY' not in os.environ
 
     @property
     def name(self) -> str:
@@ -82,7 +86,10 @@ class ManagedOperation(Operation):
         import matplotlib
 
         # TODO: why do we need to configure this every time
-        matplotlib.use("TkAgg")
+        if self.headless_machine:
+            matplotlib.use("Agg")
+        else:    
+            matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
         plt.imshow(self.agent.voxel_map.observations[0].instance)
@@ -92,8 +99,10 @@ class ManagedOperation(Operation):
         """Show the instance in the voxel grid."""
         import matplotlib
 
-        matplotlib.use("TkAgg")
-
+        if self.headless_machine:
+            matplotlib.use("Agg")
+        else:    
+            matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
         view = instance.get_best_view()

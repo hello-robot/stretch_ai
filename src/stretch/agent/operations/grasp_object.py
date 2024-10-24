@@ -21,6 +21,9 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
+from PIL import Image
+import os
+from datetime import datetime
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
@@ -345,6 +348,8 @@ class GraspObjectOperation(ManagedOperation):
     ) -> bool:
         """Use visual servoing to grasp the object."""
 
+        self.show_servo_gui = False
+
         self.intro(f"Visual servoing to grasp object {instance.global_id} {instance.category_id=}.")
         if self.show_servo_gui:
             self.warn("If you want to stop the visual servoing with the GUI up, press 'q'.")
@@ -378,6 +383,12 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
         self.warn("Starting visual servoing.")
 
+        # make debug dir
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        debug_dir_name = f"debug/debug_{current_time}"
+        os.mkdir(debug_dir_name)
+
+        iter_ = 0
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
@@ -453,7 +464,7 @@ class GraspObjectOperation(ManagedOperation):
                     if current_xyz is not None:
                         current_xyz[0] += self.open_loop_x_offset
                         current_xyz[2] += self.open_loop_z_offset
-                    if self.show_servo_gui:
+                    if self.show_servo_gui and not self.headless_machine:
                         cv2.destroyAllWindows()
                     return self.grasp_open_loop(current_xyz)
             else:
@@ -467,8 +478,13 @@ class GraspObjectOperation(ManagedOperation):
                 if self.show_point_cloud:
                     self._debug_show_point_cloud(servo, current_xyz)
 
+            # save images for debugging
+            Image.fromarray(servo.ee_rgb).save(f'debug/{debug_dir_name}/img_{iter_}.png')
+            mask = target_mask.astype(np.uint8) * 255
+            Image.fromarray(mask).save(f'debug/{debug_dir_name}/img_{iter_}_mask.png')
+
             # Optionally display which object we are servoing to
-            if self.show_servo_gui:
+            if self.show_servo_gui and not self.headless_machine:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
@@ -621,7 +637,7 @@ class GraspObjectOperation(ManagedOperation):
                 self.error("Failed to align to object after 10 random motions.")
                 break
 
-        if self.show_servo_gui:
+        if self.show_servo_gui and not self.headless_machine:
             cv2.destroyAllWindows()
         return success
 
