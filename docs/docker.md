@@ -2,6 +2,8 @@
 
 This is a guide to setting up a Docker container for running the Stretch software. This is useful for running the software on a computer that doesn't have the correct dependencies installed, or for running the software in a controlled environment.
 
+Hello Robot has a set of scripts for [building robot-side docker images](https://github.com/hello-robot/stretch_docker), which can be conconsidered separately. Here, we will go through what docker is, why we use it, and how to set it up on your client side to run AI code.
+
 ## What is Docker and Why Would I Use It?
 
 Docker is a tool that allows you to run software in a container. A container is a lightweight, standalone, executable package of software that includes everything needed to run the software, including the code, runtime, system tools, libraries, and settings. Containers are isolated from each other and from the host system, so they are a great way to run software in a controlled environment.

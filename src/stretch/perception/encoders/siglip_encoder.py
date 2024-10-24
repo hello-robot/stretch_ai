@@ -27,21 +27,45 @@ class SiglipEncoder(BaseImageTextEncoder):
     Generally, these features are much better than OpenAI CLIP for open-vocabulary object detection.
     """
 
-    def __init__(self, normalize: bool = True, device: Optional[str] = None, **kwargs) -> None:
+    def __init__(
+        self,
+        normalize: bool = True,
+        device: Optional[str] = None,
+        version: Optional[str] = None,
+        **kwargs,
+    ) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.normalize = normalize
-        self.processor = AutoProcessor.from_pretrained("google/siglip-base-patch16-224")
-        self.tokenizer = AutoTokenizer.from_pretrained("google/siglip-base-patch16-224")
-        self.model = AutoModel.from_pretrained("google/siglip-base-patch16-224").to(self.device)
 
-    def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
+        if version is None:
+            version = "base"
+
+        if version == "base":
+            model_name = "google/siglip-base-patch16-224"
+        elif version == "so400m":
+            model_name = "google/siglip-so400m-patch14-384"
+        elif version == "so800m":
+            model_name = "google/siglip-so800m-patch14-384"
+        else:
+            raise ValueError(
+                f"Invalid version {version}: must be one of 'base', 'so400m', 'so800m'"
+            )
+
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name).to(self.device)
+
+    def encode_image(
+        self, image: Union[torch.tensor, np.ndarray], image_shape=(360, 270)
+    ) -> torch.Tensor:
         """Encode this input image to a feature vector"""
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy()
         image = image.astype(np.uint8)
         pil_image = Image.fromarray(image)
+        print("Encoding image", pil_image.size)
         inputs = self.processor(images=pil_image, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():

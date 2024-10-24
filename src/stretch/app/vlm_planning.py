@@ -26,6 +26,7 @@ import numpy as np
 
 from stretch.agent import RobotAgent
 from stretch.agent.vlm_planner import VLMPlanner
+from stretch.agent.zmq_client import HomeRobotZMQClient
 from stretch.core import get_parameters
 from stretch.core.interfaces import Observations
 from stretch.perception import create_semantic_sensor
@@ -103,9 +104,11 @@ def images_to_video(image_list, output_path, fps=30):
     "--input-path",
     "-i",
     type=click.Path(),
-    default="output.pkl",
-    help="Input path with default value 'output.npy'",
+    default="",
+    help="Input path. If empty, run on the real robot.",
 )
+@click.option("--local", is_flag=True, help="Run code locally on the robot.")
+@click.option("--robot_ip", default="")
 @click.option("--task", "-t", type=str, default="", help="Task to run with the planner.")
 @click.option(
     "--config-path",
@@ -142,14 +145,14 @@ def main(
     show_instances: bool = False,
     api_key: str = None,
     task: str = "",
+    local: bool = False,
+    robot_ip: str = "",
 ):
     """Simple script to load a voxel map"""
     input_path = Path(input_path)
     print("Loading:", input_path)
 
     loaded_voxel_map = None
-
-    dummy_robot = DummyStretchClient()
 
     print("- Load parameters")
     vlm_parameters = get_parameters(config_path)
@@ -169,15 +172,26 @@ def main(
     print("Creating semantic sensors...")
     semantic_sensor = create_semantic_sensor(parameters=vlm_parameters)
 
+    if len(input_path) > 0:
+        robot = DummyStretchClient()
+    else:
+        robot = HomeRobotZMQClient(robot_ip=robot_ip, local=local)
+
     print("Creating robot agent...")
     agent = RobotAgent(
-        dummy_robot,
+        robot,
         vlm_parameters,
         voxel_map=loaded_voxel_map,
         semantic_sensor=semantic_sensor,
     )
     voxel_map = agent.voxel_map
-    voxel_map.read_from_pickle(input_path, num_frames=frame, perception=semantic_sensor)
+
+    if len(input_path) > 0:
+        # load from pickle
+        voxel_map.read_from_pickle(input_path, num_frames=frame, perception=semantic_sensor)
+    else:
+        # Scan the local area to get a map
+        agent.rotate_in_place()
 
     # get the task
     task = agent.get_command() if not task else task
@@ -191,6 +205,27 @@ def main(
     #     num_frames=frame,
     #     frame_skip=frame_skip,
     # )
+    run_vlm_planner(agent, task, show_svm, test_vlm, api_key, show_instances)
+
+
+def run_vlm_planner(
+    agent,
+    task,
+    show_svm: bool = False,
+    test_vlm: bool = False,
+    api_key: str = None,
+    show_instances: bool = False,
+):
+    """
+    Run the VLM planner with the given agent and task.
+
+    Args:
+        agent (RobotAgent): the robot agent to use.
+        task (str): the task to run.
+        show_svm (bool): whether to show the SVM.
+        test_vlm (bool): whether to test the VLM planner.
+        api_key (str): the OpenAI API key.
+    """
 
     # TODO: read this from file
     x0 = np.array([0, 0, 0])
@@ -200,6 +235,10 @@ def main(
     start_xyz = [x0[0], x0[1], 0]
 
     print("Agent loaded:", agent)
+    vlm_parameters = agent.get_parameters()
+    semantic_sensor = agent.get_semantic_sensor()
+    robot = agent.get_robot()
+    voxel_map = agent.get_voxel_map()
 
     # Create the VLM planner using the agent
     vlm_planner = VLMPlanner(agent, api_key=api_key)
@@ -207,7 +246,7 @@ def main(
     # Display with agent overlay
     space = agent.get_navigation_space()
     if show_svm:
-        footprint = dummy_robot.get_footprint()
+        footprint = robot.get_footprint()
         print(f"{x0} valid = {space.is_valid(x0)}")
         voxel_map.show(instances=show_instances, orig=start_xyz, xyt=x0, footprint=footprint)
 
@@ -275,7 +314,7 @@ def main(
 
                 # create a new agent for planning with the updated map
                 planning_agent = RobotAgent(
-                    dummy_robot,
+                    robot,
                     vlm_parameters,
                     voxel_map=new_map,
                     semantic_sensor=semantic_sensor,

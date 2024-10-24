@@ -19,12 +19,13 @@ from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
 
 try:
-    from stretch_mujoco.robocasa_gen import model_generation_wizard
-except:
+    from stretch.simulation.robocasa_gen import model_generation_wizard
+except ImportError as e:
     from stretch.utils.logger import error
 
     error("Could not import robocasa!")
     error("Install robosuite and robocasa in order to use model generation wizard.")
+    error(f"Error: {e}")
 
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
@@ -33,7 +34,7 @@ from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
 from stretch.motion.control.goto_controller import GotoVelocityController
 from stretch.utils.config import get_control_config
-from stretch.utils.geometry import xyt_base_to_global
+from stretch.utils.geometry import pose_global_to_base, xyt_base_to_global, xyt_global_to_base
 from stretch.utils.image import scale_camera_matrix
 
 # Maps HelloStretchIdx to actuators
@@ -75,13 +76,97 @@ class MujocoZmqServer(BaseZmqServer):
     - Stretch_mujoco installation: https://github.com/hello-robot/stretch_mujoco/
     """
 
+    # Do we use a navigation controller command to move the robot back at the start of a Robocasa task?
+    _move_back_at_start: bool = False
+
     hz = CONTROL_HZ
     # How long should the controller report done before we're actually confident that we're done?
     done_t = 0.1
 
+    robocasa_start_offset = np.array([0.5, 0, -np.pi / 2])
+
     # Print debug messages for control loop
     debug_control_loop = False
     debug_set_goal_pose = True
+
+    def get_body_xyt(self, body_name: str) -> np.ndarray:
+        """Get the se(2) base pose: x, y, and theta"""
+
+        # Get mjdata and mjmodel from simulator
+        mjdata = self.robot_sim.mjdata
+        mjmodel = self.robot_sim.mjmodel
+
+        xyz = mjdata.body(body_name).xpos
+        rotation = mjdata.body("base_link").xmat.reshape(3, 3)
+        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
+        return np.array([xyz[0], xyz[1], theta])
+
+    def list_all_bodies(self):
+        """Debug function to list all bodies in the simulation."""
+        model = self.robot_sim.mjmodel
+        data = self.robot_sim.mjdata
+
+        # Loop over all bodies
+        for i in range(model.nbody):
+            body_name = model.body(i).name
+            body_pos = data.body(i).xpos
+            body_quat = data.body(i).xquat
+
+            print(f"Body {i}: {body_name}")
+            print(f"  Position: {body_pos}")
+            print(f"  Orientation (quaternion): {body_quat}")
+
+    def set_robot_position(self, xyt: np.ndarray, relative: bool = False) -> None:
+        """Set the robot position in the simulation
+
+        Args:
+            xyt (np.ndarray): The desired pose of the robot in world coordinates (x, y, theta).
+            relative (bool): If True, the pose is relative to the current pose of the robot.
+        """
+        return self.set_body_position(xyt, "base_link", relative=relative)
+
+    def set_body_position(self, xyt: np.ndarray, body_name: str, relative: bool = False) -> None:
+        """Set the robot position in the simulation.
+
+        Args:
+            xyt (np.ndarray): The desired pose of the robot in world coordinates (x, y, theta).
+            body_name (str): The name of the body to set the position of.
+            relative (bool): If True, the pose is relative to the current pose of the robot.
+        """
+
+        # Get mjdata and mjmodel from simulator
+        mjdata = self.robot_sim.mjdata
+        mjmodel = self.robot_sim.mjmodel
+
+        # Compute absolute goal
+        if relative:
+            xyt_base = self.get_body_xyt(body_name)
+            xyt_goal = xyt_base_to_global(xyt, xyt_base)
+        else:
+            xyt_goal = xyt
+
+        # Get current position from mjdata
+        # TODO: remove debug print
+        # body_names = [mjmodel.body(i).name for i in range(mjmodel.nbody)]
+        # print(body_names)
+        base_pos = mjdata.body("base_link").xpos
+        print(f"Current {body_name} position: {base_pos}")
+        base_pos[0] = xyt_goal[0]
+        base_pos[1] = xyt_goal[1]
+        print(f"Setting {body_name} to {base_pos}")
+        mjdata.body("base_link").xpos = base_pos
+
+        # Convert the theta into a rotation matrix
+        rotation = mjdata.body("base_link").xmat.reshape(3, 3)
+        rotation[0, 0] = np.cos(xyt_goal[2])
+        rotation[0, 1] = -np.sin(xyt_goal[2])
+        rotation[1, 0] = np.sin(xyt_goal[2])
+        rotation[1, 1] = np.cos(xyt_goal[2])
+        mjdata.body("base_link").xmat = rotation.flatten()
+
+    def reset(self):
+        """Reset the robot to the initial state."""
+        self.robot_sim.reset_state()
 
     def __init__(
         self,
@@ -90,6 +175,7 @@ class MujocoZmqServer(BaseZmqServer):
         scene_model: Optional[str] = None,
         simulation_rate: int = 200,
         config_name: str = "noplan_velocity_sim",
+        objects_info: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
@@ -106,6 +192,7 @@ class MujocoZmqServer(BaseZmqServer):
         else:
             self.robot_sim = StretchMujocoSimulator(scene_path)
         self.simulation_rate = simulation_rate
+        self.objects_info = objects_info
 
         # Hard coded printout rates
         self.report_steps = 1000
@@ -114,6 +201,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         self._camera_data = None
         self._status = None
+        self._initial_xyt = None
 
         # Controller stuff
         # Is the velocity controller active?
@@ -198,7 +286,11 @@ class MujocoZmqServer(BaseZmqServer):
         if self.debug_control_loop:
             print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
 
-        self.controller.update_pose_feedback(self.get_base_pose())
+        base_xyt = self.get_base_pose()
+        if base_xyt is None:
+            return
+
+        self.controller.update_pose_feedback(base_xyt)
 
         if self.active and self.xyt_goal is not None:
             # Compute control
@@ -289,19 +381,31 @@ class MujocoZmqServer(BaseZmqServer):
 
     def get_base_pose(self) -> np.ndarray:
         """Base pose is the SE(2) pose of the base in world coords (x, y, theta)"""
-        return self.robot_sim.get_base_pose()
+        if self._initial_xyt is None:
+            return None
+        xyt = self.robot_sim.get_base_pose()
+        return xyt_global_to_base(xyt, self._initial_xyt)
 
     def get_ee_pose(self) -> np.ndarray:
         """EE pose is the 4x4 matrix of the end effector location in world coords"""
-        return self.robot_sim.get_ee_pose()
+        if self._initial_xyt is None:
+            return None
+        pose = self.robot_sim.get_ee_pose()
+        return pose_global_to_base(pose, self._initial_xyt)
 
     def get_head_camera_pose(self) -> np.ndarray:
         """Get the camera pose in world coords"""
-        return self.robot_sim.get_link_pose("camera_color_optical_frame")
+        if self._initial_xyt is None:
+            return None
+        pose = self.robot_sim.get_link_pose("camera_color_optical_frame")
+        return pose_global_to_base(pose, self._initial_xyt)
 
     def get_ee_camera_pose(self) -> np.ndarray:
         """Get the end effector camera pose in world coords"""
-        return self.robot_sim.get_link_pose("gripper_camera_color_optical_frame")
+        if self._initial_xyt is None:
+            return None
+        pose = self.robot_sim.get_link_pose("gripper_camera_color_optical_frame")
+        return pose_global_to_base(pose, self._initial_xyt)
 
     def set_posture(self, posture: str) -> bool:
         """Set the posture of the robot."""
@@ -364,9 +468,11 @@ class MujocoZmqServer(BaseZmqServer):
         return self.control_mode
 
     @override
-    def start(self, show_viewer_ui: bool = False, robocasa: bool = False):
+    def start(
+        self, show_viewer_ui: bool = False, robocasa: bool = False, headless: bool = False
+    ) -> None:
         self.robot_sim.start(
-            show_viewer_ui
+            show_viewer_ui=show_viewer_ui, headless=headless
         )  # This will start the simulation and open Mujoco-Viewer window
         super().start()
 
@@ -374,11 +480,14 @@ class MujocoZmqServer(BaseZmqServer):
         self._control_thread = threading.Thread(target=self._control_loop_thread)
         self._control_thread.start()
 
+        self._initial_xyt = self.robot_sim.get_base_pose()
+
         if robocasa:
-            # When you start, move the agent back a bit
-            # This is a hack!
-            time.sleep(1.0)
-            self.set_goal_pose(np.array([-0.5, 0, 0]), relative=True)
+            if self._move_back_at_start:
+                # When you start, move the agent back a bit
+                # This is a hack!
+                time.sleep(1.0)
+                self.set_goal_pose(self.robocasa_start_offset, relative=True)
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
@@ -577,6 +686,7 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--robocasa-style", type=int, default=1, help="Robocasa style to generate")
 @click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
 @click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
+@click.option("--headless", default=False, help="Run the simulation headless", is_flag=True)
 @click.option(
     "--robocasa-write-to-xml",
     default=False,
@@ -600,15 +710,17 @@ def main(
     robocasa_layout: int,
     robocasa_write_to_xml: bool,
     show_viewer_ui: bool,
+    headless: bool = False,
 ):
 
     scene_model = None
+    objects_info = None
     if use_robocasa:
         scene_model, scene_xml, objects_info = model_generation_wizard(
             task=robocasa_task,
             style=robocasa_style,
             layout=robocasa_layout,
-            write_to_file=robocasa_write_to_xml,
+            write_to_file=robocasa_write_to_xml,  # type: ignore
         )
 
     server = MujocoZmqServer(
@@ -623,9 +735,14 @@ def main(
         depth_scaling,
         scene_path=scene_path,
         scene_model=scene_model,
+        objects_info=objects_info,
     )
     try:
-        server.start(show_viewer_ui=show_viewer_ui, robocasa=use_robocasa)
+        server.start(
+            show_viewer_ui=show_viewer_ui,
+            robocasa=use_robocasa,
+            headless=headless,
+        )
 
     except KeyboardInterrupt:
         server.robot_sim.stop()

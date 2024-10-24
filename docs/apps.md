@@ -12,7 +12,7 @@ Stretch AI comes with several apps that you can run to test the robot's capabili
 
 Advanced:
 
-- [Grasp Object](#grasp-an-object) - Have the robot grasp an object.
+- [Grasp an Object](#grasp-an-object) - Grasp an object with the robot.
 - [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
 - [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
@@ -238,4 +238,14 @@ You can add the `--reset` flag to make it go back to the start position. The def
 
 ```
 python -m stretch.app.pickup --reset
+```
+
+## Experimental
+
+### VLM Planning
+
+This is an experimental app that uses the voxel map to plan a path to a goal. It is not yet fully functional.
+
+```bash
+python -m stretch.app.vlm_planning
 ```

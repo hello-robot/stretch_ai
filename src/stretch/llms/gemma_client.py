@@ -58,9 +58,12 @@ class Gemma2bClient(AbstractLLMClient):
 
 
 if __name__ == "__main__":
-    from stretch.llms.prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
+    # from stretch.llms.prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
+    from stretch.llms.prompts.pickup_prompt import PickupPromptBuilder
 
-    prompt = ObjectManipNavPromptBuilder()
+    prompt = PickupPromptBuilder()
+
+    # prompt = ObjectManipNavPromptBuilder()
     client = Gemma2bClient(prompt)
     for _ in range(50):
         msg = input("Enter a message (empty to quit): ")

@@ -5,9 +5,20 @@ FROM hellorobotinc/stretch-install-image
 # USE BASH
 SHELL ["/bin/bash", "-c"]
 
+# Install audio libraries into docker
+USER root
+RUN apt-get update && apt-get install -y \
+    alsa-utils \
+    libasound2 \
+    libasound2-dev \
+    pulseaudio \
+    && rm -rf /var/lib/apt/lists/*
+
+USER hello-robot
+
 RUN echo "Installing Stretch AI package"
 RUN pip install --upgrade pip setuptools packaging build meson ninja
-RUN git clone https://github.com/hello-robot/stretch_ai
+RUN git clone https://github.com/hello-robot/stretch_ai --branch feature/long-horizon-with-llms
 WORKDIR /home/hello-robot/stretch_ai
 RUN pip install -e src/
 
