@@ -16,6 +16,7 @@ from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
+import cv2
 import numpy as np
 import zmq
 from termcolor import colored
@@ -483,9 +484,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
-            time.sleep(0.25)
+
+            time.sleep(0.1)
             self._wait_for_head(whole_body_q, block_id=step)
-            time.sleep(0.25)
+            time.sleep(0.1)
+
+            # time.sleep(0.25)
+            # self._wait_for_head(whole_body_q, block_id=step)
+            # time.sleep(0.25)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
@@ -1081,6 +1087,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 print(
                     f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
                 )
+                print(min_steps_not_moving, self._last_step, at_goal)
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
@@ -1191,28 +1198,53 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"load_map": filename}
         self.send_action(next_action)
 
-    def get_observation(self):
+    def get_observation(self, timeout: float = 2.0, threshold=250, verbose=True):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
+        t0 = timeit.default_timer()
         with self._obs_lock:
-            if self._obs is None:
-                return None
-            observation = Observations(
-                gps=self._obs["gps"],
-                compass=self._obs["compass"],
-                rgb=self._obs["rgb"],
-                depth=self._obs["depth"],
-                xyz=self._obs["xyz"],
-                lidar_points=self._obs["lidar_points"],
-                lidar_timestamp=self._obs["lidar_timestamp"],
-            )
-            observation.joint = self._obs.get("joint", None)
-            observation.ee_pose = self._obs.get("ee_pose", None)
-            observation.camera_K = self._obs.get("camera_K", None)
-            observation.camera_pose = self._obs.get("camera_pose", None)
-            observation.seq_id = self._seq_id
-        return observation
+            while True:
+                if self._obs is None:
+                    return None
+                observation = Observations(
+                    gps=self._obs["gps"],
+                    compass=self._obs["compass"],
+                    rgb=self._obs["rgb"],
+                    depth=self._obs["depth"],
+                    xyz=self._obs["xyz"],
+                    lidar_points=self._obs["lidar_points"],
+                    lidar_timestamp=self._obs["lidar_timestamp"],
+                )
+                observation.joint = self._obs.get("joint", None)
+                observation.ee_pose = self._obs.get("ee_pose", None)
+                observation.camera_K = self._obs.get("camera_K", None)
+                observation.camera_pose = self._obs.get("camera_pose", None)
+                observation.seq_id = self._seq_id
+                t1 = timeit.default_timer()
+                image = np.asarray(self._obs["rgb"])
+                image = np.asarray(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)).astype(np.uint8)
+                # print(np.asarray(image))
+                if (t1 - t0) > timeout or cv2.Laplacian(image, cv2.CV_64F).var() > threshold:
+                    if cv2.Laplacian(image, cv2.CV_64F).var() > threshold and verbose:
+                        print("Observation has high quality!")
+                    elif verbose:
+                        print("Timeout")
+                    return observation
+                time.sleep(0.1)
+                if verbose:
+                    print(cv2.Laplacian(np.asarray(self._obs["rgb"]), cv2.CV_64F).var())
+                    print("Observation is blurry. Try again!")
 
     def get_images(self, compute_xyz=False):
+        """Get the current RGB and depth images from the robot.
+
+        Args:
+            compute_xyz (bool): whether to compute the XYZ image
+
+        Returns:
+            rgb (np.ndarray): the RGB image
+            depth (np.ndarray): the depth image
+            xyz (np.ndarray): the XYZ image if compute_xyz is True
+        """
         obs = self.get_observation()
         if compute_xyz:
             return obs.rgb, obs.depth, obs.xyz
@@ -1220,10 +1252,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return obs.rgb, obs.depth
 
     def get_camera_K(self):
+        """Get the camera intrinsics.
+
+        Returns:
+            camera_K (np.ndarray): the camera intrinsics
+        """
         obs = self.get_observation()
         return obs.camera_K
 
     def get_head_pose(self):
+        """Get the head pose.
+
+        Returns:
+            head_pose (np.ndarray): the head pose as a SE(3) matrix [R | t]
+        """
         obs = self.get_observation()
         return obs.camera_pose
 

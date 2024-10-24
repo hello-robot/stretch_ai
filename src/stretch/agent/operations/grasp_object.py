@@ -799,6 +799,7 @@ class GraspObjectOperation(ManagedOperation):
             voxel_map = self.agent.get_voxel_map()
             if voxel_map is not None:
                 voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+
         # Say we grasped the object
         if self.talk and self._success:
             self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")

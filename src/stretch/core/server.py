@@ -219,6 +219,7 @@ class BaseZmqServer(CommsNode, ABC):
                         f"Skipping duplicate action {action_step}, last step = {self._last_step}"
                     )
                     continue
+                self.handle_action(action)
                 self._last_step = max(action_step, self._last_step)
                 logger.info(
                     f"Action #{self._last_step} received:",
@@ -226,7 +227,6 @@ class BaseZmqServer(CommsNode, ABC):
                 )
                 if self.verbose:
                     logger.info(f" - last action step: {self._last_step}")
-                self.handle_action(action)
             # Finish with some speed info
             t1 = timeit.default_timer()
             dt = t1 - t0

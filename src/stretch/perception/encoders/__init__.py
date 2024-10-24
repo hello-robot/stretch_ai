@@ -20,6 +20,8 @@ from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
 from .masksiglip_encoder import MaskSiglipEncoder
 from .siglip_encoder import SiglipEncoder
 
+# from .maskevaclip_encoder import MaskEvaClipEncoder
+
 encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
 
 

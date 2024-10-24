@@ -17,6 +17,7 @@ from sklearn.cluster import DBSCAN
 from torch import Tensor
 
 # from ultralytics import YOLOWorld
+# from transformers import AutoModel, AutoProcessor, CLIPTokenizer, Owlv2ForObjectDetection
 from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
 from stretch.utils.logger import Logger
@@ -122,13 +123,18 @@ class VoxelMapLocalizer:
         if exist_model:
             logger.info("WE ARE USING OWLV2!")
             self.exist_processor = AutoProcessor.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
+                # "google/owlv2-base-patch16-ensemble"
+                "google/owlv2-large-patch14-ensemble"
+                # "google/owlv2-large-patch14-finetuned"
             )
             self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
+                # "google/owlv2-base-patch16-ensemble"
+                "google/owlv2-large-patch14-ensemble"
+                # "google/owlv2-large-patch14-finetuned"
             ).to(self.device)
         else:
             logger.info("YOU ARE USING NOTHING!")
+        # self.tokenizer = CLIPTokenizer.from_pretrained("BAAI/EVA-CLIP-8B")
 
     def add(
         self,
@@ -171,8 +177,10 @@ class VoxelMapLocalizer:
         else:
             text = clip.tokenize(queries).to(self.clip_model.device)
             all_clip_tokens = self.clip_model.encode_text(text)
-        # text = clip.tokenize(queries).to(self.device)
+
+        # text = self.tokenizer(queries, return_tensors="pt", padding=True).input_ids.to(self.device)
         # all_clip_tokens = self.clip_model.encode_text(text)
+
         all_clip_tokens = F.normalize(all_clip_tokens, p=2, dim=-1)
         return all_clip_tokens
 
@@ -240,7 +248,7 @@ class VoxelMapLocalizer:
                 int(min(w, br_y.item())),
             )
 
-            if torch.median(depth[tl_y:br_y, tl_x:br_x].reshape(-1)) < 3:
+            if torch.min(depth[tl_y:br_y, tl_x:br_x].reshape(-1)) < 2.5:
                 return torch.median(xyzs[tl_y:br_y, tl_x:br_x].reshape(-1, 3), dim=0).values
         return None
 

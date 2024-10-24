@@ -936,6 +936,7 @@ class RobotAgent:
 
         with self._map_lock:
             start_is_valid = self.space.is_valid(start, verbose=False)
+
         if not start_is_valid:
             return PlanResult(success=False, reason="invalid start state")
 
@@ -945,11 +946,11 @@ class RobotAgent:
             res = self._cached_plans[instance_id]
             has_plan = res.success
             if verbose:
-                print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
+                for j, view in enumerate(instance.instance_views):
+                    print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
         # Plan to the instance
         if not has_plan:
-            # Call planner
             print(
                 "planning to instance: ",
                 instance_id,
@@ -960,6 +961,7 @@ class RobotAgent:
                 "rotation_offset: ",
                 rotation_offset,
             )
+            # Call planner
             res = self.plan_to_bounds(
                 instance.bounds,
                 start,

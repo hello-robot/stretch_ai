@@ -199,7 +199,7 @@ def pickup(
 
     diff_value = (
         0.225 - gripper_depth - gripper_height
-    )  # 0.228 is the distance between link_Straight_gripper node and the gripper tip
+    )  # 0.225 is the distance between link_Straight_gripper node and the gripper tip
     pin_transformed_point1[2] -= diff_value
     ref_diff = diff_value
 
@@ -226,6 +226,7 @@ def pickup(
         dist = diff - 0.08
         state = robot.robot.get_six_joints()
         state[1] += 0.02
+        state[2] += 0.02
         # state[0] -= 0.015
         robot.robot.arm_to(state, blocking=True)
         robot.move_to_pose([0, 0, dist], [0, 0, 0], [1])
