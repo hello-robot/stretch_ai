@@ -24,50 +24,42 @@ This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) f
 After following the [installation instructions](#installation), start the server on your robot:
 
 ```bash
-ros2 launch stretch_ros2_bridge server.launch.py
+./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-Make sure the core test app runs:
+Then run the docker image on your PC:
 
-```python
-python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```bash
+./scripts/run_stretch_ai_gpu_machine.sh
 ```
 
-You should see windows popping up with camera viers from the robot, and the arm should move into a default position. The head should also turn to face the robot hand. If this all happens, you are good to go! Press `q` to quit the app.
+Inside the shell, you can then run the AI pickup app:
 
-Then, on your PC, you can easily send commands and stream data:
-
-```python
-from stretch.agent import RobotClient
-robot = RobotClient(robot_ip="192.168.1.15")  # Replace with your robot's IP
-# On future connection attempts, the IP address can be left blank
-
-# Turn head towards robot's hand
-robot.move_to_manip_posture()
-
-# Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
-robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
-
-# Turn head towards robot's base and switch base to navigation mode
-# In navigation mode, we can stream velocity commands to the base for smooth motions, and base
-# rotations are enabled
-robot.move_to_nav_posture()
-
-# Move the robot back to origin
-# move_base_to() is only allowed in navigation mode
-robot.move_base_to([0, 0, 0])
-
-# Move the robot 0.5m forward
-robot.move_base_to([0.5, 0, 0], relative=True)
-
-# Rotate the robot 90 degrees to the left
-robot.move_base_to([0, 0, 3.14159/2], relative=True)
-
-# And to the right
-robot.move_base_to([0, 0, -3.14159/2], relative=True)
+```bash
+python -m stretch.app.ai_pickup --robot_ip $ROBOT_IP
 ```
 
-You can find this code in [examples/simple_navigation.py](examples/simple_navigation.py).
+You should see something essentially like this:
+```bash
+~/src/stretch_ai_clean$ ./scripts/run_docker_gpu_machine.sh 
+====================================================
+Running Stretch AI docker container with GPU support
+$DISPLAY is already set to :1
+localuser:root being added to access control list
+Reading version from /home/cpaxton/src/stretch_ai_clean/src/stretch/version.py
+Running docker image hellorobotinc/stretch-ai_cuda-11.8:0.1.6
+Running in non-dev mode, not mounting any directory
+====================================================
+[sudo] password for cpaxton: 
+(stretch_ai) root@olympia:/app# ls
+CONTRIBUTING.md  META_LICENSE                README.md  docker  examples    pyproject.toml  src
+LICENSE          Miniforge3-Linux-x86_64.sh  data       docs    install.sh  scripts         third_party
+(stretch_ai) root@olympia:/app# python -m stretch.app.ai_pickup --robot_ip 192.168.1.69
+```
+
+After running the app, you should be able to tell the robot to move around and pickup objects. Put some objects on the floor and it will try to grasp them.
+
+You can then move on to the [apps](#apps) section to try out other applications, or check out [simple API instructions](docs/simple_api.md) to write your own code.
 
 ## Apps
 
