@@ -18,7 +18,6 @@ from scipy.spatial.transform import Rotation as R
 from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.utils import transform_joint_array
 from stretch.motion.kinematics import HelloStretchIdx
-import time
 
 OVERRIDE_STATES: dict[str, float] = {}
 
@@ -153,7 +152,7 @@ class HelloRobot:
         self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
         # self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=False)
         # time.sleep(0.3)
-        
+
         # print("Expected", target_state)
         # print("Actual", self.robot.get_six_joints())
         # print("Error", target_state - self.robot.get_six_joints())
