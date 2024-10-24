@@ -545,7 +545,7 @@ class GraspObjectOperation(ManagedOperation):
                     if current_xyz is not None:
                         current_xyz[0] += self.open_loop_x_offset
                         current_xyz[2] += self.open_loop_z_offset
-                    if self.show_servo_gui:
+                    if self.show_servo_gui and not self.headless_machine:
                         cv2.destroyAllWindows()
                     if self._try_open_loop:
                         return self.grasp_open_loop(current_xyz)
@@ -567,7 +567,7 @@ class GraspObjectOperation(ManagedOperation):
                     self._debug_show_point_cloud(servo, current_xyz)
 
             # Optionally display which object we are servoing to
-            if self.show_servo_gui:
+            if self.show_servo_gui and not self.headless_machine:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
@@ -726,7 +726,7 @@ class GraspObjectOperation(ManagedOperation):
                 self.error("Failed to align to object after 10 random motions.")
                 break
 
-        if self.show_servo_gui:
+        if self.show_servo_gui and not self.headless_machine:
             cv2.destroyAllWindows()
         return success
 

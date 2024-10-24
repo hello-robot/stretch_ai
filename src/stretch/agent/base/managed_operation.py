@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 from typing import Optional
 
 from termcolor import colored
@@ -39,6 +40,9 @@ class ManagedOperation(Operation):
 
         # Get the robot kinematic model
         self.robot_model = self.robot.get_robot_model()
+
+        # Determine whether machine is headless
+        self.headless_machine = "DISPLAY" not in os.environ
 
     @property
     def name(self) -> str:
@@ -77,7 +81,10 @@ class ManagedOperation(Operation):
         import matplotlib
 
         # TODO: why do we need to configure this every time
-        matplotlib.use("TkAgg")
+        if self.headless_machine:
+            matplotlib.use("Agg")
+        else:
+            matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
         plt.imshow(self.agent.voxel_map.observations[0].instance)
@@ -87,8 +94,10 @@ class ManagedOperation(Operation):
         """Show the instance in the voxel grid."""
         import matplotlib
 
-        matplotlib.use("TkAgg")
-
+        if self.headless_machine:
+            matplotlib.use("Agg")
+        else:
+            matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
         view = instance.get_best_view()
