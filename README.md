@@ -40,6 +40,7 @@ python -m stretch.app.ai_pickup --robot_ip $ROBOT_IP
 ```
 
 You should see something essentially like this:
+
 ```bash
 ~/src/stretch_ai_clean$ ./scripts/run_docker_gpu_machine.sh 
 ====================================================

@@ -24,8 +24,8 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.motion import HelloStretchIdx
 from stretch.perception.wrapper import OvmmPerception
-from stretch.visualization import urdf_visualizer
 from stretch.utils.logger import Logger
+from stretch.visualization import urdf_visualizer
 
 logger = Logger(__name__)
 
