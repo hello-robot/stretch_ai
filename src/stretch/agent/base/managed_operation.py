@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 from typing import Optional
 
 from termcolor import colored
@@ -17,7 +18,6 @@ from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
 from stretch.motion import PlanResult
 
-import os
 
 class ManagedOperation(Operation):
     """Placeholder node for an example in a task plan. Contains some functions to make it easier to print out different messages with color for interpretability, and also provides some utilities for making the robot do different tasks."""
@@ -43,7 +43,7 @@ class ManagedOperation(Operation):
         self.robot_model = self.robot.get_robot_model()
 
         # Determine whether machine is headless
-        self.headless_machine = 'DISPLAY' not in os.environ
+        self.headless_machine = "DISPLAY" not in os.environ
 
     @property
     def name(self) -> str:
