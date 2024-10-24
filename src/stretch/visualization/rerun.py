@@ -182,7 +182,7 @@ class RerunVisualizer:
     def __init__(
         self,
         display_robot_mesh: bool = True,
-        open_browser: bool = False,
+        open_browser: bool = True,
         server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
