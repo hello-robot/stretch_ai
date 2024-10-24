@@ -131,7 +131,7 @@ git lfs install
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then
     echo "Removing existing environment..."
-    $MAMBA env remove -n $ENV_NAME -y
+    $MAMBA env remove -n $ENV_NAME -y || true
 fi
 # If using cpu only, create a separate environment
 if [ "$CPU_ONLY" == "true" ]; then

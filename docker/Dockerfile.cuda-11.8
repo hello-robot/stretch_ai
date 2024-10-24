@@ -61,8 +61,8 @@ ENV PATH /root/miniforge3/bin:$PATH
 
 # Run our installation script
 COPY . .
-RUN chmod +x install.sh
-RUN ./install.sh -y --no-version
+RUN chmod +x install.sh && \
+    ./install.sh -y --no-version --no-remove
 
 # Configure mamba to start in the correct environment
 RUN mamba init
