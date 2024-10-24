@@ -296,6 +296,21 @@ class ImageProcessor:
                             torch.Tensor([1, 0, 0]),
                             0.1,
                         )
+
+            if obs is not None and mode == "navigation":
+                rgb = self.voxel_map.observations[obs - 1].rgb
+                if not self.rerun:
+                    if isinstance(rgb, torch.Tensor):
+                        rgb = np.array(rgb)
+                    cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
+                else:
+                    if self.rerun and self.rerun_visualizer is None:
+                        rr.log("/observation_similar_to_text", rr.Image(rgb))
+                    elif self.rerun:
+                        self.rerun_visualizer.log_custom_2d_image(
+                            "/observation_similar_to_text", rgb
+                        )
+
             # Do Frontier based exploration
             if text is None or text == "" or localized_point is None:
                 debug_text += "## Navigation fails, so robot starts exploring environments.\n"
@@ -311,20 +326,6 @@ class ImageProcessor:
             point = self.sample_navigation(start_pose, localized_point)
 
             print("Navigation endpoint selected")
-
-            if obs is not None and mode == "navigation":
-                rgb = self.voxel_map.observations[obs - 1].rgb
-                if not self.rerun:
-                    if isinstance(rgb, torch.Tensor):
-                        rgb = np.array(rgb)
-                    cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
-                else:
-                    if self.rerun and self.rerun_visualizer is None:
-                        rr.log("/observation_similar_to_text", rr.Image(rgb))
-                    elif self.rerun:
-                        self.rerun_visualizer.log_custom_2d_image(
-                            "/observation_similar_to_text", rgb
-                        )
 
             waypoints = None
 
