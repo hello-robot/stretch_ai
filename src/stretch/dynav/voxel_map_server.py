@@ -132,7 +132,7 @@ class ImageProcessor:
         open_communication: bool = True,
         rerun: bool = True,
         log=None,
-        image_shape=(360, 270),
+        image_shape=(480, 360),
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,

@@ -127,12 +127,12 @@ class LLM_Localizer:
         self.api_key_3 = os.getenv("GOOGLE_API_KEY_3")
         self.api_key = self.api_key_1
 
-        self.context_length = 60
+        self.context_length = 200
         self.count_threshold = 3
         if "gpt" in self.existence_checking_model:
             self.max_img_per_request = 30
         else:
-            self.max_img_per_request = 200
+            self.max_img_per_request = 60
 
         if exist_model == "gpt-4o":
             print("WE ARE USING OPENAI GPT4o")
@@ -147,10 +147,10 @@ class LLM_Localizer:
         self.location_checking_model = loc_model
         if loc_model == "owlv2":
             self.exist_processor = AutoProcessor.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
+                "google/owlv2-large-patch14-ensemble"
             )
             self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
+                "google/owlv2-large-patch14-ensemble"
             ).to(self.device)
             print("WE ARE USING OWLV2 FOR LOCALIZATION!")
         else:

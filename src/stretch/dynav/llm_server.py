@@ -24,7 +24,7 @@ from matplotlib import pyplot as plt
 from PIL import Image
 
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import load_socket, recv_everything
+from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
 from stretch.dynav.llm_localizer import LLM_Localizer
 from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
@@ -96,7 +96,7 @@ def get_xyz(depth, pose, intrinsics):
 class ImageProcessor:
     def __init__(
         self,
-        vision_method="pro_owl",
+        vision_method="flash_owl",
         siglip=True,
         device="cuda",
         min_depth=0.25,
@@ -386,6 +386,13 @@ class ImageProcessor:
         plt.scatter(index[1], index[0], s=20, c="r")
         return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
 
+    def recv_text(self):
+        text = self.text_socket.recv_string()
+        self.text_socket.send_string("Text received, waiting for robot pose")
+        start_pose = recv_array(self.text_socket)
+        res = self.process_text(text, start_pose)
+        send_array(self.text_socket, res)
+
     def _recv_image(self):
         while True:
             rgb, depth, intrinsics, pose = recv_everything(self.img_socket)
@@ -579,3 +586,19 @@ class ImageProcessor:
         with open(filename, "wb") as f:
             pickle.dump(data, f)
         print("write all data to", filename)
+
+
+def main():
+    torch.manual_seed(1)
+    imageProcessor = ImageProcessor(
+        log="mllm_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    )
+    try:
+        while True:
+            imageProcessor.recv_text()
+    except KeyboardInterrupt:
+        imageProcessor.write_to_pickle()
+
+
+if __name__ == "__main__":
+    main()
