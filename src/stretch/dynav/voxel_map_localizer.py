@@ -17,13 +17,11 @@ from sklearn.cluster import DBSCAN
 from torch import Tensor
 
 # from ultralytics import YOLOWorld
-from transformers import AutoModel, AutoProcessor, CLIPTokenizer, Owlv2ForObjectDetection
+# from transformers import AutoModel, AutoProcessor, CLIPTokenizer, Owlv2ForObjectDetection
+from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
 from stretch.utils.logger import Logger
 from stretch.utils.voxel import VoxelizedPointcloud
-
-# from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
-
 
 # Create a logger
 logger = Logger(__name__)
@@ -136,7 +134,7 @@ class VoxelMapLocalizer:
             ).to(self.device)
         else:
             logger.info("YOU ARE USING NOTHING!")
-        self.tokenizer = CLIPTokenizer.from_pretrained("BAAI/EVA-CLIP-8B")
+        # self.tokenizer = CLIPTokenizer.from_pretrained("BAAI/EVA-CLIP-8B")
 
     def add(
         self,
@@ -172,14 +170,10 @@ class VoxelMapLocalizer:
         if isinstance(queries, str):
             queries = [queries]
         if self.siglip:
-            # inputs = self.preprocessor(text=queries, padding="max_length", return_tensors="pt")
-            # for input in inputs:
-            #     inputs[input] = inputs[input].to(self.clip_model.device)
-            # all_clip_tokens = self.clip_model.get_text_features(**inputs)
-            input_ids = self.tokenizer(queries, return_tensors="pt", padding=True).input_ids.to(
-                self.device
-            )
-            all_clip_tokens = self.clip_model.encode_text(input_ids)
+            inputs = self.preprocessor(text=queries, padding="max_length", return_tensors="pt")
+            for input in inputs:
+                inputs[input] = inputs[input].to(self.clip_model.device)
+            all_clip_tokens = self.clip_model.get_text_features(**inputs)
         else:
             text = clip.tokenize(queries).to(self.clip_model.device)
             all_clip_tokens = self.clip_model.encode_text(text)
@@ -320,7 +314,6 @@ class VoxelMapLocalizer:
         target_point = None
 
         res = self.compute_coord(A, image_id)
-        debug_text += "#### - " + str(alignments.max().item()) + ".\n"
         # res = None
         if res is not None:
             target_point = res
@@ -330,7 +323,7 @@ class VoxelMapLocalizer:
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
             if self.siglip:
-                cosine_similarity_check = alignments.max().item() > 0.25
+                cosine_similarity_check = alignments.max().item() > 0.14
             else:
                 cosine_similarity_check = alignments.max().item() > 0.3
             if cosine_similarity_check:

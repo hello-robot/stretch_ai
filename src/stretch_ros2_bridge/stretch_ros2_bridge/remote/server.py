@@ -203,7 +203,7 @@ class ZmqServer(BaseZmqServer):
             self.client.head_to(
                 action["head_to"][0],
                 action["head_to"][1],
-                blocking=False,
+                blocking=True,
             )
         elif "gripper" in action and "joint" not in action:
             if self.verbose or True:

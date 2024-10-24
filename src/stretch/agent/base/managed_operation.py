@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 from typing import Optional
 
 from termcolor import colored
@@ -15,7 +16,6 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.robot import AbstractRobotClient
 from stretch.core.task import Operation
 from stretch.mapping.instance import Instance
-from stretch.motion import PlanResult
 
 
 class ManagedOperation(Operation):
@@ -40,6 +40,9 @@ class ManagedOperation(Operation):
 
         # Get the robot kinematic model
         self.robot_model = self.robot.get_robot_model()
+
+        # Determine whether machine is headless
+        self.headless_machine = "DISPLAY" not in os.environ
 
     @property
     def name(self) -> str:
@@ -73,16 +76,15 @@ class ManagedOperation(Operation):
         """An upbeat message!"""
         print(colored(f"!!! {self.name} !!!: {message}", "green"))
 
-    def plan_to_instance_for_manipulation(self, instance, start) -> PlanResult:
-        """Manipulation planning wrapper. Plan to instance with a radius around it, ensuring a base location can be found in explored space."""
-        return self.agent.plan_to_instance_for_manipulation(instance, start=start)
-
     def show_instance_segmentation_image(self):
         # Show the last instance image
         import matplotlib
 
         # TODO: why do we need to configure this every time
-        matplotlib.use("TkAgg")
+        if self.headless_machine:
+            matplotlib.use("Agg")
+        else:
+            matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
         plt.imshow(self.agent.voxel_map.observations[0].instance)
@@ -92,8 +94,10 @@ class ManagedOperation(Operation):
         """Show the instance in the voxel grid."""
         import matplotlib
 
-        matplotlib.use("TkAgg")
-
+        if self.headless_machine:
+            matplotlib.use("Agg")
+        else:
+            matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
         view = instance.get_best_view()

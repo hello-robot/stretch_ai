@@ -17,6 +17,7 @@ from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .prompts.ok_robot_prompt import OkRobotPromptBuilder
 from .prompts.pickup_prompt import PickupPromptBuilder
 from .prompts.simple_prompt import SimpleStretchPromptBuilder
+from .qwen_client import Qwen25Client
 
 # This is a list of all the modules that are imported when you use the import * syntax.
 # The __all__ variable is used to define what symbols get exported when from a module when you use the import * syntax.
@@ -31,13 +32,23 @@ __all__ = [
     "AbstractLLMClient",
     "AbstractPromptBuilder",
     "LLMChatWrapper",
+    "Qwen25Client",
 ]
 
 llms = {
     "gemma2b": Gemma2bClient,
     "llama": LlamaClient,
     "openai": OpenaiClient,
+    "qwen25": Qwen25Client,
 }
+
+
+# Add all the various Qwen25 variants
+qwen_variants = []
+for model_size in ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]:
+    for fine_tuning in ["Instruct", "Coder", "Math"]:
+        qwen_variants.append(f"qwen25-{model_size}-{fine_tuning}")
+        llms.update({variant: Qwen25Client for variant in qwen_variants})
 
 prompts = {
     "simple": SimpleStretchPromptBuilder,
@@ -89,5 +100,13 @@ def get_llm_client(
         return LlamaClient(prompt, **kwargs)
     elif client_type == "openai":
         return OpenaiClient(prompt, **kwargs)
+    elif "qwen" in client_type:
+        # Parse model size and fine-tuning from client_type
+        terms = client_type.split("-")
+        if len(terms) == 3:
+            model_size, fine_tuning = terms[1], terms[2]
+        else:
+            model_size, fine_tuning = "3B", "Instruct"
+        return Qwen25Client(prompt, **kwargs)
     else:
         raise ValueError(f"Invalid client type: {client_type}")

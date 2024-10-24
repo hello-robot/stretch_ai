@@ -26,9 +26,9 @@ from PIL import Image
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
 from stretch.dynav.llm_localizer import LLM_Localizer
-from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
+from stretch.motion.algo.a_star import AStar
 
 
 def get_inv_intrinsics(intrinsics):

@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import time
 from typing import List, Optional
 
 import numpy as np
@@ -30,6 +31,10 @@ class ManagedSearchOperation(ManagedOperation):
 
     # How to choose the features from multiple views
     aggregation_method: str = "mean"
+
+    # Whether to talk or not
+    talk: bool = True
+    talk_t: float = 3.0
 
     @property
     def object_class(self) -> str:
@@ -136,8 +141,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
 
             # Find the object we care about
             if self.is_match(instance):
+                print(" - Found a matching instance. Try to plan to it...")
                 # Check to see if we can motion plan to box or not
-                plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                plan = self.agent.plan_to_instance_for_manipulation(instance, start=start)
                 if plan.success:
                     print(f" - Found a reachable box at {instance.get_best_view().get_pose()}.")
                     self.agent.current_receptacle = instance
@@ -168,7 +174,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 self.agent.go_home()
         else:
             self.cheer(f"Found a receptacle!")
-            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+            if self.talk:
+                self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+                time.sleep(self.talk_t)
             self.set_status(status.SUCCEEDED)
             view = self.agent.current_receptacle.get_best_view()
             image = Image.fromarray(view.get_image())
@@ -274,7 +282,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
                     # Move to object on floor
-                    plan = self.plan_to_instance_for_manipulation(instance, start=start)
+                    plan = self.agent.plan_to_instance_for_manipulation(instance, start=start)
                     if plan.success:
                         print(
                             f" - Confirmed toy is reachable with base pose at {plan.trajectory[-1]}."
@@ -299,7 +307,9 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.agent.reset_object_plans()
         else:
             self.cheer(f"Found object of {self.object_class}!")
-            self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+            if self.talk:
+                self.agent.robot_say(f"I found a {self.sayable_object_class} that I can reach!")
+                time.sleep(self.talk_t)
             view = self.agent.current_object.get_best_view()
             image = Image.fromarray(view.get_image())
             image.save("object.png")

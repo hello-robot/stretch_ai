@@ -1,6 +1,9 @@
 #!/bin/bash
 # Description: Run the docker container with GPU support
 
+# Make sure it fails if we see any errors
+set -e
+
 echo "===================================================="
 echo "Running Stretch AI docker container with GPU support"
 if [ -z "$DISPLAY" ]; then
@@ -14,11 +17,14 @@ xhost si:localuser:root
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 parent_dir="$(dirname "$script_dir")"
-VERSION=`python $parent_dir/src/stretch/version.py`
+
+# Get the version of the docker image
+echo "Reading version from $parent_dir/src/stretch/version.py"
+VERSION=`python3 $parent_dir/src/stretch/version.py`
 
 echo "Running docker image hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
 
-# Vérifier si le drapeau --dev est présent
+# Check dev flag
 if [[ "$*" == *"--dev"* ]]; then
     mount_option="-v $parent_dir:/app"
     echo "Mounting $parent_dir into /app"

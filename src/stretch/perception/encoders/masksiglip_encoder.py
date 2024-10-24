@@ -59,3 +59,20 @@ class MaskSiglipEncoder(SiglipEncoder):
         features = self.extract_mask_siglip_features(input, image.shape[-2:])[0].cpu()
 
         return image, features
+
+    def extract_per_pixel_features(self, x, image_shape):
+        with torch.no_grad():
+            output = self.model.vision_model(x["pixel_values"], output_hidden_states=True)
+            feat = output.last_hidden_state
+            feat = self.forward_one_block_(self.model.vision_model.head.attention, feat)
+            feat = self.model.vision_model.head.layernorm(feat)
+            feat = feat + self.model.vision_model.head.mlp(feat)
+            feat = feat.detach().cpu()
+            N, L, H, W = self.model.vision_model.embeddings.patch_embedding(x["pixel_values"]).shape
+            feat = feat.reshape(N, H, W, L).permute(0, 3, 1, 2)
+        features = []
+        for f, size in zip(feat, image_shape):
+            f = F.interpolate(f.unsqueeze(0), size, mode="bilinear", align_corners=True)[0]
+            f = F.normalize(f, dim=0).permute(1, 2, 0)
+            features.append(f.detach().cpu())
+        return features

@@ -4,6 +4,9 @@
 #encoder_args:
 #  version: "ViT-B/32"
 encoder: "siglip"
+encoder_args:
+  # version: "ViT-B/32"
+  version: "so400m"
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
@@ -55,9 +58,9 @@ motion:
   angle_threshold: 0.1  # How much the robot has to rotate to be considered "rotating"
   min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
-    arm: 0.01
-    base_x: 0.01
-    lift: 0.01
+    arm: 0.02
+    base_x: 0.02
+    lift: 0.02
     wrist_roll: 0.1
     wrist_pitch: 0.1
     wrist_yaw: 0.1
