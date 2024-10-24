@@ -16,12 +16,19 @@ VERSION=`python3 $parent_dir/src/stretch/version.py`
 # sudo chown -R $USER:$USER /home/$USER/ament_ws/install/stretch_description/share/stretch_description/urdf
 
 echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
-sudo docker run -it \
+sudo docker run -it --rm \
     --net=host \
-    --privileged \
+    --privileged=true \
     -v /dev:/dev \
+    --device /dev/snd \
+    -e DISPLAY=$DISPLAY \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v /run/dbus/:/run/dbus/:rw \
+    -v /dev/shm:/dev/shm \
+    --group-add=audio \
     -v /home/$USER/stretch_user:/home/hello-robot/stretch_user_copy \
     -v /home/$USER/ament_ws/install/stretch_description/share/stretch_description/urdf:/home/hello-robot/stretch_description/share/stretch_description/urdf \
     -e HELLO_FLEET_ID=$HELLO_FLEET_ID \
     hellorobotinc/stretch-ai-ros2-bridge:$VERSION \
-    bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server.launch.py"
+    bash
+# bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server.launch.py"
