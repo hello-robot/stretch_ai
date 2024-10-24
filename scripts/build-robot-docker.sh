@@ -33,7 +33,7 @@ if [ "$SKIP_ASKING" == "false" ]; then
     fi
 fi
 # Build the docker image with the current tag.
-docker build -t hellorobotinc/stretch-ai-ros2-bridge:$VERSION . -f docker/Dockerfile.ros2
+docker build -t hellorobotinc/stretch-ai-ros2-bridge:$VERSION . -f docker/Dockerfile.ros2 --no-cache
 docker push hellorobotinc/stretch-ai-ros2-bridge:$VERSION
 docker tag hellorobotinc/stretch-ai-ros2-bridge:$VERSION hellorobotinc/stretch-ai-ros2-bridge:latest
 docker push hellorobotinc/stretch-ai-ros2-bridge:latest
