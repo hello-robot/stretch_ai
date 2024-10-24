@@ -30,7 +30,7 @@ After following the [installation instructions](#installation), start the server
 Then run the docker image on your PC:
 
 ```bash
-./scripts/run_stretch_ai_gpu_machine.sh
+./scripts/run_stretch_ai_gpu_client.sh
 ```
 
 Inside the shell, you can then run the AI pickup app:
