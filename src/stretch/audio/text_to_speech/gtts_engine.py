@@ -32,6 +32,9 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
     Text-to-speech engine using gTTS.
     """
 
+    # Set a common framerate that's widely useful
+    target_frame_rate: int = 44100
+
     @override  # inherit the docstring from the parent class
     def __init__(self, logger: logging.Logger = DEFAULT_LOGGER):
         super().__init__(logger)
@@ -82,6 +85,10 @@ class GTTSTextToSpeech(AbstractTextToSpeech):
         tts.write_to_fp(fp)
         fp.seek(0)
         audio = AudioSegment.from_file(fp, format="mp3")
+
+        if audio.frame_rate != self.target_frame_rate:
+            audio = audio.set_frame_rate(self.target_frame_rate)
+
         self._playback = simpleaudio.play_buffer(
             audio.raw_data, audio.channels, audio.sample_width, audio.frame_rate
         )
