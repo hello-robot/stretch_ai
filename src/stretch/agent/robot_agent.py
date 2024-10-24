@@ -20,14 +20,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-import zmq
 from PIL import Image
 
-import stretch.utils.logger as logger
+import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
-from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
+from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
@@ -36,8 +35,11 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
+from stretch.utils.logger import Logger
 from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
+
+logger = Logger(__name__)
 
 
 class RobotAgent:
@@ -48,17 +50,21 @@ class RobotAgent:
     update_rerun_every_time: bool = True
     normalize_embeddings: bool = False
 
+    # Sleep times
+    # This sleep is before starting a head sweep
+    _before_head_motion_sleep_t = 0.25
+    # much longer sleeps - do they fix things?
+    _after_head_motion_sleep_t = 0.1
+
     def __init__(
         self,
         robot: AbstractRobotClient,
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
-        grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
-        debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        realtime_updates: bool = False,
+        enable_realtime_updates: bool = False,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
@@ -69,8 +75,6 @@ class RobotAgent:
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.grasp_client = grasp_client
-        self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
@@ -87,12 +91,19 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = realtime_updates
+        self._realtime_updates = enable_realtime_updates and self.parameters.get(
+            "agent/use_realtime_updates", False
+        )
+        if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
+            logger.warning(
+                "Real-time updates are not enabled but the agent is configured to use them."
+            )
+            logger.warning("We will not be able to update the map in real-time.")
 
         # ==============================================
         # Update configuration
         # If true, the head will sweep on update, collecting more information.
-        self._sweep_head_on_update = parameters["agent"]["sweep_head_on_update"]
+        self._sweep_head_on_update = parameters.get("agent/sweep_head_on_update", False)
 
         # ==============================================
         # Task-level parameters
@@ -116,6 +127,8 @@ class RobotAgent:
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
+        self._realtime_matching_distance = parameters.get("agent/realtime/matching_distance", 0.5)
+        self._realtime_temporal_threshold = parameters.get("agent/realtime/temporal_threshold", 0.1)
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -149,12 +162,30 @@ class RobotAgent:
         if parameters["motion_planner"]["shortcut_plans"]:
             self.planner = Shortcut(self.planner, parameters["motion_planner"]["shortcut_iter"])
         if parameters["motion_planner"]["simplify_plans"]:
-            self.planner = SimplifyXYT(self.planner, min_step=0.05, max_step=1.0, num_steps=8)
+            self.planner = SimplifyXYT(
+                self.planner,
+                min_step=parameters["motion_planner"]["simplify"]["min_step"],
+                max_step=parameters["motion_planner"]["simplify"]["max_step"],
+                num_steps=parameters["motion_planner"]["simplify"]["num_steps"],
+                min_angle=parameters["motion_planner"]["simplify"]["min_angle"],
+            )
+
+        self._start_threads()
+
+    def _start_threads(self):
+        """Create threads and locks for real-time updates."""
+
+        # Track if we are still running
+        self._running = True
+
+        # Locks
+        self._robot_lock = Lock()
+        self._obs_history_lock = Lock()
+        self._map_lock = Lock()
 
         if self._realtime_updates:
-            # Locks
-            self._robot_lock = Lock()
-            self._obs_history_lock = Lock()
+            logger.alert("Using real-time updates!")
+
             # Map updates
             self._update_map_thread = Thread(target=self.update_map_loop)
             self._update_map_thread.start()
@@ -162,19 +193,23 @@ class RobotAgent:
             # Get observations thread
             self._get_observations_thread = Thread(target=self.get_observations_loop)
             self._get_observations_thread.start()
-
-            self.context = zmq.Context()
-            self.sub_socket = self.context.socket(zmq.SUB)
-            self.sub_socket.connect(f"tcp://localhost:{obs_sub_port}")
-            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
         else:
             self._update_map_thread = None
             self._get_observations_thread = None
 
+    def get_robot(self) -> AbstractRobotClient:
+        """Return the robot in use by this model"""
+        return self.robot
+
+    def get_voxel_map(self) -> SparseVoxelMap:
+        """Return the voxel map in use by this model"""
+        return self.voxel_map
+
     def __del__(self):
         """Destructor. Clean up threads."""
-        if self._update_map_thread is not None and self._update_map_thread.is_alive():
-            self._update_map_thread.join()
+        self._running = False
+        # if self._update_map_thread is not None and self._update_map_thread.is_alive():
+        #    self._update_map_thread.join()
 
     def _create_voxel_map(self, parameters: Parameters) -> SparseVoxelMap:
         """Create a voxel map from parameters.
@@ -213,7 +248,11 @@ class RobotAgent:
         self.unreachable_instances = set()
 
     def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
-        """Mark an instance as unreachable."""
+        """Mark an instance as unreachable.
+
+        Args:
+            instance(Union[int, Instance]): the instance to mark as unreachable
+        """
         if isinstance(instance, Instance):
             instance_id = instance.id
         elif isinstance(instance, int):
@@ -223,7 +262,11 @@ class RobotAgent:
         self.unreachable_instances.add(instance_id)
 
     def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
-        """Check if an instance is unreachable."""
+        """Check if an instance is unreachable.
+
+        Args:
+            instance(Union[int, Instance]): the instance to check
+        """
         if isinstance(instance, Instance):
             instance_id = instance.id
         elif isinstance(instance, int):
@@ -402,7 +445,11 @@ class RobotAgent:
         logger.info("Rotate in place")
         if steps is None or steps <= 0:
             # Read the number of steps from the parameters
-            steps = self.parameters["agent"]["in_place_rotation_steps"]
+            if self._realtime_updates:
+                steps = self.parameters["agent"]["realtime_rotation_steps"]
+                logger.info(f"Using real-time rotation steps: {steps}")
+            else:
+                steps = self.parameters["agent"]["in_place_rotation_steps"]
 
         step_size = 2 * np.pi / steps
         i = 0
@@ -457,8 +504,8 @@ class RobotAgent:
         else:
             return self.ask("Please type any task you want the robot to do: ")
 
-    def show_map(self):
-        """Helper function to visualize the 3d map as it stands right now"""
+    def show_map(self) -> None:
+        """Helper function to visualize the 3d map as it stands right now."""
         self.voxel_map.show(
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
@@ -466,8 +513,12 @@ class RobotAgent:
             instances=self.semantic_sensor is not None,
         )
 
-    def get_observations_loop(self):
-        """Threaded function that gets observations in real-time."""
+    def is_running(self) -> bool:
+        """Return whether the robot agent is still running."""
+        return self._running and self.robot.running
+
+    def get_observations_loop(self) -> None:
+        """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
         while self.robot.running and self._running:
             obs = None
             t0 = timeit.default_timer()
@@ -475,13 +526,13 @@ class RobotAgent:
             self._obs_history_lock.acquire()
 
             while obs is None:
-                # obs = self.robot.get_observation()
-                obs = self.sub_socket.recv_pyobj()
+                obs = self.robot.get_observation()
+                # obs = self.sub_socket.recv_pyobj()
                 # print(obs)
                 if obs is None:
                     continue
 
-                obs = Observations.from_dict(obs)
+                # obs = Observations.from_dict(obs)
 
                 if (len(self.obs_history) > 0) and (
                     obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
@@ -492,14 +543,22 @@ class RobotAgent:
                     logger.error("Failed to get observation")
                     break
 
+                # Add a delay to make sure we don't get too many observations
+                time.sleep(0.05)
+
             # t1 = timeit.default_timer()
             self.obs_history.append(obs)
             self._obs_history_lock.release()
             self.obs_count += 1
-            time.sleep(0.05)
+            time.sleep(0.1)
 
-    def update_map_with_pose_graph(self):
-        """Update our voxel map using a pose graph"""
+    def stop_realtime_updates(self):
+        """Stop the update threads."""
+        self._running = False
+
+    def update_map_with_pose_graph(self, verbose: bool = False):
+        """Update our voxel map using a pose graph.
+        Updates the map from pose graph. This is useful for when we are processing real-time updates."""
 
         t0 = timeit.default_timer()
         self.pose_graph = self.robot.get_pose_graph()
@@ -514,8 +573,9 @@ class RobotAgent:
             gps_past = self.obs_history[idx].gps
 
             for vertex in self.pose_graph:
-                if abs(vertex[0] - lidar_timestamp) < 0.05:
-                    # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+                if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
+                    if verbose:
+                        print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
 
                     self.obs_history[idx].is_pose_graph_node = True
                     self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
@@ -525,9 +585,10 @@ class RobotAgent:
                         ]
                     )
 
-                    # print(
-                    #     f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                    # )
+                    if verbose:
+                        print(
+                            f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
+                        )
 
                     if (
                         self.obs_history[idx].task_observations is None
@@ -536,10 +597,12 @@ class RobotAgent:
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
                 # check if the gps is close to the gps of the pose graph node
                 elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.3
+                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
+                    < self._realtime_matching_distance
                     and self.obs_history[idx].pose_graph_timestamp is None
                 ):
-                    # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+                    if verbose:
+                        print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
 
                     self.obs_history[idx].is_pose_graph_node = True
                     self.obs_history[idx].pose_graph_timestamp = vertex[0]
@@ -570,14 +633,24 @@ class RobotAgent:
                     self.obs_history[idx].compass = new_compass
 
         t2 = timeit.default_timer()
-        # print(f"Done updating past observations. Time: {t2- t1}")
+        if verbose:
+            print(f"Done updating past observations. Time: {t2- t1}")
 
-        # print("Updating voxel map")
+            print("Updating voxel map")
+
         t3 = timeit.default_timer()
-        self.voxel_map.reset()
-        for obs in self.obs_history:
-            if obs.is_pose_graph_node:
-                self.voxel_map.add_obs(obs)
+        with self._map_lock:
+            self.voxel_map.reset()
+            added = 0
+            for obs in self.obs_history:
+                if obs.is_pose_graph_node:
+                    self.voxel_map.add_obs(obs)
+                    added += 1
+
+        if verbose:
+            print("----")
+            print(f"Added {added} observations to voxel map")
+            print()
 
         self._obs_history_lock.release()
 
@@ -645,7 +718,7 @@ class RobotAgent:
         if move_head:
             self.robot.move_to_nav_posture()
             # Pause a bit first to make sure the robot is in the right posture
-            time.sleep(0.1)
+            time.sleep(self._before_head_motion_sleep_t)
             num_steps = 5
         else:
             num_steps = 1
@@ -663,7 +736,7 @@ class RobotAgent:
                 pan = -1 * i * np.pi / 4
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
-                time.sleep(0.1)
+                time.sleep(self._after_head_motion_sleep_t)
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
@@ -768,11 +841,11 @@ class RobotAgent:
 
     def plan_to_instance_for_manipulation(
         self,
-        instance: Instance,
+        instance: Union[Instance, int],
         start: np.ndarray,
         max_tries: int = 100,
         verbose: bool = True,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found. This function is specifically for manipulation tasks: it plans to a rotation that's rotated 90 degrees from the default.
 
@@ -786,8 +859,14 @@ class RobotAgent:
         Returns:
             PlanResult: the result of the motion planner
         """
+
+        if isinstance(instance, int):
+            _instance = self.voxel_map.get_instance(instance)
+        else:
+            _instance = instance
+
         return self.plan_to_instance(
-            instance,
+            _instance,
             start=start,
             rotation_offset=np.pi / 2,
             radius_m=self._manipulation_radius,
@@ -829,11 +908,10 @@ class RobotAgent:
         instance: Instance,
         start: np.ndarray,
         verbose: bool = False,
-        instance_id: int = -1,
         max_tries: int = 10,
         radius_m: float = 0.5,
         rotation_offset: float = 0.0,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found.
 
@@ -844,12 +922,20 @@ class RobotAgent:
             rotation_offset(float): added to rotation of goal to change final relative orientation
         """
 
+        instance_id = instance.global_id
+
+        if self._realtime_updates:
+            if use_cache:
+                logger.warning("Cannot use cache with real-time updates")
+            use_cache = False
+
         res = None
         if verbose:
             for j, view in enumerate(instance.instance_views):
                 print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
-        start_is_valid = self.space.is_valid(start, verbose=False)
+        with self._map_lock:
+            start_is_valid = self.space.is_valid(start, verbose=False)
         if not start_is_valid:
             return PlanResult(success=False, reason="invalid start state")
 
@@ -864,6 +950,16 @@ class RobotAgent:
         # Plan to the instance
         if not has_plan:
             # Call planner
+            print(
+                "planning to instance: ",
+                instance_id,
+                "max_tries: ",
+                max_tries,
+                "radius: ",
+                radius_m,
+                "rotation_offset: ",
+                rotation_offset,
+            )
             res = self.plan_to_bounds(
                 instance.bounds,
                 start,
@@ -899,45 +995,46 @@ class RobotAgent:
             PlanResult: the result of the motion planner
         """
 
-        mask = self.voxel_map.mask_from_bounds(bounds)
-        try_count = 0
-        res = None
-        start_is_valid = self.space.is_valid(start, verbose=False)
+        with self._map_lock:
+            mask = self.voxel_map.mask_from_bounds(bounds)
+            try_count = 0
+            res = None
+            start_is_valid = self.space.is_valid(start, verbose=False)
 
-        conservative_sampling = True
-        # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
-        for goal in self.space.sample_near_mask(
-            mask,
-            radius_m=radius_m,
-            conservative=conservative_sampling,
-            rotation_offset=rotation_offset,
-        ):
-            goal = goal.cpu().numpy()
-            if verbose:
-                print("       Start:", start)
-                print("Sampled Goal:", goal)
-            show_goal = np.zeros(3)
-            show_goal[:2] = goal[:2]
-            goal_is_valid = self.space.is_valid(goal, verbose=False)
-            if verbose:
-                print("Start is valid:", start_is_valid)
-                print(" Goal is valid:", goal_is_valid)
-            if not goal_is_valid:
+            conservative_sampling = True
+            # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
+            for goal in self.space.sample_near_mask(
+                mask,
+                radius_m=radius_m,
+                conservative=conservative_sampling,
+                rotation_offset=rotation_offset,
+            ):
+                goal = goal.cpu().numpy()
                 if verbose:
-                    print(" -> resample goal.")
-                continue
+                    print("       Start:", start)
+                    print("Sampled Goal:", goal)
+                show_goal = np.zeros(3)
+                show_goal[:2] = goal[:2]
+                goal_is_valid = self.space.is_valid(goal, verbose=False)
+                if verbose:
+                    print("Start is valid:", start_is_valid)
+                    print(" Goal is valid:", goal_is_valid)
+                if not goal_is_valid:
+                    if verbose:
+                        print(" -> resample goal.")
+                    continue
 
-            res = self.planner.plan(start, goal, verbose=False)
-            if verbose:
-                print("Found plan:", res.success)
-            try_count += 1
-            if res.success or try_count > max_tries:
-                break
+                res = self.planner.plan(start, goal, verbose=False)
+                if verbose:
+                    print("Found plan:", res.success)
+                try_count += 1
+                if res.success or try_count > max_tries:
+                    break
 
-        # Planning failed
-        if res is None:
-            return PlanResult(success=False, reason="no valid plans found")
-        return res
+            # Planning failed
+            if res is None:
+                return PlanResult(success=False, reason="no valid plans found")
+            return res
 
     def move_to_instance(self, instance: Instance, max_try_per_instance=10) -> bool:
         """Move to a specific instance. Goes until a motion plan is found.
@@ -977,39 +1074,52 @@ class RobotAgent:
                 return True
         return False
 
-    def recover_from_invalid_start(self) -> bool:
+    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
         """Try to recover from an invalid start state.
 
         Returns:
             bool: whether the robot recovered from the invalid start state
         """
 
+        print("Recovering from invalid start state...")
+
         # Get current invalid pose
         start = self.robot.get_base_pose()
 
-        # Apply relative transformation to XYT
-        forward = np.array([-0.1, 0, 0])
-        backward = np.array([0.1, 0, 0])
+        steps = [0.05, 0.1]
 
-        xyt_goal_forward = xyt_base_to_global(forward, start)
-        xyt_goal_backward = xyt_base_to_global(backward, start)
+        self._map_lock.acquire()
 
-        # Is this valid?
-        if self.space.is_valid(xyt_goal_backward, verbose=True):
-            logger.warning("Trying to move backwards...")
-            # Compute the position forward or backward from the robot
-            self.robot.move_base_to(xyt_goal_backward, relative=False)
-        elif self.space.is_valid(xyt_goal_forward, verbose=True):
-            logger.warning("Trying to move forward...")
-            # Compute the position forward or backward from the robot
-            self.robot.move_base_to(xyt_goal_forward, relative=False)
-        else:
-            logger.warning("Could not recover from invalid start state!")
-            return False
+        for step in steps:
+            # Apply relative transformation to XYT
+            forward = np.array([-1 * step, 0, 0])
+            backward = np.array([step, 0, 0])
+
+            xyt_goal_forward = xyt_base_to_global(forward, start)
+            xyt_goal_backward = xyt_base_to_global(backward, start)
+
+            # Is this valid?
+            logger.warning(f"Trying to recover with step of {step}...")
+            if self.space.is_valid(xyt_goal_backward, verbose=True):
+                logger.warning("Trying to move backwards...")
+                # Compute the position forward or backward from the robot
+                self.robot.move_base_to(xyt_goal_backward, relative=False)
+                break
+            elif self.space.is_valid(xyt_goal_forward, verbose=True):
+                logger.warning("Trying to move forward...")
+                # Compute the position forward or backward from the robot
+                self.robot.move_base_to(xyt_goal_forward, relative=False)
+                break
+            else:
+                logger.warning(f"Could not recover from invalid start state with step of {step}!")
 
         # Get the current position in case we are still invalid
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
+
+        # We can now allow the map to be updated
+        self._map_lock.release()
+
         if not start_is_valid:
             logger.warning("Tried and failed to recover from invalid start state!")
             return False
@@ -1045,7 +1155,7 @@ class RobotAgent:
             while tries <= max_try_per_instance:
                 print("Checking instance", i)
                 # TODO: this is a bad name for this variable
-                res = self.plan_to_instance(match, start, instance_id=i)
+                res = self.plan_to_instance(match, start)
                 tries += 1
                 if res is not None and res.success:
                     break
@@ -1079,16 +1189,8 @@ class RobotAgent:
             )
 
             if self.robot.last_motion_failed():
-                print("!!!!!!!!!!!!!!!!!!!!!!")
-                print("ROBOT IS STUCK! Move back!")
-                r = np.random.randint(3)
-                if r == 0:
-                    self.robot.move_base_to([-0.1, 0, 0], relative=True, blocking=True)
-                elif r == 1:
-                    self.robot.move_base_to([0, 0, np.pi / 4], relative=True, blocking=True)
-                elif r == 2:
-                    self.robot.move_base_to([0, 0, -np.pi / 4], relative=True, blocking=True)
-                return False
+                # We have a problem!
+                self.recover_from_invalid_start()
 
             time.sleep(1.0)
             self.robot.move_base_to([0, 0, np.pi / 2], relative=True)
@@ -1096,6 +1198,14 @@ class RobotAgent:
             return True
 
         return False
+
+    def move_to_manip_posture(self):
+        """Move the robot to manipulation posture."""
+        self.robot.move_to_manip_posture()
+
+    def move_to_nav_posture(self):
+        """Move the robot to navigation posture."""
+        self.robot.move_to_nav_posture()
 
     def print_found_classes(self, goal: Optional[str] = None):
         """Helper. print out what we have found according to detic."""
@@ -1200,7 +1310,7 @@ class RobotAgent:
         start = self.robot.get_base_pose() if current_pose is None else current_pose
         for i, instance in enumerate(self.voxel_map.get_instances()):
             if i not in self._cached_plans.keys():
-                res = self.plan_to_instance(instance, start, instance_id=i)
+                res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
             else:
                 res = self._cached_plans[i]
@@ -1258,7 +1368,7 @@ class RobotAgent:
             # compute its mask
             # see if this mask's area is explored and reachable from the current robot
             if self.guarantee_instance_is_reachable:
-                res = self.plan_to_instance(instance, start, instance_id=i)
+                res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
                 if res.success:
                     reachable_matches.append(instance)
@@ -1289,7 +1399,12 @@ class RobotAgent:
         return filtered_matches
 
     def go_home(self):
-        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there."""
+        """Simple helper function to send the robot home safely after a trial. This will use the current map and motion plan all the way there. This is a blocking call, so it will return when the robot is at home.
+
+        If the robot is not able to plan to home, it will print a message and return without moving the robot.
+
+        If the start state is invalid, it will try to recover from the invalid start state before planning to home. If it fails to recover, it will print a message and return without moving the robot.
+        """
         print("Go back to (0, 0, 0) to finish...")
         print("- change posture and switch to navigation mode")
         self.current_state = "NAV_TO_HOME"
@@ -1301,6 +1416,15 @@ class RobotAgent:
         print(f"- Current pose is valid: {self.space.is_valid(self.robot.get_base_pose())}")
         print(f"-   start pose is valid: {self.space.is_valid(start)}")
         print(f"-    goal pose is valid: {self.space.is_valid(goal)}")
+
+        # If the start is invalid, try to recover
+        if not self.space.is_valid(start):
+            print("Start is not valid. Trying to recover...")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                print("Failed to recover from invalid start state!")
+                return
+
         res = self.planner.plan(start, goal)
         # if it fails, skip; else, execute a trajectory to this position
         if res.success:
@@ -1311,6 +1435,17 @@ class RobotAgent:
             print("Can't go home; planning failed!")
 
     def choose_best_goal_instance(self, goal: str, debug: bool = False) -> Instance:
+        """Choose the best instance to move to based on the goal. This is done by comparing the goal to the embeddings of the instances in the world. The instance with the highest score is returned. If debug is true, we also print out the scores for the goal and two negative examples. These examples are:
+        - "the color purple"
+        - "a blank white wall"
+
+        Args:
+            goal(str): the goal to move to
+            debug(bool): whether to print out debug information
+
+        Returns:
+            Instance: the best instance to move to
+        """
         instances = self.voxel_map.get_instances()
         goal_emb = self.encode_text(goal)
         if debug:
@@ -1327,15 +1462,24 @@ class RobotAgent:
             img_emb = instance.get_image_embedding(
                 aggregation_method="mean", normalize=self.normalize_embeddings
             )
-            goal_score = torch.matmul(goal_emb, img_emb).item()
+            goal_score = self.compare_embeddings(goal_emb, img_emb)
             if debug:
-                neg1_score = torch.matmul(neg1_emb, img_emb).item()
-                neg2_score = torch.matmul(neg2_emb, img_emb).item()
+                neg1_score = self.compare_embeddings(neg1_emb, img_emb)
+                neg2_score = self.compare_embeddings(neg2_emb, img_emb)
                 print("scores =", goal_score, neg1_score, neg2_score)
             if goal_score > best_score:
                 best_instance = instance
                 best_score = goal_score
         return best_instance
+
+    def set_allowed_radius(self, radius: float):
+        """Set the allowed radius for the robot to move to. This is used to limit the robot's movement, particularly when exploring.
+
+        Args:
+            radius(float): the radius in meters
+        """
+        logger.info("[Agent] Setting allowed radius to", radius, "meters.")
+        logger.error("Setting allowed radius is not yet supported.")
 
     def plan_to_frontier(
         self,
@@ -1345,72 +1489,88 @@ class RobotAgent:
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
         verbose: bool = True,
+        push_locations_to_stack: bool = False,
     ) -> PlanResult:
-        """Motion plan to a frontier location."""
-        start_is_valid = self.space.is_valid(start, verbose=True)
-        # if start is not valid move backwards a bit
-        if not start_is_valid:
-            if verbose:
-                print("Start not valid. back up a bit.")
-            ok = self.recover_from_invalid_start()
-            if not ok:
-                return PlanResult(False, reason="invalid start state")
-        else:
-            print("Planning to frontier...")
+        """Motion plan to a frontier location. This is a location that is on the edge of the explored space. We use the voxel grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
 
-        # sample a goal
-        if random_goals:
-            goal = next(self.space.sample_random_frontier()).cpu().numpy()
-        else:
-            # Get frontier sampler
-            sampler = self.space.sample_closest_frontier(
-                start,
-                verbose=False,
-                expand_size=self._default_expand_frontier_size,
-                min_dist=self._frontier_min_dist,
-                step_dist=self._frontier_step_dist,
-            )
-            for i, goal in enumerate(sampler):
-                if goal is None:
-                    # No more positions to sample
-                    if verbose:
-                        print("No more frontiers to sample.")
-                    break
+        Args:
+            start(np.ndarray): the start position
+            manual_wait(bool): whether to wait for user input
+            random_goals(bool): whether to sample random goals
+            try_to_plan_iter(int): the number of tries to find a plan
+            fix_random_seed(bool): whether to fix the random seed
+            verbose(bool): extra info is printed
+            push_locations_to_stack(bool): whether to push visited locations to planning stack. can help get you unstuck, maybe?
 
-                # print("Sampled Goal is:", goal.cpu().numpy())
-                if self._previous_goal is not None:
-                    if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
+        Returns:
+            PlanResult: the result of the motion planner
+        """
+        with self._map_lock:
+            start_is_valid = self.space.is_valid(start, verbose=True)
+            # if start is not valid move backwards a bit
+            if not start_is_valid:
+                if verbose:
+                    print("Start not valid. Try to recover.")
+                ok = self.recover_from_invalid_start()
+                if not ok:
+                    return PlanResult(False, reason="invalid start state")
+            else:
+                print("Planning to frontier...")
+
+            # sample a goal
+            if random_goals:
+                goal = next(self.space.sample_random_frontier()).cpu().numpy()
+            else:
+                # Get frontier sampler
+                sampler = self.space.sample_closest_frontier(
+                    start,
+                    verbose=False,
+                    expand_size=self._default_expand_frontier_size,
+                    min_dist=self._frontier_min_dist,
+                    step_dist=self._frontier_step_dist,
+                )
+                for i, goal in enumerate(sampler):
+                    if goal is None:
+                        # No more positions to sample
                         if verbose:
-                            print("Same goal as last time. Skipping.")
-                        self._previous_goal = goal.cpu().numpy()
+                            print("No more frontiers to sample.")
+                        break
+
+                    # print("Sampled Goal is:", goal.cpu().numpy())
+                    if self._previous_goal is not None:
+                        if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
+                            if verbose:
+                                print("Same goal as last time. Skipping.")
+                            self._previous_goal = goal.cpu().numpy()
+                            continue
+                    self._previous_goal = goal.cpu().numpy()
+
+                    if self.space.is_valid(goal.cpu().numpy(), verbose=True):
+                        if verbose:
+                            print("       Start:", start)
+                            print("Sampled Goal:", goal.cpu().numpy())
+                    else:
                         continue
-                self._previous_goal = goal.cpu().numpy()
 
-                if self.space.is_valid(goal.cpu().numpy(), verbose=True):
-                    if verbose:
-                        print("       Start:", start)
-                        print("Sampled Goal:", goal.cpu().numpy())
-                else:
-                    continue
+                    # For debugging, we can set the random seed to 0
+                    if fix_random_seed:
+                        np.random.seed(0)
+                        random.seed(0)
 
-                # For debugging, we can set the random seed to 0
-                if fix_random_seed:
-                    np.random.seed(0)
-                    random.seed(0)
-
-                # print("Pushing locations to stack...")
-                self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
-                # print("Planning to goal...")
-                res = self.planner.plan(start, goal.cpu().numpy())
-                if res.success:
-                    if verbose:
-                        print("Plan successful!")
-                    return res
-                else:
-                    # print("Plan failed. Reason:", res.reason)
-                    if verbose:
-                        print("Plan failed. Reason:", res.reason)
-        return PlanResult(False, reason="no valid plans found")
+                    if push_locations_to_stack:
+                        print("Pushing visited locations to stack...")
+                        self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
+                    # print("Planning to goal...")
+                    res = self.planner.plan(start, goal.cpu().numpy())
+                    if res.success:
+                        if verbose:
+                            print("Plan successful!")
+                        return res
+                    else:
+                        # print("Plan failed. Reason:", res.reason)
+                        if verbose:
+                            print("Plan failed. Reason:", res.reason)
+            return PlanResult(False, reason="no valid plans found")
 
     def get_history(self, reversed: bool = False) -> List[np.ndarray]:
         """Get the history of the robot's positions."""
@@ -1445,6 +1605,7 @@ class RobotAgent:
         # Explore some number of times
         matches = []
         no_success_explore = True
+        rotated = False
         for i in range(explore_iter):
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1453,9 +1614,13 @@ class RobotAgent:
             # if start is not valid move backwards a bit
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
-                print(f"robot base pose: {self.robot.get_base_pose()}")
-                self.robot.move_base_to([-0.1, 0, 0], relative=True)
-                continue
+                ok = self.recover_from_invalid_start()
+                if ok:
+                    start = self.robot.get_base_pose()
+                    start_is_valid = self.space.is_valid(start, verbose=True)
+                if not start_is_valid:
+                    print("Failed to recover from invalid start state!")
+                    break
 
             # Now actually plan to the frontier
             print("       Start:", start)
@@ -1466,6 +1631,7 @@ class RobotAgent:
 
             # if it succeeds, execute a trajectory to this position
             if res.success:
+                rotated = False
                 no_success_explore = False
                 print("Plan successful!")
                 for i, pt in enumerate(res.trajectory):
@@ -1489,6 +1655,12 @@ class RobotAgent:
                         rot_err_threshold=self.rot_err_threshold,
                     )
             else:
+                # Try rotating in place if we can't find a decent frontier to get to
+                if not rotated:
+                    self.rotate_in_place()
+                    rotate = True
+                    continue
+
                 # breakpoint()
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
@@ -1547,6 +1719,7 @@ class RobotAgent:
             print("Go back to (0, 0, 0) to finish...")
             start = self.robot.get_base_pose()
             goal = np.array([0, 0, 0])
+            self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
             res = self.planner.plan(start, goal)
             # if it fails, skip; else, execute a trajectory to this position
             if res.success:
@@ -1559,6 +1732,16 @@ class RobotAgent:
                 print("WARNING: planning to home failed!")
 
         return matches
+
+    def show_voxel_map(self):
+        """Show the voxel map in Open3D for debugging."""
+        self.voxel_map.show(
+            orig=np.zeros(3),
+            xyt=self.robot.get_base_pose(),
+            footprint=self.robot.get_robot_model().get_footprint(),
+            instances=self.semantic_sensor is not None,
+            planner_visuals=True,
+        )
 
     def move_closed_loop(self, goal: np.ndarray, max_time: float = 10.0) -> bool:
         """Helper function which will move while also checking which position the robot reached.
@@ -1671,7 +1854,8 @@ class RobotAgent:
         self.tts.say_async(msg)
 
     def robot_say(self, msg: str):
-        """Hae the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
+        """Have the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
+        msg = msg.strip('"' + "'")
         self.robot.say(msg)
 
     def ask(self, msg: str) -> str:
@@ -1807,10 +1991,10 @@ class RobotAgent:
     def get_object_centric_world_representation(
         self,
         instance_memory,
-        max_context_length: int,
-        sample_strategy: str,
         task: str = None,
         text_features=None,
+        max_context_length=20,
+        sample_strategy="clip",
         scene_graph=None,
     ) -> ObjectCentricObservations:
         """Get version that LLM can handle - convert images into torch if not already in that format. This will also clip the number of instances to the max context length.
@@ -1905,3 +2089,19 @@ class RobotAgent:
             scene_graph,
         )
         return world_representation
+
+    def save_map(self, filename: Optional[str] = None) -> None:
+        """Save the current map to a file.
+
+        Args:
+            filename(str): the name of the file to save the map to
+        """
+        if filename is None or filename == "":
+            filename = memory.get_path_to_saved_map()
+
+        # Backup the saved map
+        memory.backup_saved_map()
+
+        with self._map_lock:
+            # Write the new map to the file
+            self.voxel_map.write_to_pickle(filename)

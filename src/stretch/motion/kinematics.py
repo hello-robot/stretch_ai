@@ -134,7 +134,8 @@ class HelloStretchKinematics:
     default_ee_link_name = "link_grasp_center"
 
     default_manip_mode_controlled_joints = [
-        "base_x_joint",
+        # "base_x_joint",
+        "joint_fake",
         "joint_lift",
         "joint_arm_l3",
         "joint_arm_l2",
@@ -283,7 +284,7 @@ class HelloStretchKinematics:
         q[HelloStretchIdx.GRIPPER] = self.range[HelloStretchIdx.GRIPPER][0]
         return q
 
-    def _update_joints(self):
+    def _update_joints(self, verbose: bool = False):
         """Get joint info from URDF or otherwise provide it"""
         self.joint_idx = [-1] * self.dof
         # Get the joint info we need from this
@@ -347,10 +348,11 @@ class HelloStretchKinematics:
 
         # TODO: gripper
         self.gripper_idx = []
-        for i in ["right", "left"]:
-            joint = self.ref.get_joint_info_by_name("joint_gripper_finger_%s" % i)
+        for side in ["right", "left"]:
+            joint = self.ref.get_joint_info_by_name("joint_gripper_finger_%s" % side)
             self.gripper_idx.append(joint.index)
-            print(i, joint.name, joint.lower_limit, joint.upper_limit)
+            if verbose:
+                print(side, joint.name, joint.lower_limit, joint.upper_limit)
             self.range[HelloStretchIdx.GRIPPER] = (
                 np.array([joint.lower_limit, joint.upper_limit]) * 0.5
             )
@@ -420,14 +422,14 @@ class HelloStretchKinematics:
         for qi, ai in self.interpolate_arm(qi, qg, step):
             yield qi, ai
 
-    def manip_fk(self, q: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
+    def manip_fk(self, q: np.ndarray = None, node: str = None) -> Tuple[np.ndarray, np.ndarray]:
         """manipulator specific forward kinematics; uses separate URDF than the full-body fk() method"""
         assert q.shape == (self.dof,)
 
         if "pinocchio" in self._ik_type:
             q = self._ros_pose_to_pinocchio(q)
 
-        ee_pos, ee_quat = self.manip_ik_solver.compute_fk(q)
+        ee_pos, ee_quat = self.manip_ik_solver.compute_fk(q, node)
         return ee_pos.copy(), ee_quat.copy()
 
     def update_head(self, qi: np.ndarray, look_at) -> np.ndarray:
@@ -566,6 +568,7 @@ class HelloStretchKinematics:
         update_pb: bool = True,
         num_attempts: int = 1,
         verbose: bool = False,
+        custom_ee_frame: Optional[str] = None,
     ):
         """IK in manipulation mode. Takes in a 4x4 pose_query matrix in se(3) and initial
         configuration of the robot.
@@ -590,7 +593,12 @@ class HelloStretchKinematics:
             raise NotImplementedError()
 
         q, success, debug_info = self.manip_ik_solver.compute_ik(
-            pos, quat, q0, num_attempts=num_attempts, verbose=verbose
+            pos,
+            quat,
+            q0,
+            num_attempts=num_attempts,
+            verbose=verbose,
+            custom_ee_frame=custom_ee_frame,
         )
 
         if q is not None and success:

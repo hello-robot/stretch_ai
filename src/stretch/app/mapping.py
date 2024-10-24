@@ -42,6 +42,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--navigate-home", default=False, is_flag=True)
 @click.option("--force-explore", default=False, is_flag=True)
 @click.option("--no-manip", default=False, is_flag=True)
+@click.option("--device-id", default=0, help="Device ID for the semantic sensor")
 @click.option(
     "--write-instance-images",
     default=False,
@@ -50,6 +51,13 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
+@click.option(
+    "--enable-realtime-updates",
+    "--enable_realtime-updates",
+    is_flag=True,
+    help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
+)
+@click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
     visualize,
     manual_wait,
@@ -69,6 +77,8 @@ def main(
     local: bool = True,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
+    enable_realtime_updates: bool = False,
+    save: bool = True,
     **kwargs,
 ):
 
@@ -80,6 +90,7 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
         enable_rerun_server=True,
+        publish_observations=enable_realtime_updates,
     )
     # Call demo_main with all the arguments
     demo_main(
@@ -100,7 +111,9 @@ def main(
         explore_iter=explore_iter,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
+        enable_realtime_updates=enable_realtime_updates,
         reset=reset,
+        save=save,
         **kwargs,
     )
 
@@ -124,6 +137,8 @@ def demo_main(
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
+    enable_realtime_updates: bool = False,
+    save: bool = True,
     **kwargs,
 ):
     """
@@ -163,9 +178,9 @@ def demo_main(
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
-
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
+    demo = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+    )
     demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
     if reset:
         demo.move_closed_loop([0, 0, 0], max_time=60.0)
@@ -205,6 +220,10 @@ def demo_main(
     except Exception as e:
         raise (e)
     finally:
+
+        # Stop updating the map
+        demo.stop_realtime_updates()
+
         if show_final_map:
             pc_xyz, pc_rgb = demo.voxel_map.show()
         else:
@@ -217,6 +236,9 @@ def demo_main(
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
             demo.voxel_map.write_to_pickle(output_pkl_filename)
+
+        if save:
+            demo.save_map()
 
         if write_instance_images:
             demo.save_instance_images(".")
