@@ -59,10 +59,13 @@ RUN bash Miniforge3-$(uname)-$(uname -m).sh -b
 # Add mamba to the path
 ENV PATH /root/miniforge3/bin:$PATH
 
+# Set a DOCKER flag to indicate we are running in a container
+ENV DOCKER 1
+
 # Run our installation script
 COPY . .
-RUN chmod +x install.sh
-RUN ./install.sh -y --no-version
+RUN chmod +x install.sh && \
+    ./install.sh -y --no-version --no-remove
 
 # Configure mamba to start in the correct environment
 RUN mamba init

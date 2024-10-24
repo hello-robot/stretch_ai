@@ -20,7 +20,7 @@ jobs:
 
     # Use pre-built container for stretch AI
     container:
-      image: hellorobotinc/stretch-ai_cuda-11.8:0.1.2
+      image: hellorobotinc/stretch-ai_cuda-11.8:0.1.6
 
     steps:
     - uses: actions/checkout@v4
