@@ -479,9 +479,20 @@ class GraspObjectOperation(ManagedOperation):
                     self._debug_show_point_cloud(servo, current_xyz)
 
             # save images for debugging
-            Image.fromarray(servo.ee_rgb).save(f'debug/{debug_dir_name}/img_{iter_}.png')
+            '''
+            Image.fromarray(servo.ee_rgb).save(f'{debug_dir_name}/img_{iter_}.png')
             mask = target_mask.astype(np.uint8) * 255
-            Image.fromarray(mask).save(f'debug/{debug_dir_name}/img_{iter_}_mask.png')
+            Image.fromarray(mask).save(f'{debug_dir_name}/img_{iter_}_mask.png')
+            '''
+            mask = target_mask.astype(np.uint8) * 255
+            debug_viz = np.zeros((240, 640, 3))
+            debug_viz[:, :320, :] = servo.ee_rgb
+            debug_viz[:, 320:, 0] = mask
+            debug_viz[:, 320:, 1] = mask
+            debug_viz[:, 320:, 2] = mask
+            Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_{iter_:03d}.png')
+            iter_ += 1
+
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
