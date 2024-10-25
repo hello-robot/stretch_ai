@@ -73,7 +73,7 @@ class GraspObjectOperation(ManagedOperation):
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
     # median_distance_when_grasping: float = 0.15
-    median_distance_when_grasping: float = 0.2
+    median_distance_when_grasping: float = 0.10 # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -89,9 +89,9 @@ class GraspObjectOperation(ManagedOperation):
     grasp_loose: bool = False
     reset_observation: bool = False
     # Move the arm forward by this amount when grasping
-    _grasp_arm_offset: float = 0.13
+    _grasp_arm_offset: float = 0. # 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = -0.10
+    _grasp_lift_offset: float = 0. # -0.10
 
     # Visual servoing config
     track_image_center: bool = False
@@ -560,7 +560,8 @@ class GraspObjectOperation(ManagedOperation):
             # Fix lift to only go down
             lift = min(lift, prev_lift)
 
-            if aligned:
+            # if aligned:
+            if iter_ % 2 == 0:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
                     print(
@@ -575,12 +576,31 @@ class GraspObjectOperation(ManagedOperation):
                 aligned_once = True
                 arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
                 lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
+
+                # reducing delta for more fine-grained control
+                arm_component = arm_component / 5
+                lift_compoennt = lift_component / 5
+
                 arm += arm_component
                 lift += lift_component
+
+                print()
+                print('-'*50)
+                print('iter_:', iter_)
+                print('in_aligned:')
+                print('arm_component:', arm_component)
+                print('lift_component:', lift_component)
+                print('self.lift_arm_ratio:', self.lift_arm_ratio)
+                print('-'*50)
+                print()
             else:
                 # Add these to do some really hacky proportionate control
                 px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
                 py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+
+                # reducing delta for more fine-grained control
+                px = px / 5
+                py = py / 5
 
                 # Move the base and modify the wrist pitch
                 # TODO: remove debug code
@@ -595,6 +615,15 @@ class GraspObjectOperation(ManagedOperation):
                     wrist_pitch += -self.wrist_pitch_step * py
                 elif dy < -1 * self.align_y_threshold:
                     wrist_pitch += self.wrist_pitch_step * py
+
+                print()
+                print('-'*50)
+                print('iter_:', iter_)
+                print('NOT in_aligned:')
+                print('px:', px)
+                print('py:', py)
+                print('-'*50)
+                print()
 
             # Force to reacquire the target mask if we moved the camera too much
             prev_target_mask = None
