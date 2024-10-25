@@ -93,6 +93,7 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
+        min_instance_points: int = 100,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
@@ -130,6 +131,7 @@ class InstanceMemory:
         self.min_instance_thickness = min_instance_thickness
         self.min_instance_height = min_instance_height
         self.max_instance_height = max_instance_height
+        self.min_instance_points = min_instance_points
         self.use_visual_feat = use_visual_feat  # whether use visual feat to merge instances
 
         if isinstance(view_matching_config, dict):
@@ -718,7 +720,7 @@ class InstanceMemory:
                 cropped_image = cropped_image * instance_mask
 
             # get embedding
-            if self.encoder is not None:
+            if self.encoder is not None and cropped_image.shape[1] * cropped_image.shape[2] > self.min_instance_points:
                 # Compute semantic image features (e.g. SigLIP or CLIP)
                 embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
 
@@ -730,8 +732,7 @@ class InstanceMemory:
                 else:
                     visual_feat = None
             else:
-                embedding = None
-                visual_feat = None
+                continue
 
             # get point cloud
             point_mask_downsampled = instance_mask_downsampled & valid_points_downsampled
