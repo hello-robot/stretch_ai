@@ -201,9 +201,14 @@ class StretchRosInterface(Node):
             + j_status[ROS_ARM_JOINTS[3]]
         )
         pose[self.Idx.GRIPPER] = j_status[ROS_GRIPPER_FINGER]
-        pose[self.Idx.WRIST_ROLL] = j_status[ROS_WRIST_ROLL]
-        pose[self.Idx.WRIST_PITCH] = j_status[ROS_WRIST_PITCH]
-        pose[self.Idx.WRIST_YAW] = j_status[ROS_WRIST_YAW]
+        if ROS_WRIST_ROLL in j_status:
+            pose[self.Idx.WRIST_ROLL] = j_status[ROS_WRIST_ROLL]
+            pose[self.Idx.WRIST_PITCH] = j_status[ROS_WRIST_PITCH]
+            pose[self.Idx.WRIST_YAW] = j_status[ROS_WRIST_YAW]
+        else:
+            pose[self.Idx.WRIST_ROLL] = 0
+            pose[self.Idx.WRIST_PITCH] = -np.pi / 4
+            pose[self.Idx.WRIST_YAW] = 0
         pose[self.Idx.HEAD_PAN] = j_status[ROS_HEAD_PAN]
         pose[self.Idx.HEAD_TILT] = j_status[ROS_HEAD_TILT]
         return pose
