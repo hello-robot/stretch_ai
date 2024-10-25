@@ -7,12 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import sys
-import os
 import threading
 from typing import Dict, Optional
 
@@ -229,12 +230,13 @@ class StretchRosInterface(Node):
     def get_has_wrist(self) -> bool:
         """Check if the robot has a wrist joint."""
         # Wait until self.joint_status is populated
+        rate = self.create_rate(10)
         while rclpy.ok():
             with self._js_lock:
-                print("Waiting for joint status...", self.joint_status.keys()
+                print("Waiting for joint status...", self.joint_status.keys())
                 if ROS_LIFT_JOINT in self.joint_status:
                     break
-            rospy.sleep(0.1)
+            rate.sleep()
         print("Done waiting for joint status...", self.joint_status.keys())
         return ROS_WRIST_ROLL in self.joint_status
 
