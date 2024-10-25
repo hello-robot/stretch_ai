@@ -9,5 +9,6 @@
 
 from .object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .ok_robot_prompt import OkRobotPromptBuilder
+from .ovmm_prompt import OVMMPromptBuilder
 from .pickup_prompt import PickupPromptBuilder
 from .simple_prompt import SimpleStretchPromptBuilder

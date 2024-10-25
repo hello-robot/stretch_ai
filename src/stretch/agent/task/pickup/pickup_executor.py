@@ -133,6 +133,8 @@ class PickupExecutor:
                 self.emote_task.get_task("shake_head").run()
             elif command == "avert_gaze":
                 self.emote_task.get_task("avert_gaze").run()
+            elif command == "clean":
+                self.agent.clean()
             elif command == "quit":
                 logger.info("[Pickup task] Quitting.")
                 self.robot.stop()

@@ -30,4 +30,8 @@ sudo docker run -it --rm \
     -v /home/$USER/ament_ws/install/stretch_description/share/stretch_description/urdf:/home/hello-robot/stretch_description/share/stretch_description/urdf \
     -e HELLO_FLEET_ID=$HELLO_FLEET_ID \
     hellorobotinc/stretch-ai-ros2-bridge:$VERSION \
+<<<<<<< Updated upstream
     bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server.launch.py"
+=======
+    bash -c "source /home/hello-robot/.bashrc; cp -r /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user/*; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server.launch.py;sh"
+>>>>>>> Stashed changes

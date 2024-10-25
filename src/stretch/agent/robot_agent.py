@@ -23,6 +23,7 @@ import torch
 from PIL import Image
 
 import stretch.utils.memory as memory
+from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
@@ -1904,6 +1905,39 @@ class RobotAgent:
             time.sleep(0.375)
 
         self.robot.switch_to_navigation_mode()
+        return True
+
+    def clean(self, receptacle: str = "box") -> bool:
+        # Collect all instances within a 3m radius around the robot
+        instances = self.get_all_reachable_instances()
+
+        # Keep instances only if they are withing 3m
+        # Consider only instances close to the robot
+        robot_pose = self.robot.get_base_pose()
+        close_instances = []
+
+        for instance in instances:
+            instance_pose = instance.get_best_view().cam_to_world
+            distance = np.linalg.norm(robot_pose[:2] - instance_pose[:2])
+            if distance < 3.0:
+                close_instances.append(instance)
+
+        # Proceed to pic up each instance and place it in a receptacle
+        for instance in close_instances:
+            try:
+                pickup_task = PickUpTask(
+                    self.agent,
+                    target_object=instance.name,
+                    target_receptacle=receptacle,
+                    matching="feature",
+                    use_visual_servoing_for_grasp=True,
+                )
+                task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+            except Exception as e:
+                print(f"Failed to create task for {instance.name}: {e}")
+                continue
+            task.run()  # Execute the task
+
         return True
 
     def load_map(
