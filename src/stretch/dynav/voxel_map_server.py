@@ -17,7 +17,6 @@ import time
 
 # from io import BytesIO
 from pathlib import Path
-from uuid import uuid4
 
 import cv2
 import numpy as np
@@ -28,24 +27,16 @@ import torch
 
 # from stretch.utils.morphology import get_edges
 import torch.nn.functional as F
-import wget
 from matplotlib import pyplot as plt
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-from transformers import AutoModel, CLIPImageProcessor
-from ultralytics import YOLOWorld
 
 import stretch.utils.logger as logger
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
+from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.mapping_utils.a_star import AStar
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
-from stretch.dynav.scannet import CLASS_LABELS_200
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
-
-# from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder, MaskEvaClipEncoder
-from stretch.perception.encoders import CustomImageTextEncoder
+from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
 
 def get_inv_intrinsics(intrinsics):
@@ -136,7 +127,7 @@ class ImageProcessor:
         device: str = "cuda",
         min_depth: float = 0.25,
         max_depth: float = 2.5,
-        img_port: int = 5555,
+        img_port: int = 5558,
         text_port: int = 5556,
         open_communication: bool = True,
         rerun: bool = True,
@@ -146,7 +137,6 @@ class ImageProcessor:
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
     ):
-        self.static = True
         self.rerun_visualizer = rerun_visualizer
         current_datetime = datetime.datetime.now()
         if log is None:
@@ -155,7 +145,7 @@ class ImageProcessor:
             self.log = log
         self.rerun = rerun
         if self.rerun and self.rerun_visualizer is None:
-            rr.init(self.log, recording_id=uuid4(), spawn=True)
+            rr.init(self.log)
             logger.info("Starting a rerun server.")
         elif self.rerun:
             setup_custom_blueprint()
@@ -227,61 +217,18 @@ class ImageProcessor:
         self.value_map = torch.zeros(self.voxel_map.grid_size)
 
     def create_vision_model(self):
-        # self.encoder = MaskSiglipEncoder(device=self.device)
-        # self.encoder = MaskEvaClipEncoder(device=self.device)
-
-        # self.clip_model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(self.device)
-        # self.clip_preprocess = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
-        # self.clip_model.eval()
-        self.clip_model = (
-            AutoModel.from_pretrained(
-                "BAAI/EVA-CLIP-8B", torch_dtype=torch.float16, trust_remote_code=True
-            )
-            .to(self.device)
-            .eval()
-        )
-        self.clip_preprocess = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14")
-
-        sam_checkpoint = f"./sam2_hiera_small.pt"
-        sam_config = "sam2_hiera_s.yaml"
-        if not os.path.exists(sam_checkpoint):
-            wget.download(
-                "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt",
-                out=sam_checkpoint,
-            )
-        sam2_model = build_sam2(
-            sam_config, sam_checkpoint, device=self.device, apply_postprocessing=False
-        )
-        self.mask_predictor = SAM2ImagePredictor(sam2_model)
-        self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
-        self.texts = CLASS_LABELS_200
-        self.yolo_model.set_classes(self.texts)
+        self.encoder = MaskSiglipEncoder(device=self.device)
 
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
-            clip_model=self.clip_model,
-            processor=self.clip_preprocess,
+            clip_model=self.encoder.model,
+            processor=self.encoder.processor,
             device=self.device,
             siglip=True,
         )
 
-        # self.voxel_map_localizer = VoxelMapLocalizer(
-        #     self.voxel_map,
-        #     clip_model=self.encoder.model,
-        #     processor=self.encoder.processor,
-        #     device=self.device,
-        #     siglip=True,
-        # )
-
     def get_encoder(self) -> CustomImageTextEncoder:
         return self.encoder
-
-    def recv_text(self):
-        text = self.text_socket.recv_string()
-        self.text_socket.send_string("Text received, waiting for robot pose")
-        start_pose = recv_array(self.text_socket)
-        res = self.process_text(text, start_pose)
-        send_array(self.text_socket, res)
 
     def process_text(self, text, start_pose):
         """
@@ -349,6 +296,21 @@ class ImageProcessor:
                             torch.Tensor([1, 0, 0]),
                             0.1,
                         )
+
+            if obs is not None and mode == "navigation":
+                rgb = self.voxel_map.observations[obs - 1].rgb
+                if not self.rerun:
+                    if isinstance(rgb, torch.Tensor):
+                        rgb = np.array(rgb)
+                    cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
+                else:
+                    if self.rerun and self.rerun_visualizer is None:
+                        rr.log("/observation_similar_to_text", rr.Image(rgb))
+                    elif self.rerun:
+                        self.rerun_visualizer.log_custom_2d_image(
+                            "/observation_similar_to_text", rgb
+                        )
+
             # Do Frontier based exploration
             if text is None or text == "" or localized_point is None:
                 debug_text += "## Navigation fails, so robot starts exploring environments.\n"
@@ -364,20 +326,6 @@ class ImageProcessor:
             point = self.sample_navigation(start_pose, localized_point)
 
             print("Navigation endpoint selected")
-
-            if obs is not None and mode == "navigation":
-                rgb = self.voxel_map.observations[obs - 1].rgb
-                if not self.rerun:
-                    if isinstance(rgb, torch.Tensor):
-                        rgb = np.array(rgb)
-                    cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
-                else:
-                    if self.rerun and self.rerun_visualizer is None:
-                        rr.log("/observation_similar_to_text", rr.Image(rgb))
-                    elif self.rerun:
-                        self.rerun_visualizer.log_custom_2d_image(
-                            "/observation_similar_to_text", rgb
-                        )
 
             waypoints = None
 
@@ -510,12 +458,6 @@ class ImageProcessor:
         while True:
             # data = recv_array(self.img_socket)
             rgb, depth, intrinsics, pose = recv_everything(self.img_socket)
-            rgb, depth, intrinsics, pose = (
-                np.array(rgb),
-                np.array(depth),
-                np.array(intrinsics),
-                np.array(pose),
-            )
             print("Image received")
             start_time = time.time()
             self.process_rgbd_images(rgb, depth, intrinsics, pose)
@@ -532,128 +474,6 @@ class ImageProcessor:
         valid_rgb = rgb.permute(1, 2, 0)[~mask]
         if len(valid_xyz) != 0:
             self.add_to_voxel_pcd(valid_xyz, features, valid_rgb)
-
-    def run_owl_sam_clip(self, rgb, mask, world_xyz):
-        _, h, w = rgb.shape
-        with torch.no_grad():
-            results = self.yolo_model.predict(
-                rgb.permute(1, 2, 0)[:, :, [2, 1, 0]].numpy(), conf=0.05, verbose=False
-            )
-            xyxy_tensor = results[0].boxes.xyxy
-            # xyxy_tensor = [
-            #             xyxy for xyxy in xyxy_tensor
-            #             if (0.6 * h > (xyxy[2] - xyxy[0]) > 0.025 * h) and (0.6 * w > (xyxy[3] - xyxy[1]) > 0.025 * w)
-            #         ]
-            if len(xyxy_tensor) == 0:
-                return
-
-            self.mask_predictor.set_image(rgb.permute(1, 2, 0).numpy())
-            # bounding_boxes = torch.stack(sorted(results[0]['boxes'], key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse = True), dim = 0)
-            bounding_boxes = torch.stack(
-                sorted(
-                    xyxy_tensor, key=lambda box: (box[2] - box[0]) * (box[3] - box[1]), reverse=True
-                ),
-                dim=0,
-            )
-            # transformed_boxes = self.mask_predictor.transform.apply_boxes_torch(bounding_boxes.detach().to(self.device), rgb.shape[-2:])
-            # masks, _, _= self.mask_predictor.predict_torch(
-            masks, _, _ = self.mask_predictor.predict(
-                point_coords=None,
-                point_labels=None,
-                # boxes=transformed_boxes,
-                box=bounding_boxes,
-                multimask_output=False,
-            )
-            if masks.ndim == 3:
-                masks = torch.Tensor(masks).bool()
-            else:
-                masks = torch.Tensor(masks[:, 0, :, :]).bool()
-
-            # Debug code, visualize all bounding boxes and segmentation masks
-
-            image_vis = np.ascontiguousarray(np.array(rgb.permute(1, 2, 0)).astype(np.uint8))
-            segmentation_color_map = np.zeros(image_vis.shape, dtype=np.uint8)
-            # cv2.imwrite('clean_' + str(self.obs_count) + '.jpg', cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR))
-            for idx, box in enumerate(bounding_boxes):
-                tl_x, tl_y, br_x, br_y = box
-                tl_x, tl_y, br_x, br_y = tl_x.item(), tl_y.item(), br_x.item(), br_y.item()
-                cv2.rectangle(
-                    image_vis, (int(tl_x), int(tl_y)), (int(br_x), int(br_y)), (255, 0, 0), 2
-                )
-            image_vis = cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR)
-            for vis_mask in masks:
-                segmentation_color_map[vis_mask.detach().cpu().numpy()] = [0, 255, 0]
-            image_vis = cv2.addWeighted(image_vis, 0.7, segmentation_color_map, 0.3, 0)
-            if not self.rerun:
-                cv2.imwrite(self.log + "/seg" + str(self.obs_count) + ".jpg", image_vis)
-            # else:
-            #     rr.log('Segmentation mask', rr.Image(image_vis[:, :, [2, 1, 0]]))
-
-            crops = []
-            # from matplotlib import pyplot as plt
-            # plt.imshow(rgb.permute(1, 2, 0))
-            # plt.show()
-            for idx, (sam_mask, box) in enumerate(zip(masks.cpu(), bounding_boxes)):
-                # tl_x, tl_y, br_x, br_y = box
-                # crops.append(
-                #     rgb[
-                #         :,
-                #         max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                #         max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                #     ]
-                # )
-
-                tl_x, tl_y, br_x, br_y = box
-                rgb_crop = rgb.clone()
-                # if (br_x - tl_x) > 0.4 * h or (br_y - tl_y) > 0.4 * w:
-                #     rgb_crop[:, ~sam_mask] = 0
-                rgb_crop = rgb_crop[
-                    :,
-                    max(int(tl_y), 0) : min(int(br_y), rgb.shape[1]),
-                    max(int(tl_x), 0) : min(int(br_x), rgb.shape[2]),
-                ].clone()
-                crops.append(rgb_crop)
-
-                # plt.imshow(
-                #     rgb_crop.permute(1, 2, 0)
-                # )
-                # plt.show()
-
-            # inputs = self.clip_preprocess(
-            #     images=crops, padding="max_length", return_tensors="pt"
-            # ).to(self.device)
-            inputs = (
-                self.clip_preprocess(images=crops, return_tensors="pt")
-                .pixel_values.to(self.device)
-                .to(torch.float16)
-            )
-            # features = self.clip_model.get_image_features(**inputs)
-            features = self.clip_model.encode_image(inputs)
-            features = F.normalize(features, dim=-1).cpu()
-
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
-            masks = (
-                F.interpolate(
-                    masks.unsqueeze(0).float(),
-                    size=self.image_shape,
-                    mode="bilinear",
-                    align_corners=False,
-                )
-                .squeeze()
-                .bool()
-            )
-
-        for idx, (sam_mask, feature) in enumerate(zip(masks.cpu(), features.cpu())):
-            valid_mask = torch.logical_and(~mask, sam_mask)
-            valid_xyz = world_xyz[valid_mask]
-            if valid_xyz.shape[0] == 0:
-                continue
-            feature = feature.repeat(valid_xyz.shape[0], 1)
-            valid_rgb = rgb.permute(1, 2, 0)[valid_mask]
-            self.add_to_voxel_pcd(valid_xyz, feature, valid_rgb)
 
     def add_to_voxel_pcd(self, valid_xyz, feature, valid_rgb, weights=None, threshold=0.95):
         # Adding all points to voxelizedPointCloud is useless and expensive, we should exclude threshold of all points
@@ -736,8 +556,7 @@ class ImageProcessor:
                 depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)
             )
 
-        # self.run_mask_clip(rgb, ~valid_depth, world_xyz)
-        self.run_owl_sam_clip(rgb, ~valid_depth, world_xyz)
+        self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
         if self.image_shape is not None:
             rgb = F.interpolate(
@@ -898,7 +717,3 @@ def main():
             imageProcessor.recv_text()
     except KeyboardInterrupt:
         imageProcessor.write_to_pickle()
-
-
-if __name__ == "__main__":
-    main()
