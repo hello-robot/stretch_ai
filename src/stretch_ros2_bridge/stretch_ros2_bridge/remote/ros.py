@@ -12,6 +12,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import sys
+import os
 import threading
 from typing import Dict, Optional
 
@@ -153,8 +154,12 @@ class StretchRosInterface(Node):
         for i in range(3, self.dof):
             self._ros_joint_names += CONFIG_TO_ROS[i]
 
-        # Get indexer
-        self.Idx = get_Idx("eoa_wrist_dw3_tool_sg3")
+        # Get fleet ID from environment
+        fleet_id = os.environ["HELLO_FLEET_ID"]
+        # Parse from format stretch-reX-XX to just reX
+        robot_model = fleet_id.split("-")[1]
+        print(f"Using fleet ID: {fleet_id}")
+        print(f"Using robot model: {robot_model}")
 
         # Initialize cameras
         self._color_topic = DEFAULT_COLOR_TOPIC if color_topic is None else color_topic
@@ -180,6 +185,14 @@ class StretchRosInterface(Node):
         if init_lidar:
             self._lidar = RosLidar(self, self._lidar_topic)
             self._lidar.wait_for_scan()
+
+        if self.get_has_wrist():
+            # Get indexer
+            self._has_wrist = True
+            self.Idx = get_Idx("eoa_wrist_dw3_tool_sg3")
+        else:
+            self._has_wrist = False
+            self.Idx = get_Idx("tool_stretch_gripper")
 
     def __del__(self):
         self._thread.join()
@@ -212,6 +225,18 @@ class StretchRosInterface(Node):
         pose[self.Idx.HEAD_PAN] = j_status[ROS_HEAD_PAN]
         pose[self.Idx.HEAD_TILT] = j_status[ROS_HEAD_TILT]
         return pose
+
+    def get_has_wrist(self) -> bool:
+        """Check if the robot has a wrist joint."""
+        # Wait until self.joint_status is populated
+        while rclpy.ok():
+            with self._js_lock:
+                print("Waiting for joint status...", self.joint_status.keys()
+                if ROS_LIFT_JOINT in self.joint_status:
+                    break
+            rospy.sleep(0.1)
+        print("Done waiting for joint status...", self.joint_status.keys())
+        return ROS_WRIST_ROLL in self.joint_status
 
     def send_joint_goals(
         self, joint_goals: Dict[str, float], velocities: Optional[Dict[str, float]] = None
