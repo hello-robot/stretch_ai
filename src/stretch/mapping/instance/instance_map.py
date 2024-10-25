@@ -720,7 +720,10 @@ class InstanceMemory:
                 cropped_image = cropped_image * instance_mask
 
             # get embedding
-            if self.encoder is not None and cropped_image.shape[1] * cropped_image.shape[2] > self.min_instance_points:
+            if (
+                self.encoder is not None
+                and cropped_image.shape[1] * cropped_image.shape[2] > self.min_instance_points
+            ):
                 # Compute semantic image features (e.g. SigLIP or CLIP)
                 embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
 
