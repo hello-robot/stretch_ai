@@ -16,6 +16,8 @@ from transformers import AutoModel, AutoProcessor, AutoTokenizer
 
 from .base_encoder import BaseImageTextEncoder
 
+# import torch.nn.functional as F
+
 
 class SiglipEncoder(BaseImageTextEncoder):
     """Image/text feature encoder using SIGLip model.
