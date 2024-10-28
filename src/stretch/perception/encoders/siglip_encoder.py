@@ -32,12 +32,14 @@ class SiglipEncoder(BaseImageTextEncoder):
         normalize: bool = True,
         device: Optional[str] = None,
         version: Optional[str] = None,
+        feature_matching_threshold: float = 0.05,
         **kwargs,
     ) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.normalize = normalize
+        self.feature_matching_threshold = feature_matching_threshold
 
         if version is None:
             version = "base"
