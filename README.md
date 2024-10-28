@@ -81,7 +81,7 @@ Enter the target receptacle: white laundry basket
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
-Once you're ready to learn more about **stretch-ai**, you can try out a variety of applications (apps) that demonstrate various capabilities.
+Once you're ready to learn more about **Stretch AI**, you can try out a variety of applications (apps) that demonstrate various capabilities.
 
 ## Apps
 
