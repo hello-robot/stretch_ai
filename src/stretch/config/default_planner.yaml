@@ -5,14 +5,15 @@
 #  version: "ViT-B/32"
 encoder: "siglip"
 encoder_args:
-  # version: "ViT-B/32"
-  # version: "so400m"
-  version: "base"
+  # Version options are ["base", "so400m"]
+  version: "so400m"
   # Feature matching threshold for if something is considered a particular class
   # Set this value by experimting with:
   #   python -m stretch.app.query --threshold 0.05
   # You can change the threshold to anything that makes sense.
-  feature_match_threshold: 0.05
+  feature_match_threshold: 0.1
+  # version: "base"
+  # feature_match_threshold: 0.05
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
