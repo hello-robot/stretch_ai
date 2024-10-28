@@ -45,7 +45,7 @@ You will need to clone the **stretch-ai** repository on your robot and on your G
 git clone https://github.com/hello-robot/stretch_ai.git
 ```
 
-## On the Robot
+## Run the Robot's Script
 
 The GitHub **stretch-ai** repository provides a startup script for running **stretch-ai** software in a Docker container on your Stretch robot. To use the script, run the following command in the **stretch-ai** repository on the robot:
 
@@ -103,7 +103,7 @@ After downloading the Docker image, the server will begin running on your robot.
 [stretch_driver-3] [INFO] [1727454898.725969113] [stretch_driver]: Changed to mode = position
 ```
 
-## On a Computer with a GPU
+## Run the GPU Computer's Script
 
 Now you need to start the container on your GPU computer. To use the script, run the following command in the **stretch-ai** repository on the robot:
 
@@ -175,7 +175,7 @@ If the `view_images` app doesn't work, the most common issue is that the GPU com
 
 If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai/tree/feature/documentation?tab=readme-ov-file#language-directed-pick-and-place).
 
-### Developing with the Docker Installation
+## Develop with the Docker Installation
 
 You can use the same Docker installation for development on your GPU computer. To do so, you can mount your local copy of the **stretch-ai** repository on your GPU computer into the **stretch-ai** container running on your GPU computer. This enables you to edit the files on your local copy of the **stretch-ai** repository and run them in the container.
 
