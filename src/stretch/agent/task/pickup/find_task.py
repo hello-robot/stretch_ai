@@ -116,11 +116,19 @@ class FindObjectTask:
         task.add_operation(search_for_object)
         task.add_operation(go_to_object)
 
+        # Add success connections
         if add_rotate:
             task.connect_on_success(go_to_navigation_mode.name, rotate_in_place.name)
             task.connect_on_success(rotate_in_place.name, search_for_object.name)
         else:
             task.connect_on_success(go_to_navigation_mode.name, search_for_object.name)
-        task.connect_on_success(search_for_object.name, go_to_object.name)
+
+        # Add failures
+        if add_rotate:
+            # If we fail to find an object, rotate in place to find one.
+            task.connect_on_failure(go_to_object.name, rotate_in_place.name)
+        else:
+            # If we fail to find an object, go back to the beginning and search again.
+            task.connect_on_failure(go_to_object.name, search_for_object.name)
 
         return task
