@@ -27,7 +27,7 @@ To help you get started more quickly, we provide two pre-built [Docker](<https:/
 
 First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
 
-[Instructions for Installing the Docker Version of stretch-ai](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
+[Instructions for Installing the Docker Version of **stretch-ai**](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
 
 Once you've completed this installation, you can start the server on your Stretch robot.
 
@@ -109,7 +109,7 @@ Finally:
 
 See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
 
-## Installation
+## Installation from Source
 
 Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
 
