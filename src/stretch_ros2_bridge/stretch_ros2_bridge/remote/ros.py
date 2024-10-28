@@ -226,7 +226,7 @@ class StretchRosInterface(Node):
             pose[self.Idx.WRIST_PITCH] = -np.pi / 4
         # We always have yaw
         pose[self.Idx.WRIST_YAW] = j_status[ROS_WRIST_YAW]
-        
+
         # Head joints
         pose[self.Idx.HEAD_PAN] = j_status[ROS_HEAD_PAN]
         pose[self.Idx.HEAD_TILT] = j_status[ROS_HEAD_TILT]
