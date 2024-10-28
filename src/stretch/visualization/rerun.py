@@ -9,6 +9,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 import time
 import timeit
 from typing import List, Optional, Tuple, Union
@@ -23,7 +24,10 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.motion import HelloStretchIdx
 from stretch.perception.wrapper import OvmmPerception
+from stretch.utils.logger import Logger
 from stretch.visualization import urdf_visualizer
+
+logger = Logger(__name__)
 
 
 def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -182,6 +186,7 @@ class RerunVisualizer:
     def __init__(
         self,
         display_robot_mesh: bool = True,
+        spawn_gui: bool = True,
         open_browser: bool = False,
         server_memory_limit: str = "4GB",
         collapse_panels: bool = True,
@@ -196,7 +201,13 @@ class RerunVisualizer:
             collapse_panels (bool): Set to false to have customizable rerun panels
         """
         self.open_browser = open_browser
-        rr.init("Stretch_robot", spawn=(not open_browser))
+        if spawn_gui or open_browser:
+            # Check environment variables to see if this is docker
+            if "DOCKER" in os.environ:
+                spawn_gui = False
+                open_browser = False
+                logger.warning("Docker environment detected. Disabling GUI.")
+        rr.init("Stretch_robot", spawn=spawn_gui)
         if open_browser:
             rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 

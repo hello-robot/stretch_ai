@@ -89,7 +89,7 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
-if [ $INSTALL_TORCH_GEOMETRIC == "true" ]; then
+if [ $INSTALL_TORCH_GEOMETRIC = "true" ]; then
     echo "   - torch-geometric"
     echo "   - torch-cluster"
     echo "   - torch-scatter"
@@ -131,7 +131,7 @@ git lfs install
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then
     echo "Removing existing environment..."
-    $MAMBA env remove -n $ENV_NAME -y
+    $MAMBA env remove -n $ENV_NAME -y || true
 fi
 # If using cpu only, create a separate environment
 if [ "$CPU_ONLY" == "true" ]; then

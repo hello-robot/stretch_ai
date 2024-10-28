@@ -7,7 +7,7 @@
 
 *This repository is currently under active development and is subject to change.*
 
-It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in real homes. It contains code for:
+**stretch-ai** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for
 
 - grasping
 - manipulation
@@ -17,57 +17,66 @@ It is a pre-release codebase designed to enable developers to build intelligent 
 - text to speech and speech to text
 - visualization and debugging
 
-This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
+Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
-## Quickstart
+## Quick-start Guide
 
-After following the [installation instructions](#installation), start the server on your robot:
+Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing **stretch-ai** from source can be challenging.
+
+To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
+
+First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
+
+[Instructions for Installing the Docker Version of **stretch-ai**](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
+
+Once you've completed this installation, you can start the server on your Stretch robot.
 
 ```bash
-ros2 launch stretch_ros2_bridge server.launch.py
+./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-Make sure the core test app runs:
+Then, you can start the client on your GPU computer.
 
-```python
-python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```bash
+./scripts/run_stretch_ai_gpu_client.sh
 ```
 
-You should see windows popping up with camera viers from the robot, and the arm should move into a default position. The head should also turn to face the robot hand. If this all happens, you are good to go! Press `q` to quit the app.
+### Language-Directed Pick and Place
 
-Then, on your PC, you can easily send commands and stream data:
+Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
 
-```python
-from stretch.agent import RobotClient
-robot = RobotClient(robot_ip="192.168.1.15")  # Replace with your robot's IP
-# On future connection attempts, the IP address can be left blank
+For this application, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
 
-# Turn head towards robot's hand
-robot.move_to_manip_posture()
+While attempting to perform this task, Stretch will speak to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings on Stretch's computer should be set so that you can hear what Stretch says.
 
-# Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
-robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
+Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
 
-# Turn head towards robot's base and switch base to navigation mode
-# In navigation mode, we can stream velocity commands to the base for smooth motions, and base
-# rotations are enabled
-robot.move_to_nav_posture()
+You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot.
 
-# Move the robot back to origin
-# move_base_to() is only allowed in navigation mode
-robot.move_base_to([0, 0, 0])
-
-# Move the robot 0.5m forward
-robot.move_base_to([0.5, 0, 0], relative=True)
-
-# Rotate the robot 90 degrees to the left
-robot.move_base_to([0, 0, 3.14159/2], relative=True)
-
-# And to the right
-robot.move_base_to([0, 0, -3.14159/2], relative=True)
+```bash
+./scripts/set_robot_ip.sh #.#.#.#
 ```
 
-You can find this code in [examples/simple_navigation.py](examples/simple_navigation.py).
+*Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.*
+
+Next, run the application in the Docker container on your GPU computer.
+
+```bash
+python -m stretch.app.ai_pickup
+```
+
+It will first spend time downloading various models that it depends on. Then, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
+
+```bash
+Enter the target object: brown moose toy
+Enter the target receptacle: white laundry basket 
+```
+
+![Example of using the ai_pickup app with a toy moose and a laundry basket.](./docs/images/ai_pickup_moose_and_basket_example.jpg)
+
+At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
+
+Once you're ready to learn more about **stretch-ai**, you can try out a variety of applications (apps) that demonstrate various capabilities.
 
 ## Apps
 
@@ -100,7 +109,7 @@ Finally:
 
 See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
 
-## Installation
+## Installation from Source
 
 Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
 
