@@ -110,7 +110,7 @@ instance_memory:
     # Set this value by experimting with:
     #   python -m stretch.app.query --threshold 0.05
     # You can change the threshold to anything that makes sense.
-    feature_match_threshold: 0.05
+    feature_match_threshold: 0.10
 
 # TAMP parameters
 guarantee_instance_is_reachable: True
