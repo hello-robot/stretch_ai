@@ -662,4 +662,5 @@ class RerunVisualizer:
                     time.sleep(sleep_time)
 
             except Exception as e:
-                print(e)
+                logger.error(e)
+                raise e
