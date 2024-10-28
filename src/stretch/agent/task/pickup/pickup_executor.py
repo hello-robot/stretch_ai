@@ -11,6 +11,7 @@ from typing import List, Tuple
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
+from stretch.agent.task.pickup.find_task import FindObjectTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.core import AbstractRobotClient
 from stretch.utils.logger import Logger
@@ -59,6 +60,14 @@ class PickupExecutor:
         self._open_loop = open_loop
 
     def _pickup(self, target_object: str, target_receptacle: str) -> None:
+        """Create a task to pick up the object and execute it.
+
+        Args:
+            target_object: The object to pick up.
+            target_receptacle: The receptacle to place the object in.
+        """
+
+        logger.alert(f"[Pickup task] Pickup: {target_object} Place: {target_receptacle}")
 
         # After the robot has started...
         try:
@@ -70,6 +79,31 @@ class PickupExecutor:
                 use_visual_servoing_for_grasp=not self._open_loop,
             )
             task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
+    def _find(self, target_object: str) -> None:
+        """Create a task to find the object and execute it.
+
+        Args:
+            target_object: The object to find.
+        """
+
+        logger.alert(f"[Find task] Find: {target_object}")
+
+        # After the robot has started...
+        try:
+            find_task = FindObjectTask(
+                self.agent,
+                target_object=target_object,
+                matching=self._match_method,
+            )
+            task = find_task.get_task(add_rotate=True)
         except Exception as e:
             print(f"Error creating task: {e}")
             self.robot.stop()
@@ -127,6 +161,8 @@ class PickupExecutor:
                 self.agent.go_home()
             elif command == "explore":
                 self.agent.explore()
+            elif command == "find":
+                self._find(args)
             elif command == "nod_head":
                 self.emote_task.get_task("nod_head").run()
             elif command == "shake_head":
