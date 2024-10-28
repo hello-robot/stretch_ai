@@ -42,6 +42,7 @@ Then, you can start the client on your GPU computer.
 ```
 
 **Experimental support for RE2:** on your robot, you can run a version of the server with no d405 camera support. Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
+
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server_no_d405.sh
 ```
