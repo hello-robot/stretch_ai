@@ -175,7 +175,7 @@ If the `view_images` app doesn't work, the most common issue is that the GPU com
 
 If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai/tree/feature/documentation?tab=readme-ov-file#language-directed-pick-and-place).
 
-## Developing with the Docker Installation
+## Develop with the Docker Installation
 
 You can use the same Docker installation for development on your GPU computer. To do so, you can mount your local copy of the **stretch-ai** repository on your GPU computer into the **stretch-ai** container running on your GPU computer. This enables you to edit the files on your local copy of the **stretch-ai** repository and run them in the container.
 
