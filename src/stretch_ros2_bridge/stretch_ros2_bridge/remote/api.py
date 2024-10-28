@@ -363,8 +363,8 @@ class StretchClient(AbstractRobotClient):
         pan: float,
         tilt: float,
         blocking: bool = False,
-        threshold: float = 0.1,
-        timeout: float = 2.0,
+        threshold: float = 0.2,
+        timeout: float = 0.8,
     ):
         """Send head commands"""
         self.head.goto_joint_positions(pan=float(pan), tilt=float(tilt), blocking=blocking)
@@ -377,6 +377,10 @@ class StretchClient(AbstractRobotClient):
                     t1 - t0 > timeout
                 ):
                     break
+                else:
+                    time.sleep(0.1)
+                    print("head pan error", abs(cur_pan - pan), "head tilt error", abs(cur_tilt - tilt))
+        time.sleep(0.2)
 
     def arm_to(
         self,

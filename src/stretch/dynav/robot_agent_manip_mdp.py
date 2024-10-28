@@ -115,7 +115,7 @@ class RobotAgentMDP:
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.5, -0.3, -1.1, -1.9]:
+        for pan in [0.6, 0.0, -0.5, -1.0, -1.5]:
             for tilt in [-0.6]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
@@ -124,15 +124,15 @@ class RobotAgentMDP:
         print("*" * 10, "Rotate in place", "*" * 10)
         xyt = self.robot.get_base_pose()
         self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
-        for i in range(8):
-            xyt[2] += 2 * np.pi / 8
+        for i in range(10):
+            xyt[2] += 2 * np.pi / 10
             self.robot.move_base_to(xyt, blocking=True)
             self.update()
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
-        # Sleep some time so the robot rgbd observations are more likely to be updated
-
+        # Sleep some time for the robot camera to focus
+        # time.sleep(0.3)
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
