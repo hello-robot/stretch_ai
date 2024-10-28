@@ -7,7 +7,7 @@
 
 *This repository is currently under active development and is subject to change.*
 
-Stretch-ai designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
+**stretch-ai** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for
 
 - grasping
 - manipulation
@@ -19,15 +19,15 @@ Stretch-ai designed to help researchers and developers build intelligent behavio
 
 Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
-## Quickstart
+## Quick-start Guide
 
-Artificial intelligence (AI) capabilities for robots typically depend on numerous external sources with complex interdependencies, including trained models. Consequently, installing stretch-ai from source can be challenging.
+Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing **stretch-ai** from source can be challenging.
 
-To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can quickly download and use via two shell scripts.
+To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
-To get started, you will need to install software on your Stretch robot and another computer with a GPU. Use the following link to go to the installation instructions.
+First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
 
-[Instructions for Installing Docker Version of stretch-ai](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
+[Instructions for Installing the Docker Version of stretch-ai](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
 
 Once you've completed this installation, you can start the server on your Stretch robot.
 
@@ -35,7 +35,7 @@ Once you've completed this installation, you can start the server on your Stretc
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-Then, you can start the client on your computer that has a GPU.
+Then, you can start the client on your GPU computer.
 
 ```bash
 ./scripts/run_stretch_ai_gpu_client.sh
@@ -43,19 +43,21 @@ Then, you can start the client on your computer that has a GPU.
 
 ### Language-Directed Pick and Place
 
-Now that you have the server running on Stretch and the client running on your computer with a GPU (GPU computer), we recommend you try a demonstration of language-directed pick and place.
+Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
 
 For this application, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
 
-While attempting to perform this task, Stretch will speak in order to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings in Ubuntu on Stretch's computer should be set so that you can hear what Stretch says.
+While attempting to perform this task, Stretch will speak to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings on Stretch's computer should be set so that you can hear what Stretch says.
 
-On your GPU computer, run the following commands in the Docker container that you started with the script above.
+Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
 
-First, you need to let the GPU computer know the IP address for your Stretch robot. Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.
+You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot.
 
 ```bash
 ./scripts/set_robot_ip.sh #.#.#.#
 ```
+
+*Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.*
 
 Next, run the application in the Docker container on your GPU computer.
 
@@ -63,7 +65,7 @@ Next, run the application in the Docker container on your GPU computer.
 python -m stretch.app.ai_pickup
 ```
 
-It will first spend time downloading various models that it depends on. Then it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and receptacle.
+It will first spend time downloading various models that it depends on. Then, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
 ```bash
 Enter the target object: brown moose toy
@@ -72,9 +74,9 @@ Enter the target receptacle: white laundry basket
 
 ![Example of using the ai_pickup app with a toy moose and a laundry basket.](./docs/images/ai_pickup_moose_and_basket_example.jpg)
 
-At Hello Robot, people have been able to command the robot to pick up a variety of objects from the floor and place them in a nearby container, such as baskets and boxes.
+At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
-You can then move on to the [apps](#apps) section to try out other applications, or check out [simple API instructions](docs/simple_api.md) to write your own code.
+Once you're ready to learn more about **stretch-ai**, you can try out a variety of applications (apps) that demonstrate various capabilities.
 
 ## Apps
 
