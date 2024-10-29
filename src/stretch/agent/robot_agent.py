@@ -51,7 +51,7 @@ class RobotAgent:
     normalize_embeddings: bool = False
 
     # Default configuration file
-    default_config_path = "config/default_planner.yaml"
+    default_config_path = "default_planner.yaml"
 
     # Sleep times
     # This sleep is before starting a head sweep
