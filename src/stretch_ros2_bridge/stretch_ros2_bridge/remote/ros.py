@@ -258,10 +258,13 @@ class StretchRosInterface(Node):
             joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
         if self.ARM_JOINT in joint_goals:
             joint_pose[self.Idx.ARM] = joint_goals[self.ARM_JOINT]
-        if self.WRIST_ROLL in joint_goals:
+        if self.WRIST_ROLL in joint_goals and ROS_WRIST_ROLL in self.joint_status:
+            # Only set wrist roll if we have it
             joint_pose[self.Idx.WRIST_ROLL] = joint_goals[self.WRIST_ROLL]
-        if self.WRIST_PITCH in joint_goals:
+        if self.WRIST_PITCH in joint_goals and ROS_WRIST_PITCH in self.joint_status:
+            # Only set wrist pitch if we have it
             joint_pose[self.Idx.WRIST_PITCH] = joint_goals[self.WRIST_PITCH]
+        # We always have yaw
         if self.WRIST_YAW in joint_goals:
             joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
         if self.GRIPPER_FINGER in joint_goals:
