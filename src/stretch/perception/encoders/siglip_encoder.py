@@ -27,14 +27,37 @@ class SiglipEncoder(BaseImageTextEncoder):
     Generally, these features are much better than OpenAI CLIP for open-vocabulary object detection.
     """
 
-    def __init__(self, normalize: bool = True, device: Optional[str] = None, **kwargs) -> None:
+    def __init__(
+        self,
+        normalize: bool = True,
+        device: Optional[str] = None,
+        version: Optional[str] = None,
+        feature_matching_threshold: float = 0.05,
+        **kwargs,
+    ) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.normalize = normalize
-        self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
-        self.tokenizer = AutoTokenizer.from_pretrained("google/siglip-so400m-patch14-384")
-        self.model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(self.device)
+        self.feature_matching_threshold = feature_matching_threshold
+
+        if version is None:
+            version = "base"
+
+        if version == "base":
+            model_name = "google/siglip-base-patch16-224"
+        elif version == "so400m":
+            model_name = "google/siglip-so400m-patch14-384"
+        elif version == "so800m":
+            model_name = "google/siglip-so800m-patch14-384"
+        else:
+            raise ValueError(
+                f"Invalid version {version}: must be one of 'base', 'so400m', 'so800m'"
+            )
+
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name).to(self.device)
 
     def encode_image(
         self, image: Union[torch.tensor, np.ndarray], image_shape=(360, 270)

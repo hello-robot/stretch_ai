@@ -483,9 +483,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
+
             time.sleep(0.1)
             self._wait_for_head(whole_body_q, block_id=step)
             time.sleep(0.1)
+
+            # time.sleep(0.25)
+            # self._wait_for_head(whole_body_q, block_id=step)
+            # time.sleep(0.25)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
@@ -700,6 +705,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._state = None  # Low level state includes joint angles and base XYT
         self._servo = None  # Visual servoing state includes smaller images
         self._thread = None
+        self._state_thread = None
         self._finish = False
         self._last_step = -1
 
@@ -1155,7 +1161,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if "step" in state:
                 self._last_step = max(self._last_step, state["step"])
                 if state["step"] < self._last_step:
-                    logger.warning("Dropping out-of-date state message")
+                    logger.warning(
+                        f"Dropping out-of-date state message: {state['step']} < {self._last_step}"
+                    )
             self._state = state
             self._control_mode = state["control_mode"]
             self._at_goal = state["at_goal"]
@@ -1217,6 +1225,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return observation
 
     def get_images(self, compute_xyz=False):
+        """Get the current RGB and depth images from the robot.
+
+        Args:
+            compute_xyz (bool): whether to compute the XYZ image
+
+        Returns:
+            rgb (np.ndarray): the RGB image
+            depth (np.ndarray): the depth image
+            xyz (np.ndarray): the XYZ image if compute_xyz is True
+        """
         obs = self.get_observation()
         if compute_xyz:
             return obs.rgb, obs.depth, obs.xyz
@@ -1224,10 +1242,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return obs.rgb, obs.depth
 
     def get_camera_K(self):
+        """Get the camera intrinsics.
+
+        Returns:
+            camera_K (np.ndarray): the camera intrinsics
+        """
         obs = self.get_observation()
         return obs.camera_K
 
     def get_head_pose(self):
+        """Get the head pose.
+
+        Returns:
+            head_pose (np.ndarray): the head pose as a SE(3) matrix [R | t]
+        """
         obs = self.get_observation()
         return obs.camera_pose
 
@@ -1260,6 +1288,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 relative,
                 blocking=last_waypoint,
                 timeout=final_timeout if last_waypoint else per_waypoint_timeout,
+                verbose=verbose,
             )
             if not last_waypoint:
                 self.wait_for_waypoint(
