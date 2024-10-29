@@ -7,7 +7,7 @@
 
 *This repository is currently under active development and is subject to change.*
 
-**stretch-ai** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for
+*stretch-ai* is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for
 
 - grasping
 - manipulation
@@ -21,7 +21,7 @@ Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LIC
 
 ## Hardware Requirements
 
-We recommend the following hardware to run **stretch-ai**. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
+We recommend the following hardware to run *stretch-ai*. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
 
 - **[Stretch 3](https://hello-robot.com/stretch-3-product) from [Hello Robot](https://hello-robot.com/)**
   - When *Checking Software*, `stretch_system_check.py` should report that all software passes.
@@ -37,13 +37,13 @@ To use the learning-from-demonstration (LfD) code you'll need the [Stretch Dexte
 
 ## Quick-start Guide
 
-Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing **stretch-ai** from source can be challenging.
+Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing *stretch-ai* from source can be challenging.
 
 To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
 First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
 
-[Instructions for Installing the Docker Version of **stretch-ai**](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
+[Instructions for Installing the Docker Version of *stretch-ai*](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
 
 Once you've completed this installation, you can start the server on your Stretch robot.
 
