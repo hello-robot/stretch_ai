@@ -24,7 +24,7 @@ Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LIC
 We recommend the following hardware to run **stretch-ai**. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
 
 - **[Stretch 3](https://hello-robot.com/stretch-3-product) from [Hello Robot](https://hello-robot.com/)**
-  - When *Checking Software*, `stretch_robot_system_check.py` should report that all software passes.
+  - When *Checking Software*, `stretch_system_check.py` should report that all software passes.
   - You can find detailed instructions in the [official guide for updating Stretch 3's software](https://docs.hello-robot.com/0.3/software/updating_software/).
 - **Computer with an NVIDIA GPU**
   - The computer should be running Ubuntu 22.04. Later versions might work, but have not been tested.
