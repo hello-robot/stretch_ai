@@ -97,6 +97,7 @@ class FindObjectTask:
             match_method=matching,
             require_receptacle=False,
         )
+        # Set the target object class
         search_for_object.set_target_object_class(self.target_object)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
