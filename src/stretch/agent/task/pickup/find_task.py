@@ -95,6 +95,7 @@ class FindObjectTask:
             agent=self.agent,
             retry_on_failure=True,
             match_method=matching,
+            require_receptacle=False,
         )
         search_for_object.set_target_object_class(self.target_object)
 

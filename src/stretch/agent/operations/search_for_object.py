@@ -222,8 +222,6 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     def __init__(self, require_receptacle: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.require_receptacle = require_receptacle
-        print(self.robot)
-        breakpoint()
 
     def can_start(self) -> bool:
         if self.require_receptacle:
