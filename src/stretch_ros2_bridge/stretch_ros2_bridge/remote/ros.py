@@ -221,9 +221,9 @@ class StretchRosInterface(Node):
         if ROS_WRIST_ROLL in j_status:
             pose[self.Idx.WRIST_ROLL] = j_status[ROS_WRIST_ROLL]
             pose[self.Idx.WRIST_PITCH] = j_status[ROS_WRIST_PITCH]
-        else:
-            pose[self.Idx.WRIST_ROLL] = 0
-            pose[self.Idx.WRIST_PITCH] = -np.pi / 4
+        # else:
+        #    pose[self.Idx.WRIST_ROLL] = 0
+        #    pose[self.Idx.WRIST_PITCH] = -np.pi / 4
         # We always have yaw
         pose[self.Idx.WRIST_YAW] = j_status[ROS_WRIST_YAW]
 
