@@ -72,7 +72,7 @@ class RobotAgent:
     ):
         self.reset_object_plans()
         if parameters is None:
-            parameters = Parameters(get_parameters(self.default_config_path))
+            parameters = get_parameters(self.default_config_path)
         elif isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
         elif isinstance(parameters, Parameters):
