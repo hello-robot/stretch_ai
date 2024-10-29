@@ -96,9 +96,7 @@ class FindObjectTask:
             retry_on_failure=True,
             match_method=matching,
         )
-        if self.agent.target_object is not None:
-            # Overwrite the default object to search for
-            search_for_object.set_target_object_class(self.agent.target_object)
+        search_for_object.set_target_object_class(self.target_object)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
