@@ -161,6 +161,8 @@ class StretchRosInterface(Node):
         robot_model = fleet_id.split("-")[1]
         print(f"Using fleet ID: {fleet_id}")
         print(f"Using robot model: {robot_model}")
+        self._fleet_id = fleet_id
+        self._robot_model = robot_model
 
         # Initialize cameras
         self._color_topic = DEFAULT_COLOR_TOPIC if color_topic is None else color_topic
