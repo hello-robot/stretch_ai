@@ -83,10 +83,12 @@ class RobotAgent:
         self.robot = robot
         self.show_instances_detected = show_instances_detected
 
+        # Create a semantic sensor
         self.semantic_sensor = semantic_sensor
 
-        # Create it from the config file
+        # If the semantic sensor is not provided, we will create it from the config file
         if use_instance_memory and self.semantic_sensor is None:
+            # Create a semantic sensor
             self.semantic_sensor = self.create_semantic_sensor()
 
         self.pos_err_threshold = self.parameters["trajectory_pos_err_threshold"]
