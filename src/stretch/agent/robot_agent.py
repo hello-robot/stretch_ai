@@ -32,7 +32,6 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
-from stretch.perception import create_semantic_sensor
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
@@ -2119,6 +2118,8 @@ class RobotAgent:
 
     def create_semantic_sensor(self) -> OvmmPerception:
         """Create a semantic sensor."""
+        from stretch.perception import create_semantic_sensor
+
         return create_semantic_sensor(self.parameters)
 
     def save_map(self, filename: Optional[str] = None) -> None:
