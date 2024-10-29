@@ -108,17 +108,24 @@ class PickupExecutor:
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
                 i += 1
+                if i >= len(response):
+                    logger.error(
+                        "Pickup without place! Try giving a full pick-and-place instruction."
+                    )
+                    break
                 next_command, next_args = response[i]
                 if next_command != "place":
                     i -= 1
-                    logger.error("Pickup without place! Doing nothing.")
+                    logger.error(
+                        "Pickup without place! Try giving a full pick-and-place instruction."
+                    )
                 else:
                     logger.info(f"{i} {next_command} {next_args}")
                     logger.info(f"[Pickup task] Place: {next_args}")
                 target_receptacle = next_args
                 self._pickup(target_object, target_receptacle)
             elif command == "place":
-                logger.error("Place without pickup! Doing nothing.")
+                logger.error("Place without pickup! Try giving a full pick-and-place instruction.")
             elif command == "wave":
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
@@ -127,6 +134,11 @@ class PickupExecutor:
                 self.agent.go_home()
             elif command == "explore":
                 self.agent.explore()
+            elif command == "find":
+                # Create a task to find the object
+                logger.error(
+                    "Find command not implemented. Try giving a full pick-and-place instruction."
+                )
             elif command == "nod_head":
                 self.emote_task.get_task("nod_head").run()
             elif command == "shake_head":
