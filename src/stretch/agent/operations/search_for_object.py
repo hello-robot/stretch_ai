@@ -207,9 +207,20 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     # Important parameters
     plan_for_manipulation: bool = True
     update_at_start: bool = False
+    require_receptacle: bool = True
+
+    def __init__(self, require_receptacle: bool = True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.require_receptacle = require_receptacle
 
     def can_start(self) -> bool:
-        self.attempt("If receptacle is found, we can start searching for objects.")
+        if self.require_receptacle:
+            self.attempt("If receptacle is found, we can start searching for objects.")
+            return self.agent.current_receptacle is not None
+        else:
+            self.attempt("Will start searching for objects.")
+            return True
+
         return self.agent.current_receptacle is not None
 
     def run(self) -> None:
