@@ -14,6 +14,7 @@ from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.find_task import FindObjectTask
 from stretch.agent.task.pickup.pick_task import PickObjectTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
+from stretch.agent.task.pickup.place_task import PlaceOnReceptacleTask
 from stretch.core import AbstractRobotClient
 from stretch.utils.logger import Logger
 
@@ -110,6 +111,30 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
+    def _place(self, target_receptacle: str) -> None:
+        """Create a task to place the object and execute it.
+
+        Args:
+            target_receptacle: The receptacle to place the object in.
+        """
+        logger.alert(f"[Pickup task] Place: {target_receptacle}")
+
+        # After the robot has started...
+        try:
+            place_task = PlaceOnReceptacleTask(
+                self.agent,
+                target_receptacle=target_receptacle,
+                matching=self._match_method,
+            )
+            task = place_task.get_task(add_rotate=True)
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
     def _find(self, target_object: str) -> None:
         """Create a task to find the object and execute it.
 
@@ -186,7 +211,10 @@ class PickupExecutor:
                 target_receptacle = next_args
                 self._pickup(target_object, target_receptacle)
             elif command == "place":
-                logger.error("Place without pickup! Try giving a full pick-and-place instruction.")
+                logger.warning(
+                    "Place without pickup! Try giving a full pick-and-place instruction."
+                )
+                self._place(args)
             elif command == "wave":
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
