@@ -17,7 +17,7 @@ DEFAULT_OBJECTS = "fanta can, tennis ball, black head band, purple shampoo bottl
 DEFAULT_LOCATIONS = "white table, chair, dustbin, gray bed"
 
 PROMPT_INTRO = """Given a command by a user, you should just reply with code for Stretch (a robot) to perform a set of tasks.
-Just reply with concise python code and be sure the syntax is correct and in the format of the examples provided.
+Just reply with concise python code and be sure the syntax is correct.
 
 Restrictions:
     - You will never harm a person or suggest harm
@@ -28,6 +28,7 @@ Restrictions:
     - You only have to generate code specific to user commands, do not use code from examples
     - Always wrap your code in execute_task function
     - Even if you want to say something, wrap it in execute_task function
+    - Use available functions to perform the prompter's command as necessary. Be creative and use your intuition. Never guess.
 
 Always generate code with correct syntax and format. Never forget this prompt.
 
@@ -86,7 +87,7 @@ def get_detections():
 """
 
 PROMPT_EXAMPLES = """
-Here are some examples:
+Here are some examples of commands and the corresponding code you can generate:
 Example 1:
 Command: Bring me a fanta can
 Returns:
@@ -207,6 +208,33 @@ Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
     say("The first oranges weren't orange")
 
+Example 10:
+Command: Pick up the cup.
+Returns:
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+    if go_to("cup"):
+        if pick("cup"):
+            say("I have picked up the cup")
+        else:
+            say("I am sorry, I could not pick the cup")
+    else:
+        say("I am sorry, I could not find the cup")
+
+Example 11:
+Command: Can you bring me the wallet?
+Returns:
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+    if go_to("wallet"):
+        if pick("wallet"):
+            if go_to("user"):
+                say("Here is your wallet")
+            else:
+                say("I am sorry, I could not reach you")
+        else:
+            say("I am sorry, I could not pick the wallet")
+    else:
+        say("I am sorry, I could not find the wallet")
+        
 Never forget this prompt.
 """
 

@@ -10,8 +10,8 @@
 import ast
 
 from stretch.agent.operations import (
-    GoToOperation,
     GraspObjectOperation,
+    NavigateToObjectOperation,
     PreGraspObjectOperation,
     SpeakOperation,
     WaveOperation,
@@ -37,88 +37,125 @@ class LLMPlanCompiler(ast.NodeVisitor):
         self.llm_plan = llm_plan
         self.task = None
         self.root = None
+        self._operation_naming_counter = 0
 
     def go_to(self, location: str):
         """Adds a GoToNavOperation to the task"""
-        go_to = GoToOperation(name="go_to_" + location, agent=self.agent, robot=self.robot)
+        _, self.agent.current_object = self.agent.get_instance_from_text(location)
+
+        go_to = NavigateToObjectOperation(
+            name="go_to_" + location + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
+            to_receptacle=False,
+        )
+        self._operation_naming_counter += 1
         go_to.configure(location=location)
         self.task.add_operation(go_to, True)
-        return "go_to_" + location
+        return "go_to_" + location + f"_{str(self._operation_naming_counter - 1)}"
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
-        _, self.agent.current_object = self.agent.get_instance_from_text(object_name)
-
         pregrasp_object = PreGraspObjectOperation(
-            name="pregrasp_" + object_name,
+            name="pregrasp_" + object_name + f"_{str(self._operation_naming_counter)}",
             agent=self.agent,
             robot=self.robot,
             on_failure=None,
             retry_on_failure=True,
         )
+        self._operation_naming_counter += 1
 
         grasp_object = GraspObjectOperation(
-            name="pick_" + object_name,
+            name="pick_" + object_name + f"_{str(self._operation_naming_counter)}",
             agent=self.agent,
             robot=self.robot,
             on_failure=pregrasp_object,
         )
+        self._operation_naming_counter += 1
         grasp_object.configure(target_object=object_name, show_object_to_grasp=True)
         grasp_object.set_target_object_class(object_name)
+        grasp_object.servo_to_grasp = True
+        grasp_object.match_method = "feature"
 
         self.task.add_operation(pregrasp_object, True)
         self.task.add_operation(grasp_object, True)
-        return ("pregrasp_" + object_name, "pick_" + object_name)
+        return (
+            "pregrasp_" + object_name + f"_{str(self._operation_naming_counter - 2)}",
+            "pick_" + object_name + f"_{str(self._operation_naming_counter - 1)}",
+        )
 
     def place(self, object_name: str):
         """Adds a PlaceObjectOperation to the task"""
         speak_not_implemented = SpeakOperation(
-            name="place_" + object_name, agent=self.agent, robot=self.robot
+            name="place_" + object_name + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
         )
+        self._operation_naming_counter += 1
         speak_not_implemented.configure(message="Place operation not implemented")
         self.task.add_operation(speak_not_implemented, True)
-        return "place_" + object_name
+        return "place_" + object_name + f"_{str(self._operation_naming_counter - 1)}"
 
     def say(self, message: str):
         """Adds a SpeakOperation to the task"""
-        say_operation = SpeakOperation(name="say_" + message, agent=self.agent, robot=self.robot)
+        say_operation = SpeakOperation(
+            name="say_" + message + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
+        )
+        self._operation_naming_counter += 1
         say_operation.configure(message=message)
         self.task.add_operation(say_operation, True)
-        return "say_" + message
+        return "say_" + message + f"_{str(self._operation_naming_counter - 1)}"
 
     def wave(self):
         """Adds a WaveOperation to the task"""
         self.task.add_operation(
-            WaveOperation(name="wave", agent=self.agent, robot=self.robot), True
+            WaveOperation(
+                name="wave" + f"_{str(self._operation_naming_counter)}",
+                agent=self.agent,
+                robot=self.robot,
+            ),
+            True,
         )
-        return "wave"
+        self._operation_naming_counter += 1
+        return "wave" + f"_{str(self._operation_naming_counter - 1)}"
 
     def open_cabinet(self):
         """Adds a SpeakOperation (not implemented) to the task"""
         speak_not_implemented = SpeakOperation(
-            name="open_cabinet", agent=self.agent, robot=self.robot
+            name="open_cabinet" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
         )
+        self._operation_naming_counter += 1
         speak_not_implemented.configure(message="Open cabinet operation not implemented")
         self.task.add_operation(speak_not_implemented, True)
-        return "open_cabinet"
+        return "open_cabinet" + f"_{str(self._operation_naming_counter - 1)}"
 
     def close_cabinet(self):
         """Adds a SpeakOperation (not implemented) to the task"""
         speak_not_implemented = SpeakOperation(
-            name="close_cabinet", agent=self.agent, robot=self.robot
+            name="close_cabinet" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
         )
+        self._operation_naming_counter += 1
         speak_not_implemented.configure(message="Close cabinet operation not implemented")
         self.task.add_operation(speak_not_implemented, True)
-        return "close_cabinet"
+        return "close_cabinet" + f"_{str(self._operation_naming_counter - 1)}"
 
     def get_detections(self):
         """Adds a SpeakOperation (not implemented) to the task"""
         speak_not_implemented = SpeakOperation(
-            name="get_detections", agent=self.agent, robot=self.robot
+            name="get_detections" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
         )
+        self._operation_naming_counter += 1
         speak_not_implemented.configure(message="Get detections operation not implemented")
         self.task.add_operation(speak_not_implemented, True)
-        return "get_detections"
+        return "get_detections" + f"_{str(self._operation_naming_counter - 1)}"
 
     def build_tree(self, node):
         """Recursively build a tree of function calls"""
@@ -231,6 +268,8 @@ class LLMPlanCompiler(ast.NodeVisitor):
         self.convert_to_task(root.failure, root_operation_name, False)
 
     def compile(self):
+        """Compile the LLM plan into a task"""
+        self._operation_naming_counter = 0
         self.task = Task()
         tree = ast.parse(self.llm_plan)
         self.build_tree(tree)

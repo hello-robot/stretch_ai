@@ -13,6 +13,8 @@
 # LICENSE file in the root directory of this source tree.
 import datetime
 import pprint
+import time
+from typing import Optional
 
 import click
 
@@ -46,6 +48,7 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
+@click.option("--explore", is_flag=True, help="Explore the environment")
 @click.option("--frame", default=-1, help="Final frame to read from input file")
 @click.option("--text", default="", help="Text to encode")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
@@ -63,7 +66,7 @@ from stretch.perception import create_semantic_sensor
     type=click.Choice(get_llm_choices()),
 )
 @click.option("--explore-iter", default=10, type=int, help="Number of iterations to explore")
-@click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
+@click.option("--target_object", type=str, help="Type of object to pick up and move")
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -73,6 +76,7 @@ def main(
     send_port: int = 4402,
     robot_ip: str = "",
     reset: bool = False,
+    explore: bool = False,
     explore_iter: int = 0,
     output_filename: str = "stretch_output",
     spin: bool = False,
@@ -83,16 +87,16 @@ def main(
     yes: bool = False,
     all_matches: bool = False,
     threshold: float = 0.5,
-    target_object: str = "toy",
+    target_object: Optional[str] = None,
     llm: str = "openai",
 ):
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
     semantic_sensor = create_semantic_sensor(
+        parameters=parameters,
         device_id=device_id,
         verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
     )
 
     real_robot = True
@@ -102,14 +106,13 @@ def main(
 
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
-        recv_port=recv_port,
-        send_port=send_port,
         use_remote_computer=(not local),
         parameters=parameters,
+        enable_rerun_server=True,
     )
-    robot.move_to_nav_posture()
-    agent = RobotAgent(robot, parameters, semantic_sensor)
-    agent.update()
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
+    agent.start()
+    time.sleep(5)
     # agent.voxel_map.read_from_pickle(input_file)
 
     prompt = ObjectManipNavPromptBuilder()
@@ -117,14 +120,18 @@ def main(
 
     print("Starting robot exploration...")
 
-    agent.run_exploration(
-        manual_wait=False,
-        explore_iter=explore_iter,
-        task_goal=target_object,  # arbitrary object to collect
-        # as many instances as possible
-        go_home_at_end=True,
-        visualize=False,
-    )
+    # Run exploration
+    if target_object is not None or explore:
+        if target_object is None:
+            target_object = "toy"
+        agent.run_exploration(
+            manual_wait=False,
+            explore_iter=explore_iter,
+            task_goal=target_object,  # arbitrary object to collect
+            # as many instances as possible
+            go_home_at_end=True,
+            visualize=False,
+        )
 
     while robot.running:
 
@@ -153,7 +160,6 @@ def main(
             continue
 
         plan.run()
-        break
 
 
 if __name__ == "__main__":
