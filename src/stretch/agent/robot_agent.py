@@ -176,7 +176,7 @@ class RobotAgent:
         self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
         if self.parameters.get("motion_planner/shortcut_plans", False):
             self.planner = Shortcut(
-                self.planner, self.parameter.get("motion_planner/shortcut_iter", 100)
+                self.planner, self.parameters.get("motion_planner/shortcut_iter", 100)
             )
         if parameters["motion_planner"]["simplify_plans"]:
             self.planner = SimplifyXYT(
