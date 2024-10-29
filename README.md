@@ -43,9 +43,9 @@ To help you get started more quickly, we provide two pre-built [Docker](<https:/
 
 First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
 
-[Instructions for Installing the Docker Version of *stretch-ai*](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
+[**Instructions for Installing the Docker Version of *stretch-ai***](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
 
-Once you've completed this installation, you can start the server on your Stretch robot.
+Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. The following command starts the server.
 
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server.sh

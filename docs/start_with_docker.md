@@ -47,7 +47,9 @@ git clone https://github.com/hello-robot/stretch_ai.git
 
 ## Run the Robot's Script
 
-The GitHub *stretch-ai* repository provides a startup script for running *stretch-ai* software in a Docker container on your Stretch robot. To use the script, run the following command in the *stretch-ai* repository on the robot:
+The GitHub *stretch-ai* repository provides a startup script for running *stretch-ai* software in a Docker container on your Stretch robot. Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`.
+
+To use the Docker script, run the following command in the *stretch-ai* repository on the robot:
 
 ```
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
