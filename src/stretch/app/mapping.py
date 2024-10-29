@@ -52,10 +52,10 @@ from stretch.perception import create_semantic_sensor
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
-    "--enable-realtime-updates",
-    "--enable_realtime-updates",
+    "--disable-realtime-updates",
+    "--disable_realtime_updates",
     is_flag=True,
-    help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
+    help="Disable real-time updates so the robot will stop and sequentially scan its environment",
 )
 @click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
@@ -77,7 +77,7 @@ def main(
     local: bool = True,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
-    enable_realtime_updates: bool = False,
+    disable_realtime_updates: bool = False,
     save: bool = True,
     **kwargs,
 ):
@@ -90,7 +90,7 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
         enable_rerun_server=True,
-        publish_observations=enable_realtime_updates,
+        publish_observations=not disable_realtime_updates,
     )
     # Call demo_main with all the arguments
     demo_main(
@@ -111,7 +111,7 @@ def main(
         explore_iter=explore_iter,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
-        enable_realtime_updates=enable_realtime_updates,
+        disable_realtime_updates=disable_realtime_updates,
         reset=reset,
         save=save,
         **kwargs,
@@ -137,7 +137,7 @@ def demo_main(
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
-    enable_realtime_updates: bool = False,
+    disable_realtime_updates: bool = False,
     save: bool = True,
     **kwargs,
 ):
@@ -179,7 +179,7 @@ def demo_main(
 
     print("- Start robot agent with data collection")
     demo = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+        robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
     )
     demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
     if reset:

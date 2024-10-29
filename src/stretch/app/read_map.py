@@ -195,6 +195,7 @@ def main(
             semantic_sensor=semantic_sensor,
             voxel_map=loaded_voxel_map,
             use_instance_memory=(run_segmentation or show_instances),
+            enable_realtime_updates=False,
         )
         voxel_map = agent.voxel_map
         if not pkl_is_svm:

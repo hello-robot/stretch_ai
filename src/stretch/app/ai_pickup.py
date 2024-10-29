@@ -99,6 +99,12 @@ from stretch.perception import create_semantic_sensor
     type=float,
     help="Radius of the circle around initial position where the robot is allowed to go.",
 )
+@click.option(
+    "--disable-realtime-updates",
+    "--disable_realtime_updates",
+    is_flag=True,
+    help="Disable real-time updates so the robot will stop and sequentially scan its environment",
+)
 @click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -117,6 +123,7 @@ def main(
     open_loop: bool = False,
     radius: float = 3.0,
     input_path: str = "",
+    disable_realtime_updates: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -133,7 +140,9 @@ def main(
     )
 
     # Agents wrap the robot high level planning interface for now
-    agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
+    )
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
         agent.move_closed_loop([0, 0, 0], max_time=60.0)

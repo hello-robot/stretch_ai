@@ -64,6 +64,12 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option("--explore-iter", default=10, type=int, help="Number of iterations to explore")
 @click.option("--target_object", type=str, default="toy", help="Type of object to pick up and move")
+@click.option(
+    "--disable-realtime-updates",
+    "--disable_realtime_updates",
+    is_flag=True,
+    help="Disable real-time updates so the robot will stop and sequentially scan its environment",
+)
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -85,6 +91,7 @@ def main(
     threshold: float = 0.5,
     target_object: str = "toy",
     llm: str = "openai",
+    disable_realtime_updates: bool = False,
 ):
 
     print("- Load parameters")
@@ -108,7 +115,9 @@ def main(
         parameters=parameters,
     )
     robot.move_to_nav_posture()
-    agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
+    )
     agent.update()
     # agent.voxel_map.read_from_pickle(input_file)
 
