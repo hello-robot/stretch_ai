@@ -56,6 +56,15 @@ class ManagedSearchOperation(ManagedOperation):
         self._object_class_feature = None
 
     def is_match_by_feature(self, instance: Instance) -> bool:
+        """Check if the instance is a match for the target object class by comparing feature vectors.
+
+        Args:
+            instance (Instance): the instance to check
+
+        Returns:
+            bool: True if the instance is a match, False otherwise
+        """
+
         # Compute the feature vector for the object if not saved
         if self._object_class_feature is None:
             self._object_class_feature = self.agent.encode_text(self.object_class)
