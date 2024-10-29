@@ -19,6 +19,22 @@
 
 Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
+## Hardware Requirements
+
+We recommend the following hardware to run **stretch-ai**. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
+
+- **[Stretch 3](https://hello-robot.com/stretch-3-product) from [Hello Robot](https://hello-robot.com/)**
+  - When *Checking Software*, `stretch_robot_system_check.py` should report that all software passes.
+  - You can find detailed instructions in the [official guide for updating Stretch 3's software](https://docs.hello-robot.com/0.3/software/updating_software/).
+- **Computer with an NVIDIA GPU**
+  - The computer should be running Ubuntu 22.04. Later versions might work, but have not been tested.
+  - Most of our testing has used a high-end CPU with an NVIDIA GeForce RTX 4090.
+- **Dedicated WiFi access point**
+  - Performance depends on high-bandwidth, low-latency wireless communication between the robot and the GPU computer.
+  - The official [Stretch WiFi Access Point](https://hello-robot.com/stretch-access-point) provides a tested example.
+
+To use the learning-from-demonstration (LfD) code you'll need the [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit).
+
 ## Quick-start Guide
 
 Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing **stretch-ai** from source can be challenging.
