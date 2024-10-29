@@ -90,7 +90,8 @@ class RobotAgent:
         if create_semantic_sensor:
             if self.semantic_sensor is not None:
                 logger.warn(
-                    "Semantic sensor is already provided, but create_semantic_sensor is set to True. Ignoring the provided semantic sensor.")
+                    "Semantic sensor is already provided, but create_semantic_sensor is set to True. Ignoring the provided semantic sensor."
+                )
             # Create a semantic sensor
             self.semantic_sensor = self.create_semantic_sensor()
 
