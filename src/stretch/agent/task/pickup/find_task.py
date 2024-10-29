@@ -135,12 +135,10 @@ class FindObjectTask:
 
 
 if __name__ == "__main__":
+    from stretch.agent.robot_agent import RobotAgent
     from stretch.agent.zmq_client import HomeRobotZmqClient
 
     robot = HomeRobotZmqClient()
-
-    from stretch.agent.robot_agent import RobotAgent
-
     agent = RobotAgent(robot)
 
     task = FindObjectTask(agent, target_object="cardboard box").get_task(add_rotate=True)

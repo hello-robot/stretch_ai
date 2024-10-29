@@ -72,7 +72,7 @@ class RobotAgent:
     ):
         self.reset_object_plans()
         if parameters is None:
-            parameters = get_parameters(self.default_config_path)
+            self.parameters = get_parameters(self.default_config_path)
         elif isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
         elif isinstance(parameters, Parameters):
@@ -83,8 +83,8 @@ class RobotAgent:
         self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
-        self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
-        self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
+        self.pos_err_threshold = self.parameters["trajectory_pos_err_threshold"]
+        self.rot_err_threshold = self.parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
         self.encoder = get_encoder(
             self.parameters["encoder"], self.parameters.get("encoder_args", {})
@@ -108,7 +108,7 @@ class RobotAgent:
         # ==============================================
         # Update configuration
         # If true, the head will sweep on update, collecting more information.
-        self._sweep_head_on_update = parameters.get("agent/sweep_head_on_update", False)
+        self._sweep_head_on_update = self.parameters.get("agent/sweep_head_on_update", False)
 
         # ==============================================
         # Task-level parameters
@@ -120,20 +120,26 @@ class RobotAgent:
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = parameters["instance_memory"]["matching"][
+        self._is_match_threshold = self.parameters["instance_memory"]["matching"][
             "feature_match_threshold"
         ]
 
         # Expanding frontier - how close to frontier are we allowed to go?
-        self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
+        self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
             "default_expand_frontier_size"
         ]
-        self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
-        self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
-        self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
-        self._voxel_size = parameters["voxel_size"]
-        self._realtime_matching_distance = parameters.get("agent/realtime/matching_distance", 0.5)
-        self._realtime_temporal_threshold = parameters.get("agent/realtime/temporal_threshold", 0.1)
+        self._frontier_min_dist = self.parameters["motion_planner"]["frontier"]["min_dist"]
+        self._frontier_step_dist = self.parameters["motion_planner"]["frontier"]["step_dist"]
+        self._manipulation_radius = self.parameters["motion_planner"]["goals"][
+            "manipulation_radius"
+        ]
+        self._voxel_size = self.parameters.get("voxel_size", 0.05)
+        self._realtime_matching_distance = self.parameters.get(
+            "agent/realtime/matching_distance", 0.5
+        )
+        self._realtime_temporal_threshold = self.parameters.get(
+            "agent/realtime/temporal_threshold", 0.1
+        )
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -144,10 +150,14 @@ class RobotAgent:
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
             self.robot.get_robot_model(),
-            step_size=parameters["motion_planner"]["step_size"],
-            rotation_step_size=parameters["motion_planner"]["rotation_step_size"],
-            dilate_frontier_size=parameters["motion_planner"]["frontier"]["dilate_frontier_size"],
-            dilate_obstacle_size=parameters["motion_planner"]["frontier"]["dilate_obstacle_size"],
+            step_size=self.parameters["motion_planner"]["step_size"],
+            rotation_step_size=self.parameters["motion_planner"]["rotation_step_size"],
+            dilate_frontier_size=self.parameters["motion_planner"]["frontier"][
+                "dilate_frontier_size"
+            ],
+            dilate_obstacle_size=self.parameters["motion_planner"]["frontier"][
+                "dilate_obstacle_size"
+            ],
             grid=self.voxel_map.grid,
         )
 
@@ -164,15 +174,17 @@ class RobotAgent:
 
         # Create a simple motion planner
         self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
-        if parameters["motion_planner"]["shortcut_plans"]:
-            self.planner = Shortcut(self.planner, parameters["motion_planner"]["shortcut_iter"])
+        if self.parameters.get("motion_planner/shortcut_plans", False):
+            self.planner = Shortcut(
+                self.planner, self.parameter.get("motion_planner/shortcut_iter", 100)
+            )
         if parameters["motion_planner"]["simplify_plans"]:
             self.planner = SimplifyXYT(
                 self.planner,
-                min_step=parameters["motion_planner"]["simplify"]["min_step"],
-                max_step=parameters["motion_planner"]["simplify"]["max_step"],
-                num_steps=parameters["motion_planner"]["simplify"]["num_steps"],
-                min_angle=parameters["motion_planner"]["simplify"]["min_angle"],
+                min_step=self.parameters["motion_planner"]["simplify"]["min_step"],
+                max_step=self.parameters["motion_planner"]["simplify"]["max_step"],
+                num_steps=self.parameters["motion_planner"]["simplify"]["num_steps"],
+                min_angle=self.parameters["motion_planner"]["simplify"]["min_angle"],
             )
 
         self._start_threads()
