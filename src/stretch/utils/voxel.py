@@ -40,6 +40,7 @@ if not USE_TORCH_GEOMETRIC:
 from typing import Literal
 
 import torch
+from sklearn.cluster import DBSCAN
 from torch import Tensor
 
 
@@ -305,7 +306,7 @@ class VoxelizedPointcloud:
         else:
             raise ValueError("Must specify either bounds or both point and radius to remove points")
 
-    def clear_points(self, depth, intrinsics, pose, depth_is_valid=None):
+    def clear_points(self, depth, intrinsics, pose, depth_is_valid=None, min_samples_clear=None):
         if self._points is not None:
             xys = project_points(self._points.detach().cpu(), intrinsics, pose).int()
             xys = xys[:, [1, 0]]
@@ -340,6 +341,33 @@ class VoxelizedPointcloud:
                 self._rgb = self._rgb[indices]
             if self._obs_counts is not None:
                 self._obs_counts = self._obs_counts[indices]
+
+            if (
+                self._points is not None
+                and len(self._points) > 0
+                and min_samples_clear is not None
+                and min_samples_clear > 0
+            ):
+                dbscan = DBSCAN(eps=self.voxel_size * 4, min_samples=min_samples_clear)
+                cluster_vertices = torch.cat(
+                    (
+                        self._points.detach().cpu(),
+                        self._obs_counts.detach().cpu().reshape(-1, 1) * 1000,
+                    ),
+                    -1,
+                ).numpy()
+                clusters = dbscan.fit(cluster_vertices)
+                labels = clusters.labels_
+                indices = labels != -1
+                self._points = self._points[indices]
+                if self._features is not None:
+                    self._features = self._features[indices]
+                if self._weights is not None:
+                    self._weights = self._weights[indices]
+                if self._rgb is not None:
+                    self._rgb = self._rgb[indices]
+                if self._obs_counts is not None:
+                    self._obs_counts = self._obs_counts[indices]
 
     def add(
         self,

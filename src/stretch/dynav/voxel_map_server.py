@@ -132,7 +132,7 @@ class ImageProcessor:
         open_communication: bool = True,
         rerun: bool = True,
         log=None,
-        image_shape=(480, 360),
+        image_shape=(360, 270),
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
@@ -345,10 +345,10 @@ class ImageProcessor:
         traj = []
         if waypoints is not None:
             finished = len(waypoints) <= 8 and mode == "navigation"
-            # if finished:
-            #     self.traj = None
-            # else:
-            #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            if finished:
+                self.traj = None
+            else:
+                self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
                 waypoints = waypoints[:8]
             traj = self.planner.clean_path_for_xy(waypoints)
@@ -466,8 +466,32 @@ class ImageProcessor:
             print("processing took " + str(process_time) + " seconds")
 
     def run_mask_clip(self, rgb, mask, world_xyz):
+        # with torch.no_grad():
+        #     _, w, h = rgb.shape
+        #     rgbs = []
+        #     # Assume w, h are all even
+        #     for i in range(2):
+        #         for j in range(2):
+        #             rgbs.append(rgb[:, i * w // 2 : (i + 1) * w // 2, j * h // 2 : (j + 1) * h // 2])
+        #     rgbs = torch.stack(rgbs, dim = 0)
+        #     w1, h1 = self.image_shape
+        #     rgbs, outputs = self.encoder.run_mask_siglip(rgbs, (w1 // 2, h1 // 2))
+        #     rgb = torch.empty(3, w1, h1)
+        #     features = torch.empty(w1, h1, outputs.shape[-1])
+        #     for i in range(2):
+        #         for j in range(2):
+        #             rgb[:, i * w1 // 2 : (i + 1) * w1 // 2, j * h1 // 2 : (j + 1) * h1 // 2] = rgbs[i * 2 + j]
+        #             features[i * w1 // 2 : (i + 1) * w1 // 2, j * h1 // 2 : (j + 1) * h1 // 2] = outputs[i * 2 + j]
+
+        # valid_xyz = world_xyz[~mask]
+        # features = features[~mask]
+        # valid_rgb = rgb.permute(1, 2, 0)[~mask]
+        # if len(valid_xyz) != 0:
+        #     self.add_to_voxel_pcd(valid_xyz, features, valid_rgb)
+
         with torch.no_grad():
             rgb, features = self.encoder.run_mask_siglip(rgb, self.image_shape)
+            rgb, features = rgb.squeeze(), features.squeeze()
 
         valid_xyz = world_xyz[~mask]
         features = features[~mask]
@@ -550,7 +574,7 @@ class ImageProcessor:
         with self.voxel_map_lock:
 
             self.voxel_map_localizer.voxel_pcd.clear_points(
-                depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)
+                depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear=10
             )
             self.voxel_map.voxel_pcd.clear_points(
                 depth, torch.from_numpy(intrinsics), torch.from_numpy(pose)

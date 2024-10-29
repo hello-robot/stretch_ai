@@ -53,10 +53,12 @@ class MaskSiglipEncoder(SiglipEncoder):
         for i in input:
             input[i] = input[i].to(self.device)
         if image_shape is not None:
+            if image.ndim == 3:
+                image = image.unsqueeze(0)
             image = F.interpolate(
-                image.unsqueeze(0), size=image_shape, mode="bilinear", align_corners=False
+                image, size=image_shape, mode="bilinear", align_corners=False
             ).squeeze()
-        features = self.extract_mask_siglip_features(input, image.shape[-2:])[0].cpu()
+        features = self.extract_mask_siglip_features(input, image.shape[-2:]).cpu()
 
         return image, features
 

@@ -115,7 +115,7 @@ class RobotAgentMDP:
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.6, 0.0, -0.5, -1.0, -1.5]:
+        for pan in [0.6, -0.2, -1.0, -1.8]:
             for tilt in [-0.6]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()

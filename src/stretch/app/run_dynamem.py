@@ -181,7 +181,7 @@ def main(
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking=True)
+                robot.move_base_to(xyt, blocking=True)
 
             if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
@@ -228,7 +228,7 @@ def main(
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking=True)
+                robot.move_base_to(xyt, blocking=True)
 
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
