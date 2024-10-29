@@ -2,7 +2,7 @@
 
 *stretch-ai* provides two [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images, one for your [Stretch](https://hello-robot.com/stretch-3-product) robot and one for a computer with a GPU that communicates with your robot (*GPU computer*). These two Docker images make it easier to try *stretch-ai*.
 
-The Docker images enables you to run *stretch-ai* in [containers](<https://en.wikipedia.org/wiki/Containerization_(computing)>) that includes *stretch-ai* and its dependencies. Using a container simplifies installation and reduces the likelihood of interfering with other uses of your robot and your GPU computer.
+The Docker images enables you to run *stretch-ai* in [containers](<https://en.wikipedia.org/wiki/Containerization_(computing)>) that include *stretch-ai* and its dependencies. Using a container simplifies installation and reduces the likelihood of interfering with other uses of your robot and your GPU computer.
 
 **Please note that changes to the Docker container's files and the Docker container's state will be lost once you stop the container.**
 
