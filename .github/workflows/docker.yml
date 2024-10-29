@@ -35,7 +35,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Check disk space
-
+      run: df -h
 
     - name: Build and push CUDA image
       uses: docker/build-push-action@v4
