@@ -107,7 +107,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             orientation_resolution: number of bins to break it into
         """
         self._footprint = Footprint(
-            width=0.34 * 2 / 3, length=0.33 * 2 / 3, width_offset=0.0, length_offset=-0.1
+            width=0.34 / 2, length=0.33 / 2, width_offset=0.0, length_offset=-0.1
         )
         self._orientation_resolution = 64
         self._oriented_masks = []
@@ -664,6 +664,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             expanded_frontier = edges
         outside_frontier = expanded_frontier & ~reachable_map
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
+        voxel_map_localizer = None
         if voxel_map_localizer is not None:
             alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics(
                 voxel_map_localizer, text
@@ -676,12 +677,10 @@ class SparseVoxelMapNavigationSpace(XYT):
             alignments_heuristics = None
             total_heuristics = time_heuristics
 
-        rounded_heuristics = np.ceil(total_heuristics * 100) / 100
+        rounded_heuristics = np.ceil(total_heuristics * 200) / 200
         max_heuristic = rounded_heuristics.max()
         indices = np.column_stack(np.where(rounded_heuristics == max_heuristic))
-        closest_index = np.argmin(
-            np.linalg.norm(indices - np.asarray(planner.to_pt([0, 0, 0])), axis=-1)
-        )
+        closest_index = np.argmin(np.linalg.norm(indices - np.asarray(planner.to_pt(xyt)), axis=-1))
         index = indices[closest_index]
         # index = np.unravel_index(np.argmax(total_heuristics), total_heuristics.shape)
         # debug = True
@@ -720,7 +719,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         return alignment_heuristics
 
     def _time_heuristic(
-        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=100, debug=False
+        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=50, debug=False
     ):
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         time_heuristics = history_soft.max() - history_soft

@@ -345,10 +345,10 @@ class ImageProcessor:
         traj = []
         if waypoints is not None:
             finished = len(waypoints) <= 8 and mode == "navigation"
-            # if finished:
-            #     self.traj = None
-            # else:
-            #     self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            if finished:
+                self.traj = None
+            else:
+                self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
             if not finished:
                 waypoints = waypoints[:8]
             traj = self.planner.clean_path_for_xy(waypoints)

@@ -21,13 +21,13 @@ from openai import OpenAI
 from PIL import Image
 from sklearn.cluster import DBSCAN
 from torch import Tensor
-
-# from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
-from transformers import AutoModel, AutoProcessor
-from ultralytics import YOLOWorld
+from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
 
 from stretch.utils.logger import Logger
 from stretch.utils.voxel import VoxelizedPointcloud
+
+# from ultalytics import YOLOWorld
+
 
 # Create a logger
 logger = Logger(__name__)
@@ -123,18 +123,16 @@ class VoxelMapLocalizer:
             )
             self.preprocessor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
-        self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.05).to(self.device)
+        self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.1).to(self.device)
 
         self.gpt_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
+        # self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
 
-        # self.exist_processor = AutoProcessor.from_pretrained(
-        #     "google/owlv2-base-patch16-ensemble"
-        # )
-        # self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-        #     "google/owlv2-base-patch16-ensemble"
-        # ).to(self.device)
+        self.exist_processor = AutoProcessor.from_pretrained("google/owlv2-base-patch16-ensemble")
+        self.exist_model = Owlv2ForObjectDetection.from_pretrained(
+            "google/owlv2-base-patch16-ensemble"
+        ).to(self.device)
 
         # self.existence_checking_model = exist_model
         # if exist_model:
@@ -227,30 +225,30 @@ class VoxelMapLocalizer:
         xyzs = get_xyz(depth, pose, K)[0]
         rgb[depth > 2.5] = 0
 
-        # rgb = rgb.permute(2, 0, 1).to(torch.uint8)
-        # inputs = self.exist_processor(
-        #     text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
-        # )
-        # for input in inputs:
-        #     inputs[input] = inputs[input].to("cuda")
+        rgb = rgb.permute(2, 0, 1).to(torch.uint8)
+        inputs = self.exist_processor(
+            text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
+        )
+        for input in inputs:
+            inputs[input] = inputs[input].to("cuda")
 
-        # with torch.no_grad():
-        #     outputs = self.exist_model(**inputs)
+        with torch.no_grad():
+            outputs = self.exist_model(**inputs)
 
-        # target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
-        # results = self.exist_processor.image_processor.post_process_object_detection(
-        #     outputs, threshold=threshold, target_sizes=target_sizes
-        # )[0]
+        target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
+        results = self.exist_processor.image_processor.post_process_object_detection(
+            outputs, threshold=threshold, target_sizes=target_sizes
+        )[0]
 
-        self.yolo_model.set_classes([text])
-        print(threshold)
-        results = self.yolo_model.predict(rgb.numpy(), conf=threshold, verbose=False)
+        # self.yolo_model.set_classes([text])
+        # print(threshold)
+        # results = self.yolo_model.predict(rgb.numpy(), conf=threshold, verbose=False)
 
-        # xyxy = results["boxes"]
-        # scores = results["scores"]
+        xyxy = results["boxes"]
+        scores = results["scores"]
 
-        xyxy = results[0].boxes.xyxy
-        scores = results[0].boxes.conf
+        # xyxy = results[0].boxes.xyxy
+        # scores = results[0].boxes.conf
         if len(xyxy) > 0:
             bbox = xyxy[torch.argmax(scores)]
             tl_x, tl_y, br_x, br_y = bbox
@@ -281,7 +279,7 @@ class VoxelMapLocalizer:
         #         return torch.median(xyzs[tl_y:br_y, tl_x:br_x].reshape(-1, 3), dim=0).values
         # return None
 
-    def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
+    def verify_point(self, A, point, distance_threshold=0.2, similarity_threshold=0.13):
         if isinstance(point, np.ndarray):
             point = torch.from_numpy(point)
         points, _, _, _ = self.voxel_pcd.get_pointcloud()
@@ -314,7 +312,7 @@ class VoxelMapLocalizer:
         for i in range(len(unique_obs_counts)):
             # Get indices of elements belonging to the current cluster
             indices_in_cluster = (inverse_indices == i).nonzero(as_tuple=True)[0]
-            if len(indices_in_cluster) <= 5:
+            if len(indices_in_cluster) <= 2:
                 continue
 
             # Extract the alignments and points for the current cluster
@@ -337,7 +335,7 @@ class VoxelMapLocalizer:
             max_alignments[i] = cluster_alignments.max()
 
         top_alignments, top_indices = torch.topk(
-            max_alignments, k=min(5, len(max_alignments)), dim=0, largest=True, sorted=True
+            max_alignments, k=min(3, len(max_alignments)), dim=0, largest=True, sorted=True
         )
         top_points = points_with_max_alignment[top_indices]
         top_obs_counts = unique_obs_counts[top_indices]
@@ -380,12 +378,7 @@ class VoxelMapLocalizer:
         user_prompt = f"""The object you need to find is {A}"""
 
         system_messages = [{"type": "text", "text": sys_prompt}]
-        user_messages = [
-            {
-                "type": "text",
-                "text": "The object you need to find is " + A,
-            }
-        ]
+        user_messages = []
         for obs_id in image_ids:
             obs_id = int(obs_id) - 1
             rgb = np.copy(self.voxel_map_wrapper.observations[obs_id].rgb.numpy())
@@ -400,13 +393,18 @@ class VoxelMapLocalizer:
             user_messages.append(
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{base64_encoded}"},
+                    "image_url": {
+                        "url": f"data:image/png;base64,{base64_encoded}",
+                        "detail": "low",
+                    },
                 }
             )
-        # print([
-        #             {"role": "system", "content": system_messages},
-        #             {"role": "user", "content": user_messages},
-        #         ])
+        user_messages.append(
+            {
+                "type": "text",
+                "text": "The object you need to find is " + A,
+            }
+        )
         response = (
             self.gpt_client.chat.completions.create(
                 model="gpt-4o",
@@ -481,11 +479,11 @@ class VoxelMapLocalizer:
             debug_text += "#### - An image is identified \n"
 
         if image_id is not None:
-            res = self.compute_coord(A, image_id, threshold=0.05)
+            res = self.compute_coord(A, image_id, threshold=0.01)
             if res is not None:
                 target_point = res
             else:
-                target_point = None
+                target_point = point
 
         if not debug:
             return target_point
