@@ -360,6 +360,9 @@ class StretchClient(AbstractRobotClient):
         """Send head commands"""
         self.head.goto_joint_positions(pan=float(pan), tilt=float(tilt), blocking=blocking)
 
+    def get_has_wrist(self) -> bool:
+        return self._ros_client.get_has_wrist()
+
     def arm_to(
         self,
         q: np.ndarray,

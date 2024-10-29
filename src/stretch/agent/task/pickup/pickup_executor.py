@@ -12,6 +12,7 @@ from typing import List, Tuple
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.find_task import FindObjectTask
+from stretch.agent.task.pickup.pick_task import PickObjectTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.core import AbstractRobotClient
 from stretch.utils.logger import Logger
@@ -87,6 +88,28 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
+    def _pick_only(self, target_object: str) -> None:
+
+        logger.alert(f"[Pickup task] Pickup: {target_object}")
+
+        # After the robot has started...
+        try:
+            pickup_task = PickObjectTask(
+                self.agent,
+                target_object=target_object,
+                target_receptacle=None,
+                matching=self._match_method,
+                use_visual_servoing_for_grasp=not self._open_loop,
+            )
+            task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
     def _find(self, target_object: str) -> None:
         """Create a task to find the object and execute it.
 
@@ -142,17 +165,28 @@ class PickupExecutor:
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
                 i += 1
+                if i >= len(response):
+                    logger.warning(
+                        "Pickup without place! Try giving a full pick-and-place instruction."
+                    )
+                    self._pickup(target_object, None)
+                    # Continue works here because we've already incremented i
+                    continue
                 next_command, next_args = response[i]
                 if next_command != "place":
-                    i -= 1
-                    logger.error("Pickup without place! Doing nothing.")
+                    logger.warning(
+                        "Pickup without place! Try giving a full pick-and-place instruction."
+                    )
+                    self._pickup(target_object, None)
+                    # Continue works here because we've already incremented i
+                    continue
                 else:
                     logger.info(f"{i} {next_command} {next_args}")
                     logger.info(f"[Pickup task] Place: {next_args}")
                 target_receptacle = next_args
                 self._pickup(target_object, target_receptacle)
             elif command == "place":
-                logger.error("Place without pickup! Doing nothing.")
+                logger.error("Place without pickup! Try giving a full pick-and-place instruction.")
             elif command == "wave":
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
