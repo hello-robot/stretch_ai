@@ -120,13 +120,36 @@ fi
 # Exit immediately if anything fails
 set -e
 
-# Install git-lfs
-echo "Installing git-lfs..."
-echo "If this fails, install git-lfs with:"
-echo ""
-echo "     sudo apt-get install git-lfs"
-echo ""
-git lfs install
+# Check if git-lfs is already installed
+if command -v git-lfs &> /dev/null; then
+    echo "git-lfs is already installed."
+else
+    echo "Installing git-lfs..."
+    echo "If this fails, install git-lfs manually with:"
+    echo ""
+    echo "     sudo apt-get install git-lfs"
+    echo ""
+
+    # Attempt to install git-lfs
+    if ! git lfs install --skip-repo; then
+        echo "Failed to install git-lfs. Please install it manually."
+        exit 1
+    fi
+
+    echo "git-lfs installed successfully."
+fi
+
+# Check if the pre-push hook already exists
+if [ -f .git/hooks/pre-push ]; then
+    echo "A pre-push hook already exists. Skipping hook installation."
+else
+    # Install the pre-push hook only if it doesn't exist
+    git lfs update --force
+    echo "git-lfs pre-push hook installed."
+fi
+
+echo "git-lfs setup complete."
+
 
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then
