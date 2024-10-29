@@ -178,7 +178,7 @@ class RobotAgent:
             self.planner = Shortcut(
                 self.planner, self.parameters.get("motion_planner/shortcut_iter", 100)
             )
-        if parameters["motion_planner"]["simplify_plans"]:
+        if self.parameters.get("motion_planner/simplify_plans", False):
             self.planner = SimplifyXYT(
                 self.planner,
                 min_step=self.parameters["motion_planner"]["simplify"]["min_step"],
