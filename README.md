@@ -41,6 +41,12 @@ Then, you can start the client on your GPU computer.
 ./scripts/run_stretch_ai_gpu_client.sh
 ```
 
+**Experimental support for RE2:** on your robot, you can run a version of the server with no d405 camera support. Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
+
+```bash
+./scripts/run_stretch_ai_ros2_bridge_server_no_d405.sh
+```
+
 ### Language-Directed Pick and Place
 
 Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
@@ -76,7 +82,7 @@ Enter the target receptacle: white laundry basket
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
-Once you're ready to learn more about **stretch-ai**, you can try out a variety of applications (apps) that demonstrate various capabilities.
+Once you're ready to learn more about **Stretch AI**, you can try out a variety of applications (apps) that demonstrate various capabilities.
 
 ## Apps
 

@@ -33,12 +33,13 @@ jobs:
     - name: Build and push CUDA image
       uses: docker/build-push-action@v4
       with:
+        # Context should be the codebase
         context: .
         file: docker/Dockerfile.cuda-11.8
         push: true
         tags: |
-          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai_cuda-11.8:latest
-          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai_cuda-11.8:${{ env.VERSION }}
+          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai_cuda-11.8-auto:latest
+          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai_cuda-11.8-auto:${{ env.VERSION }}
 
     - name: Build and push ROS2 image
       uses: docker/build-push-action@v4
@@ -47,6 +48,6 @@ jobs:
         file: docker/Dockerfile.ros2
         push: true
         tags: |
-          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai-ros2-bridge:latest
-          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai-ros2-bridge:${{ env.VERSION }}
+          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai-ros2-bridge-auto:latest
+          ${{ env.DOCKERHUB_USERNAME }}/stretch-ai-ros2-bridge-auto:${{ env.VERSION }}
 
