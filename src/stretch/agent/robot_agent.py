@@ -174,10 +174,12 @@ class RobotAgent:
 
         # Create a simple motion planner
         self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
+        # Add shotcutting to the planner
         if self.parameters.get("motion_planner/shortcut_plans", False):
             self.planner = Shortcut(
                 self.planner, self.parameters.get("motion_planner/shortcut_iter", 100)
             )
+        # Add motion planner simplification
         if self.parameters.get("motion_planner/simplify_plans", False):
             self.planner = SimplifyXYT(
                 self.planner,
