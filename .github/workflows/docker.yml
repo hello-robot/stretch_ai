@@ -1,8 +1,8 @@
 name: Build and Push Docker Images
 
 on:
-  push:
-    branches: [ "main" ]
+  #push:
+  #  branches: [ "main" ]
   workflow_dispatch:
     inputs:
       manual_version:
@@ -29,6 +29,10 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # For debugging
+    - name: List files
+      run: ls -R
 
     - name: Build and push CUDA image
       uses: docker/build-push-action@v4
