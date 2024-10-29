@@ -67,6 +67,7 @@ class RobotAgent:
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
+        create_semantic_sensor: bool = False,
         enable_realtime_updates: bool = False,
         obs_sub_port: int = 4450,
     ):
@@ -86,7 +87,10 @@ class RobotAgent:
         self.semantic_sensor = semantic_sensor
 
         # If the semantic sensor is not provided, we will create it from the config file
-        if use_instance_memory and self.semantic_sensor is None:
+        if create_semantic_sensor:
+            if self.semantic_sensor is not None:
+                logger.warn(
+                    "Semantic sensor is already provided, but create_semantic_sensor is set to True. Ignoring the provided semantic sensor.")
             # Create a semantic sensor
             self.semantic_sensor = self.create_semantic_sensor()
 

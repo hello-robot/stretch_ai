@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     robot = HomeRobotZmqClient()
     # Create a robot agent with instance memory
-    agent = RobotAgent(robot, use_instance_memory=True)
+    agent = RobotAgent(robot, create_semantic_sensor=True)
 
     task = FindObjectTask(agent, target_object="cardboard box").get_task(add_rotate=True)
     task.run()

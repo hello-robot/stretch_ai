@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     robot = HomeRobotZmqClient()
     # Create a robot agent with instance memory
-    agent = RobotAgent(robot, use_instance_memory=True)
+    agent = RobotAgent(robot, create_semantic_sensor=True)
 
     task = PlaceOnReceptacleTask(agent, target_receptacle="cardboard box").get_task(
         add_rotate=False
