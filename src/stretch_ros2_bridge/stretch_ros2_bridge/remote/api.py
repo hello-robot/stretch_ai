@@ -382,6 +382,9 @@ class StretchClient(AbstractRobotClient):
                     print("head pan error", abs(cur_pan - pan), "head tilt error", abs(cur_tilt - tilt))
         time.sleep(0.2)
 
+    def get_has_wrist(self) -> bool:
+        return self._ros_client.get_has_wrist()
+
     def arm_to(
         self,
         q: np.ndarray,

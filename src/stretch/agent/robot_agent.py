@@ -22,7 +22,6 @@ import numpy as np
 import torch
 from PIL import Image
 
-import stretch.utils.logger as logger
 import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -36,8 +35,11 @@ from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
+from stretch.utils.logger import Logger
 from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
+
+logger = Logger(__name__)
 
 
 class RobotAgent:
@@ -89,10 +91,10 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = (
-            enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]
+        self._realtime_updates = enable_realtime_updates and self.parameters.get(
+            "agent/use_realtime_updates", False
         )
-        if not enable_realtime_updates and self.parameters["agent"]["use_realtime_updates"]:
+        if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
             logger.warning(
                 "Real-time updates are not enabled but the agent is configured to use them."
             )
@@ -101,7 +103,7 @@ class RobotAgent:
         # ==============================================
         # Update configuration
         # If true, the head will sweep on update, collecting more information.
-        self._sweep_head_on_update = parameters["agent"]["sweep_head_on_update"]
+        self._sweep_head_on_update = parameters.get("agent/sweep_head_on_update", False)
 
         # ==============================================
         # Task-level parameters
@@ -113,9 +115,7 @@ class RobotAgent:
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = parameters["instance_memory"]["matching"][
-            "feature_match_threshold"
-        ]
+        self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
@@ -125,8 +125,8 @@ class RobotAgent:
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
-        self._realtime_matching_distance = parameters["agent"]["realtime"]["matching_distance"]
-        self._realtime_temporal_threshold = parameters["agent"]["realtime"]["temporal_threshold"]
+        self._realtime_matching_distance = parameters.get("agent/realtime/matching_distance", 0.5)
+        self._realtime_temporal_threshold = parameters.get("agent/realtime/temporal_threshold", 0.1)
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -246,7 +246,11 @@ class RobotAgent:
         self.unreachable_instances = set()
 
     def set_instance_as_unreachable(self, instance: Union[int, Instance]) -> None:
-        """Mark an instance as unreachable."""
+        """Mark an instance as unreachable.
+
+        Args:
+            instance(Union[int, Instance]): the instance to mark as unreachable
+        """
         if isinstance(instance, Instance):
             instance_id = instance.id
         elif isinstance(instance, int):
@@ -256,7 +260,11 @@ class RobotAgent:
         self.unreachable_instances.add(instance_id)
 
     def is_instance_unreachable(self, instance: Union[int, Instance]) -> bool:
-        """Check if an instance is unreachable."""
+        """Check if an instance is unreachable.
+
+        Args:
+            instance(Union[int, Instance]): the instance to check
+        """
         if isinstance(instance, Instance):
             instance_id = instance.id
         elif isinstance(instance, int):
@@ -831,11 +839,11 @@ class RobotAgent:
 
     def plan_to_instance_for_manipulation(
         self,
-        instance: Instance,
+        instance: Union[Instance, int],
         start: np.ndarray,
         max_tries: int = 100,
         verbose: bool = True,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found. This function is specifically for manipulation tasks: it plans to a rotation that's rotated 90 degrees from the default.
 
@@ -849,8 +857,14 @@ class RobotAgent:
         Returns:
             PlanResult: the result of the motion planner
         """
+
+        if isinstance(instance, int):
+            _instance = self.voxel_map.get_instance(instance)
+        else:
+            _instance = instance
+
         return self.plan_to_instance(
-            instance,
+            _instance,
             start=start,
             rotation_offset=np.pi / 2,
             radius_m=self._manipulation_radius,
@@ -892,11 +906,10 @@ class RobotAgent:
         instance: Instance,
         start: np.ndarray,
         verbose: bool = False,
-        instance_id: int = -1,
         max_tries: int = 10,
         radius_m: float = 0.5,
         rotation_offset: float = 0.0,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> PlanResult:
         """Move to a specific instance. Goes until a motion plan is found.
 
@@ -907,40 +920,59 @@ class RobotAgent:
             rotation_offset(float): added to rotation of goal to change final relative orientation
         """
 
+        instance_id = instance.global_id
+
+        if self._realtime_updates:
+            if use_cache:
+                logger.warning("Cannot use cache with real-time updates")
+            use_cache = False
+
+        res = None
+        if verbose:
+            for j, view in enumerate(instance.instance_views):
+                print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
+
         with self._map_lock:
-            res = None
+            start_is_valid = self.space.is_valid(start, verbose=False)
+
+        if not start_is_valid:
+            return PlanResult(success=False, reason="invalid start state")
+
+        # plan to the sampled goal
+        has_plan = False
+        if use_cache and instance_id >= 0 and instance_id in self._cached_plans:
+            res = self._cached_plans[instance_id]
+            has_plan = res.success
             if verbose:
                 for j, view in enumerate(instance.instance_views):
                     print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
-            start_is_valid = self.space.is_valid(start, verbose=False)
-            if not start_is_valid:
-                return PlanResult(success=False, reason="invalid start state")
+        # Plan to the instance
+        if not has_plan:
+            print(
+                "planning to instance: ",
+                instance_id,
+                "max_tries: ",
+                max_tries,
+                "radius: ",
+                radius_m,
+                "rotation_offset: ",
+                rotation_offset,
+            )
+            # Call planner
+            res = self.plan_to_bounds(
+                instance.bounds,
+                start,
+                verbose,
+                max_tries,
+                radius_m,
+                rotation_offset=rotation_offset,
+            )
+            if instance_id >= 0:
+                self._cached_plans[instance_id] = res
 
-            # plan to the sampled goal
-            has_plan = False
-            if use_cache and instance_id >= 0 and instance_id in self._cached_plans:
-                res = self._cached_plans[instance_id]
-                has_plan = res.success
-                if verbose:
-                    print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
-
-            # Plan to the instance
-            if not has_plan:
-                # Call planner
-                res = self.plan_to_bounds(
-                    instance.bounds,
-                    start,
-                    verbose,
-                    max_tries,
-                    radius_m,
-                    rotation_offset=rotation_offset,
-                )
-                if instance_id >= 0:
-                    self._cached_plans[instance_id] = res
-
-            # Finally, return plan result
-            return res
+        # Finally, return plan result
+        return res
 
     def plan_to_bounds(
         self,
@@ -1123,7 +1155,7 @@ class RobotAgent:
             while tries <= max_try_per_instance:
                 print("Checking instance", i)
                 # TODO: this is a bad name for this variable
-                res = self.plan_to_instance(match, start, instance_id=i)
+                res = self.plan_to_instance(match, start)
                 tries += 1
                 if res is not None and res.success:
                     break
@@ -1278,7 +1310,7 @@ class RobotAgent:
         start = self.robot.get_base_pose() if current_pose is None else current_pose
         for i, instance in enumerate(self.voxel_map.get_instances()):
             if i not in self._cached_plans.keys():
-                res = self.plan_to_instance(instance, start, instance_id=i)
+                res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
             else:
                 res = self._cached_plans[i]
@@ -1336,7 +1368,7 @@ class RobotAgent:
             # compute its mask
             # see if this mask's area is explored and reachable from the current robot
             if self.guarantee_instance_is_reachable:
-                res = self.plan_to_instance(instance, start, instance_id=i)
+                res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
                 if res.success:
                     reachable_matches.append(instance)
