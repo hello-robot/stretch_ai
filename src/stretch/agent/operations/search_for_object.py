@@ -45,6 +45,7 @@ class ManagedSearchOperation(ManagedOperation):
         return self._object_class.replace("_", " ")
 
     def __init__(self, *args, match_method="feature", **kwargs):
+        """Search for an object in the environment. By default, we will search for an object by its feature vector."""
         super().__init__(*args, **kwargs)
         self.match_method = match_method
 
@@ -212,6 +213,8 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     def __init__(self, require_receptacle: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.require_receptacle = require_receptacle
+        print(self.robot)
+        breakpoint()
 
     def can_start(self) -> bool:
         if self.require_receptacle:

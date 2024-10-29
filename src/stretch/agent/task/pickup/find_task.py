@@ -132,3 +132,16 @@ class FindObjectTask:
             task.connect_on_failure(go_to_object.name, search_for_object.name)
 
         return task
+
+
+if __name__ == "__main__":
+    from stretch.agent.zmq_client import HomeRobotZmqClient
+
+    robot = HomeRobotZmqClient()
+
+    from stretch.agent.robot_agent import RobotAgent
+
+    agent = RobotAgent(robot)
+
+    task = FindObjectTask(agent, target_object="cardboard box").get_task(add_rotate=True)
+    task.run()

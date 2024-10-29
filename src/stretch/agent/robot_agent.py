@@ -25,7 +25,7 @@ from PIL import Image
 import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
-from stretch.core.parameters import Parameters
+from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
@@ -50,6 +50,9 @@ class RobotAgent:
     update_rerun_every_time: bool = True
     normalize_embeddings: bool = False
 
+    # Default configuration file
+    default_config_path = "config/default_planner.yaml"
+
     # Sleep times
     # This sleep is before starting a head sweep
     _before_head_motion_sleep_t = 0.25
@@ -59,7 +62,7 @@ class RobotAgent:
     def __init__(
         self,
         robot: AbstractRobotClient,
-        parameters: Union[Parameters, Dict[str, Any]],
+        parameters: Optional[Union[Parameters, Dict[str, Any]]] = None,
         semantic_sensor: Optional[OvmmPerception] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
@@ -68,7 +71,9 @@ class RobotAgent:
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
-        if isinstance(parameters, Dict):
+        if parameters is None:
+            parameters = Parameters(get_parameters(self.default_config_path))
+        elif isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
         elif isinstance(parameters, Parameters):
             self.parameters = parameters
