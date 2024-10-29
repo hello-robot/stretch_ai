@@ -89,7 +89,7 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
-if [ $INSTALL_TORCH_GEOMETRIC = "true" ]; then
+if [[ "$INSTALL_TORCH_GEOMETRIC" = "true" ]]; then
     echo "   - torch-geometric"
     echo "   - torch-cluster"
     echo "   - torch-scatter"
@@ -104,7 +104,7 @@ echo " - python=`which python`"
 
 # if -y flag was passed in, do not bother asking
 #
-if [ "$SKIP_ASKING" == "true" ]; then
+if [[ "$SKIP_ASKING" == "true" ]]; then
     yn="y"
 else
     read -p "Does all this look correct? (y/n) " yn
