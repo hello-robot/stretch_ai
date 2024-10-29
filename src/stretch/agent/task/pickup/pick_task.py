@@ -94,8 +94,8 @@ class PickObjectTask:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            f"search_for_{self.target_object}_on_floor",
-            self.agent,
+            name=f"search_for_{self.target_object}_on_floor",
+            agent=self.agent,
             retry_on_failure=True,
             match_method=matching,
             require_receptacle=False,
@@ -106,8 +106,8 @@ class PickObjectTask:
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
-            "go_to_object",
-            self.agent,
+            name="go_to_object",
+            agent=self.agent,
             parent=search_for_object,
             on_cannot_start=search_for_object,
             to_receptacle=False,
@@ -184,3 +184,16 @@ class PickObjectTask:
             task.connect_on_failure(go_to_object.name, search_for_object.name)
 
         return task
+
+
+if __name__ == "__main__":
+    from stretch.agent.robot_agent import RobotAgent
+    from stretch.agent.zmq_client import HomeRobotZmqClient
+
+    robot = HomeRobotZmqClient()
+
+    # Create a robot agent with instance memory
+    agent = RobotAgent(robot, use_instance_memory=True)
+
+    task = PickObjectTask(agent, target_object="stuffed leopard toy").get_task(add_rotate=False)
+    task.run()
