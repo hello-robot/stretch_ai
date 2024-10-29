@@ -139,7 +139,8 @@ if __name__ == "__main__":
     from stretch.agent.zmq_client import HomeRobotZmqClient
 
     robot = HomeRobotZmqClient()
-    agent = RobotAgent(robot)
+    # Create a robot agent with instance memory
+    agent = RobotAgent(robot, use_instance_memory=True)
 
     task = FindObjectTask(agent, target_object="cardboard box").get_task(add_rotate=True)
     task.run()
