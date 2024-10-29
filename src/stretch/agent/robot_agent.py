@@ -2118,6 +2118,8 @@ class RobotAgent:
 
     def create_semantic_sensor(self) -> OvmmPerception:
         """Create a semantic sensor."""
+
+        # This is a lazy load since it can be a difficult dependency
         from stretch.perception import create_semantic_sensor
 
         return create_semantic_sensor(self.parameters)
