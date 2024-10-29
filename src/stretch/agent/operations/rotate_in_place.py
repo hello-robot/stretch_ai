@@ -20,7 +20,7 @@ class RotateInPlaceOperation(ManagedOperation):
     def run(self) -> None:
         self.intro("rotating for {self.parameters['agent']['in_place_rotation_steps']} steps.")
         self._successful = False
-        self.robot.rotate_in_place(
+        self.agent.rotate_in_place(
             steps=self.parameters["agent"]["in_place_rotation_steps"],
             visualize=False,
         )
