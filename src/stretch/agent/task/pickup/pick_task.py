@@ -117,8 +117,8 @@ class PickObjectTask:
         # If we cannot find the object, we should go back to the search_for_object operation.
         # To determine if we can start, we just check to see if there's a detectable object nearby.
         pregrasp_object = PreGraspObjectOperation(
-            "prepare_to_grasp",
-            self.agent,
+            name="prepare_to_grasp",
+            agent=self.agent,
             on_failure=None,
             on_cannot_start=go_to_object,
             retry_on_failure=True,

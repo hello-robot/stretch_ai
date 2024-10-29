@@ -91,8 +91,8 @@ class FindObjectTask:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            f"search_for_{self.target_object}_on_floor",
-            self.agent,
+            name=f"search_for_{self.target_object}_on_floor",
+            agent=self.agent,
             retry_on_failure=True,
             match_method=matching,
         )
