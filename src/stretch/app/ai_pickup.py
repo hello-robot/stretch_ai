@@ -39,8 +39,9 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option(
     "--llm",
-    default="gemma2b",
-    help="Client to use for language model.",
+    # default="gemma2b",
+    default="qwen25-3B-Instruct",
+    help="Client to use for language model. Recommended: gemma2b, openai",
     type=click.Choice(get_llm_choices()),
 )
 @click.option(
