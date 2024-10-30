@@ -84,7 +84,7 @@ class GraspObjectOperation(ManagedOperation):
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
     # median_distance_when_grasping: float = 0.15
-    median_distance_when_grasping: float = 0.1 # 0.2
+    median_distance_when_grasping: float = 0.1  # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -103,9 +103,9 @@ class GraspObjectOperation(ManagedOperation):
     grasp_loose: bool = False
     reset_observation: bool = False
     # Move the arm forward by this amount when grasping
-    _grasp_arm_offset: float = 0. # 0.13
+    _grasp_arm_offset: float = 0.0  # 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = 0. # -0.05
+    _grasp_lift_offset: float = 0.0  # -0.05
 
     # Visual servoing config
     track_image_center: bool = False
