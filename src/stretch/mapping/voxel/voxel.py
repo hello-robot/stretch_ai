@@ -27,7 +27,6 @@ import tqdm
 from torch import Tensor
 
 import stretch.utils.compression as compression
-import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.mapping.grid import GridParams
@@ -36,11 +35,14 @@ from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
+from stretch.utils.logger import Logger
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
+
+logger = Logger(__name__)
 
 Frame = namedtuple(
     "Frame",
@@ -848,6 +850,13 @@ class SparseVoxelMap(object):
         # Convert metric measurements to discrete
         # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
         xyz, _, counts, _ = self.voxel_pcd.get_pointcloud()
+
+        # If we have no points, just return zeros
+        if xyz is None or xyz.nelement() == 0:
+            logger.warning("No points in point cloud, returning empty map")
+            return torch.zeros(self.grid_size, device=self.map_2d_device), torch.zeros(
+                self.grid_size, device=self.map_2d_device
+            )
 
         device = xyz.device
         xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
