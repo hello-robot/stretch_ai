@@ -73,6 +73,14 @@ newgrp docker
 
 This will change your group to the `docker` group for the current terminal session.
 
+**When performing these steps on your robot, you may find that logging out does make docker group membership take effect.** In this case, you can try restarting Docker with the following command:
+
+```bash
+sudo systemctl restart docker
+```
+
+If this doesn't work, we recommend that you reboot your robot's computer.
+
 ## Clone the Stretch-AI Repository
 
 You will need to clone the *stretch-ai* repository on your robot and on your GPU computer. For example, you could run the following command on your robot and on your GPU computer.
