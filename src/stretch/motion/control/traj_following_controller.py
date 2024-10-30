@@ -17,8 +17,8 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 from omegaconf import DictConfig
 
-from stretch.motion.utils.config import get_control_config
 from stretch.motion.utils.geometry import xyt_global_to_base
+from stretch.utils.config import get_control_config
 
 DEFAULT_CFG_NAME = "traj_follower"
 
