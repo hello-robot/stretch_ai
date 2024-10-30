@@ -20,6 +20,9 @@ echo "Docker image version: $VERSION"
 # sudo chown -R $USER:$USER /home/$USER/ament_ws/install/stretch_description/share/stretch_description/urdf
 
 echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
+# Make sure the image is up to date
+sudo docker pull hellorobotinc/stretch-ai-ros2-bridge:$VERSION
+# Run the container
 sudo docker run -it --rm \
     --net=host \
     --privileged=true \

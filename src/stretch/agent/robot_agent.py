@@ -25,7 +25,7 @@ from PIL import Image
 import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
-from stretch.core.parameters import Parameters
+from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
@@ -50,6 +50,9 @@ class RobotAgent:
     update_rerun_every_time: bool = True
     normalize_embeddings: bool = False
 
+    # Default configuration file
+    default_config_path = "default_planner.yaml"
+
     # Sleep times
     # This sleep is before starting a head sweep
     _before_head_motion_sleep_t = 0.25
@@ -59,16 +62,19 @@ class RobotAgent:
     def __init__(
         self,
         robot: AbstractRobotClient,
-        parameters: Union[Parameters, Dict[str, Any]],
+        parameters: Optional[Union[Parameters, Dict[str, Any]]] = None,
         semantic_sensor: Optional[OvmmPerception] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
+        create_semantic_sensor: bool = False,
         enable_realtime_updates: bool = False,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
-        if isinstance(parameters, Dict):
+        if parameters is None:
+            self.parameters = get_parameters(self.default_config_path)
+        elif isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
         elif isinstance(parameters, Parameters):
             self.parameters = parameters
@@ -77,9 +83,20 @@ class RobotAgent:
         self.robot = robot
         self.show_instances_detected = show_instances_detected
 
+        # Create a semantic sensor
         self.semantic_sensor = semantic_sensor
-        self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
-        self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
+
+        # If the semantic sensor is not provided, we will create it from the config file
+        if create_semantic_sensor:
+            if self.semantic_sensor is not None:
+                logger.warn(
+                    "Semantic sensor is already provided, but create_semantic_sensor is set to True. Ignoring the provided semantic sensor."
+                )
+            # Create a semantic sensor
+            self.semantic_sensor = self.create_semantic_sensor()
+
+        self.pos_err_threshold = self.parameters["trajectory_pos_err_threshold"]
+        self.rot_err_threshold = self.parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
         self.encoder = get_encoder(
             self.parameters["encoder"], self.parameters.get("encoder_args", {})
@@ -103,7 +120,7 @@ class RobotAgent:
         # ==============================================
         # Update configuration
         # If true, the head will sweep on update, collecting more information.
-        self._sweep_head_on_update = parameters.get("agent/sweep_head_on_update", False)
+        self._sweep_head_on_update = self.parameters.get("agent/sweep_head_on_update", False)
 
         # ==============================================
         # Task-level parameters
@@ -115,20 +132,26 @@ class RobotAgent:
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = parameters["instance_memory"]["matching"][
-            "feature_match_threshold"
-        ]
+        self._is_match_threshold = self.parameters.get(
+            "instance_memory/matching/feature_match_threshold", 0.05
+        )
 
         # Expanding frontier - how close to frontier are we allowed to go?
-        self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
+        self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
             "default_expand_frontier_size"
         ]
-        self._frontier_min_dist = parameters["motion_planner"]["frontier"]["min_dist"]
-        self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
-        self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
-        self._voxel_size = parameters["voxel_size"]
-        self._realtime_matching_distance = parameters.get("agent/realtime/matching_distance", 0.5)
-        self._realtime_temporal_threshold = parameters.get("agent/realtime/temporal_threshold", 0.1)
+        self._frontier_min_dist = self.parameters["motion_planner"]["frontier"]["min_dist"]
+        self._frontier_step_dist = self.parameters["motion_planner"]["frontier"]["step_dist"]
+        self._manipulation_radius = self.parameters["motion_planner"]["goals"][
+            "manipulation_radius"
+        ]
+        self._voxel_size = self.parameters.get("voxel_size", 0.05)
+        self._realtime_matching_distance = self.parameters.get(
+            "agent/realtime/matching_distance", 0.5
+        )
+        self._realtime_temporal_threshold = self.parameters.get(
+            "agent/realtime/temporal_threshold", 0.1
+        )
 
         if voxel_map is not None:
             self.voxel_map = voxel_map
@@ -139,10 +162,14 @@ class RobotAgent:
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
             self.robot.get_robot_model(),
-            step_size=parameters["motion_planner"]["step_size"],
-            rotation_step_size=parameters["motion_planner"]["rotation_step_size"],
-            dilate_frontier_size=parameters["motion_planner"]["frontier"]["dilate_frontier_size"],
-            dilate_obstacle_size=parameters["motion_planner"]["frontier"]["dilate_obstacle_size"],
+            step_size=self.parameters["motion_planner"]["step_size"],
+            rotation_step_size=self.parameters["motion_planner"]["rotation_step_size"],
+            dilate_frontier_size=self.parameters["motion_planner"]["frontier"][
+                "dilate_frontier_size"
+            ],
+            dilate_obstacle_size=self.parameters["motion_planner"]["frontier"][
+                "dilate_obstacle_size"
+            ],
             grid=self.voxel_map.grid,
         )
 
@@ -159,15 +186,19 @@ class RobotAgent:
 
         # Create a simple motion planner
         self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
-        if parameters["motion_planner"]["shortcut_plans"]:
-            self.planner = Shortcut(self.planner, parameters["motion_planner"]["shortcut_iter"])
-        if parameters["motion_planner"]["simplify_plans"]:
+        # Add shotcutting to the planner
+        if self.parameters.get("motion_planner/shortcut_plans", False):
+            self.planner = Shortcut(
+                self.planner, self.parameters.get("motion_planner/shortcut_iter", 100)
+            )
+        # Add motion planner simplification
+        if self.parameters.get("motion_planner/simplify_plans", False):
             self.planner = SimplifyXYT(
                 self.planner,
-                min_step=parameters["motion_planner"]["simplify"]["min_step"],
-                max_step=parameters["motion_planner"]["simplify"]["max_step"],
-                num_steps=parameters["motion_planner"]["simplify"]["num_steps"],
-                min_angle=parameters["motion_planner"]["simplify"]["min_angle"],
+                min_step=self.parameters["motion_planner"]["simplify"]["min_step"],
+                max_step=self.parameters["motion_planner"]["simplify"]["max_step"],
+                num_steps=self.parameters["motion_planner"]["simplify"]["num_steps"],
+                min_angle=self.parameters["motion_planner"]["simplify"]["min_angle"],
             )
 
         self._start_threads()
@@ -2089,6 +2120,14 @@ class RobotAgent:
             scene_graph,
         )
         return world_representation
+
+    def create_semantic_sensor(self) -> OvmmPerception:
+        """Create a semantic sensor."""
+
+        # This is a lazy load since it can be a difficult dependency
+        from stretch.perception import create_semantic_sensor
+
+        return create_semantic_sensor(self.parameters)
 
     def save_map(self, filename: Optional[str] = None) -> None:
         """Save the current map to a file.

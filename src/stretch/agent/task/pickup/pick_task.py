@@ -11,7 +11,10 @@ from typing import Optional
 
 from stretch.agent.operations import (
     GoToNavOperation,
+    GraspObjectOperation,
     NavigateToObjectOperation,
+    OpenLoopGraspObjectOperation,
+    PreGraspObjectOperation,
     RotateInPlaceOperation,
     SearchForObjectOnFloorOperation,
 )
@@ -19,7 +22,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
 
 
-class FindObjectTask:
+class PickObjectTask:
     """Simple robot that will search for an object."""
 
     def __init__(
@@ -97,17 +100,55 @@ class FindObjectTask:
             match_method=matching,
             require_receptacle=False,
         )
-        # Set the target object class
-        search_for_object.set_target_object_class(self.target_object)
+        if self.agent.target_object is not None:
+            # Overwrite the default object to search for
+            search_for_object.set_target_object_class(self.agent.target_object)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
-            "go_to_object",
-            self.agent,
+            name="go_to_object",
+            agent=self.agent,
             parent=search_for_object,
             on_cannot_start=search_for_object,
             to_receptacle=False,
         )
+
+        # When about to start, run object detection and try to find the object. If not in front of us, explore again.
+        # If we cannot find the object, we should go back to the search_for_object operation.
+        # To determine if we can start, we just check to see if there's a detectable object nearby.
+        pregrasp_object = PreGraspObjectOperation(
+            name="prepare_to_grasp",
+            agent=self.agent,
+            on_failure=None,
+            on_cannot_start=go_to_object,
+            retry_on_failure=True,
+        )
+
+        # If we cannot start, we should go back to the search_for_object operation.
+        # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
+        if self.use_visual_servoing_for_grasp:
+            grasp_object = GraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.servo_to_grasp = True
+            grasp_object.match_method = matching
+        else:
+            grasp_object = OpenLoopGraspObjectOperation(
+                f"grasp_the_{self.target_object}",
+                self.agent,
+                parent=pregrasp_object,
+                on_failure=pregrasp_object,
+                on_cannot_start=go_to_object,
+                retry_on_failure=False,
+            )
+            grasp_object.set_target_object_class(self.agent.target_object)
+            grasp_object.match_method = matching
 
         task = Task()
         task.add_operation(go_to_navigation_mode)
@@ -115,6 +156,8 @@ class FindObjectTask:
             task.add_operation(rotate_in_place)
         task.add_operation(search_for_object)
         task.add_operation(go_to_object)
+        task.add_operation(pregrasp_object)
+        task.add_operation(grasp_object)
 
         # Add success connections
         if add_rotate:
@@ -122,6 +165,15 @@ class FindObjectTask:
             task.connect_on_success(rotate_in_place.name, search_for_object.name)
         else:
             task.connect_on_success(go_to_navigation_mode.name, search_for_object.name)
+
+        # Add success connections
+        task.connect_on_success(search_for_object.name, go_to_object.name)
+        task.connect_on_success(go_to_object.name, pregrasp_object.name)
+        task.connect_on_success(pregrasp_object.name, grasp_object.name)
+
+        # On failure try to search again
+        task.connect_on_failure(pregrasp_object.name, search_for_object.name)
+        task.connect_on_failure(grasp_object.name, search_for_object.name)
 
         # Add failures
         if add_rotate:
@@ -139,8 +191,9 @@ if __name__ == "__main__":
     from stretch.agent.zmq_client import HomeRobotZmqClient
 
     robot = HomeRobotZmqClient()
+
     # Create a robot agent with instance memory
     agent = RobotAgent(robot, create_semantic_sensor=True)
 
-    task = FindObjectTask(agent, target_object="cardboard box").get_task(add_rotate=True)
+    task = PickObjectTask(agent, target_object="stuffed leopard toy").get_task(add_rotate=False)
     task.run()
