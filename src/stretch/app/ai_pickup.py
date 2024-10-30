@@ -133,6 +133,11 @@ def main(
         verbose=verbose,
     )
 
+    if use_voice and not use_llm:
+        logger.warning("Voice input is only supported with a language model.")
+        logger.warning("Please set --use-llm to use voice input. For now, we will disable voice input.")
+        use_voice = False
+
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(robot, parameters, semantic_sensor)
     agent.start(visualize_map_at_start=show_intermediate_maps)
