@@ -1,19 +1,21 @@
-# Starting with Docker
+# Install the Docker Version of Stretch-AI
 
-Docker is a tool that allows you to package an application and its dependencies in a virtual container that can run on any Linux server. This ensures that the application will always run the same, regardless of the environment it is running in.
+*stretch-ai* provides two [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images, one for your [Stretch](https://hello-robot.com/stretch-3-product) robot and one for a computer with a GPU that communicates with your robot (*GPU computer*). These two Docker images make it easier to try *stretch-ai*.
 
-Stretch AI uses Docker to package the software and its dependencies in a container. This makes it easy to run the software on any computer that has Docker installed.
+The Docker images enables you to run *stretch-ai* in [containers](<https://en.wikipedia.org/wiki/Containerization_(computing)>) that include *stretch-ai* and its dependencies. Using a container simplifies installation and reduces the likelihood of interfering with other uses of your robot and your GPU computer.
 
-## Installing Docker
+**Please note that changes to the Docker container's files and the Docker container's state will be lost once you stop the container.**
 
-Start by installing docker on the robot and your desktop or GPU laptop:
+## Install Docker
+
+Start by installing docker on your robot and your GPU computer:
 
 ```
 sudo apt-get update
 sudo apt-get install docker.io
 ```
 
-On the GPU machine, you also need the [NVIDIA container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Check the [official install guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the most up-to-date instructions.
+On the GPU computer you also need the [NVIDIA container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Check the [official install guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the most up-to-date instructions.
 
 You can also install with:
 
@@ -27,7 +29,7 @@ sudo apt-get update
 sudo apt-get install -y nvidia-container-toolkit
 ```
 
-Then restart the docker service:
+Then restart the Docker service:
 
 ```
 sudo systemctl restart docker
@@ -35,15 +37,25 @@ sudo systemctl restart docker
 
 An [nvidia docker install script](scripts/install_nvidia_container_toolkit.sh) has been provided for Ubuntu machines. Again, though, [check the official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the most up-to-date instructions and if you have any issues.
 
-## On the Robot
+## Clone the Stretch-AI Repository
 
-We provide an easy startup script for running the Stretch AI software in a Docker container. To use the script, run the following command on the robot:
+You will need to clone the *stretch-ai* repository on your robot and on your GPU computer. For example, you could run the following command on your robot and on your GPU computer.
+
+```
+git clone https://github.com/hello-robot/stretch_ai.git
+```
+
+## Run the Robot's Script
+
+The GitHub *stretch-ai* repository provides a startup script for running *stretch-ai* software in a Docker container on your Stretch robot. Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`.
+
+To use the Docker script, run the following command in the *stretch-ai* repository on the robot:
 
 ```
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-You will see something like this as the docker image is downloaded:
+You will see something like the following in the terminal as the Docker image is downloaded:
 
 ```
 (base) hello-robot@stretch-se3-2005:~/src/stretchpy$ ./scripts/run_stretch_ai_ros2_bridge_server.sh 
@@ -74,9 +86,9 @@ f570a0dd636d: Waiting
 1a08cbb00ee1: Waiting                                               
 ```
 
-This may take some time, but it will only need to happen once (or when there is a new update).
+The Docker image can be large (i.e., > 10GB), so it takes time to download. You will only need to download each version of the *stretch-ai* Docker image a single time.
 
-After the image	is downloaded, you will hear two beeps, and the lidar will start spinning. The terminal will display outputs from the robot command server:
+After downloading the Docker image, the server will begin running on your robot. Your robot should beep twice and its lidar should start spinning. The terminal should display output from the robot's *stretch-ai* server like the following:
 
 ```bash
 [server-12] j='joint_wrist_yaw' idx=10 idx_q=10
@@ -93,21 +105,19 @@ After the image	is downloaded, you will hear two beeps, and the lidar will start
 [stretch_driver-3] [INFO] [1727454898.725969113] [stretch_driver]: Changed to mode = position
 ```
 
-Now you just need to start the containers on the GPU machine and start running apps!
+## Run the GPU Computer's Script
 
-## On the Desktop or GPU Laptop
-
-### Run the container for the first time
+Now you need to start the container on your GPU computer. To use the script, run the following command in the *stretch-ai* repository on the robot:
 
 ```bash
-./scripts/run_docker_gpu_machine.sh
+./scripts/run_stretch_ai_gpu_client.sh
 ```
 
-#### Verify NVIDIA docker
+#### Verify NVIDIA Docker
 
-Make sure nvidia docker is set up correctly. To do this, run the `nvidia-smi` command in the docker shell.
+Make sure NVIDIA version of Docker is set up correctly. To do this, run the `nvidia-smi` command in the docker shell.
 
-You should see something like this:
+You should see something like the following:
 
 ```bash
 root@olympia:/app# nvidia-smi
@@ -132,55 +142,57 @@ Fri Sep 27 16:12:43 2024
 +-----------------------------------------------------------------------------------------+
 ```
 
-#### Use the conda environment
+#### Use the Mamba Environment
 
 ```bash
 # Activate the environment
 mamba init && source ~/.bashrc && mamba activate stretch_ai
 ```
 
-## Testing
+## Simple Installation Test
 
-Run the `view_images` app to test:
+You can test your Docker installation by running the `view_images` app.
 
-```
-python -m stretch.app.view_images --robot_ip $ROBOT_IP
-```
+While the Docker container on your robot is running, you can run the following commands in the terminal for your GPU computer's Docker container.
 
-The gripper will open and the arm will move, and then you will see the camera feed from the robot.
-
-If this does not happen, the most likely thing is that you cannot connect to the robot over the network. Verify IP address and ping, and try again.
-
-Else, you can press `q` with any of the popup windows selected to quit, and run a different app. Two we recommend are below.
-
-Stretch AI saves the `--robot_ip` parameter to a file; you should only need to provide it once, but you can provide it every time if you prefer.
-
-### Mapping
+First, you need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot.
 
 ```bash
-python -m stretch.app.mapping --explore-iter 0 --robot_ip $ROBOT_IP
+./scripts/set_robot_ip.sh #.#.#.#
 ```
 
-The option `--explore-iter` is the number of iterations the robot will explore the environment. The robot will move around and build a map of the environment, as long as it is possible.
+*Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.*
 
-If you set `--explore-iter 0`, the robot will only turn in place.
+Next, run the `view_images` application in the Docker container on your GPU computer.
 
-### AI Pickup
-
-```bash
-python -m stretch.app.ai_pickup --robot_ip $ROBOT_IP
+```
+python -m stretch.app.view_images
 ```
 
-This will let you enter natural language instructions for an object and a location on the floor to place it. For example, we tested with "zebra" and "cardboard box."
+With a functioning installation, the robot's gripper will open, the arm will move, and then you will see video from the robot's cameras displayed on your GPU computer.
 
-### Developing with a Docker container on your desktop or GPU laptop
+To exit the app, you can press `q` with any of the popup windows selected.
 
-You can develop with the Docker container by mounting your local directory into the container. This way, you can edit files on your local machine and run them in the container.
+If the `view_images` app doesn't work, the most common issue is that the GPU computer is unable to communicate with the robot over the network. We recommend that you verify your robot's IP address and use [`ping`](<https://en.wikipedia.org/wiki/Ping_(networking_utility)>) on your GPU computer to check that it can reach the robot.
 
-We provide an alternative startup script for development. This script runs the Docker container with your local copy of the Stretch AI repository `../stretch_ai` mounted to the `/app` container directory. To use the script, run the following command on your desktop or laptop:
+If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai/tree/feature/documentation?tab=readme-ov-file#language-directed-pick-and-place).
+
+## Develop with the Docker Installation
+
+You can use the same Docker installation for development on your GPU computer. To do so, you can mount your local copy of the *stretch-ai* repository on your GPU computer into the *stretch-ai* container running on your GPU computer. This enables you to edit the files on your local copy of the *stretch-ai* repository and run them in the container.
+
+Providing the `--dev` command line argument to the GPU computer Docker startup script runs the Docker container with your local copy of the *stretch-ai* repository `../stretch_ai` mounted to the `/app` container directory. To use the script, run the following command on your desktop or laptop:
 
 ```bash
 ./scripts/run_docker_gpu_machine.sh --dev
 ```
 
+Once the container has started, you should run the following command in the GPU computer's terminal to perform an [editable installation with pip](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) with your local version of the *stretch-ai* code.
+
+```
+pip install -e src
+```
+
 Now, the apps will run from your local directory. You can edit the apps in your local directory and run them to see the result.
+
+**Please be aware that changes to the Docker container's files and the Docker container's state will be lost once you stop the container. Only changes to the mounted local directory will persist.**

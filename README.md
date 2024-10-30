@@ -7,7 +7,7 @@
 
 *This repository is currently under active development and is subject to change.*
 
-**stretch-ai** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for
+**Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
 - grasping
 - manipulation
@@ -19,17 +19,31 @@
 
 Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
+## Hardware Requirements
+
+We recommend the following hardware to run *stretch-ai*. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
+
+- **[Stretch 3](https://hello-robot.com/stretch-3-product) from [Hello Robot](https://hello-robot.com/)**
+  - When *Checking Software*, `stretch_system_check.py` should report that all software passes.
+  - You can find detailed instructions in the [official guide for updating Stretch 3's software](https://docs.hello-robot.com/0.3/software/updating_software/).
+- **Computer with an NVIDIA GPU**
+  - The computer should be running Ubuntu 22.04. Later versions might work, but have not been tested.
+  - Most of our testing has used a high-end CPU with an NVIDIA GeForce RTX 4090.
+- **Dedicated WiFi access point**
+  - Performance depends on high-bandwidth, low-latency wireless communication between the robot and the GPU computer.
+  - The official [Stretch WiFi Access Point](https://hello-robot.com/stretch-access-point) provides a tested example.
+
+To use the learning-from-demonstration (LfD) code you'll need the [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit).
+
 ## Quick-start Guide
 
-Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing **stretch-ai** from source can be challenging.
+Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing *stretch-ai* from source can be challenging.
 
 To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
-First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
+First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing the Docker Version of Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
 
-[Instructions for Installing the Docker Version of stretch-ai](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
-
-Once you've completed this installation, you can start the server on your Stretch robot.
+Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. The following command starts the server:
 
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
@@ -39,6 +53,12 @@ Then, you can start the client on your GPU computer.
 
 ```bash
 ./scripts/run_stretch_ai_gpu_client.sh
+```
+
+**Experimental support for RE2:** on your robot, you can run a version of the server with no d405 camera support. Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
+
+```bash
+./scripts/run_stretch_ai_ros2_bridge_server_no_d405.sh
 ```
 
 ### Language-Directed Pick and Place
@@ -67,6 +87,7 @@ python -m stretch.app.ai_pickup
 
 It will first spend time downloading various models that it depends on. Then, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
+
 ```bash
 Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
@@ -76,7 +97,7 @@ Enter the target receptacle: white laundry basket
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
-Once you're ready to learn more about **stretch-ai**, you can try out a variety of applications (apps) that demonstrate various capabilities.
+Once you're ready to learn more about **Stretch AI**, you can try out the variety of applications (apps) that demonstrate various capabilities.
 
 ## Apps
 
@@ -109,7 +130,7 @@ Finally:
 
 See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
 
-## Installation
+## Installation from Source
 
 Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
 
