@@ -34,7 +34,7 @@ else
 fi
 
 echo "===================================================="
-
+echo "Running docker container with GPU support"
 sudo docker run \
     -it \
     --gpus all \
