@@ -73,7 +73,7 @@ newgrp docker
 
 This will change your group to the `docker` group for the current terminal session.
 
-**When performing these steps on your robot, you may find that logging out does make docker group membership take effect.** In this case, you can try restarting Docker with the following command:
+**When performing these steps on your robot, you may find that logging out fails to make docker group membership take effect.** In this case, you can try restarting Docker with the following command:
 
 ```bash
 sudo systemctl restart docker
