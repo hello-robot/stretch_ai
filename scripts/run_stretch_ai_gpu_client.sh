@@ -4,6 +4,22 @@
 # Make sure it fails if we see any errors
 set -e
 
+# Function to check if user is in Docker group
+is_in_docker_group() {
+    groups | grep -q docker
+}
+
+# Function to run Docker command
+run_docker_command() {
+    if is_in_docker_group; then
+        echo "User is in Docker group. Running command without sudo."
+        docker "$@"
+    else
+        echo "User is not in Docker group. Running command with sudo."
+        sudo docker "$@"
+    fi
+}
+
 echo "===================================================="
 echo "Running Stretch AI docker container with GPU support"
 if [ -z "$DISPLAY" ]; then
@@ -40,7 +56,7 @@ fi
 echo "===================================================="
 echo "Running docker container with GPU support"
 # Make sure the image is up to date
-sudo docker pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
+run_docker_command pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
 # Run the container
 # The options mean:
 # -it: interactive mode
@@ -56,7 +72,7 @@ sudo docker pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
 # --group-add=audio: add the audio group to the container
 # $mount_option: mount the parent directory if in dev mode
 # hellorobotinc/stretch-ai_cuda-11.8:$VERSION: the docker image to run
-sudo docker run \
+run_docker_command run \
     -it \
     --gpus all \
     -v /dev:/dev \
@@ -70,4 +86,3 @@ sudo docker run \
     --group-add=audio \
     $mount_option \
     hellorobotinc/stretch-ai_cuda-11.8:$VERSION
-
