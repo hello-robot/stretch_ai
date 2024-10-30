@@ -87,7 +87,6 @@ python -m stretch.app.ai_pickup
 
 It will first spend time downloading various models that it depends on. Then, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
-
 ```bash
 Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
