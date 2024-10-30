@@ -379,7 +379,12 @@ class StretchClient(AbstractRobotClient):
                     break
                 else:
                     time.sleep(0.1)
-                    print("head pan error", abs(cur_pan - pan), "head tilt error", abs(cur_tilt - tilt))
+                    print(
+                        "head pan error",
+                        abs(cur_pan - pan),
+                        "head tilt error",
+                        abs(cur_tilt - tilt),
+                    )
         time.sleep(0.2)
 
     def get_has_wrist(self) -> bool:
