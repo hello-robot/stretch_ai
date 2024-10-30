@@ -34,7 +34,9 @@ else
 fi
 
 echo "===================================================="
-
+# Make sure the image is up to date
+sudo docker pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
+# Run the container
 sudo docker run \
     -it \
     --gpus all \
