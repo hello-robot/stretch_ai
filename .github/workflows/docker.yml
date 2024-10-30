@@ -22,6 +22,8 @@ jobs:
   build-and-push:
     runs-on: self-hosted
     steps:
+    - name: Own directory
+      run: sudo chown -R $USER:$USER ~/github/actions-runner/_work/stretch_ai/
     - name: Checkout code
       uses: actions/checkout@v3
 
