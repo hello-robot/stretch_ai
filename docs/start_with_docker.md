@@ -1,8 +1,8 @@
 # Install the Docker Version of Stretch-AI
 
-**stretch-ai** provides two [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images, one for your [Stretch](https://hello-robot.com/stretch-3-product) robot and one for a computer with a GPU that communicates with your robot (*GPU computer*). These two Docker images make it easier to try **stretch-ai**.
+*stretch-ai* provides two [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images, one for your [Stretch](https://hello-robot.com/stretch-3-product) robot and one for a computer with a GPU that communicates with your robot (*GPU computer*). These two Docker images make it easier to try *stretch-ai*.
 
-The Docker images enables you to run **stretch-ai** in [containers](<https://en.wikipedia.org/wiki/Containerization_(computing)>) that includes **stretch-ai** and its dependencies. Using a container simplifies installation and reduces the likelihood of interfering with other uses of your robot and your GPU computer.
+The Docker images enables you to run *stretch-ai* in [containers](<https://en.wikipedia.org/wiki/Containerization_(computing)>) that include *stretch-ai* and its dependencies. Using a container simplifies installation and reduces the likelihood of interfering with other uses of your robot and your GPU computer.
 
 **Please note that changes to the Docker container's files and the Docker container's state will be lost once you stop the container.**
 
@@ -69,7 +69,7 @@ This will change your group to the `docker` group for the current terminal sessi
 
 ## Clone the Stretch-AI Repository
 
-You will need to clone the **stretch-ai** repository on your robot and on your GPU computer. For example, you could run the following command on your robot and on your GPU computer.
+You will need to clone the *stretch-ai* repository on your robot and on your GPU computer. For example, you could run the following command on your robot and on your GPU computer.
 
 ```
 git clone https://github.com/hello-robot/stretch_ai.git
@@ -77,7 +77,9 @@ git clone https://github.com/hello-robot/stretch_ai.git
 
 ## Run the Robot's Script
 
-The GitHub **stretch-ai** repository provides a startup script for running **stretch-ai** software in a Docker container on your Stretch robot. To use the script, run the following command in the **stretch-ai** repository on the robot:
+The GitHub *stretch-ai* repository provides a startup script for running *stretch-ai* software in a Docker container on your Stretch robot. Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`.
+
+To use the Docker script, run the following command in the *stretch-ai* repository on the robot:
 
 ```
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
@@ -114,9 +116,9 @@ f570a0dd636d: Waiting
 1a08cbb00ee1: Waiting                                               
 ```
 
-The Docker image can be large (i.e., > 10GB), so it takes time to download. You will only need to download each version of the **stretch-ai** Docker image a single time.
+The Docker image can be large (i.e., > 10GB), so it takes time to download. You will only need to download each version of the *stretch-ai* Docker image a single time.
 
-After downloading the Docker image, the server will begin running on your robot. Your robot should beep twice and its lidar should start spinning. The terminal should display output from the robot's **stretch-ai** server like the following:
+After downloading the Docker image, the server will begin running on your robot. Your robot should beep twice and its lidar should start spinning. The terminal should display output from the robot's *stretch-ai* server like the following:
 
 ```bash
 [server-12] j='joint_wrist_yaw' idx=10 idx_q=10
@@ -135,7 +137,7 @@ After downloading the Docker image, the server will begin running on your robot.
 
 ## Run the GPU Computer's Script
 
-Now you need to start the container on your GPU computer. To use the script, run the following command in the **stretch-ai** repository on the robot:
+Now you need to start the container on your GPU computer. To use the script, run the following command in the *stretch-ai* repository on the robot:
 
 ```bash
 ./scripts/run_stretch_ai_gpu_client.sh
@@ -207,15 +209,15 @@ If your installation is working, we recommend that you try out [language-directe
 
 ## Develop with the Docker Installation
 
-You can use the same Docker installation for development on your GPU computer. To do so, you can mount your local copy of the **stretch-ai** repository on your GPU computer into the **stretch-ai** container running on your GPU computer. This enables you to edit the files on your local copy of the **stretch-ai** repository and run them in the container.
+You can use the same Docker installation for development on your GPU computer. To do so, you can mount your local copy of the *stretch-ai* repository on your GPU computer into the *stretch-ai* container running on your GPU computer. This enables you to edit the files on your local copy of the *stretch-ai* repository and run them in the container.
 
-Providing the `--dev` command line argument to the GPU computer Docker startup script runs the Docker container with your local copy of the **stretch-ai** repository `../stretch_ai` mounted to the `/app` container directory. To use the script, run the following command on your desktop or laptop:
+Providing the `--dev` command line argument to the GPU computer Docker startup script runs the Docker container with your local copy of the *stretch-ai* repository `../stretch_ai` mounted to the `/app` container directory. To use the script, run the following command on your desktop or laptop:
 
 ```bash
 ./scripts/run_docker_gpu_machine.sh --dev
 ```
 
-Once the container has started, you should run the following command in the GPU computer's terminal to perform an [editable installation with pip](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) with your local version of the **stretch-ai** code.
+Once the container has started, you should run the following command in the GPU computer's terminal to perform an [editable installation with pip](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) with your local version of the *stretch-ai* code.
 
 ```
 pip install -e src

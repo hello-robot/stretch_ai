@@ -7,7 +7,7 @@
 
 *This repository is currently under active development and is subject to change.*
 
-**stretch-ai** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for
+**Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
 - grasping
 - manipulation
@@ -19,17 +19,31 @@
 
 Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
+## Hardware Requirements
+
+We recommend the following hardware to run *stretch-ai*. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
+
+- **[Stretch 3](https://hello-robot.com/stretch-3-product) from [Hello Robot](https://hello-robot.com/)**
+  - When *Checking Software*, `stretch_system_check.py` should report that all software passes.
+  - You can find detailed instructions in the [official guide for updating Stretch 3's software](https://docs.hello-robot.com/0.3/software/updating_software/).
+- **Computer with an NVIDIA GPU**
+  - The computer should be running Ubuntu 22.04. Later versions might work, but have not been tested.
+  - Most of our testing has used a high-end CPU with an NVIDIA GeForce RTX 4090.
+- **Dedicated WiFi access point**
+  - Performance depends on high-bandwidth, low-latency wireless communication between the robot and the GPU computer.
+  - The official [Stretch WiFi Access Point](https://hello-robot.com/stretch-access-point) provides a tested example.
+
+To use the learning-from-demonstration (LfD) code you'll need the [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit).
+
 ## Quick-start Guide
 
-Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing **stretch-ai** from source can be challenging.
+Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing *stretch-ai* from source can be challenging.
 
 To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
-First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions.
+First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing the Docker Version of Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
 
-[Instructions for Installing the Docker Version of **stretch-ai**](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
-
-Once you've completed this installation, you can start the server on your Stretch robot.
+Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. The following command starts the server:
 
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
@@ -82,11 +96,61 @@ Enter the target receptacle: white laundry basket
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
-Once you're ready to learn more about **Stretch AI**, you can try out a variety of applications (apps) that demonstrate various capabilities.
+Once you're ready to learn more about **Stretch AI**, you can try out the variety of applications (apps) that demonstrate various capabilities.
 
-## Apps
+## Installation from Source
 
-A large number of [apps](docs/apps.md) are available for the Stretch robot, providing various features and an easy way to get started using the robot.
+For development, it is recommended to install from source, especially on the remote (GPU-enabled desktop) side.
+
+Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
+
+If you do not start with Docker, follow the [install guide](docs/install.md).
+
+In short, on the PC you will:
+
+```bash
+# Install Git LFS - needed for large files like images
+sudo apt-get install git-lfs
+git lfs install
+
+# Clone the repository
+# Do not forget the --recursive flag to clone submodules
+git clone git@github.com:hello-robot/stretch_ai.git --recursive
+
+# Install system dependencies
+# Pyaudio will fail if these are not installed
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+
+# Run install script to create a conda environment and install dependencies
+# This script is designed to work with CUDA 11.8 and will install perception code as well
+export CUDA_HOME=/usr/local/cuda-11.8
+./install.sh
+```
+
+Alternately, you can install with
+
+```bash
+python -m pip install -e ./src[dev]
+```
+
+in your preferred Python environment.
+
+## List of Stretch AI Apps
+
+Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
+
+A large number of [apps](docs/apps.md) are available for the Stretch robot, providing various features and an easy way to get started using the robot. You can check out a full list in the [apps documentation](docs/apps.md).
+
+Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
+
+All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`. For example:
+
+```bash
+export ROBOT_IP=192.168.1.15
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
+
+### Starting with Apps
 
 After [installation](#installation), on the robot, run the server:
 
@@ -114,42 +178,6 @@ Finally:
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 
 See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
-
-## Installation from Source
-
-Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
-
-If you do not start with Docker, follow the [install guide](docs/install.md).
-
-In short, on the PC you will:
-
-```bash
-# Install Git LFS
-sudo apt-get install git-lfs
-git lfs install
-
-# Clone the repository
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
-
-# Install system dependencies
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-
-# Run install script to create a conda environment and install dependencies
-./install.sh
-```
-
-## Stretch AI Apps
-
-Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
-
-Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
-
-All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`. For example:
-
-```bash
-export ROBOT_IP=192.168.1.15
-python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
-```
 
 #### Visualization and Streaming Video
 
