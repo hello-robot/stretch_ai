@@ -35,7 +35,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Purge Docker system
-      run: docker system prune -a
+      run: yes | docker system prune -a
 
     - name: Check disk space
       run: df -h
