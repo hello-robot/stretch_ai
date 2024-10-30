@@ -16,6 +16,9 @@ run_docker_command() {
         docker "$@"
     else
         echo "User is not in Docker group. Running command with sudo."
+        echo "To run without sudo, add your user to the docker group: sudo usermod -aG docker $USER"
+        echo "Then log out and log back in."
+        echo "Alternately, you can change for the current shell with newgrp: newgrp docker"
         sudo docker "$@"
     fi
 }
