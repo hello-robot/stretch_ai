@@ -186,7 +186,10 @@ class PickupTask:
             grasp_object.match_method = matching
 
         place_object_on_receptacle = PlaceObjectOperation(
-            "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
+            "place_object_on_receptacle",
+            self.agent,
+            on_cannot_start=go_to_receptacle,
+            require_object=True,
         )
 
         task = Task()

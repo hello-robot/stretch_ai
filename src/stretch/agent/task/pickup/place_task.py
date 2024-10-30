@@ -83,8 +83,8 @@ class PlaceOnReceptacleTask:
 
         # Look for the target receptacle
         search_for_receptacle = SearchForReceptacleOperation(
-            f"search_for_{self.target_receptacle}",
-            self.agent,
+            name=f"search_for_{self.target_receptacle}",
+            agent=self.agent,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
             match_method=matching,
@@ -94,14 +94,17 @@ class PlaceOnReceptacleTask:
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_receptacle = NavigateToObjectOperation(
-            "go_to_receptacle",
-            self.agent,
+            name="go_to_receptacle",
+            agent=self.agent,
             on_cannot_start=search_for_receptacle,
             to_receptacle=True,
         )
 
         place_object_on_receptacle = PlaceObjectOperation(
-            "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
+            name="place_object_on_receptacle",
+            agent=self.agent,
+            on_cannot_start=go_to_receptacle,
+            require_object=False,
         )
 
         task = Task()
