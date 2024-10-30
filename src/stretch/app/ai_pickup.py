@@ -100,6 +100,12 @@ from stretch.perception import create_semantic_sensor
     type=float,
     help="Radius of the circle around initial position where the robot is allowed to go.",
 )
+@click.option(
+    "--debug_llm",
+    "--debug-llm",
+    is_flag=True,
+    help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
+)
 @click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -116,6 +122,7 @@ def main(
     use_llm: bool = False,
     use_voice: bool = False,
     open_loop: bool = False,
+    debug_llm: bool = False,
     radius: float = 3.0,
     input_path: str = "",
 ):
@@ -155,6 +162,8 @@ def main(
 
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
+
+    # Executor handles outputs from the LLM client and converts them into executable actions
     executor = PickupExecutor(
         robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
     )
@@ -180,7 +189,9 @@ def main(
             llm_response = [("pickup", target_object), ("place", receptacle)]
         else:
             # Call the LLM client and parse
-            llm_response = chat_wrapper.query()
+            llm_response = chat_wrapper.query(verbose=debug_llm)
+            if debug_llm:
+                print("Parsed LLM Response:", llm_response)
 
         ok = executor(llm_response)
 
