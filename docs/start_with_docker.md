@@ -37,6 +37,36 @@ sudo systemctl restart docker
 
 An [nvidia docker install script](scripts/install_nvidia_container_toolkit.sh) has been provided for Ubuntu machines. Again, though, [check the official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the most up-to-date instructions and if you have any issues.
 
+### Optional: Setup Docker Group So You Do Not Need To Use `sudo`
+
+You can add your user to the `docker` group so you do not need to use `sudo` to run Docker commands. To do this, run the following command:
+
+1. Create the docker group if it doesn't already exist:
+
+```bash
+sudo groupadd docker
+```
+
+2. Add your user to the docker group:
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+3. Log out and log back in so that your group membership is re-evaluated. Then you can verify that you can run Docker commands without sudo:
+
+```bash
+docker run hello-world
+```
+
+If you want to run a docker command without logging out, you can run the following command:
+
+```bash
+newgrp docker
+```
+
+This will change your group to the `docker` group for the current terminal session.
+
 ## Clone the Stretch-AI Repository
 
 You will need to clone the **stretch-ai** repository on your robot and on your GPU computer. For example, you could run the following command on your robot and on your GPU computer.
