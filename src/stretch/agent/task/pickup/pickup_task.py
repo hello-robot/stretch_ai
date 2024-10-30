@@ -108,13 +108,13 @@ class PickupTask:
         if add_rotate:
             # Spin in place to find objects.
             rotate_in_place = RotateInPlaceOperation(
-                "rotate_in_place", self.agent, parent=go_to_navigation_mode
+                name="rotate_in_place", agent=self.agent, parent=go_to_navigation_mode
             )
 
         # Look for the target receptacle
         search_for_receptacle = SearchForReceptacleOperation(
-            f"search_for_{self.target_receptacle}",
-            self.agent,
+            name=f"search_for_{self.target_receptacle}",
+            agent=self.agent,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
             match_method=matching,
@@ -122,21 +122,20 @@ class PickupTask:
 
         # Try to expand the frontier and find an object; or just wander around for a while.
         search_for_object = SearchForObjectOnFloorOperation(
-            f"search_for_{self.target_object}_on_floor",
-            self.agent,
+            name=f"search_for_{self.target_object}_on_floor",
+            agent=self.agent,
             retry_on_failure=True,
             match_method=matching,
         )
-        if self.agent.target_object is not None:
-            # Overwrite the default object to search for
-            search_for_object.set_target_object_class(self.agent.target_object)
-        if self.agent.target_receptacle is not None:
-            search_for_receptacle.set_target_object_class(self.agent.target_receptacle)
+
+        # Set objects to search for
+        search_for_object.set_target_object_class(self.target_object)
+        search_for_receptacle.set_target_object_class(self.target_receptacle)
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
-            "go_to_object",
-            self.agent,
+            name="go_to_object",
+            agent=self.agent,
             parent=search_for_object,
             on_cannot_start=search_for_object,
             to_receptacle=False,
@@ -144,8 +143,8 @@ class PickupTask:
 
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_receptacle = NavigateToObjectOperation(
-            "go_to_receptacle",
-            self.agent,
+            name="go_to_receptacle",
+            agent=self.agent,
             on_cannot_start=search_for_receptacle,
             to_receptacle=True,
         )
@@ -154,8 +153,8 @@ class PickupTask:
         # If we cannot find the object, we should go back to the search_for_object operation.
         # To determine if we can start, we just check to see if there's a detectable object nearby.
         pregrasp_object = PreGraspObjectOperation(
-            "prepare_to_grasp",
-            self.agent,
+            name="prepare_to_grasp",
+            agent=self.agent,
             on_failure=None,
             on_cannot_start=go_to_object,
             retry_on_failure=True,
@@ -164,8 +163,8 @@ class PickupTask:
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
         if self.use_visual_servoing_for_grasp:
             grasp_object = GraspObjectOperation(
-                f"grasp_the_{self.target_object}",
-                self.agent,
+                name=f"grasp_the_{self.target_object}",
+                agent=self.agent,
                 parent=pregrasp_object,
                 on_failure=pregrasp_object,
                 on_cannot_start=go_to_object,
@@ -176,8 +175,8 @@ class PickupTask:
             grasp_object.match_method = matching
         else:
             grasp_object = OpenLoopGraspObjectOperation(
-                f"grasp_the_{self.target_object}",
-                self.agent,
+                name=f"grasp_the_{self.target_object}",
+                agent=self.agent,
                 parent=pregrasp_object,
                 on_failure=pregrasp_object,
                 on_cannot_start=go_to_object,
@@ -187,7 +186,10 @@ class PickupTask:
             grasp_object.match_method = matching
 
         place_object_on_receptacle = PlaceObjectOperation(
-            "place_object_on_receptacle", self.agent, on_cannot_start=go_to_receptacle
+            "place_object_on_receptacle",
+            self.agent,
+            on_cannot_start=go_to_receptacle,
+            require_object=True,
         )
 
         task = Task()
