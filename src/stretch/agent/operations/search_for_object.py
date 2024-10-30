@@ -45,6 +45,7 @@ class ManagedSearchOperation(ManagedOperation):
         return self._object_class.replace("_", " ")
 
     def __init__(self, *args, match_method="feature", **kwargs):
+        """Search for an object in the environment. By default, we will search for an object by its feature vector."""
         super().__init__(*args, **kwargs)
         self.match_method = match_method
 
@@ -55,6 +56,15 @@ class ManagedSearchOperation(ManagedOperation):
         self._object_class_feature = None
 
     def is_match_by_feature(self, instance: Instance) -> bool:
+        """Check if the instance is a match for the target object class by comparing feature vectors.
+
+        Args:
+            instance (Instance): the instance to check
+
+        Returns:
+            bool: True if the instance is a match, False otherwise
+        """
+
         # Compute the feature vector for the object if not saved
         if self._object_class_feature is None:
             self._object_class_feature = self.agent.encode_text(self.object_class)
@@ -207,9 +217,20 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     # Important parameters
     plan_for_manipulation: bool = True
     update_at_start: bool = False
+    require_receptacle: bool = True
+
+    def __init__(self, require_receptacle: bool = True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.require_receptacle = require_receptacle
 
     def can_start(self) -> bool:
-        self.attempt("If receptacle is found, we can start searching for objects.")
+        if self.require_receptacle:
+            self.attempt("If receptacle is found, we can start searching for objects.")
+            return self.agent.current_receptacle is not None
+        else:
+            self.attempt("Will start searching for objects.")
+            return True
+
         return self.agent.current_receptacle is not None
 
     def run(self) -> None:

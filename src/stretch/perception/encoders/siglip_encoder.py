@@ -14,9 +14,11 @@ import torch
 from PIL import Image
 from transformers import AutoModel, AutoProcessor, AutoTokenizer
 
+from stretch.utils.logger import Logger
+
 from .base_encoder import BaseImageTextEncoder
 
-# import torch.nn.functional as F
+logger = Logger(__name__)
 
 
 class SiglipEncoder(BaseImageTextEncoder):
@@ -62,14 +64,18 @@ class SiglipEncoder(BaseImageTextEncoder):
         self.model = AutoModel.from_pretrained(model_name).to(self.device)
 
     def encode_image(
-        self, image: Union[torch.tensor, np.ndarray], image_shape=(360, 270)
+        self,
+        image: Union[torch.tensor, np.ndarray],
+        image_shape=(360, 270),
+        verbose: bool = False,
     ) -> torch.Tensor:
         """Encode this input image to a feature vector"""
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy()
         image = image.astype(np.uint8)
         pil_image = Image.fromarray(image)
-        print("Encoding image", pil_image.size)
+        if verbose:
+            logger.info("Encoding image", pil_image.size)
         inputs = self.processor(images=pil_image, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
