@@ -84,7 +84,7 @@ class GraspObjectOperation(ManagedOperation):
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
     # median_distance_when_grasping: float = 0.15
-    median_distance_when_grasping: float = 0.2
+    median_distance_when_grasping: float = 0.1 # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -103,9 +103,9 @@ class GraspObjectOperation(ManagedOperation):
     grasp_loose: bool = False
     reset_observation: bool = False
     # Move the arm forward by this amount when grasping
-    _grasp_arm_offset: float = 0.13
+    _grasp_arm_offset: float = 0. # 0.13
     # Move the arm down by this amount when grasping
-    _grasp_lift_offset: float = -0.05
+    _grasp_lift_offset: float = 0. # -0.05
 
     # Visual servoing config
     track_image_center: bool = False
@@ -477,6 +477,8 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
         self.warn("Starting visual servoing.")
 
+        iter_ = 0
+
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
@@ -566,6 +568,8 @@ class GraspObjectOperation(ManagedOperation):
                 if self.show_point_cloud:
                     self._debug_show_point_cloud(servo, current_xyz)
 
+            iter_ += 1
+
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
@@ -638,7 +642,8 @@ class GraspObjectOperation(ManagedOperation):
             # Fix lift to only go down
             lift = min(lift, prev_lift)
 
-            if aligned:
+            # if aligned:
+            if iter_ % 2 == 0:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
                     print(
@@ -653,12 +658,21 @@ class GraspObjectOperation(ManagedOperation):
                 aligned_once = True
                 arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
                 lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
+
+                # reducing delta for more fine-grained control
+                arm_component = arm_component / 5
+                lift_compoennt = lift_component / 5
+
                 arm += arm_component
                 lift += lift_component
             else:
                 # Add these to do some really hacky proportionate control
                 px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
                 py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+
+                # reducing delta for more fine-grained control
+                px = px / 5
+                py = py / 5
 
                 # Move the base and modify the wrist pitch
                 # TODO: remove debug code
