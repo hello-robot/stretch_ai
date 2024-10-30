@@ -590,6 +590,10 @@ class SparseVoxelMap(object):
         # Increment sequence counter
         self._seq += 1
 
+    def is_empty(self) -> bool:
+        """Check if the voxel map is empty."""
+        return len(self.observations) == 0
+
     def mask_from_bounds(self, bounds: np.ndarray, debug: bool = False):
         """create mask from a set of 3d object bounds"""
         assert bounds.shape[0] == 3, "bounding boxes in xyz"
