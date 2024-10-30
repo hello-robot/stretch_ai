@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: gh-larger-runner-medium
+    runs-on: self-hosted
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
