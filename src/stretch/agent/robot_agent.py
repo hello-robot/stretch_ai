@@ -132,9 +132,9 @@ class RobotAgent:
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = self.parameters["instance_memory"]["matching"][
-            "feature_match_threshold"
-        ]
+        self._is_match_threshold = self.parameters.get(
+            "instance_memory/matching/feature_match_threshold", 0.05
+        )
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
