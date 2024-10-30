@@ -53,7 +53,13 @@ sudo groupadd docker
 sudo usermod -aG docker $USER
 ```
 
-3. Log out and log back in so that your group membership is re-evaluated. Then you can verify that you can run Docker commands without sudo:
+3. Restart the Docker service:
+
+```bash
+sudo systemctl restart docker
+```
+
+4. Log out and log back in so that your group membership is re-evaluated. Then you can verify that you can run Docker commands without sudo:
 
 ```bash
 docker run hello-world
