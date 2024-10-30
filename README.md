@@ -98,9 +98,51 @@ At Hello Robot, people have successfully commanded the robot to pick up a variet
 
 Once you're ready to learn more about **Stretch AI**, you can try out the variety of applications (apps) that demonstrate various capabilities.
 
-## Apps
+## Installation from Source
 
-A large number of [apps](docs/apps.md) are available for the Stretch robot, providing various features and an easy way to get started using the robot.
+For development, it is recommended to install from source, especially on the remote (GPU-enabled desktop) side.
+
+Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
+
+If you do not start with Docker, follow the [install guide](docs/install.md).
+
+In short, on the PC you will:
+
+```bash
+# Install Git LFS - needed for large files like images
+sudo apt-get install git-lfs
+git lfs install
+
+# Clone the repository
+# Do not forget the --recursive flag to clone submodules
+git clone git@github.com:hello-robot/stretch_ai.git --recursive
+
+# Install system dependencies
+# Pyaudio will fail if these are not installed
+sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+
+# Run install script to create a conda environment and install dependencies
+# This script is designed to work with CUDA 11.8 and will install perception code as well
+export CUDA_HOME=/usr/local/cuda-11.8
+./install.sh
+```
+
+## List of Stretch AI Apps
+
+Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
+
+A large number of [apps](docs/apps.md) are available for the Stretch robot, providing various features and an easy way to get started using the robot. You can check out a full list in the [apps documentation](docs/apps.md).
+
+Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
+
+All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`. For example:
+
+```bash
+export ROBOT_IP=192.168.1.15
+python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+```
+
+### Starting with Apps
 
 After [installation](#installation), on the robot, run the server:
 
@@ -128,42 +170,6 @@ Finally:
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 
 See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
-
-## Installation from Source
-
-Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
-
-If you do not start with Docker, follow the [install guide](docs/install.md).
-
-In short, on the PC you will:
-
-```bash
-# Install Git LFS
-sudo apt-get install git-lfs
-git lfs install
-
-# Clone the repository
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
-
-# Install system dependencies
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-
-# Run install script to create a conda environment and install dependencies
-./install.sh
-```
-
-## Stretch AI Apps
-
-Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
-
-Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
-
-All of these take the `--robot_ip` flag to specify the robot's IP address. You should only need to do this the first time you run an app for a particular IP address; the app will save the IP address in a configuration file at `~/.stretch/robot_ip.txt`. For example:
-
-```bash
-export ROBOT_IP=192.168.1.15
-python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
-```
 
 #### Visualization and Streaming Video
 
