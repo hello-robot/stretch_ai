@@ -37,6 +37,10 @@ class ManagedOperation(Operation):
         elif robot is not None:
             self.robot = robot
             self.parameters = robot.parameters
+        else:
+            raise ValueError("Either agent or robot must be provided.")
+
+        assert self.robot is not None, "Robot client must be provided."
 
         # Get the robot kinematic model
         self.robot_model = self.robot.get_robot_model()
