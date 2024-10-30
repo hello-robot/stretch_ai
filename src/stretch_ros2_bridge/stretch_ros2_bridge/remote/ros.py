@@ -7,6 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -153,8 +155,14 @@ class StretchRosInterface(Node):
         for i in range(3, self.dof):
             self._ros_joint_names += CONFIG_TO_ROS[i]
 
-        # Get indexer
-        self.Idx = get_Idx("eoa_wrist_dw3_tool_sg3")
+        # Get fleet ID from environment
+        fleet_id = os.environ["HELLO_FLEET_ID"]
+        # Parse from format stretch-reX-XX to just reX
+        robot_model = fleet_id.split("-")[1]
+        print(f"Using fleet ID: {fleet_id}")
+        print(f"Using robot model: {robot_model}")
+        self._fleet_id = fleet_id
+        self._robot_model = robot_model
 
         # Initialize cameras
         self._color_topic = DEFAULT_COLOR_TOPIC if color_topic is None else color_topic
@@ -181,6 +189,14 @@ class StretchRosInterface(Node):
             self._lidar = RosLidar(self, self._lidar_topic)
             self._lidar.wait_for_scan()
 
+        if self.get_has_wrist():
+            # Get indexer
+            self._has_wrist = True
+            self.Idx = get_Idx("eoa_wrist_dw3_tool_sg3")
+        else:
+            self._has_wrist = False
+            self.Idx = get_Idx("tool_stretch_gripper")
+
     def __del__(self):
         self._thread.join()
 
@@ -200,13 +216,36 @@ class StretchRosInterface(Node):
             + j_status[ROS_ARM_JOINTS[2]]
             + j_status[ROS_ARM_JOINTS[3]]
         )
+        # Set the gripper
         pose[self.Idx.GRIPPER] = j_status[ROS_GRIPPER_FINGER]
-        pose[self.Idx.WRIST_ROLL] = j_status[ROS_WRIST_ROLL]
-        pose[self.Idx.WRIST_PITCH] = j_status[ROS_WRIST_PITCH]
+
+        # Check if we have wrist joints
+        if ROS_WRIST_ROLL in j_status:
+            pose[self.Idx.WRIST_ROLL] = j_status[ROS_WRIST_ROLL]
+            pose[self.Idx.WRIST_PITCH] = j_status[ROS_WRIST_PITCH]
+        # else:
+        #    pose[self.Idx.WRIST_ROLL] = 0
+        #    pose[self.Idx.WRIST_PITCH] = -np.pi / 4
+        # We always have yaw
         pose[self.Idx.WRIST_YAW] = j_status[ROS_WRIST_YAW]
+
+        # Head joints
         pose[self.Idx.HEAD_PAN] = j_status[ROS_HEAD_PAN]
         pose[self.Idx.HEAD_TILT] = j_status[ROS_HEAD_TILT]
         return pose
+
+    def get_has_wrist(self) -> bool:
+        """Check if the robot has a wrist joint."""
+        # Wait until self.joint_status is populated
+        rate = self.create_rate(10)
+        while rclpy.ok():
+            with self._js_lock:
+                print("Waiting for joint status...", self.joint_status.keys())
+                if ROS_LIFT_JOINT in self.joint_status:
+                    break
+            rate.sleep()
+        print("Done waiting for joint status...", self.joint_status.keys())
+        return ROS_WRIST_ROLL in self.joint_status
 
     def send_joint_goals(
         self, joint_goals: Dict[str, float], velocities: Optional[Dict[str, float]] = None
@@ -221,10 +260,13 @@ class StretchRosInterface(Node):
             joint_pose[self.Idx.LIFT] = joint_goals[self.LIFT_JOINT]
         if self.ARM_JOINT in joint_goals:
             joint_pose[self.Idx.ARM] = joint_goals[self.ARM_JOINT]
-        if self.WRIST_ROLL in joint_goals:
+        if self.WRIST_ROLL in joint_goals and ROS_WRIST_ROLL in self.joint_status:
+            # Only set wrist roll if we have it
             joint_pose[self.Idx.WRIST_ROLL] = joint_goals[self.WRIST_ROLL]
-        if self.WRIST_PITCH in joint_goals:
+        if self.WRIST_PITCH in joint_goals and ROS_WRIST_PITCH in self.joint_status:
+            # Only set wrist pitch if we have it
             joint_pose[self.Idx.WRIST_PITCH] = joint_goals[self.WRIST_PITCH]
+        # We always have yaw
         if self.WRIST_YAW in joint_goals:
             joint_pose[self.Idx.WRIST_YAW] = joint_goals[self.WRIST_YAW]
         if self.GRIPPER_FINGER in joint_goals:

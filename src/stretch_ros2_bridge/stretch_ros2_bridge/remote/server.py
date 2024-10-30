@@ -155,6 +155,9 @@ class ZmqServer(BaseZmqServer):
             print("Saying:", action["say"])
             self.text_to_speech.say_async(action["say"])
         elif "xyt" in action:
+            # Check control mode
+            if not self.client.in_navigation_mode():
+                self.client.switch_to_navigation_mode()
             if self.verbose:
                 print(
                     "Is robot in navigation mode?",

@@ -408,6 +408,10 @@ class RerunVisualizer:
         """
         # rr.set_time_seconds("realtime", time.time())
         # EE Frame
+        if not "ee_pose" in obs:
+            return
+        if obs["ee_pose"] is None:
+            return
         rot, trans = decompose_homogeneous_matrix(obs["ee_pose"])
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
@@ -421,6 +425,10 @@ class RerunVisualizer:
             servo (Servo): Servo observation dataclass
         """
         rr.set_time_seconds("realtime", time.time())
+
+        if servo.ee_rgb is None or servo.ee_depth is None or servo.ee_camera_pose is None:
+            return
+
         # EE Camera
         rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
 
@@ -654,4 +662,5 @@ class RerunVisualizer:
                     time.sleep(sleep_time)
 
             except Exception as e:
-                print(e)
+                logger.error(e)
+                raise e

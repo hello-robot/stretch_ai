@@ -19,8 +19,8 @@ USER hello-robot
 RUN echo "Installing Stretch AI package"
 RUN pip install --upgrade pip setuptools packaging build meson ninja
 # Do this if you want to check out a specific branch; it's important to make sure versions match:
-# RUN git clone https://github.com/hello-robot/stretch_ai --branch feature/long-horizon-with-llms
-RUN git clone https://github.com/hello-robot/stretch_ai
+RUN git clone https://github.com/hello-robot/stretch_ai --branch docker/0.1.8
+# RUN git clone https://github.com/hello-robot/stretch_ai
 WORKDIR /home/hello-robot/stretch_ai
 RUN pip install -e src/
 
