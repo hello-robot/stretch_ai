@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: gh-larger-runner-medium
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
