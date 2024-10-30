@@ -18,6 +18,9 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
 
 
 @click.command()
@@ -142,7 +145,9 @@ def main(
 
     if use_voice and not use_llm:
         logger.warning("Voice input is only supported with a language model.")
-        logger.warning("Please set --use-llm to use voice input. For now, we will disable voice input.")
+        logger.warning(
+            "Please set --use-llm to use voice input. For now, we will disable voice input."
+        )
         use_voice = False
 
     # Agents wrap the robot high level planning interface for now
@@ -194,10 +199,6 @@ def main(
                 print("Parsed LLM Response:", llm_response)
 
         ok = executor(llm_response)
-
-        if reset:
-            # Send the robot home at the end!
-            agent.go_home()
 
         if llm_client is None:
             break
