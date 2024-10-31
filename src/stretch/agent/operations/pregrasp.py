@@ -32,11 +32,10 @@ class PreGraspObjectOperation(ManagedOperation):
             return False
 
         start = self.robot.get_base_pose()
-        if not self.navigation_space.is_valid(start):
+        if not self.navigation_space.is_valid(start, verbose=True):
             self.error(
                 f"{self.name}: [ERROR]: Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
-            breakpoint()
 
         # Get the center of the object point cloud so that we can look at it
         object_xyz = self.agent.current_object.point_cloud.mean(axis=0)

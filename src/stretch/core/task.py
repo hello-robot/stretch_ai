@@ -68,6 +68,10 @@ class Operation(abc.ABC):
         """Set the status of the operation."""
         self.status = status
 
+    def set_on_failure(self, operation: "Operation"):
+        """Set the on_failure operation."""
+        self.on_failure = operation
+
     @property
     def name(self) -> str:
         """Return the name of the operation."""
@@ -167,6 +171,10 @@ class Task:
         on_success = self._operations[on_success_name]
         operation.on_success = on_success
 
+    def get_operation(self, operation_name: str) -> Operation:
+        """Get the operation by name."""
+        return self._operations[operation_name]
+
     def info(self, message):
         print(colored("[TASK INFO] " + str(message), "cyan"))
 
@@ -200,7 +208,7 @@ class Task:
                     self.info(f"Operation {self.current_operation.name} failed.")
                     self.current_operation = self.current_operation.on_failure
                     failures += 1
-                    if failures >= self.max_failures:
+                    if failures >= self.current_operation.max_failures:
                         self.error(
                             f"Operation {self.current_operation.name} failed too many times!"
                         )

@@ -578,9 +578,10 @@ class RobotAgent:
                 time.sleep(0.05)
 
             # t1 = timeit.default_timer()
-            self.obs_history.append(obs)
+            if obs is not None:
+                self.obs_history.append(obs)
+                self.obs_count += 1
             self._obs_history_lock.release()
-            self.obs_count += 1
             time.sleep(0.1)
 
     def stop_realtime_updates(self):
@@ -732,7 +733,7 @@ class RobotAgent:
         while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
-            time.sleep(0.5)
+            time.sleep(0.3)
 
     def update(
         self,

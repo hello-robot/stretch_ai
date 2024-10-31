@@ -10,9 +10,14 @@
 import ast
 
 from stretch.agent.operations import (
+    GoToNavOperation,
     GraspObjectOperation,
     NavigateToObjectOperation,
+    PlaceObjectOperation,
     PreGraspObjectOperation,
+    SearchForReceptacleOperation,
+    SearchForObjectOnFloorOperation,
+    SetCurrentObjectOperation,
     SpeakOperation,
     WaveOperation,
 )
@@ -41,7 +46,18 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
     def go_to(self, location: str):
         """Adds a GoToNavOperation to the task"""
-        _, self.agent.current_object = self.agent.get_instance_from_text(location)
+        _, current_object = self.agent.get_instance_from_text(location)
+
+        if current_object is not None:
+            print(f"Setting current object to {current_object}")
+            set_current_object = SetCurrentObjectOperation(
+                name="set_current_object_" + location + f"_{str(self._operation_naming_counter)}",
+                agent=self.agent,
+                robot=self.robot,
+                target=current_object,
+            )
+            self._operation_naming_counter += 1
+            self.task.add_operation(set_current_object, True)
 
         go_to = NavigateToObjectOperation(
             name="go_to_" + location + f"_{str(self._operation_naming_counter)}",
@@ -52,10 +68,42 @@ class LLMPlanCompiler(ast.NodeVisitor):
         self._operation_naming_counter += 1
         go_to.configure(location=location)
         self.task.add_operation(go_to, True)
+
+        if current_object is not None:
+            self.task.connect_on_success(set_current_object.name, go_to.name)
+            return "set_current_object_" + location + f"_{str(self._operation_naming_counter - 2)}", "go_to_" + location + f"_{str(self._operation_naming_counter - 1)}"
         return "go_to_" + location + f"_{str(self._operation_naming_counter - 1)}"
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
+         # Try to expand the frontier and find an object; or just wander around for a while.
+
+        go_to_navigation_mode = GoToNavOperation(
+            name="go_to_navigation_mode" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            retry_on_failure=True,
+        )
+        self._operation_naming_counter += 1
+
+        search_for_object = SearchForObjectOnFloorOperation(
+            name=f"search_for_{object_name}_on_floor" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            retry_on_failure=True,
+            match_method="feature",
+            require_receptacle=False,
+        )
+        self._operation_naming_counter += 1
+        search_for_object.set_target_object_class(object_name)
+
+        go_to_object = NavigateToObjectOperation(
+            name="go_to_object" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            parent=search_for_object,
+            on_cannot_start=search_for_object,
+            to_receptacle=False,
+        )
+        self._operation_naming_counter += 1
+
         pregrasp_object = PreGraspObjectOperation(
             name="pregrasp_" + object_name + f"_{str(self._operation_naming_counter)}",
             agent=self.agent,
@@ -77,24 +125,71 @@ class LLMPlanCompiler(ast.NodeVisitor):
         grasp_object.servo_to_grasp = True
         grasp_object.match_method = "feature"
 
+        self.task.add_operation(go_to_navigation_mode, True)
+        self.task.add_operation(search_for_object, True)
+        self.task.add_operation(go_to_object, True)
         self.task.add_operation(pregrasp_object, True)
         self.task.add_operation(grasp_object, True)
+
+        self.task.connect_on_success(go_to_navigation_mode.name, search_for_object.name)
+        self.task.connect_on_success(search_for_object.name, go_to_object.name)
+        self.task.connect_on_success(go_to_object.name, pregrasp_object.name)
+        self.task.connect_on_success(pregrasp_object.name, grasp_object.name)
+
         return (
-            "pregrasp_" + object_name + f"_{str(self._operation_naming_counter - 2)}",
-            "pick_" + object_name + f"_{str(self._operation_naming_counter - 1)}",
+            go_to_navigation_mode.name,
+            grasp_object.name,
         )
 
-    def place(self, object_name: str):
+    def place(self, receptacle_name: str):
         """Adds a PlaceObjectOperation to the task"""
-        speak_not_implemented = SpeakOperation(
-            name="place_" + object_name + f"_{str(self._operation_naming_counter)}",
+        go_to_navigation_mode = GoToNavOperation(
+            name="go_to_navigation_mode" + f"_{str(self._operation_naming_counter)}",
             agent=self.agent,
-            robot=self.robot,
+            retry_on_failure=True,
         )
         self._operation_naming_counter += 1
-        speak_not_implemented.configure(message="Place operation not implemented")
-        self.task.add_operation(speak_not_implemented, True)
-        return "place_" + object_name + f"_{str(self._operation_naming_counter - 1)}"
+
+        search_for_receptacle = SearchForReceptacleOperation(
+            name=f"search_for_{receptacle_name}" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            retry_on_failure=True,
+            match_method="feature",
+        )
+        self._operation_naming_counter += 1
+        search_for_receptacle.set_target_object_class(receptacle_name)
+
+        go_to_receptacle = NavigateToObjectOperation(
+            name="go_to_receptacle" + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            parent=search_for_receptacle,
+            on_cannot_start=search_for_receptacle,
+            to_receptacle=True,
+        )
+        self._operation_naming_counter += 1
+
+        place_object_on_receptacle = PlaceObjectOperation(
+            name="place_" + receptacle_name + f"_{str(self._operation_naming_counter)}",
+            agent=self.agent,
+            robot=self.robot,
+            on_cannot_start=go_to_receptacle,
+            require_object=True,
+        )
+        self._operation_naming_counter += 1
+
+        self.task.add_operation(go_to_navigation_mode, True)
+        self.task.add_operation(search_for_receptacle, True)
+        self.task.add_operation(go_to_receptacle, True)
+        self.task.add_operation(place_object_on_receptacle, True)
+
+        self.task.connect_on_success(go_to_navigation_mode.name, search_for_receptacle.name)
+        self.task.connect_on_success(search_for_receptacle.name, go_to_receptacle.name)
+        self.task.connect_on_success(go_to_receptacle.name, place_object_on_receptacle.name)
+
+        return (
+            go_to_navigation_mode.name,
+            place_object_on_receptacle.name,
+        )
 
     def say(self, message: str):
         """Adds a SpeakOperation to the task"""
@@ -235,11 +330,11 @@ class LLMPlanCompiler(ast.NodeVisitor):
         # Create the operation
         operation_ret = eval("self." + root.function_call)
 
-        itermediate_operation_name = None
+        intermediate_operation_name = None
 
         if type(operation_ret) is tuple:
             root_operation_name = operation_ret[1]
-            itermediate_operation_name = operation_ret[0]
+            intermediate_operation_name = operation_ret[0]
         else:
             root_operation_name = operation_ret
 
@@ -249,19 +344,33 @@ class LLMPlanCompiler(ast.NodeVisitor):
         if parent_operation_name is not None:
             if success:
                 # self.task.connect_on_success(parent_operation_name, root_operation_name)
-                if itermediate_operation_name is not None:
-                    self.task.connect_on_success(parent_operation_name, itermediate_operation_name)
-                    self.task.connect_on_success(itermediate_operation_name, root_operation_name)
+                if intermediate_operation_name is not None:
+                    self.task.connect_on_success(parent_operation_name, intermediate_operation_name)
+                    # self.task.connect_on_success(intermediate_operation_name, root_operation_name)
 
+                    self.task.connect_on_failure(intermediate_operation_name, parent_operation_name)
+                    self.task.connect_on_failure(root_operation_name, parent_operation_name)
                 else:
                     self.task.connect_on_success(parent_operation_name, root_operation_name)
+                    self.task.connect_on_failure(root_operation_name, parent_operation_name)
             else:
                 # self.task.connect_on_failure(parent_operation_name, root_operation_name)
-                if itermediate_operation_name is not None:
-                    self.task.connect_on_failure(parent_operation_name, itermediate_operation_name)
-                    self.task.connect_on_success(itermediate_operation_name, root_operation_name)
+                if intermediate_operation_name is not None:
+                    self.task.connect_on_failure(parent_operation_name, intermediate_operation_name)
+                    # self.task.connect_on_success(intermediate_operation_name, root_operation_name)
+
+                    self.task.connect_on_failure(intermediate_operation_name, parent_operation_name)
+                    self.task.connect_on_failure(root_operation_name, parent_operation_name)
+
+                    # intermediate_operation = self.task.get_operation(intermediate_operation_name)
+                    # intermediate_operation.on_failure = self.task.get_operation(parent_operation_name)
+
+                    # root_operation = self.task.get_operation(root_operation_name)
+                    # root_operation.on_failure = self.task.get_operation(parent_operation_name)
                 else:
                     self.task.connect_on_failure(parent_operation_name, root_operation_name)
+                    self.task.connect_on_failure(root_operation_name, parent_operation_name)
+
 
         # Recursively process the success and failure branches
         self.convert_to_task(root.success, root_operation_name, True)

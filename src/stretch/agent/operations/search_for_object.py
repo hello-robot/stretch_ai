@@ -138,7 +138,6 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
             self.error(
                 "This means there was an issue with navigation. Please disable the robot and move it to a safe location."
             )
-            breakpoint()
 
         # Check to see if we have a receptacle in the map
         instances = self.agent.voxel_map.instances.get_instances()
@@ -264,7 +263,6 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
-            breakpoint()
 
         if self.show_instances_detected:
             # Show the last instance image

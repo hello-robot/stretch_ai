@@ -112,8 +112,6 @@ def main(
     )
     agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
     agent.start()
-    time.sleep(5)
-    # agent.voxel_map.read_from_pickle(input_file)
 
     prompt = ObjectManipNavPromptBuilder()
     client = get_llm_client(llm, prompt=prompt)
@@ -121,17 +119,17 @@ def main(
     print("Starting robot exploration...")
 
     # Run exploration
-    if target_object is not None or explore:
-        if target_object is None:
-            target_object = "toy"
-        agent.run_exploration(
-            manual_wait=False,
-            explore_iter=explore_iter,
-            task_goal=target_object,  # arbitrary object to collect
-            # as many instances as possible
-            go_home_at_end=True,
-            visualize=False,
-        )
+    # if target_object is not None or explore:
+    #     if target_object is None:
+    #         target_object = "toy"
+    #     agent.run_exploration(
+    #         manual_wait=False,
+    #         explore_iter=explore_iter,
+    #         task_goal=target_object,  # arbitrary object to collect
+    #         # as many instances as possible
+    #         go_home_at_end=True,
+    #         visualize=False,
+    #     )
 
     while robot.running:
 
@@ -159,8 +157,10 @@ def main(
             print("Exiting...")
             continue
 
-        plan.run()
-
+        try:
+            plan.run()
+        except Exception as e:
+            print(f"Error executing plan: {e}")
 
 if __name__ == "__main__":
     main()
