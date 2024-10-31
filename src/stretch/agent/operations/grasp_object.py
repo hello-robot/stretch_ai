@@ -695,10 +695,6 @@ class GraspObjectOperation(ManagedOperation):
                 arm_component = np.cos(wrist_pitch) * self.lift_arm_ratio
                 lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
 
-                # reducing delta for more fine-grained control
-                arm_component = arm_component / 2
-                lift_component = lift_component / 2
-
                 arm += arm_component
                 lift += lift_component
 
