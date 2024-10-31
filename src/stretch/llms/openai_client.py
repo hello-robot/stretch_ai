@@ -30,7 +30,7 @@ class OpenaiClient(AbstractLLMClient):
         self,
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4o",
     ):
         super().__init__(prompt, prompt_kwargs)
         self.model = model

@@ -8,7 +8,6 @@
 # license information maybe found below, if so.
 
 import base64
-import os
 import re
 from io import BytesIO
 from typing import Optional
@@ -98,6 +97,8 @@ def get_xyz(depth, pose, intrinsics):
 class VoxelMapLocalizer:
     """This localizes a query in the voxel map."""
 
+    model_choices = ["gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"]
+
     def __init__(
         self,
         voxel_map_wrapper=None,
@@ -106,12 +107,18 @@ class VoxelMapLocalizer:
         processor=None,
         device="cuda",
         siglip=True,
+        gpt_model: str = "gpt-4o-mini",
     ):
         logger.info("Localizer V3")
         self.voxel_map_wrapper = voxel_map_wrapper
         self.device = device
         # self.clip_model, self.preprocessor = clip.load(model_config, device=device)
         self.siglip = siglip
+
+        self.gpt_model = gpt_model
+        if self.gpt_model not in self.model_choices:
+            raise ValueError(f"model must be one of {self.model_choices}, got {self.gpt_model}")
+
         if clip_model is not None and processor is not None:
             self.clip_model, self.preprocessor = clip_model, processor
         elif not self.siglip:
@@ -125,7 +132,8 @@ class VoxelMapLocalizer:
             self.clip_model.eval()
         self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.1).to(self.device)
 
-        self.gpt_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # OpenAI will automatically use the API key from the environment
+        self.gpt_client = OpenAI()
 
         # self.yolo_model = YOLOWorld("yolov8s-worldv2.pt")
 
@@ -405,9 +413,10 @@ class VoxelMapLocalizer:
                 "text": "The object you need to find is " + A,
             }
         )
+
         response = (
             self.gpt_client.chat.completions.create(
-                model="gpt-4o",
+                model=self.gpt_model,
                 messages=[
                     {"role": "system", "content": system_messages},
                     {"role": "user", "content": user_messages},
