@@ -207,6 +207,24 @@ Finally:
 
 See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
 
+
+### Autonomous 3D Mapping
+
+With `stretch-ai`, your Stretch robot can autonomously create a 3D map while exploring an area. Currently, these capabilities work best over smaller areas, such as a room in a house.
+
+To test out this capability, we recommend that you first run the autonomous mapping code over a limited radius. For example, the following code will limit the exploration to a 2 meter radius. Stretch will spin around to scan an area and then move to a new area to scan, which it refers to as the frontier. Once Stretch has scanned all of the frontier within the provided radius, it will save a map file as a pickle file (.pkl), and then navigate back home, as defined by the origin of the map (0,0,0). 
+
+```bash
+python -m stretch.app.mapping --radius 2.0
+```
+You can now visualize the 3D map file Stretch saved with a command like the following. The name of your map file will look similar to `stretch_output_2024-10-31_19-49-08.pkl`, but with the date and time at which your map was created. 
+
+This visualization uses Open3D. Green represents traversable floor. Red represents regions of the floor that should not be traversed. Cyan represents a frontier region that could be further explored.
+
+```bash
+python -m stretch.app.read_map -i ./stretch_output_DATE_TIME.pkl --show-svm
+```
+
 #### Visualization and Streaming Video
 
 Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
@@ -245,23 +263,6 @@ python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x -
 
 After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
 
-### Automatic 3d Mapping
-
-```bash
-python -m stretch.app.mapping
-```
-
-You can show visualizations with:
-
-```bash
-python -m stretch.app.mapping --show-intermediate-maps --show-final-map
-```
-
-The flag `--show-intermediate-maps` shows the 3d map after each large motion (waypoint reached), and `--show-final-map` shows the final map after exploration is done.
-
-It will record a PCD/PKL file which can be interpreted with the `read_map` script; see below.
-
-Another useful flag when testing is the `--reset` flag, which will reset the robot to the starting position of (0, 0, 0). This is done blindly before any execution or mapping, so be careful!
 
 ### Voxel Map Visualization
 
