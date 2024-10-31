@@ -16,8 +16,18 @@ from .siglip_encoder import SiglipEncoder
 
 
 class MaskSiglipEncoder(SiglipEncoder):
-    def __init__(self, device: Optional[str] = None) -> None:
-        super().__init__(normalize=True, device=device)
+    def __init__(
+        self,
+        device: Optional[str] = None,
+        version: Optional[str] = None,
+        feature_matching_threshold: float = 0.12,
+    ) -> None:
+        super().__init__(
+            normalize=True,
+            device=device,
+            version=version,
+            feature_matching_threshold=feature_matching_threshold,
+        )
 
     def forward_one_block_(self, resblocks, x):
         x = F.linear(x, resblocks.in_proj_weight, resblocks.in_proj_bias)

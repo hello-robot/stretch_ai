@@ -50,12 +50,8 @@ class SiglipEncoder(BaseImageTextEncoder):
             model_name = "google/siglip-base-patch16-224"
         elif version == "so400m":
             model_name = "google/siglip-so400m-patch14-384"
-        elif version == "so800m":
-            model_name = "google/siglip-so800m-patch14-384"
         else:
-            raise ValueError(
-                f"Invalid version {version}: must be one of 'base', 'so400m', 'so800m'"
-            )
+            raise ValueError(f"Invalid version {version}: must be one of 'base', 'so400m'")
 
         self.processor = AutoProcessor.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)

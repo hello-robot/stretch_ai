@@ -217,7 +217,7 @@ class ImageProcessor:
         self.value_map = torch.zeros(self.voxel_map.grid_size)
 
     def create_vision_model(self):
-        self.encoder = MaskSiglipEncoder(device=self.device)
+        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
 
         self.voxel_map_localizer = VoxelMapLocalizer(
             self.voxel_map,
