@@ -87,7 +87,7 @@ python -m stretch.app.ai_pickup
 
 It will first spend time downloading various models that it depends on. Then, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
-```bash
+```
 Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
 ```
@@ -97,6 +97,34 @@ Enter the target receptacle: white laundry basket
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
 Once you're ready to learn more about **Stretch AI**, you can try out the variety of applications (apps) that demonstrate various capabilities.
+
+#### Using an LLM
+
+You can use an LLM to provide free-form text input to the pick and place demo with the `--use_llm` command line argument.
+
+Running the following command will first download an open LLM model. Currently, the default model is [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct). Running this command downloads ~10GB of data, so you'll need to be patient.
+
+```bash
+python -m stretch.app.ai_pickup --use_llm
+```
+
+Once it's ready, you should see the prompt `You:` after which you can write your text request. Pressing the `Enter` key on your keyboard will provide your request to the robot.
+
+For example, the following requests have been successful for other users.
+
+```
+You: pick up the toy chicken and put it in the white laundry basket
+```
+
+```
+You: Find a toy chicken
+```
+
+Currently, the prompt used by the LLM encourages the robot to both pick and place, so you may find that a primitive request results in the full demonstration task.
+
+You can find the prompt used by the LLM at the following location. When running your Docker image in the development mode or running *stretch-ai* from source, you can modify this file to see how it changes the robot's behavior.
+
+[./src/stretch/llms/prompts/pickup_prompt.py](./src/stretch/llms/prompts/pickup_prompt.py)
 
 ## Installation from Source
 
