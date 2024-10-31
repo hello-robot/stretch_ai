@@ -15,8 +15,8 @@ from stretch.agent.operations import (
     NavigateToObjectOperation,
     PlaceObjectOperation,
     PreGraspObjectOperation,
-    SearchForReceptacleOperation,
     SearchForObjectOnFloorOperation,
+    SearchForReceptacleOperation,
     SetCurrentObjectOperation,
     SpeakOperation,
     WaveOperation,
@@ -71,12 +71,15 @@ class LLMPlanCompiler(ast.NodeVisitor):
 
         if current_object is not None:
             self.task.connect_on_success(set_current_object.name, go_to.name)
-            return "set_current_object_" + location + f"_{str(self._operation_naming_counter - 2)}", "go_to_" + location + f"_{str(self._operation_naming_counter - 1)}"
+            return (
+                "set_current_object_" + location + f"_{str(self._operation_naming_counter - 2)}",
+                "go_to_" + location + f"_{str(self._operation_naming_counter - 1)}",
+            )
         return "go_to_" + location + f"_{str(self._operation_naming_counter - 1)}"
 
     def pick(self, object_name: str):
         """Adds a GraspObjectOperation to the task"""
-         # Try to expand the frontier and find an object; or just wander around for a while.
+        # Try to expand the frontier and find an object; or just wander around for a while.
 
         go_to_navigation_mode = GoToNavOperation(
             name="go_to_navigation_mode" + f"_{str(self._operation_naming_counter)}",
@@ -370,7 +373,6 @@ class LLMPlanCompiler(ast.NodeVisitor):
                 else:
                     self.task.connect_on_failure(parent_operation_name, root_operation_name)
                     self.task.connect_on_failure(root_operation_name, parent_operation_name)
-
 
         # Recursively process the success and failure branches
         self.convert_to_task(root.success, root_operation_name, True)

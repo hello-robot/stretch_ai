@@ -13,7 +13,6 @@
 # LICENSE file in the root directory of this source tree.
 import datetime
 import pprint
-import time
 from typing import Optional
 
 import click
@@ -161,6 +160,7 @@ def main(
             plan.run()
         except Exception as e:
             print(f"Error executing plan: {e}")
+
 
 if __name__ == "__main__":
     main()
