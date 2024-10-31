@@ -95,7 +95,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
-    base_x_step: float = 0.14
+    # base_x_step: float = 0.14
+    base_x_step: float = 0.10
     wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
     # wrist_pitch_step: float = 0.06
     # wrist_pitch_step: float = 0.05  # Too slow
@@ -497,8 +498,6 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
         self.warn("Starting visual servoing.")
 
-        iter_ = 0
-
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
@@ -590,8 +589,6 @@ class GraspObjectOperation(ManagedOperation):
                 if self.show_point_cloud:
                     self._debug_show_point_cloud(servo, current_xyz)
 
-            iter_ += 1
-
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
@@ -676,7 +673,6 @@ class GraspObjectOperation(ManagedOperation):
             lift = min(lift, prev_lift)
 
             # If we are aligned, try to grasp
-            # if iter_ % 2 == 0:
             if aligned:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
