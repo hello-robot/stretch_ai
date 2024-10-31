@@ -83,8 +83,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
-    # median_distance_when_grasping: float = 0.15
-    median_distance_when_grasping: float = 0.1  # 0.2
+    median_distance_when_grasping: float = 0.15
+    # median_distance_when_grasping: float = 0.1  # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -576,6 +576,8 @@ class GraspObjectOperation(ManagedOperation):
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
+
+                # Create an RGB image with the mask overlaid
                 servo_ee_rgb = cv2.addWeighted(servo_ee_rgb, 0.5, mask, 0.5, 0, servo_ee_rgb)
                 # Draw the center of the image
                 servo_ee_rgb = cv2.circle(servo_ee_rgb, (center_x, center_y), 5, (255, 0, 0), -1)
@@ -583,9 +585,16 @@ class GraspObjectOperation(ManagedOperation):
                 servo_ee_rgb = cv2.circle(
                     servo_ee_rgb, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
                 )
+
+                # Create a depth image with the center of the mask
+                servo_ee_depth = cv2.cvtColor(servo.ee_depth, cv2.COLOR_GRAY2BGR)
+                servo_ee_depth = cv2.circle(
+                    servo_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
+                )
                 print("-- show a window")
                 cv2.namedWindow("servo_ee_rgb", cv2.WINDOW_NORMAL)
                 cv2.imshow("servo_ee_rgb", servo_ee_rgb)
+                cv2.namedWindow("servo_ee_depth", cv2.WINDOW_NORMAL)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
                 if res == ord("q"):
@@ -661,19 +670,16 @@ class GraspObjectOperation(ManagedOperation):
                 lift_component = np.sin(wrist_pitch) * self.lift_arm_ratio
 
                 # reducing delta for more fine-grained control
-                arm_component = arm_component / 5
-                lift_compoennt = lift_component / 5
+                arm_component = arm_component / 2
+                lift_component = lift_component / 2
 
                 arm += arm_component
                 lift += lift_component
-            else:
+
+            if True:
                 # Add these to do some really hacky proportionate control
                 px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
                 py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
-
-                # reducing delta for more fine-grained control
-                px = px / 2
-                py = py / 2
 
                 # Move the base and modify the wrist pitch
                 # TODO: remove debug code
