@@ -854,7 +854,9 @@ class SparseVoxelMap(object):
         self.allowed_map = torch.zeros(self.grid_size, device=self.map_2d_device)
 
         # Convert origin to grid coordinates
-        origin = ((origin[:2] / self.grid_resolution) + self.grid_origin[:2]).int()
+        origin = np.round(
+            (origin[:2] / self.grid_resolution) + self.grid_origin[:2].cpu().numpy()
+        ).astype(int)
 
         # Create a disk around the robot
         disk_size = int(np.ceil(radius / self.grid_resolution))
