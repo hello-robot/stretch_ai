@@ -18,6 +18,9 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
 
 
 @click.command()
@@ -39,8 +42,9 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option(
     "--llm",
-    default="gemma2b",
-    help="Client to use for language model.",
+    # default="gemma2b",
+    default="qwen25-3B-Instruct",
+    help="Client to use for language model. Recommended: gemma2b, openai",
     type=click.Choice(get_llm_choices()),
 )
 @click.option(
@@ -99,6 +103,12 @@ from stretch.perception import create_semantic_sensor
     type=float,
     help="Radius of the circle around initial position where the robot is allowed to go.",
 )
+@click.option(
+    "--debug_llm",
+    "--debug-llm",
+    is_flag=True,
+    help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
+)
 @click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -115,6 +125,7 @@ def main(
     use_llm: bool = False,
     use_voice: bool = False,
     open_loop: bool = False,
+    debug_llm: bool = False,
     radius: float = 3.0,
     input_path: str = "",
 ):
@@ -131,6 +142,13 @@ def main(
         device_id=device_id,
         verbose=verbose,
     )
+
+    if use_voice and not use_llm:
+        logger.warning("Voice input is only supported with a language model.")
+        logger.warning(
+            "Please set --use-llm to use voice input. For now, we will disable voice input."
+        )
+        use_voice = False
 
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(robot, parameters, semantic_sensor)
@@ -149,6 +167,8 @@ def main(
 
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
+
+    # Executor handles outputs from the LLM client and converts them into executable actions
     executor = PickupExecutor(
         robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
     )
@@ -174,13 +194,11 @@ def main(
             llm_response = [("pickup", target_object), ("place", receptacle)]
         else:
             # Call the LLM client and parse
-            llm_response = chat_wrapper.query()
+            llm_response = chat_wrapper.query(verbose=debug_llm)
+            if debug_llm:
+                print("Parsed LLM Response:", llm_response)
 
         ok = executor(llm_response)
-
-        if reset:
-            # Send the robot home at the end!
-            agent.go_home()
 
         if llm_client is None:
             break

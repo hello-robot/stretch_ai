@@ -49,6 +49,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
         semantic_sensor=None,
         voxel_map=None,
         use_instance_memory=True,
+        create_semantic_sensor=False,
     )
     voxel_map = agent.voxel_map
 
