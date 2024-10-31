@@ -417,7 +417,7 @@ class RobotAgent(RobotAgentBase):
             return False
         return True
 
-    def navigate(self, text, max_step=5):
+    def navigate(self, text, max_step=10):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         finished = False
         step = 0
