@@ -61,7 +61,9 @@ if __name__ == "__main__":
     from stretch.llms.prompts.ok_robot_prompt import OkRobotPromptBuilder
 
     prompt = OkRobotPromptBuilder(use_specific_objects=True)
-    client = OpenaiClient(prompt, model="gpt-4o-mini")
+    # client = OpenaiClient(prompt, model="gpt-4o-mini")
+    # client = OpenaiClient(prompt, model="gpt-3.5-turbo")
+    client = OpenaiClient(prompt, model="gpt-4o")
     plan = client("this room is a mess, could you put away the dirty towel?", verbose=True)
     print("\n\n")
     print("OpenAI client returned this plan:", plan)
