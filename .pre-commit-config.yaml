@@ -62,10 +62,10 @@ repos:
       - id: beautysh 
 
   # Mdformat formats Markdown files 
-  - repo: https://github.com/executablebooks/mdformat 
-    rev: 0.7.16 
-    hooks: 
-      - id: mdformat 
+  #- repo: https://github.com/executablebooks/mdformat 
+  #  rev: 0.7.16 
+  #  hooks: 
+  #    - id: mdformat 
 
   # Codespell checks the code for common misspellings 
   - repo: https://github.com/codespell-project/codespell 
