@@ -89,9 +89,9 @@ class GraspObjectOperation(ManagedOperation):
     lift_max_height: float = 0.5
 
     # Movement parameters
-    lift_arm_ratio: float = 0.08
-    base_x_step: float = 0.10
-    wrist_pitch_step: float = 0.075  # Maybe too fast
+    lift_arm_ratio: float = 0.05
+    base_x_step: float = 0.14
+    wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
     # wrist_pitch_step: float = 0.06
     # wrist_pitch_step: float = 0.05  # Too slow
     # ------------------------
@@ -642,8 +642,9 @@ class GraspObjectOperation(ManagedOperation):
             # Fix lift to only go down
             lift = min(lift, prev_lift)
 
-            # if aligned:
-            if iter_ % 2 == 0:
+            # If we are aligned, try to grasp
+            # if iter_ % 2 == 0:
+            if aligned:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
                     print(
@@ -671,8 +672,8 @@ class GraspObjectOperation(ManagedOperation):
                 py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
 
                 # reducing delta for more fine-grained control
-                px = px / 5
-                py = py / 5
+                px = px / 2
+                py = py / 2
 
                 # Move the base and modify the wrist pitch
                 # TODO: remove debug code
