@@ -81,12 +81,17 @@ class GraspObjectOperation(ManagedOperation):
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.25
 
+    # ------------------------
+    # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
     median_distance_when_grasping: float = 0.15
     # median_distance_when_grasping: float = 0.1  # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
+
+    # How long is the gripper?
+    grasp_distance = 0.12
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
@@ -385,7 +390,7 @@ class GraspObjectOperation(ManagedOperation):
         # Replace underscores, etc
         return self.target_object.replace("_", " ")
 
-    def _grasp(self) -> bool:
+    def _grasp(self, distance: Optional[float] = None) -> bool:
         """Helper function to close gripper around object.
 
         Returns:
@@ -404,14 +409,25 @@ class GraspObjectOperation(ManagedOperation):
             arm = joint_state[HelloStretchIdx.ARM]
             lift = joint_state[HelloStretchIdx.LIFT]
 
+            if distance is not None:
+                distance = max(distance - self.grasp_distance, 0)
+                if distance > 0:
+                    # Use wrist pitch to compute arm and lift offsets
+                    arm_component = np.cos(wrist_pitch) * distance
+                    lift_component = np.sin(wrist_pitch) * distance
+                else:
+                    arm_component = 0
+                    lift_component = 0
+            else:
+                arm_component = 0
+                lift_component = 0
+
             # Move the arm in closer
             self.robot.arm_to(
                 [
                     base_x,
-                    np.clip(
-                        lift + self._grasp_lift_offset, self.lift_min_height, self.lift_max_height
-                    ),
-                    arm + self._grasp_arm_offset,
+                    np.clip(lift + lift_component, self.lift_min_height, self.lift_max_height),
+                    arm + arm_component,
                     0,
                     wrist_pitch,
                     0,
@@ -465,6 +481,10 @@ class GraspObjectOperation(ManagedOperation):
         not_moving_count = 0
         q_last = np.array([0.0 for _ in range(11)])  # 11 DOF, HelloStretchIdx
         random_motion_counter = 0
+
+        # Track the depth of the object
+        center_depth = None
+        prev_center_depth = None
 
         if not pregrasp_done:
             # Move to pregrasp position
@@ -533,6 +553,8 @@ class GraspObjectOperation(ManagedOperation):
                 target_mask = np.zeros([servo.ee_rgb.shape[0], servo.ee_rgb.shape[1]], dtype=bool)
 
             # Get depth
+            if center_depth is not None and center_depth > 1e-8:
+                prev_center_depth = center_depth
             center_depth = servo.ee_depth[center_y, center_x]
 
             # Compute the center of the mask in image coords
@@ -587,14 +609,16 @@ class GraspObjectOperation(ManagedOperation):
                 )
 
                 # Create a depth image with the center of the mask
-                servo_ee_depth = cv2.cvtColor(servo.ee_depth, cv2.COLOR_GRAY2BGR)
-                servo_ee_depth = cv2.circle(
-                    servo_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
-                )
+                # First convert to 32-bit float
+                # servo_ee_depth = servo.ee_depth.astype(np.float32)
+                # servo_ee_depth = cv2.cvtColor(servo_ee_depth, cv2.COLOR_GRAY2BGR)
+                # servo_ee_depth = cv2.circle(
+                #     servo_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
+                # )
                 print("-- show a window")
                 cv2.namedWindow("servo_ee_rgb", cv2.WINDOW_NORMAL)
                 cv2.imshow("servo_ee_rgb", servo_ee_rgb)
-                cv2.namedWindow("servo_ee_depth", cv2.WINDOW_NORMAL)
+                # cv2.namedWindow("servo_ee_depth", cv2.WINDOW_NORMAL)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
                 if res == ord("q"):
@@ -640,7 +664,7 @@ class GraspObjectOperation(ManagedOperation):
             print(" lift =", lift)
             print("  arm =", arm)
             print("pitch =", wrist_pitch)
-            print("Center depth:", center_depth)
+            print("Center depth:", center_depth, "prev :", prev_center_depth)
             print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
             print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
@@ -659,8 +683,14 @@ class GraspObjectOperation(ManagedOperation):
                     print(
                         f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
                     )
-                    self.info("Aligned and close enough to grasp.")
-                    success = self._grasp()
+                    if center_depth <= 1e-8:
+                        self.warn("Bad depth value; trying to grasp.")
+                        self.info("Previous good depth value: " + str(prev_center_depth))
+                        self.info("Perform an open-loop motion towards the object.")
+                        success = self._grasp(distance=prev_center_depth)
+                    else:
+                        self.info("Aligned and close enough to grasp.")
+                        success = self._grasp()
                     break
 
                 # If we are aligned, step the whole thing closer by some amount
