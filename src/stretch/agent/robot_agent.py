@@ -1510,7 +1510,9 @@ class RobotAgent:
             radius(float): the radius in meters
         """
         logger.info("[Agent] Setting allowed radius to", radius, "meters.")
-        logger.error("Setting allowed radius is not yet supported.")
+        self._allowed_radius = radius
+
+        self.voxel_map.set_allowed_radius(radius, origin=self.robot.get_base_pose()[0:2])
 
     def plan_to_frontier(
         self,
@@ -2108,6 +2110,7 @@ class RobotAgent:
 
         scene_graph = None
 
+        # Create a scene graph if needed
         if plan_with_scene_graph:
             scene_graph = self.extract_symbolic_spatial_info(instances)
 
