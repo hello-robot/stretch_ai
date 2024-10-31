@@ -14,6 +14,9 @@
 from typing import Any, Tuple
 
 from stretch.utils.config import get_config
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
 
 
 class Parameters(object):
@@ -38,7 +41,7 @@ class Parameters(object):
             keys = key.split("/")
             for key in keys[:-1]:
                 if key not in data:
-                    print(
+                    logger.warning(
                         "[Parameters] Key not found: " + str(original_key) + "; using default:",
                         default,
                     )
