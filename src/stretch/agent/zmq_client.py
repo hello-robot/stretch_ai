@@ -834,9 +834,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
         prev_joint_positions = None
         prev_t = None
         while not self._finish:
+
+            if self.out_of_date():
+                time.sleep(0.01)
+                continue
+
             joint_positions, joint_velocities, _ = self.get_joint_state()
 
             if joint_positions is None:
+                time.sleep(0.01)
                 continue
 
             # if self._last_step < block_id:
@@ -1151,6 +1157,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if "pose_graph" in obs:
                 self._pose_graph = obs["pose_graph"]
 
+    def out_of_date(self):
+        """Check if the robot is out of date with the latest observation. This is used to determine if we should wait for the robot to catch up."""
+        with self._obs_lock:
+            obs_ood = self._obs is not None and self._obs["step"] < self._last_step
+        with self._state_lock:
+            state_ood = self._state is not None and self._state["step"] < self._last_step
+        return obs_ood or state_ood
+
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
 
@@ -1164,6 +1178,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     logger.warning(
                         f"Dropping out-of-date state message: {state['step']} < {self._last_step}"
                     )
+                    return
+
             self._state = state
             self._control_mode = state["control_mode"]
             self._at_goal = state["at_goal"]
