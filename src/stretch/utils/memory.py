@@ -10,6 +10,7 @@
 import os
 import shutil
 from datetime import datetime
+from typing import Optional
 
 path = os.path.expanduser("~/.stretch")
 
@@ -21,7 +22,9 @@ def _ensure_path_exists() -> None:
         os.makedirs(path)
 
 
-def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: bool = True) -> str:
+def lookup_address(
+    robot_ip: str, use_remote_computer: bool = False, update: bool = True
+) -> Optional[str]:
     """Return the address of the robot. Will also create and update ~/.stretch/robot_ip.txt file to manage robot IP address.
 
     Args
@@ -39,6 +42,8 @@ def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: boo
                     f.write(robot_ip)
         else:
             # Look up the robot computer in config directory
+            if not os.path.exists(os.path.expanduser("~/.stretch/robot_ip.txt")):
+                return None
             robot_ip = open(os.path.expanduser("~/.stretch/robot_ip.txt")).read().strip()
         recv_address = "tcp://" + robot_ip
     else:
