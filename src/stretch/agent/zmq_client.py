@@ -9,6 +9,7 @@
 
 # (c) 2024 chris paxton under MIT license
 
+import sys
 import threading
 import time
 import timeit
@@ -79,7 +80,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             logger.error("Or with:")
             logger.error("    ./scripts/set_robot_ip.sh <robot_ip>")
             print()
-            raise ValueError("No robot IP address found. Please provide a robot IP address.")
+            sys.exit(1)
         recv_address = ip_address + ":" + str(port)
         print(f"Connecting to {recv_address} to receive {message_type}...")
         recv_socket.connect(recv_address)
