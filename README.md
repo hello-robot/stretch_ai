@@ -85,7 +85,11 @@ Next, run the application in the Docker container on your GPU computer.
 python -m stretch.app.ai_pickup
 ```
 
-It will first spend time downloading various models that it depends on. Then, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
+It will first spend time downloading various models that it depends on. Once the program starts, you will be able to bring up a [Rerun-based GUI](https://rerun.io/) in your web browser.
+
+![Rerun-based GUI for the ai_pickup app.](./docs/images/rerun_example.png)
+
+Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
 ```
 Enter the target object: brown moose toy
