@@ -330,14 +330,15 @@ class ImageProcessor:
             waypoints = None
 
             if point is None:
+                res = None
                 print("Unable to find any target point, some exception might happen")
             else:
                 print("Target point is", point)
                 with self.voxel_map_lock:
                     res = self.planner.plan(start_pose, point)
-            if res.success:
+            if res is not None and res.success:
                 waypoints = [pt.state for pt in res.trajectory]
-            else:
+            elif res is not None:
                 waypoints = None
                 print("[FAILURE]", res.reason)
         # If we are navigating to some object of interest, send (x, y, z) of
