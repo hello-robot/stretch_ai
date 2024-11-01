@@ -225,6 +225,8 @@ def main(
                         show_servo_gui=True,
                         delete_object_after_grasp=False,
                     )
+                    # This retracts the arm
+                    robot.move_to_nav_posture()
                 else:
                     # Otherwise, use the agent's manipulation method
                     # This is from OK Robot
