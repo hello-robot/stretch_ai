@@ -30,6 +30,7 @@ import torch.nn.functional as F
 from matplotlib import pyplot as plt
 
 import stretch.utils.logger as logger
+from stretch.agent.zmq_client import HomeRobotZmqClient as RobotClient
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_everything
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
@@ -136,7 +137,9 @@ class ImageProcessor:
         # image_shape=None,
         rerun_server_memory_limit: str = "4GB",
         rerun_visualizer=None,
+        robot: RobotClient = None,
     ):
+        self.robot = robot
         self.rerun_visualizer = rerun_visualizer
         current_datetime = datetime.datetime.now()
         if log is None:
@@ -360,6 +363,13 @@ class ImageProcessor:
                 traj.append(localized_point)
             print("Planned trajectory:", traj)
 
+        # Talk about what you are doing, as the robot.
+        if text is not None and text != "":
+            self.robot.say("I am navigating to " + text + ".")
+        else:
+            self.robot.say("I am exploring the environment.")
+
+        # Log the robot's monologue to the rerun server
         if self.rerun:
             if text is not None and text != "":
                 debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text

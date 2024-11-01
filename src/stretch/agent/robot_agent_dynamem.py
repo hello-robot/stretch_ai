@@ -140,6 +140,7 @@ class RobotAgent(RobotAgentBase):
             rerun=True,
             rerun_visualizer=self.robot._rerun,
             log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+            robot=self.robot,
         )  # type: ignore
         self.encoder = self.image_processor.get_encoder()
         context = zmq.Context()

@@ -195,6 +195,7 @@ def main(
 
                 # Grasp the object using operation if it's available
                 if grasp_object is not None:
+                    robot.say("Grasping the " + str(text) + ".")
                     print("Using operation to grasp object:", text)
                     print(" - Point:", point)
                     print(" - Theta:", theta)
