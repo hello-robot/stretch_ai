@@ -53,7 +53,7 @@ def get_mode(mode: str) -> str:
                 break
             else:
                 print("Invalid mode. Please select again.")
-        return mode
+        return mode.upper()
 
 
 @click.command()
@@ -158,8 +158,13 @@ def main(
     agent.save()
 
     while agent.is_running():
-        mode = get_mode(mode)
-        mode = mode.upper()
+
+        # If target object and receptacle are provided, set mode to manipulation
+        if target_object is not None and target_receptacle is not None:
+            mode = "M"
+        else:
+            # Get mode from user input
+            mode = get_mode(mode)
 
         if mode == "S":
             robot.say("Saving data. Goodbye!")
