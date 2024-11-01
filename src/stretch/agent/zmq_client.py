@@ -835,6 +835,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         prev_t = None
         while not self._finish:
 
+            # Check to make sure message was sent and received
             if self.out_of_date():
                 time.sleep(0.01)
                 continue
