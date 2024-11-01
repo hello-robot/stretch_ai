@@ -105,7 +105,6 @@ class Operation(abc.ABC):
         else:
             logger.error(f"Operation {self.name} cannot start.")
             return False
-        self.run()
         return self.was_successful()
 
 
