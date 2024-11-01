@@ -365,7 +365,7 @@ class ImageProcessor:
 
         # Talk about what you are doing, as the robot.
         if text is not None and text != "":
-            self.robot.say("I am navigating to " + text + ".")
+            self.robot.say("I am looking for a " + text + ".")
         else:
             self.robot.say("I am exploring the environment.")
 

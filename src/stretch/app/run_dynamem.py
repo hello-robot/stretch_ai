@@ -68,7 +68,13 @@ def get_mode(mode: str) -> str:
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)
 @click.option(
-    "--visual_servo", "--vs", "-V", default=False, is_flag=True, help="Use visual servoing grasp"
+    "--visual_servo",
+    "--vs",
+    "-V",
+    "--visual-servo",
+    default=False,
+    is_flag=True,
+    help="Use visual servoing grasp",
 )
 @click.option(
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
@@ -154,20 +160,27 @@ def main(
     while agent.is_running():
         mode = get_mode(mode)
         mode = mode.upper()
+
         if mode == "S":
+            robot.say("Saving data. Goodbye!")
             agent.image_processor.write_to_pickle()
             break
+
         if mode == "E":
             robot.switch_to_navigation_mode()
+            robot.say("Exploring.")
             for epoch in range(explore_iter):
                 print("\n", "Exploration epoch ", epoch, "\n")
                 if not agent.run_exploration():
                     print("Exploration failed! Quitting!")
                     continue
         else:
+            # Add some audio to make it easier to tell what's going on.
+            robot.say("Running manipulation.")
+
             text = None
             point = None
-            if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
+            if skip_confirmations or input("Do you want to run manipulation? (y/n): ") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
                 if target_object is not None:
@@ -183,7 +196,7 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.move_base_to(xyt, blocking=True)
 
-            if skip_confirmations or input("You want to run manipulation? (y/n): ") != "n":
+            if skip_confirmations or input("Do you want to run manipulation? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter object name: ")
@@ -214,6 +227,7 @@ def main(
                     agent.manipulate(text, theta, skip_confirmation=skip_confirmations)
                 robot.look_front()
 
+            # Reset text and point for placement
             text = None
             point = None
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
@@ -222,9 +236,14 @@ def main(
                     text = target_receptacle
                 else:
                     text = input("Enter receptacle name: ")
+
+                print("Going to the " + str(text) + ".")
                 point = agent.navigate(text)
+
                 if point is None:
                     print("Navigation Failure")
+                    robot.say("I could not find the " + str(text) + ".")
+
                 cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
@@ -233,13 +252,17 @@ def main(
 
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
+
                 if text is None:
                     text = input("Enter receptacle name: ")
+
                 camera_xyz = robot.get_head_pose()[:3, 3]
                 if point is not None:
                     theta = compute_tilt(camera_xyz, point)
                 else:
                     theta = -0.6
+
+                robot.say("Placing object on the " + str(text) + ".")
                 agent.place(text, theta)
                 robot.move_to_nav_posture()
 
