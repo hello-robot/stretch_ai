@@ -275,6 +275,9 @@ def main(
 
             agent.save()
 
+        # Clear mode after the first trial - otherwise it will go on forever
+        mode = None
+
 
 if __name__ == "__main__":
     main()

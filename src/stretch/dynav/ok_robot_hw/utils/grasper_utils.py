@@ -16,6 +16,7 @@ from stretch.dynav.ok_robot_hw.utils.utils import apply_se3_transform
 
 
 def capture_and_process_image(camera, mode, obj, socket, hello_robot):
+    """Find an an object in the camera frame and return the translation and rotation of the object."""
 
     print("Currently in " + mode + " mode and the robot is about to manipulate " + obj + ".")
 
@@ -29,11 +30,16 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
     head_pan = INIT_HEAD_PAN
 
     while retry_flag:
+
+        print("Capturing image: ")
+        print(f"retry flag : {retry_flag}")
+        print(f"side retries : {side_retries}")
+        print(f"tilt retries : {tilt_retries}")
+
         translation, rotation, depth, width, retry_flag = image_publisher.publish_image(
             obj, mode, head_tilt=head_tilt
         )
 
-        print(f"retry flag : {retry_flag}")
         if retry_flag == 1:
             base_trans = translation[0]
             head_tilt += rotation[0]
@@ -54,10 +60,9 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             if tilt_retries == 3:
                 if side_retries == 0:
                     hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
-                    side_retries = 1
                 else:
                     hello_robot.move_to_position(base_trans=-0.2, head_tilt=head_tilt)
-                    side_retries = 2
+                side_retries += 1
                 tilt_retries = 1
             else:
                 print(f"retrying with head tilt : {head_tilt + head_tilt_angles[tilt_retries]}")
@@ -70,8 +75,10 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
         translation = np.array([-translation[1], -translation[0], -translation[2]])
 
     if mode == "pick":
+        print("Pick: Returning translation, rotation, depth, width")
         return rotation, translation, depth, width
     else:
+        print("Place: Returning translation, rotation")
         return rotation, translation
 
 

@@ -457,6 +457,7 @@ class RobotAgent(RobotAgentBase):
             socket=self.manip_socket,
             hello_robot=self.manip_wrapper,
         )
+        print("Place: ", rotation, translation)
 
         if rotation is None:
             return False
