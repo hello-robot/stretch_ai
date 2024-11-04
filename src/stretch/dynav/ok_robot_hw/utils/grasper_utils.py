@@ -16,7 +16,14 @@ from stretch.dynav.ok_robot_hw.utils.utils import apply_se3_transform
 
 
 def capture_and_process_image(camera, mode, obj, socket, hello_robot):
-    """Find an an object in the camera frame and return the translation and rotation of the object."""
+    """Find an an object in the camera frame and return the translation and rotation of the object.
+
+    Returns:
+        rotation: Rotation of the object
+        translation: Translation of the object
+        depth: Depth of the object (distance from the camera; only for pick mode)
+        width: Width of the object (only for pick mode)
+    """
 
     print("Currently in " + mode + " mode and the robot is about to manipulate " + obj + ".")
 
