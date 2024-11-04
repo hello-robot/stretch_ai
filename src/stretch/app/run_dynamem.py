@@ -185,7 +185,8 @@ def main(
 
             text = None
             point = None
-            if skip_confirmations or input("Do you want to run manipulation? (y/n): ") != "n":
+
+            if skip_confirmations or input("Do you want to look for an object? (y/n): ") != "n":
                 robot.move_to_nav_posture()
                 robot.switch_to_navigation_mode()
                 if target_object is not None:
@@ -201,7 +202,8 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.move_base_to(xyt, blocking=True)
 
-            if skip_confirmations or input("Do you want to run manipulation? (y/n): ") != "n":
+            # If the object is found, grasp it
+            if skip_confirmations or input("Do you want to pick up an object? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
                 if text is None:
                     text = input("Enter object name: ")
@@ -237,7 +239,7 @@ def main(
             # Reset text and point for placement
             text = None
             point = None
-            if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
+            if skip_confirmations or input("You want to find a receptacle? (y/n): ") != "n":
                 robot.switch_to_navigation_mode()
                 if target_receptacle is not None:
                     text = target_receptacle
@@ -257,6 +259,7 @@ def main(
                 xyt[2] = xyt[2] + np.pi / 2
                 robot.move_base_to(xyt, blocking=True)
 
+            # Execute placement if the object is found
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                 robot.switch_to_manipulation_mode()
 
