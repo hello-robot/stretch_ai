@@ -130,7 +130,7 @@ class VoxelMapLocalizer:
             )
             self.preprocessor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
-        self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.1).to(self.device)
+        self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.05).to(self.device)
 
         # OpenAI will automatically use the API key from the environment
         self.gpt_client = OpenAI()
