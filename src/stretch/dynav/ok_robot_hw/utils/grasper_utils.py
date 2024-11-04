@@ -7,8 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import time
-
 import numpy as np
 import pinocchio as pin
 
@@ -43,11 +41,9 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             hello_robot.move_to_position(
                 base_trans=base_trans, head_pan=head_pan, head_tilt=head_tilt
             )
-            time.sleep(1)
 
         elif retry_flag != 0 and side_retries == 3:
             print("Tried in all angles but couldn't succeed")
-            time.sleep(1)
             return None, None, None, None
 
         elif side_retries == 2 and tilt_retries == 3:
@@ -69,7 +65,6 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
                     head_pan=head_pan, head_tilt=head_tilt + head_tilt_angles[tilt_retries]
                 )
                 tilt_retries += 1
-                time.sleep(1)
 
     if mode == "place":
         translation = np.array([-translation[1], -translation[0], -translation[2]])

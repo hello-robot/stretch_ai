@@ -128,7 +128,7 @@ class ImageProcessor:
         device: str = "cuda",
         min_depth: float = 0.25,
         max_depth: float = 2.5,
-        img_port: int = 5558,
+        img_port: int = 5555,
         text_port: int = 5556,
         open_communication: bool = True,
         rerun: bool = True,
@@ -740,15 +740,18 @@ class ImageProcessor:
         print("write all data to", filename)
 
 
-# @hydra.main(version_base="1.2", config_path=".", config_name="config.yaml")
 def main():
-    torch.manual_seed(1)
-    imageProcessor = ImageProcessor(
-        log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # torch.manual_seed(1)
+    # imageProcessor = ImageProcessor(
+    #     log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # )
+    # try:
+    #     while True:
+    #         imageProcessor.recv_text()
+    # except KeyboardInterrupt:
+    #     imageProcessor.write_to_pickle()
+    imageProcessor = ImageProcessor(log="test1")
+    imageProcessor.read_from_pickle("dynamem_log/20241102_221020.pkl")
+    imageProcessor.space.sample_exploration(
+        xyt=[0, 0, 0], planner=imageProcessor.planner, debug=True
     )
-    # imageProcessor.read_from_pickle(cfg.pickle_file_name)
-    try:
-        while True:
-            imageProcessor.recv_text()
-    except KeyboardInterrupt:
-        imageProcessor.write_to_pickle()

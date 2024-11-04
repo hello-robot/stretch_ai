@@ -727,6 +727,11 @@ class SparseVoxelMap(object):
         obstacles[-30:, :] = True
         obstacles[:, 0:30] = True
         obstacles[:, -30:] = True
+        if history_soft is not None:
+            history_soft[0:35, :] = history_soft.max().item()
+            history_soft[-35:, :] = history_soft.max().item()
+            history_soft[:, 0:35] = history_soft.max().item()
+            history_soft[:, -35:] = history_soft.max().item()
         self._map2d = (obstacles, explored)
         self._2d_last_updated = self._seq
         self._history_soft = history_soft

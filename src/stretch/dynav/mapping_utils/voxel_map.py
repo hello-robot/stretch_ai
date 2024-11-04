@@ -107,7 +107,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             orientation_resolution: number of bins to break it into
         """
         self._footprint = Footprint(
-            width=0.34 / 2, length=0.33 / 2, width_offset=0.0, length_offset=-0.1
+            width=0.34 * 0.8, length=0.33 * 0.8, width_offset=0.0, length_offset=-0.1
         )
         self._orientation_resolution = 64
         self._oriented_masks = []
@@ -406,7 +406,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 continue
             if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.35:
                 continue
-            elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.45:
+            elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
                 # print('OBSTACLE AVOIDANCE')
                 # print(selected_target[0].int(), selected_target[1].int())
                 i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])
@@ -672,7 +672,7 @@ class SparseVoxelMapNavigationSpace(XYT):
             alignments_heuristics = self._alignment_heuristic(
                 alignments_heuristics, outside_frontier, debug=debug
             )
-            total_heuristics = time_heuristics + alignments_heuristics
+            total_heuristics = time_heuristics + 0.5 * alignments_heuristics
         else:
             alignments_heuristics = None
             total_heuristics = time_heuristics
@@ -693,6 +693,9 @@ class SparseVoxelMapNavigationSpace(XYT):
             plt.imshow(explored.int() * 5)
             plt.subplot(223)
             plt.imshow(total_heuristics)
+            plt.scatter(index[1], index[0], s=15, c="g")
+            plt.subplot(224)
+            plt.imshow(history_soft)
             plt.scatter(index[1], index[0], s=15, c="g")
             plt.show()
         return index, time_heuristics, alignments_heuristics, total_heuristics

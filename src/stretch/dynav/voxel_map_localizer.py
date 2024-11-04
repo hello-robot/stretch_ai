@@ -107,7 +107,7 @@ class VoxelMapLocalizer:
         processor=None,
         device="cuda",
         siglip=True,
-        gpt_model: str = "gpt-4o-mini",
+        gpt_model: str = "gpt-4o",
     ):
         logger.info("Localizer V3")
         self.voxel_map_wrapper = voxel_map_wrapper
@@ -350,8 +350,9 @@ class VoxelMapLocalizer:
 
         sorted_obs_counts, sorted_indices = torch.sort(top_obs_counts, descending=False)
         sorted_points = top_points[sorted_indices]
+        top_alignments = top_alignments[sorted_indices]
 
-        return sorted_obs_counts, sorted_points
+        return sorted_obs_counts, sorted_points, top_alignments
 
     def llm_locator(self, image_ids, A):
         sys_prompt = f"""
@@ -403,7 +404,7 @@ class VoxelMapLocalizer:
                     "type": "image_url",
                     "image_url": {
                         "url": f"data:image/png;base64,{base64_encoded}",
-                        "detail": "low",
+                        "detail": "high",
                     },
                 }
             )
@@ -473,7 +474,16 @@ class VoxelMapLocalizer:
         debug_text = ""
         target_point = None
 
-        image_ids, points = self.find_all_images(A)
+        image_ids, points, alignments = self.find_all_images(A)
+        # Check cosine similarity first, it is not reasonable to always use gpt
+        # if torch.max(alignments) < 0.08:
+        #     # print('ALIGNMENTS TOO SMALL!\n')
+        #     target_id = None
+        # # elif torch.max(alignments) > 0.16:
+        # #     print('ALIGNMENTS TOO LARGE!\n')
+        # #     target_id = torch.argmax(alignments)
+        # else:
+        #     target_id = self.llm_locator(image_ids, A)
         target_id = self.llm_locator(image_ids, A)
 
         if target_id is None:
@@ -500,34 +510,6 @@ class VoxelMapLocalizer:
             return target_point, debug_text
         else:
             return target_point, debug_text, image_id, point
-
-        # res = self.compute_coord(A, image_id)
-        # if res is not None:
-        #     target_point = res
-        #     debug_text += (
-        #         "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
-        #     )
-        # else:
-        #     # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
-        #     if self.siglip:
-        #         cosine_similarity_check = alignments.max().item() > 0.14
-        #     else:
-        #         cosine_similarity_check = alignments.max().item() > 0.3
-        #     if cosine_similarity_check:
-        #         target_point = point
-
-        #         debug_text += (
-        #             "#### - The point has high cosine similarity. **😃** Directly navigate to it.\n"
-        #         )
-        #     else:
-        #         debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
-        # # print('target_point', target_point)
-        # if not debug:
-        #     return target_point
-        # elif not return_debug:
-        #     return target_point, debug_text
-        # else:
-        #     return target_point, debug_text, image_id, point
 
     def find_clusters_for_A(self, A, return_obs_counts=False, debug=False, turning_point=None):
 
