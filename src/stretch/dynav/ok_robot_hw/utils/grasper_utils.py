@@ -60,9 +60,10 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             if tilt_retries == 3:
                 if side_retries == 0:
                     hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
+                    side_retries = 1
                 else:
                     hello_robot.move_to_position(base_trans=-0.2, head_tilt=head_tilt)
-                side_retries += 1
+                    side_retries = 2
                 tilt_retries = 1
             else:
                 print(f"retrying with head tilt : {head_tilt + head_tilt_angles[tilt_retries]}")
