@@ -107,7 +107,12 @@
         "toy_vehicle": 104,
         "tray": 105,
         "vase": 106,
-        "watch": 107
+        "watch": 107,
+        "monitor": 108,
+        "television": 109,
+        "trash_can": 110,
+        "toolbox": 111,
+        "red_traffic_cone": 112
     },
     "recep_category_to_recep_category_id": {
         "bathtub": 0,
@@ -130,6 +135,10 @@
         "toilet": 17,
         "trunk": 18,
         "wardrobe": 19,
-        "washer_dryer": 20
+        "washer_dryer": 20,
+        "wall": 21,
+        "floor": 22,
+        "ceiling": 23,
+        "door": 24
     }
 }

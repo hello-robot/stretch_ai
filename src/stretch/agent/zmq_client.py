@@ -19,6 +19,7 @@ import click
 import numpy as np
 import zmq
 from termcolor import colored
+from pathlib import Path
 
 import stretch.motion.constants as constants
 import stretch.motion.conversions as conversions
@@ -92,6 +93,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         recv_state_port: int = 4403,
         recv_servo_port: int = 4404,
         pub_obs_port: int = 4450,
+        output_path: Path = None,
         parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
@@ -208,8 +210,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
         if enable_rerun_server:
             from stretch.visualization.rerun import RerunVisualizer
-
-            self._rerun = RerunVisualizer()
+            self._rerun = RerunVisualizer(output_path=output_path)
         else:
             self._rerun = None
             self._rerun_thread = None

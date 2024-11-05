@@ -27,6 +27,8 @@ from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.logger import Logger
 from stretch.visualization import urdf_visualizer
 
+from hydra_python.utils import hydra_get_mesh
+
 logger = Logger(__name__)
 
 
@@ -192,6 +194,7 @@ class RerunVisualizer:
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
+        output_path = None
     ):
         """Rerun visualizer class
         Args:
@@ -207,9 +210,12 @@ class RerunVisualizer:
                 spawn_gui = False
                 open_browser = False
                 logger.warning("Docker environment detected. Disabling GUI.")
+        
         rr.init("Stretch_robot", spawn=spawn_gui)
+        rr.save(output_path / 'test_stretch_rerun_5nov_vlm.rrd')
+        open_browser = True
         if open_browser:
-            rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
+            rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit, ws_port=9877)
 
         self.display_robot_mesh = display_robot_mesh
         self.show_cameras_in_3d_view = show_cameras_in_3d_view
@@ -248,8 +254,8 @@ class RerunVisualizer:
         main = rrb.Horizontal(
             rrb.Spatial3DView(name="3D View", origin="world"),
             rrb.Vertical(
-                rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
-                rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+                rrb.Spatial2DView(name="Head RGB", origin="/world/head_camera", contents=["$origin/rgb", "/world/annotations/**"],),
+                rrb.Spatial2DView(name="Head Semantics", origin="/world/head_camera", contents=["$origin/semantic", "/world/annotations/**"],),
             ),
             column_shares=[3, 1],
         )
@@ -373,7 +379,10 @@ class RerunVisualizer:
                     image_plane_distance=0.15,
                 ),
             )
-
+        
+    def log_semantics(self, obs):
+        rr.log("world/head_camera/semantic", rr.SegmentationImage(obs['semantic']))
+        
     def log_robot_xyt(self, obs: Observations):
         """Log robot world pose"""
         # rr.set_time_seconds("realtime", time.time())
@@ -488,6 +497,10 @@ class RerunVisualizer:
         Log robot mesh transforms using urdf visualizer"""
         self.urdf_logger.log_transforms(obs)
 
+    def log_vlm_target(self, vlm_target):
+        vlm_target[2] += 0.02
+        rr.log("world/vlm_target", rr.Points3D(vlm_target, colors=[0,255,0], radii=0.13))
+
     def update_voxel_map(
         self,
         space: SparseVoxelMapNavigationSpace,
@@ -563,6 +576,65 @@ class RerunVisualizer:
             print("Time to get obstacles points: ", t4 - t3, "% = ", (t4 - t3) / (t6 - t0))
             print("Time to get explored points: ", t5 - t4, "% = ", (t5 - t4) / (t6 - t0))
             print("Time to log points: ", t6 - t5, "% = ", (t6 - t5) / (t6 - t0))
+
+    def update_frontier(self, clustered_frontier, frontier_points, outside_frontier_points, frontier_radius=0.05):
+        frontier_points[:, 2] += 0.015
+        rr.log(
+            "world/clustered_frontier",
+            rr.Points3D(
+                positions=clustered_frontier,
+                radii=np.ones(clustered_frontier.shape[0]) * frontier_radius,
+                colors=[0, 0, 0],
+            ),
+        )
+        rr.log(
+            "world/frontier",
+            rr.Points3D(
+                positions=frontier_points,
+                radii=np.ones(frontier_points.shape[0]) * 0.025,
+                colors=[255, 255, 0],
+            ),
+        )
+
+        outside_frontier_points[:, 2] += 0.015
+        rr.log(
+            "world/outside_frontier_points",
+            rr.Points3D(
+                positions=outside_frontier_points,
+                radii=np.ones(outside_frontier_points.shape[0]) * 0.025,
+                colors=[10, 10, 0],
+            ),
+        )
+
+
+    def update_hydra_mesh(self, hydra_pipeline):
+        mesh_vertices, mesh_colors, mesh_triangles = hydra_get_mesh(hydra_pipeline)
+        rr.log(
+            "world/hydra_mesh",
+            rr.Mesh3D(
+                vertex_positions=mesh_vertices,
+                vertex_colors=mesh_colors,
+                triangle_indices=mesh_triangles,
+            ),
+            timeless=False,
+        )
+    
+    def update_scene_graph_hydra(self, sg_sim):
+        self.log_clear("world/hydra_graph")
+        self.log_clear("/world/annotations/bb")
+
+        rr.log(
+            "/world/annotations/bb",
+            rr.Boxes3D(
+                half_sizes=sg_sim.bb_info['bb_half_sizes'],
+                centers=sg_sim.bb_info['bb_centroids'],
+                labels=sg_sim.bb_info['bb_labels'],
+                colors=sg_sim.bb_info['bb_colors']
+            ),
+            rr.InstancePoses3D(mat3x3=sg_sim.bb_info['bb_mat3x3']),
+            timeless=False,
+        )
+
 
     def update_scene_graph(
         self, scene_graph: SceneGraph, semantic_sensor: Optional[OvmmPerception] = None
@@ -646,11 +718,12 @@ class RerunVisualizer:
             try:
                 t0 = timeit.default_timer()
                 self.log_robot_xyt(obs)
-                self.log_ee_frame(obs)
+                # self.log_ee_frame(obs)
 
                 # Cameras use the lower-res servo object
                 self.log_head_camera(servo)
-                self.log_ee_camera(servo)
+                # self.log_semantics(obs)
+                # self.log_ee_camera(servo)
 
                 self.log_robot_state(obs)
 
@@ -664,3 +737,6 @@ class RerunVisualizer:
             except Exception as e:
                 logger.error(e)
                 raise e
+            
+    def log_clear(self, namespace):
+        rr.log(namespace, rr.Clear(recursive=True))

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # This script (c) 2024 Chris Paxton under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
-export CUDA_VERSION=11.8
+export CUDA_VERSION=12.1
 export PYTHON_VERSION=3.10
 CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
