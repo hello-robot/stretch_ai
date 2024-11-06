@@ -14,6 +14,7 @@ import threading
 
 # import wget
 import time
+from io import BytesIO
 
 # from io import BytesIO
 from pathlib import Path
@@ -28,11 +29,12 @@ import torch
 # from stretch.utils.morphology import get_edges
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
+from PIL import Image
 
 import stretch.utils.logger as logger
 from stretch.agent.zmq_client import HomeRobotZmqClient as RobotClient
 from stretch.core import get_parameters
-from stretch.dynav.communication_util import load_socket, recv_everything
+from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
 from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
@@ -510,6 +512,167 @@ class ImageProcessor:
         if len(valid_xyz) != 0:
             self.add_to_voxel_pcd(valid_xyz, features, valid_rgb)
 
+    def recv_text(self):
+        text = self.text_socket.recv_string()
+        self.text_socket.send_string("Text received, waiting for robot pose")
+        start_pose = recv_array(self.text_socket)
+        if self.rerun:
+            if not self.static:
+                rr.set_time_sequence("frame", self.obs_count)
+            rr.log("/object", rr.Clear(recursive=True), static=self.static)
+            rr.log("/robot_start_pose", rr.Clear(recursive=True), static=self.static)
+            rr.log("/direction", rr.Clear(recursive=True), static=self.static)
+            rr.log("robot_monologue", rr.Clear(recursive=True), static=self.static)
+            rr.log(
+                "/Past_observation_most_similar_to_text",
+                rr.Clear(recursive=True),
+                static=self.static,
+            )
+            if not self.static:
+                rr.connect("100.108.67.79:9876")
+
+        debug_text = ""
+        mode = "navigation"
+        obs = None
+        # Do visual grounding
+        if text != "":
+            with self.voxel_map_lock:
+                localized_point, debug_text, obs, pointcloud = self.voxel_map_localizer.localize_A(
+                    text, debug=True, return_debug=True
+                )
+            if localized_point is not None:
+                rr.log(
+                    "/object",
+                    rr.Points3D(
+                        [localized_point[0], localized_point[1], 1.5],
+                        colors=torch.Tensor([1, 0, 0]),
+                        radii=0.1,
+                    ),
+                    static=self.static,
+                )
+        # Do Frontier based exploration
+        if text is None or text == "" or localized_point is None:
+            debug_text += "## Navigation fails, so robot starts exploring environments.\n"
+            localized_point = self.sample_frontier(start_pose, text)
+            mode = "exploration"
+            rr.log(
+                "/object",
+                rr.Points3D([0, 0, 0], colors=torch.Tensor([1, 0, 0]), radii=0),
+                static=self.static,
+            )
+            print("\n", localized_point, "\n")
+
+        if localized_point is None:
+            print("Unable to find any target point, some exception might happen")
+            send_array(self.text_socket, [])
+            return
+
+        if len(localized_point) == 2:
+            localized_point = np.array([localized_point[0], localized_point[1], 0])
+
+        point = self.sample_navigation(start_pose, localized_point)
+        if (
+            mode == "navigation"
+            and np.min(
+                np.linalg.norm(np.asarray(point)[:2] - np.asarray(pointcloud)[:, :2], axis=-1)
+            )
+            > 1.2
+        ):
+            localized_point = self.sample_frontier(start_pose, None)
+            mode = "exploration"
+            point = self.sample_navigation(start_pose, localized_point)
+            debug_text += "## All reachable points of robot are too far from the target object, explore to find new paths. \n"
+
+        if self.rerun:
+            buf = BytesIO()
+            plt.savefig(buf, format="png")
+            buf.seek(0)
+            img = Image.open(buf)
+            img = np.array(img)
+            buf.close()
+            rr.log("2d_map", rr.Image(img), static=self.static)
+        else:
+            if text != "":
+                plt.savefig(self.log + "/debug_" + text + str(self.obs_count) + ".png")
+            else:
+                plt.savefig(self.log + "/debug_exploration" + str(self.obs_count) + ".png")
+        plt.clf()
+
+        if self.rerun:
+            if text is not None and text != "":
+                debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text
+            else:
+                debug_text = "### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n"
+            debug_text = "# Robot's monologue: \n" + debug_text
+            rr.log(
+                "robot_monologue",
+                rr.TextDocument(debug_text, media_type=rr.MediaType.MARKDOWN),
+                static=self.static,
+            )
+
+        if obs is not None and mode == "navigation":
+            rgb = self.voxel_map.observations[obs - 1].rgb
+            if not self.rerun:
+                cv2.imwrite(self.log + "/debug_" + text + ".png", rgb[:, :, [2, 1, 0]])
+            else:
+                rr.log("/Past_observation_most_similar_to_text", rr.Image(rgb), static=self.static)
+        traj = None
+        waypoints = None
+        if point is None:
+            print("Unable to find any target point, some exception might happen")
+            send_array(self.text_socket, [])
+        else:
+            print("Target point is", point)
+            res = self.planner.plan(start_pose, point)
+            if res.success:
+                waypoints = [pt.state for pt in res.trajectory]
+                # If we are navigating to some object of interest, send (x, y, z) of
+                # the object so that we can make sure the robot looks at the object after navigation
+                # print(waypoints[-1][:2], start_pose[:2])
+                finished = len(waypoints) <= 10 and mode == "navigation"
+                # finished = mode == 'navigation'
+                if not finished:
+                    waypoints = waypoints[:7]
+                print(waypoints)
+                traj = self.planner.clean_path_for_xy(waypoints)
+                # traj = traj[1:]
+                if finished:
+                    traj.append([np.nan, np.nan, np.nan])
+                    if isinstance(localized_point, torch.Tensor):
+                        localized_point = localized_point.tolist()
+                    traj.append(localized_point)
+                print("Planned trajectory:", traj)
+                send_array(self.text_socket, traj)
+            else:
+                print("[FAILURE]", res.reason)
+                send_array(self.text_socket, [])
+
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            rr.log(
+                "/direction",
+                rr.Arrows3D(
+                    origins=origins, vectors=vectors, colors=torch.Tensor([0, 1, 0]), radii=0.05
+                ),
+                static=self.static,
+            )
+            rr.log(
+                "/robot_start_pose",
+                rr.Points3D(
+                    [start_pose[0], start_pose[1], 1.5], colors=torch.Tensor([0, 0, 1]), radii=0.1
+                ),
+                static=self.static,
+            )
+
+        self.write_to_pickle()
+
     def add_to_voxel_pcd(self, valid_xyz, feature, valid_rgb, weights=None, threshold=0.95):
         # Adding all points to voxelizedPointCloud is useless and expensive, we should exclude threshold of all points
         selected_indices = torch.randperm(len(valid_xyz))[: int((1 - threshold) * len(valid_xyz))]
@@ -741,17 +904,20 @@ class ImageProcessor:
 
 
 def main():
-    # torch.manual_seed(1)
-    # imageProcessor = ImageProcessor(
-    #     log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # )
-    # try:
-    #     while True:
-    #         imageProcessor.recv_text()
-    # except KeyboardInterrupt:
-    #     imageProcessor.write_to_pickle()
-    imageProcessor = ImageProcessor(log="test1")
-    imageProcessor.read_from_pickle("dynamem_log/20241102_221020.pkl")
-    imageProcessor.space.sample_exploration(
-        xyt=[0, 0, 0], planner=imageProcessor.planner, debug=True
+    torch.manual_seed(1)
+    imageProcessor = ImageProcessor(
+        log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     )
+    try:
+        while True:
+            imageProcessor.recv_text()
+    except KeyboardInterrupt:
+        imageProcessor.write_to_pickle()
+    # imageProcessor = ImageProcessor(log="test1")
+    # imageProcessor.read_from_pickle("dynamem_log/20241102_221020.pkl")
+    # imageProcessor.space.sample_exploration(
+    #     xyt=[0, 0, 0], planner=imageProcessor.planner, debug=True
+    # )
+
+
+main()

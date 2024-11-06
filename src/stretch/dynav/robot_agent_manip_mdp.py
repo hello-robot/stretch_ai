@@ -137,7 +137,8 @@ class RobotAgentMDP:
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         start_time = time.time()
-        self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        # self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        self.image_sender.send_images(obs)
         end_time = time.time()
         print("Image processing takes", end_time - start_time, "seconds.")
 
@@ -154,8 +155,8 @@ class RobotAgentMDP:
 
         start = self.robot.get_base_pose()
         # print("       Start:", start)
-        # res = self.image_sender.query_text(text, start)
-        res = self.image_processor.process_text(text, start)
+        res = self.image_sender.query_text(text, start)
+        # res = self.image_processor.process_text(text, start)
         if len(res) == 0 and text != "" and text is not None:
             res = self.image_processor.process_text("", start)
 

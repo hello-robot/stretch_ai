@@ -123,10 +123,10 @@ class VoxelMapLocalizer:
         if exist_model:
             logger.info("WE ARE USING OWLV2!")
             self.exist_processor = AutoProcessor.from_pretrained(
-                "google/owlv2-large-patch14-ensemble"
+                "google/owlv2-base-patch16-ensemble"
             )
             self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-                "google/owlv2-large-patch14-ensemble"
+                "google/owlv2-base-patch16-ensemble"
             ).to(self.device)
         else:
             logger.info("YOU ARE USING NOTHING!")
