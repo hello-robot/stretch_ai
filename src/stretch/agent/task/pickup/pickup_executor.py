@@ -176,6 +176,9 @@ class PickupExecutor:
             self.agent.robot_say("I'm sorry, I didn't understand that.")
             return True
 
+        logger.info("Resetting agent...")
+        self.agent.reset()
+
         # Loop over every command we have been given
         # Pull out pickup and place as a single arg if they are in a row
         # Else, execute things as they come
