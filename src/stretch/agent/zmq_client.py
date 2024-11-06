@@ -150,6 +150,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self._publish_observations = (
             publish_observations or self.parameters["agent"]["use_realtime_updates"]
         )
+        self._warning_on_out_of_date_state = -1
 
         self._moving_threshold = parameters["motion"]["moving_threshold"]
         self._angle_threshold = parameters["motion"]["angle_threshold"]
@@ -1166,9 +1167,11 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if "step" in state:
                 self._last_step = max(self._last_step, state["step"])
                 if state["step"] < self._last_step:
-                    logger.warning(
-                        f"Dropping out-of-date state message: {state['step']} < {self._last_step}"
-                    )
+                    if self._warning_on_out_of_date_state < state["step"]:
+                        logger.warning(
+                            f"Dropping out-of-date state message: {state['step']} < {self._last_step}"
+                        )
+                        self._warning_on_out_of_date_state = state["step"]
             self._state = state
             self._control_mode = state["control_mode"]
             self._at_goal = state["at_goal"]
