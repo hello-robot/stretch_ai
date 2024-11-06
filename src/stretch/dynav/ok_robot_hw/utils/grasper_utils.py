@@ -16,6 +16,14 @@ from stretch.dynav.ok_robot_hw.utils.utils import apply_se3_transform
 
 
 def capture_and_process_image(camera, mode, obj, socket, hello_robot):
+    """Find an an object in the camera frame and return the translation and rotation of the object.
+
+    Returns:
+        rotation: Rotation of the object
+        translation: Translation of the object
+        depth: Depth of the object (distance from the camera; only for pick mode)
+        width: Width of the object (only for pick mode)
+    """
 
     print("Currently in " + mode + " mode and the robot is about to manipulate " + obj + ".")
 
@@ -29,11 +37,16 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
     head_pan = INIT_HEAD_PAN
 
     while retry_flag:
+
+        print("Capturing image: ")
+        print(f"retry flag : {retry_flag}")
+        print(f"side retries : {side_retries}")
+        print(f"tilt retries : {tilt_retries}")
+
         translation, rotation, depth, width, retry_flag = image_publisher.publish_image(
             obj, mode, head_tilt=head_tilt
         )
 
-        print(f"retry flag : {retry_flag}")
         if retry_flag == 1:
             base_trans = translation[0]
             head_tilt += rotation[0]
@@ -70,8 +83,10 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
         translation = np.array([-translation[1], -translation[0], -translation[2]])
 
     if mode == "pick":
+        print("Pick: Returning translation, rotation, depth, width")
         return rotation, translation, depth, width
     else:
+        print("Place: Returning translation, rotation")
         return rotation, translation
 
 
