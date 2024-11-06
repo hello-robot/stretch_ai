@@ -91,22 +91,22 @@ class RobotAgentMDP:
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
 
-        if method == "dynamem":
-            from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
+        # if method == "dynamem":
+        #     from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
-            self.image_processor = VoxelMapImageProcessor(
-                rerun=True,
-                rerun_visualizer=self.robot._rerun,
-                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-            )  # type: ignore
-        elif method == "mllm":
-            from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
+        #     self.image_processor = VoxelMapImageProcessor(
+        #         rerun=True,
+        #         rerun_visualizer=self.robot._rerun,
+        #         log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     )  # type: ignore
+        # elif method == "mllm":
+        #     from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
 
-            self.image_processor = mLLMImageProcessor(
-                rerun=True,
-                static=False,
-                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-            )  # type: ignore
+        #     self.image_processor = mLLMImageProcessor(
+        #         rerun=True,
+        #         static=False,
+        #         log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     )  # type: ignore
 
         self.look_around_times: list[float] = []
         self.execute_times: list[float] = []
