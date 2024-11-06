@@ -49,7 +49,7 @@ class RobotAgentMDP:
         robot,
         parameters: Dict[str, Any],
         server_ip: str,
-        image_port: int = 5558,
+        image_port: int = 5555,
         text_port: int = 5556,
         manip_port: int = 5557,
         re: int = 1,
