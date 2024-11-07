@@ -75,8 +75,10 @@ class GraspObjectOperation(ManagedOperation):
     # These were the settings Peiqi used:
     # align_x_threshold: int = 50
     # align_y_threshold: int = 50
-    align_x_threshold: int = 25
-    align_y_threshold: int = 20
+    # align_x_threshold: int = 25
+    # align_y_threshold: int = 20
+    align_x_threshold: int = 30
+    align_y_threshold: int = 25
 
     # pregrasp_distance_from_object: float = 0.075
     pregrasp_distance_from_object: float = 0.25
@@ -85,7 +87,7 @@ class GraspObjectOperation(ManagedOperation):
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
     # median_distance_when_grasping: float = 0.175
-    median_distance_when_grasping: float = 0.15
+    median_distance_when_grasping: float = 0.19
     # median_distance_when_grasping: float = 0.1  # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
