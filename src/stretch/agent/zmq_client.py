@@ -474,7 +474,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self.send_action(next_action=next_action, timeout=timeout)
 
     def head_to(
-        self, head_pan: float, head_tilt: float, blocking: bool = False, timeout: float = 10.0
+        self,
+        head_pan: float,
+        head_tilt: float,
+        blocking: bool = False,
+        timeout: float = 10.0,
+        reliable: bool = True,
     ):
         """Move the head to a particular configuration."""
         if head_pan < self._head_pan_min or head_pan > self._head_pan_max:
@@ -488,7 +493,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         head_pan = np.clip(head_pan, self._head_pan_min, self._head_pan_max)
         head_tilt = np.clip(head_tilt, -np.pi / 2, 0)
         next_action = {"head_to": [float(head_pan), float(head_tilt)], "manip_blocking": blocking}
-        sent = self.send_action(next_action, timeout=timeout)
+        sent = self.send_action(next_action, timeout=timeout, reliable=reliable)
 
         if blocking:
             step = sent["step"]
@@ -502,13 +507,21 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
         self.head_to(
-            constants.look_front[0], constants.look_front[1], blocking=blocking, timeout=timeout
+            constants.look_front[0],
+            constants.look_front[1],
+            blocking=blocking,
+            timeout=timeout,
+            reliable=True,
         )
 
     def look_at_ee(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its arm."""
         self.head_to(
-            constants.look_at_ee[0], constants.look_at_ee[1], blocking=blocking, timeout=timeout
+            constants.look_at_ee[0],
+            constants.look_at_ee[1],
+            blocking=blocking,
+            timeout=timeout,
+            reliable=True,
         )
 
     def arm_to(
@@ -653,6 +666,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         blocking: bool = True,
         timeout: float = 10.0,
         verbose: bool = False,
+        reliable: bool = True,
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         if isinstance(xyt, ContinuousNavigationAction):
@@ -679,7 +693,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Send an action to the robot
         # Resend it to make sure it arrives, if we are not making a relative motion
         # If we are blocking, wait for the action to complete with a timeout
-        action = self.send_action(next_action, timeout=timeout, verbose=verbose)
+        action = self.send_action(next_action, timeout=timeout, verbose=verbose, reliable=reliable)
 
         # Make sure we had time to read
         if blocking:
