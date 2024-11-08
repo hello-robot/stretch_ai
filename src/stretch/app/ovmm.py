@@ -115,21 +115,6 @@ def main(
     prompt = ObjectManipNavPromptBuilder()
     client = get_llm_client(llm, prompt=prompt)
 
-    print("Starting robot exploration...")
-
-    # Run exploration
-    # if target_object is not None or explore:
-    #     if target_object is None:
-    #         target_object = "toy"
-    #     agent.run_exploration(
-    #         manual_wait=False,
-    #         explore_iter=explore_iter,
-    #         task_goal=target_object,  # arbitrary object to collect
-    #         # as many instances as possible
-    #         go_home_at_end=True,
-    #         visualize=False,
-    #     )
-
     while robot.running:
 
         # Get a plan from the language model
