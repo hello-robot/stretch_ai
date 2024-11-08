@@ -26,6 +26,7 @@ import skimage
 import torch
 from scipy.ndimage import maximum_filter
 from torch import Tensor
+from  trimesh.bounds import contains as trimesh_contains
 
 from stretch.core.interfaces import Observations
 from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud, scatter3d
@@ -34,6 +35,7 @@ from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
+from stretch.visualization.urdf_visualizer import URDFVisualizer
 
 Frame = namedtuple(
     "Frame",
@@ -167,6 +169,8 @@ class SparseVoxelMap(object):
 
         self.voxel_kwargs = voxel_kwargs
         self.map_2d_device = map_2d_device
+        # URDF Visualizer to check for collisions
+        self.urdf_visualizer = URDFVisualizer()
 
         if self.pad_obstacles > 0:
             self.dilate_obstacles_kernel = torch.nn.Parameter(
@@ -395,6 +399,26 @@ class SparseVoxelMap(object):
             ]
             if len(selected_indices) == 0:
                 return
+
+            # Remove points that are too close to the robot
+            mesh = self.urdf_visualizer.get_combined_robot_mesh()
+
+            # Fetch bounds of the robot
+            bounds = mesh.bounds()
+
+            # Expand bounds by the local radius
+            bounds = bounds + np.array(
+                [
+                    [-0.1, -0.1],
+                    [0.1, 0.1],
+                ]
+            )
+
+            # Check if the points are within the bounds of the robot
+            if trimesh_contains(bounds, world_xyz[selected_indices].cpu().numpy()).any():
+                # Modify the selected indices to remove points that are within the bounds of the robot
+                selected_indices = selected_indices[~trimesh_contains(bounds, world_xyz[selected_indices].cpu().numpy())]
+
             if world_xyz is not None:
                 world_xyz = world_xyz[selected_indices]
             if feats is not None:
