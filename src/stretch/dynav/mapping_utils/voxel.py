@@ -26,7 +26,7 @@ import skimage
 import torch
 from scipy.ndimage import maximum_filter
 from torch import Tensor
-from  trimesh.bounds import contains as trimesh_contains
+from trimesh.bounds import contains as trimesh_contains
 
 from stretch.core.interfaces import Observations
 from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud, scatter3d
@@ -417,7 +417,9 @@ class SparseVoxelMap(object):
             # Check if the points are within the bounds of the robot
             if trimesh_contains(bounds, world_xyz[selected_indices].cpu().numpy()).any():
                 # Modify the selected indices to remove points that are within the bounds of the robot
-                selected_indices = selected_indices[~trimesh_contains(bounds, world_xyz[selected_indices].cpu().numpy())]
+                selected_indices = selected_indices[
+                    ~trimesh_contains(bounds, world_xyz[selected_indices].cpu().numpy())
+                ]
 
             if world_xyz is not None:
                 world_xyz = world_xyz[selected_indices]
