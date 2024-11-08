@@ -558,6 +558,8 @@ class ZmqRos2Leader:
                             robot_pose,
                             gripper=goal_configuration["stretch_gripper"],
                             head=constants.look_at_ee,
+                            blocking=False,  # We set this flag to False to make sure it doesn't block
+                            reliable=False,  # We set this flag to False so we dont wait for receipt
                         )
 
                         # Prep joint states as dict

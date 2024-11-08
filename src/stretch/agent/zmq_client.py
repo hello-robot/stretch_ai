@@ -520,6 +520,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         verbose: bool = False,
         min_time: float = 2.5,
+        reliable: bool = True,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
