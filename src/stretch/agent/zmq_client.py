@@ -543,6 +543,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             blocking: Whether to block until the motion is complete
             timeout: How long to wait for the motion to complete
             verbose: Whether to print out debug information
+            min_time: The minimum time to wait before considering the arm to be done
+            reliable: Whether to resend the action if it is not received
             **config: arm configuration options; maps joints to values.
 
         Returns:
@@ -668,7 +670,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
         verbose: bool = False,
         reliable: bool = True,
     ):
-        """Move to xyt in global coordinates or relative coordinates."""
+        """Move to xyt in global coordinates or relative coordinates.
+
+        Args:
+            xyt: The xyt position to move to
+            relative: Whether the position is relative to the current position
+            blocking: Whether to block until the motion is complete
+            timeout: How long to wait for the motion to complete
+            verbose: Whether to print out debug information
+            reliable: Whether to resend the action if it is not received
+        """
         if isinstance(xyt, ContinuousNavigationAction):
             _xyt = xyt.xyt
         else:
