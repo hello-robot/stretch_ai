@@ -1634,7 +1634,7 @@ class RobotAgent:
         self.current_state = "EXPLORE"
         self.robot.move_to_nav_posture()
         all_starts = []
-        all_goals = []
+        all_goals: List[List] = []
 
         # Explore some number of times
         matches = []
