@@ -63,6 +63,13 @@ echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
 if $update; then
     run_docker_command pull hellorobotinc/stretch-ai-ros2-bridge:$VERSION
 fi
+
+if $no_d405; then
+    launch_command="ros2 launch stretch_ros2_bridge server_no_d405.launch.py"
+else
+    launch_command="ros2 launch stretch_ros2_bridge server.launch.py"
+fi
+
 # Run the container
 # The options mean:
 # --net=host: use host network, so that the container can communicate with the robot
@@ -79,14 +86,6 @@ fi
 # -e HELLO_FLEET_ID=$HELLO_FLEET_ID: set the fleet ID
 # hellorobotinc/stretch-ai-ros2-bridge:$VERSION: the docker image to run
 # bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server_no_d405.launch.py": run the server
-
-
-if $no_d405; then
-    launch_command="ros2 launch stretch_ros2_bridge server_no_d405.launch.py"
-else
-    launch_command="ros2 launch stretch_ros2_bridge server.launch.py"
-fi
-
 run_docker_command run -it --rm \
     --net=host \
     --privileged=true \
