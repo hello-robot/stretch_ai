@@ -1710,11 +1710,15 @@ class RobotAgent:
             else:
                 # Try rotating in place if we can't find a decent frontier to get to
                 if not rotated:
+                    if audio_feedback:
+                        self.robot.say("No frontier found. Trying to rotate in place.")
                     self.rotate_in_place()
                     rotated = True
                     continue
 
                 if rotated:
+                    if audio_feedback:
+                        self.robot.say("No frontier found. We're done exploring!")
                     print("No where left to explore. Quitting.")
                     break
 
