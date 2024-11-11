@@ -64,7 +64,7 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
 )
-@click.option("--audio-feedback", is_flag=True, help="Enable audio feedback")
+@click.option("--audio-feedback", "--audio_feedback", is_flag=True, help="Enable audio feedback")
 @click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
     visualize,
@@ -214,6 +214,7 @@ def demo_main(
         agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
+            audio_feedback=audio_feedback,
         )
 
     # Run the actual procedure
