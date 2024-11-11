@@ -1636,13 +1636,18 @@ class RobotAgent:
         all_starts = []
         all_goals: List[List] = []
 
+        if audio_feedback:
+            self.robot.say("Starting exploration!")
+            time.sleep(3.0)
+
         # Explore some number of times
         matches = []
         no_success_explore = True
         rotated = False
         for i in range(explore_iter):
             if audio_feedback:
-                self.robot.say(f"Exploration {i + 1} of {explore_iter}")
+                self.robot.say(f"Step {i + 1} of {explore_iter}")
+                time.sleep(1.5)
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
