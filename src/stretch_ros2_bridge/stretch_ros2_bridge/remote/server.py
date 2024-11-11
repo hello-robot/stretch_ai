@@ -34,6 +34,14 @@ class ZmqServer(BaseZmqServer):
         self.client = StretchClient(d405=use_d405)
         self.use_d405 = use_d405
 
+        # Check if the robot is homed
+        if not self.client.is_homed:
+            raise RuntimeError("Robot is not homed. Please home the robot first.")
+
+        # Check if the robot is runstopped
+        if self.client.is_runstopped:
+            raise RuntimeError("Robot is runstopped. Please unstop the robot first.")
+
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
 

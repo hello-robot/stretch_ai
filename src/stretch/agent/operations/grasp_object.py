@@ -58,6 +58,8 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = False
     show_point_cloud: bool = False
+
+    # This will delete the object from instance memory/voxel map after grasping
     delete_object_after_grasp: bool = False
 
     # Should we try grasping open-loop or not?
@@ -68,13 +70,7 @@ class GraspObjectOperation(ManagedOperation):
     # This is almost certainly worth tuning a bit.
 
     # Thresholds for centering on object
-    # align_x_threshold: int = 10
-    # align_y_threshold: int = 7
     # These are the values used to decide when it's aligned enough to grasp
-    # align_x_threshold: int = 15
-    # These were the settings Peiqi used:
-    # align_x_threshold: int = 50
-    # align_y_threshold: int = 50
     # align_x_threshold: int = 25
     # align_y_threshold: int = 20
     align_x_threshold: int = 30
@@ -86,22 +82,18 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    # median_distance_when_grasping: float = 0.175
     median_distance_when_grasping: float = 0.19
-    # median_distance_when_grasping: float = 0.1  # 0.2
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
     # How long is the gripper?
+    # This is used to compute when we should not move the robot forward any farther
     grasp_distance = 0.12
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
-    # base_x_step: float = 0.14
     base_x_step: float = 0.10
     wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
-    # wrist_pitch_step: float = 0.06
-    # wrist_pitch_step: float = 0.05  # Too slow
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -404,7 +396,7 @@ class GraspObjectOperation(ManagedOperation):
         if self.talk:
             self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
-        if not self.open_loop:
+        if not self.open_loop or distance is not None:
             joint_state = self.robot.get_joint_positions()
             # Now compute what to do
             base_x = joint_state[HelloStretchIdx.BASE_X]
