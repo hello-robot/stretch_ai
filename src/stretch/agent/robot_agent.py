@@ -1669,9 +1669,6 @@ class RobotAgent:
             print("       Start:", start)
             self.print_found_classes(task_goal)
 
-            if audio_feedback:
-                self.robot.say(f"So far, I have found {len(all_goals)} objects.")
-
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
             )
