@@ -1625,6 +1625,7 @@ class RobotAgent:
         task_goal: str = None,
         go_home_at_end: bool = False,
         show_goal: bool = False,
+        audio_feedback: bool = False,
     ) -> Optional[List[Instance]]:
         """Go through exploration. We use the voxel_grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
 
@@ -1633,13 +1634,16 @@ class RobotAgent:
         self.current_state = "EXPLORE"
         self.robot.move_to_nav_posture()
         all_starts = []
-        all_goals = []
+        all_goals: List[List] = []
 
         # Explore some number of times
         matches = []
         no_success_explore = True
         rotated = False
         for i in range(explore_iter):
+            if audio_feedback:
+                self.robot.say(f"Exploration {i + 1} of {explore_iter}")
+
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
             start = self.robot.get_base_pose()
@@ -1647,17 +1651,27 @@ class RobotAgent:
             # if start is not valid move backwards a bit
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
+                if audio_feedback:
+                    self.robot.say("Start not valid. Backing up a bit.")
+
                 ok = self.recover_from_invalid_start()
                 if ok:
                     start = self.robot.get_base_pose()
                     start_is_valid = self.space.is_valid(start, verbose=True)
                 if not start_is_valid:
                     print("Failed to recover from invalid start state!")
+
+                    if audio_feedback:
+                        self.robot.say("Failed to recover from invalid start state!")
                     break
 
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
+
+            if audio_feedback:
+                self.robot.say(f"So far, I have found {len(all_goals)} objects.")
+
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
             )
@@ -1667,6 +1681,10 @@ class RobotAgent:
                 rotated = False
                 no_success_explore = False
                 print("Plan successful!")
+
+                if audio_feedback:
+                    self.robot.say("I found a frontier to explore.")
+
                 for i, pt in enumerate(res.trajectory):
                     print(i, pt.state)
                 all_starts.append(start)
@@ -1702,11 +1720,17 @@ class RobotAgent:
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
                     print("Exploration failed. Try again!")
+
+                    if audio_feedback:
+                        self.robot.say("Exploration failed. Trying again.")
                     continue
                 else:
                     print("Start = ", start)
                     print("Reason = ", res.reason)
                     print("Exploration failed. Quitting!")
+
+                    if audio_feedback:
+                        self.robot.say("Exploration failed. Quitting.")
                     break
 
             # Append latest observations
@@ -1730,12 +1754,19 @@ class RobotAgent:
                 matches = self.get_reachable_instances_by_class(task_goal)
                 if len(matches) > 0:
                     print("!!! GOAL FOUND! Done exploration. !!!")
+
+                    if audio_feedback:
+                        self.robot.say("Goal found! Done exploration.")
                     break
 
         if go_home_at_end:
             self.current_state = "NAV_TO_HOME"
             # Finally - plan back to (0,0,0)
             print("Go back to (0, 0, 0) to finish...")
+
+            if audio_feedback:
+                self.robot.say("Trying to go back to home.")
+
             start = self.robot.get_base_pose()
             goal = np.array([0, 0, 0])
             self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
@@ -1743,6 +1774,10 @@ class RobotAgent:
             # if it fails, skip; else, execute a trajectory to this position
             if res.success:
                 print("Full plan to home:")
+
+                if audio_feedback:
+                    self.robot.say("Found a plan to home.")
+
                 for i, pt in enumerate(res.trajectory):
                     print("-", i, pt.state)
                 if not dry_run:
