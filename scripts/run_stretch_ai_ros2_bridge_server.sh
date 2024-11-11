@@ -23,6 +23,25 @@ run_docker_command() {
     fi
 }
 
+
+# Parse command-line arguments
+update=false
+no_d405=false
+
+for arg in "$@"
+do
+    case $arg in
+        --update)
+            update=true
+            shift
+            ;;
+        --no-d405)
+            no_d405=true
+            shift
+            ;;
+    esac
+done
+
 echo "Starting Stretch AI ROS2 Bridge Server on $HELLO_FLEET_ID"
 echo "========================================================="
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,7 +59,10 @@ echo "Docker image version: $VERSION"
 
 echo "Running docker image hellorobotinc/stretch-ai-ros2-bridge:$VERSION"
 # Make sure the image is up to date
-run_docker_command pull hellorobotinc/stretch-ai-ros2-bridge:$VERSION
+# Update the Docker image if --update flag is set
+if $update; then
+    run_docker_command pull hellorobotinc/stretch-ai-ros2-bridge:$VERSION
+fi
 # Run the container
 # The options mean:
 # --net=host: use host network, so that the container can communicate with the robot
@@ -57,6 +79,14 @@ run_docker_command pull hellorobotinc/stretch-ai-ros2-bridge:$VERSION
 # -e HELLO_FLEET_ID=$HELLO_FLEET_ID: set the fleet ID
 # hellorobotinc/stretch-ai-ros2-bridge:$VERSION: the docker image to run
 # bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server_no_d405.launch.py": run the server
+
+
+if $no_d405; then
+    launch_command="ros2 launch stretch_ros2_bridge server_no_d405.launch.py"
+else
+    launch_command="ros2 launch stretch_ros2_bridge server.launch.py"
+fi
+
 run_docker_command run -it --rm \
     --net=host \
     --privileged=true \
@@ -71,4 +101,4 @@ run_docker_command run -it --rm \
     -v /home/$USER/ament_ws/install/stretch_description/share/stretch_description/urdf:/home/hello-robot/stretch_description/share/stretch_description/urdf \
     -e HELLO_FLEET_ID=$HELLO_FLEET_ID \
     hellorobotinc/stretch-ai-ros2-bridge:$VERSION \
-    bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; ros2 launch stretch_ros2_bridge server.launch.py"
+    bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; $launch_command"
