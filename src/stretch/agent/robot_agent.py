@@ -133,7 +133,7 @@ class RobotAgent:
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = self.parameters.get(
-            "instance_memory/matching/feature_match_threshold", 0.05
+            "encoder_args/matching/feature_match_threshold", 0.05
         )
 
         # Expanding frontier - how close to frontier are we allowed to go?
@@ -1511,7 +1511,9 @@ class RobotAgent:
             radius(float): the radius in meters
         """
         logger.info("[Agent] Setting allowed radius to", radius, "meters.")
-        logger.error("Setting allowed radius is not yet supported.")
+        self._allowed_radius = radius
+
+        self.voxel_map.set_allowed_radius(radius, origin=self.robot.get_base_pose()[0:2])
 
     def plan_to_frontier(
         self,
@@ -1690,8 +1692,12 @@ class RobotAgent:
                 # Try rotating in place if we can't find a decent frontier to get to
                 if not rotated:
                     self.rotate_in_place()
-                    rotate = True
+                    rotated = True
                     continue
+
+                if rotated:
+                    print("No where left to explore. Quitting.")
+                    break
 
                 # breakpoint()
                 # if it fails, try again or just quit
@@ -1703,24 +1709,6 @@ class RobotAgent:
                     print("Reason = ", res.reason)
                     print("Exploration failed. Quitting!")
                     break
-
-            # Error handling
-            if self.robot.last_motion_failed():
-                print("!!!!!!!!!!!!!!!!!!!!!!")
-                print("ROBOT IS STUCK! Move back!")
-                print(f"robot base pose: {self.robot.get_base_pose()}")
-                # Note that this is some random-walk code from habitat sim
-                # This is a terrible idea, do not execute on a real robot
-                # Not yet at least
-                raise RuntimeError("Robot is stuck!")
-
-                r = np.random.randint(3)
-                if r == 0:
-                    self.robot.move_base_to([-0.1, 0, 0], relative=True, blocking=True)
-                elif r == 1:
-                    self.robot.move_base_to([0, 0, np.pi / 4], relative=True, blocking=True)
-                elif r == 2:
-                    self.robot.move_base_to([0, 0, -np.pi / 4], relative=True, blocking=True)
 
             # Append latest observations
             if not self._realtime_updates:
@@ -2109,6 +2097,7 @@ class RobotAgent:
 
         scene_graph = None
 
+        # Create a scene graph if needed
         if plan_with_scene_graph:
             scene_graph = self.extract_symbolic_spatial_info(instances)
 

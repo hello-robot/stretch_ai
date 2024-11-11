@@ -205,7 +205,7 @@ class RerunVisualizer:
             # Check environment variables to see if this is docker
             if "DOCKER" in os.environ:
                 spawn_gui = False
-                open_browser = False
+                open_browser = True
                 logger.warning("Docker environment detected. Disabling GUI.")
         rr.init("Stretch_robot", spawn=spawn_gui)
         if open_browser:

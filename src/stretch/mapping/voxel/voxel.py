@@ -203,6 +203,9 @@ class SparseVoxelMap(object):
         self.median_filter_max_error = median_filter_max_error
         self.use_negative_obstacles = use_negative_obstacles
 
+        # If we have an allowed radius to move in, we can store a mask with extra obstacles
+        self.allowed_map: torch.Tensor = None
+
         # Derivative filter params
         self.use_derivative_filter = use_derivative_filter
         self.derivative_filter_threshold = derivative_filter_threshold
@@ -839,6 +842,36 @@ class SparseVoxelMap(object):
         """
         return self.voxel_pcd.get_pointcloud()
 
+    def set_allowed_radius(self, radius: float, origin: torch.Tensor | np.ndarray) -> None:
+        """Set the allowed radius for exploration around the robot. This is used to add points to the map around the robot.
+
+        Args:
+            radius (float): radius in meters
+            origin (torch.Tensor | np.ndarray): origin of the robot in the map
+        """
+
+        # Create a map of the same size as obstacles etc
+        self.allowed_map = torch.zeros(self.grid_size, device=self.map_2d_device)
+
+        # Convert origin to grid coordinates
+        origin = np.round(
+            (origin[:2] / self.grid_resolution) + self.grid_origin[:2].cpu().numpy()
+        ).astype(int)
+
+        # Create a disk around the robot
+        disk_size = int(np.ceil(radius / self.grid_resolution))
+        disk = torch.from_numpy(create_disk(disk_size, (2 * disk_size) + 1)).to(self.map_2d_device)
+        x0 = int(origin[0] - disk_size)
+        x1 = int(origin[0] + disk_size + 1)
+        y0 = int(origin[1] - disk_size)
+        y1 = int(origin[1] + disk_size + 1)
+        assert x0 >= 0
+        assert y0 >= 0
+        self.allowed_map[x0:x1, y0:y1] += disk
+
+        # Force a map update
+        self.get_2d_map(force_update=True)
+
     def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
 
@@ -924,6 +957,10 @@ class SparseVoxelMap(object):
                 binary_erosion(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
                 self.smooth_kernel,
             )[0, 0].bool()
+
+        # If self.allowed_map is not none, add its inverse to obstacles
+        if self.allowed_map is not None:
+            obstacles = obstacles | ~self.allowed_map.bool()
 
         if debug:
             import matplotlib.pyplot as plt

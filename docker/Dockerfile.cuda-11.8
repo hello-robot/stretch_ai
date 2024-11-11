@@ -50,6 +50,12 @@ RUN apt-get update && apt-get install -y \
     espeak \
     && rm -rf /var/lib/apt/lists/*
 
+# Install libxkbcommon-x11-0
+# This is for rerun support
+RUN apt-get update && apt-get install -y \
+    libxkbcommon-x11-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 

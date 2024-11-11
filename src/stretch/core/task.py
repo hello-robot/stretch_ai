@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 import abc
-from typing import Optional
+from typing import Dict, List, Optional
 
 from termcolor import colored
 
@@ -116,12 +116,13 @@ class Operation(abc.ABC):
 class Task:
     """A task is a series of operations that are executed in sequence. At each step, we check validity."""
 
-    def __init__(self):
+    def __init__(self, max_failures: int = 5) -> None:
         self.current_operation = None
         self.initial_operation = None
-        self._all_operations = []
-        self._terminal_operations = []
-        self._operations = dict()
+        self._all_operations: List[Operation] = []
+        self._terminal_operations: List[Operation] = []
+        self._operations: Dict[str, Operation] = dict()
+        self.max_failures = max_failures
 
     def add_operation(self, operation, terminal: bool = False):
         """Add this operation into the task.
