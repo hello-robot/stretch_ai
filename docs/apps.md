@@ -249,3 +249,17 @@ This is an experimental app that uses the voxel map to plan a path to a goal. It
 ```bash
 python -m stretch.app.vlm_planning
 ```
+
+### Open-Vocabulary Mobile Manipulation
+
+This is an experimental app that uses a language model to generate commands for the robot given a natural language input. It is not yet fully functional.
+
+```bash
+python -m stretch.app.ovmm
+```
+
+Options include:
+
+- `--robot_ip` - The IP address of the robot.
+- `--task` - The task to perform. Can be a natural language command for the robot.
+- `--llm` - The language model to use. Can be `openai`, `gemma2b`, or `llama`.
