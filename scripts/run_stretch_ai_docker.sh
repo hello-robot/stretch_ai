@@ -2,6 +2,13 @@
 
 # Description: Run the docker container with GPU support for Stretch AI
 
+# Example usage:
+# ./run_stretch_ai_docker.sh                     # Run GPU client
+# ./run_stretch_ai_docker.sh --update            # Run GPU client with image update
+# ./run_stretch_ai_docker.sh --dev               # Run GPU client in dev mode
+# ./run_stretch_ai_docker.sh --ros2-bridge       # Run ROS2 bridge server
+# ./run_stretch_ai_docker.sh --ros2-bridge --no-d405  # Run ROS2 bridge server without D405 camera
+
 # Make sure it fails if we see any errors
 set -e
 
@@ -62,6 +69,17 @@ do
             ;;
     esac
 done
+
+# Check for incompatible flag combinations
+if $ros2_bridge && $dev_mode; then
+    echo "Error: --ros2-bridge and --dev flags cannot be used together."
+    exit 1
+fi
+
+if $no_d405 && ! $ros2_bridge; then
+    echo "Error: --no-d405 flag can only be used with --ros2-bridge."
+    exit 1
+fi
 
 # Set the appropriate Docker image based on the mode
 if $ros2_bridge; then
