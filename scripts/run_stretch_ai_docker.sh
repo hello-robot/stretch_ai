@@ -6,8 +6,8 @@
 # ./run_stretch_ai_docker.sh                     # Run GPU client
 # ./run_stretch_ai_docker.sh --update            # Run GPU client with image update
 # ./run_stretch_ai_docker.sh --dev               # Run GPU client in dev mode
-# ./run_stretch_ai_docker.sh --ros2-bridge       # Run ROS2 bridge server
-# ./run_stretch_ai_docker.sh --ros2-bridge --no-d405  # Run ROS2 bridge server without D405 camera
+# ./run_stretch_ai_docker.sh --robot       # Run ROS2 bridge server
+# ./run_stretch_ai_docker.sh --robot --no-d405  # Run ROS2 bridge server without D405 camera
 
 # Make sure it fails if we see any errors
 set -e
@@ -21,6 +21,7 @@ is_in_docker_group() {
 run_docker_command() {
     if is_in_docker_group; then
         echo "User is in Docker group. Running command without sudo."
+        echo docker "$@"
         docker "$@"
     else
         echo "User is not in Docker group. Running command with sudo."
@@ -63,7 +64,7 @@ do
             no_d405=true
             shift
             ;;
-        --ros2-bridge)
+        --robot)
             ros2_bridge=true
             shift
             ;;
@@ -72,12 +73,12 @@ done
 
 # Check for incompatible flag combinations
 if $ros2_bridge && $dev_mode; then
-    echo "Error: --ros2-bridge and --dev flags cannot be used together."
+    echo "Error: --robot and --dev flags cannot be used together."
     exit 1
 fi
 
 if $no_d405 && ! $ros2_bridge; then
-    echo "Error: --no-d405 flag can only be used with --ros2-bridge."
+    echo "Error: --no-d405 flag can only be used with --robot."
     exit 1
 fi
 
@@ -111,7 +112,9 @@ if $ros2_bridge; then
         launch_command="ros2 launch stretch_ros2_bridge server.launch.py"
     fi
 
-    docker_command="bash -c \"source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; $launch_command\""
+    # docker_command="bash -c \"source /home/hello-robot/.bashrc && cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user && export HELLO_FLEET_ID=$HELLO_FLEET_ID && $launch_command\""
+    docker_command="bash -c \"source /home/hello-robot/.bashrc\""
+    docker_command="bash << echo hi"
 else
     if $dev_mode; then
         docker_run_options+=" -v $parent_dir:/app"
@@ -123,5 +126,5 @@ fi
 
 # Run the Docker container
 echo "Running Docker container..."
-run_docker_command run $docker_run_options $docker_image $docker_command
+run_docker_command run $docker_run_options $docker_image "$docker_command"
 
