@@ -1670,7 +1670,11 @@ class RobotAgent:
             self.print_found_classes(task_goal)
 
             if audio_feedback:
-                self.robot.say_sync(f"So far, I have found {len(all_goals)} objects.")
+                self.robot.say_sync(f"So far, I have found {len(all_goals)} object{'s' * max(1,(len(all_goals)))}.")
+
+            print("Looking for frontiers nearby...")
+
+            time.sleep(2.0)
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
@@ -1683,7 +1687,7 @@ class RobotAgent:
                 print("Plan successful!")
 
                 if audio_feedback:
-                    self.robot.say_sync("I found a frontier to explore.")
+                    self.robot.say_sync("I found a frontier to explore. Adding it as a goal.")
 
                 for i, pt in enumerate(res.trajectory):
                     print(i, pt.state)
@@ -1700,11 +1704,16 @@ class RobotAgent:
                         instances=self.semantic_sensor is not None,
                     )
                 if not dry_run:
+
+                    if audio_feedback:
+                        self.robot.say_sync("Attempting to move to this goal.")
+
                     self.robot.execute_trajectory(
                         [pt.state for pt in res.trajectory],
                         pos_err_threshold=self.pos_err_threshold,
                         rot_err_threshold=self.rot_err_threshold,
                     )
+
             else:
                 # Try rotating in place if we can't find a decent frontier to get to
                 if not rotated:
@@ -1734,8 +1743,14 @@ class RobotAgent:
                     break
 
             # Append latest observations
+
+            if audio_feedback:
+                self.robot.say_sync("Recording observations.")
+                time.sleep(1.0)
+
             if not self._realtime_updates:
                 self.update()
+
             # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
             if visualize:
                 # After doing everything - show where we will move to
@@ -1765,7 +1780,8 @@ class RobotAgent:
             print("Go back to (0, 0, 0) to finish...")
 
             if audio_feedback:
-                self.robot.say_sync("Trying to go back to home.")
+                self.robot.say_sync("Trying to go back to my initial position.")
+                time.sleep(1.0)
 
             start = self.robot.get_base_pose()
             goal = np.array([0, 0, 0])
