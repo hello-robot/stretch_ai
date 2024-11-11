@@ -245,10 +245,13 @@ class ZmqRos2Leader:
                     0
                 ]
                 new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
             elif self.teleop_mode == "rotary_base":
                 new_goal_configuration[
                     "joint_mobile_base_rotate_by"
                 ] = self.filtered_wrist_position_configuration[0]
+                new_goal_configuration["base_x_joint"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
             else:
                 new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
                 new_goal_configuration["base_x_joint"] = 0.0
