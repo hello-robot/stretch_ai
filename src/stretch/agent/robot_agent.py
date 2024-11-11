@@ -1642,7 +1642,7 @@ class RobotAgent:
         rotated = False
         for i in range(explore_iter):
             if audio_feedback:
-                self.robot.say(f"Exploration {i + 1} of {explore_iter}")
+                self.robot.say_sync(f"Exploration {i + 1} of {explore_iter}")
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1652,7 +1652,7 @@ class RobotAgent:
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
                 if audio_feedback:
-                    self.robot.say("Start not valid. Backing up a bit.")
+                    self.robot.say_sync("Start not valid. Backing up a bit.")
 
                 ok = self.recover_from_invalid_start()
                 if ok:
@@ -1662,7 +1662,7 @@ class RobotAgent:
                     print("Failed to recover from invalid start state!")
 
                     if audio_feedback:
-                        self.robot.say("Failed to recover from invalid start state!")
+                        self.robot.say_sync("Failed to recover from invalid start state!")
                     break
 
             # Now actually plan to the frontier
@@ -1670,7 +1670,7 @@ class RobotAgent:
             self.print_found_classes(task_goal)
 
             if audio_feedback:
-                self.robot.say(f"So far, I have found {len(all_goals)} objects.")
+                self.robot.say_sync(f"So far, I have found {len(all_goals)} objects.")
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
@@ -1683,7 +1683,7 @@ class RobotAgent:
                 print("Plan successful!")
 
                 if audio_feedback:
-                    self.robot.say("I found a frontier to explore.")
+                    self.robot.say_sync("I found a frontier to explore.")
 
                 for i, pt in enumerate(res.trajectory):
                     print(i, pt.state)
@@ -1722,7 +1722,7 @@ class RobotAgent:
                     print("Exploration failed. Try again!")
 
                     if audio_feedback:
-                        self.robot.say("Exploration failed. Trying again.")
+                        self.robot.say_sync("Exploration failed. Trying again.")
                     continue
                 else:
                     print("Start = ", start)
@@ -1730,7 +1730,7 @@ class RobotAgent:
                     print("Exploration failed. Quitting!")
 
                     if audio_feedback:
-                        self.robot.say("Exploration failed. Quitting.")
+                        self.robot.say_sync("Exploration failed. Quitting.")
                     break
 
             # Append latest observations
@@ -1756,7 +1756,7 @@ class RobotAgent:
                     print("!!! GOAL FOUND! Done exploration. !!!")
 
                     if audio_feedback:
-                        self.robot.say("Goal found! Done exploration.")
+                        self.robot.say_sync("Goal found! Done exploration.")
                     break
 
         if go_home_at_end:
@@ -1765,7 +1765,7 @@ class RobotAgent:
             print("Go back to (0, 0, 0) to finish...")
 
             if audio_feedback:
-                self.robot.say("Trying to go back to home.")
+                self.robot.say_sync("Trying to go back to home.")
 
             start = self.robot.get_base_pose()
             goal = np.array([0, 0, 0])
@@ -1776,7 +1776,7 @@ class RobotAgent:
                 print("Full plan to home:")
 
                 if audio_feedback:
-                    self.robot.say("Found a plan to home.")
+                    self.robot.say_sync("Found a plan to home.")
 
                 for i, pt in enumerate(res.trajectory):
                     print("-", i, pt.state)
