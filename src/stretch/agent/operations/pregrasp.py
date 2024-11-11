@@ -32,7 +32,7 @@ class PreGraspObjectOperation(ManagedOperation):
             return False
 
         start = self.robot.get_base_pose()
-        if not self.navigation_space.is_valid(start, verbose=True):
+        if not self.navigation_space.is_valid(start):
             self.error(
                 f"{self.name}: [ERROR]: Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
