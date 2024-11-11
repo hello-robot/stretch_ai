@@ -1636,13 +1636,18 @@ class RobotAgent:
         all_starts = []
         all_goals: List[List] = []
 
+        if audio_feedback:
+            self.robot.say("Starting exploration!")
+            time.sleep(3.0)
+
         # Explore some number of times
         matches = []
         no_success_explore = True
         rotated = False
         for i in range(explore_iter):
             if audio_feedback:
-                self.robot.say(f"Exploration {i + 1} of {explore_iter}")
+                self.robot.say(f"Step {i + 1} of {explore_iter}")
+                time.sleep(1.5)
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1668,9 +1673,6 @@ class RobotAgent:
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
-
-            if audio_feedback:
-                self.robot.say(f"So far, I have found {len(all_goals)} objects.")
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
@@ -1708,11 +1710,15 @@ class RobotAgent:
             else:
                 # Try rotating in place if we can't find a decent frontier to get to
                 if not rotated:
+                    if audio_feedback:
+                        self.robot.say("No frontier found. Trying to rotate in place.")
                     self.rotate_in_place()
                     rotated = True
                     continue
 
                 if rotated:
+                    if audio_feedback:
+                        self.robot.say("No frontier found. We're done exploring!")
                     print("No where left to explore. Quitting.")
                     break
 
