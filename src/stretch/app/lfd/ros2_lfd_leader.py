@@ -190,6 +190,8 @@ class ROS2LfdLeader:
                                 0.0,
                             ],
                             gripper=self.robot._robot_model.GRIPPER_OPEN,
+                            reliable=False,
+                            blocking=False,
                         )
                 else:
                     self._run_policy = True
@@ -230,6 +232,8 @@ class ROS2LfdLeader:
                             action[5],  # roll
                         ],
                         gripper=action[8],  # gripper
+                        reliable=False,
+                        blocking=False,
                     )
 
                     # Label actions for saving

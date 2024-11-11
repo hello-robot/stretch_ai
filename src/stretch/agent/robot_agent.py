@@ -1639,13 +1639,17 @@ class RobotAgent:
         all_starts = []
         all_goals: List[List] = []
 
+        if audio_feedback:
+            self.robot.say("Starting exploration!")
+            time.sleep(3.0)
+
         # Explore some number of times
         matches = []
         no_success_explore = True
         rotated = False
         for i in range(explore_iter):
             if audio_feedback:
-                self.robot.say_sync(f"Exploration {i + 1} of {explore_iter}")
+                self.robot.say_sync(f"Step {i + 1} of {explore_iter}")
                 time.sleep(4.0)
 
             print("\n" * 2)
@@ -1731,11 +1735,15 @@ class RobotAgent:
             else:
                 # Try rotating in place if we can't find a decent frontier to get to
                 if not rotated:
+                    if audio_feedback:
+                        self.robot.say("No frontier found. Trying to rotate in place.")
                     self.rotate_in_place()
                     rotated = True
                     continue
 
                 if rotated:
+                    if audio_feedback:
+                        self.robot.say("No frontier found. We're done exploring!")
                     print("No where left to explore. Quitting.")
                     break
 

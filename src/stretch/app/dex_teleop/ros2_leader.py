@@ -208,6 +208,7 @@ class ZmqRos2Leader:
             ignore_missing_joints=True,
         )
         new_goal_configuration = self.robot._robot_model.manip_ik_solver.q_array_to_dict(res)
+
         if not success:
             print("!!! BAD IK SOLUTION !!!")
             new_goal_configuration = None
@@ -219,22 +220,13 @@ class ZmqRos2Leader:
                 f"WARNING: IK failed to find a valid new_goal_configuration so skipping this iteration by continuing the loop. Input to IK: wrist_position = {wrist_position}, Output from IK: new_goal_configuration = {new_goal_configuration}"
             )
         else:
-            if self.teleop_mode == "base_x":
-                new_wrist_position_configuration = np.array(
-                    [
-                        new_goal_configuration["base_x_joint"],
-                        new_goal_configuration["joint_lift"],
-                        new_goal_configuration["joint_arm_l0"],
-                    ]
-                )
-            else:
-                new_wrist_position_configuration = np.array(
-                    [
-                        new_goal_configuration["base_theta_joint"],
-                        new_goal_configuration["joint_lift"],
-                        new_goal_configuration["joint_arm_l0"],
-                    ]
-                )
+            new_wrist_position_configuration = np.array(
+                [
+                    new_goal_configuration["joint_fake"],
+                    new_goal_configuration["joint_lift"],
+                    new_goal_configuration["joint_arm_l0"],
+                ]
+            )
 
             # Arm scaling
             new_wrist_position_configuration[2] = (
@@ -247,6 +239,23 @@ class ZmqRos2Leader:
             self.filtered_wrist_position_configuration = (
                 (1.0 - self.wrist_position_filter) * self.filtered_wrist_position_configuration
             ) + (self.wrist_position_filter * new_wrist_position_configuration)
+
+            if self.teleop_mode == "base_x":
+                new_goal_configuration["base_x_joint"] = self.filtered_wrist_position_configuration[
+                    0
+                ]
+                new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
+            elif self.teleop_mode == "rotary_base":
+                new_goal_configuration[
+                    "joint_mobile_base_rotate_by"
+                ] = self.filtered_wrist_position_configuration[0]
+                new_goal_configuration["base_x_joint"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
+            else:
+                new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+                new_goal_configuration["base_x_joint"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
 
             new_goal_configuration["joint_lift"] = self.filtered_wrist_position_configuration[1]
             new_goal_configuration["joint_arm_l0"] = self.filtered_wrist_position_configuration[2]
@@ -558,6 +567,8 @@ class ZmqRos2Leader:
                             robot_pose,
                             gripper=goal_configuration["stretch_gripper"],
                             head=constants.look_at_ee,
+                            blocking=False,  # We set this flag to False to make sure it doesn't block
+                            reliable=False,  # We set this flag to False so we dont wait for receipt
                         )
 
                         # Prep joint states as dict
