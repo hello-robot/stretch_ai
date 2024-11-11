@@ -29,7 +29,7 @@ from stretch.perception import create_semantic_sensor
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
 @click.option("--robot_ip", default="")
 @click.option("--device-id", default=0, help="Device ID for the semantic sensor")
-@click.option("--llm", default="openai", help="Language model to use")
+@click.option("--llm", default="qwen25-3B-Instruct", help="Language model to use")
 @click.option("--verbose", default=True)
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--task", default="", help="Default task to perform")
@@ -38,7 +38,7 @@ def main(
     local: bool = True,
     robot_ip: str = "",
     device_id: int = 0,
-    llm: str = "openai",
+    llm: str = "qwen25-3B-Instruct",
     verbose: bool = True,
     parameter_file: str = "config/default_planner.yaml",
     task: str = "",
