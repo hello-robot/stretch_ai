@@ -141,7 +141,7 @@ else
     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
-source activate $ENV_NAME
+$MAMBA activate $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
 pip install setuptools==69.5.1
