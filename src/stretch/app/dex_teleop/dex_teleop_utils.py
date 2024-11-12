@@ -77,6 +77,11 @@ def format_state(raw_state: dict | None = None, teleop_mode: str | None = "base_
 
 
 def format_actions(raw_actions: dict):
+    """Format actions: remove unused actions depending on controlled joints and set them to zero."""
+
+    if raw_actions is None:
+        return None
+
     for x in DEX_TELEOP_CONTROLLED_JOINTS:
         if x not in raw_actions:
             raw_actions[x] = 0.0

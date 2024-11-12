@@ -54,7 +54,7 @@ class ZmqRos2Leader:
         platform: str = "linux",
         use_clutch: bool = False,
         teach_grasping: bool = False,
-        teleop_factor: float = 0.25,
+        teleop_factor: float = 0.5,
     ):
         self.robot = robot
         self.camera = None
@@ -540,6 +540,8 @@ class ZmqRos2Leader:
                 if goal_dict["valid"]:
                     # get robot configuration
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
+                    if goal_configuration is None:
+                        continue
 
                     # Format to standard action space
                     goal_configuration = dt_utils.format_actions(goal_configuration)
