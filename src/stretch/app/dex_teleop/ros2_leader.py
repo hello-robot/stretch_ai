@@ -54,6 +54,7 @@ class ZmqRos2Leader:
         platform: str = "linux",
         use_clutch: bool = False,
         teach_grasping: bool = False,
+        teleop_factor: float = 0.25,
     ):
         self.robot = robot
         self.camera = None
@@ -68,6 +69,7 @@ class ZmqRos2Leader:
         self.verbose = verbose
         self.use_clutch = use_clutch
         self.teach_grasping = teach_grasping
+        self.teleop_factor = teleop_factor
 
         self.left_handed = left_handed
 
@@ -241,9 +243,9 @@ class ZmqRos2Leader:
             ) + (self.wrist_position_filter * new_wrist_position_configuration)
 
             if self.teleop_mode == "base_x":
-                new_goal_configuration["base_x_joint"] = self.filtered_wrist_position_configuration[
-                    0
-                ]
+                new_goal_configuration["base_x_joint"] = (
+                    self.filtered_wrist_position_configuration[0] * self.teleop_factor
+                )
                 new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
                 new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
             elif self.teleop_mode == "rotary_base":
@@ -639,7 +641,10 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
     parser.add_argument(
-        "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
+        "-s",
+        "--skip-images",
+        action="store_true",
+        help="Do not save raw images in addition to videos",
     )
     parser.add_argument("-P", "--send_port", type=int, default=4402, help="Port to send goals to.")
     parser.add_argument(
@@ -649,7 +654,9 @@ if __name__ == "__main__":
         default="base_x",
         choices=["stationary_base", "rotary_base", "base_x"],
     )
-    parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
+    parser.add_argument(
+        "--skip-success", action="store_true", help="Do not record success of episode."
+    )
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
     parser.add_argument("-c", "--clutch", action="store_true")
@@ -679,9 +686,9 @@ if __name__ == "__main__":
         task_name=args.task_name,
         env_name=args.env_name,
         force_record=args.force,
-        save_images=args.save_images,
+        save_images=(not args.skip_images),
         teleop_mode=args.teleop_mode,
-        record_success=args.record_success,
+        record_success=(not args.skip_success),
         platform=args.platform,
         use_clutch=args.clutch,
         teach_grasping=args.teach_grasping,
