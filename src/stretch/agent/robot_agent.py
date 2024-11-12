@@ -464,6 +464,7 @@ class RobotAgent:
         visualize: bool = False,
         verbose: bool = False,
         full_sweep: bool = True,
+        audio_feedback: bool = False,
     ) -> bool:
         """Simple helper function to make the robot rotate in place. Do a 360 degree turn to get some observations (this helps debug the robot and create a nice map).
 
@@ -474,6 +475,8 @@ class RobotAgent:
         Returns:
             executed(bool): false if we did not actually do any rotations"""
         logger.info("Rotate in place")
+        if audio_feedback:
+            self.robot.say_sync("Rotating in place")
         if steps is None or steps <= 0:
             # Read the number of steps from the parameters
             if self._realtime_updates:
@@ -1646,8 +1649,8 @@ class RobotAgent:
         rotated = False
         for i in range(explore_iter):
             if audio_feedback:
-                self.robot.say(f"Step {i + 1} of {explore_iter}")
-                time.sleep(1.5)
+                self.robot.say_sync(f"Step {i + 1} of {explore_iter}")
+                time.sleep(4.0)
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1657,7 +1660,8 @@ class RobotAgent:
             if not start_is_valid:
                 print("Start not valid. back up a bit.")
                 if audio_feedback:
-                    self.robot.say("Start not valid. Backing up a bit.")
+                    self.robot.say_sync("Start not valid. Backing up a bit.")
+                    time.sleep(4.0)
 
                 ok = self.recover_from_invalid_start()
                 if ok:
@@ -1667,12 +1671,26 @@ class RobotAgent:
                     print("Failed to recover from invalid start state!")
 
                     if audio_feedback:
-                        self.robot.say("Failed to recover from invalid start state!")
+                        self.robot.say_sync("Failed to recover from invalid start state!")
+                        time.sleep(4.0)
                     break
 
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
+
+            if audio_feedback:
+                if len(all_goals) > 0:
+                    self.robot.say_sync(
+                        f"So far, I have found {len(all_goals)} object{'s' if len(all_goals) > 2 else ''}"
+                    )
+                else:
+                    self.robot.say_sync(f"My map is currently empty")
+                time.sleep(4.0)
+
+            if audio_feedback:
+                self.robot.say_sync("Looking for frontiers nearby...")
+                time.sleep(4.0)
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
@@ -1685,7 +1703,8 @@ class RobotAgent:
                 print("Plan successful!")
 
                 if audio_feedback:
-                    self.robot.say("I found a frontier to explore.")
+                    self.robot.say_sync("I found a frontier to explore. Adding it as a goal.")
+                    time.sleep(4.0)
 
                 for i, pt in enumerate(res.trajectory):
                     print(i, pt.state)
@@ -1702,11 +1721,17 @@ class RobotAgent:
                         instances=self.semantic_sensor is not None,
                     )
                 if not dry_run:
+
+                    if audio_feedback:
+                        self.robot.say_sync("Attempting to move to this goal.")
+                        time.sleep(4.0)
+
                     self.robot.execute_trajectory(
                         [pt.state for pt in res.trajectory],
                         pos_err_threshold=self.pos_err_threshold,
                         rot_err_threshold=self.rot_err_threshold,
                     )
+
             else:
                 # Try rotating in place if we can't find a decent frontier to get to
                 if not rotated:
@@ -1728,7 +1753,8 @@ class RobotAgent:
                     print("Exploration failed. Try again!")
 
                     if audio_feedback:
-                        self.robot.say("Exploration failed. Trying again.")
+                        self.robot.say_sync("Exploration failed. Trying again.")
+                        time.sleep(4.0)
                     continue
                 else:
                     print("Start = ", start)
@@ -1736,12 +1762,19 @@ class RobotAgent:
                     print("Exploration failed. Quitting!")
 
                     if audio_feedback:
-                        self.robot.say("Exploration failed. Quitting.")
+                        self.robot.say_sync("Exploration failed. Quitting.")
+                        time.sleep(4.0)
                     break
 
             # Append latest observations
+
+            if audio_feedback:
+                self.robot.say_sync("Recording new observations.")
+                time.sleep(4.0)
+
             if not self._realtime_updates:
                 self.update()
+
             # self.save_svm("", filename=f"debug_svm_{i:03d}.pkl")
             if visualize:
                 # After doing everything - show where we will move to
@@ -1762,7 +1795,8 @@ class RobotAgent:
                     print("!!! GOAL FOUND! Done exploration. !!!")
 
                     if audio_feedback:
-                        self.robot.say("Goal found! Done exploration.")
+                        self.robot.say_sync("Goal found! Done exploration.")
+                        time.sleep(4.0)
                     break
 
         if go_home_at_end:
@@ -1771,7 +1805,8 @@ class RobotAgent:
             print("Go back to (0, 0, 0) to finish...")
 
             if audio_feedback:
-                self.robot.say("Trying to go back to home.")
+                self.robot.say_sync("Trying to go back to my initial position.")
+                time.sleep(4.0)
 
             start = self.robot.get_base_pose()
             goal = np.array([0, 0, 0])
@@ -1782,7 +1817,8 @@ class RobotAgent:
                 print("Full plan to home:")
 
                 if audio_feedback:
-                    self.robot.say("Found a plan to home.")
+                    self.robot.say_sync("I found a plan to home.")
+                    time.sleep(4.0)
 
                 for i, pt in enumerate(res.trajectory):
                     print("-", i, pt.state)
