@@ -31,8 +31,8 @@ We recommend the following hardware to run *stretch-ai*. Other GPUs and other ve
 - **Dedicated WiFi access point**
   - Performance depends on high-bandwidth, low-latency wireless communication between the robot and the GPU computer.
   - The official [Stretch WiFi Access Point](https://hello-robot.com/stretch-access-point) provides a tested example.
-
-To use the learning-from-demonstration (LfD) code you'll need the [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit).
+- (Optional) [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit).
+  - To use the learning-from-demonstration (LfD) code you'll need the Stretch Dexterous Teleop Kit.
 
 ## Quick-start Guide
 
