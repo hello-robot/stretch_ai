@@ -7,7 +7,7 @@ CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
-VERSION=`python $script_dir/src/stretch/version.py`
+VERSION=`python3 $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
