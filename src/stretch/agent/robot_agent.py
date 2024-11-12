@@ -1700,7 +1700,7 @@ class RobotAgent:
             if res.success:
                 rotated = False
                 no_success_explore = False
-                print("Plan successful!")
+                print("Exploration plan to frontier successful!")
 
                 if audio_feedback:
                     self.robot.say_sync("I found a frontier to explore. Adding it as a goal.")
