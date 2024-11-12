@@ -54,7 +54,7 @@ Then, you can start the client on your GPU computer.
 ./scripts/run_stretch_ai_gpu_client.sh
 ```
 
-**Experimental support for RE2:** on your robot, you can run a version of the server with no d405 camera support. Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
+**Experimental support for RE2:** The older model, Stretch 2, did not have an camera on the gripper. You can purchase an [Stretch 2 Upgrade Kit]([url](https://hello-robot.com/stretch-2-upgrade)) to give your Stretch 2 the capabilities of a Stretch 3. Alternatively, you can run a version of the server with no d405 camera support on your robot. Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
 
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server.sh --no-d405
