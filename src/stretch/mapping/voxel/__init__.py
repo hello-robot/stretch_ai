@@ -13,4 +13,5 @@
 # LICENSE file in the root directory of this source tree.
 from .planners import plan_to_frontier
 from .voxel import SparseVoxelMap
+from .voxel_dynamem import SparseVoxelMap as SparseVoxelMapDynamem
 from .voxel_map import SparseVoxelMapNavigationSpace

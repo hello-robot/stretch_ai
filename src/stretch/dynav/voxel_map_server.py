@@ -33,9 +33,11 @@ import stretch.utils.logger as logger
 from stretch.agent.zmq_client import HomeRobotZmqClient as RobotClient
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
-from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
+
+# from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
+from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
@@ -191,7 +193,6 @@ class ImageProcessor:
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
             obs_min_density=parameters["obs_min_density"],
-            exp_min_density=parameters["exp_min_density"],
             min_depth=self.min_depth,
             max_depth=self.max_depth,
             pad_obstacles=parameters["pad_obstacles"],
@@ -932,4 +933,4 @@ def main():
     # )
 
 
-main()
+# main()
