@@ -220,6 +220,7 @@ def demo_main(
         agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
+            audio_feedback=audio_feedback,
         )
 
     # Run the actual procedure
