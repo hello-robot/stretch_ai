@@ -89,7 +89,7 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
-if [ $INSTALL_TORCH_GEOMETRIC = "true" ]; then
+if [ $INSTALL_TORCH_GEOMETRIC == "true" ]; then
     echo "   - torch-geometric"
     echo "   - torch-cluster"
     echo "   - torch-scatter"
