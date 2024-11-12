@@ -105,7 +105,7 @@ Once you're ready to learn more about **Stretch AI**, you can try out the variet
 
 You can use an LLM to provide free-form text input to the pick and place demo with the `--use_llm` command line argument.
 
-Running the following command will first download an open LLM model. Currently, the default model is [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct). Running this command downloads ~10GB of data, so you'll need to be patient.
+Running the following command will first download an open LLM model. Currently, the default model is [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct). Running this command downloads ~10GB of data. Using an ethernet cable instead of Wifi is recommended.
 
 ```bash
 python -m stretch.app.ai_pickup --use_llm
