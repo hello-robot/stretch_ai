@@ -130,7 +130,7 @@ f570a0dd636d: Waiting
 1a08cbb00ee1: Waiting                                               
 ```
 
-The Docker image can be large (i.e., > 10GB), so it takes time to download. You will only need to download each version of the *stretch-ai* Docker image a single time.
+The Docker image can be large (i.e., > 10GB), so it takes time to download. You can plug an ethernet cable into your router and Stretch to speed up the download. You will only need to download each version of the *stretch-ai* Docker image a single time.
 
 After downloading the Docker image, the server will begin running on your robot. Your robot should beep twice and its lidar should start spinning. The terminal should display output from the robot's *stretch-ai* server like the following:
 
