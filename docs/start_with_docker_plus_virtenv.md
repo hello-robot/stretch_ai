@@ -132,12 +132,6 @@ First, check to see if mamba is installed on your computer:
 mamba
 ```
 
-If you get an "command not found" error, then follow the install instructions for mamba here:First, check to see if mamba is installed on your computer:
-
-```bash
-mamba
-```
-
 If you get an "command not found" error, then follow the install instructions for mamba here: https://github.com/conda-forge/miniforge#download
 
 Then, run:
@@ -158,6 +152,8 @@ sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp
 # Run install script to create a conda environment and install dependencies
 ./install.sh
 ```
+
+Take note of the name of the environment. It will be something like `stretch_ai_<version>`. A new env should be created for each new version of *stretch-ai* using the `./install.sh` script above.
 
 #### Activate your virtual env
 
