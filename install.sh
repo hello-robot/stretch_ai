@@ -143,7 +143,6 @@ fi
 
 echo "Activate env"
 source "`conda info --base`/bin/activate" $ENV_NAME
-$MAMBA activate $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
 pip install setuptools==69.5.1
