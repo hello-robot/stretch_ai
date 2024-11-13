@@ -44,8 +44,7 @@ class GraspObjectOperation(ManagedOperation):
     talk: bool = True
     verbose: bool = False
 
-    offset_from_vertical = -np.pi / 2
-    # offset_from_vertical = -np.pi / 4
+    offset_from_vertical = -np.pi / 2 - 0.1
 
     # Task information
     match_method: str = "class"
