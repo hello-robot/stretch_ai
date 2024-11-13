@@ -158,7 +158,7 @@ class UpdateOperation(ManagedOperation):
                 self.agent.current_object = instance
                 return
 
-            plan = self.plan_to_instance_for_manipulation(instance, start=start)
+            plan = self.agent.plan_to_instance_for_manipulation(instance, start=start)
             if plan.success:
                 print(f" - Found a reachable object at {instance.get_best_view().get_pose()}.")
                 if dist < dist_to_object:

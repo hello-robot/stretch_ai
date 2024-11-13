@@ -1277,7 +1277,7 @@ class RobotAgent:
 
             # Tuck the arm away
             if verbose:
-                print("Sending arm to  home...")
+                print("Sending arm to home...")
             self.robot.move_to_nav_posture()
             if verbose:
                 print("... done.")

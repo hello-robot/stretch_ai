@@ -82,7 +82,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.15
+    median_distance_when_grasping: float = 0.20
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -203,6 +203,41 @@ class GraspObjectOperation(ManagedOperation):
         return (
             self.agent.current_object is not None or self._object_xyz is not None
         ) and self.robot.in_manipulation_mode()
+
+    def _compute_center_depth(
+        self,
+        servo: Observations,
+        target_mask: np.ndarray,
+        center_y: int,
+        center_x: int,
+        local_region_size: int = 5,
+    ) -> float:
+        """Compute the center depth of the object.
+
+        Args:
+            servo (Observations): Servo observation
+            target_mask (np.ndarray): Target mask
+            center_y (int): Center y
+            center_x (int): Center x
+
+        Returns:
+            float: Center depth of the object
+        """
+        # Compute depth as median of object pixels near center_y, center_x
+        # Make a mask of radius 10 around the center
+        mask = np.zeros_like(target_mask)
+        mask[
+            max(center_y - local_region_size, 0) : min(center_y + local_region_size, mask.shape[0]),
+            max(center_x - local_region_size, 0) : min(center_x + local_region_size, mask.shape[1]),
+        ] = 1
+
+        # Ignore depth of 0 (bad value)
+        depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, mask)
+
+        depth = servo.ee_depth[target_mask & depth_mask]
+        median_depth = np.median(depth)
+        # print(f"Center depth: {median_depth}")
+        return median_depth
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
         """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
@@ -548,7 +583,9 @@ class GraspObjectOperation(ManagedOperation):
             # Get depth
             if center_depth is not None and center_depth > 1e-8:
                 prev_center_depth = center_depth
-            center_depth = servo.ee_depth[center_y, center_x]
+
+            # Compute depth as median of object pixels near center_y, center_x
+            center_depth = self._compute_center_depth(servo, target_mask, center_y, center_x)
 
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
@@ -601,15 +638,17 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Create a depth image with the center of the mask
                 # First convert to 32-bit float
-                # servo_ee_depth = servo.ee_depth.astype(np.float32)
-                # servo_ee_depth = cv2.cvtColor(servo_ee_depth, cv2.COLOR_GRAY2BGR)
-                # servo_ee_depth = cv2.circle(
-                #     servo_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
-                # )
+                viz_ee_depth = cv2.normalize(servo.ee_depth, None, 0, 255, cv2.NORM_MINMAX)
+                viz_ee_depth = viz_ee_depth.astype(np.uint8)
+                viz_ee_depth = cv2.applyColorMap(viz_ee_depth, cv2.COLORMAP_JET)
+                viz_ee_depth = cv2.circle(
+                    viz_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
+                )
                 print("-- show a window")
                 cv2.namedWindow("servo_ee_rgb", cv2.WINDOW_NORMAL)
                 cv2.imshow("servo_ee_rgb", servo_ee_rgb)
-                # cv2.namedWindow("servo_ee_depth", cv2.WINDOW_NORMAL)
+                cv2.namedWindow("servo_ee_depth", cv2.WINDOW_NORMAL)
+                cv2.imshow("servo_ee_depth", viz_ee_depth)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
                 if res == ord("q"):
