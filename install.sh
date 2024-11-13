@@ -166,7 +166,7 @@ else
     case $yn in
         y ) echo "Starting installation..." ;;
         n ) echo "Exiting...";
-            CPU_ONLY="true";;
+            CPU_ONLY="true" ;;
         * ) echo Invalid response!;
             exit 1 ;;
     esac
