@@ -13,6 +13,7 @@
 # 3) we can import it into your module
 
 __version__ = "0.1.14"
+
 __stretchpy_protocol__ = "spp0"
 
 if __name__ == "__main__":
