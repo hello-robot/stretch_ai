@@ -37,10 +37,11 @@ from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
 from stretch.utils.logger import Logger
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd, points_in_mesh
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
+from stretch.visualization.urdf_visualizer import URDFVisualizer
 
 logger = Logger(__name__)
 
@@ -224,6 +225,7 @@ class SparseVoxelMap(object):
         self.encoder = encoder
         self.map_2d_device = map_2d_device
         self._min_points_per_voxel = min_points_per_voxel
+        self.urdf_visualizer = URDFVisualizer()
 
         # Is the 2d map stale?
         self._stale_2d = True
@@ -570,6 +572,17 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
+            # Remove points that are too close to the robot
+            mesh = self.urdf_visualizer.get_combined_robot_mesh()
+            selected_indices = points_in_mesh(world_xyz, mesh)
+
+            world_xyz = world_xyz[selected_indices]
+
+            if feats is not None:
+                feats = feats[selected_indices]
+
+            rgb = rgb[selected_indices]
+
             self.voxel_pcd.add(
                 world_xyz,
                 features=feats,

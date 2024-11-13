@@ -19,6 +19,37 @@ import open3d as o3d
 import torch
 import trimesh.transformations as tra
 from scipy.spatial import cKDTree
+from trimesh import Trimesh
+from trimesh.bounds import contains as trimesh_contains
+
+
+def points_in_mesh(points: np.ndarray, mesh: Trimesh) -> np.ndarray:
+    """
+    Check if points are inside a mesh.
+
+    Parameters:
+    points: Nx3 numpy array of points
+    mesh: Trimesh object
+
+    Returns:
+    np.ndarray: Boolean array of length N
+    """
+    selected_indices = torch.arange(points.shape[0])
+
+    # Fetch bounding box
+    bounds = mesh.bounds
+
+    # Expand bounds by a small amount
+    bounds = bounds + np.array([[-0.03, -0.03, -0.03], [0.03, 0.03, 0.03]])
+
+    # Check if the points are within the bounds of the robot
+    if trimesh_contains(bounds, points[selected_indices].cpu().numpy()).any():
+        # Modify the selected indices to remove points that are within the bounds of the robot
+        selected_indices = selected_indices[
+            ~trimesh_contains(bounds, points[selected_indices].cpu().numpy())
+        ]
+
+    return selected_indices
 
 
 def numpy_to_pcd(
