@@ -153,7 +153,7 @@ sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp
 ./install.sh
 ```
 
-Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
+At the prompt to install Detic, say **no**. Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
 
 Next, run:
 
@@ -169,6 +169,25 @@ pip install setuptools==69.5.1
 
 # Install stretch-ai in "editable" mode so you can develop on it
 pip install -e ./src[dev]
+```
+
+Next, run:
+
+```bash
+# Install detectron2 for perception (required by Detic)
+git submodule update --init --recursive
+cd third_party/detectron2
+pip install -e .
+
+# Install Detic for perception
+cd ../../src/stretch/perception/detection/detic/Detic
+# Make sure it's up to date
+git submodule update --init --recursive
+pip install -r requirements.txt
+
+# Download DETIC checkpoint...
+mkdir -p models
+wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 ```
 
 **Note:** A new env should be created for each new version of *stretch-ai* (each time you `git pull`) using the above instructions.
