@@ -797,7 +797,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=True,
+                blocking=False,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
