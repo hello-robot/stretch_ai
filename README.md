@@ -129,43 +129,6 @@ You can find the prompt used by the LLM at the following location. When running 
 
 [./src/stretch/llms/prompts/pickup_prompt.py](./src/stretch/llms/prompts/pickup_prompt.py)
 
-## Installation from Source
-
-For development, it is recommended to install from source, especially on the remote (GPU-enabled desktop) side.
-
-Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](docs/start_with_docker.md).
-
-If you do not start with Docker, follow the [install guide](docs/install.md).
-
-In short, on the PC you will:
-
-```bash
-# Install Git LFS - needed for large files like images
-sudo apt-get install git-lfs
-git lfs install
-
-# Clone the repository
-# Do not forget the --recursive flag to clone submodules
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
-
-# Install system dependencies
-# Pyaudio will fail if these are not installed
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
-
-# Run install script to create a conda environment and install dependencies
-# This script is designed to work with CUDA 11.8 and will install perception code as well
-export CUDA_HOME=/usr/local/cuda-11.8
-./install.sh
-```
-
-Alternately, you can install with
-
-```bash
-python -m pip install -e ./src[dev]
-```
-
-in your preferred Python environment.
-
 ## List of Stretch AI Apps
 
 Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
