@@ -574,7 +574,7 @@ class SparseVoxelMap(object):
         if world_xyz.nelement() > 0:
             # Remove points that are too close to the robot
             mesh = self.urdf_visualizer.get_combined_robot_mesh()
-            selected_indices = points_in_mesh(world_xyz, mesh, camera_pose)
+            selected_indices = points_in_mesh(world_xyz, mesh, base_pose)
             world_xyz = world_xyz[selected_indices]
 
             if feats is not None:
