@@ -141,6 +141,8 @@ else
     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
+echo "Activate env"
+source "`conda info --base`/bin/activate" $ENV_NAME
 $MAMBA activate $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
@@ -165,7 +167,7 @@ else
     case $yn in
         y ) echo "Starting installation..." ;;
         n ) echo "Exiting...";
-            exit ;;
+            CPU_ONLY="true";;
         * ) echo Invalid response!;
             exit 1 ;;
     esac
@@ -206,5 +208,5 @@ echo "CUDA_HOME=$CUDA_HOME"
 echo "python=`which python`"
 echo "You can start using it with:"
 echo ""
-echo "     source activate $ENV_NAME"
+echo "     $MAMBA activate $ENV_NAME"
 echo "=============================================="
