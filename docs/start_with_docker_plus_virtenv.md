@@ -153,7 +153,25 @@ sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp
 ./install.sh
 ```
 
-Take note of the name of the environment. It will be something like `stretch_ai_<version>`. A new env should be created for each new version of *stretch-ai* using the `./install.sh` script above.
+Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
+
+Next, run:
+
+```bash
+# Activate your virtual env
+mamba activate stretch_ai_<version>
+
+# Tell mamba to not use your user sitepackages
+mamba env config vars set PYTHONNOUSERSITE=1
+
+# Install a version of setuptools for which clip works
+pip install setuptools==69.5.1
+
+# Install stretch-ai in "editable" mode so you can develop on it
+pip install -e ./src[dev]
+```
+
+**Note:** A new env should be created for each new version of *stretch-ai* (each time you `git pull`) using the above instructions.
 
 #### Activate your virtual env
 
