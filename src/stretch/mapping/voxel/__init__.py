@@ -15,3 +15,4 @@ from .planners import plan_to_frontier
 from .voxel import SparseVoxelMap
 from .voxel_dynamem import SparseVoxelMap as SparseVoxelMapDynamem
 from .voxel_map import SparseVoxelMapNavigationSpace
+from .voxel_map_dynamem import SparseVoxelMapNavigationSpace as SparseVoxelMapNavigationSpaceDynamem

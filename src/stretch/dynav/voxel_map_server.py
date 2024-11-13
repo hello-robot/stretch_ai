@@ -33,11 +33,11 @@ import stretch.utils.logger as logger
 from stretch.agent.zmq_client import HomeRobotZmqClient as RobotClient
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
-from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
-
-# from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
 from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
+from stretch.mapping.voxel import (
+    SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
+)
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
@@ -132,7 +132,7 @@ class ImageProcessor:
         max_depth: float = 2.5,
         img_port: int = 5555,
         text_port: int = 5556,
-        open_communication: bool = True,
+        open_communication: bool = False,
         rerun: bool = True,
         log=None,
         image_shape=(360, 270),
@@ -209,7 +209,6 @@ class ImageProcessor:
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
-            # step_size=parameters["step_size"],
             rotation_step_size=parameters["rotation_step_size"],
             dilate_frontier_size=parameters[
                 "dilate_frontier_size"

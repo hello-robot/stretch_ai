@@ -381,11 +381,16 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self._seq += 1
 
     def xy_to_grid_coords(self, xy: np.ndarray) -> Optional[np.ndarray]:
+        if not isinstance(xy, np.ndarray):
+            xy = np.array(xy)
         return self.grid.xy_to_grid_coords(torch.Tensor(xy))
 
     def grid_coords_to_xy(self, grid_coords: np.ndarray) -> np.ndarray:
+        if not isinstance(grid_coords, np.ndarray):
+            grid_coords = np.array(grid_coords)
         return self.grid.grid_coords_to_xy(torch.Tensor(grid_coords))
 
     def grid_coords_to_xyt(self, grid_coords: np.ndarray) -> np.ndarray:
-        """convert grid coordinate point to metric world xyt point"""
+        if not isinstance(grid_coords, np.ndarray):
+            grid_coords = np.array(grid_coords)
         return self.grid.grid_coords_to_xyt(torch.Tensor(grid_coords))
