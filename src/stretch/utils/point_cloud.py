@@ -23,7 +23,9 @@ from trimesh import Trimesh
 from trimesh.bounds import contains as trimesh_contains
 
 
-def points_in_mesh(points: np.ndarray, mesh: Trimesh) -> np.ndarray:
+def points_in_mesh(
+    points: np.ndarray, mesh: Trimesh, camera_pose: Optional[np.ndarray] = None
+) -> np.ndarray:
     """
     Check if points are inside a mesh.
 
@@ -39,8 +41,17 @@ def points_in_mesh(points: np.ndarray, mesh: Trimesh) -> np.ndarray:
     # Fetch bounding box
     bounds = mesh.bounds
 
+    # Transform the bounds to camera frame if camera pose is provided
+    if camera_pose is not None:
+        bounds = tra.translation_matrix(camera_pose[:3, 3]) @ bounds.T
+        bounds = bounds.T
+
+    # bounds = torch.tensor(bounds, device=world_xyz.device).float()
+    # bounds = bounds.view(2, 3)
+    # bounds = bounds @ camera_pose[:3, :3].T + camera_pose[:3, 3]
+
     # Expand bounds by a small amount
-    bounds = bounds + np.array([[-0.03, -0.03, -0.03], [0.03, 0.03, 0.03]])
+    bounds = bounds + np.array([[-0.05, -0.05, -0.05], [0.05, 0.05, 0.05]])
 
     # Check if the points are within the bounds of the robot
     if trimesh_contains(bounds, points[selected_indices].cpu().numpy()).any():
