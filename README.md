@@ -40,7 +40,7 @@ Artificial intelligence (AI) for robots often has complex dependencies, includin
 
 To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
-First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing the Docker Version of Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker.md)
+First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing the Docker Version of Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker_plus_virtenv.md)
 
 Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. The following command starts the server:
 
