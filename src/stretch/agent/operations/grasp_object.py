@@ -82,7 +82,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.19
+    median_distance_when_grasping: float = 0.15
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -839,6 +839,9 @@ class GraspObjectOperation(ManagedOperation):
         # Say we grasped the object
         if self.talk and self._success:
             self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
+
+        # Go back to manipulation posture
+        self.robot.move_to_manip_posture()
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
         """Move to a pregrasp position in an open loop manner.
