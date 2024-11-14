@@ -16,15 +16,21 @@ from typing import Optional, Tuple, Union
 import cv2
 import numpy as np
 import open3d as o3d
+import rerun as rr
 import torch
 import trimesh.transformations as tra
 from scipy.spatial import cKDTree
 from trimesh import Trimesh
 from trimesh.bounds import contains as trimesh_contains
 
+rr.init("Stretch_robot", spawn=False)
+
 
 def points_in_mesh(
-    points: np.ndarray, mesh: Trimesh, camera_pose: Optional[np.ndarray] = None
+    points: np.ndarray,
+    mesh: Trimesh,
+    camera_pose: Optional[np.ndarray] = None,
+    visualize: bool = False,
 ) -> np.ndarray:
     """
     Check if points are inside a mesh.
@@ -38,27 +44,51 @@ def points_in_mesh(
     """
     selected_indices = torch.arange(points.shape[0])
 
-    # Fetch bounding box
-    bounds = mesh.bounds
+    # Fetch axis-aligned bounding box
+    bounds = mesh.bounds  # 2x3 numpy array with each point containing x, y, z
 
     # Transform the bounds to camera frame if camera pose is provided
     if camera_pose is not None:
-        bounds = tra.translation_matrix(camera_pose[:3, 3]) @ bounds.T
-        bounds = bounds.T
+        x = camera_pose[0]
+        y = camera_pose[1]
+        theta = camera_pose[2]
 
-    # bounds = torch.tensor(bounds, device=world_xyz.device).float()
-    # bounds = bounds.view(2, 3)
-    # bounds = bounds @ camera_pose[:3, :3].T + camera_pose[:3, 3]
+        # Rotate the bounds
+        bounds = bounds @ np.array(
+            [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
+        )
 
-    # Expand bounds by a small amount
-    bounds = bounds + np.array([[-0.05, -0.05, -0.05], [0.05, 0.05, 0.05]])
+        # Translate the bounds
+        bounds = bounds + np.array([x, y, 0])
+
+        # Expand bounds by a small amount
+        bounds = bounds + np.array([[-0.05, -0.05, -0.05], [0.05, 0.05, 0.05]])
+
+        if visualize:
+            bounds_center = rr.components.PoseTranslation3D(bounds.mean(axis=0))
+            bounds_half_size = (bounds[0] - bounds[1]) / 2
+
+            rr.log(
+                "world/robot_bounds",
+                rr.Boxes3D(
+                    centers=[bounds_center],
+                    half_sizes=[bounds_half_size],
+                    # quaternions=[bounds_rotation],
+                    labels=["bounds"],
+                    colors=[255, 255, 255, 255],
+                ),
+            )
 
     # Check if the points are within the bounds of the robot
+    original_length = len(selected_indices)
     if trimesh_contains(bounds, points[selected_indices].cpu().numpy()).any():
         # Modify the selected indices to remove points that are within the bounds of the robot
         selected_indices = selected_indices[
             ~trimesh_contains(bounds, points[selected_indices].cpu().numpy())
         ]
+    if visualize:
+        # rr.log("world/points_in_bounds", rr.Points(points[selected_indices
+        print(f"Removed {original_length - len(selected_indices)} points inside the robot bounds")
 
     return selected_indices
 
