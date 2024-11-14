@@ -198,35 +198,6 @@ wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k
 mamba activate stretch_ai_<version>
 ```
 
-#### Verify NVIDIA Docker
-
-Make sure NVIDIA version of Docker is set up correctly. To do this, run the `nvidia-smi` command in the docker shell.
-
-You should see something like the following:
-
-```bash
-root@olympia:/app# nvidia-smi
-Fri Sep 27 16:12:43 2024       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 550.54.15              Driver Version: 550.54.15      CUDA Version: 12.4     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA GeForce RTX 4090        Off |   00000000:01:00.0 Off |                  Off |
-|  0%   38C    P8             22W /  450W |     415MiB /  24564MiB |      0%      Default |
-|                                         |                        |                  N/A |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-+-----------------------------------------------------------------------------------------+
-```
-
 ## Simple Installation Test
 
 You can test your installation by running the `view_images` app.
