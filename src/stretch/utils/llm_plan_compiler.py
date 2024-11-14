@@ -123,7 +123,9 @@ class LLMPlanCompiler(ast.NodeVisitor):
             on_failure=pregrasp_object,
         )
         self._operation_naming_counter += 1
-        grasp_object.configure(target_object=object_name, show_object_to_grasp=True)
+        grasp_object.configure(
+            target_object=object_name, show_object_to_grasp=False, show_servo_gui=False
+        )
         grasp_object.set_target_object_class(object_name)
         grasp_object.servo_to_grasp = True
         grasp_object.match_method = "feature"
