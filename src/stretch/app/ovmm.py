@@ -44,20 +44,16 @@ def main(
     task: str = "",
     yes: bool = False,
 ):
-
-    print("- Load parameters")
     parameters = get_parameters(parameter_file)
-    semantic_sensor = create_semantic_sensor(
-        parameters=parameters,
-        device_id=device_id,
-        verbose=verbose,
-    )
-
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
         parameters=parameters,
-        enable_rerun_server=True,
+    )
+    semantic_sensor = create_semantic_sensor(
+        parameters=parameters,
+        device_id=device_id,
+        verbose=verbose,
     )
     agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
     agent.start()

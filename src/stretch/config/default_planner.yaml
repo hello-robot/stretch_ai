@@ -119,13 +119,6 @@ instance_memory:
   # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
   # It will have an effect on performance.
   mask_cropped_instances: False  # Should we remove the background from the instance views?
-  matching:
-    # How much the instance has to match the query to be considered the same
-    # This is a threshold on the cosine similarity between the instance and the query
-    # Set this value by experimting with:
-    #   python -m stretch.app.query --threshold 0.05
-    # You can change the threshold to anything that makes sense.
-    feature_match_threshold: 0.1
 
 # TAMP parameters
 guarantee_instance_is_reachable: True

@@ -103,7 +103,7 @@ class RobotAgent:
         )
         self.obs_count = 0
         self.obs_history: List[Observations] = []
-        self._matched_vertices_obs_count: Dict[int, int] = dict()
+        self._matched_vertices_obs_count: Dict[float, int] = dict()
         self._matched_observations_poses: List[np.ndarray] = []
         self._maximum_matched_observations = self.parameters.get(
             "agent/realtime/maximum_matched_observations", 10
@@ -658,6 +658,9 @@ class RobotAgent:
                     ):
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
 
+                    if vertex[0] not in self._matched_vertices_obs_count:
+                        self._matched_vertices_obs_count[vertex[0]] = 0
+
                     self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
                     self._matched_vertices_obs_count[vertex[0]] += 1
                 # check if the gps is close to the gps of the pose graph node
@@ -683,6 +686,9 @@ class RobotAgent:
                         and self.semantic_sensor is not None
                     ):
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
+
+                    if vertex[0] not in self._matched_vertices_obs_count:
+                        self._matched_vertices_obs_count[vertex[0]] = 0
 
                     self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
                     self._matched_vertices_obs_count[vertex[0]] += 1

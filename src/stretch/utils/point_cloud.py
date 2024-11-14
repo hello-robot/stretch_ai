@@ -29,7 +29,7 @@ rr.init("Stretch_robot", spawn=False)
 def points_in_mesh(
     points: np.ndarray,
     mesh: Trimesh,
-    camera_pose: Optional[np.ndarray] = None,
+    base_pose: np.ndarray = None,
     visualize: bool = False,
 ) -> np.ndarray:
     """
@@ -45,50 +45,80 @@ def points_in_mesh(
     selected_indices = torch.arange(points.shape[0])
 
     # Fetch axis-aligned bounding box
-    bounds = mesh.bounds  # 2x3 numpy array with each point containing x, y, z
+    bbox = mesh.bounds.copy()  # 2x3 numpy array with each point containing x, y, z
 
-    # Transform the bounds to camera frame if camera pose is provided
-    if camera_pose is not None:
-        x = camera_pose[0]
-        y = camera_pose[1]
-        theta = camera_pose[2]
+    # Inflate the bounds by 0.1
+    bbox[0] = bbox[0] - 0.05
+    bbox[1] = bbox[1] + 0.05
 
-        # Rotate the bounds
-        bounds = bounds @ np.array(
-            [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
+    # Transform the bounds to camera frame
+    x = base_pose[0]
+    y = base_pose[1]
+    theta = base_pose[2]
+
+    # Rotate the bounds by 60 degrees
+    # Rotation matrix for 45 degrees about the z-axis
+    angle = theta
+    rotation_matrix = np.array(
+        [[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]]
+    )
+
+    # Define the corners of the bounding box in the original space
+    corners = np.array(
+        [
+            [bbox[0, 0], bbox[0, 1], bbox[0, 2]],  # min x, min y, min z
+            [bbox[1, 0], bbox[0, 1], bbox[0, 2]],  # max x, min y, min z
+            [bbox[0, 0], bbox[1, 1], bbox[0, 2]],  # min x, max y, min z
+            [bbox[1, 0], bbox[1, 1], bbox[0, 2]],  # max x, max y, min z
+            [bbox[0, 0], bbox[0, 1], bbox[1, 2]],  # min x, min y, max z
+            [bbox[1, 0], bbox[0, 1], bbox[1, 2]],  # max x, min y, max z
+            [bbox[0, 0], bbox[1, 1], bbox[1, 2]],  # min x, max y, max z
+            [bbox[1, 0], bbox[1, 1], bbox[1, 2]],  # max x, max y, max z
+        ]
+    )
+
+    # Rotate all corners around the z-axis
+    rotated_corners = np.dot(corners, rotation_matrix.T)
+
+    # Find the new axis-aligned bounding box after rotation
+    bbox = np.array([rotated_corners.min(axis=0), rotated_corners.max(axis=0)])
+
+    bbox_quaternion = tra.quaternion_from_matrix(rotation_matrix)
+
+    # Convert to xyzw quaternion
+    bbox_quaternion = np.array(
+        [bbox_quaternion[1], bbox_quaternion[2], bbox_quaternion[3], bbox_quaternion[0]]
+    )
+
+    # Translate the bounds by the base pose
+    bbox = bbox + np.array([[x, y, 0], [x, y, 0]])
+
+    if visualize:
+        bbox_center = rr.components.PoseTranslation3D(bbox.mean(axis=0))
+        bbox_half_size = (bbox[0] - bbox[1]) / 2
+
+        rr.log(
+            "world/robot_bounds",
+            rr.Boxes3D(
+                centers=[bbox_center],
+                half_sizes=[bbox_half_size],
+                quaternions=[bbox_quaternion],
+                labels=["robot_bounds"],
+                colors=[255, 255, 255, 255],
+            ),
         )
 
-        # Translate the bounds
-        bounds = bounds + np.array([x, y, 0])
-
-        # Expand bounds by a small amount
-        bounds = bounds + np.array([[-0.05, -0.05, -0.05], [0.05, 0.05, 0.05]])
-
-        if visualize:
-            bounds_center = rr.components.PoseTranslation3D(bounds.mean(axis=0))
-            bounds_half_size = (bounds[0] - bounds[1]) / 2
-
-            rr.log(
-                "world/robot_bounds",
-                rr.Boxes3D(
-                    centers=[bounds_center],
-                    half_sizes=[bounds_half_size],
-                    # quaternions=[bounds_rotation],
-                    labels=["bounds"],
-                    colors=[255, 255, 255, 255],
-                ),
-            )
-
     # Check if the points are within the bounds of the robot
-    original_length = len(selected_indices)
-    if trimesh_contains(bounds, points[selected_indices].cpu().numpy()).any():
+    # original_length = len(selected_indices)
+    if trimesh_contains(bbox, points[selected_indices].cpu().numpy()).any():
         # Modify the selected indices to remove points that are within the bounds of the robot
         selected_indices = selected_indices[
-            ~trimesh_contains(bounds, points[selected_indices].cpu().numpy())
+            ~trimesh_contains(bbox, points[selected_indices].cpu().numpy())
         ]
     if visualize:
         # rr.log("world/points_in_bounds", rr.Points(points[selected_indices
-        print(f"Removed {original_length - len(selected_indices)} points inside the robot bounds")
+        # print(f"Removed {original_length - len(selected_indices)} points inside the robot bounds")
+        pass
 
     return selected_indices
 
