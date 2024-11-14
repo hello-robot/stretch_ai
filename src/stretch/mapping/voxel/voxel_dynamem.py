@@ -41,7 +41,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         neg_obs_height: float = 0.0,
         add_local_radius_points: bool = True,
         remove_visited_from_obstacles: bool = False,
-        local_radius: float = 0.15,
+        local_radius: float = 0.8,
         min_depth: float = 0.1,
         max_depth: float = 4.0,
         pad_obstacles: int = 0,
@@ -225,6 +225,38 @@ class SparseVoxelMap(SparseVoxelMapBase):
             return obstacles, explored
         else:
             return obstacles, explored, history_soft
+
+    def get_2d_alignment_heuristics(self, voxel_map_localizer, text, debug: bool = False):
+        if voxel_map_localizer.voxel_pcd._points is None:
+            return None
+        # Convert metric measurements to discrete
+        # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
+        xyz, _, _, _ = voxel_map_localizer.voxel_pcd.get_pointcloud()
+        xyz = xyz.detach().cpu()
+        if xyz is None:
+            xyz = torch.zeros((0, 3))
+
+        device = xyz.device
+        xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
+        xyz[xyz[:, -1] < 0, -1] = 0
+
+        # Crop to robot height
+        min_height = int(self.obs_min_height / self.grid_resolution)
+        max_height = int(self.obs_max_height / self.grid_resolution)
+        grid_size = self.grid_size + [max_height]
+
+        # Mask out obstacles only above a certain height
+        obs_mask = xyz[:, -1] < max_height
+        xyz = xyz[obs_mask, :]
+        alignments = voxel_map_localizer.find_alignment_over_model(text)[0].detach().cpu()
+        alignments = alignments[obs_mask][:, None]
+
+        alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
+        alignment_heuristics = torch.max(alignment_heuristics, dim=-1).values
+        alignment_heuristics = torch.from_numpy(
+            maximum_filter(alignment_heuristics.numpy(), size=5)
+        )
+        return alignment_heuristics
 
     def add(
         self,

@@ -59,9 +59,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         Args:
             orientation_resolution: number of bins to break it into
         """
-        self._footprint = Footprint(
-            width=0.34 * 0.7, length=0.33 * 0.7, width_offset=0.0, length_offset=-0.1
-        )
+        self._footprint = Footprint(width=0.34, length=0.33, width_offset=0.0, length_offset=-0.1)
         self._orientation_resolution = 64
         self._oriented_masks = []
 

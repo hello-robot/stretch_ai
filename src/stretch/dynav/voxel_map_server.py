@@ -193,6 +193,7 @@ class ImageProcessor:
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
             obs_min_density=parameters["obs_min_density"],
+            grid_resolution=0.1,
             min_depth=self.min_depth,
             max_depth=self.max_depth,
             pad_obstacles=parameters["pad_obstacles"],
@@ -248,7 +249,8 @@ class ImageProcessor:
 
         print("Processing", text, "starts")
 
-        rr.init(self.log, spawn=True)
+        if self.rerun and self.rerun_visualizer is None:
+            rr.init(self.log, spawn=True)
 
         if self.rerun:
             if self.rerun_visualizer is None:
@@ -349,6 +351,12 @@ class ImageProcessor:
                 print("Unable to find any target point, some exception might happen")
             else:
                 print("Target point is", point)
+                # self.rerun_visualizer.log_custom_pointcloud(
+                #         "world/point_end",
+                #         [point[0], point[1], 0],
+                #         torch.Tensor([0, 1, 1]),
+                #         0.3,
+                #     )
                 with self.voxel_map_lock:
                     res = self.planner.plan(start_pose, point)
             if res is not None and res.success:
@@ -436,9 +444,7 @@ class ImageProcessor:
         return traj
 
     def sample_navigation(self, start, point, mode="navigation"):
-        # plt.clf()
-        obstacles, _ = self.voxel_map.get_2d_map()
-        plt.imshow(obstacles)
+        plt.clf()
         if point is None:
             start_pt = self.planner.to_pt(start)
             # plt.scatter(start_pt[1], start_pt[0], s = 10)
@@ -448,6 +454,7 @@ class ImageProcessor:
         )
         print("point:", point, "goal:", goal)
         obstacles, explored = self.voxel_map.get_2d_map()
+        plt.imshow(obstacles)
         start_pt = self.planner.to_pt(start)
         plt.scatter(start_pt[1], start_pt[0], s=15, c="b")
         point_pt = self.planner.to_pt(point)
@@ -820,7 +827,6 @@ class ImageProcessor:
 
     def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
         print("Reading from ", pickle_file_name)
-        rr.init("Debug", spawn=True)
         if isinstance(pickle_file_name, str):
             pickle_file_name = Path(pickle_file_name)
         assert pickle_file_name.exists(), f"No file found at {pickle_file_name}"
@@ -916,20 +922,23 @@ class ImageProcessor:
 
 
 def main():
-    torch.manual_seed(1)
-    imageProcessor = ImageProcessor(
-        log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    )
-    try:
-        while True:
-            imageProcessor.recv_text()
-    except KeyboardInterrupt:
-        imageProcessor.write_to_pickle()
-    # imageProcessor = ImageProcessor(log="test1")
-    # imageProcessor.read_from_pickle("dynamem_log/20241102_221020.pkl")
+    # torch.manual_seed(1)
+    # imageProcessor = ImageProcessor(
+    #     log="dynamem_log/" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # )
+    # try:
+    #     while True:
+    #         imageProcessor.recv_text()
+    # except KeyboardInterrupt:
+    #     imageProcessor.write_to_pickle()
+    imageProcessor = ImageProcessor(log="test1")
+    imageProcessor.read_from_pickle("dynamem_log/20241114_113800.pkl")
+    obs, exp = imageProcessor.voxel_map.get_2d_map()
+    plt.imshow(obs.int() * 0.5 + exp.int() * 0.5)
+    plt.savefig("example_plot.png", dpi=300)
     # imageProcessor.space.sample_exploration(
     #     xyt=[0, 0, 0], planner=imageProcessor.planner, debug=True
     # )
 
 
-# main()
+main()
