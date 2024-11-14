@@ -99,7 +99,7 @@ def main(
 
     # Agents wrap the robot high level planning interface for now
     demo = RobotAgent(robot, parameters, semantic_sensor)
-    demo.start(visualize_map_at_start=show_intermediate_maps)
+    demo.start(visualize_map_at_start=show_intermediate_maps, verbose=True)
 
     task = get_task(robot, demo, target_object)
     task.run()

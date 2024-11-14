@@ -42,9 +42,9 @@ class GraspObjectOperation(ManagedOperation):
     servo_to_grasp: bool = False
     _success: bool = False
     talk: bool = True
+    verbose: bool = False
 
-    offset_from_vertical = -np.pi / 2
-    # offset_from_vertical = -np.pi / 4
+    offset_from_vertical = -np.pi / 2 - 0.1
 
     # Task information
     match_method: str = "class"
@@ -76,19 +76,20 @@ class GraspObjectOperation(ManagedOperation):
     align_x_threshold: int = 30
     align_y_threshold: int = 25
 
-    # pregrasp_distance_from_object: float = 0.075
+    # This is the distance before we start servoing to the object
     pregrasp_distance_from_object: float = 0.25
 
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.19
+    median_distance_when_grasping: float = 0.21
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
-    grasp_distance = 0.12
+    # grasp_distance = 0.12
+    grasp_distance = 0.16
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
@@ -204,6 +205,41 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.current_object is not None or self._object_xyz is not None
         ) and self.robot.in_manipulation_mode()
 
+    def _compute_center_depth(
+        self,
+        servo: Observations,
+        target_mask: np.ndarray,
+        center_y: int,
+        center_x: int,
+        local_region_size: int = 5,
+    ) -> float:
+        """Compute the center depth of the object.
+
+        Args:
+            servo (Observations): Servo observation
+            target_mask (np.ndarray): Target mask
+            center_y (int): Center y
+            center_x (int): Center x
+
+        Returns:
+            float: Center depth of the object
+        """
+        # Compute depth as median of object pixels near center_y, center_x
+        # Make a mask of radius 10 around the center
+        mask = np.zeros_like(target_mask)
+        mask[
+            max(center_y - local_region_size, 0) : min(center_y + local_region_size, mask.shape[0]),
+            max(center_x - local_region_size, 0) : min(center_x + local_region_size, mask.shape[1]),
+        ] = 1
+
+        # Ignore depth of 0 (bad value)
+        depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, mask)
+
+        depth = servo.ee_depth[target_mask & depth_mask]
+        median_depth = np.median(depth)
+        # print(f"Center depth: {median_depth}")
+        return median_depth
+
     def get_class_mask(self, servo: Observations) -> np.ndarray:
         """Get the mask for the class of the object we are trying to grasp. Multiple options might be acceptable.
 
@@ -215,7 +251,8 @@ class GraspObjectOperation(ManagedOperation):
         """
         mask = np.zeros_like(servo.semantic).astype(bool)  # type: ignore
 
-        print("[GRASP OBJECT] match method =", self.match_method)
+        if self.verbose:
+            print("[GRASP OBJECT] match method =", self.match_method)
         if self.match_method == "class":
 
             # Get the target class
@@ -225,7 +262,8 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 target_class = self.target_object
 
-            print("[GRASP OBJECT] Detecting objects of class", target_class)
+            if self.verbose:
+                print("[GRASP OBJECT] Detecting objects of class", target_class)
 
             # Now find the mask with that class
             for iid in np.unique(servo.semantic):
@@ -237,7 +275,10 @@ class GraspObjectOperation(ManagedOperation):
                 raise ValueError(
                     f"Target object must be set before running match method {self.match_method}."
                 )
-            print("[GRASP OBJECT] Detecting objects described as", self.target_object)
+
+            if self.verbose:
+                print("[GRASP OBJECT] Detecting objects described as", self.target_object)
+
             text_features = self.agent.encode_text(self.target_object)
             best_score = float("-inf")
             best_iid = None
@@ -252,20 +293,23 @@ class GraspObjectOperation(ManagedOperation):
 
                 features = self.agent.encode_image(rgb)
                 score = self.agent.compare_features(text_features, features)
-                print(f" - Score for {iid} is {score}")
+
+                if self.verbose:
+                    print(f" - Score for {iid} is {score}")
+
                 if score > best_score:
                     best_score = score
                     best_iid = iid
                 if score > self.agent.feature_match_threshold:
                     all_matches.append((score, iid, features))
             if len(all_matches) > 0:
-                print("All matches:")
+                print("[MASK SELECTION] All matches:")
                 for score, iid, features in all_matches:
                     print(f" - Matched {iid} with score {score}.")
             if len(all_matches) == 0:
-                print("No matches found.")
+                print("[MASK SELECTION] No matches found.")
             elif len(all_matches) == 1:
-                print("One match found. We are done.")
+                print("[MASK SELECTION] One match found. We are done.")
                 mask = servo.instance == best_iid
                 # Set the tracked features
                 self.tracked_object_features = all_matches[0][2]
@@ -548,7 +592,9 @@ class GraspObjectOperation(ManagedOperation):
             # Get depth
             if center_depth is not None and center_depth > 1e-8:
                 prev_center_depth = center_depth
-            center_depth = servo.ee_depth[center_y, center_x]
+
+            # Compute depth as median of object pixels near center_y, center_x
+            center_depth = self._compute_center_depth(servo, target_mask, center_y, center_x)
 
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
@@ -601,15 +647,17 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Create a depth image with the center of the mask
                 # First convert to 32-bit float
-                # servo_ee_depth = servo.ee_depth.astype(np.float32)
-                # servo_ee_depth = cv2.cvtColor(servo_ee_depth, cv2.COLOR_GRAY2BGR)
-                # servo_ee_depth = cv2.circle(
-                #     servo_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
-                # )
-                print("-- show a window")
-                cv2.namedWindow("servo_ee_rgb", cv2.WINDOW_NORMAL)
-                cv2.imshow("servo_ee_rgb", servo_ee_rgb)
-                # cv2.namedWindow("servo_ee_depth", cv2.WINDOW_NORMAL)
+                viz_ee_depth = cv2.normalize(servo.ee_depth, None, 0, 255, cv2.NORM_MINMAX)
+                viz_ee_depth = viz_ee_depth.astype(np.uint8)
+                viz_ee_depth = cv2.applyColorMap(viz_ee_depth, cv2.COLORMAP_JET)
+                viz_ee_depth = cv2.circle(
+                    viz_ee_depth, (int(mask_center[1]), int(mask_center[0])), 5, (0, 255, 0), -1
+                )
+
+                # Concatenate the two images side by side
+                viz_image = np.concatenate([servo_ee_rgb, viz_ee_depth], axis=1)
+                cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
+                cv2.imshow("Visual Servoing", viz_image)
                 cv2.waitKey(1)
                 res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
                 if res == ord("q"):
@@ -650,17 +698,19 @@ class GraspObjectOperation(ManagedOperation):
             print()
             print("----- STEP VISUAL SERVOING -----")
             print("Observed this many target mask points:", np.sum(target_mask.flatten()))
-            print("failed =", failed_counter, "/", self.max_failed_attempts)
-            print("cur x =", base_x)
-            print(" lift =", lift)
-            print("  arm =", arm)
-            print("pitch =", wrist_pitch)
-            print("Center depth:", center_depth, "prev :", prev_center_depth)
-            print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
-            print(f"Median distance to object is {median_object_depth}.")
+            if self.verbose:
+                print("failed =", failed_counter, "/", self.max_failed_attempts)
+                print("cur x =", base_x)
+                print(" lift =", lift)
+                print("  arm =", arm)
+                print("pitch =", wrist_pitch)
+                print("Center depth:", center_depth, "prev :", prev_center_depth)
+                print(f"base_x={base_x}, wrist_pitch={wrist_pitch}, dx={dx}, dy={dy}")
+                print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
             print("Center in mask?", center_in_mask)
-            print("Current XYZ:", current_xyz)
+            if self.verbose:
+                print("Current XYZ:", current_xyz)
             print("Aligned?", aligned)
 
             # Fix lift to only go down
@@ -746,7 +796,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=True,
+                blocking=False,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
@@ -839,6 +889,9 @@ class GraspObjectOperation(ManagedOperation):
         # Say we grasped the object
         if self.talk and self._success:
             self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
+
+        # Go back to manipulation posture
+        self.robot.move_to_manip_posture()
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
         """Move to a pregrasp position in an open loop manner.

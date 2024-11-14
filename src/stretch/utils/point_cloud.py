@@ -16,9 +16,111 @@ from typing import Optional, Tuple, Union
 import cv2
 import numpy as np
 import open3d as o3d
+import rerun as rr
 import torch
 import trimesh.transformations as tra
 from scipy.spatial import cKDTree
+from trimesh import Trimesh
+from trimesh.bounds import contains as trimesh_contains
+
+rr.init("Stretch_robot", spawn=False)
+
+
+def points_in_mesh(
+    points: np.ndarray,
+    mesh: Trimesh,
+    base_pose: np.ndarray = None,
+    visualize: bool = False,
+) -> np.ndarray:
+    """
+    Check if points are inside a mesh.
+
+    Parameters:
+    points: Nx3 numpy array of points
+    mesh: Trimesh object
+
+    Returns:
+    np.ndarray: Boolean array of length N
+    """
+    selected_indices = torch.arange(points.shape[0])
+
+    # Fetch axis-aligned bounding box
+    bbox = mesh.bounds.copy()  # 2x3 numpy array with each point containing x, y, z
+
+    # Inflate the bounds by 0.1
+    bbox[0] = bbox[0] - 0.05
+    bbox[1] = bbox[1] + 0.05
+
+    # Transform the bounds to camera frame
+    x = base_pose[0]
+    y = base_pose[1]
+    theta = base_pose[2]
+
+    # Rotate the bounds by 60 degrees
+    # Rotation matrix for 45 degrees about the z-axis
+    angle = theta
+    rotation_matrix = np.array(
+        [[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]]
+    )
+
+    # Define the corners of the bounding box in the original space
+    corners = np.array(
+        [
+            [bbox[0, 0], bbox[0, 1], bbox[0, 2]],  # min x, min y, min z
+            [bbox[1, 0], bbox[0, 1], bbox[0, 2]],  # max x, min y, min z
+            [bbox[0, 0], bbox[1, 1], bbox[0, 2]],  # min x, max y, min z
+            [bbox[1, 0], bbox[1, 1], bbox[0, 2]],  # max x, max y, min z
+            [bbox[0, 0], bbox[0, 1], bbox[1, 2]],  # min x, min y, max z
+            [bbox[1, 0], bbox[0, 1], bbox[1, 2]],  # max x, min y, max z
+            [bbox[0, 0], bbox[1, 1], bbox[1, 2]],  # min x, max y, max z
+            [bbox[1, 0], bbox[1, 1], bbox[1, 2]],  # max x, max y, max z
+        ]
+    )
+
+    # Rotate all corners around the z-axis
+    rotated_corners = np.dot(corners, rotation_matrix.T)
+
+    # Find the new axis-aligned bounding box after rotation
+    bbox = np.array([rotated_corners.min(axis=0), rotated_corners.max(axis=0)])
+
+    bbox_quaternion = tra.quaternion_from_matrix(rotation_matrix)
+
+    # Convert to xyzw quaternion
+    bbox_quaternion = np.array(
+        [bbox_quaternion[1], bbox_quaternion[2], bbox_quaternion[3], bbox_quaternion[0]]
+    )
+
+    # Translate the bounds by the base pose
+    bbox = bbox + np.array([[x, y, 0], [x, y, 0]])
+
+    if visualize:
+        bbox_center = rr.components.PoseTranslation3D(bbox.mean(axis=0))
+        bbox_half_size = (bbox[0] - bbox[1]) / 2
+
+        rr.log(
+            "world/robot_bounds",
+            rr.Boxes3D(
+                centers=[bbox_center],
+                half_sizes=[bbox_half_size],
+                quaternions=[bbox_quaternion],
+                labels=["robot_bounds"],
+                colors=[255, 255, 255, 255],
+            ),
+        )
+
+    # Check if the points are within the bounds of the robot
+    # original_length = len(selected_indices)
+    if trimesh_contains(bbox, points[selected_indices].cpu().numpy()).any():
+        # Modify the selected indices to remove points that are within the bounds of the robot
+        selected_indices = selected_indices[
+            ~trimesh_contains(bbox, points[selected_indices].cpu().numpy())
+        ]
+    if visualize:
+        # rr.log("world/points_in_bounds", rr.Points(points[selected_indices
+        # print(f"Removed {original_length - len(selected_indices)} points inside the robot bounds")
+        pass
+
+    return selected_indices
 
 
 def numpy_to_pcd(
