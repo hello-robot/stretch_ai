@@ -15,7 +15,7 @@ Advanced:
 - [Grasp an Object](#grasp-an-object) - Grasp an object with the robot.
 - [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
-- [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
+- [Pickup Objects](#pickup-toys) - Have the robot pickup toys lying on the floor and put them in a box.
 
 Finally:
 
@@ -228,7 +228,7 @@ python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --
 
 ### Pickup Objects
 
-This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
+This will have the robot move around the room, explore, and pickup toys placed on the floor in order to put them in a box.
 
 ```bash
 python -m stretch.app.pickup --target_object toy

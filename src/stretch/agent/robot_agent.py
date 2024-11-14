@@ -1277,7 +1277,7 @@ class RobotAgent:
 
             # Tuck the arm away
             if verbose:
-                print("Sending arm to  home...")
+                print("Sending arm to home...")
             self.robot.move_to_nav_posture()
             if verbose:
                 print("... done.")
@@ -1524,7 +1524,7 @@ class RobotAgent:
         random_goals: bool = False,
         try_to_plan_iter: int = 10,
         fix_random_seed: bool = False,
-        verbose: bool = True,
+        verbose: bool = False,
         push_locations_to_stack: bool = False,
     ) -> PlanResult:
         """Motion plan to a frontier location. This is a location that is on the edge of the explored space. We use the voxel grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
@@ -1700,7 +1700,7 @@ class RobotAgent:
             if res.success:
                 rotated = False
                 no_success_explore = False
-                print("Plan successful!")
+                print("Exploration plan to frontier successful!")
 
                 if audio_feedback:
                     self.robot.say_sync("I found a frontier to explore. Adding it as a goal.")
