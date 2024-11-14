@@ -45,7 +45,6 @@ class NavigateToObjectOperation(ManagedOperation):
             self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
-            breakpoint()
 
         if self.agent.within_reach_of(self.get_target()):
             self.cheer("Already within reach of object!")
