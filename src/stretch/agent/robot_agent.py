@@ -103,6 +103,14 @@ class RobotAgent:
         )
         self.obs_count = 0
         self.obs_history: List[Observations] = []
+        self._matched_vertices_obs_count: Dict[int, int] = dict()
+        self._matched_observations_poses: List[np.ndarray] = []
+        self._maximum_matched_observations = self.parameters.get(
+            "agent/realtime/maximum_matched_observations", 10
+        )
+        self._camera_pose_match_threshold = self.parameters.get(
+            "agent/realtime/camera_pose_match_threshold", 0.1
+        )
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
@@ -588,6 +596,24 @@ class RobotAgent:
         """Stop the update threads."""
         self._running = False
 
+    def should_drop_observation(self, obs: Observations, pose_graph_timestamp: int) -> bool:
+        """Check if we should drop an observation."""
+        if pose_graph_timestamp in self._matched_vertices_obs_count:
+            if (
+                self._matched_vertices_obs_count[pose_graph_timestamp]
+                > self._maximum_matched_observations
+            ):
+                return True
+
+        # Check if there are any observations with camera poses that are too close
+        if len(self._matched_observations_poses) > 0:
+            poses = np.array([obs.camera_pose])
+            dists = np.linalg.norm(self._matched_observations_poses - poses, axis=1)
+            if np.any(dists < self._camera_pose_match_threshold):
+                return True
+
+        return False
+
     def update_map_with_pose_graph(self, verbose: bool = False):
         """Update our voxel map using a pose graph.
         Updates the map from pose graph. This is useful for when we are processing real-time updates."""
@@ -605,6 +631,10 @@ class RobotAgent:
             gps_past = self.obs_history[idx].gps
 
             for vertex in self.pose_graph:
+
+                if self.should_drop_observation(self.obs_history[idx], vertex[0]):
+                    break
+
                 if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
                     if verbose:
                         print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
@@ -627,6 +657,9 @@ class RobotAgent:
                         and self.semantic_sensor is not None
                     ):
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
+
+                    self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
+                    self._matched_vertices_obs_count[vertex[0]] += 1
                 # check if the gps is close to the gps of the pose graph node
                 elif (
                     np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
@@ -650,6 +683,9 @@ class RobotAgent:
                         and self.semantic_sensor is not None
                     ):
                         self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
+
+                    self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
+                    self._matched_vertices_obs_count[vertex[0]] += 1
 
                 elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
                     # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
