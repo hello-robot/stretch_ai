@@ -64,6 +64,7 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
 )
+@click.option("--silent", is_flag=True, help="Disable audio feedback")
 @click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
     visualize,
@@ -85,10 +86,13 @@ def main(
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
     enable_realtime_updates: bool = False,
+    silent: bool = False,
     save: bool = True,
     radius: float = -1.0,
     **kwargs,
 ):
+
+    audio_feedback = not silent
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
@@ -122,6 +126,7 @@ def main(
         enable_realtime_updates=enable_realtime_updates,
         reset=reset,
         radius=radius,
+        audio_feedback=audio_feedback,
         save=save,
         **kwargs,
     )
@@ -148,6 +153,7 @@ def demo_main(
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
     enable_realtime_updates: bool = False,
+    audio_feedback: bool = False,
     save: bool = True,
     **kwargs,
 ):
@@ -207,9 +213,14 @@ def demo_main(
 
     # Rotate in place
     if parameters["agent"]["in_place_rotation_steps"] > 0:
+
+        if audio_feedback:
+            robot.say("Rotating in place to scan the environment.")
+
         agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
+            audio_feedback=audio_feedback,
         )
 
     # Run the actual procedure
@@ -224,6 +235,7 @@ def demo_main(
                 random_goals=False,
                 go_home_at_end=navigate_home,
                 visualize=show_intermediate_maps,
+                audio_feedback=audio_feedback,
             )
         print("Done collecting data.")
         if object_to_find is not None:

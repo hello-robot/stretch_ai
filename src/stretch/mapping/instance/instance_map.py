@@ -246,6 +246,10 @@ class InstanceMemory:
         Returns:
             Dict[int, Instance]: The newly indexed dictionary of Instance objects for the given environment.
         """
+        if len(self.instances[env_id]) == 0:
+            self.instances[env_id] = {}
+            return self.instances[env_id]
+
         ids, instances = zip(*self.instances[env_id].items())
         new_ids = range(len(ids))
         new_env_instances = dict(zip(new_ids, instances))
