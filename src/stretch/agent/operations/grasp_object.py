@@ -22,6 +22,7 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 import torch
+from scipy.spatial.transform import Rotation as R
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
@@ -913,12 +914,25 @@ class GraspObjectOperation(ManagedOperation):
 
         shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
 
+        # End effector should be at most 45 degrees inclined
+        rotation = R.from_quat(ee_rot)
+        rotation = rotation.as_euler("xyz")
+        print("Rotation", rotation)
+        if rotation[1] > np.pi / 4:
+            rotation[1] = np.pi / 4
+        old_ee_rot = ee_rot
+        ee_rot = R.from_euler("xyz", rotation).as_quat()
+
         # IK
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
             shifted_object_xyz, ee_rot, q0=joint_state
         )
         print("Pregrasp joint positions: ")
-        print(target_joint_positions)
+        print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
+        print(" - lift: ", target_joint_positions[HelloStretchIdx.LIFT])
+        print(" - roll: ", target_joint_positions[HelloStretchIdx.WRIST_ROLL])
+        print(" - pitch: ", target_joint_positions[HelloStretchIdx.WRIST_PITCH])
+        print(" - yaw: ", target_joint_positions[HelloStretchIdx.WRIST_YAW])
 
         # get point 10cm from object
         if not success:
@@ -926,8 +940,8 @@ class GraspObjectOperation(ManagedOperation):
             self._success = False
             return
         elif (
-            target_joint_positions[HelloStretchIdx.ARM] < 0
-            or target_joint_positions[HelloStretchIdx.LIFT] < 0
+            target_joint_positions[HelloStretchIdx.ARM] < -0.05
+            or target_joint_positions[HelloStretchIdx.LIFT] < -0.05
         ):
             print(
                 f"{self.name}: Target joint state is invalid: {target_joint_positions}. Positions for arm and lift must be positive."
@@ -935,24 +949,24 @@ class GraspObjectOperation(ManagedOperation):
             self._success = False
             return
 
+        # Make sure arm and lift are positive
+        target_joint_positions[HelloStretchIdx.ARM] = max(
+            target_joint_positions[HelloStretchIdx.ARM], 0
+        )
+        target_joint_positions[HelloStretchIdx.LIFT] = max(
+            target_joint_positions[HelloStretchIdx.LIFT], 0
+        )
+
+        # Zero out roll and yaw
+        target_joint_positions[HelloStretchIdx.WRIST_YAW] = 0
+        target_joint_positions[HelloStretchIdx.WRIST_ROLL] = 0
+
         # Lift the arm up a bit
         target_joint_positions_lifted = target_joint_positions.copy()
         target_joint_positions_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
-        # Move to the target joint state
-        robot_pose = [
-            target_joint_positions[HelloStretchIdx.BASE_X],
-            target_joint_positions[HelloStretchIdx.LIFT],
-            target_joint_positions[HelloStretchIdx.ARM],
-            0.0,
-            target_joint_positions[HelloStretchIdx.WRIST_PITCH],
-            0.0,
-        ]
         print(f"{self.name}: Moving to pre-grasp position.")
         self.robot.arm_to(target_joint_positions, head=constants.look_at_ee, blocking=True)
-
-        # wait for image to stabilize
-        time.sleep(1.0)
 
     def grasp_open_loop(self, object_xyz: np.ndarray):
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
