@@ -51,7 +51,7 @@ class GridParams:
         if torch.any(grid_xy >= self._grid_size_t) or torch.any(grid_xy < torch.zeros(2)):
             return None
         else:
-            return np.array(grid_xy)
+            return np.array(grid_xy).astype(int)
 
     def grid_coords_to_xy(self, grid_coords: torch.Tensor) -> np.ndarray:
         """convert grid coordinate point to metric world xy point"""
