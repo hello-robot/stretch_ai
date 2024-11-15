@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 Hello Robot by Chris Paxton
+# (c) 2024 Hello Robot
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -213,10 +213,6 @@ def demo_main(
 
     # Rotate in place
     if parameters["agent"]["in_place_rotation_steps"] > 0:
-
-        if audio_feedback:
-            robot.say("Rotating in place to scan the environment.")
-
         agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,

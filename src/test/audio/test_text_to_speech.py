@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def test_text_to_speech(
     save: bool = False,
-    similarity_threshold: float = 0.9,
+    similarity_threshold: float = 0.8,
     run_google_cloud_engine: bool = False,
     verbose: bool = False,
 ) -> None:

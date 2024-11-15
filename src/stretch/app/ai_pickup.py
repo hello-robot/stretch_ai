@@ -48,6 +48,12 @@ logger = Logger(__name__)
     type=click.Choice(get_llm_choices()),
 )
 @click.option(
+    "--realtime",
+    "--real-time",
+    is_flag=True,
+    help="Set to enable real-time updates",
+)
+@click.option(
     "--device_id",
     default=0,
     help="ID of the device to use for perception",
@@ -126,6 +132,7 @@ def main(
     use_voice: bool = False,
     open_loop: bool = False,
     debug_llm: bool = False,
+    realtime: bool = False,
     radius: float = 3.0,
     input_path: str = "",
 ):
@@ -151,18 +158,22 @@ def main(
         use_voice = False
 
     # Agents wrap the robot high level planning interface for now
-    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=realtime)
+    print("Starting robot agent: initializing...")
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
+        print("Reset: moving robot to origin")
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     if radius is not None and radius > 0:
+        print("Setting allowed radius to:", radius)
         agent.set_allowed_radius(radius)
 
     # Load a PKL file from a previous run and process it
     # This will use ICP to match current observations to the previous ones
     # ANd then update the map with the new observations
     if input_path is not None and len(input_path) > 0:
+        print("Loading map from:", input_path)
         agent.load_map(input_path)
 
     # Create the prompt we will use to control the robot

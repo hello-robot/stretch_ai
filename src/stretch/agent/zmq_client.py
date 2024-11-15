@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 chris paxton under MIT license
+# (c) 2024 Hello Robot under MIT license
 
 import sys
 import threading
@@ -500,9 +500,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
-            time.sleep(0.25)
+
+            time.sleep(0.1)
             self._wait_for_head(whole_body_q, block_id=step)
-            time.sleep(0.25)
+            time.sleep(0.1)
+
+            # time.sleep(0.25)
+            # self._wait_for_head(whole_body_q, block_id=step)
+            # time.sleep(0.25)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
@@ -867,9 +872,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
         prev_joint_positions = None
         prev_t = None
         while not self._finish:
+
+            # Check to make sure message was sent and received
+            if self.out_of_date():
+                time.sleep(0.01)
+                continue
+
             joint_positions, joint_velocities, _ = self.get_joint_state()
 
             if joint_positions is None:
+                time.sleep(0.01)
                 continue
 
             # if self._last_step < block_id:
@@ -1119,6 +1131,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 print(
                     f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
                 )
+                print(min_steps_not_moving, self._last_step, at_goal)
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
@@ -1183,6 +1196,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if "pose_graph" in obs:
                 self._pose_graph = obs["pose_graph"]
 
+    def out_of_date(self):
+        """Check if the robot is out of date with the latest observation. This is used to determine if we should wait for the robot to catch up."""
+        with self._obs_lock:
+            obs_ood = self._obs is not None and self._obs["step"] < self._last_step
+        with self._state_lock:
+            state_ood = self._state is not None and self._state["step"] < self._last_step
+        return obs_ood or state_ood
+
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
 
@@ -1231,8 +1252,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"load_map": filename}
         self.send_action(next_action)
 
-    def get_observation(self):
+    def get_observation(self, max_iter: int = 5):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
+        iteration = 0
+        while not self.is_up_to_date() and iteration < max_iter:
+            if self.is_up_to_date():
+                iteration += 1
+            time.sleep(0.1)
+        time.sleep(0.1)
         with self._obs_lock:
             if self._obs is None:
                 return None
@@ -1250,9 +1277,19 @@ class HomeRobotZmqClient(AbstractRobotClient):
             observation.camera_K = self._obs.get("camera_K", None)
             observation.camera_pose = self._obs.get("camera_pose", None)
             observation.seq_id = self._seq_id
-        return observation
+            return observation
 
     def get_images(self, compute_xyz=False):
+        """Get the current RGB and depth images from the robot.
+
+        Args:
+            compute_xyz (bool): whether to compute the XYZ image
+
+        Returns:
+            rgb (np.ndarray): the RGB image
+            depth (np.ndarray): the depth image
+            xyz (np.ndarray): the XYZ image if compute_xyz is True
+        """
         obs = self.get_observation()
         if compute_xyz:
             return obs.rgb, obs.depth, obs.xyz
@@ -1260,10 +1297,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return obs.rgb, obs.depth
 
     def get_camera_K(self):
+        """Get the camera intrinsics.
+
+        Returns:
+            camera_K (np.ndarray): the camera intrinsics
+        """
         obs = self.get_observation()
         return obs.camera_K
 
     def get_head_pose(self):
+        """Get the head pose.
+
+        Returns:
+            head_pose (np.ndarray): the head pose as a SE(3) matrix [R | t]
+        """
         obs = self.get_observation()
         return obs.camera_pose
 

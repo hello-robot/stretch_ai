@@ -49,7 +49,7 @@ class RobotAgentMDP:
         robot,
         parameters: Dict[str, Any],
         server_ip: str,
-        image_port: int = 5558,
+        image_port: int = 5555,
         text_port: int = 5556,
         manip_port: int = 5557,
         re: int = 1,
@@ -91,22 +91,22 @@ class RobotAgentMDP:
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
 
-        if method == "dynamem":
-            from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
+        # if method == "dynamem":
+        #     from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 
-            self.image_processor = VoxelMapImageProcessor(
-                rerun=True,
-                rerun_visualizer=self.robot._rerun,
-                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-            )  # type: ignore
-        elif method == "mllm":
-            from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
+        #     self.image_processor = VoxelMapImageProcessor(
+        #         rerun=True,
+        #         rerun_visualizer=self.robot._rerun,
+        #         log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     )  # type: ignore
+        # elif method == "mllm":
+        #     from stretch.dynav.llm_server import ImageProcessor as mLLMImageProcessor
 
-            self.image_processor = mLLMImageProcessor(
-                rerun=True,
-                static=False,
-                log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-            )  # type: ignore
+        #     self.image_processor = mLLMImageProcessor(
+        #         rerun=True,
+        #         static=False,
+        #         log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     )  # type: ignore
 
         self.look_around_times: list[float] = []
         self.execute_times: list[float] = []
@@ -115,8 +115,8 @@ class RobotAgentMDP:
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.4, -0.4, -1.2, -1.6]:
-            for tilt in [-0.65]:
+        for pan in [0.6, -0.2, -1.0, -1.8]:
+            for tilt in [-0.6]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 
@@ -124,21 +124,21 @@ class RobotAgentMDP:
         print("*" * 10, "Rotate in place", "*" * 10)
         xyt = self.robot.get_base_pose()
         self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
-        for i in range(8):
-            xyt[2] += 2 * np.pi / 8
-            self.robot.navigate_to(xyt, blocking=True)
+        for i in range(10):
+            xyt[2] += 2 * np.pi / 10
+            self.robot.move_base_to(xyt, blocking=True)
             self.update()
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
-        # Sleep some time so the robot rgbd observations are more likely to be updated
-        time.sleep(0.5)
-
+        # Sleep some time for the robot camera to focus
+        # time.sleep(0.3)
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         start_time = time.time()
-        self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        # self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        self.image_sender.send_images(obs)
         end_time = time.time()
         print("Image processing takes", end_time - start_time, "seconds.")
 
@@ -155,8 +155,8 @@ class RobotAgentMDP:
 
         start = self.robot.get_base_pose()
         # print("       Start:", start)
-        # res = self.image_sender.query_text(text, start)
-        res = self.image_processor.process_text(text, start)
+        res = self.image_sender.query_text(text, start)
+        # res = self.image_processor.process_text(text, start)
         if len(res) == 0 and text != "" and text is not None:
             res = self.image_processor.process_text("", start)
 

@@ -16,8 +16,18 @@ from .siglip_encoder import SiglipEncoder
 
 
 class MaskSiglipEncoder(SiglipEncoder):
-    def __init__(self, device: Optional[str] = None) -> None:
-        super().__init__(normalize=True, device=device)
+    def __init__(
+        self,
+        device: Optional[str] = None,
+        version: Optional[str] = None,
+        feature_matching_threshold: float = 0.12,
+    ) -> None:
+        super().__init__(
+            normalize=True,
+            device=device,
+            version=version,
+            feature_matching_threshold=feature_matching_threshold,
+        )
 
     def forward_one_block_(self, resblocks, x):
         x = F.linear(x, resblocks.in_proj_weight, resblocks.in_proj_bias)
@@ -53,9 +63,28 @@ class MaskSiglipEncoder(SiglipEncoder):
         for i in input:
             input[i] = input[i].to(self.device)
         if image_shape is not None:
+            if image.ndim == 3:
+                image = image.unsqueeze(0)
             image = F.interpolate(
-                image.unsqueeze(0), size=image_shape, mode="bilinear", align_corners=False
+                image, size=image_shape, mode="bilinear", align_corners=False
             ).squeeze()
-        features = self.extract_mask_siglip_features(input, image.shape[-2:])[0].cpu()
+        features = self.extract_mask_siglip_features(input, image.shape[-2:]).cpu()
 
         return image, features
+
+    def extract_per_pixel_features(self, x, image_shape):
+        with torch.no_grad():
+            output = self.model.vision_model(x["pixel_values"], output_hidden_states=True)
+            feat = output.last_hidden_state
+            feat = self.forward_one_block_(self.model.vision_model.head.attention, feat)
+            feat = self.model.vision_model.head.layernorm(feat)
+            feat = feat + self.model.vision_model.head.mlp(feat)
+            feat = feat.detach().cpu()
+            N, L, H, W = self.model.vision_model.embeddings.patch_embedding(x["pixel_values"]).shape
+            feat = feat.reshape(N, H, W, L).permute(0, 3, 1, 2)
+        features = []
+        for f, size in zip(feat, image_shape):
+            f = F.interpolate(f.unsqueeze(0), size, mode="bilinear", align_corners=True)[0]
+            f = F.normalize(f, dim=0).permute(1, 2, 0)
+            features.append(f.detach().cpu())
+        return features
