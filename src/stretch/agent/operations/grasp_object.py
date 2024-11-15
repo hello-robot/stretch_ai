@@ -83,7 +83,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.2
+    median_distance_when_grasping: float = 0.18
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -797,7 +797,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
@@ -1018,7 +1018,7 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.close_gripper(blocking=True)
         time.sleep(0.5)
         print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-        self.robot.arm_to(target_joint_positions_lifted, head=constants.look_at_ee, blocking=False)
+        self.robot.arm_to(target_joint_positions_lifted, head=constants.look_at_ee, blocking=True)
         print(f"{self.name}: Return arm to initial configuration.")
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
         print(f"{self.name}: Done.")
