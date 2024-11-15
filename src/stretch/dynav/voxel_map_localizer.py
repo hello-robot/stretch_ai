@@ -18,8 +18,9 @@ from torch import Tensor
 
 # from ultralytics import YOLOWorld
 # from transformers import AutoModel, AutoProcessor, CLIPTokenizer, Owlv2ForObjectDetection
-from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
+from transformers import AutoModel, AutoProcessor
 
+from stretch.perception.detection.owl import OwlPerception
 from stretch.utils.logger import Logger
 from stretch.utils.voxel import VoxelizedPointcloud
 
@@ -95,7 +96,7 @@ class VoxelMapLocalizer:
     def __init__(
         self,
         voxel_map_wrapper=None,
-        exist_model=True,
+        # exist_model=True,
         clip_model=None,
         processor=None,
         device="cuda",
@@ -118,19 +119,19 @@ class VoxelMapLocalizer:
             self.preprocessor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
         self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.05).to(self.device)
+        self.detection_model = OwlPerception()
         # self.exist_model = YOLOWorld("yolov8l-worldv2.pt")
-        self.existence_checking_model = exist_model
-        if exist_model:
-            logger.info("WE ARE USING OWLV2!")
-            self.exist_processor = AutoProcessor.from_pretrained(
-                "google/owlv2-large-patch14-ensemble"
-            )
-            self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-                "google/owlv2-large-patch14-ensemble"
-            ).to(self.device)
-        else:
-            logger.info("YOU ARE USING NOTHING!")
-        # self.tokenizer = CLIPTokenizer.from_pretrained("BAAI/EVA-CLIP-8B")
+        # self.existence_checking_model = exist_model
+        # if exist_model:
+        #     logger.info("WE ARE USING OWLV2!")
+        #     self.exist_processor = AutoProcessor.from_pretrained(
+        #         "google/owlv2-large-patch14-ensemble"
+        #     )
+        #     self.exist_model = Owlv2ForObjectDetection.from_pretrained(
+        #         "google/owlv2-large-patch14-ensemble"
+        #     ).to(self.device)
+        # else:
+        #     logger.info("YOU ARE USING NOTHING!")
 
     def add(
         self,
@@ -209,22 +210,25 @@ class VoxelMapLocalizer:
         depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
         K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
         xyzs = get_xyz(depth, pose, K)[0]
-        rgb = rgb.permute(2, 0, 1).to(torch.uint8)
-        inputs = self.exist_processor(
-            text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
+        scores, boxes = self.detection_model.detect_object(
+            rgb=rgb, text=text, confidence_threshold=threshold
         )
-        for input in inputs:
-            inputs[input] = inputs[input].to("cuda")
+        # rgb = rgb.permute(2, 0, 1).to(torch.uint8)
+        # inputs = self.exist_processor(
+        #     text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
+        # )
+        # for input in inputs:
+        #     inputs[input] = inputs[input].to("cuda")
 
-        with torch.no_grad():
-            outputs = self.exist_model(**inputs)
+        # with torch.no_grad():
+        #     outputs = self.exist_model(**inputs)
 
-        target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
-        results = self.exist_processor.image_processor.post_process_object_detection(
-            outputs, threshold=threshold, target_sizes=target_sizes
-        )[0]
+        # target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
+        # results = self.exist_processor.image_processor.post_process_object_detection(
+        #     outputs, threshold=threshold, target_sizes=target_sizes
+        # )[0]
         for idx, (score, bbox) in enumerate(
-            sorted(zip(results["scores"], results["boxes"]), key=lambda x: x[0], reverse=True)
+            sorted(zip(scores, boxes), key=lambda x: x[0], reverse=True)
         ):
 
             tl_x, tl_y, br_x, br_y = bbox
