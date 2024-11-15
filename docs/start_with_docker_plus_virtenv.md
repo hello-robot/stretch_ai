@@ -143,7 +143,7 @@ git lfs install
 
 # Clone the repository
 # Do not forget the --recursive flag to clone submodules
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
+git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Install system dependencies
 # Pyaudio will fail if these are not installed
