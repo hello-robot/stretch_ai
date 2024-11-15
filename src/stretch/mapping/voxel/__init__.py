@@ -12,5 +12,5 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 from .planners import plan_to_frontier
-from .voxel import SparseVoxelMap
+from .voxel import SparseVoxelMap, SparseVoxelMapProxy
 from .voxel_map import SparseVoxelMapNavigationSpace

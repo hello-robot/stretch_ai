@@ -129,15 +129,15 @@ def main(
 
         # Save out file
         if len(output_pkl_filename) > 0:
-            agent.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.get_voxel_map().write_to_pickle(output_pkl_filename)
     else:
         real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
-        agent.voxel_map.read_from_pickle(input_path, num_frames=frame)
+        agent.get_voxel_map().read_from_pickle(input_path, num_frames=frame)
 
     if show_svm:
-        agent.voxel_map.show()
+        agent.get_voxel_map().show()
 
     try:
         if len(text) == 0:

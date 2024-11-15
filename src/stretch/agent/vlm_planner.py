@@ -27,7 +27,7 @@ class VLMPlanner:
 
         # Load parameters file from the agent
         self.parameters = agent.parameters
-        self.voxel_map = agent.voxel_map
+        self.voxel_map = agent.get_voxel_map()
 
         # TODO: put these into config
         img_size = 256

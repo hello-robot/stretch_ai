@@ -198,7 +198,7 @@ class PlaceObjectOperation(ManagedOperation):
         )
 
         if self.show_place_in_voxel_grid:
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=place_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 

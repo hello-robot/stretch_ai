@@ -24,6 +24,7 @@ import scipy
 import skimage
 import torch
 import tqdm
+from readerwriterlock import rwlock
 from torch import Tensor
 
 import stretch.utils.compression as compression
@@ -1383,3 +1384,21 @@ class SparseVoxelMap(object):
             },
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
+
+
+class SparseVoxelMapProxy(object):
+    def __init__(self, voxel_map: SparseVoxelMap, rw_lock: rwlock.RWLock):
+        self._voxel_map = voxel_map
+        self._rw_lock = rw_lock
+
+    def __getattr__(self, name):
+        def locked_method(*args, **kwargs):
+            with self._rw_lock.gen_rlock():  # Acquire read lock for external access
+                method = getattr(self._voxel_map, name)
+                return method(*args, **kwargs)
+
+        if callable(getattr(self._voxel_map, name)):
+            return locked_method
+        else:
+            with self._rw_lock.gen_rlock():
+                return getattr(self._voxel_map, name)

@@ -24,7 +24,7 @@ import skimage.morphology
 import torch
 
 from stretch.mapping.grid import GridParams
-from stretch.mapping.voxel import SparseVoxelMap
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapProxy
 from stretch.motion import XYT, Footprint, RobotModel
 from stretch.utils.geometry import angle_difference, interpolate_angles
 from stretch.utils.morphology import (
@@ -45,7 +45,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
     def __init__(
         self,
-        voxel_map: SparseVoxelMap,
+        voxel_map: SparseVoxelMap | SparseVoxelMapProxy,
         robot: RobotModel,
         grid: Optional[GridParams] = None,
         step_size: float = 0.1,

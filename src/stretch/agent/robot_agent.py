@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 from PIL import Image
+from readerwriterlock import rwlock
 
 import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
@@ -29,7 +30,7 @@ from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
-from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
@@ -166,9 +167,12 @@ class RobotAgent:
         else:
             self.voxel_map = self._create_voxel_map(self.parameters)
 
+        self._voxel_map_lock = rwlock.RWLockWrite()
+        self.voxel_map_proxy = SparseVoxelMapProxy(self.voxel_map, self._voxel_map_lock)
+
         # Create planning space
         self.space = SparseVoxelMapNavigationSpace(
-            self.voxel_map,
+            self.get_voxel_map(),
             self.robot.get_robot_model(),
             step_size=self.parameters["motion_planner"]["step_size"],
             rotation_step_size=self.parameters["motion_planner"]["rotation_step_size"],
@@ -178,7 +182,7 @@ class RobotAgent:
             dilate_obstacle_size=self.parameters["motion_planner"]["frontier"][
                 "dilate_obstacle_size"
             ],
-            grid=self.voxel_map.grid,
+            grid=self.get_voxel_map().grid,
         )
 
         self.reset_object_plans()
@@ -220,6 +224,7 @@ class RobotAgent:
         # Locks
         self._robot_lock = Lock()
         self._obs_history_lock = Lock()
+        self._voxel_map_lock = Lock()
         self._map_lock = Lock()
 
         if self._realtime_updates:
@@ -240,9 +245,9 @@ class RobotAgent:
         """Return the robot in use by this model"""
         return self.robot
 
-    def get_voxel_map(self) -> SparseVoxelMap:
+    def get_voxel_map(self) -> SparseVoxelMapProxy:
         """Return the voxel map in use by this model"""
-        return self.voxel_map
+        return self.voxel_map_proxy
 
     def __del__(self):
         """Destructor. Clean up threads."""
@@ -355,11 +360,11 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        encoded_text = self.encode_text(text_query).to(self.voxel_map.map_2d_device)
+        encoded_text = self.encode_text(text_query).to(self.get_voxel_map().map_2d_device)
         best_instance = None
         best_activation = -1.0
         print("--- Searching for instance ---")
-        for instance in self.voxel_map.get_instances():
+        for instance in self.get_voxel_map().get_instances():
             ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
@@ -378,7 +383,7 @@ class RobotAgent:
 
     def get_instances(self) -> List[Instance]:
         """Return all instances in the voxel map."""
-        return self.voxel_map.get_instances()
+        return self.get_voxel_map().get_instances()
 
     def get_instances_from_text(
         self,
@@ -411,9 +416,9 @@ class RobotAgent:
         activations = []
         matches = []
         # Encode the text query and move it to the same device as the instance embeddings
-        encoded_text = self.encode_text(text_query).to(self.voxel_map.map_2d_device)
+        encoded_text = self.encode_text(text_query).to(self.get_voxel_map().map_2d_device)
         # Compute the cosine similarity between the text query and each instance embedding
-        for instance in self.voxel_map.get_instances():
+        for instance in self.get_voxel_map().get_instances():
             ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
@@ -529,7 +534,7 @@ class RobotAgent:
                 print("Update took", t1 - t0, "seconds")
 
             if visualize:
-                self.voxel_map.show(
+                self.get_voxel_map().show(
                     orig=np.zeros(3),
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
@@ -548,7 +553,7 @@ class RobotAgent:
 
     def show_map(self) -> None:
         """Helper function to visualize the 3d map as it stands right now."""
-        self.voxel_map.show(
+        self.get_voxel_map().show(
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
             footprint=self.robot.get_robot_model().get_footprint(),
@@ -717,11 +722,11 @@ class RobotAgent:
 
         t3 = timeit.default_timer()
         with self._map_lock:
-            self.voxel_map.reset()
+            self.get_voxel_map().reset()
             added = 0
             for obs in self.obs_history:
                 if obs.is_pose_graph_node:
-                    self.voxel_map.add_obs(obs)
+                    self.get_voxel_map().add_obs(obs)
                     added += 1
 
         if verbose:
@@ -741,7 +746,7 @@ class RobotAgent:
             self._update_scene_graph()
             self.scene_graph.get_relationships()
 
-        if len(self.voxel_map.observations) > 0:
+        if len(self.get_voxel_map().observations) > 0:
             self.update_rerun()
 
         t5 = timeit.default_timer()
@@ -829,7 +834,7 @@ class RobotAgent:
                 obs = self.semantic_sensor.predict(obs)
 
             t2 = timeit.default_timer()
-            self.voxel_map.add_obs(obs)
+            self.get_voxel_map().add_obs(obs)
             t3 = timeit.default_timer()
 
             if not move_head:
@@ -838,8 +843,8 @@ class RobotAgent:
         if move_head:
             self.robot.head_to(0, tilt, blocking=True)
             x, y, theta = self.robot.get_base_pose()
-            self.voxel_map.delete_obstacles(
-                radius=0.3, point=np.array([x, y]), min_height=self.voxel_map.obs_min_height
+            self.get_voxel_map().delete_obstacles(
+                radius=0.3, point=np.array([x, y]), min_height=self.get_voxel_map().obs_min_height
             )
 
         if self.use_scene_graph:
@@ -851,7 +856,7 @@ class RobotAgent:
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show what was happening
-            self.voxel_map.get_2d_map(debug=True)
+            self.get_voxel_map().get_2d_map(debug=True)
 
         t5 = timeit.default_timer()
 
@@ -863,7 +868,7 @@ class RobotAgent:
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            instances = self.voxel_map.get_instances()
+            instances = self.get_voxel_map().get_instances()
             for instance in instances:
                 best_view = instance.get_best_view()
                 plt.imshow(best_view.get_image())
@@ -899,9 +904,9 @@ class RobotAgent:
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
         if self.scene_graph is None:
-            self.scene_graph = SceneGraph(self.parameters, self.voxel_map.get_instances())
+            self.scene_graph = SceneGraph(self.parameters, self.get_voxel_map().get_instances())
         else:
-            self.scene_graph.update(self.voxel_map.get_instances())
+            self.scene_graph.update(self.get_voxel_map().get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
         # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
@@ -938,7 +943,7 @@ class RobotAgent:
         """
 
         if isinstance(instance, int):
-            _instance = self.voxel_map.get_instance(instance)
+            _instance = self.get_voxel_map().get_instance(instance)
         else:
             _instance = instance
 
@@ -968,7 +973,7 @@ class RobotAgent:
 
         start = start if start is not None else self.robot.get_base_pose()
         if isinstance(start, np.ndarray):
-            start = torch.tensor(start, device=self.voxel_map.device)
+            start = torch.tensor(start, device=self.get_voxel_map().device)
         object_xyz = instance.get_center()
         if np.linalg.norm(start[:2] - object_xyz[:2]) < self._manipulation_radius:
             return True
@@ -1073,7 +1078,7 @@ class RobotAgent:
         """
 
         with self._map_lock:
-            mask = self.voxel_map.mask_from_bounds(bounds)
+            mask = self.get_voxel_map().mask_from_bounds(bounds)
             try_count = 0
             res = None
             start_is_valid = self.space.is_valid(start, verbose=False)
@@ -1290,7 +1295,7 @@ class RobotAgent:
             logger.warning("Tried to print classes without semantic sensor!")
             return
 
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         if goal is not None:
             print(f"Looking for {goal}.")
         print("So far, we have found these classes:")
@@ -1335,7 +1340,7 @@ class RobotAgent:
             if not self._realtime_updates:
                 self.update(visualize_map=False)  # Append latest observations
             print("- Visualize map after updating")
-            self.voxel_map.show(
+            self.get_voxel_map().show(
                 orig=np.zeros(3),
                 xyt=self.robot.get_base_pose(),
                 footprint=self.robot.get_robot_model().get_footprint(),
@@ -1361,7 +1366,7 @@ class RobotAgent:
         if goal is None:
             # No goal means no matches
             return []
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         for i, instance in enumerate(instances):
             oid = int(instance.category_id.item())
             name = self.semantic_sensor.get_class_name_for_id(oid)
@@ -1385,7 +1390,7 @@ class RobotAgent:
         """
         reachable_matches = []
         start = self.robot.get_base_pose() if current_pose is None else current_pose
-        for i, instance in enumerate(self.voxel_map.get_instances()):
+        for i, instance in enumerate(self.get_voxel_map().get_instances()):
             if i not in self._cached_plans.keys():
                 res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
@@ -1411,7 +1416,7 @@ class RobotAgent:
             instance_id(int): a unique int identifying this instance
             instance(Instance): information about a particular object detection
         """
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         goal_emb = self.encode_text(goal)
         ranked_matches = []
         for i, instance in enumerate(instances):
@@ -1523,7 +1528,7 @@ class RobotAgent:
         Returns:
             Instance: the best instance to move to
         """
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         goal_emb = self.encode_text(goal)
         if debug:
             neg1_emb = self.encode_text("the color purple")
@@ -1558,7 +1563,7 @@ class RobotAgent:
         logger.info("[Agent] Setting allowed radius to", radius, "meters.")
         self._allowed_radius = radius
 
-        self.voxel_map.set_allowed_radius(radius, origin=self.robot.get_base_pose()[0:2])
+        self.get_voxel_map().set_allowed_radius(radius, origin=self.robot.get_base_pose()[0:2])
 
     def plan_to_frontier(
         self,
@@ -1654,7 +1659,7 @@ class RobotAgent:
     def get_history(self, reversed: bool = False) -> List[np.ndarray]:
         """Get the history of the robot's positions."""
         history = []
-        for obs in self.voxel_map.observations:
+        for obs in self.get_voxel_map().observations:
             history.append(obs.base_pose)
         if reversed:
             history.reverse()
@@ -1757,7 +1762,7 @@ class RobotAgent:
                     print("Showing goal location:")
                     robot_center = np.zeros(3)
                     robot_center[:2] = self.robot.get_base_pose()[:2]
-                    self.voxel_map.show(
+                    self.get_voxel_map().show(
                         orig=robot_center,
                         xyt=res.trajectory[-1].state,
                         footprint=self.robot.get_robot_model().get_footprint(),
@@ -1874,7 +1879,7 @@ class RobotAgent:
 
     def show_voxel_map(self):
         """Show the voxel map in Open3D for debugging."""
-        self.voxel_map.show(
+        self.get_voxel_map().show(
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
             footprint=self.robot.get_robot_model().get_footprint(),
@@ -1920,8 +1925,16 @@ class RobotAgent:
             print(
                 "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
             )
-        self.voxel_map.reset()
+        self.get_voxel_map().reset()
         self.reset_object_plans()
+
+        if self._realtime_updates:
+            # Clear the observations
+            with self._obs_history_lock:
+                self._obs_history.clear()
+                self.obs_count = 0
+                self._matched_observations_poses.clear()
+                self._matched_vertices_obs_count.clear()
 
     def save_instance_images(self, root: Union[Path, str] = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""
@@ -1930,7 +1943,7 @@ class RobotAgent:
             root = Path(root)
 
         # Write out instance images
-        for i, instance in enumerate(self.voxel_map.get_instances()):
+        for i, instance in enumerate(self.get_voxel_map().get_instances()):
             for j, view in enumerate(instance.instance_views):
                 image = Image.fromarray(view.cropped_image.byte().cpu().numpy())
                 filename = f"instance{i}_view{j}.png"
@@ -2063,7 +2076,7 @@ class RobotAgent:
         loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
 
         xyz1, _, _, rgb1 = loaded_voxel_map.get_pointcloud()
-        xyz2, _, _, rgb2 = self.voxel_map.get_pointcloud()
+        xyz2, _, _, rgb2 = self.get_voxel_map().get_pointcloud()
 
         # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
         tform, fitness, inlier_rmse, num_inliers = ransac_transform(
@@ -2092,14 +2105,14 @@ class RobotAgent:
 
         # Add the loaded map to the current map
         print("Reprocessing map with new pose transform...")
-        self.voxel_map.read_from_pickle(
+        self.get_voxel_map().read_from_pickle(
             filename, perception=self.semantic_sensor, transform_pose=tform
         )
-        self.voxel_map.show()
+        self.get_voxel_map().show()
 
     def get_detections(self, **kwargs) -> List[str]:
         """Get the current detections."""
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
 
         # Consider only instances close to the robot
         robot_pose = self.robot.get_base_pose()
@@ -2212,7 +2225,7 @@ class RobotAgent:
         if plan_with_reachable_instances:
             instances = self.get_all_reachable_instances(current_pose=current_pose)
         else:
-            instances = self.voxel_map.get_instances()
+            instances = self.get_voxel_map().get_instances()
 
         scene_graph = None
 
@@ -2252,4 +2265,4 @@ class RobotAgent:
 
         with self._map_lock:
             # Write the new map to the file
-            self.voxel_map.write_to_pickle(filename)
+            self.get_voxel_map().write_to_pickle(filename)

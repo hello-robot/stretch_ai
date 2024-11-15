@@ -877,7 +877,7 @@ class GraspObjectOperation(ManagedOperation):
         # clear observations
         if self.reset_observation:
             self.agent.reset_object_plans()
-            self.agent.voxel_map.instances.pop_global_instance(
+            self.agent.get_voxel_map().instances.pop_global_instance(
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
 

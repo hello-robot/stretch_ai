@@ -250,9 +250,9 @@ def demo_main(
         agent.stop_realtime_updates()
 
         if show_final_map:
-            pc_xyz, pc_rgb = agent.voxel_map.show()
+            pc_xyz, pc_rgb = agent.get_voxel_map().show()
         else:
-            pc_xyz, pc_rgb = agent.voxel_map.get_xyz_rgb()
+            pc_xyz, pc_rgb = agent.get_voxel_map().get_xyz_rgb()
 
         if pc_rgb is None:
             return
@@ -260,7 +260,7 @@ def demo_main(
         # Create pointcloud and write it out
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
-            agent.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.get_voxel_map().write_to_pickle(output_pkl_filename)
 
         if save:
             agent.save_map()
