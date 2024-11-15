@@ -32,8 +32,11 @@ def main(
         parameters=parameters,
     )
     demo = RobotAgent(robot, parameters, None)
+    print("Starting robot")
     demo.start(visualize_map_at_start=False)
+    print("Sending robot to home position")
     demo.move_closed_loop([0, 0, 0], max_time=60.0)
+    print("Stopping robot")
     robot.stop()
 
 

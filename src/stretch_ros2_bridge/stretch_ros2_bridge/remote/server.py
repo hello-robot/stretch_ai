@@ -8,7 +8,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 chris paxton for Hello Robot, under MIT license
+# (c) 2024 Hello Robot, under MIT license
 
 from typing import Any, Dict
 
