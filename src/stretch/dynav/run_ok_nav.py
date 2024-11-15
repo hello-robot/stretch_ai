@@ -42,6 +42,7 @@ def compute_tilt(camera_xyz, target_xyz):
 @click.option("--method", default="dynamem", type=str)
 @click.option("--env", default=1, type=int)
 @click.option("--test", default=1, type=int)
+@click.option("--llm", default="gpt-4o-mini", type=str)
 @click.option(
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
@@ -62,6 +63,7 @@ def main(
     test: int = 1,
     input_path: str = None,
     robot_ip: str = "",
+    llm: str = "gpt-4o-mini",
     **kwargs,
 ):
     """
@@ -107,7 +109,7 @@ def main(
     # img_thread.daemon = True
     # img_thread.start()
 
-    while True:
+    while robot.is_running():
         print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
         mode = input("select mode? E/N/S: ")
         mode = mode.upper()
@@ -135,7 +137,7 @@ def main(
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking=True)
+                robot.move_base_to(xyt, blocking=True)
 
             if input("You want to run manipulation: y/n") != "n":
                 robot.switch_to_manipulation_mode()
@@ -161,7 +163,7 @@ def main(
                 robot.switch_to_navigation_mode()
                 xyt = robot.get_base_pose()
                 xyt[2] = xyt[2] + np.pi / 2
-                robot.navigate_to(xyt, blocking=True)
+                robot.move_base_to(xyt, blocking=True)
 
             if input("You want to run placing: y/n") != "n":
                 robot.switch_to_manipulation_mode()

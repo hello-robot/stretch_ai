@@ -202,13 +202,16 @@ class ZmqServer(BaseZmqServer):
                 head_pan_cmd, head_tilt_cmd = action["head_to"]
             else:
                 head_pan_cmd, head_tilt_cmd = None, None
+
+            _is_blocking = action.get("blocking", False)
+
             # Now send all command fields here
             self.client.arm_to(
                 action["joint"],
                 gripper=gripper_cmd,
                 head_pan=head_pan_cmd,
                 head_tilt=head_tilt_cmd,
-                blocking=False,
+                blocking=_is_blocking,
             )
         elif "head_to" in action:
             # This will send head without anything else
@@ -217,7 +220,7 @@ class ZmqServer(BaseZmqServer):
             self.client.head_to(
                 action["head_to"][0],
                 action["head_to"][1],
-                blocking=False,
+                blocking=True,
             )
         elif "gripper" in action and "joint" not in action:
             if self.verbose or True:

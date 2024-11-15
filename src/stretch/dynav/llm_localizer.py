@@ -24,6 +24,10 @@ from torch import Tensor
 from transformers import AutoProcessor, Owlv2ForObjectDetection
 
 from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
+
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 generation_config = genai.GenerationConfig(temperature=0)
@@ -127,30 +131,30 @@ class LLM_Localizer:
         self.api_key_3 = os.getenv("GOOGLE_API_KEY_3")
         self.api_key = self.api_key_1
 
-        self.context_length = 60
+        self.context_length = 200
         self.count_threshold = 3
         if "gpt" in self.existence_checking_model:
             self.max_img_per_request = 30
         else:
-            self.max_img_per_request = 200
+            self.max_img_per_request = 60
 
         if exist_model == "gpt-4o":
-            print("WE ARE USING OPENAI GPT4o")
-            self.gpt_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            logger.alert("WE ARE USING OPENAI GPT4o")
+            self.gpt_client = OpenAI()
         elif exist_model == "gemini-1.5-pro":
-            print("WE ARE USING GEMINI 1.5 PRO")
+            logger.alert("WE ARE USING GEMINI 1.5 PRO")
 
         elif exist_model == "gemini-1.5-flash":
-            print("WE ARE USING GEMINI 1.5 FLASH")
+            logger.alert("WE ARE USING GEMINI 1.5 FLASH")
         else:
-            print("YOU ARE USING NOTHING!")
+            logger.warning("YOU ARE USING NOTHING!")
         self.location_checking_model = loc_model
         if loc_model == "owlv2":
             self.exist_processor = AutoProcessor.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
+                "google/owlv2-large-patch14-ensemble"
             )
             self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
+                "google/owlv2-large-patch14-ensemble"
             ).to(self.device)
             print("WE ARE USING OWLV2 FOR LOCALIZATION!")
         else:
