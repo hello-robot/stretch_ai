@@ -62,7 +62,7 @@ Click this thumbnail to see data collection teleop in action:
 [![Dex Teleop with Clutch and Base X motion](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://www.youtube.com/watch?v=ZQQWOkSkw5o)
 
 ```bash
-python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
+python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --task-name default_task
 ```
 
 A GUI displaying RGB and depth feeds from both cameras will now pop up. All commands are sent by pressing the keyboard with this GUI selected as the active window.

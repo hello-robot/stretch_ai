@@ -23,6 +23,19 @@ run_docker_command() {
     fi
 }
 
+# Parse command-line arguments
+update=false
+
+for arg in "$@"
+do
+    case $arg in
+        --update)
+            update=true
+            shift
+            ;;
+    esac
+done
+
 echo "===================================================="
 echo "Running Stretch AI docker container with GPU support"
 if [ -z "$DISPLAY" ]; then
@@ -58,8 +71,13 @@ fi
 
 echo "===================================================="
 echo "Running docker container with GPU support"
+
 # Make sure the image is up to date
-run_docker_command pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
+# Update the Docker image if --update flag is set
+if $update; then
+    run_docker_command pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
+fi
+
 # Run the container
 # The options mean:
 # -it: interactive mode

@@ -15,7 +15,7 @@ Advanced:
 - [Grasp an Object](#grasp-an-object) - Grasp an object with the robot.
 - [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
-- [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
+- [Pickup Objects](#pickup-toys) - Have the robot pickup toys lying on the floor and put them in a box.
 
 Finally:
 
@@ -228,7 +228,7 @@ python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --
 
 ### Pickup Objects
 
-This will have the robot move around the room, explore, and pickup toys in order to put them in a box.
+This will have the robot move around the room, explore, and pickup toys placed on the floor in order to put them in a box.
 
 ```bash
 python -m stretch.app.pickup --target_object toy
@@ -249,3 +249,17 @@ This is an experimental app that uses the voxel map to plan a path to a goal. It
 ```bash
 python -m stretch.app.vlm_planning
 ```
+
+### Open-Vocabulary Mobile Manipulation
+
+This is an experimental app that uses a language model to generate commands for the robot given a natural language input. It is not yet fully functional.
+
+```bash
+python -m stretch.app.ovmm
+```
+
+Options include:
+
+- `--robot_ip` - The IP address of the robot.
+- `--task` - The task to perform. Can be a natural language command for the robot.
+- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma2b`.
