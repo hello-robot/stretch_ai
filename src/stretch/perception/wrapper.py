@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 
+import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.perception.constants import RearrangeDETICCategories
@@ -57,10 +58,21 @@ class OvmmPerception:
                 confidence_threshold=confidence_threshold,
                 **module_kwargs,
             )
+
+        elif self._detection_module == "sam":
+            from stretch.perception.detection.sam import SAMPerception
+
+            self._segmentation = SAMPerception()
+
+        elif self._detection_module == "mobile_sam":
+            from stretch.perception.detection.mobile_sam import MobileSAMPerception
+
+            self._segmentation = MobileSAMPerception()
         elif self._detection_module == "sam2":
             from stretch.perception.detection.sam2 import SAM2Perception
 
             self._segmentation = SAM2Perception()
+
         elif self._detection_module == "yolo":
             from stretch.perception.detection.yolo.yolo_perception import YoloPerception
 
@@ -72,6 +84,22 @@ class OvmmPerception:
             )
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
+
+    def is_semantic_segmentation(self) -> bool:
+        """Whether the perception model is a semantic segmentation model."""
+        return self._segmentation.is_semantic()
+
+    def is_semantic(self) -> bool:
+        """Whether the perception model is a semantic segmentation model."""
+        return self.is_semantic_segmentation()
+
+    def is_instance_segmentation(self) -> bool:
+        """Whether the perception model is an instance segmentation model."""
+        return self._segmentation.is_instance()
+
+    def is_instance(self) -> bool:
+        """Whether the perception model is an instance segmentation model."""
+        return self.is_instance_segmentation()
 
     @property
     def current_vocabulary_id(self) -> int:
@@ -153,7 +181,7 @@ class OvmmPerception:
         rgb: torch.Tensor,
         depth: torch.Tensor,
         base_pose: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
         """Predict segmentation masks from RGB and depth images.
 
         Args:
@@ -222,6 +250,13 @@ def build_vocab_from_category_map(
 ) -> RearrangeDETICCategories:
     """
     Build vocabulary from category maps that can be used for semantic sensor and visualizations.
+
+    Args:
+        obj_id_to_name_mapping: mapping from object category IDs to object category names
+        rec_id_to_name_mapping: mapping from receptacle category IDs to receptacle category names
+
+    Returns:
+        RearrangeDETICCategories: vocabulary object
     """
     obj_rec_combined_mapping = {}
     for i in range(len(obj_id_to_name_mapping) + len(rec_id_to_name_mapping)):
@@ -245,16 +280,33 @@ def create_semantic_sensor(
     confidence_threshold: float = 0.5,
     **kwargs,
 ):
-    """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes."""
+    """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes.
+
+    Args:
+        parameters: Parameters object
+        category_map_file: path to category map file
+        device_id: GPU device ID
+        verbose: whether to print debug information
+        module_kwargs: additional arguments to pass to the segmentation model
+        config_path: path to config file
+        confidence_threshold: confidence threshold for detection
+        **kwargs: additional arguments
+
+    Returns:
+        OvmmPerception: segmentation sensor
+    """
     if verbose:
-        print("- Loading configuration")
+        print("[PERCEPTION] Loading configuration")
     if parameters is None:
         parameters = get_parameters(config_path)
     if category_map_file is None:
         category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
     if verbose:
-        print("- Create and load vocabulary and perception model")
+        logger.alert(
+            "[PERCEPTION] Create and load vocabulary and perception model:",
+            parameters["detection"]["module"],
+        )
     semantic_sensor = OvmmPerception(
         parameters=parameters,
         gpu_device_id=device_id,

@@ -284,7 +284,7 @@ class HelloStretchKinematics:
         q[HelloStretchIdx.GRIPPER] = self.range[HelloStretchIdx.GRIPPER][0]
         return q
 
-    def _update_joints(self):
+    def _update_joints(self, verbose: bool = False):
         """Get joint info from URDF or otherwise provide it"""
         self.joint_idx = [-1] * self.dof
         # Get the joint info we need from this
@@ -348,10 +348,11 @@ class HelloStretchKinematics:
 
         # TODO: gripper
         self.gripper_idx = []
-        for i in ["right", "left"]:
-            joint = self.ref.get_joint_info_by_name("joint_gripper_finger_%s" % i)
+        for side in ["right", "left"]:
+            joint = self.ref.get_joint_info_by_name("joint_gripper_finger_%s" % side)
             self.gripper_idx.append(joint.index)
-            print(i, joint.name, joint.lower_limit, joint.upper_limit)
+            if verbose:
+                print(side, joint.name, joint.lower_limit, joint.upper_limit)
             self.range[HelloStretchIdx.GRIPPER] = (
                 np.array([joint.lower_limit, joint.upper_limit]) * 0.5
             )
@@ -567,7 +568,7 @@ class HelloStretchKinematics:
         update_pb: bool = True,
         num_attempts: int = 1,
         verbose: bool = False,
-        node_name = None
+        custom_ee_frame: Optional[str] = None,
     ):
         """IK in manipulation mode. Takes in a 4x4 pose_query matrix in se(3) and initial
         configuration of the robot.
@@ -592,7 +593,12 @@ class HelloStretchKinematics:
             raise NotImplementedError()
 
         q, success, debug_info = self.manip_ik_solver.compute_ik(
-            pos, quat, q0, num_attempts=num_attempts, verbose=verbose, node_name = node_name
+            pos,
+            quat,
+            q0,
+            num_attempts=num_attempts,
+            verbose=verbose,
+            custom_ee_frame=custom_ee_frame,
         )
 
         if q is not None and success:

@@ -8,6 +8,9 @@
 # license information maybe found below, if so.
 
 import os
+import shutil
+from datetime import datetime
+from typing import Optional
 
 path = os.path.expanduser("~/.stretch")
 
@@ -19,7 +22,9 @@ def _ensure_path_exists() -> None:
         os.makedirs(path)
 
 
-def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: bool = True) -> str:
+def lookup_address(
+    robot_ip: str, use_remote_computer: bool = False, update: bool = True
+) -> Optional[str]:
     """Return the address of the robot. Will also create and update ~/.stretch/robot_ip.txt file to manage robot IP address.
 
     Args
@@ -37,6 +42,8 @@ def lookup_address(robot_ip: str, use_remote_computer: bool = False, update: boo
                     f.write(robot_ip)
         else:
             # Look up the robot computer in config directory
+            if not os.path.exists(os.path.expanduser("~/.stretch/robot_ip.txt")):
+                return None
             robot_ip = open(os.path.expanduser("~/.stretch/robot_ip.txt")).read().strip()
         recv_address = "tcp://" + robot_ip
     else:
@@ -63,3 +70,41 @@ def get_path_to_debug(name: str) -> str:
     _ensure_path_exists()
     os.makedirs(os.path.join(path, "debug"), exist_ok=True)
     return os.path.join(path, "debug", name)
+
+
+def get_path_to_default_credentials() -> str:
+    """Gets the path to the default credentials file"""
+    return os.path.join(path, "credentials.json")
+
+
+def get_path_to_saved_map() -> str:
+    """Gets the path to the saved map file"""
+    return os.path.join(path, "map.pkl")
+
+
+def get_path_to_backup_saved_map(timestamp: str) -> str:
+    """Backup the saved map file"""
+    return os.path.join(path, "backup", f"map_{timestamp}.pkl")
+
+
+def backup_saved_map() -> bool:
+    """Backup the saved map file to a new location.
+
+    Returns:
+        True if the file is backed up, False otherwise
+    """
+
+    # Create a timestamp for the backup
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    # Ensure the path exists
+    _ensure_path_exists()
+
+    # Create a backup directory if it doesn't exist
+    os.makedirs(os.path.join(path, "backup"), exist_ok=True)
+
+    # Check to see if a file exists first
+    if os.path.exists(get_path_to_saved_map()):
+        shutil.copyfile(get_path_to_saved_map(), get_path_to_backup_saved_map(timestamp))
+        return True
+    return False

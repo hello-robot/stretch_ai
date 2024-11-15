@@ -21,7 +21,14 @@ import stretch.motion.simple_ik as si
 import stretch.utils.logger as logger
 import stretch.utils.loop_stats as lt
 from stretch.agent.zmq_client import HomeRobotZmqClient
-from stretch.app.dex_teleop.hand_tracker import HandTracker
+
+try:
+    from stretch.app.dex_teleop.hand_tracker import HandTracker
+except ImportError as e:
+    print("Hand tracker not available. Please install its dependencies if you want to use it.")
+    print()
+    print("\tpython -m pip install .[hand_tracker]")
+    print()
 from stretch.core import get_parameters
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.utils.data_tools.record import FileDataRecorder
@@ -46,6 +53,8 @@ class ZmqRos2Leader:
         record_success: bool = False,
         platform: str = "linux",
         use_clutch: bool = False,
+        teach_grasping: bool = False,
+        teleop_factor: float = 0.5,
     ):
         self.robot = robot
         self.camera = None
@@ -59,6 +68,8 @@ class ZmqRos2Leader:
         self.platform = platform
         self.verbose = verbose
         self.use_clutch = use_clutch
+        self.teach_grasping = teach_grasping
+        self.teleop_factor = teleop_factor
 
         self.left_handed = left_handed
 
@@ -199,6 +210,7 @@ class ZmqRos2Leader:
             ignore_missing_joints=True,
         )
         new_goal_configuration = self.robot._robot_model.manip_ik_solver.q_array_to_dict(res)
+
         if not success:
             print("!!! BAD IK SOLUTION !!!")
             new_goal_configuration = None
@@ -210,22 +222,13 @@ class ZmqRos2Leader:
                 f"WARNING: IK failed to find a valid new_goal_configuration so skipping this iteration by continuing the loop. Input to IK: wrist_position = {wrist_position}, Output from IK: new_goal_configuration = {new_goal_configuration}"
             )
         else:
-            if self.teleop_mode == "base_x":
-                new_wrist_position_configuration = np.array(
-                    [
-                        new_goal_configuration["base_x_joint"],
-                        new_goal_configuration["joint_lift"],
-                        new_goal_configuration["joint_arm_l0"],
-                    ]
-                )
-            else:
-                new_wrist_position_configuration = np.array(
-                    [
-                        new_goal_configuration["base_theta_joint"],
-                        new_goal_configuration["joint_lift"],
-                        new_goal_configuration["joint_arm_l0"],
-                    ]
-                )
+            new_wrist_position_configuration = np.array(
+                [
+                    new_goal_configuration["joint_fake"],
+                    new_goal_configuration["joint_lift"],
+                    new_goal_configuration["joint_arm_l0"],
+                ]
+            )
 
             # Arm scaling
             new_wrist_position_configuration[2] = (
@@ -238,6 +241,23 @@ class ZmqRos2Leader:
             self.filtered_wrist_position_configuration = (
                 (1.0 - self.wrist_position_filter) * self.filtered_wrist_position_configuration
             ) + (self.wrist_position_filter * new_wrist_position_configuration)
+
+            if self.teleop_mode == "base_x":
+                new_goal_configuration["base_x_joint"] = (
+                    self.filtered_wrist_position_configuration[0] * self.teleop_factor
+                )
+                new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
+            elif self.teleop_mode == "rotary_base":
+                new_goal_configuration[
+                    "joint_mobile_base_rotate_by"
+                ] = self.filtered_wrist_position_configuration[0]
+                new_goal_configuration["base_x_joint"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
+            else:
+                new_goal_configuration["joint_mobile_base_rotate_by"] = 0.0
+                new_goal_configuration["base_x_joint"] = 0.0
+                new_goal_configuration["joint_mobile_base_translate_by"] = 0.0
 
             new_goal_configuration["joint_lift"] = self.filtered_wrist_position_configuration[1]
             new_goal_configuration["joint_arm_l0"] = self.filtered_wrist_position_configuration[2]
@@ -349,10 +369,6 @@ class ZmqRos2Leader:
                 new_goal_configuration["joint_wrist_pitch"] = self.filtered_wrist_orientation[1]
                 new_goal_configuration["joint_wrist_roll"] = self.filtered_wrist_orientation[2]
 
-                # new_goal_configuration["joint_wrist_yaw"] = wrist_yaw
-                # new_goal_configuration["joint_wrist_pitch"] = wrist_pitch
-                # new_goal_configuration["joint_wrist_roll"] = wrist_roll
-
                 self.prev_commanded_wrist_orientation = {
                     "joint_wrist_yaw": self.filtered_wrist_orientation[0],
                     "joint_wrist_pitch": self.filtered_wrist_orientation[1],
@@ -381,6 +397,17 @@ class ZmqRos2Leader:
         if self.use_clutch:
             hand_tracker = HandTracker(left_clutch=(not self.left_handed))
 
+        print("=== Starting Dex Teleop Leader ===")
+        print("Press spacebar to start/stop recording.")
+        if self.teach_grasping:
+            print("Press 1, 2, or 3 to teach PREGRASP, GRASP, or POSTGRASP.")
+        print("Press 0-9 to record waypoints.")
+        if self.record_success:
+            print("Press y/n to record success/failure of episode after each episode.")
+        if self.use_clutch:
+            print("Clutch mode enabled. Place an empty hand over the webcam to clutch.")
+        print("Press ESC to exit.")
+
         # loop stuff for clutch
         clutched = False
         clutch_debounce_threshold = 3
@@ -394,6 +421,8 @@ class ZmqRos2Leader:
 
         try:
             while True:
+                waypoint_key = None
+
                 loop_timer.mark_start()
 
                 # Get observation
@@ -459,6 +488,20 @@ class ZmqRos2Leader:
                     self._recording = False
                     print("[LEADER] Recording stopped. Terminating.")
                     break
+                else:
+                    for i in range(10):
+                        if key == ord(str(i)):
+                            if self.teach_grasping and i >= 1 and i <= 3:
+                                if i == 1:
+                                    print(f"[LEADER] Key {i} pressed. Teaching PREGRASP.")
+                                elif i == 2:
+                                    print(f"[LEADER] Key {i} pressed. Teaching GRASP.")
+                                elif i == 3:
+                                    print(f"[LEADER] Key {i} pressed. Teaching POSTGRASP.")
+                            else:
+                                print(f"[LEADER] Key {i} pressed. Recording waypoint {i}.")
+                            waypoint_key = i
+                            break
 
                 # Raw input from teleop
                 markers, color_image = self.webcam_aruco_detector.process_next_frame()
@@ -497,6 +540,8 @@ class ZmqRos2Leader:
                 if goal_dict["valid"]:
                     # get robot configuration
                     goal_configuration = self.get_goal_joint_config(**goal_dict)
+                    if goal_configuration is None:
+                        continue
 
                     # Format to standard action space
                     goal_configuration = dt_utils.format_actions(goal_configuration)
@@ -526,6 +571,8 @@ class ZmqRos2Leader:
                             robot_pose,
                             gripper=goal_configuration["stretch_gripper"],
                             head=constants.look_at_ee,
+                            blocking=False,  # We set this flag to False to make sure it doesn't block
+                            reliable=False,  # We set this flag to False so we dont wait for receipt
                         )
 
                         # Prep joint states as dict
@@ -546,8 +593,23 @@ class ZmqRos2Leader:
                                 ee_pos=observation.ee_camera_pose,
                                 ee_rot=observation.ee_camera_pose,
                             )
+
+                            # Record waypoint
+                            if waypoint_key is not None:
+                                print("[LEADER] Recording waypoint.")
+                                ok = self._recorder.add_waypoint(
+                                    waypoint_key,
+                                    robot_pose,
+                                    goal_configuration["stretch_gripper"],
+                                )
+                                if not ok:
+                                    logger.warning(
+                                        f"[LEADER] WARNING: overwriting previous waypoint {waypoint_key}."
+                                    )
                     else:
                         offset_pose = last_robot_pose - robot_pose
+                elif waypoint_key is not None:
+                    print("[LEADER] Recording waypoint failed. Commanded goal_dict was invalid.")
 
                 self.prev_goal_dict = goal_dict
 
@@ -581,7 +643,10 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--force", action="store_true", help="Force data recording.")
     parser.add_argument("-d", "--data-dir", type=str, default="./data")
     parser.add_argument(
-        "-s", "--save-images", action="store_true", help="Save raw images in addition to videos"
+        "-s",
+        "--skip-images",
+        action="store_true",
+        help="Do not save raw images in addition to videos",
     )
     parser.add_argument("-P", "--send_port", type=int, default=4402, help="Port to send goals to.")
     parser.add_argument(
@@ -591,10 +656,13 @@ if __name__ == "__main__":
         default="base_x",
         choices=["stationary_base", "rotary_base", "base_x"],
     )
-    parser.add_argument("--record-success", action="store_true", help="Record success of episode.")
+    parser.add_argument(
+        "--skip-success", action="store_true", help="Do not record success of episode."
+    )
     parser.add_argument("--show-aruco", action="store_true", help="Show aruco debug information.")
     parser.add_argument("--platform", type=str, default="linux", choices=["linux", "not_linux"])
     parser.add_argument("-c", "--clutch", action="store_true")
+    parser.add_argument("--teach-grasping", action="store_true")
     args = parser.parse_args()
 
     # Parameters
@@ -620,11 +688,12 @@ if __name__ == "__main__":
         task_name=args.task_name,
         env_name=args.env_name,
         force_record=args.force,
-        save_images=args.save_images,
+        save_images=(not args.skip_images),
         teleop_mode=args.teleop_mode,
-        record_success=args.record_success,
+        record_success=(not args.skip_success),
         platform=args.platform,
         use_clutch=args.clutch,
+        teach_grasping=args.teach_grasping,
     )
 
     try:

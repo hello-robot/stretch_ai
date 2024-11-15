@@ -29,22 +29,6 @@ def generate_launch_description():
         launch_arguments={"mode": "navigation", "broadcast_odom_tf": "True"}.items(),
     )
 
-    stretch_cameras_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("stretch_ros2_bridge"),
-                "launch/cameras.launch.py",
-            )
-        )
-    )
-
-    camera_pose_publisher_node = Node(
-        package="stretch_ros2_bridge",
-        executable="camera_pose_publisher",
-        name="camera_pose_publisher",
-        on_exit=launch.actions.Shutdown(),
-    )
-
     odometry_publisher_node = Node(
         package="stretch_ros2_bridge",
         executable="odom_tf_publisher",
@@ -68,9 +52,7 @@ def generate_launch_description():
     ld = LaunchDescription(
         [
             stretch_driver_launch,
-            stretch_cameras_launch,
             lidar_launch,
-            camera_pose_publisher_node,
             goto_controller_node,
             odometry_publisher_node,
         ]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script (c) 2024 Chris Paxton under the MIT license: https://opensource.org/licenses/MIT
+# This script (c) 2024 Hello Robot under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
@@ -7,13 +7,12 @@ CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
-VERSION=`python $script_dir/src/stretch/version.py`
+VERSION=`python3 $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
-INSTALL_PYTORCH3D="false"
-INSTALL_TORCH_GEOMETRIC="false"
 MAMBA=mamba
+NO_VERSION="false"
 # Two cases: -y for yes, --cpu for cpu only
 # One more: --conda for conda
 for arg in "$@"
@@ -40,8 +39,8 @@ do
             NO_SUBMODULES="true"
             shift
             ;;
-        --torch-geometric)
-            INSTALL_TORCH_GEOMETRIC="true"
+        --no-version)
+            NO_VERSION="true"
             shift
             ;;
         *)
@@ -56,11 +55,20 @@ if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu
     export CUDA_VERSION_NODOT=cpu
     export CUDA_HOME=""
+    if [ "$NO_VERSION" == "true" ]; then
+        ENV_NAME=stretch_ai_cpu
+    else
+        ENV_NAME=stretch_ai_cpu_${VERSION}
+    fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
     export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-    ENV_NAME=stretch_ai_${VERSION}
+    if [ "$NO_VERSION" == "true" ]; then
+        ENV_NAME=stretch_ai
+    else
+        ENV_NAME=stretch_ai_${VERSION}
+    fi
     export PYTORCH_VERSION=2.3.1
 fi
 
@@ -81,7 +89,7 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
-if [ $INSTALL_TORCH_GEOMETRIC == "true" ]; then
+if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
     echo "   - torch-geometric"
     echo "   - torch-cluster"
     echo "   - torch-scatter"
@@ -123,7 +131,7 @@ git lfs install
 # Only remove if NO_REMOVe is false
 if [ "$NO_REMOVE" == "false" ]; then
     echo "Removing existing environment..."
-    $MAMBA env remove -n $ENV_NAME -y
+    $MAMBA env remove -n $ENV_NAME -y || true
 fi
 # If using cpu only, create a separate environment
 if [ "$CPU_ONLY" == "true" ]; then
@@ -133,7 +141,8 @@ else
     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
-source activate $ENV_NAME
+echo "Activate env"
+source "`conda info --base`/bin/activate" $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
 pip install setuptools==69.5.1
@@ -142,19 +151,6 @@ echo ""
 echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
-
-# This is no longer necessary but might be useful for some checks
-if [ "$INSTALL_PYTORCH3D" == "true" ]; then
-    echo "Installing pytorch3d from source"
-    pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
-fi
-
-if [ "$INSTALL_TORCH_GEOMETRIC" == "true" ]; then
-    echo "Installing torch-geometric"
-    # If not using cpu only, install the following
-    # It is important to use --no-cache-dir to avoid issues different versions of pytorch and cuda
-    pip install torch_cluster torch_scatter torch_geometric -f https://pytorch-geometric.com/whl/torch-${PYTORCH_VERSION}+${CUDA_VERSION_NODOT}.html --no-cache-dir
-fi
 
 pip install -e ./src[dev]
 
@@ -170,7 +166,7 @@ else
     case $yn in
         y ) echo "Starting installation..." ;;
         n ) echo "Exiting...";
-            exit ;;
+            CPU_ONLY="true" ;;
         * ) echo Invalid response!;
             exit 1 ;;
     esac
@@ -211,5 +207,5 @@ echo "CUDA_HOME=$CUDA_HOME"
 echo "python=`which python`"
 echo "You can start using it with:"
 echo ""
-echo "     source activate $ENV_NAME"
+echo "     $MAMBA activate $ENV_NAME"
 echo "=============================================="

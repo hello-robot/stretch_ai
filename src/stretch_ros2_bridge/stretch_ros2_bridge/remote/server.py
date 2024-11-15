@@ -8,7 +8,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 chris paxton for Hello Robot, under MIT license
+# (c) 2024 Hello Robot, under MIT license
 
 from typing import Any, Dict
 
@@ -27,11 +27,20 @@ from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 class ZmqServer(BaseZmqServer):
     @override
-    def __init__(self, *args, **kwargs):
+    def __init__(self, use_d405: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # ROS2 client interface
-        self.client = StretchClient(d405=True)
+        self.client = StretchClient(d405=use_d405)
+        self.use_d405 = use_d405
+
+        # Check if the robot is homed
+        if not self.client.is_homed:
+            raise RuntimeError("Robot is not homed. Please home the robot first.")
+
+        # Check if the robot is runstopped
+        if self.client.is_runstopped:
+            raise RuntimeError("Robot is runstopped. Please unstop the robot first.")
 
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
@@ -83,7 +92,9 @@ class ZmqServer(BaseZmqServer):
             "compass": obs.compass,
             "rgb_width": width,
             "rgb_height": height,
-            "control_mode": self.get_control_mode(),
+            "lidar_points": obs.lidar_points,
+            "lidar_timestamp": obs.lidar_timestamp,
+            "pose_graph": self.client.get_pose_graph(),
             "last_motion_failed": self.client.last_motion_failed(),
             "recv_address": self.recv_address,
             "step": self._last_step,
@@ -105,18 +116,22 @@ class ZmqServer(BaseZmqServer):
             "at_goal": self.client.at_goal(),
             "is_homed": self.client.is_homed,
             "is_runstopped": self.client.is_runstopped,
+            "step": self._last_step,
         }
         return message
 
     @override
     def handle_action(self, action: Dict[str, Any]):
         """Handle an action from the client."""
+
         if "posture" in action:
             if action["posture"] == "manipulation":
+                self.client.stop()
                 self.client.switch_to_busy_mode()
                 self.client.move_to_manip_posture()
                 self.client.switch_to_manipulation_mode()
             elif action["posture"] == "navigation":
+                self.client.stop()
                 self.client.switch_to_busy_mode()
                 self.client.move_to_nav_posture()
                 self.client.switch_to_navigation_mode()
@@ -145,15 +160,22 @@ class ZmqServer(BaseZmqServer):
             self.client.load_map(action["load_map"])
         elif "say" in action:
             # Text to speech from the robot, not the client/agent device
+            print("Saying:", action["say"])
             self.text_to_speech.say_async(action["say"])
+        elif "say_sync" in action:
+            print("Saying:", action["say_sync"])
+            self.text_to_speech.say(action["say_sync"])
         elif "xyt" in action:
+            # Check control mode
+            if not self.client.in_navigation_mode():
+                self.client.switch_to_navigation_mode()
             if self.verbose:
                 print(
                     "Is robot in navigation mode?",
                     self.client.in_navigation_mode(),
                 )
                 print(f"{action['xyt']} {action['nav_relative']} {action['nav_blocking']}")
-            self.client.navigate_to(
+            self.client.move_base_to(
                 action["xyt"],
                 relative=action["nav_relative"],
             )
@@ -180,13 +202,16 @@ class ZmqServer(BaseZmqServer):
                 head_pan_cmd, head_tilt_cmd = action["head_to"]
             else:
                 head_pan_cmd, head_tilt_cmd = None, None
+
+            _is_blocking = action.get("blocking", False)
+
             # Now send all command fields here
             self.client.arm_to(
                 action["joint"],
                 gripper=gripper_cmd,
                 head_pan=head_pan_cmd,
                 head_tilt=head_tilt_cmd,
-                blocking=False,
+                blocking=_is_blocking,
             )
         elif "head_to" in action:
             # This will send head without anything else
@@ -195,7 +220,7 @@ class ZmqServer(BaseZmqServer):
             self.client.head_to(
                 action["head_to"][0],
                 action["head_to"][1],
-                blocking=False,
+                blocking=True,
             )
         elif "gripper" in action and "joint" not in action:
             if self.verbose or True:
@@ -243,7 +268,10 @@ class ZmqServer(BaseZmqServer):
         return d405_output
 
     def get_servo_message(self) -> Dict[str, Any]:
-        d405_output = self._get_ee_cam_message()
+        if self.use_d405:
+            d405_output = self._get_ee_cam_message()
+        else:
+            d405_output = {}
 
         obs = self.client.get_observation(compute_xyz=False)
         head_color_image, head_depth_image = self._rescale_color_and_depth(
@@ -267,8 +295,9 @@ class ZmqServer(BaseZmqServer):
             "head_cam/depth_image/shape": head_depth_image.shape,
             "head_cam/image_scaling": self.image_scaling,
             "head_cam/depth_scaling": self.depth_scaling,
-            "head_cam/pose": self.client.head.get_pose(rotated=False),
+            "head_cam/pose": self.client.head_camera_pose,
             "robot/config": obs.joint,
+            "step": self._last_step,
         }
         message.update(d405_output)
         return message

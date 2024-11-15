@@ -117,7 +117,11 @@ class YoloPerception(PerceptionModule):
 
         if pred[0].boxes is None or pred[0].masks is None:
             task_observations["semantic_frame"] = None
-            return None, None, task_observations
+            return (
+                np.zeros((rgb.shape[0], rgb.shape[1])),
+                -1 * np.ones((rgb.shape[0], rgb.shape[1])),
+                task_observations,
+            )
 
         class_idcs = pred[0].boxes.cls.cpu().numpy()
         masks = pred[0].masks.data.cpu().numpy()
@@ -146,6 +150,12 @@ class YoloPerception(PerceptionModule):
         task_observations["instance_scores"] = scores
 
         return semantic, instance, task_observations
+
+    def is_semantic(self):
+        return True
+
+    def is_instance(self):
+        return True
 
 
 def get_parser():

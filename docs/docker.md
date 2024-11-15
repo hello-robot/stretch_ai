@@ -2,6 +2,8 @@
 
 This is a guide to setting up a Docker container for running the Stretch software. This is useful for running the software on a computer that doesn't have the correct dependencies installed, or for running the software in a controlled environment.
 
+Hello Robot has a set of scripts for [building robot-side docker images](https://github.com/hello-robot/stretch_docker), which can be conconsidered separately. Here, we will go through what docker is, why we use it, and how to set it up on your client side to run AI code.
+
 ## What is Docker and Why Would I Use It?
 
 Docker is a tool that allows you to run software in a container. A container is a lightweight, standalone, executable package of software that includes everything needed to run the software, including the code, runtime, system tools, libraries, and settings. Containers are isolated from each other and from the host system, so they are a great way to run software in a controlled environment.
@@ -100,7 +102,7 @@ docker run \
     -it \
     --gpus all \
     --network host \
-    --env DISPLAY $DISPLAY \
+    --env DISPLAY "$DISPLAY" \
     hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
 
@@ -155,10 +157,10 @@ docker run -it -v /run/desktop/mnt/host/wslg/.X11-unix:/tmp/.X11-unix `
 
 ### Developing within Docker Container Environment
 
-If you want to use the Docker container as a development environment and retain the changes made in the root `stretch_ai` repository, run the Docker container with the following argument to mount the cloned stretch_ai repository from your host filesystem to the `/app` directory inside the Docker container.
+If you want to use the Docker container as a development environment and retain the changes made in the root `stretch_ai` repository, run the Docker container with the following argument to mount the cloned `stretch_ai` repository from your host filesystem to the `/app` directory inside the Docker container.
 
 ```bash
 docker run -v ~/stretch_ai:/app [other_docker_options]
 ```
 
-By mounting the repository this way, any changes you make to the files in the stretch_ai directory on your host will be immediately reflected in the `/app` directory inside the container. This allows you to see your changes live, run them and ensures they are not lost when you stop the container.
+By mounting the repository this way, any changes you make to the files in the `stretch_ai` directory on your host will be immediately reflected in the `/app` directory inside the container. This allows you to see your changes live, run them and ensures they are not lost when you stop the container.

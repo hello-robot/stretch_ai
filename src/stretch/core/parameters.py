@@ -14,6 +14,9 @@
 from typing import Any, Tuple
 
 from stretch.utils.config import get_config
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
 
 
 class Parameters(object):
@@ -23,20 +26,46 @@ class Parameters(object):
         self.data = kwargs
 
     def get(self, key: str, default: Any = None):
-        """Safe wrapper to dictionary, with defaults"""
+        """Safe wrapper to dictionary, with defaults. If the key is not found, it returns the default value.
+
+        Args:
+            key (str): the key to get
+            default (Any, optional): the default value. Defaults to None.
+
+        Returns:
+            Any: the value of the key
+        """
+        original_key = key
+        data = self.data
         if "/" in key:
             keys = key.split("/")
-            data = self.data[keys[0]]
+            for key in keys[:-1]:
+                if key not in data:
+                    logger.warning(
+                        "[Parameters] Key not found: " + str(original_key) + "; using default:",
+                        default,
+                    )
+                    return default
+                data = data[key]
             key = keys[-1]
-            if len(keys) > 2:
-                raise NotImplementedError(
-                    f"we dont yet support nested parameters to this depth: {len(keys)}"
-                )
-        else:
-            data = self.data
         if default is not None and key not in data:
             return default
         return data[key]
+
+    def set(self, key: str, value: Any):
+        """Safe wrapper to dictionary. Sets the value of the key.
+
+        Args:
+            key (str): the key to set
+            value (Any): the value
+        """
+        data = self.data
+        if "/" in key:
+            keys = key.split("/")
+            for key in keys[:-1]:
+                data = data[key]
+            key = keys[-1]
+        data[key] = value
 
     def __getitem__(self, key: str) -> Any:
         """Just a wrapper to the dictionary"""

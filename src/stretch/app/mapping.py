@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 Hello Robot by Chris Paxton
+# (c) 2024 Hello Robot
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -26,7 +26,6 @@ from stretch.perception import create_semantic_sensor
 @click.command()
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
 @click.option("--robot_ip", default="")
-@click.option("--rate", default=5, type=int)
 @click.option("--visualize", default=False, is_flag=True)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--output-filename", default="stretch_output", type=str)
@@ -34,10 +33,22 @@ from stretch.perception import create_semantic_sensor
 @click.option("--show-final-map", default=False, is_flag=True)
 @click.option("--show-paths", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
-@click.option("--explore-iter", default=-1)
+@click.option(
+    "--explore-iter",
+    "--explore_iter",
+    default=-1,
+    help="Number of exploration steps, i.e. times the robot will try to move to an unexplored frontier",
+)
+@click.option(
+    "--radius",
+    default=-1.0,
+    type=float,
+    help="Radius of the circle around initial position where the robot is allowed to go.",
+)
 @click.option("--navigate-home", default=False, is_flag=True)
 @click.option("--force-explore", default=False, is_flag=True)
 @click.option("--no-manip", default=False, is_flag=True)
+@click.option("--device-id", default=0, help="Device ID for the semantic sensor")
 @click.option(
     "--write-instance-images",
     default=False,
@@ -46,8 +57,16 @@ from stretch.perception import create_semantic_sensor
 )
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
+@click.option(
+    "--enable-realtime-updates",
+    "--enable_realtime-updates",
+    "--enable_realtime_updates",
+    is_flag=True,
+    help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
+)
+@click.option("--silent", is_flag=True, help="Disable audio feedback")
+@click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
-    rate,
     visualize,
     manual_wait,
     output_filename,
@@ -66,8 +85,14 @@ def main(
     local: bool = True,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
+    enable_realtime_updates: bool = False,
+    silent: bool = False,
+    save: bool = True,
+    radius: float = -1.0,
     **kwargs,
 ):
+
+    audio_feedback = not silent
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
@@ -77,12 +102,12 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
         enable_rerun_server=True,
+        publish_observations=enable_realtime_updates,
     )
     # Call demo_main with all the arguments
     demo_main(
         robot,
         parameters=parameters,
-        rate=rate,
         visualize=visualize,
         manual_wait=manual_wait,
         output_filename=output_filename,
@@ -98,14 +123,17 @@ def main(
         explore_iter=explore_iter,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
+        enable_realtime_updates=enable_realtime_updates,
         reset=reset,
+        radius=radius,
+        audio_feedback=audio_feedback,
+        save=save,
         **kwargs,
     )
 
 
 def demo_main(
     robot: AbstractRobotClient,
-    rate,
     visualize,
     manual_wait,
     output_filename,
@@ -118,11 +146,15 @@ def demo_main(
     random_goals: bool = True,
     force_explore: bool = False,
     no_manip: bool = False,
+    radius: float = -1.0,
     explore_iter: int = 10,
     write_instance_images: bool = False,
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
+    enable_realtime_updates: bool = False,
+    audio_feedback: bool = False,
+    save: bool = True,
     **kwargs,
 ):
     """
@@ -162,25 +194,29 @@ def demo_main(
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    grasp_client = None  # GraspPlanner(robot, env=None, semantic_sensor=semantic_sensor)
+    agent = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+    )
+    if radius is not None and radius > 0:
+        agent.set_allowed_radius(radius)
 
-    demo = RobotAgent(robot, parameters, semantic_sensor, grasp_client=grasp_client)
-    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
+    agent.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
     if reset:
-        demo.move_closed_loop([0, 0, 0], max_time=60.0)
+        agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     if object_to_find is not None:
         print(f"\nSearch for {object_to_find} and {location_to_place}")
-        matches = demo.get_found_instances_by_class(object_to_find)
+        matches = agent.get_found_instances_by_class(object_to_find)
         print(f"Currently {len(matches)} matches for {object_to_find}.")
     else:
         matches = []
 
     # Rotate in place
-    if parameters["in_place_rotation_steps"] > 0:
-        demo.rotate_in_place(
-            steps=parameters["in_place_rotation_steps"],
+    if parameters["agent"]["in_place_rotation_steps"] > 0:
+        agent.rotate_in_place(
+            steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
+            audio_feedback=audio_feedback,
         )
 
     # Run the actual procedure
@@ -188,26 +224,31 @@ def demo_main(
         if len(matches) == 0 or force_explore:
             if object_to_find is not None:
                 print(f"Exploring for {object_to_find}...")
-            demo.run_exploration(
-                rate,
+            agent.run_exploration(
                 manual_wait,
                 explore_iter=parameters["exploration_steps"],
                 task_goal=object_to_find,
+                random_goals=False,
                 go_home_at_end=navigate_home,
                 visualize=show_intermediate_maps,
+                audio_feedback=audio_feedback,
             )
         print("Done collecting data.")
         if object_to_find is not None:
-            matches = demo.get_found_instances_by_class(object_to_find)
+            matches = agent.get_found_instances_by_class(object_to_find)
             print("-> Found", len(matches), f"instances of class {object_to_find}.")
 
     except Exception as e:
         raise (e)
     finally:
+
+        # Stop updating the map
+        agent.stop_realtime_updates()
+
         if show_final_map:
-            pc_xyz, pc_rgb = demo.voxel_map.show()
+            pc_xyz, pc_rgb = agent.voxel_map.show()
         else:
-            pc_xyz, pc_rgb = demo.voxel_map.get_xyz_rgb()
+            pc_xyz, pc_rgb = agent.voxel_map.get_xyz_rgb()
 
         if pc_rgb is None:
             return
@@ -215,12 +256,15 @@ def demo_main(
         # Create pointcloud and write it out
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
-            demo.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.voxel_map.write_to_pickle(output_pkl_filename)
+
+        if save:
+            agent.save_map()
 
         if write_instance_images:
-            demo.save_instance_images(".")
+            agent.save_instance_images(".")
 
-        demo.go_home()
+        agent.go_home()
         robot.stop()
 
 

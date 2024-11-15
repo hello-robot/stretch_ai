@@ -7,7 +7,7 @@
 
 *This repository is currently under active development and is subject to change.*
 
-It is a pre-release codebase designed to enable developers to build intelligent behaviors on mobile robots in real homes. It contains code for:
+**Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
 - grasping
 - manipulation
@@ -17,191 +17,123 @@ It is a pre-release codebase designed to enable developers to build intelligent 
 - text to speech and speech to text
 - visualization and debugging
 
-This code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
+Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
-## Quickstart
+## Hardware Requirements
 
-After following the [installation instructions](#installation), start the server on your robot:
+We recommend the following hardware to run *stretch-ai*. Other GPUs and other versions of Stretch may support some of the capabilities found in this repository, but our development and testing have focused on the following hardware.
 
-```bash
-ros2 launch stretch_ros2_bridge server.launch.py
-```
+- **[Stretch 3](https://hello-robot.com/stretch-3-product) from [Hello Robot](https://hello-robot.com/)**
+  - When *Checking Hardware*, `stretch_system_check.py` should report that all hardware passes.
+- **Computer with an NVIDIA GPU**
+  - The computer should be running Ubuntu 22.04. Later versions might work, but have not been tested.
+  - Most of our testing has used a high-end CPU with an NVIDIA GeForce RTX 4090.
+- **Dedicated WiFi access point**
+  - Performance depends on high-bandwidth, low-latency wireless communication between the robot and the GPU computer.
+  - The official [Stretch WiFi Access Point](https://hello-robot.com/stretch-access-point) provides a tested example.
+- (Optional) [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit).
+  - To use the learning-from-demonstration (LfD) code you'll need the Stretch Dexterous Teleop Kit.
 
-Make sure the core test app runs:
+## Quick-start Guide
 
-```python
-python -m stretch.app.view_images --robot_ip $ROBOT_IP
-```
+Artificial intelligence (AI) for robots often has complex dependencies, including the need for trained models. Consequently, installing *stretch-ai* from source can be challenging.
 
-You should see windows popping up with camera viers from the robot, and the arm should move into a default position. The head should also turn to face the robot hand. If this all happens, you are good to go! Press `q` to quit the app.
+To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
-Then, on your PC, you can easily send commands and stream data:
+First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing the Docker Version of Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker_plus_virtenv.md)
 
-```python
-from stretch.agent import RobotClient
-robot = RobotClient(robot_ip="192.168.1.15")  # Replace with your robot's IP
-# On future connection attempts, the IP address can be left blank
-
-# Turn head towards robot's hand
-robot.move_to_manip_posture()
-
-# Move forward 0.1 along robot x axis in maniplation mode, and move arm to 0.5 meter height
-robot.arm_to([0.1, 0.5, 0, 0, 0, 0])
-
-# Turn head towards robot's base and switch base to navigation mode
-# In navigation mode, we can stream velocity commands to the base for smooth motions, and base
-# rotations are enabled
-robot.move_to_nav_posture()
-
-# Move the robot back to origin
-# navigate_to() is only allowed in navigation mode
-robot.navigate_to([0, 0, 0])
-
-# Move the robot 0.5m forward
-robot.navigate_to([0.5, 0, 0], relative=True)
-
-# Rotate the robot 90 degrees to the left
-robot.navigate_to([0, 0, 3.14159/2], relative=True)
-
-# And to the right
-robot.navigate_to([0, 0, -3.14159/2], relative=True)
-```
-
-## Apps
-
-After [installation](#installation), on the robot, run the server:
+Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. The following command starts the server:
 
 ```bash
-ros2 launch stretch_ros2_bridge server.launch.py
+./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-Then, first try these apps to make sure connections are working properly:
-
-- [Keyboard Teleop](#keyboard-teleop) - Teleoperate the robot with the keyboard.
-- [Print Joint States](#print-joint-states) - Print the joint states of the robot.
-- [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
-- [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
-- [Gripper](#use-the-gripper) - Open and close the gripper.
-- [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
-- [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
-
-Advanced:
-
-- [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
-- [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
-- [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
-
-Finally:
-
-- [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
-- [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
-
-There are also some apps for [debugging](docs/debug.md).
-
-## Installation
-
-### Temporary Note on ROS2 Version
-
-On the robot, we are *temporarily* using a new version of the [stretch_ros2](https://github.com/hello-robot/stretch_ros2/tree/feature/streaming_position) ROS package: the `feature/streaming_position` branch. This allows us to send smoother commands to the robot.
-
-On your robot, go to your `ament_ws` directory and checkout the `feature/streaming_position` branch:
+Then, you can start the client on your GPU computer.
 
 ```bash
-cd ~/ament_ws/src/stretch_ros2
-git checkout feature/streaming_position
+./scripts/run_stretch_ai_gpu_client.sh
 ```
 
-Then, build the workspace:
+**Experimental support for RE2:** The older model, Stretch 2, did not have an camera on the gripper. You can purchase a [Stretch 2 Upgrade Kit](https://hello-robot.com/stretch-2-upgrade) to give your Stretch 2 the capabilities of a Stretch 3. Alternatively, you can run a version of the server with no d405 camera support on your robot. Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
 
 ```bash
-cd ~/ament_ws
-colcon build --packages-select stretch_ros2
+./scripts/run_stretch_ai_ros2_bridge_server.sh --no-d405
 ```
 
-You can verify this has worked by running the `view_images` app. If the robot moves its arm, you are good to go!
+### Language-Directed Pick and Place
 
-### System Dependencies
+Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
 
-You need git-lfs:
+For this application, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
+
+While attempting to perform this task, Stretch will speak to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings on Stretch's computer should be set so that you can hear what Stretch says.
+
+Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
+
+You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot.
 
 ```bash
-sudo apt-get install git-lfs
-git lfs install
+./scripts/set_robot_ip.sh #.#.#.#
 ```
 
-You also need some system audio dependencies. These are necessary for [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/), which is used for audio recording and playback. On Ubuntu, you can install them with:
+*Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.*
+
+Next, run the application in the Docker container on your GPU computer.
 
 ```bash
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+python -m stretch.app.ai_pickup
 ```
 
-### Install Stretch AI
+It will first spend time downloading various models that it depends on. Once the program starts, you will be able to bring up a [Rerun-based GUI](https://rerun.io/) in your web browser.
 
-On both your PC and your robot, clone and install the package:
+![Rerun-based GUI for the ai_pickup app.](./docs/images/rerun_example.png)
+
+Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
+
+```
+Enter the target object: brown moose toy
+Enter the target receptacle: white laundry basket 
+```
+
+![Example of using the ai_pickup app with a toy moose and a laundry basket.](./docs/images/ai_pickup_moose_and_basket_example.jpg)
+
+At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
+
+Once you're ready to learn more about **Stretch AI**, you can try out the variety of applications (apps) that demonstrate various capabilities.
+
+#### Using an LLM
+
+You can use an LLM to provide free-form text input to the pick and place demo with the `--use_llm` command line argument.
+
+Running the following command will first download an open LLM model. Currently, the default model is [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct). Running this command downloads ~10GB of data. Using an ethernet cable instead of Wifi is recommended.
 
 ```bash
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
-
-# Install
-cd stretch_ai
-pip install ./src
+python -m stretch.app.ai_pickup --use_llm
 ```
 
-On your Stretch, symlink the `stretch_ros2_bridge` directory to your ament workspace and build:
+Once it's ready, you should see the prompt `You:` after which you can write your text request. Pressing the `Enter` key on your keyboard will provide your request to the robot.
 
-```bash
-cd stretch_ai
-ln -s `pwd`/src/stretch_ros2_bridge $HOME/ament_ws/src/stretch_ros2_bridge
-cd ~/ament_ws
-colcon build --symlink-install --packages-select stretch_ros2_bridge
-```
-
-More instructions on the ROS2 bridge are in [its dedicated readme](src/stretch_ros2_bridge/README.md).
-
-### Using LLMs
-
-We use many open-source LLMs from [Huggingface](https://huggingface.co/). TO use them, you will need to make sure `transformers` is installed and up to date. You can install it with:
-
-```bash
-pip install transformers --upgrade
-```
-
-You will need to go to the associated websites and accept their license agreements.
-
-- [Gemma 2](https://huggingface.co/google/gemma-2b)
-- [Llama 3.1](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B)
-
-Then you need to login to the huggingface CLI:
-
-```bash
-huggingface-cli login
-```
-
-This will require a personal access token created on the Huggingface website. After this, you can test LLM chat APIs via:
-
-```bash
-# Start a local chat with Gamma 2-2B -- requires ~5gb GPU memory
-python -m stretch.llms.gemma_client
-
-# Start a local chat with Llama 3.1 8B -- requires a bigger GPU
-python -m stretch.llms.llama_client
-```
-
-### Advanced Installation (PC Only)
-
-If you want to install AI code using pytorch, run the following on your GPU-enabled workstation:
+For example, the following requests have been successful for other users.
 
 ```
-./install.sh
+You: pick up the toy chicken and put it in the white laundry basket
 ```
 
-Caution, it may take a while! Several libraries are built from source to avoid potential compatibility issues.
+```
+You: Find a toy chicken
+```
 
-You may need to configure some options for the right pytorch/cuda version. Make sure you have CUDA installed on your computer, preferably 11.8. For issues, see [docs/about_advanced_installation.md](docs/about_advanced_installation.md).
+Currently, the prompt used by the LLM encourages the robot to both pick and place, so you may find that a primitive request results in the full demonstration task.
 
-## Stretch AI Apps
+You can find the prompt used by the LLM at the following location. When running your Docker image in the development mode or running *stretch-ai* from source, you can modify this file to see how it changes the robot's behavior.
+
+[./src/stretch/llms/prompts/pickup_prompt.py](./src/stretch/llms/prompts/pickup_prompt.py)
+
+## List of Stretch AI Apps
 
 Stretch AI is a collection of tools and applications for the Stretch robot. These tools are designed to be run on the robot itself, or on a remote computer connected to the robot. The tools are designed to be run from the command line, and are organized as Python modules. You can run them with `python -m stretch.app.<app_name>`.
+
+A large number of [apps](docs/apps.md) are available for the Stretch robot, providing various features and an easy way to get started using the robot. You can check out a full list in the [apps documentation](docs/apps.md).
 
 Some, like `print_joint_states`, are simple tools that print out information about the robot. Others, like `mapping`, are more complex and involve the robot moving around and interacting with its environment.
 
@@ -212,33 +144,51 @@ export ROBOT_IP=192.168.1.15
 python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
 ```
 
-### Debugging Tools
+### Starting with Apps
 
-#### Keyboard Teleop
-
-Use the WASD keys to move the robot around.
+After [installation](#installation), on the robot, run the server:
 
 ```bash
-python -m stretch.app.keyboard_teleop --robot_ip $ROBOT_IP
+# If you did a manual install
+ros2 launch stretch_ros2_bridge server.launch.py
 
-# You may also run in a headless mode without the OpenCV gui
-python -m stretch.app.keyboard_teleop --headless
+# Alternately, via Docker -- will be slow the first time when image is downloaded!
+./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-Remember, you should only need to provide the IP address the first time you run any app from a particular endpoint (e.g., your laptop).
+Then, try the `view_images` app to make sure connections are working properly:
 
-#### Print Joint States
+- [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 
-To make sure the robot is connected or debug particular behaviors, you can print the joint states of the robot with the `print_joint_states` tool:
+Next you can run the AI demo:
+
+- [Pickup Objects](#pickup-toys) - Have the robot pickup toys and put them in a box.
+
+Finally:
+
+- [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
+- [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
+- [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
+- [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
+
+See the [apps documentation](docs/apps.md) for a complete list. There are also some apps for [debugging](docs/debug.md).
+
+
+### Autonomous 3D Mapping
+
+With `stretch-ai`, your Stretch robot can autonomously create a 3D map while exploring an area. Currently, these capabilities work best over smaller areas, such as a room in a house.
+
+To test out this capability, we recommend that you first run the autonomous mapping code over a limited radius. For example, the following code will limit the exploration to a 2 meter radius. Stretch will spin around to scan an area and then move to a new area to scan, which it refers to as the frontier. Once Stretch has scanned all of the frontier within the provided radius, it will save a map file as a pickle file (.pkl), and then navigate back home, as defined by the origin of the map (0,0,0). 
 
 ```bash
-python -m stretch.app.print_joint_states --robot_ip $ROBOT_IP
+python -m stretch.app.mapping --radius 2.0
 ```
+You can now visualize the 3D map file Stretch saved with a command like the following. The name of your map file will look similar to `stretch_output_2024-10-31_19-49-08.pkl`, but with the date and time at which your map was created. 
 
-You can also print out just one specific joint. For example, to just get arm extension in a loop, run:
+This visualization uses Open3D. Green represents traversable floor. Red represents regions of the floor that should not be traversed. Cyan represents a frontier region that could be further explored.
 
-```
-python -m stretch.app.print_joint_states --joint arm
+```bash
+python -m stretch.app.read_map -i ./stretch_output_DATE_TIME.pkl --show-svm
 ```
 
 #### Visualization and Streaming Video
@@ -261,59 +211,6 @@ You can visualize gripper Aruco markers as well; the aruco markers can be used t
 python -m stretch.app.view_images --robot_ip $ROBOT_IP --aruco
 ```
 
-#### Show Point Cloud
-
-Show a joint point cloud from the end effector and head cameras. This will open an Open3d window with the point cloud, aggregated between the two cameras and displayed in world frame. It will additionally show the map's origin with a small coordinate axis; the blue arrow points up (z), the red arrow points right (x), and the green arrow points forward (y).
-
-```bash
-python -m stretch.app.show_point_cloud
-```
-
-You can use the `--reset` flag to put the robot into its default manipulation posture on the origin (0, 0, 0). Note that this is a blind, unsafe motion! Use with care.
-
-```bash
-python -m stretch.app.show_point_cloud --reset
-```
-
-#### Use the Gripper
-
-Open and close the gripper:
-
-```
-python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
-python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
-```
-
-Alternately:
-
-```
-python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
-python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
-```
-
-#### Rerun Web Server
-
-We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
-
-```bash
-python -m stretch.app.rerun --robot_ip $ROBOT_IP
-```
-
-You should see something like this:
-
-```
-[2024-07-29T17:58:34Z INFO  re_ws_comms::server] Hosting a WebSocket server on ws://localhost:9877. You can connect to this with a native viewer (`rerun ws://localhost:9877`) or the web viewer (with `?url=ws://localhost:9877`).
-[2024-07-29T17:58:34Z INFO  re_sdk::web_viewer] Hosting a web-viewer at http://localhost:9090?url=ws://localhost:9877
-```
-
-### Voice Chat
-
-Chat with the robot using LLMs.
-
-```bash
-python -m stretch.app.voice_chat
-```
-
 ### Dex Teleop for Data Collection
 
 Dex teleop is a low-cost system for providing user demonstrations of dexterous skills right on your Stretch. This app requires the use of the [dex teleop kit](https://hello-robot.com/stretch-dex-teleop-kit).
@@ -332,23 +229,6 @@ python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x -
 
 After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
 
-### Automatic 3d Mapping
-
-```bash
-python -m stretch.app.mapping
-```
-
-You can show visualizations with:
-
-```bash
-python -m stretch.app.mapping --show-intermediate-maps --show-final-map
-```
-
-The flag `--show-intermediate-maps` shows the 3d map after each large motion (waypoint reached), and `--show-final-map` shows the final map after exploration is done.
-
-It will record a PCD/PKL file which can be interpreted with the `read_map` script; see below.
-
-Another useful flag when testing is the `--reset` flag, which will reset the robot to the starting position of (0, 0, 0). This is done blindly before any execution or mapping, so be careful!
 
 ### Voxel Map Visualization
 

@@ -32,10 +32,17 @@ repos:
     rev: v0.981
     hooks:
       - id: mypy
-        entry: mypy
         types: [python]
-        language: system
-        exclude: ^src/stretch/perception/detection/detic/Detic|^src/stretch/app|^src/stretch_ros2_bridge|^third_party/|^src/stretch/agent|^src/stretch/mapping|^src/stretch/perception|^src/stretch/visualization
+        exclude: >
+          (?x)^(
+            src/stretch/perception/detection/detic/Detic|
+            src/stretch/app|
+            src/stretch_ros2_bridge|
+            third_party/|
+            src/stretch/agent|
+            src/stretch/perception|
+            src/stretch/visualization
+          )
         args:
           - --ignore-missing-imports
           - --install-types
@@ -55,16 +62,18 @@ repos:
       - id: beautysh 
 
   # Mdformat formats Markdown files 
-  - repo: https://github.com/executablebooks/mdformat 
-    rev: 0.7.16 
-    hooks: 
-      - id: mdformat 
+  #- repo: https://github.com/executablebooks/mdformat 
+  #  rev: 0.7.16 
+  #  hooks: 
+  #    - id: mdformat 
 
   # Codespell checks the code for common misspellings 
   - repo: https://github.com/codespell-project/codespell 
     rev: v2.2.4 
     hooks: 
       - id: codespell 
+        args: 
+          - --ignore-words=.codespell-ignore-words.txt
         exclude: > 
           (?x)^( 
             | .*\.svg 

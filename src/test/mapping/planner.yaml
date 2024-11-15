@@ -4,6 +4,14 @@
 #encoder_args:
 #  version: "ViT-B/32"
 encoder: "siglip"
+encoder_args:
+  version: "base"
+  matching:
+    # Feature matching threshold for if something is considered a particular class
+    # Set this value by experimting with:
+    #   python -m stretch.app.query --threshold 0.05
+    # You can change the threshold to anything that makes sense.
+    feature_match_threshold: 0.05
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
@@ -12,7 +20,9 @@ voxel_size: 0.05
 # 0.05 seems too low
 obs_min_height: 0.1  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
+neg_obs_height: -0.05  # Things less than this height ARE obstacles
 obs_min_density: 10  # This many points makes it an obstacle
+min_points_per_voxel: 25  # Drop things below this density per voxel
 
 # Padding
 # pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
@@ -20,6 +30,7 @@ pad_obstacles: 1  # Add this many units (voxel_size) to the area around obstacle
 min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
+add_local_every_step: True
 remove_visited_from_obstacles: False
 min_depth: 0.5
 # max_depth: 2.5
@@ -61,7 +72,10 @@ motion:
     head_not_moving_tolerance: 1.0e-4
 
 # Exploration
-in_place_rotation_steps: 8
+agent:
+  use_realtime_updates: False
+  in_place_rotation_steps: 2
+  sweep_head_on_update: True
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
@@ -73,33 +87,33 @@ instance_memory:
   max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.1
-  matching:
-    # Feature matching threshold for if something is considered a particular class
-    # Set this value by experimting with:
-    #   python -m stretch.app.query --threshold 0.05
-    # You can change the threshold to anything that makes sense.
-    feature_match_threshold: 0.05
 
 # TAMP parameters
 guarantee_instance_is_reachable: True
-plan_with_reachable_instances: True
-plan_with_scene_graph: True
+use_scene_graph: True
 scene_graph:
   max_near_distance: 0.3
   min_on_height: 0.05
   max_on_height: 0.2
 
 # Navigation space - used for motion planning and computing goals.
-step_size: 0.1
-rotation_step_size: 0.2 
-dilate_frontier_size: 3  # Used to shrink the frontier back from the edges of the world
-dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
 motion_planner:
+  step_size: 0.1
+  rotation_step_size: 0.2 
+  dilate_frontier_size: 3  # Used to shrink the frontier back from the edges of the world
+  dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
   simplify_plans: True
+  simplify:
+    max_step: 0.5
+    min_step: 0.05
+    num_steps: 8
+    min_angle: 0.1
   shortcut_plans: True
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
+    dilate_frontier_size: 4  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 5  # Used when selecting goals and computing what the "frontier" is 
     default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1

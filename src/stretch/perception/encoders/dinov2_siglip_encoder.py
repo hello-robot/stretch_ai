@@ -20,7 +20,9 @@ from .base_encoder import BaseImageTextEncoder
 class Dinov2SigLIPEncoder(BaseImageTextEncoder):
     """Simple wrapper for encoding different things as text."""
 
-    def __init__(self, version="google/siglip-base-patch16-224", device: Optional[str] = None):
+    def __init__(
+        self, version="google/siglip-base-patch16-224", device: Optional[str] = None, **kwargs
+    ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
@@ -61,3 +63,8 @@ class Dinov2SigLIPEncoder(BaseImageTextEncoder):
         with torch.no_grad():
             outputs = self.visual_feat_model(**inputs)
         return outputs.last_hidden_state.mean(dim=1).float()
+
+    def compute_score(self, text: str, image: np.ndarray):
+        text_features = self.encode_text(text)
+        image_features = self.encode_image(image)
+        return torch.nn.functional.cosine_similarity(text_features, image_features).item()

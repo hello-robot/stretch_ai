@@ -9,14 +9,9 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from stretch.agent.operations import (
-    AvertGazeOperation,
-    NodHeadOperation,
-    ShakeHeadOperation,
-    WaveOperation,
-)
+
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.emote import EmoteManager
+from stretch.agent.task.emote import EmoteTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 
@@ -39,23 +34,18 @@ def main(
     # create robot agent
     demo = RobotAgent(robot, parameters=parameters)
 
-    # create task manager
-    manager = EmoteManager(demo)
-    task = manager.get_task(NodHeadOperation("emote", manager))
-
-    # run task
+    # create emote task
+    emote_task = EmoteTask(demo)
+    task = emote_task.get_task("nod")
     task.run()
 
-    task = manager.get_task(ShakeHeadOperation("emote", manager))
-
+    task = emote_task.get_task("shake_head")
     task.run()
 
-    task = manager.get_task(WaveOperation("emote", manager))
-
+    task = emote_task.get_task("wave")
     task.run()
 
-    task = manager.get_task(AvertGazeOperation("emote", manager))
-
+    task = emote_task.get_task("avert_gaze")
     task.run()
 
 

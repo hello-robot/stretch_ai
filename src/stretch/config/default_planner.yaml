@@ -4,39 +4,55 @@
 #encoder_args:
 #  version: "ViT-B/32"
 encoder: "siglip"
+encoder_args:
+  # Version options are ["base", "so400m"]
+  version: "so400m"
+  # Feature matching threshold for if something is considered a particular class
+  # Set this value by experimting with:
+  #   python -m stretch.app.query --threshold 0.05
+  # You can change the threshold to anything that makes sense.
+  feature_match_threshold: 0.1
+  # version: "base"
+  # feature_match_threshold: 0.05
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
-voxel_size: 0.05
-# 0.05 seems too low
-obs_min_height: 0.1  # Ignore things less than this high when planning motions
+voxel_size: 0.04 # Size of a voxel in meters
+obs_min_height: 0.10  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
+neg_obs_height: -0.05  # Things less than this height ARE obstacles
+use_negative_obstacles: True  # Use the negative height as an obstacle
 obs_min_density: 10  # This many points makes it an obstacle
+min_points_per_voxel: 15  # Drop things below this density per voxel
 
 # Padding
-# pad_obstacles: 2  # Add this many units (voxel_size) to the area around obstacles
-pad_obstacles: 1  # Add this many units (voxel_size) to the area around obstacles
-min_pad_obstacles: 0  # Do not pad LESS than this amount, for safety.
+pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacles
+min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
+add_local_every_step: False
 remove_visited_from_obstacles: False
 min_depth: 0.5
-# max_depth: 2.5
 max_depth: 2.0
 
 # Object detection parameters
 detection:
+  # module: "mobile_sam"
   module: "detic"
+  # module: "yolo"
   category_map_file: example_cat_map.json
-  use_detic_viz: True
+  use_detic_viz: False
 
 # Point cloud cleanup
 filters:
-  smooth_kernel_size: 2
-  #smooth_kernel_size: 0
+  # Use a simple convolutional filter
+  smooth_kernel_size: 3
+  # smooth_kernel_size: 4
+  # smooth_kernel_size: 0
   use_median_filter: True
-  median_filter_size: 2
+  median_filter_size: 4
+  # median_filter_size: 2
   median_filter_max_error: 0.01
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
@@ -45,30 +61,46 @@ filters:
 # Motion convergence parameters
 # These are to make sure the robot is not doing anything weird
 motion:
-  moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
-  angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
+  moving_threshold: 0.01  # How much the robot has to move to be considered "moving"
+  angle_threshold: 0.1  # How much the robot has to rotate to be considered "rotating"
   min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
-    arm: 0.005
-    base_x: 0.005
-    lift: 0.005
-    wrist_roll: 0.01
-    wrist_pitch: 0.01
-    wrist_yaw: 0.01
+    arm: 0.02
+    base_x: 0.02
+    lift: 0.02
+    wrist_roll: 0.1
+    wrist_pitch: 0.1
+    wrist_yaw: 0.1
     # arm: 0.05
     # base_x: 0.05
     # lift: 0.05
     # wrist_roll: 0.25
     # wrist_pitch: 0.25
     # wrist_yaw: 0.05
-    head_pan: 0.1
-    head_tilt: 0.1
+    head_pan: 0.01
+    head_tilt: 0.01
   joint_thresholds:
     head_not_moving_tolerance: 1.0e-4
     gripper_open_threshold: 0.3
 
 # Exploration
-in_place_rotation_steps: 8
+agent:
+  realtime:
+    # This is the distance to pose graph nodes
+    matching_distance: 0.5
+    # This was 0.05 in Atharva's experiments
+    # It is how close lidar spins have to be to be considered the same
+    temporal_threshold: 0.1
+    # Maximum number of observations to match with a pose graph node
+    maximum_matched_observations: 10
+    # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
+    camera_pose_match_threshold: 0.1
+  use_realtime_updates: True
+  realtime_rotation_steps: 4
+  in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
+  sweep_head_on_update: False
+  # in_place_rotation_steps: 4
+  # sweep_head_on_update: True
 
 # Instance memory parameters
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
@@ -80,39 +112,42 @@ instance_memory:
   max_instance_height: 1.8
   min_pixels_for_instance_view: 100
   min_percent_for_instance_view: 0.1
-  matching:
-    # Feature matching threshold for if something is considered a particular class
-    # Set this value by experimting with:
-    #   python -m stretch.app.query --threshold 0.05
-    # You can change the threshold to anything that makes sense.
-    feature_match_threshold: 0.05
+  # Should we remove the background from the instance views?
+  # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
+  # It will have an effect on performance.
+  mask_cropped_instances: False  # Should we remove the background from the instance views?
 
 # TAMP parameters
 guarantee_instance_is_reachable: True
-plan_with_reachable_instances: True
-plan_with_scene_graph: True
+use_scene_graph: True
 scene_graph:
   max_near_distance: 0.3
   min_on_height: 0.05
   max_on_height: 0.2
 
 # Navigation space - used for motion planning and computing goals.
-step_size: 0.1
-rotation_step_size: 0.2 
-dilate_frontier_size: 3  # Used to shrink the frontier back from the edges of the world
-dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
 motion_planner:
+  step_size: 0.05
+  rotation_step_size: 0.1
   simplify_plans: True
   shortcut_plans: True
+  simplify:
+    max_step: 0.5
+    min_step: 0.05
+    num_steps: 8
+    min_angle: 0.1
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
-    default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
+    dilate_frontier_size: 2  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
+    default_expand_frontier_size: 12  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
-    step_dist: 0.1
+    step_dist: 0.2
   goals:
+    # manipulation_radius: 0.45
     manipulation_radius: 0.55
 
 # Trajectory following - how closely we follow intermediate waypoints
@@ -125,9 +160,6 @@ trajectory_per_step_timeout: 3.0
 # User interface
 # Choose one of: (object_to_find, location_to_place), command, or chat
 # Don't use all of them!
-vlm_context_length: 20  # How long messages sent to the vlm server can be if we are using it
-limited_obs_publish_sleep: 0.5
-
 # High level stuff: commands to execute 
 exploration_steps: 50
 name: "stretch"

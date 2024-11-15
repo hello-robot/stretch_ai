@@ -36,7 +36,7 @@ class SimplifyXYT(Planner):
         self,
         planner: Planner,
         min_step: float = 0.1,
-        max_step: float = 1.0,
+        max_step: float = 0.5,
         num_steps: int = 6,
         min_angle: float = np.deg2rad(5),
     ):
@@ -49,6 +49,10 @@ class SimplifyXYT(Planner):
 
     def reset(self):
         self.nodes = None
+
+    @property
+    def space(self):
+        return self.planner.space
 
     def _verify(self, new_nodes):
         """Check to see if new nodes are spaced enough apart and nothing is within min_dist"""

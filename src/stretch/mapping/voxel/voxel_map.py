@@ -12,7 +12,9 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import math
-from typing import Optional, Tuple
+import time
+from collections import deque
+from typing import Dict, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,7 +46,7 @@ class SparseVoxelMapNavigationSpace(XYT):
     def __init__(
         self,
         voxel_map: SparseVoxelMap,
-        robot: RobotModel,
+        robot: Optional[RobotModel],
         grid: Optional[GridParams] = None,
         step_size: float = 0.1,
         rotation_step_size: float = 0.5,
@@ -64,6 +66,9 @@ class SparseVoxelMapNavigationSpace(XYT):
             grid = self.voxel_map.grid
         self.grid = grid
 
+        # Create a stack for storing states to sample
+        self._stack: deque[np.ndarray] = deque()
+
         # Always use 3d states
         self.use_orientation = use_orientation
         if self.use_orientation:
@@ -71,7 +76,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             self.dof = 2
 
-        self._kernels = {}
+        self._kernels: Dict[int, torch.nn.Parameter] = {}
 
         if dilate_frontier_size > 0:
             self.dilate_explored_kernel = torch.nn.Parameter(
@@ -268,7 +273,18 @@ class SparseVoxelMapNavigationSpace(XYT):
         y1 = y0 + dim
 
         if obstacles is None:
-            obstacles, explored = self.voxel_map.get_2d_map()
+            attempt = 0
+            max_attempts = 10
+            while True:
+                try:
+                    obstacles, explored = self.voxel_map.get_2d_map()
+                    break
+                except Exception as e:
+                    attempt += 1
+                    if attempt > max_attempts:
+                        raise e
+                    print(f"Error getting 2d map: {e}. Retrying...")
+                    time.sleep(0.2)
 
         crop_obs = obstacles[x0:x1, y0:y1]
         crop_exp = explored[x0:x1, y0:y1]
@@ -808,14 +824,29 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             yield None
 
+    def push_locations_to_stack(self, locations: list[Union[np.ndarray, torch.Tensor]]):
+        """Push locations to stack for sampling.
+
+        Args:
+            locations(list): list of locations to push to stack
+        """
+        for loc in locations:
+            if isinstance(loc, torch.Tensor):
+                loc = loc.cpu().numpy()
+            self._stack.append(loc)
+
     def sample(self) -> np.ndarray:
         """Sample any position that corresponds to an "explored" location. Goals are valid if they are within a reasonable distance of explored locations. Paths through free space are ok and don't collide.
 
         Since our motion planners currently use numpy, we'll stick with that for the return type for now.
         """
 
+        if len(self._stack) > 0:
+            state = self._stack.pop()
+            return state
+
         # Sample any point which is explored and not an obstacle
-        # Sampled points are convertd to CPU for now
+        # Sampled points are converted to CPU for now
         point = self.voxel_map.sample_explored()
 
         # Create holder

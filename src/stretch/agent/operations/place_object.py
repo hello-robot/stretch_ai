@@ -14,6 +14,8 @@ from typing import Optional
 import numpy as np
 
 from stretch.agent.base import ManagedOperation
+from stretch.agent.robot_agent import RobotAgent
+from stretch.mapping.instance import Instance
 from stretch.motion import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
 
@@ -24,9 +26,17 @@ class PlaceObjectOperation(ManagedOperation):
     lift_distance: float = 0.2
     place_height_margin: float = 0.1
     show_place_in_voxel_grid: bool = False
-    place_step_size: float = 0.25
+    place_step_size: float = 0.35
     use_pitch_from_vertical: bool = True
     verbose: bool = True
+    talk: bool = True
+
+    # Do we require an object to be present?
+    require_object: bool = True
+
+    def __init__(self, name, agent: RobotAgent, require_object: bool = True, *args, **kwargs):
+        super().__init__(name, agent, *args, **kwargs)
+        self.require_object = require_object
 
     def configure(
         self,
@@ -35,6 +45,7 @@ class PlaceObjectOperation(ManagedOperation):
         show_place_in_voxel_grid: bool = False,
         place_step_size: float = 0.25,
         use_pitch_from_vertical: bool = True,
+        require_object: bool = True,
     ):
         """Configure the place operation.
 
@@ -50,9 +61,11 @@ class PlaceObjectOperation(ManagedOperation):
         self.show_place_in_voxel_grid = show_place_in_voxel_grid
         self.place_step_size = place_step_size
         self.use_pitch_from_vertical = use_pitch_from_vertical
+        self.require_object = require_object
 
-    def get_target(self):
-        return self.manager.current_receptacle
+    def get_target(self) -> Instance:
+        """Get the target object to place."""
+        return self.agent.current_receptacle
 
     def get_target_center(self):
         return self.get_target().point_cloud.mean(axis=0)
@@ -95,8 +108,11 @@ class PlaceObjectOperation(ManagedOperation):
         self.attempt(
             "will start placing the object if we have object and receptacle, and are close enough to drop."
         )
-        if self.manager.current_object is None or self.manager.current_receptacle is None:
-            self.error("Object or receptacle not found.")
+        if self.agent.current_object is None and self.require_object:
+            self.error("Object not found.")
+            return False
+        if self.agent.current_receptacle is None:
+            self.error("Receptacle not found.")
             return False
         # TODO: this should be deteriministic
         # It currently is, but if you change this to something sampling-base dwe must update the test
@@ -147,6 +163,8 @@ class PlaceObjectOperation(ManagedOperation):
         # Switch to place position
         print(" - Move to manip posture")
         self.robot.move_to_manip_posture()
+        self.robot.switch_to_manipulation_mode()
+
         # Get object xyz coords
         xyt = self.robot.get_base_pose()
         placement_xyz = self.sample_placement_position(xyt)
@@ -188,6 +206,8 @@ class PlaceObjectOperation(ManagedOperation):
             pos=place_xyz, quat=ee_rot, joint_state=joint_state
         )
         self.attempt(f"Trying to place the object on the receptacle at {place_xyz}.")
+        if self.talk:
+            self.agent.robot_say("Trying to place the object on the receptacle.")
         if not success:
             self.error("Could not place object!")
             return
@@ -210,6 +230,7 @@ class PlaceObjectOperation(ManagedOperation):
         self.robot.move_to_nav_posture()
         self._successful = True
 
+        self.agent.robot_say("I am done placing the object.")
         self.cheer("We believe we successfully placed the object.")
 
     def was_successful(self):

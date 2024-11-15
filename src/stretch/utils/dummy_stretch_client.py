@@ -19,6 +19,7 @@ from stretch.core import AbstractRobotClient
 from stretch.motion import Footprint, RobotModel
 
 # from stretch.motion.kinematics import HelloStretchKinematics
+from stretch.utils.geometry import xyt_base_to_global
 
 
 class DummyStretchClient(AbstractRobotClient, RobotModel):
@@ -55,10 +56,15 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
         """
         self._robot_model = self
         self.dof = 3 + 2 + 4 + 2
+        self.xyt = np.zeros(3)
 
-    def navigate_to(self, xyt, relative=False, blocking=False):
+    def move_base_to(self, xyt, relative=False, blocking=True, verbose: bool = False):
         """Move to xyt in global coordinates or relative coordinates."""
-        raise NotImplementedError()
+        if relative:
+            xyt_goal = xyt_base_to_global(xyt, self.xyt)
+        else:
+            xyt_goal = xyt
+        self.xyt = xyt_goal
 
     def reset(self):
         """Reset everything in the robot's internal state"""
@@ -98,6 +104,9 @@ class DummyStretchClient(AbstractRobotClient, RobotModel):
     def get_base_pose(self):
         """Return the current pose of the robot."""
         return np.array([0.0, 0.0, 0.0])
+
+    def get_pose_graph(self) -> np.ndarray:
+        return np.empty((3, 4))
 
     def load_map(self, filename: str):
         """Load a map from a file."""

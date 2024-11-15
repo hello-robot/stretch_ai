@@ -24,6 +24,8 @@ LARGE_DATA_START = np.array([4.5, 1.4, 0.0])
 queries = [
     ("cardboard box", True),
     ("photo of an elephant", False),
+    ("photo of a lizard", False),
+    ("pink elephant", False),
 ]
 
 similarity_threshold = 0.05
@@ -45,10 +47,9 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
         dummy_robot,
         parameters,
         semantic_sensor=None,
-        rpc_stub=None,
-        grasp_client=None,
         voxel_map=None,
         use_instance_memory=True,
+        create_semantic_sensor=False,
     )
     voxel_map = agent.voxel_map
 
@@ -80,7 +81,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
         # Query the SVM - make sure we can find motion plan to a cardboard box
         score, instance_id, instance = instances[0]
         print(f"Query: {query} Score: {score} Instance ID: {instance_id}")
-        assert instance_id is not None, "Failed to find instance ID"
+        assert instance_id is not None, f"Failed to find instance ID for {query}"
         if expected_result:
             assert (
                 score > similarity_threshold
@@ -96,9 +97,11 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
             # Try motion planning to matching instances
             for i, (score, instance_id, instance) in enumerate(instances):
                 if score < similarity_threshold:
-                    assert False, "Failed to find instance with acceptable score"
+                    assert (
+                        False
+                    ), f"Failed to find instance with acceptable score for {query}: {score} < {similarity_threshold}"
                 res = agent.plan_to_instance(instance, start_pos, verbose=False, radius_m=0.3)
-                print(f"Plan to instance {i}={instance.global_id} = {res.success}")
+                # print(f"Plan to instance {i}={instance.global_id} = {res.success}")
                 if res.success:
                     break
             else:
@@ -145,5 +148,5 @@ def test_svm_large():
 
 if __name__ == "__main__":
     debug = True
-    test_svm_small()
-    # test_svm_large()
+    # test_svm_small()
+    test_svm_large()

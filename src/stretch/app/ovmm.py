@@ -11,119 +11,70 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import datetime
+import pprint
 
 import click
 
 # Mapping and perception
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.llm_plan import LLMPlanTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llms.openai_client import OpenaiClient
+from stretch.llms import get_llm_client
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
 
 
 @click.command()
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
-@click.option("--recv_port", default=4401, help="Port to receive observations on")
-@click.option("--send_port", default=4402, help="Port to send actions to on the robot")
 @click.option("--robot_ip", default="")
-@click.option("--output-filename", default="stretch_output", type=str)
-@click.option("--explore-iter", default=0)
-@click.option("--spin", default=False, is_flag=True)
-@click.option("--reset", is_flag=True)
-@click.option(
-    "--input_file", default="", type=str, help="Path to input file used instead of robot data"
-)
-@click.option(
-    "--write-instance-images",
-    default=False,
-    is_flag=True,
-    help="write out images of every object we found",
-)
+@click.option("--device-id", default=0, help="Device ID for the semantic sensor")
+@click.option("--llm", default="qwen25-3B-Instruct", help="Language model to use")
+@click.option("--verbose", default=True)
 @click.option("--parameter-file", default="default_planner.yaml")
-@click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
-@click.option("--frame", default=-1, help="Final frame to read from input file")
-@click.option("--text", default="", help="Text to encode")
+@click.option("--task", default="", help="Default task to perform")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
-@click.option(
-    "--all-matches",
-    is_flag=True,
-    help="Find all objects with a similarity to the query above some threshold",
-)
-# This threshold seems to work ok for Siglip - will not work for e.g. CLIP
-@click.option("--threshold", default=0.05, help="Threshold for similarity when using --all-matches")
-@click.option(
-    "--stationary",
-    is_flag=True,
-    help="Don't move the robot to the instance, if using real robot instead of offline data",
-)
 def main(
+    local: bool = True,
+    robot_ip: str = "",
     device_id: int = 0,
+    llm: str = "qwen25-3B-Instruct",
     verbose: bool = True,
     parameter_file: str = "config/default_planner.yaml",
-    local: bool = True,
-    recv_port: int = 4401,
-    send_port: int = 4402,
-    robot_ip: str = "",
-    reset: bool = False,
-    explore_iter: int = 0,
-    output_filename: str = "stretch_output",
-    spin: bool = False,
-    write_instance_images: bool = False,
-    input_file: str = "",
-    frame: int = -1,
-    text: str = "",
+    task: str = "",
     yes: bool = False,
-    stationary: bool = False,
-    all_matches: bool = False,
-    threshold: float = 0.5,
 ):
-
-    print("- Load parameters")
     parameters = get_parameters(parameter_file)
-    _, semantic_sensor = create_semantic_sensor(
-        device_id=device_id,
-        verbose=verbose,
-        category_map_file=parameters["open_vocab_category_map_file"],
-    )
-
-    real_robot = True
-    current_datetime = datetime.datetime.now()
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
-    output_pkl_filename = output_filename + "_" + formatted_datetime + ".pkl"
-
     robot = HomeRobotZmqClient(
         robot_ip=robot_ip,
-        recv_port=recv_port,
-        send_port=send_port,
         use_remote_computer=(not local),
         parameters=parameters,
     )
-    robot.move_to_nav_posture()
-    agent = RobotAgent(robot, parameters, semantic_sensor)
-    # agent.voxel_map.read_from_pickle(input_file)
+    semantic_sensor = create_semantic_sensor(
+        parameters=parameters,
+        device_id=device_id,
+        verbose=verbose,
+    )
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
+    agent.start()
 
     prompt = ObjectManipNavPromptBuilder()
-    client = OpenaiClient(prompt)
+    client = get_llm_client(llm, prompt=prompt)
 
-    print("Starting robot exploration...")
+    while robot.running:
 
-    agent.run_exploration(
-        rate=10,
-        manual_wait=False,
-        explore_iter=20,
-        task_goal="sky",
-        go_home_at_end=True,
-        visualize=False,
-    )
-
-    while True:
-        text = input("Enter a long horizon task: ")
+        # Get a plan from the language model
+        if task:
+            text = task
+        else:
+            text = input("Enter a long horizon task: ")
         plan = client(text)
         print(f"Generated plan: \n{plan}")
-        proceed = input("Proceed with plan? [y/n]: ")
+
+        if yes:
+            proceed = True
+        else:
+            proceed = input("Proceed with plan? [y/n]: ")
 
         if plan.startswith("```python"):
             plan = plan.split("\n", 1)[1]
@@ -131,16 +82,25 @@ def main(
         if plan.endswith("```"):
             plan = plan.rsplit("\n", 1)[0]
 
-        plan += "\nexecute_task(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave, self.get_detections)"
+        llm_plan_task = LLMPlanTask(agent, plan)
+        plan = llm_plan_task.get_task()
+        pprint.pprint(plan)
+
+        if yes:
+            proceed = "y"
 
         if proceed != "y":
             print("Exiting...")
             continue
 
-        agent.execute(plan)
+        try:
+            plan.run()
+        except Exception as e:
+            print(f"Error executing plan: {e}")
 
-    if write_instance_images:
-        agent.save_instance_images(".", verbose=True)
+        if task:
+            robot.stop()
+            break
 
 
 if __name__ == "__main__":

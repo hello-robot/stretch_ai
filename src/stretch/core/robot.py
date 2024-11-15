@@ -37,11 +37,13 @@ class AbstractRobotClient(ABC):
         self._base_control_mode = ControlMode.IDLE
 
     @abstractmethod
-    def navigate_to(
+    def move_base_to(
         self,
         xyt: Union[Iterable[float], ContinuousNavigationAction],
         relative=False,
         blocking=False,
+        verbose: bool = False,
+        timeout: Optional[float] = None,
     ):
         """Move to xyt in global coordinates or relative coordinates."""
         raise NotImplementedError()
@@ -54,6 +56,10 @@ class AbstractRobotClient(ABC):
     @abstractmethod
     def switch_to_navigation_mode(self):
         raise NotImplementedError()
+
+    @property
+    def control_mode(self):
+        return self._base_control_mode
 
     def in_manipulation_mode(self) -> bool:
         """is the robot ready to grasp"""
@@ -88,6 +94,7 @@ class AbstractRobotClient(ABC):
         verbose: bool = False,
         per_waypoint_timeout: float = 10.0,
         relative: bool = False,
+        final_timeout: float = 60.0,
     ):
         """Open loop trajectory execution"""
         raise NotImplementedError()
@@ -105,6 +112,11 @@ class AbstractRobotClient(ABC):
     @abstractmethod
     def get_base_pose(self) -> np.ndarray:
         """Get the current pose of the base"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_pose_graph(self) -> np.ndarray:
+        """Get the robot's SLAM pose graph"""
         raise NotImplementedError()
 
     @abstractmethod

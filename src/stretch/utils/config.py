@@ -35,6 +35,14 @@ def get_data_path(ext: str) -> str:
     return os.path.join(DATA_ROOT, ext)
 
 
+def get_offload_path(ext: str) -> str:
+    """Returns full path to a particular file in the offload directory"""
+    folder = os.path.join(DATA_ROOT, "offload", ext)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    return folder
+
+
 def get_scene_path(ext: str) -> str:
     """Returns full path to a particular file in the scene directory"""
     return os.path.join(DATA_ROOT, "scenes", ext)
@@ -69,7 +77,10 @@ def get_config(path: str, opts: Optional[list] = None) -> Tuple[Config, str]:
 
     # Start with our code's config
     config = Config()
-    config.merge_from_file(full_path)
+    try:
+        config.merge_from_file(full_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Config file not found: {path=}, {full_path=}")
 
     # Add command line arguments
     if opts is not None:

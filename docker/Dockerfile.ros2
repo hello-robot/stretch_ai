@@ -1,0 +1,44 @@
+FROM hellorobotinc/stretch-install-image
+# Start from the Stretch install image
+# We need to install the ROS2 Bridge and Stretch AI package
+
+# USE BASH
+SHELL ["/bin/bash", "-c"]
+
+# Install audio libraries into docker
+USER root
+RUN apt-get update && apt-get install -y \
+    alsa-utils \
+    libasound2 \
+    libasound2-dev \
+    pulseaudio \
+    && rm -rf /var/lib/apt/lists/*
+
+USER hello-robot
+
+RUN echo "Installing Stretch AI package"
+RUN pip install --upgrade pip setuptools packaging build meson ninja
+# Do this if you want to check out a specific branch; it's important to make sure versions match:
+# RUN git clone https://github.com/hello-robot/stretch_ai --branch docker/0.1.8
+RUN git clone https://github.com/hello-robot/stretch_ai
+WORKDIR /home/hello-robot/stretch_ai
+RUN pip install -e src/
+
+RUN echo "Setting up ROS2 Bridge"
+RUN ln -s `pwd`/src/stretch_ros2_bridge /home/hello-robot/ament_ws/src/stretch_ros2_bridge
+
+RUN echo "Updating Stretch ROS2"
+WORKDIR /home/hello-robot/ament_ws/src/stretch_ros2
+RUN git checkout humble
+RUN git pull
+
+RUN echo "Building ROS2 Bridge"
+WORKDIR /home/hello-robot/ament_ws
+RUN cd src && git clone https://github.com/hello-atharva/slam_toolbox.git -b humble
+RUN source /opt/ros/humble/setup.bash \
+    && colcon build --packages-select stretch_ros2_bridge stretch_core stretch_nav2 \
+    stretch_description slam_toolbox --cmake-args=-DCMAKE_BUILD_TYPE=Release
+
+WORKDIR /home/hello-robot/stretch_ai
+
+CMD ["/bin/bash"]

@@ -1,5 +1,9 @@
 # Data Collection for Stretch
 
+![Teleop using Stretch Dex Teleop](https://github.com/hello-robot/stretch_dex_teleop/blob/main/gifs/single_arm_dishes_short_318x360.gif)
+
+Our data collection system is based on a low-cost teleoperation framework called [Dex Teleop](https://github.com/hello-robot/stretch_dex_teleop). You use a webcam to track a unique tool with AR markers, and the robot follows the tool. This system is designed to be easy to use and it allows us to collect high-quality data for training robot learning algorithms.
+
 ## Prerequisites:
 
 Follow the [instructions](../README.md#Installation) for installation of `stretch_ai` with Python 3.10 for both PC and robot.
@@ -25,21 +29,23 @@ python -m pip install webcam mediapipe
 
 ### On Robot:
 
-- Generate specialized URDFs
+*First, generate specialized URDFs.* These are special versions of the robot model that are needed to run the dex teleop app. You generate them by running:
 
-  ```bash
-    cd stretch_ai
-    python3 src/stretch/app/dex_teleop/prepare_specialized_urdfs.py
-  ```
+```bash
+cd stretch_ai
+python3 src/stretch/app/dex_teleop/prepare_specialized_urdfs.py
+```
 
-- Move URDFs from robot to PC
+*Then, move URDFs from robot to PC.* URDFs should now have been generated into the `stretch_ai` folder on the robot:
 
-  URDFs should now have been generated into stretch_ai folder on the robot. Using your preferred method, move the following URDF files into the stretch_ai folder on your PC
+```bash
+stretch_base_rotation_ik_with_fixed_wrist.urdf
+stretch_base_rotation_ik.urdf
+stretch_base_translation_ik_with_fixed_wrist.urdf
+stretch_base_translation_ik.urdf
+```
 
-  - stretch_base_rotation_ik_with_fixed_wrist.urdf
-  - stretch_base_rotation_ik.urdf
-  - stretch_base_translation_ik_with_fixed_wrist.urdf
-  - stretch_base_translation_ik.urdf
+Using your preferred method, move the following URDF files into the `stretch_ai` folder on your PC (or wherever you intend to run the dex teleop app from).
 
 ## Quickstart: Record Some Data
 
@@ -51,8 +57,12 @@ ros2 launch stretch_ros2_bridge server.launch.py
 
 ### On the PC run:
 
+Click this thumbnail to see data collection teleop in action:
+
+[![Dex Teleop with Clutch and Base X motion](https://img.youtube.com/vi/ZQQWOkSkw5o/0.jpg)](https://www.youtube.com/watch?v=ZQQWOkSkw5o)
+
 ```bash
-python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
+python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --task-name default_task
 ```
 
 A GUI displaying RGB and depth feeds from both cameras will now pop up. All commands are sent by pressing the keyboard with this GUI selected as the active window.

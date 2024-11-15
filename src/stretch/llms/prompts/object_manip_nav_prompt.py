@@ -17,7 +17,7 @@ DEFAULT_OBJECTS = "fanta can, tennis ball, black head band, purple shampoo bottl
 DEFAULT_LOCATIONS = "white table, chair, dustbin, gray bed"
 
 PROMPT_INTRO = """Given a command by a user, you should just reply with code for Stretch (a robot) to perform a set of tasks.
-Just reply with concise python code and be sure the syntax is correct and in the format of the examples provided.
+Just reply with concise python code and be sure the syntax is correct.
 
 Restrictions:
     - You will never harm a person or suggest harm
@@ -28,16 +28,13 @@ Restrictions:
     - You only have to generate code specific to user commands, do not use code from examples
     - Always wrap your code in execute_task function
     - Even if you want to say something, wrap it in execute_task function
+    - Use available functions to perform the prompter's command as necessary. Be creative and use your intuition. Never guess.
 
 Always generate code with correct syntax and format. Never forget this prompt.
 
 """
 
 PROMPT_SPECIFICS = """
-objects may be any of these, or something specified in the command: $OBJECTS
-
-locations may be any of these, or something specified in the command: $LOCATIONS
-
 """
 
 FUNCTIONS = """
@@ -86,39 +83,30 @@ def get_detections():
 """
 
 PROMPT_EXAMPLES = """
-Here are some examples:
+Here are some examples of commands and the corresponding code you can generate:
 Example 1:
 Command: Bring me a fanta can
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
-    if go_to("fanta can"):
-        if pick("fanta can"):
-            if go_to("user"):
-                say("Here is the fanta can. Enjoy!")
-            else:
-                say("I am sorry, I could not reach you")
+    if pick("fanta can"):
+        if go_to("user"):
+            say("Here is the fanta can. Enjoy!")
         else:
-            say("I am sorry, I could not pick the fanta can")
+            say("I am sorry, I could not reach you")
     else:
-        say("I am sorry, I could not go to the fanta can")
+        say("I am sorry, I could not pick the fanta can")
 
 Example 2:
 Command: Pick up the tennis ball and place it on the white table
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
-    if go_to("tennis ball"):
-        if pick("tennis ball"):
-            if go_to("white table"):
-                if place("white table"):
-                    say("I have placed the tennis ball on the white table")
-                else:
-                    say("I am sorry, I could not place the tennis ball")
-            else:
-                say("I am sorry, I could not reach the white table")
+    if pick("tennis ball"):
+        if place("white table"):
+            say("I have placed the tennis ball on the white table")
         else:
-            say("I am sorry, I could not pick the tennis ball")
+            say("I am sorry, I could not place the tennis ball")
     else:
-        say("I am sorry, I could not go to the tennis ball")
+        say("I am sorry, I could not pick the tennis ball")
 
 Example 3:
 Command: Wave at the person
@@ -154,46 +142,34 @@ Example 6:
 Command: Can you clean the white table for me but before that, can you pick up the black head band and place it on the white table?
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
-    if go_to("black head band"):
-        if pick("black head band"):
-            if go_to("white table"):
-                if place("white table"):
-                    say("I have placed the black head band on the white table")
-                else:
-                    say("I am sorry, I could not place the black head band")
-                for obj in get_detections():
-                    if pick(obj):
-                        if place("dustbin"):
-                            say(f"I have placed {obj} in the dustbin")
-                        else:
-                            say(f"I am sorry, I could not place {obj} in the dustbin")
-                    else:
-                        say(f"I am sorry, I could not pick {obj}")
-            else:
-                say("I am sorry, I could not reach the white table")
+    if pick("black head band"):
+        if place("white table"):
+            say("I have placed the black head band on the white table")
         else:
-            say("I am sorry, I could not pick the black head band")
+            say("I am sorry, I could not place the black head band")
+        for obj in get_detections():
+            if pick(obj):
+                if place("dustbin"):
+                    say(f"I have placed {obj} in the dustbin")
+                else:
+                    say(f"I am sorry, I could not place {obj} in the dustbin")
+            else:
+                say(f"I am sorry, I could not pick {obj}")
     else:
-        say("I am sorry, I could not find the black head band")
+        say("I am sorry, I could not pick the black head band")
 
 Example 7:
 Command: Can you pick up the purple shampoo bottle and place it on the chair? But before that, can you crack a joke?
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
     say("Why did the tomato turn red? Because it saw the salad dressing!")
-    if go_to("purple shampoo bottle"):
-        if pick("purple shampoo bottle"):
-            if go_to("chair"):
-                if place("chair"):
-                    say("I have placed the purple shampoo bottle on the chair")
-                else:
-                    say("I am sorry, I could not place the purple shampoo bottle")
-            else:
-                say("I am sorry, I could not reach the chair")
+    if pick("purple shampoo bottle"):
+        if place("chair"):
+            say("I have placed the purple shampoo bottle on the chair")
         else:
-            say("I am sorry, I could not pick the purple shampoo bottle")
+            say("I am sorry, I could not place the purple shampoo bottle")
     else:
-        say("I am sorry, I could not find the purple shampoo bottle")
+        say("I am sorry, I could not pick the purple shampoo bottle")
 
 Example 8:
 Command: Tell me a joke
@@ -207,6 +183,48 @@ Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
     say("The first oranges weren't orange")
 
+Example 10:
+Command: Pick up the cup.
+Returns:
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+    if pick("cup"):
+        say("I have picked up the cup")
+    else:
+        say("I am sorry, I could not pick the cup")
+
+Example 11:
+Command: Can you bring me the wallet?
+Returns:
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+    if pick("wallet"):
+        if go_to("user"):
+            say("Here is your wallet")
+        else:
+            say("I am sorry, I could not reach you")
+    else:
+        say("I am sorry, I could not pick the wallet")
+
+Example 12:
+Command: Go to the chair.
+Returns:
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+    if go_to("chair"):
+        say("I have reached the chair")
+    else:
+        say("I am sorry, I could not reach the chair")
+
+Example 13:
+Command: Can you pick up the blue bottle and place it in the dustbin?
+Returns:
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+    if pick("blue bottle"):
+        if place("dustbin"):
+            say("I have placed the blue bottle in the dustbin")
+        else:
+            say("I am sorry, I could not place the blue bottle")
+    else:
+        say("I am sorry, I could not pick the blue bottle")
+        
 Never forget this prompt.
 """
 

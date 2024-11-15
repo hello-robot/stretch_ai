@@ -12,7 +12,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import logging
 import os
 import shutil
 import timeit
@@ -26,7 +25,7 @@ from torch import Tensor
 
 from stretch.mapping.instance import Instance, InstanceView
 from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
-from stretch.perception.encoders import ClipEncoder
+from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
     box3d_nms,
@@ -34,10 +33,12 @@ from stretch.utils.bboxes_3d import (
     get_box_verts_from_bounds,
 )
 from stretch.utils.image import dilate_or_erode_mask, interpolate_image
+from stretch.utils.logger import Logger
 from stretch.utils.point_cloud_torch import get_bounds
 from stretch.utils.voxel import drop_smallest_weight_points
 
-logger = logging.getLogger(__name__)
+logger = Logger(__name__)
+logger.hide_info()
 
 
 class InstanceMemory:
@@ -92,9 +93,10 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
+        min_instance_points: int = 100,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
-        encoder: Optional[ClipEncoder] = None,
+        encoder: Optional[BaseImageTextEncoder] = None,
     ):
         """See class definition for information about InstanceMemory
 
@@ -129,6 +131,7 @@ class InstanceMemory:
         self.min_instance_thickness = min_instance_thickness
         self.min_instance_height = min_instance_height
         self.max_instance_height = max_instance_height
+        self.min_instance_points = min_instance_points
         self.use_visual_feat = use_visual_feat  # whether use visual feat to merge instances
 
         if isinstance(view_matching_config, dict):
@@ -138,21 +141,12 @@ class InstanceMemory:
         self.instance_view_score_aggregation_mode = instance_view_score_aggregation_mode
         self.min_pixels_for_instance_view = min_pixels_for_instance_view
         self.min_percent_for_instance_view = min_percent_for_instance_view
-        # self.instance_association_within_class = instance_association_within_class
-        self.log_dir = log_dir
 
-        if log_dir is not None and os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok):
-            shutil.rmtree(self.save_dir, ignore_errors=True)
-            os.makedirs(log_dir, exist_ok=log_dir_overwrite_ok)
+        # Logging instance memory
         self.log_dir = log_dir
-
-        # if open_vocab_cat_map_file:
-        #     with open(open_vocab_cat_map_file) as f:
-        #         open_vocab_cat_map = json.load(f)
-        #     self.open_vocab = list(
-        #         open_vocab_cat_map["obj_category_to_obj_category_id"].keys()
-        #     ) + list(open_vocab_cat_map["recep_category_to_recep_category_id"].keys())
-        #     self.open_vocab += ["wall", "ceiling", "floor", "others"]
+        if self.log_dir is not None:
+            shutil.rmtree(self.log_dir, ignore_errors=True)
+            os.makedirs(self.log_dir, exist_ok=log_dir_overwrite_ok)
 
         self.reset()
 
@@ -236,9 +230,7 @@ class InstanceMemory:
         Returns:
             Instance: The removed Instance object.
         """
-        print(len(self.instances[env_id]))
         instance = self.instances[env_id].pop(global_instance_id)
-        print(len(self.instances[env_id]))
         if not skip_reindex:
             self.reindex_global_instances(env_id=env_id)
         return instance
@@ -254,6 +246,10 @@ class InstanceMemory:
         Returns:
             Dict[int, Instance]: The newly indexed dictionary of Instance objects for the given environment.
         """
+        if len(self.instances[env_id]) == 0:
+            self.instances[env_id] = {}
+            return self.instances[env_id]
+
         ids, instances = zip(*self.instances[env_id].items())
         new_ids = range(len(ids))
         new_env_instances = dict(zip(new_ids, instances))
@@ -262,7 +258,7 @@ class InstanceMemory:
 
     def get_ids_to_instances(
         self, env_id: int, category_id: Optional[int] = None
-    ) -> List[Instance]:
+    ) -> Dict[int, Instance]:
         """
         Retrieve a Dict of IDs -> global instances for a given environment. If category_id is specified,
         only instances matching that category will be returned.
@@ -278,7 +274,7 @@ class InstanceMemory:
         # Get global instances
         global_instance_ids = self.get_global_instance_ids(env_id)
         if len(global_instance_ids) == 0:
-            return []
+            return {}
         global_instances = self.get_instances_by_ids(
             env_id=env_id, global_instance_idxs=global_instance_ids
         )
@@ -576,6 +572,7 @@ class InstanceMemory:
         background_instance_labels: List[int] = [0],
         valid_points: Optional[Tensor] = None,
         pose: Optional[Tensor] = None,
+        verbose: bool = False,
     ):
         """
         Process instance information in the current frame and add instance views to the list of unprocessed views for future association.
@@ -723,17 +720,18 @@ class InstanceMemory:
             h, w = masked_image.shape[1:]
             cropped_image = self.get_cropped_image(image, bbox)
             instance_mask = self.get_cropped_image(instance_mask.unsqueeze(0), bbox)
+            if self.mask_cropped_instances:
+                cropped_image = cropped_image * instance_mask
 
             # get embedding
-            if self.encoder is not None:
-                # option 1: encoder the original crop
+            if (
+                self.encoder is not None
+                and cropped_image.shape[1] * cropped_image.shape[2] > self.min_instance_points
+            ):
+                # Compute semantic image features (e.g. SigLIP or CLIP)
                 embedding = self.encoder.encode_image(cropped_image).to(cropped_image.device)
 
-                # option 2: encode crop with applied mask
-                # embedding = self.encoder.encode_image(cropped_image * instance_mask).to(
-                #     cropped_image.device
-                # )
-
+                # Get a separate set of visual, not semantic, features
                 if hasattr(self.encoder, "get_visual_feat"):
                     visual_feat = self.encoder.get_visual_feat(cropped_image).to(
                         cropped_image.device
@@ -741,8 +739,7 @@ class InstanceMemory:
                 else:
                     visual_feat = None
             else:
-                embedding = None
-                visual_feat = None
+                continue
 
             # get point cloud
             point_mask_downsampled = instance_mask_downsampled & valid_points_downsampled
@@ -754,14 +751,6 @@ class InstanceMemory:
 
             percent_points = n_mask / (instance_mask.shape[0] * instance_mask.shape[1])
 
-            # Create InstanceView if the view is large enough
-            # print(f"n_mask: {n_mask}/{self.min_pixels_for_instance_view}, n_points: {n_points}>1, percent_points: {percent_points}>{self.min_percent_for_instance_view}")
-            # import matplotlib
-            # matplotlib.use("TkAgg")
-            # import matplotlib.pyplot as plt
-            # plt.imshow(cropped_image / 255)
-            # plt.show()
-
             added = False
             if (
                 n_mask >= self.min_pixels_for_instance_view
@@ -772,13 +761,15 @@ class InstanceMemory:
                 volume = float(box3d_volume_from_bounds(bounds).squeeze())
 
                 if volume < float(self.min_instance_vol):
-                    logger.info(
-                        f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
+                        )
                 elif volume > float(self.max_instance_vol):
-                    logger.info(
-                        f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping box with {n_points} points in cloud and {n_points} points in mask and {volume} volume",
+                        )
                 elif (
                     min(
                         bounds[0][1] - bounds[0][0],
@@ -787,17 +778,20 @@ class InstanceMemory:
                     )
                     < self.min_instance_thickness
                 ):
-                    logger.info(
-                        f"Skipping a flat instance with {n_points} points",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping a flat instance with {n_points} points",
+                        )
                 elif (bounds[2][0] + bounds[2][1]) / 2.0 < self.min_instance_height:
-                    logger.info(
-                        f"Skipping a instance with low height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping a instance with low height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
+                        )
                 elif (bounds[2][0] + bounds[2][1]) / 2.0 > self.max_instance_height:
-                    logger.info(
-                        f"Skipping a instance with high height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
-                    )
+                    if verbose:
+                        logger.info(
+                            f"Skipping a instance with high height: {(bounds[2][0] + bounds[2][1]) / 2.0}",
+                        )
                 else:
                     # get instance view
                     instance_view = InstanceView(
@@ -821,14 +815,15 @@ class InstanceMemory:
                     added = True
             else:
                 logger.info(
-                    f"Skipping a small instance with {n_mask} pixels",
+                    f"Skipping a small instance with {n_mask} pixels and {n_points} points",
                 )
 
             t1 = timeit.default_timer()
-            if added:
-                print(f"Added Instance {instance_id} took {t1-t0} seconds")
-            else:
-                print(f"Skipped Instance {instance_id} took {t1-t0} seconds")
+            if verbose:
+                if added:
+                    print(f"Added Instance {instance_id} took {t1-t0} seconds")
+                else:
+                    print(f"Skipped Instance {instance_id} took {t1-t0} seconds")
 
         # This timestep should be passable (e.g. for Spot we have a Datetime object)
         self.timesteps[env_id] += 1
