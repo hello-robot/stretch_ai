@@ -1387,7 +1387,7 @@ class SparseVoxelMap(object):
 
 
 class SparseVoxelMapProxy(object):
-    def __init__(self, voxel_map: SparseVoxelMap, rw_lock: rwlock.RWLock):
+    def __init__(self, voxel_map: SparseVoxelMap, rw_lock: rwlock.RWLockWrite):
         self._voxel_map = voxel_map
         self._rw_lock = rw_lock
 
