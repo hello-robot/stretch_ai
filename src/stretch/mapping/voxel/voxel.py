@@ -878,7 +878,7 @@ class SparseVoxelMap(object):
         """
         return self.voxel_pcd.get_pointcloud()
 
-    def set_allowed_radius(self, radius: float, origin: torch.Tensor | np.ndarray) -> None:
+    def set_allowed_radius(self, radius: float, origin: Union[torch.Tensor, np.ndarray]) -> None:
         """Set the allowed radius for exploration around the robot. This is used to add points to the map around the robot.
 
         Args:

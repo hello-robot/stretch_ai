@@ -213,10 +213,6 @@ def demo_main(
 
     # Rotate in place
     if parameters["agent"]["in_place_rotation_steps"] > 0:
-
-        if audio_feedback:
-            robot.say("Rotating in place to scan the environment.")
-
         agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
