@@ -1722,18 +1722,18 @@ class RobotAgent:
             print("       Start:", start)
             self.print_found_classes(task_goal)
 
-            if audio_feedback:
+            if audio_feedback and self.semantic_sensor is not None:
                 if len(all_goals) > 0:
                     self.robot.say_sync(
                         f"So far, I have found {len(all_goals)} object{'s' if len(all_goals) > 2 else ''}"
                     )
                 else:
                     self.robot.say_sync(f"My map is currently empty")
-                time.sleep(4.0)
+                time.sleep(1.0)
 
             if audio_feedback:
                 self.robot.say_sync("Looking for frontiers nearby...")
-                time.sleep(4.0)
+                time.sleep(1.0)
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
