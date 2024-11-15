@@ -130,7 +130,7 @@ f570a0dd636d: Waiting
 1a08cbb00ee1: Waiting                                               
 ```
 
-The Docker image can be large (i.e., > 10GB), so it takes time to download. You will only need to download each version of the *stretch-ai* Docker image a single time.
+The Docker image can be large (i.e., > 10GB), so it takes time to download. You can plug an ethernet cable into your router and Stretch to speed up the download. You will only need to download each version of the *stretch-ai* Docker image a single time.
 
 After downloading the Docker image, the server will begin running on your robot. Your robot should beep twice and its lidar should start spinning. The terminal should display output from the robot's *stretch-ai* server like the following:
 
@@ -219,7 +219,7 @@ To exit the app, you can press `q` with any of the popup windows selected.
 
 If the `view_images` app doesn't work, the most common issue is that the GPU computer is unable to communicate with the robot over the network. We recommend that you verify your robot's IP address and use [`ping`](<https://en.wikipedia.org/wiki/Ping_(networking_utility)>) on your GPU computer to check that it can reach the robot.
 
-If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai/tree/feature/documentation?tab=readme-ov-file#language-directed-pick-and-place).
+If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai#language-directed-pick-and-place).
 
 ## Develop with the Docker Installation
 
