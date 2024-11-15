@@ -1342,6 +1342,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 pt,
                 relative,
                 blocking=last_waypoint,
+                reliable=False,
                 timeout=final_timeout if last_waypoint else per_waypoint_timeout,
                 verbose=verbose,
             )
@@ -1382,6 +1383,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         # Save start time for exiting trajectory loop
         t0 = timeit.default_timer()
         while not self._finish:
+
+            self.move_base_to(xyt, relative=False, blocking=False, reliable=False)
+
             # Loop until we get there (or time out)
             t1 = timeit.default_timer()
             curr = self.get_base_pose()
