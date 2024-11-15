@@ -61,7 +61,7 @@ def get_mode(mode: str) -> str:
 @click.option("--server_ip", "--server-ip", default="127.0.0.1", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
-@click.option("--explore-iter", default=3)
+@click.option("--explore-iter", default=5)
 @click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
 @click.option("--mode", default="", type=click.Choice(["navigation", "manipulation", "save", ""]))
@@ -93,8 +93,8 @@ def main(
     server_ip,
     manual_wait,
     navigate_home: bool = False,
-    explore_iter: int = 3,
-    re: int = 1,
+    explore_iter: int = 5,
+    re: int = 3,
     mode: str = "navigation",
     method: str = "dynamem",
     env: int = 1,
