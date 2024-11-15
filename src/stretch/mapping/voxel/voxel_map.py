@@ -535,7 +535,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         # from scipy.ndimage.morphology import distance_transform_edt
         m = np.ones_like(traversible)
-        start_x, start_y = self.grid.xy_to_grid_coords(xyt[:2]).int().cpu().numpy()
+        start_x, start_y = self.grid.xy_to_grid_coords(xyt[:2])
         if verbose or debug:
             print("--- Coordinates ---")
             print(f"{xyt=}")
