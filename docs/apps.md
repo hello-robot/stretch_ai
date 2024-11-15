@@ -21,6 +21,7 @@ Finally:
 
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
 - [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
+- [Dynamem OVMM system](dynamem.md) - Deploy open vocabulary mobile manipulation system [Dynamem](https://dynamem.github.io)
 
 There are also some apps for [debugging](docs/debug.md).
 
