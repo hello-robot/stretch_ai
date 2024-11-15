@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script (c) 2024 Chris Paxton under the MIT license: https://opensource.org/licenses/MIT
+# This script (c) 2024 Hello Robot under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
@@ -7,7 +7,7 @@ CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
 export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
-VERSION=`python $script_dir/src/stretch/version.py`
+VERSION=`python3 $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -89,7 +89,7 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
-if [ $INSTALL_TORCH_GEOMETRIC = "true" ]; then
+if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
     echo "   - torch-geometric"
     echo "   - torch-cluster"
     echo "   - torch-scatter"
@@ -141,7 +141,8 @@ else
     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
-source activate $ENV_NAME
+echo "Activate env"
+source "`conda info --base`/bin/activate" $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
 pip install setuptools==69.5.1
@@ -165,7 +166,7 @@ else
     case $yn in
         y ) echo "Starting installation..." ;;
         n ) echo "Exiting...";
-            exit ;;
+            CPU_ONLY="true" ;;
         * ) echo Invalid response!;
             exit 1 ;;
     esac
@@ -206,5 +207,5 @@ echo "CUDA_HOME=$CUDA_HOME"
 echo "python=`which python`"
 echo "You can start using it with:"
 echo ""
-echo "     source activate $ENV_NAME"
+echo "     $MAMBA activate $ENV_NAME"
 echo "=============================================="

@@ -12,6 +12,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import math
+import time
 from collections import deque
 from typing import Dict, Optional, Tuple, Union
 
@@ -272,7 +273,18 @@ class SparseVoxelMapNavigationSpace(XYT):
         y1 = y0 + dim
 
         if obstacles is None:
-            obstacles, explored = self.voxel_map.get_2d_map()
+            attempt = 0
+            max_attempts = 10
+            while True:
+                try:
+                    obstacles, explored = self.voxel_map.get_2d_map()
+                    break
+                except Exception as e:
+                    attempt += 1
+                    if attempt > max_attempts:
+                        raise e
+                    print(f"Error getting 2d map: {e}. Retrying...")
+                    time.sleep(0.2)
 
         crop_obs = obstacles[x0:x1, y0:y1]
         crop_exp = explored[x0:x1, y0:y1]
@@ -523,7 +535,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         # from scipy.ndimage.morphology import distance_transform_edt
         m = np.ones_like(traversible)
-        start_x, start_y = self.grid.xy_to_grid_coords(xyt[:2]).int().cpu().numpy()
+        start_x, start_y = self.grid.xy_to_grid_coords(xyt[:2])
         if verbose or debug:
             print("--- Coordinates ---")
             print(f"{xyt=}")

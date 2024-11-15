@@ -31,16 +31,17 @@ from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
-from stretch.motion import Footprint, PlanResult, RobotModel
+from stretch.motion import Footprint, HelloStretchIdx, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
 from stretch.utils.logger import Logger
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd, points_in_mesh
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
+from stretch.visualization.urdf_visualizer import URDFVisualizer
 
 logger = Logger(__name__)
 
@@ -224,6 +225,7 @@ class SparseVoxelMap(object):
         self.encoder = encoder
         self.map_2d_device = map_2d_device
         self._min_points_per_voxel = min_points_per_voxel
+        self.urdf_visualizer = URDFVisualizer()
 
         # Is the 2d map stale?
         self._stale_2d = True
@@ -570,6 +572,40 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
+            # Remove points that are too close to the robot
+            if obs is not None and obs.joint is not None:
+                state = obs.joint
+                cfg = {}
+                for k in HelloStretchIdx.name_to_idx:
+                    cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
+                lk_cfg = {
+                    "joint_wrist_yaw": cfg["wrist_yaw"],
+                    "joint_wrist_pitch": cfg["wrist_pitch"],
+                    "joint_wrist_roll": cfg["wrist_roll"],
+                    "joint_lift": cfg["lift"],
+                    "joint_arm_l0": cfg["arm"] / 4,
+                    "joint_arm_l1": cfg["arm"] / 4,
+                    "joint_arm_l2": cfg["arm"] / 4,
+                    "joint_arm_l3": cfg["arm"] / 4,
+                    "joint_head_pan": cfg["head_pan"],
+                    "joint_head_tilt": cfg["head_tilt"],
+                }
+                if "gripper" in cfg.keys():
+                    lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+                    lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
+
+                mesh = self.urdf_visualizer.get_combined_robot_mesh(cfg=lk_cfg, use_collision=True)
+
+                selected_indices = points_in_mesh(world_xyz, mesh, base_pose)
+            else:
+                selected_indices = torch.ones_like(world_xyz[:, 0], dtype=torch.bool)
+            world_xyz = world_xyz[selected_indices]
+
+            if feats is not None:
+                feats = feats[selected_indices]
+
+            rgb = rgb[selected_indices]
+
             self.voxel_pcd.add(
                 world_xyz,
                 features=feats,
