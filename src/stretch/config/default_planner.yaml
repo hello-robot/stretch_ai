@@ -97,7 +97,7 @@ agent:
     # Maximum number of observations to match with a pose graph node
     maximum_matched_observations: 25
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
-    camera_pose_match_threshold: 0.1
+    camera_pose_match_threshold: 0.05
   use_realtime_updates: True
   realtime_rotation_steps: 4
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often

@@ -700,6 +700,29 @@ class RobotAgent:
                     # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
                     if not self.obs_history[del_idx].is_pose_graph_node:
                         # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
+                        # del self.obs_history[del_idx]
+
+                        # Remove corresponding matched observation
+                        if (
+                            self.obs_history[del_idx].lidar_timestamp
+                            in self._matched_vertices_obs_count
+                        ):
+                            self._matched_vertices_obs_count[
+                                self.obs_history[del_idx].lidar_timestamp
+                            ] -= 1
+
+                        # Remove caemra pose from matched observations
+                        for idx in range(len(self._matched_observations_poses)):
+                            if (
+                                np.linalg.norm(
+                                    self._matched_observations_poses[idx]
+                                    - self.obs_history[del_idx].camera_pose
+                                )
+                                < 0.1
+                            ):
+                                self._matched_observations_poses.pop(idx)
+                                break
+
                         del self.obs_history[del_idx]
                         del_count += 1
                     else:
