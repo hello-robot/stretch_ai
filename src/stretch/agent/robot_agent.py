@@ -224,7 +224,7 @@ class RobotAgent:
         # Locks
         self._robot_lock = Lock()
         self._obs_history_lock = Lock()
-        self._voxel_map_lock = Lock()
+        self._voxel_map_lock = rwlock.RWLockFair()
         self._map_lock = Lock()
 
         if self._realtime_updates:
@@ -233,6 +233,14 @@ class RobotAgent:
             # Map updates
             self._update_map_thread = Thread(target=self.update_map_loop)
             self._update_map_thread.start()
+
+            # Prune old observations
+            self._prune_old_observations_thread = Thread(target=self.prune_old_observations_loop)
+            self._prune_old_observations_thread.start()
+
+            # Match pose graph
+            self._match_pose_graph_thread = Thread(target=self.match_pose_graph_loop)
+            self._match_pose_graph_thread.start()
 
             # Get observations thread
             self._get_observations_thread = Thread(target=self.get_observations_loop)
@@ -626,121 +634,43 @@ class RobotAgent:
         """Update our voxel map using a pose graph.
         Updates the map from pose graph. This is useful for when we are processing real-time updates."""
 
+        self._obs_history_lock.acquire()
         t0 = timeit.default_timer()
-        self.pose_graph = self.robot.get_pose_graph()
+
+        matched_obs = []
+
+        for obs in self.obs_history:
+            if obs.is_pose_graph_node:
+                matched_obs.append(obs)
 
         t1 = timeit.default_timer()
 
-        # Update past observations based on our new pose graph
-        # print("Updating past observations")
-        self._obs_history_lock.acquire()
-        for idx in range(len(self.obs_history)):
-            lidar_timestamp = self.obs_history[idx].lidar_timestamp
-            gps_past = self.obs_history[idx].gps
+        if verbose:
+            print(f"Done copying matched observations. Time: {t1 - t0}")
 
-            for vertex in self.pose_graph:
+        self._obs_history_lock.release()
 
-                if self.should_drop_observation(self.obs_history[idx], vertex[0]):
-                    break
-
-                if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
-                    if verbose:
-                        print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    if verbose:
-                        print(
-                            f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                        )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-
-                    if vertex[0] not in self._matched_vertices_obs_count:
-                        self._matched_vertices_obs_count[vertex[0]] = 0
-
-                    self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
-                    self._matched_vertices_obs_count[vertex[0]] += 1
-                # check if the gps is close to the gps of the pose graph node
-                elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
-                    < self._realtime_matching_distance
-                    and self.obs_history[idx].pose_graph_timestamp is None
-                ):
-                    if verbose:
-                        print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].pose_graph_timestamp = vertex[0]
-                    self.obs_history[idx].initial_pose_graph_gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].initial_pose_graph_compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-
-                    if vertex[0] not in self._matched_vertices_obs_count:
-                        self._matched_vertices_obs_count[vertex[0]] = 0
-
-                    self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
-                    self._matched_vertices_obs_count[vertex[0]] += 1
-
-                elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
-                    # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
-                    delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
-                    delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
-
-                    # Calculate new gps and compass
-                    new_gps = self.obs_history[idx].gps + delta_gps
-                    new_compass = self.obs_history[idx].compass + delta_compass
-
-                    # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
-                    self.obs_history[idx].gps = new_gps
-                    self.obs_history[idx].compass = new_compass
+        with self._voxel_map_lock.gen_wlock():
+            self.voxel_map.reset()
+            added = 0
+            for obs in matched_obs:
+                if obs.is_pose_graph_node:
+                    self.voxel_map.add_obs(obs)
+                    added += 1
 
         t2 = timeit.default_timer()
         if verbose:
-            print(f"Done updating past observations. Time: {t2- t1}")
-
-            print("Updating voxel map")
-
-        t3 = timeit.default_timer()
-        with self._map_lock:
-            self.get_voxel_map().reset()
-            added = 0
-            for obs in self.obs_history:
-                if obs.is_pose_graph_node:
-                    self.get_voxel_map().add_obs(obs)
-                    added += 1
+            print(f"Done updating voxel map. Time: {t2 - t1}")
 
         if verbose:
             print("----")
             print(f"Added {added} observations to voxel map")
             print()
 
-        self._obs_history_lock.release()
+        # self._obs_history_lock.release()
 
         robot_center = np.zeros(3)
         robot_center[:2] = self.robot.get_base_pose()[:2]
-
-        t4 = timeit.default_timer()
-        # print(f"Done updating voxel map. Time: {t4 - t3}")
 
         if self.use_scene_graph:
             self._update_scene_graph()
@@ -749,41 +679,153 @@ class RobotAgent:
         if len(self.get_voxel_map().observations) > 0:
             self.update_rerun()
 
-        t5 = timeit.default_timer()
-        # print(f"Done updating scene graph. Time: {t5 - t4}")
+        t3 = timeit.default_timer()
+        # print(f"Done updating scene graph. Time: {t3 - t2}")
 
-        self._obs_history_lock.acquire()
+    def prune_old_observations_loop(self, verbose: bool = False):
+        while True:
+            self._obs_history_lock.acquire()
 
-        # print(f"Total observation count: {len(self.obs_history)}")
+            # print(f"Total observation count: {len(self.obs_history)}")
 
-        # Clear out observations that are too old and are not pose graph nodes
-        if len(self.obs_history) > 500:
-            # print("Clearing out old observations")
-            # Remove 10 oldest observations that are not pose graph nodes
-            del_count = 0
-            del_idx = 0
-            while del_count < 15 and len(self.obs_history) > 0 and del_idx < len(self.obs_history):
-                # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
-                if not self.obs_history[del_idx].is_pose_graph_node:
-                    # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
-                    del self.obs_history[del_idx]
-                    del_count += 1
-                else:
-                    del_idx += 1
+            # Clear out observations that are too old and are not pose graph nodes
+            if len(self.obs_history) > 500:
+                # print("Clearing out old observations")
+                # Remove 10 oldest observations that are not pose graph nodes
+                del_count = 0
+                del_idx = 0
+                while (
+                    del_count < 50 and len(self.obs_history) > 0 and del_idx < len(self.obs_history)
+                ):
+                    # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
+                    if not self.obs_history[del_idx].is_pose_graph_node:
+                        # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
+                        del self.obs_history[del_idx]
+                        del_count += 1
+                    else:
+                        del_idx += 1
 
-                    if del_idx >= len(self.obs_history):
+                        if del_idx >= len(self.obs_history):
+                            break
+
+            t6 = timeit.default_timer()
+            # print(f"Done clearing out old observations. Time: {t6 - t5}")
+            self._obs_history_lock.release()
+            time.sleep(1.0)
+
+    def match_pose_graph_loop(self, verbose: bool = False):
+        while True:
+            t0 = timeit.default_timer()
+            self.pose_graph = self.robot.get_pose_graph()
+
+            t1 = timeit.default_timer()
+
+            # Update past observations based on our new pose graph
+            # print("Updating past observations")
+            self._obs_history_lock.acquire()
+            for idx in range(len(self.obs_history)):
+                lidar_timestamp = self.obs_history[idx].lidar_timestamp
+                gps_past = self.obs_history[idx].gps
+
+                for vertex in self.pose_graph:
+
+                    if self.should_drop_observation(self.obs_history[idx], vertex[0]):
                         break
 
-        t6 = timeit.default_timer()
-        # print(f"Done clearing out old observations. Time: {t6 - t5}")
-        self._obs_history_lock.release()
+                    if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
+                        if verbose:
+                            print(
+                                f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}"
+                            )
+
+                        self.obs_history[idx].is_pose_graph_node = True
+                        self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
+                        self.obs_history[idx].compass = np.array(
+                            [
+                                vertex[3],
+                            ]
+                        )
+
+                        if verbose:
+                            print(
+                                f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
+                            )
+
+                        if (
+                            self.obs_history[idx].task_observations is None
+                            and self.semantic_sensor is not None
+                        ):
+                            self.obs_history[idx] = self.semantic_sensor.predict(
+                                self.obs_history[idx]
+                            )
+
+                        if vertex[0] not in self._matched_vertices_obs_count:
+                            self._matched_vertices_obs_count[vertex[0]] = 0
+
+                        self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
+                        self._matched_vertices_obs_count[vertex[0]] += 1
+                    # check if the gps is close to the gps of the pose graph node
+                    elif (
+                        np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
+                        < self._realtime_matching_distance
+                        and self.obs_history[idx].pose_graph_timestamp is None
+                    ):
+                        if verbose:
+                            print(
+                                f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}"
+                            )
+
+                        self.obs_history[idx].is_pose_graph_node = True
+                        self.obs_history[idx].pose_graph_timestamp = vertex[0]
+                        self.obs_history[idx].initial_pose_graph_gps = np.array(
+                            [vertex[1], vertex[2]]
+                        )
+                        self.obs_history[idx].initial_pose_graph_compass = np.array(
+                            [
+                                vertex[3],
+                            ]
+                        )
+
+                        if (
+                            self.obs_history[idx].task_observations is None
+                            and self.semantic_sensor is not None
+                        ):
+                            self.obs_history[idx] = self.semantic_sensor.predict(
+                                self.obs_history[idx]
+                            )
+
+                        if vertex[0] not in self._matched_vertices_obs_count:
+                            self._matched_vertices_obs_count[vertex[0]] = 0
+
+                        self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
+                        self._matched_vertices_obs_count[vertex[0]] += 1
+
+                    elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
+                        # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
+                        delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
+                        delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
+
+                        # Calculate new gps and compass
+                        new_gps = self.obs_history[idx].gps + delta_gps
+                        new_compass = self.obs_history[idx].compass + delta_compass
+
+                        # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
+                        self.obs_history[idx].gps = new_gps
+                        self.obs_history[idx].compass = new_compass
+
+            t2 = timeit.default_timer()
+            if verbose:
+                print(f"Done updating past observations. Time: {t2- t1}")
+
+            self._obs_history_lock.release()
+            time.sleep(0.15)
 
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time."""
         while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
-            time.sleep(0.3)
+            time.sleep(1.5)
 
     def update(
         self,
@@ -1016,8 +1058,7 @@ class RobotAgent:
             for j, view in enumerate(instance.instance_views):
                 print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
-        with self._map_lock:
-            start_is_valid = self.space.is_valid(start, verbose=False)
+        start_is_valid = self.space.is_valid(start, verbose=False)
         if not start_is_valid:
             return PlanResult(success=False, reason="invalid start state")
 
@@ -1077,46 +1118,45 @@ class RobotAgent:
             PlanResult: the result of the motion planner
         """
 
-        with self._map_lock:
-            mask = self.get_voxel_map().mask_from_bounds(bounds)
-            try_count = 0
-            res = None
-            start_is_valid = self.space.is_valid(start, verbose=False)
+        mask = self.get_voxel_map().mask_from_bounds(bounds)
+        try_count = 0
+        res = None
+        start_is_valid = self.space.is_valid(start, verbose=False)
 
-            conservative_sampling = True
-            # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
-            for goal in self.space.sample_near_mask(
-                mask,
-                radius_m=radius_m,
-                conservative=conservative_sampling,
-                rotation_offset=rotation_offset,
-            ):
-                goal = goal.cpu().numpy()
+        conservative_sampling = True
+        # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
+        for goal in self.space.sample_near_mask(
+            mask,
+            radius_m=radius_m,
+            conservative=conservative_sampling,
+            rotation_offset=rotation_offset,
+        ):
+            goal = goal.cpu().numpy()
+            if verbose:
+                print("       Start:", start)
+                print("Sampled Goal:", goal)
+            show_goal = np.zeros(3)
+            show_goal[:2] = goal[:2]
+            goal_is_valid = self.space.is_valid(goal, verbose=False)
+            if verbose:
+                print("Start is valid:", start_is_valid)
+                print(" Goal is valid:", goal_is_valid)
+            if not goal_is_valid:
                 if verbose:
-                    print("       Start:", start)
-                    print("Sampled Goal:", goal)
-                show_goal = np.zeros(3)
-                show_goal[:2] = goal[:2]
-                goal_is_valid = self.space.is_valid(goal, verbose=False)
-                if verbose:
-                    print("Start is valid:", start_is_valid)
-                    print(" Goal is valid:", goal_is_valid)
-                if not goal_is_valid:
-                    if verbose:
-                        print(" -> resample goal.")
-                    continue
+                    print(" -> resample goal.")
+                continue
 
-                res = self.planner.plan(start, goal, verbose=False)
-                if verbose:
-                    print("Found plan:", res.success)
-                try_count += 1
-                if res.success or try_count > max_tries:
-                    break
+            res = self.planner.plan(start, goal, verbose=False)
+            if verbose:
+                print("Found plan:", res.success)
+            try_count += 1
+            if res.success or try_count > max_tries:
+                break
 
-            # Planning failed
-            if res is None:
-                return PlanResult(success=False, reason="no valid plans found")
-            return res
+        # Planning failed
+        if res is None:
+            return PlanResult(success=False, reason="no valid plans found")
+        return res
 
     def move_to_instance(self, instance: Instance, max_try_per_instance=10) -> bool:
         """Move to a specific instance. Goes until a motion plan is found.
@@ -1170,8 +1210,6 @@ class RobotAgent:
 
         steps = [0.05, 0.1]
 
-        self._map_lock.acquire()
-
         for step in steps:
             # Apply relative transformation to XYT
             forward = np.array([-1 * step, 0, 0])
@@ -1198,9 +1236,6 @@ class RobotAgent:
         # Get the current position in case we are still invalid
         start = self.robot.get_base_pose()
         start_is_valid = self.space.is_valid(start, verbose=True)
-
-        # We can now allow the map to be updated
-        self._map_lock.release()
 
         if not start_is_valid:
             logger.warning("Tried and failed to recover from invalid start state!")
@@ -1589,72 +1624,72 @@ class RobotAgent:
         Returns:
             PlanResult: the result of the motion planner
         """
-        with self._map_lock:
-            start_is_valid = self.space.is_valid(start, verbose=True)
-            # if start is not valid move backwards a bit
-            if not start_is_valid:
-                if verbose:
-                    print("Start not valid. Try to recover.")
-                ok = self.recover_from_invalid_start()
-                if not ok:
-                    return PlanResult(False, reason="invalid start state")
-            else:
-                print("Planning to frontier...")
+        start_is_valid = self.space.is_valid(start, verbose=True)
+        # if start is not valid move backwards a bit
+        if not start_is_valid:
+            if verbose:
+                print("Start not valid. Try to recover.")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                return PlanResult(False, reason="invalid start state")
+        else:
+            print("Planning to frontier...")
 
-            # sample a goal
-            if random_goals:
-                goal = next(self.space.sample_random_frontier()).cpu().numpy()
-            else:
-                # Get frontier sampler
-                sampler = self.space.sample_closest_frontier(
-                    start,
-                    verbose=False,
-                    expand_size=self._default_expand_frontier_size,
-                    min_dist=self._frontier_min_dist,
-                    step_dist=self._frontier_step_dist,
-                )
-                for i, goal in enumerate(sampler):
-                    if goal is None:
-                        # No more positions to sample
+        # sample a goal
+        if random_goals:
+            goal = next(self.space.sample_random_frontier()).cpu().numpy()
+        else:
+            # Get frontier sampler
+            sampler = self.space.sample_closest_frontier(
+                start,
+                verbose=False,
+                expand_size=self._default_expand_frontier_size,
+                min_dist=self._frontier_min_dist,
+                step_dist=self._frontier_step_dist,
+            )
+            for i, goal in enumerate(sampler):
+                if goal is None:
+                    # No more positions to sample
+                    if verbose:
+                        print("No more frontiers to sample.")
+                    break
+
+                # print("Sampled Goal is:", goal.cpu().numpy())
+                if self._previous_goal is not None:
+                    if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
                         if verbose:
-                            print("No more frontiers to sample.")
-                        break
-
-                    # print("Sampled Goal is:", goal.cpu().numpy())
-                    if self._previous_goal is not None:
-                        if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
-                            if verbose:
-                                print("Same goal as last time. Skipping.")
-                            self._previous_goal = goal.cpu().numpy()
-                            continue
-                    self._previous_goal = goal.cpu().numpy()
-
-                    if self.space.is_valid(goal.cpu().numpy(), verbose=True):
-                        if verbose:
-                            print("       Start:", start)
-                            print("Sampled Goal:", goal.cpu().numpy())
-                    else:
+                            print("Same goal as last time. Skipping.")
+                        self._previous_goal = goal.cpu().numpy()
                         continue
+                self._previous_goal = goal.cpu().numpy()
 
-                    # For debugging, we can set the random seed to 0
-                    if fix_random_seed:
-                        np.random.seed(0)
-                        random.seed(0)
+                print("Checking if goal is valid...")
+                if self.space.is_valid(goal.cpu().numpy(), verbose=True):
+                    if verbose:
+                        print("       Start:", start)
+                        print("Sampled Goal:", goal.cpu().numpy())
+                else:
+                    continue
 
-                    if push_locations_to_stack:
-                        print("Pushing visited locations to stack...")
-                        self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
-                    # print("Planning to goal...")
-                    res = self.planner.plan(start, goal.cpu().numpy())
-                    if res.success:
-                        if verbose:
-                            print("Plan successful!")
-                        return res
-                    else:
-                        # print("Plan failed. Reason:", res.reason)
-                        if verbose:
-                            print("Plan failed. Reason:", res.reason)
-            return PlanResult(False, reason="no valid plans found")
+                # For debugging, we can set the random seed to 0
+                if fix_random_seed:
+                    np.random.seed(0)
+                    random.seed(0)
+
+                if push_locations_to_stack:
+                    print("Pushing visited locations to stack...")
+                    self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
+                # print("Planning to goal...")
+                res = self.planner.plan(start, goal.cpu().numpy())
+                if res.success:
+                    if verbose:
+                        print("Plan successful!")
+                    return res
+                else:
+                    # print("Plan failed. Reason:", res.reason)
+                    if verbose:
+                        print("Plan failed. Reason:", res.reason)
+        return PlanResult(False, reason="no valid plans found")
 
     def get_history(self, reversed: bool = False) -> List[np.ndarray]:
         """Get the history of the robot's positions."""
@@ -2263,6 +2298,4 @@ class RobotAgent:
         # Backup the saved map
         memory.backup_saved_map()
 
-        with self._map_lock:
-            # Write the new map to the file
-            self.get_voxel_map().write_to_pickle(filename)
+        self.get_voxel_map().write_to_pickle(filename)

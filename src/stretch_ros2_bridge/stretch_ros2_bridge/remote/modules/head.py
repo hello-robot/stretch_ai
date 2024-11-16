@@ -135,6 +135,10 @@ class StretchHeadClient(AbstractControlModule):
             imgs = [rgb, dpt]
             xyz = None
 
+        # Reduce memory usage
+        imgs[0] = imgs[0].astype(np.uint8)
+        imgs[1] = imgs[1].astype(np.float16)
+
         return imgs
 
     def depth_to_xyz(self, dpt: np.ndarray) -> np.ndarray:
