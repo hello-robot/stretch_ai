@@ -172,7 +172,7 @@ class Camera(object):
         y = (indices[:, :, 0] - self.py) * (z / self.fy)
         # Should now be height x width x 3, after this:
         xyz = np.stack([x, y, z], axis=-1)
-        return xyz.astype(np.float16)
+        return xyz
 
     def fix_depth(self, depth):
         if isinstance(depth, np.ndarray):
