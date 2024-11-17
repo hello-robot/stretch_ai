@@ -259,6 +259,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         ok = self.voxel_map.xyt_is_safe(state[:2])
         if not ok:
             # This was
+            print("XYT state is not safe")
             return False
 
         # Now sample mask at this location
