@@ -689,7 +689,7 @@ class RobotAgent:
             # print(f"Total observation count: {len(self.obs_history)}")
 
             # Clear out observations that are too old and are not pose graph nodes
-            if len(self.obs_history) > 500:
+            if len(self.obs_history) > 1000:
                 # print("Clearing out old observations")
                 # Remove 10 oldest observations that are not pose graph nodes
                 del_count = 0
@@ -1231,9 +1231,9 @@ class RobotAgent:
         # Get current invalid pose
         start = self.robot.get_base_pose()
 
-        steps = [0.05, 0.1]
+        for step_i in range(5, 100, 5):
+            step = step_i / 100.0
 
-        for step in steps:
             # Apply relative transformation to XYT
             forward = np.array([-1 * step, 0, 0])
             backward = np.array([step, 0, 0])
