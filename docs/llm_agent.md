@@ -245,7 +245,7 @@ Press enter to speak. The robot will respond to your voice input, processed usin
 
 The robot uses a motion planner to avoid obstacles on its feature-rich 3D map of the environment. If you are having trouble, you may want to tune the [config file](../src/stretch/config/default_planner.yaml) until it works. Some advice below.
 
-##### Too Many Obstacles
+##### Too Many Obstacles in 3D Map
 
 Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles.
 
@@ -267,3 +267,32 @@ In addition, if your floor has lots of reflections or gaps, `neg_obs_height` can
 #### Hanging in Grasp Object App
 
 The `grasp_object` app will try to display what the robot is seeing using opencv python, particularly the `imshow` method. This may cause issues if your OpenCV installation has trouble, or if you're running on a headless computer.
+
+#### Quality of Life
+
+##### My robot is at an inconvenient starting position
+
+You can use the `reset` app to have the robot (blindly) move back to wherever you started the robot server from:
+```bash
+python -m stretch.app.reset
+```
+
+You can also prepend a trial of `ai_pickup` with the `--reset` flag to accomplish the same:
+
+```bash
+python -m stretch.app.ai_pickup --reset <other flags>
+```
+
+Be careful with this command, as it does not avoid obstacles! It's just a convenience function to move the robot back to a known starting position.
+
+##### My robot IP address changed
+
+You can add the `--robot_ip` flag to the `ai_pickup` command to specify the robot's IP address. For example, if your robot's IP address is `192.168.1.69`, you might run the following command:
+```bash
+python -m stretch.app.ai_pickup --robot_ip 192.168.1.69 --use-llm --llm openai --use-voice
+```
+
+And to move it back to (0, 0, 0):
+```bash
+python -m stretch.app.ai_pickup --reset --robot_ip 192.168.1.69 --use-llm --llm openai --use-voice
+```
