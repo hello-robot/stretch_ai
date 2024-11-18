@@ -245,18 +245,17 @@ class VoxelMapLocalizer:
         return None
 
     def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
-        # if isinstance(point, np.ndarray):
-        #     point = torch.from_numpy(point)
-        # points, _, _, _ = self.voxel_pcd.get_pointcloud()
-        # distances = torch.linalg.norm(point - points.detach().cpu(), dim=-1)
-        # if torch.min(distances) > distance_threshold:
-        #     print("Points are so far from other points!")
-        #     return False
-        # alignments = self.find_alignment_over_model(A).detach().cpu()[0]
-        # if torch.max(alignments[distances <= distance_threshold]) < similarity_threshold:
-        #     print("Points close the the point are not similar to the text!")
-        # return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
-        return False
+        if isinstance(point, np.ndarray):
+            point = torch.from_numpy(point)
+        points, _, _, _ = self.voxel_pcd.get_pointcloud()
+        distances = torch.linalg.norm(point - points.detach().cpu(), dim=-1)
+        if torch.min(distances) > distance_threshold:
+            print("Points are so far from other points!")
+            return False
+        alignments = self.find_alignment_over_model(A).detach().cpu()[0]
+        if torch.max(alignments[distances <= distance_threshold]) < similarity_threshold:
+            print("Points close the the point are not similar to the text!")
+        return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
 
     def localize_A(self, A, debug=True, return_debug=False):
         # centroids, extends, similarity_max_list, points, obs_max_list, debug_text = self.find_clusters_for_A(A, return_obs_counts = True, debug = debug)
