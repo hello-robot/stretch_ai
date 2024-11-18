@@ -35,7 +35,7 @@ Next, run the application on your GPU computer:
 
 It will first spend time downloading various models that it depends on. Once the program starts, you will be able to bring up a [Rerun-based GUI](https://rerun.io/) in your web browser.
 
-![Rerun-based GUI for the ai_pickup app.](./docs/images/rerun_example.png)
+![Rerun-based GUI for the ai_pickup app.](docs/images/rerun_example.png)
 
 Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
@@ -44,7 +44,7 @@ Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
 ```
 
-![Example of using the ai_pickup app with a toy moose and a laundry basket.](./docs/images/ai_pickup_moose_and_basket_example.jpg)
+![Example of using the ai_pickup app with a toy moose and a laundry basket.](docs/images/ai_pickup_moose_and_basket_example.jpg)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
