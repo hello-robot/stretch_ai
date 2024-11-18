@@ -189,7 +189,7 @@ python -m stretch.app.chat --llm qwen25
 ```
 
 This returns something like:
-```bash
+```
 (stretch_ai) cpaxton@olympia:~/src/stretchpy$ python -m stretch.app.chat --llm qwen25
 Loading checkpoint shards: 100%|█████████████████████████████████████████████████████████████████████████████| 2/2 [00:00<00:00,4.61it/s]
 You: hello who are you
@@ -210,7 +210,7 @@ python -m stretch.app.chat --llm qwen25 --prompt pickup
 ```
 
 You can see that it returns a list of API calls:
-```bash
+```
 You: Hello! who are you?
 Response: [('say', '"Hello! My name is Stretch. I am here to help you with any tasks you need."')]
 ```
