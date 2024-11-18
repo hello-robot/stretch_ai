@@ -44,6 +44,8 @@ Once you've completed this installation, you can start the server on your Stretc
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
+After this, we recommend trying the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo.
+
 #### Experimental support for Older Robots
 
 The older model of Stretch, the Stretch RE2, did not have an camera on the gripper. If you want to use this codebase with an older robot, you can purchase a [Stretch 2 Upgrade Kit](https://hello-robot.com/stretch-2-upgrade) to give your Stretch 2 the capabilities of a Stretch 3. Alternatively, you can run a version of the server with no d405 camera support on your robot.
