@@ -2,6 +2,8 @@
 
 Stretch AI contains the tools to talk to your robot and have it perform tasks like exploration, mapping, and pick-and-place. In this document, we'll walk through what the AI agent is, how it works, and how to test out different components of the LLM.
 
+_Click to follow the link to YouTube:_
+
 [![Example of Stretch AI using Voice Control](https://img.youtube.com/vi/oO9qRkiuiAQ/0.jpg)](https://www.youtube.com/watch?v=oO9qRkiuiAQ)
 
 [Above](https://www.youtube.com/watch?v=oO9qRkiuiAQ): example of the AI agent being used with the voice command and the open-source [Qwen2.5 LLM](https://huggingface.co/Qwen). The specific commands used in the video are:
@@ -167,6 +169,8 @@ python -m stretch.app.grasp_object --target_object "stuffed toy leopard"
 This will have the robot attempt to grasp the object described in the `--target_object` argument.
 
 
+_Click to follow the link to YouTube:_
+
 [![Pick up the plastic cup](https://img.youtube.com/vi/gjgVwcyPNdY/0.jpg)](https://www.youtube.com/watch?v=gjgVwcyPNdY)
 
 To test the grasping app, place an object directly in front of the robot, and run the command. The robot should attempt to grasp the object, pick it up, and release it. You can see an example of this in the video above, where multiple cups are placed in front of the robot, and it successfully picks up the pink one. The command given was:
@@ -181,6 +185,8 @@ Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/
   - `target_object: str` - the name of the object to grasp. Must be a class label if `match_method` is `class`.
   - `servo_to_grasp: bool` - if it should used visual servoing. If false, will grasp blindly based on head calibration, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
   - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging, but not necessary for normal operation. If you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
+
+_Click to follow the link to YouTube:_
 
 [![Pick up the stuffed toy zebra](https://img.youtube.com/vi/OISraQrl8rA/0.jpg)](https://www.youtube.com/watch?v=OISraQrl8rA)
 
