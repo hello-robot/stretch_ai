@@ -50,7 +50,7 @@ At Hello Robot, people have successfully commanded the robot to pick up a variet
 
 ### What is the AI Agent?
 
-When you run the `ai_pickup` command, it will create a [Pickup Executor](../src/stretch/agent/task/pickup/pickup_executor.py) object, which parses instructions from either an LLM or from a handful of templates and uses them to create a reactive task plan for the robot to execute. When you use this with the `--use_llm` flag -- which is recommended -- it will instantiate one of a number of LLM clients to generate the instructions. The LLM clients are defined in the [llm_agent.py](src/stretch/agent/llm/__init__.py) file and are:
+When you run the `ai_pickup` command, it will create a [Pickup Executor](../src/stretch/agent/task/pickup/pickup_executor.py) object, which parses instructions from either an LLM or from a handful of templates and uses them to create a reactive task plan for the robot to execute. When you use this with the `--use_llm` flag -- which is recommended -- it will instantiate one of a number of LLM clients to generate the instructions. The LLM clients are defined in the [llm_agent.py](../src/stretch/agent/llm/__init__.py) file and are:
   - `qwen25` and variants: the Qwen2.5 model from Tencent; a permissively-licensed model. The default is `qwen25-3B-Instruct`.
   - `openai`: the OpenAI GPT-4o-mini model; a proprietary model accessed through the OpenAI API.
   - `gemma2b`: the Gemma2b model from Google, accessed via Hugging Face's model hub.
@@ -103,11 +103,11 @@ Currently, the prompt used by the LLM encourages the robot to both pick and plac
 
 You can find the prompt used by the LLM at the following location. When running your Docker image in the development mode or running *stretch-ai* from source, you can modify this file to see how it changes the robot's behavior.
 
-[./../src/stretch/llms/prompts/pickup_prompt.py](./src/stretch/llms/prompts/pickup_prompt.py)
+[./../src/stretch/llms/prompts/pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py)
 
 ## Agent Architecture
 
-The entry point into the LLM Agent is the [ai_pickup.py](../src/stretch/app/ai_pickup.py) file. This file creates an instance of the [PickupExecutor](src/stretch/agent/task/pickup/pickup_executor.py) class, which is responsible for parsing the instructions from the LLM and creating a task plan for the robot to execute.
+The entry point into the LLM Agent is the [ai_pickup.py](../src/stretch/app/ai_pickup.py) file. This file creates an instance of the [PickupExecutor](../src/stretch/agent/task/pickup/pickup_executor.py) class, which is responsible for parsing the instructions from the LLM and creating a task plan for the robot to execute.
 
 In addition, if you ruin it with the `--use_llm` flag, it creates a chat wrapper:
 ```python
@@ -116,7 +116,7 @@ if use_llm:
         chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
 ```
 
-This will create an LLM client (for example, the [OpenAI client](../src/stretch/llms/openai_client.py)), and provide it a [prompt](src/stretch/llms/prompts). The prompt used in the LLM Agent demo is the [pickup_prompt.py](src/stretch/llms/prompts/pickup_prompt.py).
+This will create an LLM client (for example, the [OpenAI client](../src/stretch/llms/openai_client.py)), and provide it a [prompt](../src/stretch/llms/prompts). The prompt used in the LLM Agent demo is the [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py).
 
 Take a look at how the prompt starts out:
 > You are a friendly, helpful robot named Stretch. You are always helpful, and answer questions concisely. You will never harm a human or suggest harm.
@@ -134,7 +134,7 @@ Take a look at how the prompt starts out:
 > - go_home()  # navigate back to where you started
 > - quit()  # end the conversation
 
-This lists the different functions that the LLM agent can use to interact with the world. If you wanted to add your own functions to this list, you would start by adding them here. You would then add them to the `parse_command` function in the [PickupPrompt](../src/stretch/llms/prompts/pickup_prompt.py) class, and add the appropriate logic handling the function call to the [PickupExecutor](src/stretch/agent/task/pickup/pickup_executor.py) class.
+This lists the different functions that the LLM agent can use to interact with the world. If you wanted to add your own functions to this list, you would start by adding them here. You would then add them to the `parse_command` function in the [PickupPrompt](../src/stretch/llms/prompts/pickup_prompt.py) class, and add the appropriate logic handling the function call to the [PickupExecutor](../src/stretch/agent/task/pickup/pickup_executor.py) class.
 
 ### Testing Individual Components
 
