@@ -175,6 +175,15 @@ To test the grasping app, place an object directly in front of the robot, and ru
 python -m stretch.app.grasp_object --target_object "pink plastic cup"
 ```
 
+Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/grasp/grasp_object.py) class. This class has a lot of options, available via the `configure()` function. Some to note:
+  - `talk: bool` - whether the robot should speak out loud while performing the task
+  - `match_method` - either `feature` or `class`; if `feature`, the robot will attempt to match the object to a feature vector, and if `class`, the robot will attempt to match the object to a class label.
+  - `target_object: str` - the name of the object to grasp. Must be a class label if `match_method` is `class`.
+  - `servo_to_grasp: bool` - if it should used visual servoing. If false, will grasp blindly based on head calibration, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
+  - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging, but not necessary for normal operation. If you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
+
+Other parameters will configure how visual servoing operates and how close the robot needs to get to the object before closing the gripper; to understand these, it's best to look at the [GraspObjectOperation source code](../src/stretch/agent/task/grasp/grasp_object.py).
+
 #### Chat
 
 You can chat with the robot using LLMs by running the following command:
