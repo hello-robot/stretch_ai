@@ -209,44 +209,10 @@ class VoxelMapLocalizer:
         pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
         depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
         K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
-        # xyzs = get_xyz(depth, pose, K)[0]
-        # scores, boxes = self.detection_model.detect_object(
-        #     rgb=rgb, text=text, confidence_threshold=threshold
-        # )
 
-        # rgb = rgb.permute(2, 0, 1).to(torch.uint8)
-        # inputs = self.exist_processor(
-        #     text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
-        # )
-        # for input in inputs:
-        #     inputs[input] = inputs[input].to("cuda")
-
-        # with torch.no_grad():
-        #     outputs = self.exist_model(**inputs)
-
-        # target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
-        # results = self.exist_processor.image_processor.post_process_object_detection(
-        #     outputs, threshold=threshold, target_sizes=target_sizes
-        # )[0]
-
-        # for idx, (score, bbox) in enumerate(
-        #     sorted(zip(scores, boxes), key=lambda x: x[0], reverse=True)
-        # ):
-
-        #     tl_x, tl_y, br_x, br_y = bbox
-        #     w, h = depth.shape
-        #     tl_x, tl_y, br_x, br_y = (
-        #         int(max(0, tl_x.item())),
-        #         int(max(0, tl_y.item())),
-        #         int(min(h, br_x.item())),
-        #         int(min(w, br_y.item())),
-        #     )
-
-        #     if torch.min(depth[tl_y:br_y, tl_x:br_x].reshape(-1)) < 2.5:
-        #         return torch.median(xyzs[tl_y:br_y, tl_x:br_x].reshape(-1, 3), dim=0).values
-        # return None
-
-        return self.detection_model.compute_obj_coord(text, rgb, depth, K, pose, threshold)
+        return self.detection_model.compute_obj_coord(
+            text, rgb, depth, K, pose, confidence_threshold=threshold
+        )
 
     def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
         if isinstance(point, np.ndarray):

@@ -20,6 +20,7 @@ from stretch.dynav.mapping_utils.voxelized_pcd import scatter3d
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
+from stretch.utils.voxel import VoxelizedPointcloud
 
 from .voxel import VALID_FRAMES, Frame
 from .voxel import SparseVoxelMap as SparseVoxelMapBase
@@ -31,6 +32,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
     def __init__(
         self,
         resolution: float = 0.01,
+        semantic_memory_resolution: float = 0.05,
         feature_dim: int = 3,
         grid_size: Tuple[int, int] = None,
         grid_resolution: float = 0.05,
@@ -99,6 +101,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
 
         self.point_update_threshold = point_update_threshold
         self._history_soft: Optional[Tensor] = None
+        self.voxel_pcd = VoxelizedPointcloud(voxel_size=semantic_memory_resolution).to(self.device)
 
     def get_2d_map(
         self, debug: bool = False, return_history_id: bool = False
