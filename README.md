@@ -38,13 +38,15 @@ Artificial intelligence (AI) for robots often has complex dependencies, includin
 
 First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker_plus_virtenv.md)
 
-Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. The following command starts the server on your Stretch robot.:
+Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. Thn start the server on your Stretch robot with the following commmand:
 
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server.sh
 ```
 
-**Experimental support for RE2:** The older model, Stretch 2, did not have an camera on the gripper. You can purchase a [Stretch 2 Upgrade Kit](https://hello-robot.com/stretch-2-upgrade) to give your Stretch 2 the capabilities of a Stretch 3. Alternatively, you can run a version of the server with no d405 camera support on your robot.
+#### Experimental support for Older Robots
+
+The older model of Stretch, the Stretch RE2, did not have an camera on the gripper. If you want to use this codebase with an older robot, you can purchase a [Stretch 2 Upgrade Kit](https://hello-robot.com/stretch-2-upgrade) to give your Stretch 2 the capabilities of a Stretch 3. Alternatively, you can run a version of the server with no d405 camera support on your robot.
 
 Note that many demos will not work with this script (including the [Language-Directed Pick and Place](#language-directed-pick-and-place) demo) and [learning from demonstration](docs/learning_from_demonstration.md). However, you can still run the [simple motions demo](examples/simple_motions.py) and [view images](#visualization-and-streaming-video) with this script.
 
@@ -52,7 +54,7 @@ Note that many demos will not work with this script (including the [Language-Dir
 ./scripts/run_stretch_ai_ros2_bridge_server.sh --no-d405
 ```
 
-### Optional: Docker Quickstart
+#### Optional: Docker Quickstart
 
 To help you get started more quickly, we provide two pre-built [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) images that you can download and use with two shell scripts.
 
