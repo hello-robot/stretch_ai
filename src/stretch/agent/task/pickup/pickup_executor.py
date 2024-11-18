@@ -223,7 +223,7 @@ class PickupExecutor:
                 self.emote_task.get_task("wave").run()
                 self.agent.move_to_manip_posture()
             elif command == "go_home":
-                if self.agent.voxel_map.is_empty():
+                if self.agent.get_voxel_map().is_empty():
                     logger.warning("No map data available. Cannot go home.")
                 else:
                     self.agent.go_home()

@@ -51,7 +51,7 @@ def _eval_svm(filename: str, start_pos: np.ndarray, possible: bool = False) -> N
         use_instance_memory=True,
         create_semantic_sensor=False,
     )
-    voxel_map = agent.voxel_map
+    voxel_map = agent.get_voxel_map()
 
     print("Reading from pkl file of raw observations...")
     frame = -1

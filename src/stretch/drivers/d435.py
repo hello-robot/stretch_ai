@@ -31,7 +31,7 @@ class D435i(Realsense):
     def get_camera_infos(self):
         return self.depth_camera_info, self.color_camera_info
 
-    def get_images(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_images(self, depth_type: type = np.float16) -> Tuple[np.ndarray, np.ndarray]:
         """Get a pair of numpy arrays for the images we want to use."""
 
         # Get the frames from the realsense
@@ -44,7 +44,7 @@ class D435i(Realsense):
         aligned_depth_frame = aligned_frames.get_depth_frame()
         color_frame = aligned_frames.get_color_frame()
 
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
+        depth_image = np.asanyarray(aligned_depth_frame.get_data()).astype(depth_type)
         color_image = np.asanyarray(color_frame.get_data())
         return depth_image, color_image
 
