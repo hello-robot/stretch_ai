@@ -35,7 +35,7 @@ Next, run the application on your GPU computer:
 
 It will first spend time downloading various models that it depends on. Once the program starts, you will be able to bring up a [Rerun-based GUI](https://rerun.io/) in your web browser.
 
-![Rerun-based GUI for the ai_pickup app.](docs/images/rerun_example.png)
+![Rerun-based GUI for the ai_pickup app.](images/rerun_example.png)
 
 Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
@@ -44,7 +44,7 @@ Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
 ```
 
-![Example of using the ai_pickup app with a toy moose and a laundry basket.](docs/images/ai_pickup_moose_and_basket_example.jpg)
+![Example of using the ai_pickup app with a toy moose and a laundry basket.](images/ai_pickup_moose_and_basket_example.jpg)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
@@ -64,7 +64,7 @@ python -m stretch.app.ai_pickup --use_llm --llm gemma2b
 
 #### Using OpenAI Models with Stretch AI
 
-To use an OpenAI model, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/docs/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
+To use an OpenAI model, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
 
 ```bash
 export OPENAI_API_KEY="your_api_key_here"
@@ -156,7 +156,7 @@ The AI demo operates on detected images of objects, like these:
 
 | Object Image | Receptacle Image |
 |--------------|------------------|
-| [![object.png](docs/object.png)](docs/object.png) | [![receptacle.png](docs/receptacle.png)](docs/receptacle.png) |
+| [![object.png](object.png)](object.png) | [![receptacle.png](receptacle.png)](receptacle.png) |
 
 You may want to test the robot's grasping capabilities by running the following command:
 
