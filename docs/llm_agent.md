@@ -245,3 +245,8 @@ min_points_per_voxel: 15  # Drop things below this density per voxel
 Obstacles below this height will be ignored, and obstacles above this height and below `obs_max_height` will be considered obstacles. If you are seeing too many obstacles, you may want to increase `obs_min_height` to ignore more of them.
 
 In addition, if your floor has lots of reflections or gaps, `neg_obs_height` can sometimes cause issues. It creates obstacles if there are opoints detected below this height. If you are seeing too many obstacles, you may want to set `use_negative_obstacles` to `False`, or change `neg_obs_height` to a lower (more negative) value.
+
+
+#### Hanging in Grasp Object App
+
+The `grasp_object` app will try to display what the robot is seeing using opencv python, particularly the `imshow` method. This may cause issues if your OpenCV installation has trouble, or if you're running on a headless computer.
