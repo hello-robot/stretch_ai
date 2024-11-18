@@ -186,6 +186,28 @@ class Camera(object):
         return depth
 
 
+def camera_xyz_to_global_xyz(camera_xyz, camera_pose):
+    """
+    camera_xyz (height, width, 3)
+    camera_pose (4, 4)
+    """
+    height, width, _ = camera_xyz.shape
+
+    camera_xyz_flat = camera_xyz.reshape(-1, 3)
+    ones = np.ones((camera_xyz_flat.shape[0], 1))
+    camera_homogeneous = np.hstack((camera_xyz_flat, ones))  # Shape (N, 4)
+
+    global_homogeneous = (camera_pose @ camera_homogeneous.T).T  # Shape (N, 4)
+
+    # Convert back to Cartesian coordinates
+    global_xyz_flat = global_homogeneous[:, :3] / global_homogeneous[:, 3:4]  # Shape (N, 3)
+
+    # Reshape back to (height, width, 3)
+    global_xyz = global_xyz_flat.reshape(height, width, 3)
+
+    return global_xyz
+
+
 def z_from_opengl_depth(depth, camera: Camera):
     near = camera.near_val
     far = camera.far_val
