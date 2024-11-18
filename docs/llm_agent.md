@@ -148,20 +148,32 @@ python -m stretch.app.mapping
 
 This will start the robot in a mapping mode, where it will explore the environment and build a map of the room. You should be able to see this map in Rerun.
 
+If your robot is 
+
 #### Grasping
+
+The AI demo operates on detected images of objects, like these:
 
 | Object Image | Receptacle Image |
 |--------------|------------------|
 | [![object.png](docs/object.png)](docs/object.png) | [![receptacle.png](docs/receptacle.png)](docs/receptacle.png) |
 
-
-You can test the robot's grasping capabilities by running the following command:
+You may want to test the robot's grasping capabilities by running the following command:
 
 ```bash
 python -m stretch.app.grasp_object --target_object "stuffed toy leopard"
 ```
 
 This will have the robot attempt to grasp the object described in the `--target_object` argument.
+
+
+[![Pick up the plastic cup](https://img.youtube.com/vi/gjgVwcyPNdY/0.jpg)](https://www.youtube.com/watch?v=gjgVwcyPNdY)
+
+To test the grasping app, place an object directly in front of the robot, and run the command. The robot should attempt to grasp the object, pick it up, and release it. You can see an example of this in the video above, where multiple cups are placed in front of the robot, and it successfully picks up the pink one. The command given was:
+
+```bash
+python -m stretch.app.grasp_object --target_object "pink plastic cup"
+```
 
 #### Chat
 
@@ -209,3 +221,27 @@ python -m stretch.app.chat --voice
 ```
 
 Press enter to speak. The robot will respond to your voice input, processed using [OpenAI Whisper](https://www.openai.com/whisper/).
+
+### Common Issues
+
+#### Motion Planning
+
+The robot uses a motion planner to avoid obstacles on its feature-rich 3D map of the environment. If you are having trouble, you may want to tune the [config file](src/stretch/config/default_planner.yaml) until it works. Some advice below.
+
+##### Too Many Obstacles
+
+Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles.
+
+*If you are seeing areas marked as red obstacles for no reason*, then try changing the following parameters in the config file, especially `obs_min_height`:
+```yaml
+obs_min_height: 0.10  # Ignore things less than this high when planning motions
+obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
+neg_obs_height: -0.05  # Things less than this height ARE obstacles
+use_negative_obstacles: True  # Use the negative height as an obstacle
+obs_min_density: 10  # This many points makes it an obstacle
+min_points_per_voxel: 15  # Drop things below this density per voxel
+```
+
+Obstacles below this height will be ignored, and obstacles above this height and below `obs_max_height` will be considered obstacles. If you are seeing too many obstacles, you may want to increase `obs_min_height` to ignore more of them.
+
+In addition, if your floor has lots of reflections or gaps, `neg_obs_height` can sometimes cause issues. It creates obstacles if there are opoints detected below this height. If you are seeing too many obstacles, you may want to set `use_negative_obstacles` to `False`, or change `neg_obs_height` to a lower (more negative) value.
