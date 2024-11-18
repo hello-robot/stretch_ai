@@ -11,6 +11,43 @@ python -m stretch.app.ai_pickup --use_llm --use_voice
 
 ## Running the AI Agent
 
+The entry point to the AI demo is the `ai_pickup` script:
+
+```bash
+python -m stretch.app.ai_pickup
+```
+
+When you run the `ai_pickup` demo, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
+
+While attempting to perform this task, Stretch will speak to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings on Stretch's computer should be set so that you can hear what Stretch says.
+
+Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
+
+You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot.
+
+```bash
+./scripts/set_robot_ip.sh #.#.#.#
+```
+
+*Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.*
+
+Next, run the application on your GPU computer:
+
+It will first spend time downloading various models that it depends on. Once the program starts, you will be able to bring up a [Rerun-based GUI](https://rerun.io/) in your web browser.
+
+![Rerun-based GUI for the ai_pickup app.](./docs/images/rerun_example.png)
+
+Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
+
+```
+Enter the target object: brown moose toy
+Enter the target receptacle: white laundry basket 
+```
+
+![Example of using the ai_pickup app with a toy moose and a laundry basket.](./docs/images/ai_pickup_moose_and_basket_example.jpg)
+
+At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
+
 ### What is the AI Agent?
 
 When you run the `ai_pickup` command, it will create a [Pickup Executor](src/stretch/agent/task/pickup/pickup_executor.py) object, which parses instructions from either an LLM or from a handful of templates and uses them to create a reactive task plan for the robot to execute. When you use this with the `--use_llm` flag -- which is recommended -- it will instantiate one of a number of LLM clients to generate the instructions. The LLM clients are defined in the [llm_agent.py](src/stretch/agent/llm/__init__.py) file and are:
@@ -97,8 +134,39 @@ Take a look at how the prompt starts out:
 > - go_home()  # navigate back to where you started
 > - quit()  # end the conversation
 
-This lists the different functions that the LLM agent can use to interact with the world.
+This lists the different functions that the LLM agent can use to interact with the world. If you wanted to add your own functions to this list, you would start by adding them here. You would then add them to the `parse_command` function in the [PickupPrompt](src/stretch/llms/prompts/pickup_prompt.py) class, and add the appropriate logic handling the function call to the [PickupExecutor](src/stretch/agent/task/pickup/pickup_executor.py) class.
+
+### Testing Individual Components
+
+#### Mapping and Exploration
+
+You can test the mapping capabilities of the robot by running the following command:
+
+```bash
+python -m stretch.app.mapping
+```
+
+This will start the robot in a mapping mode, where it will explore the environment and build a map of the room. You should be able to see this map in Rerun.
+
+#### Grasping
+
+| Object Image | Receptacle Image |
+|--------------|------------------|
+| [![object.png](docs/object.png)](docs/object.png) | [![receptacle.png](docs/receptacle.png)](docs/receptacle.png) |
 
 
+You can test the robot's grasping capabilities by running the following command:
 
+```bash
+python -m stretch.app.grasp_object --target_object "stuffed toy leopard"
+```
 
+This will have the robot attempt to grasp the object described in the `--target_object` argument.
+
+#### Chat
+
+You can chat with the robot using LLMs by running the following command:
+
+```bash
+python -m stretch.app.chat
+```

@@ -73,7 +73,7 @@ This script will download the Docker image and start the container. You will be 
 
 [![Example of Stretch AI using Voice Control](https://img.youtube.com/vi/oO9qRkiuiAQ/0.jpg)](https://www.youtube.com/watch?v=oO9qRkiuiAQ)
 
-Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
+Now that you have the server running on Stretch, we recommend you try a demonstration of language-directed pick and place.
 
 For this application, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
 
@@ -89,7 +89,7 @@ You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch 
 
 *Please note that it's important that your GPU computer and your Stretch robot be able to communicate via the following ports 4401, 4402, 4403, and 4404. If you're using a firewall, you'll need to open these ports.*
 
-Next, run the application in the Docker container on your GPU computer.
+Next, run the application on your GPU computer:
 
 ```bash
 python -m stretch.app.ai_pickup
