@@ -7,12 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import os
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+
+import os
 import time
 import timeit
 from datetime import datetime
@@ -24,7 +25,6 @@ import numpy as np
 import rerun as rr
 import zmq
 
-import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -67,7 +67,7 @@ class RobotAgent(RobotAgentBase):
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        realtime_updates: bool = True,
+        realtime_updates: bool = False,
         obs_sub_port: int = 4450,
         re: int = 3,
         manip_port: int = 5557,
@@ -141,6 +141,7 @@ class RobotAgent(RobotAgentBase):
             rerun=True,
             rerun_visualizer=self.robot._rerun,
             log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+            robot=self.robot,
         )  # type: ignore
         self.encoder = self.image_processor.get_encoder()
         context = zmq.Context()
@@ -161,6 +162,8 @@ class RobotAgent(RobotAgentBase):
 
         self.reset_object_plans()
 
+        self.re = re
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -170,35 +173,9 @@ class RobotAgent(RobotAgentBase):
         # Previously sampled goal during exploration
         self._previous_goal = None
 
+        self._running = True
+
         self._start_threads()
-
-    def get_observations_loop(self):
-        while True:
-            obs = None
-            t0 = timeit.default_timer()
-
-            self._obs_history_lock.acquire()
-            while obs is None:
-                obs = self.robot.get_observation()
-                # obs = self.sub_socket.recv_pyobj()
-                if obs is None:
-                    continue
-
-                if (len(self.obs_history) > 0) and (
-                    obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
-                ):
-                    obs = None
-                t1 = timeit.default_timer()
-                if t1 - t0 > 10:
-                    logger.error("Failed to get observation")
-                    break
-                time.sleep(0.05)
-
-            # t1 = timeit.default_timer()
-            self.obs_history.append(obs)
-            self._obs_history_lock.release()
-            self.obs_count += 1
-            time.sleep(0.1)
 
     def compute_blur_metric(self, image):
         """
@@ -360,18 +337,47 @@ class RobotAgent(RobotAgentBase):
         # print(f"Done clearing out old observations. Time: {t6 - t5}")
         self._obs_history_lock.release()
 
+    def update(self):
+        """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
+        # Sleep some time for the robot camera to focus
+        # time.sleep(0.3)
+        obs = self.robot.get_observation()
+        self.obs_count += 1
+        rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
+        start_time = time.time()
+        self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        end_time = time.time()
+
     def look_around(self):
-        for pan in [0.4, -0.4, -1.2, -1.6]:
+        print("*" * 10, "Look around to check", "*" * 10)
+        # for pan in [0.6, -0.2, -1.0, -1.8]:
+        for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.65]:
-                self.robot.head_to(pan, tilt, blocking=True)
-                time.sleep(0.3)
-        self.robot.head_to(0, -0.7, blocking=True)
+                self.robot.head_to(pan, tilt, blocking=False)
+                time.sleep(0.2)
+                self.update()
+
+    def rotate_in_place(self):
+        print("*" * 10, "Rotate in place", "*" * 10)
+        xyt = self.robot.get_base_pose()
+        self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
+        for i in range(8):
+            xyt[2] += 2 * np.pi / 8
+            self.robot.move_base_to(xyt, blocking=True)
+            if not self._realtime_updates:
+                self.update()
 
     def execute_action(
         self,
         text: str,
     ):
         start_time = time.time()
+
+        if not self._realtime_updates:
+            self.robot.look_front()
+            self.look_around()
+            self.robot.look_front()
+            self.robot.switch_to_navigation_mode()
 
         self.robot.switch_to_navigation_mode()
 
@@ -401,7 +407,6 @@ class RobotAgent(RobotAgentBase):
                     rot_err_threshold=self.rot_err_threshold,
                     blocking=True,
                 )
-                # self.look_around()
                 return False, None
         else:
             print("Failed. Try again!")
@@ -418,7 +423,7 @@ class RobotAgent(RobotAgentBase):
             return False
         return True
 
-    def navigate(self, text, max_step=5):
+    def navigate(self, text, max_step=10):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         finished = False
         step = 0
@@ -454,6 +459,7 @@ class RobotAgent(RobotAgentBase):
             socket=self.manip_socket,
             hello_robot=self.manip_wrapper,
         )
+        print("Place: ", rotation, translation)
 
         if rotation is None:
             return False

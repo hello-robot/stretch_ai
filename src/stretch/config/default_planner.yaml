@@ -5,18 +5,15 @@
 #  version: "ViT-B/32"
 encoder: "siglip"
 encoder_args:
-  # version: "ViT-B/32"
-  # version: "base"
+  # Version options are ["base", "so400m"]
   version: "so400m"
-  matching:
-    # Feature matching threshold for if something is considered a particular class
-    # Set this value by experimting with:
-    #   python -m stretch.app.query --threshold 0.05
-    # You can change the threshold to anything that makes sense.
-    # For so400m
-    feature_match_threshold: 0.1
-    # For the base model
-    # feature_match_threshold: 0.05
+  # Feature matching threshold for if something is considered a particular class
+  # Set this value by experimting with:
+  #   python -m stretch.app.query --threshold 0.05
+  # You can change the threshold to anything that makes sense.
+  feature_match_threshold: 0.1
+  # version: "base"
+  # feature_match_threshold: 0.05
 open_vocab_category_map_file: example_cat_map.json
 tts_engine: "gTTS"
 
@@ -64,9 +61,9 @@ filters:
 # Motion convergence parameters
 # These are to make sure the robot is not doing anything weird
 motion:
-  moving_threshold: 0.001  # How much the robot has to move to be considered "moving"
-  angle_threshold: 0.01  # How much the robot has to rotate to be considered "rotating"
-  min_steps_not_moving: 5  # How many steps the robot has to not move before we consider it "stopped"
+  moving_threshold: 0.01  # How much the robot has to move to be considered "moving"
+  angle_threshold: 0.1  # How much the robot has to rotate to be considered "rotating"
+  min_steps_not_moving: 2  # How many steps the robot has to not move before we consider it "stopped"
   joint_tolerance:
     arm: 0.02
     base_x: 0.02

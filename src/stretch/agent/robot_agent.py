@@ -140,9 +140,7 @@ class RobotAgent:
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = self.parameters.get(
-            "encoder_args/matching/feature_match_threshold", 0.05
-        )
+        self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
@@ -1089,11 +1087,11 @@ class RobotAgent:
             res = self._cached_plans[instance_id]
             has_plan = res.success
             if verbose:
-                print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
+                for j, view in enumerate(instance.instance_views):
+                    print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
         # Plan to the instance
         if not has_plan:
-            # Call planner
             print(
                 "planning to instance: ",
                 instance_id,
@@ -1104,6 +1102,7 @@ class RobotAgent:
                 "rotation_offset: ",
                 rotation_offset,
             )
+            # Call planner
             res = self.plan_to_bounds(
                 instance.bounds,
                 start,
@@ -1783,18 +1782,18 @@ class RobotAgent:
             print("       Start:", start)
             self.print_found_classes(task_goal)
 
-            if audio_feedback:
+            if audio_feedback and self.semantic_sensor is not None:
                 if len(all_goals) > 0:
                     self.robot.say_sync(
                         f"So far, I have found {len(all_goals)} object{'s' if len(all_goals) > 2 else ''}"
                     )
                 else:
                     self.robot.say_sync(f"My map is currently empty")
-                time.sleep(4.0)
+                time.sleep(1.0)
 
             if audio_feedback:
                 self.robot.say_sync("Looking for frontiers nearby...")
-                time.sleep(4.0)
+                time.sleep(1.0)
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter

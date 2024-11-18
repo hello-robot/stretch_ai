@@ -54,7 +54,7 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [200, 200]
+DEFAULT_GRID_SIZE = [120, 120]
 
 logger = logging.getLogger(__name__)
 
@@ -662,7 +662,7 @@ class SparseVoxelMap(object):
 
         history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
-        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=5))
+        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=7))
 
         if self._remove_visited_from_obstacles:
             # Remove "visited" points containing observations of the robot
@@ -735,6 +735,11 @@ class SparseVoxelMap(object):
         obstacles[-30:, :] = True
         obstacles[:, 0:30] = True
         obstacles[:, -30:] = True
+        if history_soft is not None:
+            history_soft[0:35, :] = history_soft.max().item()
+            history_soft[-35:, :] = history_soft.max().item()
+            history_soft[:, 0:35] = history_soft.max().item()
+            history_soft[:, -35:] = history_soft.max().item()
         self._map2d = (obstacles, explored)
         self._2d_last_updated = self._seq
         self._history_soft = history_soft
