@@ -775,11 +775,6 @@ class ImageProcessor:
 
         self.run_mask_clip(rgb, ~valid_depth, world_xyz)
 
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
-
         with self.voxel_map_lock:
             self.voxel_map.add(
                 camera_pose=torch.Tensor(pose),
@@ -787,6 +782,11 @@ class ImageProcessor:
                 depth=torch.Tensor(depth),
                 camera_K=torch.Tensor(intrinsics),
             )
+
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
 
         obs, exp = self.voxel_map.get_2d_map()
         if self.rerun and self.rerun_visualizer is None:
