@@ -176,7 +176,7 @@ python -m stretch.app.grasp_object --target_object "pink plastic cup"
 ```
 
 Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/grasp/grasp_object.py) class. This class has a lot of options, available via the `configure()` function. Some to note:
-  - `talk: bool` - whether the robot should speak out loud while performing the task
+  - `talk: bool` - whether the robot should speak out loud while performing the task (if false, the robot will stay quiet)
   - `match_method` - either `feature` or `class`; if `feature`, the robot will attempt to match the object to a feature vector, and if `class`, the robot will attempt to match the object to a class label.
   - `target_object: str` - the name of the object to grasp. Must be a class label if `match_method` is `class`.
   - `servo_to_grasp: bool` - if it should used visual servoing. If false, will grasp blindly based on head calibration, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
