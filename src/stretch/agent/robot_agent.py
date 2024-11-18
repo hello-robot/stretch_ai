@@ -844,7 +844,7 @@ class RobotAgent:
         while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
-            time.sleep(1.5)
+            time.sleep(0.5)
 
     def update(
         self,
