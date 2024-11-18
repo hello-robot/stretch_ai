@@ -38,7 +38,7 @@ Artificial intelligence (AI) for robots often has complex dependencies, includin
 
 First, you will need to install software on your Stretch robot and another computer with a GPU (*GPU computer*). Use the following link to go to the installation instructions: [Instructions for Installing Stretch AI](https://github.com/hello-robot/stretch_ai/blob/main/docs/start_with_docker_plus_virtenv.md)
 
-Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. Thn start the server on your Stretch robot with the following commmand:
+Once you've completed this installation, you can start the server on your Stretch robot.  Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`. Then, run the following command:
 
 ```bash
 ./scripts/run_stretch_ai_ros2_bridge_server.sh

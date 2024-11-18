@@ -109,10 +109,10 @@ You can find the prompt used by the LLM at the following location. When running 
 
 The entry point into the LLM Agent is the [ai_pickup.py](src/stretch/app/ai_pickup.py) file. This file creates an instance of the [PickupExecutor](src/stretch/agent/task/pickup/pickup_executor.py) class, which is responsible for parsing the instructions from the LLM and creating a task plan for the robot to execute.
 
-In addition, if you ruin it wil the `--use_llm` flag, it creates a chat wrapper:
+In addition, if you ruin it with the `--use_llm` flag, it creates a chat wrapper:
 ```python
- if use_llm:
-        llm_client = get_llm_client(llm, prompt=prompt)
+if use_llm:
+	llm_client = get_llm_client(llm, prompt=prompt)
         chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
 ```
 
@@ -208,4 +208,4 @@ Finally, you can run it with the `--voice` flag to test audio input, e.g.:
 python -m stretch.app.chat --voice
 ```
 
-Press enter to speak. The robot will respond to your voice input, processed using [OpenAI Whisper](https://openai.com/index/whisper/).
+Press enter to speak. The robot will respond to your voice input, processed using [OpenAI Whisper](https://www.openai.com/whisper/).
