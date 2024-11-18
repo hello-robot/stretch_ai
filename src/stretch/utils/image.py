@@ -163,7 +163,7 @@ class Camera(object):
     def get_pose(self):
         return self.pose_matrix.copy()
 
-    def depth_to_xyz(self, depth):
+    def depth_to_xyz(self, depth, data_type: type = np.float16):
         """get depth from numpy using simple pinhole self model"""
         indices = np.indices((self.height, self.width), dtype=np.float32).transpose(1, 2, 0)
         z = depth
@@ -171,7 +171,7 @@ class Camera(object):
         x = (indices[:, :, 1] - self.px) * (z / self.fx)
         y = (indices[:, :, 0] - self.py) * (z / self.fy)
         # Should now be height x width x 3, after this:
-        xyz = np.stack([x, y, z], axis=-1)
+        xyz = np.stack([x, y, z], axis=-1).astype(data_type)
         return xyz
 
     def fix_depth(self, depth):
