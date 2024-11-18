@@ -2,7 +2,7 @@
 
 Stretch AI contains the tools to talk to your robot and have it perform tasks like exploration, mapping, and pick-and-place. In this document, we'll walk through what the AI agent is, how it works, and how to test out different components of the LLM.
 
-[![Video Title](https://img.youtube.com/vi/oO9qRkiuiAQ/0.jpg)](https://www.youtube.com/watch?v=oO9qRkiuiAQ)
+[![Example of Stretch AI using Voice Control](https://img.youtube.com/vi/oO9qRkiuiAQ/0.jpg)](https://www.youtube.com/watch?v=oO9qRkiuiAQ)
 
 [Above](https://www.youtube.com/watch?v=oO9qRkiuiAQ): example of the AI agent being used with the voice command and the open-source [Qwen2.5 LLM](https://huggingface.co/Qwen). The specific commands used in the video are:
 ```

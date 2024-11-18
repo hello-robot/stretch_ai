@@ -71,11 +71,7 @@ This script will download the Docker image and start the container. You will be 
 
 ### Language-Directed Pick and Place
 
-<div class="embed-container">
-    <iframe width="640" height="390" 
-    src="https://youtu.be/oO9qRkiuiAQ"
-    frameborder="0" allowfullscreen></iframe>
-</div>
+[![Example of Stretch AI using Voice Control](https://img.youtube.com/vi/oO9qRkiuiAQ/0.jpg)](https://www.youtube.com/watch?v=oO9qRkiuiAQ)
 
 Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
 
