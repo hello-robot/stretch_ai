@@ -68,4 +68,37 @@ You can find the prompt used by the LLM at the following location. When running 
 
 [./src/stretch/llms/prompts/pickup_prompt.py](./src/stretch/llms/prompts/pickup_prompt.py)
 
+## Agent Architecture
+
+The entry point into the LLM Agent is the [ai_pickup.py](src/stretch/app/ai_pickup.py) file. This file creates an instance of the [PickupExecutor](src/stretch/agent/task/pickup/pickup_executor.py) class, which is responsible for parsing the instructions from the LLM and creating a task plan for the robot to execute.
+
+In addition, if you ruin it wil the `--use_llm` flag, it creates a chat wrapper:
+```python
+ if use_llm:
+        llm_client = get_llm_client(llm, prompt=prompt)
+        chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
+```
+
+This will create an LLM client (for example, the [OpenAI client](src/stretch/llms/openai_client.py)), and provide it a [prompt](src/stretch/llms/prompts). The prompt used in the LLM Agent demo is the [pickup_prompt.py](src/stretch/llms/prompts/pickup_prompt.py).
+
+Take a look at how the prompt starts out:
+> You are a friendly, helpful robot named Stretch. You are always helpful, and answer questions concisely. You will never harm a human or suggest harm.
+> 
+> When prompted, you will respond using these actions:
+> - pickup(object_name)  # object_name is the name of the object to pick up
+> - explore(int)  # explore the environment for a certain number of steps
+> - place(location_name)  # location_name is the name of the receptacle to place object in
+> - say(text)  # say something to the user
+> - wave()  # wave at a person
+> - nod_head() # nod your head
+> - shake_head() # shake your head
+> - avert_gaze() # avert your gaze
+> - find(object_name)  # find the object or location by exploring
+> - go_home()  # navigate back to where you started
+> - quit()  # end the conversation
+
+This lists the different functions that the LLM agent can use to interact with the world.
+
+
+
 
