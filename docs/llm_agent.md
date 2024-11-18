@@ -296,3 +296,49 @@ And to move it back to (0, 0, 0):
 ```bash
 python -m stretch.app.ai_pickup --reset --robot_ip 192.168.1.69 --use-llm --llm openai --use-voice
 ```
+
+#### General Debugging Strategy
+
+Run the `view_images` app to make sure images are streaming from the robot and it can move its arm:
+
+```bash
+python -m stretch.app.view_images
+
+# Optionally set robot IP address
+python -m stretch.app.view_images --robot_ip $ROBOT_IP
+```
+
+Then try running mapping with 0 iterations, so the robot just spins in place:
+```bash
+python -m stretch.app.mapping --explore-iter 0
+```
+
+Then a larger map:
+```bash
+python -m stretch.app.mapping --explore-iter 10
+```
+
+Then reset the robot, either manually or with the `reset` app:
+```bash
+python -m stretch.app.reset
+```
+
+Then try running the `grasp_object` app with the `--target_object` flag set to an object in the robot's view, setting the objects up in front of the robot as described in the [Grasping](#grasping) section above.
+```bash
+python -m stretch.app.grasp_object --target_object "stuffed toy leopard"
+```
+
+Finally you can try AI pickup without an LLM:
+```bash
+python -m stretch.app.ai_pickup
+```
+
+Then with an LLM:
+```bash
+python -m stretch.app.ai_pickup --use_llm
+```
+
+Then with voiceE:
+```bash
+python -m stretch.app.ai_pickup --use_llm --use_voice
+```
