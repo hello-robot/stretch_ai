@@ -170,3 +170,42 @@ You can chat with the robot using LLMs by running the following command:
 ```bash
 python -m stretch.app.chat
 ```
+
+You can run this command with the `--llm` flag to set a specific backend:
+```bash
+python -m stretch.app.chat --llm qwen25
+```
+
+This returns something like:
+```bash
+(stretch_ai) cpaxton@olympia:~/src/stretchpy$ python -m stretch.app.chat --llm qwen25
+Loading checkpoint shards: 100%|█████████████████████████████████████████████████████████████████████████████| 2/2 [00:00<00:00,4.61it/s]
+You: hello who are you
+Response: Hello! I'm Stretch, a friendly and helpful robot from California. How can I assist you today?
+--------------------------------------------------------------------------------
+Time taken: 1.0482106080744416
+--------------------------------------------------------------------------------
+You: What can you do?
+Response: I can find objects in a house, pick them up, wave at people, answer questions, follow simple sequences of commands, move around the house, and follow people.
+--------------------------------------------------------------------------------
+Time taken: 0.4540962891187519
+--------------------------------------------------------------------------------
+```
+
+Alternately, if you run it with the Pickup prompt from the AI demo:
+```bash
+python -m stretch.app.chat --llm qwen25 --prompt pickup
+```
+
+You can see that it returns a list of API calls:
+```bash
+You: Hello! who are you?
+Response: [('say', '"Hello! My name is Stretch. I am here to help you with any tasks you need."')]
+```
+
+Finally, you can run it with the `--voice` flag to test audio input, e.g.:
+```bash
+python -m stretch.app.chat --voice
+```
+
+Press enter to speak. The robot will respond to your voice input, processed using [OpenAI Whisper](https://openai.com/index/whisper/).
