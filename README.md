@@ -116,35 +116,6 @@ At Hello Robot, people have successfully commanded the robot to pick up a variet
 
 Find out more about the LLM-based AI agent in its [documentation](docs/llm_agent.md). And once you're ready to learn more about Stretch AI, you can try out the [variety of applications (apps)](docs/apps.md) that demonstrate various capabilities.
 
-#### Using an LLM
-
-You can use an LLM to provide free-form text input to the pick and place demo with the `--use_llm` command line argument.
-
-Running the following command will first download an open LLM model. Currently, the default model is [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct). Running this command downloads ~10GB of data. Using an ethernet cable instead of Wifi is recommended.
-
-```bash
-python -m stretch.app.ai_pickup --use_llm
-```
-
-Once it's ready, you should see the prompt `You:` after which you can write your text request. Pressing the `Enter` key on your keyboard will provide your request to the robot.
-
-For example, the following requests have been successful for other users.
-
-```
-You: pick up the toy chicken and put it in the white laundry basket
-```
-
-```
-You: Find a toy chicken
-```
-
-Currently, the prompt used by the LLM encourages the robot to both pick and place, so you may find that a primitive request results in the full demonstration task.
-
-You can find the prompt used by the LLM at the following location. When running your Docker image in the development mode or running *stretch-ai* from source, you can modify this file to see how it changes the robot's behavior.
-
-[./src/stretch/llms/prompts/pickup_prompt.py](./src/stretch/llms/prompts/pickup_prompt.py)
-
-
 ## Development
 
 Clone this repo on your Stretch and PC, and install it locally using pip with the "editable" flag:
