@@ -21,7 +21,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 from PIL import Image
-from readerwriterlock import rwlock
 
 import stretch.utils.memory as memory
 from stretch.audio.text_to_speech import get_text_to_speech
@@ -167,7 +166,7 @@ class RobotAgent:
         else:
             self.voxel_map = self._create_voxel_map(self.parameters)
 
-        self._voxel_map_lock = rwlock.RWLockWrite()
+        self._voxel_map_lock = Lock()
         self.voxel_map_proxy = SparseVoxelMapProxy(self.voxel_map, self._voxel_map_lock)
 
         # Create planning space
@@ -224,7 +223,6 @@ class RobotAgent:
         # Locks
         self._robot_lock = Lock()
         self._obs_history_lock = Lock()
-        self._voxel_map_lock = rwlock.RWLockFair()
         self._map_lock = Lock()
 
         if self._realtime_updates:
@@ -650,7 +648,7 @@ class RobotAgent:
 
         self._obs_history_lock.release()
 
-        with self._voxel_map_lock.gen_wlock():
+        with self._voxel_map_lock:
             self.voxel_map.reset()
             added = 0
             for obs in matched_obs:
@@ -1983,7 +1981,8 @@ class RobotAgent:
             print(
                 "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
             )
-        self.get_voxel_map().reset()
+        with self._voxel_map_lock:
+            self.voxel_map.reset()
         self.reset_object_plans()
 
         if self._realtime_updates:

@@ -103,7 +103,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         self, img: np.ndarray, state: np.ndarray, weight: int = 10
     ) -> np.ndarray:
         """Helper function to draw masks on image"""
-        grid_xy = self.grid.xy_to_grid_coords(state[:2])
+        grid_xy = self.voxel_map.grid.xy_to_grid_coords(state[:2])
         mask = self.get_oriented_mask(state[2])
         x0 = int(np.round(float(grid_xy[0] - mask.shape[0] // 2)))
         x1 = x0 + mask.shape[0]
@@ -267,7 +267,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         assert mask.shape[0] == mask.shape[1], "square masks only for now"
         dim = mask.shape[0]
         half_dim = dim // 2
-        grid_xy = self.grid.xy_to_grid_coords(state[:2])
+        grid_xy = self.voxel_map.grid.xy_to_grid_coords(state[:2])
         x0 = int(grid_xy[0]) - half_dim
         x1 = x0 + dim
         y0 = int(grid_xy[1]) - half_dim
@@ -394,7 +394,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 outside_point = find_closest_point_on_mask(mask, point_grid_coords.float())
 
             # convert back
-            point = self.grid.grid_coords_to_xy(point_grid_coords)
+            point = self.voxel_map.grid.grid_coords_to_xy(point_grid_coords)
             if point is None:
                 if verbose:
                     print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
@@ -536,7 +536,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         # from scipy.ndimage.morphology import distance_transform_edt
         m = np.ones_like(traversible)
-        start_x, start_y = self.grid.xy_to_grid_coords(xyt[:2]).int().cpu().numpy()
+        start_x, start_y = self.voxel_map.grid.xy_to_grid_coords(xyt[:2]).int().cpu().numpy()
         if verbose or debug:
             print("--- Coordinates ---")
             print(f"{xyt=}")
@@ -599,7 +599,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 continue
 
             # convert back to real-world coordinates
-            point = self.grid.grid_coords_to_xy(point_grid_coords)
+            point = self.voxel_map.grid.grid_coords_to_xy(point_grid_coords)
             if point is None:
                 print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                 continue
@@ -709,7 +709,7 @@ class SparseVoxelMapNavigationSpace(XYT):
                 )
 
                 # convert back
-                point = self.grid.grid_coords_to_xy(point_grid_coords)
+                point = self.voxel_map.grid.grid_coords_to_xy(point_grid_coords)
                 if point is None:
                     print("[VOXEL MAP: sampling] ERR:", point, point_grid_coords)
                     continue
