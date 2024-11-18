@@ -182,6 +182,8 @@ Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/
   - `servo_to_grasp: bool` - if it should used visual servoing. If false, will grasp blindly based on head calibration, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
   - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging, but not necessary for normal operation. If you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
 
+[![Pick up the stuffed toy zebra](https://img.youtube.com/vi/OISraQrl8rA/0.jpg)](https://www.youtube.com/watch?v=OISraQrl8rA)
+
 Other parameters will configure how visual servoing operates and how close the robot needs to get to the object before closing the gripper; to understand these, it's best to look at the [GraspObjectOperation source code](../src/stretch/agent/task/grasp/grasp_object.py).
 
 #### Chat
