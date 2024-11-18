@@ -76,7 +76,6 @@ This script will download the Docker image and start the container. You will be 
     src="https://youtu.be/oO9qRkiuiAQ"
     frameborder="0" allowfullscreen></iframe>
 </div>
-<style>
 
 Now that you have the server running on Stretch and the client running on your GPU computer, we recommend you try a demonstration of language-directed pick and place.
 
@@ -115,7 +114,7 @@ Enter the target receptacle: white laundry basket
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
-Once you're ready to learn more about **Stretch AI**, you can try out the variety of applications (apps) that demonstrate various capabilities.
+Find out more about the LLM-based AI agent in its [documentation](docs/llm_agent.md). And once you're ready to learn more about Stretch AI, you can try out the [variety of applications (apps)](docs/apps.md) that demonstrate various capabilities.
 
 #### Using an LLM
 
