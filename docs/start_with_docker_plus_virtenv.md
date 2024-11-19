@@ -146,6 +146,7 @@ git lfs install
 git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Run install script to create a conda environment and install dependencies
+cd stretch_ai
 ./install.sh --cuda=$CUDA_VERSION
 ```
 
@@ -154,6 +155,8 @@ Where `$CUDA_VERSION` is the version of CUDA installed on your computer. If you 
 ```bash
 nvcc --version
 ```
+
+Or you can skip manual perception installation as described in [Manual Perception Installation](#manual-perception-installation).
 
 ##### Manual Perception Installation
 
