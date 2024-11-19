@@ -9,15 +9,17 @@
 
 import os
 import tempfile
+import time
 import timeit
 
 import click
 from termcolor import colored
 
+from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.audio import AudioRecorder
 from stretch.audio.speech_to_text import WhisperSpeechToText
 from stretch.llms import get_llm_choices, get_llm_client, get_prompt_builder, get_prompt_choices
-from stretch.agent.zmq_client import HomeRobotZmqClient
+
 
 @click.command()
 @click.option(
