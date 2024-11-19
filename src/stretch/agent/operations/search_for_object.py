@@ -115,14 +115,14 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         # Now update the world
         self.update()
 
-        print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
+        print(f"So far we have found: {len(self.agent.get_voxel_map().instances)} objects.")
         if self.object_class is None:
             self.set_target_object_class("box")
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
             xyt = self.robot.get_base_pose()
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
@@ -140,7 +140,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
             )
 
         # Check to see if we have a receptacle in the map
-        instances = self.agent.voxel_map.instances.get_instances()
+        instances = self.agent.get_voxel_map().instances.get_instances()
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             # For debugging during exploration
@@ -194,7 +194,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 # This shows us what the robot has found so far
                 object_xyz = self.agent.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
-                self.agent.voxel_map.show(
+                self.agent.get_voxel_map().show(
                     orig=object_xyz,
                     xyt=xyt,
                     footprint=self.robot_model.get_footprint(),
@@ -253,7 +253,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         if self.show_map_so_far:
             # This shows us what the robot has found so far
             xyt = self.robot.get_base_pose()
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
@@ -272,11 +272,11 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.agent.voxel_map.observations[0].instance)
+            plt.imshow(self.agent.get_voxel_map().observations[0].instance)
             plt.show()
 
         # Check to see if we have a receptacle in the map
-        instances = self.agent.voxel_map.instances.get_instances()
+        instances = self.agent.get_voxel_map().instances.get_instances()
 
         # Compute scene graph from instance memory so that we can use it
         scene_graph = self.agent.get_scene_graph()
@@ -336,7 +336,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                 # This shows us what the robot has found so far
                 object_xyz = self.agent.current_object.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
-                self.agent.voxel_map.show(
+                self.agent.get_voxel_map().show(
                     orig=object_xyz,
                     xyt=xyt,
                     footprint=self.robot_model.get_footprint(),

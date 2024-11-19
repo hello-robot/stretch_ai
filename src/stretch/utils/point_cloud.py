@@ -47,9 +47,9 @@ def points_in_mesh(
     # Fetch axis-aligned bounding box
     bbox = mesh.bounds.copy()  # 2x3 numpy array with each point containing x, y, z
 
-    # Inflate the bounds by 0.1
-    bbox[0] = bbox[0] - 0.05
-    bbox[1] = bbox[1] + 0.05
+    # Inflate the bounds by 0.3
+    bbox[0] = bbox[0] - 0.15
+    bbox[1] = bbox[1] + 0.15
 
     # Transform the bounds to camera frame
     x = base_pose[0]

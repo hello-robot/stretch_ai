@@ -51,11 +51,11 @@ class PickupTask:
 
         # Sync these things
         self.robot = self.agent.robot
-        self.voxel_map = self.agent.voxel_map
+        self.voxel_map = self.agent.get_voxel_map()
         self.navigation_space = self.agent.space
         self.semantic_sensor = self.agent.semantic_sensor
         self.parameters = self.agent.parameters
-        self.instance_memory = self.agent.voxel_map.instances
+        self.instance_memory = self.agent.get_voxel_map().instances
         assert (
             self.instance_memory is not None
         ), "Make sure instance memory was created! This is configured in parameters file."
