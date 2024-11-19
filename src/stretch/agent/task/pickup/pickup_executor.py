@@ -70,7 +70,7 @@ class PickupExecutor:
         """
 
         if target_receptacle is None or len(target_receptacle) == 0:
-            self._pick_only(target_object)
+            return self._pick_only(target_object)
 
         logger.alert(f"[Pickup task] Pickup: {target_object} Place: {target_receptacle}")
 
