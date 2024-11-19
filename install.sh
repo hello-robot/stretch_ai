@@ -152,18 +152,18 @@ else
     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
-echo "Activate env"
+echo "Activate env $ENV_NAME"
 source "`conda info --base`/bin/activate" $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
-pip install setuptools==69.5.1
+python -m pip install setuptools==69.5.1
 
 echo ""
 echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
-pip install -e ./src[dev]
+python -m pip install -e ./src[dev]
 
 echo ""
 echo "---------------------------------------------"
