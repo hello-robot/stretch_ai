@@ -36,7 +36,6 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
     "--silence_limit", default=2.0, help="The amount of silence before stopping the recording"
 )
 @click.option("--robot_ip", default="", help="IP address of the robot")
-@click.
 @click.option("--voice", default=False, help="Enable voice chat", is_flag=True)
 @click.option("--talk", default=False, help="Robot will speak its responses out load", is_flag=True)
 def main(
