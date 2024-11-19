@@ -1850,7 +1850,6 @@ class RobotAgent:
                     print("No where left to explore. Quitting.")
                     break
 
-                # breakpoint()
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
                     print("Exploration failed. Try again!")
