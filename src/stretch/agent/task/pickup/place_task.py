@@ -119,6 +119,9 @@ class PlaceOnReceptacleTask:
         task.connect_on_success(search_for_receptacle.name, go_to_receptacle.name)
         task.connect_on_success(go_to_receptacle.name, place_object_on_receptacle.name)
 
+        # Terminate on a successful place
+        task.terminate_on_success(place_object_on_receptacle.name)
+
         return task
 
 

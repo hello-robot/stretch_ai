@@ -29,6 +29,7 @@ class PickObjectTask:
         self,
         agent: RobotAgent,
         target_object: Optional[str] = None,
+        use_visual_servoing_for_grasp: bool = False,
         matching: str = "feature",
     ) -> None:
         # super().__init__(agent)
@@ -47,6 +48,7 @@ class PickObjectTask:
         self.navigation_space = self.agent.space
         self.semantic_sensor = self.agent.semantic_sensor
         self.parameters = self.agent.parameters
+        self.use_visual_servoing_for_grasp = use_visual_servoing_for_grasp
         self.instance_memory = self.agent.get_voxel_map().instances
         assert (
             self.instance_memory is not None
@@ -182,6 +184,9 @@ class PickObjectTask:
         else:
             # If we fail to find an object, go back to the beginning and search again.
             task.connect_on_failure(go_to_object.name, search_for_object.name)
+
+        # Terminate the task on successful grasp
+        task.terminate_on_success(grasp_object.name)
 
         return task
 
