@@ -50,6 +50,14 @@ do
     esac
 done
 
+sudo apt-get update
+# If yes:
+if [ "$SKIP_ASKING" == "true" ]; then
+	sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
+else
+	sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+fi
+
 # If cpu only, set the cuda version to cpu
 if [ "$CPU_ONLY" == "true" ]; then
     export CUDA_VERSION=cpu

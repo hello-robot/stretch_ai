@@ -143,11 +143,7 @@ git lfs install
 
 # Clone the repository
 # Do not forget the --recursive flag to clone submodules
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
-
-# Install system dependencies
-# Pyaudio will fail if these are not installed
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Run install script to create a conda environment and install dependencies
 ./install.sh
