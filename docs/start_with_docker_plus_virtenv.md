@@ -154,22 +154,6 @@ At the prompt to install Detic, say **no**. Take note of the name of the environ
 Next, run:
 
 ```bash
-# Activate your virtual env
-mamba activate stretch_ai_<version>
-
-# Tell mamba to not use your user sitepackages
-mamba env config vars set PYTHONNOUSERSITE=1
-
-# Install a version of setuptools for which clip works
-pip install setuptools==69.5.1
-
-# Install stretch-ai in "editable" mode so you can develop on it
-pip install -e ./src[dev]
-```
-
-Next, run:
-
-```bash
 # Install detectron2 for perception (required by Detic)
 git submodule update --init --recursive
 cd third_party/detectron2

@@ -43,6 +43,10 @@ do
             NO_VERSION="true"
             shift
             ;;
+	--cuda=*)
+	    CUDA_VERSION="${arg#*=}"
+	    shift
+	    ;;
         *)
             shift
             # unknown option
