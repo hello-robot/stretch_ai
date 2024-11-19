@@ -101,7 +101,6 @@ class PickupExecutor:
             pickup_task = PickObjectTask(
                 self.agent,
                 target_object=target_object,
-                target_receptacle=None,
                 matching=self._match_method,
                 use_visual_servoing_for_grasp=not self._open_loop,
             )
