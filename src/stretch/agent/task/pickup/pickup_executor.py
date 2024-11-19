@@ -104,7 +104,7 @@ class PickupExecutor:
                 matching=self._match_method,
                 use_visual_servoing_for_grasp=not self._open_loop,
             )
-            task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+            task = pickup_task.get_task(add_rotate=True)
         except Exception as e:
             print(f"Error creating task: {e}")
             self.robot.stop()
