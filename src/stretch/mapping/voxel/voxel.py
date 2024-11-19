@@ -906,8 +906,9 @@ class SparseVoxelMap(object):
         assert y0 >= 0
         self.allowed_map[x0:x1, y0:y1] += disk
 
-        # Force a map update
-        self.get_2d_map(force_update=True)
+        if len(self.observations) > 0:
+            # Force a map update
+            self.get_2d_map(force_update=True)
 
     def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """Get 2d map with explored area and frontiers."""
@@ -933,7 +934,6 @@ class SparseVoxelMap(object):
                 logger.warning("nelement of xyz is 0, returning empty map")
 
             logger.warning("No points in point cloud, returning empty map")
-            breakpoint()
             return (
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
