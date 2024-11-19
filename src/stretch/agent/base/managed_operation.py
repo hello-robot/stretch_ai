@@ -91,7 +91,7 @@ class ManagedOperation(Operation):
             matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
-        plt.imshow(self.agent.voxel_map.observations[0].instance)
+        plt.imshow(self.agent.get_voxel_map().observations[0].instance)
         plt.show()
 
     def show_instance(self, instance: Instance, title: Optional[str] = None):

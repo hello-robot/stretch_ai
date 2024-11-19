@@ -86,16 +86,16 @@ class UpdateOperation(ManagedOperation):
         self.update(move_head=self.move_head)
 
         # Delete observations near us, since they contain the arm!!
-        self.agent.voxel_map.delete_obstacles(point=xyt[:2], radius=0.7, force_update=True)
+        self.agent.get_voxel_map().delete_obstacles(point=xyt[:2], radius=0.7, force_update=True)
 
         # Notify and move the arm back to normal. Showing the map is optional.
-        print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
+        print(f"So far we have found: {len(self.agent.get_voxel_map().instances)} objects.")
         self.robot.arm_to([0.0, self.arm_height, 0.05, 0, -np.pi / 4, 0], blocking=True)
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
             xyt = self.robot.get_base_pose()
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=np.zeros(3),
                 xyt=xyt,
                 footprint=self.robot_model.get_footprint(),
@@ -110,7 +110,7 @@ class UpdateOperation(ManagedOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.agent.voxel_map.observations[-1].instance)
+            plt.imshow(self.agent.get_voxel_map().observations[-1].instance)
             plt.show()
 
         # Describe the scene the robot is operating in
@@ -118,18 +118,20 @@ class UpdateOperation(ManagedOperation):
 
         # Get the current location of the robot
         start = self.robot.get_base_pose()
-        instances = self.agent.voxel_map.instances.get_instances()
+        instances = self.agent.get_voxel_map().instances.get_instances()
         receptacle_options = []
         object_options = []
         dist_to_object = float("inf")
 
         # Find the object we want to manipulate
         if self.match_method == "class":
-            instances = self.agent.voxel_map.instances.get_instances_by_class(self.target_object)
+            instances = self.agent.get_voxel_map().instances.get_instances_by_class(
+                self.target_object
+            )
             scores = np.ones(len(instances))
         elif self.match_method == "feature":
             scores, instances = self.agent.get_instances_from_text(self.target_object)
-            # self.agent.voxel_map.show(orig=np.zeros(3), xyt=start, footprint=self.robot_model.get_footprint(), planner_visuals=True)
+            # self.agent.get_voxel_map().show(orig=np.zeros(3), xyt=start, footprint=self.robot_model.get_footprint(), planner_visuals=True)
         else:
             raise ValueError(f"Unknown match type {self.match_method}")
 

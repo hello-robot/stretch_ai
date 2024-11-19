@@ -16,6 +16,7 @@ import pickle
 import timeit
 from collections import namedtuple
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -926,7 +927,13 @@ class SparseVoxelMap(object):
 
         # If we have no points, just return zeros
         if xyz is None or xyz.nelement() == 0:
+            if xyz is None:
+                logger.warning("No point cloud, returning empty map")
+            else:
+                logger.warning("nelement of xyz is 0, returning empty map")
+
             logger.warning("No points in point cloud, returning empty map")
+            breakpoint()
             return (
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
@@ -1383,3 +1390,21 @@ class SparseVoxelMap(object):
             },
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
+
+
+class SparseVoxelMapProxy(object):
+    def __init__(self, voxel_map: SparseVoxelMap, lock: Lock):
+        self._voxel_map = voxel_map
+        self._lock = lock
+
+    def __getattr__(self, name):
+        def locked_method(*args, **kwargs):
+            with self._lock:  # Acquire read lock for external access
+                method = getattr(self._voxel_map, name)
+                return method(*args, **kwargs)
+
+        if callable(getattr(self._voxel_map, name)):
+            return locked_method
+        else:
+            with self._lock:
+                return getattr(self._voxel_map, name)

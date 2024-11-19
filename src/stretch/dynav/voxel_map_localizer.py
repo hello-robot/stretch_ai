@@ -209,7 +209,6 @@ class VoxelMapLocalizer:
         pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
         depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
         K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
-
         return self.detection_model.compute_obj_coord(
             text, rgb, depth, K, pose, confidence_threshold=threshold
         )
