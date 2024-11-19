@@ -178,8 +178,6 @@ git submodule update --init --recursive
 ./install.sh --cuda=$CUDA_VERSION
 ```
 
-You can also 
-
 ##### Manual Perception Installation
 
 If you don't have CUDA installed or don't know what it is, you can answer **no** to the prompt to install Detic. If you do have CUDA installed, you can answer **yes** to the prompt to install Detic.
