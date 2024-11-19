@@ -17,7 +17,7 @@ from termcolor import colored
 from stretch.audio import AudioRecorder
 from stretch.audio.speech_to_text import WhisperSpeechToText
 from stretch.llms import get_llm_choices, get_llm_client, get_prompt_builder, get_prompt_choices
-
+from stretch.agent.zmq_client import HomeRobotZmqClient
 
 @click.command()
 @click.option(
@@ -35,16 +35,26 @@ from stretch.llms import get_llm_choices, get_llm_client, get_prompt_builder, ge
 @click.option(
     "--silence_limit", default=2.0, help="The amount of silence before stopping the recording"
 )
+@click.option("--robot_ip", default="", help="IP address of the robot")
+@click.
 @click.option("--voice", default=False, help="Enable voice chat", is_flag=True)
+@click.option("--talk", default=False, help="Robot will speak its responses out load", is_flag=True)
 def main(
     llm="gemma2b",
     max_audio_duration: float = 10.0,
     silence_limit: float = 2.0,
     voice=False,
     prompt="simple",
+    robot_ip="",
+    talk=False,
 ):
     prompt = get_prompt_builder(prompt)
     client = get_llm_client(llm, prompt)
+
+    if talk:
+        robot = HomeRobotZmqClient(robot_ip)
+    else:
+        robot = None
 
     if voice:
         # Load the tokenizer and model
@@ -87,7 +97,17 @@ def main(
         t1 = timeit.default_timer()
 
         # Decode and print the result
-        print(colored("Response:", "blue"), prompt.parse_response(assistant_response))
+        response = prompt.parse_response(assistant_response)
+        print(colored("Response:", "blue"), response)
+        if robot is not None:
+            if isinstance(response, str):
+                robot.say(response)
+            elif isinstance(response, list):
+                for r in response:
+                    if r[0] == "say":
+                        robot.say_sync(r[1])
+                        time.sleep(5.0)
+
         print("-" * 80)
         print("Time taken:", t1 - t0)
         print("-" * 80)
