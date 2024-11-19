@@ -142,6 +142,10 @@ This lists the different functions that the LLM agent can use to interact with t
 
 #### Mapping and Exploration
 
+[![Rerun visualization of partly-mapped home](images/rerun_mapping.png)](images/rerun_map.png)
+
+[Mapping](../src/stretch/app/mapping.py) is a key component of the robot's ability to navigate and interact with the world.
+
 You can test the mapping capabilities of the robot by running the following command:
 
 ```bash
