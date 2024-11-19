@@ -155,7 +155,7 @@ This will create a mamba environment called `stretch_ai` and install all the nec
 Here, `$CUDA_VERSION` is the version of CUDA installed on your computer. If you don't know the version of CUDA installed on your computer, you can run the following command:
 
 ```bash
-nvcc --version
+nvidia-smi
 ```
 
 Or you can skip automatic perception installation as described in [Manual Perception Installation](#manual-perception-installation).
