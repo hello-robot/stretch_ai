@@ -41,11 +41,11 @@ do
             NO_VERSION="true"
             shift
             ;;
-	--cuda=*)
-	    CUDA_VERSION="${arg#*=}"
-	    echo "Setting CUDA Version: $CUDA_VERSION"
-	    shift
-	    ;;
+        --cuda=*)
+            CUDA_VERSION="${arg#*=}"
+            echo "Setting CUDA Version: $CUDA_VERSION"
+            shift
+            ;;
         *)
             shift
             # unknown option
@@ -64,9 +64,9 @@ echo "Checking for required packages: "
 echo "     libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg"
 echo "If these are not installed, you will run into issues with pyaudio."
 if [ "$SKIP_ASKING" == "true" ]; then
-	sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
 else
-	sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
 fi
 
 # If cpu only, set the cuda version to cpu
