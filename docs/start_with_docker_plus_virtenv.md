@@ -148,6 +148,7 @@ git lfs install
 git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Run install script to create a conda environment and install dependencies
+# WARNING: this will delete an existing stretch_ai environment - do not do this to update your code!
 cd stretch_ai
 ./install.sh --cuda=$CUDA_VERSION --no-version
 ```
@@ -161,6 +162,21 @@ nvidia-smi
 ```
 
 Or you can skip automatic perception installation as described in [Manual Perception Installation](#manual-perception-installation).
+
+##### Updating Stretch AI
+
+To update stretch AI, simply pull:
+```
+git pull -ff origin main
+
+# Optional; rarely needed
+git submodule update --init --recursive
+```
+*Do not run the install script again unless you want a new, clean environment.* Running the install script will delete your current environment. You can also run it without the `--no-version` flag to create a versioned environment, eg. `stretch_ai_0.1.16`:
+
+```bash
+./install.sh --cuda=$CUDA_VERSION
+```
 
 ##### Optional: Use Conda instead of Mamba
 
@@ -193,8 +209,6 @@ pip install -r requirements.txt
 mkdir -p models
 wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 ```
-
-**Note:** A new env should be created for each new version of *stretch-ai* (each time you `git pull`) using the above instructions.
 
 ## Simple Installation Test
 
