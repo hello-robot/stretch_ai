@@ -201,6 +201,12 @@ _Click to follow the link to YouTube:_
 
 Other parameters will configure how visual servoing operates and how close the robot needs to get to the object before closing the gripper; to understand these, it's best to look at the [GraspObjectOperation source code](../src/stretch/agent/task/grasp/grasp_object.py).
 
+##### Visual Servoing GUI
+
+_Click to follow the link to YouTube:_
+
+[![Pick up the plastic cup](https://img.youtube.com/vi/8iM06kefxjw/0.jpg)](https://www.youtube.com/watch?v=8iM06kefxjw)
+
 #### Chat
 
 You can chat with the robot using LLMs by running the following command:
