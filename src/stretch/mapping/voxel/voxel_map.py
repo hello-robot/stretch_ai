@@ -45,7 +45,7 @@ class SparseVoxelMapNavigationSpace(XYT):
 
     def __init__(
         self,
-        voxel_map: SparseVoxelMap | SparseVoxelMapProxy,
+        voxel_map: Union[SparseVoxelMap, SparseVoxelMapProxy],
         robot: Optional[RobotModel],
         grid: Optional[GridParams] = None,
         step_size: float = 0.1,

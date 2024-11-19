@@ -731,7 +731,7 @@ class GraspObjectOperation(ManagedOperation):
                         success = self._grasp(distance=prev_center_depth)
                     else:
                         self.info("Aligned and close enough to grasp.")
-                        success = self._grasp()
+                        success = self._grasp(distance=center_depth)
                     break
 
                 # If we are aligned, step the whole thing closer by some amount

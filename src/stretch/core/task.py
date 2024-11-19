@@ -209,10 +209,10 @@ class Task:
                     self.current_operation = self.current_operation.on_failure
                     failures += 1
                     if self.current_operation is None:
-                        self.error("Task failed.")
+                        logger.error("Task failed.")
                         return False
                     elif failures >= self.current_operation.max_failures:
-                        self.error(
+                        logger.error(
                             f"Operation {self.current_operation.name} failed too many times!"
                         )
                         self.error(f"Task failed after {failures} operation failures.")

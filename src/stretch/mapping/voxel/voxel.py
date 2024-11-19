@@ -69,7 +69,16 @@ Frame = namedtuple(
 VALID_FRAMES = ["camera", "world"]
 
 
-def ensure_tensor(arr):
+def ensure_tensor(arr) -> Tensor:
+    """Make sure this is a tensor.
+
+    Args:
+        arr: array or tensor to convert
+
+    Returns:
+        Tensor: the converted tensor
+    """
+
     if isinstance(arr, np.ndarray):
         return Tensor(arr)
     if not isinstance(arr, Tensor):
@@ -313,19 +322,34 @@ class SparseVoxelMap(object):
         self._map2d = None
 
     def get_instances(self) -> List[Instance]:
-        """Return a list of all viewable instances"""
+        """Return a list of all viewable instances.
+
+        Returns:
+            List[Instance]: a list of instances
+        """
         if self.instances is None:
             return []
         return list(self.instances.instances[0].values())
 
     def get_instances_as_dict(self) -> Dict[int, Instance]:
-        """Return a dictionary of all viewable instances"""
+        """Return a dictionary of all viewable instances. Maps from instance_id to Instance.
+
+        Returns:
+            Dict[int, Instance]: a dictionary of instances
+        """
         if self.instances is None:
             return {}
         return self.instances.instances[0]
 
     def fix_type(self, tensor: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
-        """Convert to tensor and float"""
+        """Convert to tensor and float. If tensor is None, return None.
+
+        Args:
+            tensor: the tensor to convert
+
+        Returns:
+            torch.Tensor: the converted tensor
+        """
         if tensor is None:
             return None
         if isinstance(tensor, np.ndarray):
@@ -906,11 +930,20 @@ class SparseVoxelMap(object):
         assert y0 >= 0
         self.allowed_map[x0:x1, y0:y1] += disk
 
-        # Force a map update
-        self.get_2d_map(force_update=True)
+        if len(self.observations) > 0:
+            # Force a map update
+            self.get_2d_map(force_update=True)
 
     def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-        """Get 2d map with explored area and frontiers."""
+        """Get 2d map with explored area and frontiers.
+
+        Args:
+            force_update(bool): whether to force an update of the map
+            debug(bool): whether to show debug plots
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: 2d map with obstacles and explored area
+        """
 
         # Is this already cached? If so we don't need to go to all this work
         if (

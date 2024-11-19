@@ -24,7 +24,11 @@ sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp
 On both your PC and your robot, clone and install the package:
 
 ```bash
+# Set up SSH keys if you want to develop and push
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
+
+# Use HTTPS if you do not have SSH keys set up
+git clone https://github.com/hello-robot/stretch_ai.git
 ```
 
 #### Install On PC
