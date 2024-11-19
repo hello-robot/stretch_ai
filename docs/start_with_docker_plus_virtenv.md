@@ -146,10 +146,20 @@ git lfs install
 git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Run install script to create a conda environment and install dependencies
-./install.sh
+./install.sh --cuda=$CUDA_VERSION
 ```
 
-At the prompt to install Detic, say **no**. Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
+Where `$CUDA_VERSION` is the version of CUDA installed on your computer. If you don't know the version of CUDA installed on your computer, you can run the following command:
+
+```bash
+nvcc --version
+```
+
+##### Manual Perception Installation
+
+If you don't have CUDA installed or don't know what it is, you can answer **no** to the prompt to install Detic. If you do have CUDA installed, you can answer **yes** to the prompt to install Detic.
+
+If you answered no, you can then install Detic manually. Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
 
 Next, run:
 

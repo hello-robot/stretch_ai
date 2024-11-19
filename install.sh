@@ -3,8 +3,6 @@
 # This script is designed to install the HomeRobot/StretchPy environment.
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
 VERSION=`python3 $script_dir/src/stretch/version.py`
@@ -45,6 +43,7 @@ do
             ;;
 	--cuda=*)
 	    CUDA_VERSION="${arg#*=}"
+	    echo "Setting CUDA Version: $CUDA_VERSION"
 	    shift
 	    ;;
         *)
@@ -53,6 +52,9 @@ do
             ;;
     esac
 done
+
+CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
+export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 # Check if the user has the required packages
 # If not, install them
