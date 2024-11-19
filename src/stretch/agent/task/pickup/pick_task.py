@@ -185,6 +185,8 @@ class PickObjectTask:
             # If we fail to find an object, go back to the beginning and search again.
             task.connect_on_failure(go_to_object.name, search_for_object.name)
 
+        task.connect_on_success(grasp_object.name, None)
+
         return task
 
 
