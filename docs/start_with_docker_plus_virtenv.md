@@ -147,16 +147,18 @@ git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Run install script to create a conda environment and install dependencies
 cd stretch_ai
-./install.sh --cuda=$CUDA_VERSION
+./install.sh --cuda=$CUDA_VERSION --no-version
 ```
 
-Where `$CUDA_VERSION` is the version of CUDA installed on your computer. If you don't know the version of CUDA installed on your computer, you can run the following command:
+This will create a mamba environment called `stretch_ai` and install all the necessary dependencies.
+
+Here, `$CUDA_VERSION` is the version of CUDA installed on your computer. If you don't know the version of CUDA installed on your computer, you can run the following command:
 
 ```bash
 nvcc --version
 ```
 
-Or you can skip manual perception installation as described in [Manual Perception Installation](#manual-perception-installation).
+Or you can skip automatic perception installation as described in [Manual Perception Installation](#manual-perception-installation).
 
 ##### Manual Perception Installation
 
@@ -184,12 +186,6 @@ wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k
 ```
 
 **Note:** A new env should be created for each new version of *stretch-ai* (each time you `git pull`) using the above instructions.
-
-#### Activate your virtual env
-
-```bash
-mamba activate stretch_ai_<version>
-```
 
 ## Simple Installation Test
 
