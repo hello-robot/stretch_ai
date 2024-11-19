@@ -216,7 +216,6 @@ class ImageProcessor:
 
         # Create a simple motion planner
         self.planner = AStar(self.space)
-        self.value_map = torch.zeros(self.voxel_map.grid_size)
 
     def create_vision_model(self):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
@@ -521,6 +520,44 @@ class ImageProcessor:
                 weights=weights,
                 obs_count=self.obs_count,
             )
+
+    def localize_A(self, A, debug=True, return_debug=False):
+        points, _, _, _ = self.voxel_pcd.get_pointcloud()
+        alignments = self.find_alignment_over_model(A).cpu()
+        point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
+        obs_counts = self.voxel_pcd._obs_counts
+        image_id = obs_counts[alignments.argmax(dim=-1)].detach().cpu()
+        debug_text = ""
+        target_point = None
+
+        res = self.compute_coord(A, image_id)
+        # res = None
+        if res is not None:
+            target_point = res
+            debug_text += (
+                "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
+            )
+        else:
+            # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
+            if self.siglip:
+                cosine_similarity_check = alignments.max().item() > 0.13
+            else:
+                cosine_similarity_check = alignments.max().item() > 0.3
+            if cosine_similarity_check:
+                target_point = point
+
+                debug_text += (
+                    "#### - The point has high cosine similarity. **😃** Directly navigate to it.\n"
+                )
+            else:
+                debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
+        # print('target_point', target_point)
+        if not debug:
+            return target_point
+        elif not return_debug:
+            return target_point, debug_text
+        else:
+            return target_point, debug_text, image_id, point
 
     def process_rgbd_images(self, rgb, depth, intrinsics, pose):
 
