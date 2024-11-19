@@ -256,7 +256,11 @@ The robot uses a motion planner to avoid obstacles on its feature-rich 3D map of
 
 ##### Too Many Obstacles in 3D Map
 
-Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles.
+[![Rerun visualization of partly-mapped home with spurious obstacles](images/rerun_map_bad.png)](images/rerun_map_bad.png)
+
+Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles. You can see an example of this in the image above.
+
+Most often, this happens because the head is not where the robot thinks it is, which can be challenging to fix.
 
 *If you are seeing areas marked as red obstacles for no reason*, then try changing the following parameters in the config file, especially `obs_min_height`:
 ```yaml
