@@ -134,6 +134,8 @@ mamba
 
 If you get an "command not found" error, then follow the install instructions for mamba here: https://github.com/conda-forge/miniforge#download
 
+Make sure to run `mamba init` and restart your terminal before proceeding.
+
 Then, run:
 
 ```bash
