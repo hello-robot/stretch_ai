@@ -256,6 +256,16 @@ python -m stretch.app.chat --voice
 
 Press enter to speak. The robot will respond to your voice input, processed using [OpenAI Whisper](https://www.openai.com/whisper/).
 
+If you want the robot to speak back, you can enable this with the `--talk` flag:
+```bash
+python -m stretch.app.chat --voice --talk
+```
+
+And optionally specify the IP address of the robot:
+```bash
+python -m stretch.app.chat --voice --talk --robot_ip 192.168.1.69
+```
+
 ### Common Issues
 
 #### Motion Planning

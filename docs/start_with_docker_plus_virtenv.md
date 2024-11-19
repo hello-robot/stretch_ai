@@ -162,6 +162,13 @@ nvidia-smi
 
 Or you can skip automatic perception installation as described in [Manual Perception Installation](#manual-perception-installation).
 
+##### Optional: Use Conda instead of Mamba
+
+You can pass the `--conda` flag into the install script if you have it installed:
+```bash
+./install.sh --conda
+```
+
 ##### Manual Perception Installation
 
 If you don't have CUDA installed or don't know what it is, you can answer **no** to the prompt to install Detic. If you do have CUDA installed, you can answer **yes** to the prompt to install Detic.
