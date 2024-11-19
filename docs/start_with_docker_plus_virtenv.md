@@ -210,6 +210,11 @@ mkdir -p models
 wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 ```
 
+<<<<<<< HEAD
+=======
+**Note:** A new env should be created for each new version of *stretch-ai* (each time you `git pull`) using the above instructions.
+
+>>>>>>> 8781160ad1bc4f721331566308be7f6f28c9d9f3
 ## Simple Installation Test
 
 You can test your installation by running the `view_images` app.
