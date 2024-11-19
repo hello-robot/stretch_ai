@@ -213,6 +213,6 @@ To exit the app, you can press `q` with any of the popup windows selected.
 
 If the `view_images` app doesn't work, the most common issue is that the GPU computer is unable to communicate with the robot over the network. We recommend that you verify your robot's IP address and use [`ping`](<https://en.wikipedia.org/wiki/Ping_(networking_utility)>) on your GPU computer to check that it can reach the robot.
 
-If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai#language-directed-pick-and-place).
+If your installation is working, we recommend that you try out [language-directed pick and place](llm_agent.md).
 
 
