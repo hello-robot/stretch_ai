@@ -50,6 +50,9 @@ do
     esac
 done
 
+# Check if the user has the required packages
+# If not, install them
+# If these packages are not installed, you will run into issues with pyaudio
 sudo apt-get update
 # If yes:
 if [ "$SKIP_ASKING" == "true" ]; then
