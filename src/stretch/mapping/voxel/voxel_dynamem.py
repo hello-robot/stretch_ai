@@ -8,18 +8,23 @@
 # license information maybe found below, if so.
 
 import logging
+import os
 from typing import Any, Dict, Optional, Tuple
 
+import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 from scipy.ndimage import maximum_filter, median_filter
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
 from stretch.dynav.mapping_utils.voxelized_pcd import scatter3d
 from stretch.perception.encoders import BaseImageTextEncoder
+from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
+from stretch.utils.voxel import VoxelizedPointcloud
 
 from .voxel import VALID_FRAMES, Frame
 from .voxel import SparseVoxelMap as SparseVoxelMapBase
@@ -31,6 +36,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
     def __init__(
         self,
         resolution: float = 0.01,
+        semantic_memory_resolution: float = 0.05,
         feature_dim: int = 3,
         grid_size: Tuple[int, int] = None,
         grid_resolution: float = 0.05,
@@ -62,6 +68,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         min_points_per_voxel: int = 10,
         use_negative_obstacles: bool = False,
         point_update_threshold: float = 0.9,
+        detection=None,
+        image_shape=(360, 270),
+        log="test",
     ):
         super().__init__(
             resolution=resolution,
@@ -99,6 +108,47 @@ class SparseVoxelMap(SparseVoxelMapBase):
 
         self.point_update_threshold = point_update_threshold
         self._history_soft: Optional[Tensor] = None
+        self.semantic_memory = VoxelizedPointcloud(voxel_size=semantic_memory_resolution).to(
+            self.device
+        )
+        self.encoder = encoder
+        self.image_shape = image_shape
+        self.obs_count = 0
+        self.detection_model = detection
+        self.log = log
+
+    def calculate_clip_and_st_embeddings_for_queries(self, queries):
+        if isinstance(queries, str):
+            queries = [queries]
+        inputs = self.encoder.preprocessor(text=queries, padding="max_length", return_tensors="pt")
+        for input in inputs:
+            inputs[input] = inputs[input].to(self.clip_model.device)
+        all_clip_tokens = self.encoder.model.get_text_features(**inputs)
+
+        all_clip_tokens = F.normalize(all_clip_tokens, p=2, dim=-1)
+        return all_clip_tokens
+
+    def find_alignment_over_model(self, queries):
+        # clip_text_tokens = self.calculate_clip_and_st_embeddings_for_queries(queries)
+        clip_text_tokens = self.encoder.encode_text(queries).cpu()
+        points, features, weights, _ = self.semantic_memory.get_pointcloud()
+        if points is None:
+            return None
+        features = F.normalize(features, p=2, dim=-1).cpu()
+        point_alignments = clip_text_tokens.float() @ features.float().T
+
+        # print(point_alignments.shape)
+        return point_alignments
+
+    def find_alignment_for_A(self, A):
+        points, features, _, _ = self.semantic_memory.get_pointcloud()
+        alignments = self.find_alignment_over_model(A).cpu()
+        return points[alignments.argmax(dim=-1)].detach().cpu()
+
+    def find_obs_id_for_A(self, A):
+        obs_counts = self.semantic_memory._obs_counts
+        alignments = self.find_alignment_over_model(A).cpu()
+        return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
 
     def get_2d_map(
         self, debug: bool = False, return_history_id: bool = False
@@ -257,6 +307,152 @@ class SparseVoxelMap(SparseVoxelMapBase):
             maximum_filter(alignment_heuristics.numpy(), size=5)
         )
         return alignment_heuristics
+
+    def process_rgbd_images(self, rgb, depth, intrinsics, pose):
+        if not os.path.exists(self.log):
+            os.mkdir(self.log)
+        self.obs_count += 1
+
+        # self.add(
+        #     camera_pose=torch.Tensor(pose),
+        #     rgb=torch.Tensor(rgb),
+        #     depth=torch.Tensor(depth),
+        #     camera_K=torch.Tensor(intrinsics),
+        # )
+
+        cv2.imwrite(self.log + "/rgb" + str(self.obs_count) + ".jpg", rgb[:, :, [2, 1, 0]])
+        np.save(self.log + "/rgb" + str(self.obs_count) + ".npy", rgb)
+        np.save(self.log + "/depth" + str(self.obs_count) + ".npy", depth)
+        np.save(self.log + "/intrinsics" + str(self.obs_count) + ".npy", intrinsics)
+        np.save(self.log + "/pose" + str(self.obs_count) + ".npy", pose)
+
+        rgb, depth = torch.Tensor(rgb), torch.Tensor(depth)
+        rgb = rgb.permute(2, 0, 1).to(torch.uint8)
+
+        if self.image_shape is not None:
+            h, w = self.image_shape
+            h_image, w_image = depth.shape
+            depth = F.interpolate(
+                depth.unsqueeze(0).unsqueeze(0),
+                size=self.image_shape,
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze()
+            intrinsics = np.copy(intrinsics)
+            intrinsics[0, 0] *= w / w_image
+            intrinsics[1, 1] *= h / h_image
+            intrinsics[0, 2] *= w / w_image
+            intrinsics[1, 2] *= h / h_image
+
+        height, width = depth.squeeze().shape
+        camera = Camera.from_K(np.array(intrinsics), width=width, height=height)
+        camera_xyz = camera.depth_to_xyz(np.array(depth))
+        world_xyz = torch.Tensor(camera_xyz_to_global_xyz(camera_xyz, np.array(pose)))
+
+        median_depth = torch.from_numpy(median_filter(depth, size=5))
+        median_filter_error = (depth - median_depth).abs()
+        valid_depth = torch.logical_and(depth < self.max_depth, depth > self.min_depth)
+        valid_depth = valid_depth & (median_filter_error < 0.01).bool()
+        mask = ~valid_depth
+
+        self.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
+        self.semantic_memory.clear_points(
+            depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear=10
+        )
+
+        with torch.no_grad():
+            rgb, features = self.encoder.run_mask_siglip(rgb, self.image_shape)
+            rgb, features = rgb.squeeze(), features.squeeze()
+
+        valid_xyz = world_xyz[~mask]
+        features = features[~mask]
+        valid_rgb = rgb.permute(1, 2, 0)[~mask]
+        if len(valid_xyz) != 0:
+            self.add_to_semantic_memory(valid_xyz, features, valid_rgb)
+
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
+
+        self.add(
+            camera_pose=torch.Tensor(pose),
+            rgb=torch.Tensor(rgb).permute(1, 2, 0),
+            depth=torch.Tensor(depth),
+            camera_K=torch.Tensor(intrinsics),
+        )
+
+    def add_to_semantic_memory(self, valid_xyz, feature, valid_rgb, weights=None, threshold=0.95):
+        # Adding all points to voxelizedPointCloud is useless and expensive, we should exclude threshold of all points
+        selected_indices = torch.randperm(len(valid_xyz))[: int((1 - threshold) * len(valid_xyz))]
+        if len(selected_indices) == 0:
+            return
+        if valid_xyz is not None:
+            valid_xyz = valid_xyz[selected_indices]
+        if feature is not None:
+            feature = feature[selected_indices]
+        if valid_rgb is not None:
+            valid_rgb = valid_rgb[selected_indices]
+        if weights is not None:
+            weights = weights[selected_indices]
+
+        valid_xyz = valid_xyz.to(self.device)
+        if feature is not None:
+            feature = feature.to(self.device)
+        if valid_rgb is not None:
+            valid_rgb = valid_rgb.to(self.device)
+        if weights is not None:
+            weights = weights.to(self.device)
+        self.semantic_memory.add(
+            points=valid_xyz,
+            features=feature,
+            rgb=valid_rgb,
+            weights=weights,
+            obs_count=self.obs_count,
+        )
+
+    def localize_A(self, text, debug=True, return_debug=False):
+        points, _, _, _ = self.semantic_memory.get_pointcloud()
+        alignments = self.find_alignment_over_model(text).cpu()
+        point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
+        obs_counts = self.semantic_memory._obs_counts
+        obs_id = obs_counts[alignments.argmax(dim=-1)].detach().cpu()
+        debug_text = ""
+        target_point = None
+
+        if obs_id <= 0 or obs_id > len(self.observations):
+            res = None
+        else:
+            rgb = self.observations[obs_id - 1].rgb
+            pose = self.observations[obs_id - 1].camera_pose
+            depth = self.observations[obs_id - 1].depth
+            K = self.observations[obs_id - 1].camera_K
+
+            res = self.detection_model.compute_obj_coord(text, rgb, depth, K, pose)
+
+        if res is not None:
+            target_point = res
+            debug_text += (
+                "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
+            )
+        else:
+            # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
+            cosine_similarity_check = alignments.max().item() > 0.13
+            if cosine_similarity_check:
+                target_point = point
+
+                debug_text += (
+                    "#### - The point has high cosine similarity. **😃** Directly navigate to it.\n"
+                )
+            else:
+                debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
+        # print('target_point', target_point)
+        if not debug:
+            return target_point
+        elif not return_debug:
+            return target_point, debug_text
+        else:
+            return target_point, debug_text, obs_id, point
 
     def add(
         self,

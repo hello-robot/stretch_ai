@@ -23,6 +23,7 @@ from uuid import uuid4
 import cv2
 import numpy as np
 import rerun as rr
+import torch
 import zmq
 
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
@@ -47,10 +48,18 @@ from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     move_to_point,
     pickup,
 )
-from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
+
+# from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance
-from stretch.mapping.voxel import SparseVoxelMap
-from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
+from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
+from stretch.mapping.voxel import (
+    SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
+)
+from stretch.motion.algo.a_star import AStar
+from stretch.perception.detection.owl import OwlPerception
+
+# from stretch.perception.encoders import BaseImageTextEncoder, MaskSiglipEncoder, get_encoder
+from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 
@@ -89,12 +98,14 @@ class RobotAgent(RobotAgentBase):
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
 
-        if self.parameters.get("encoder", None) is not None:
-            self.encoder: BaseImageTextEncoder = get_encoder(
-                self.parameters["encoder"], self.parameters.get("encoder_args", {})
-            )
-        else:
-            self.encoder: BaseImageTextEncoder = None
+        # if self.parameters.get("encoder", None) is not None:
+        #     self.encoder: BaseImageTextEncoder = get_encoder(
+        #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
+        #     )
+        # else:
+        #     self.encoder: BaseImageTextEncoder = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.create_obstacle_map(parameters)
 
         # ==============================================
         self.obs_count = 0
@@ -137,13 +148,13 @@ class RobotAgent(RobotAgentBase):
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
 
-        self.image_processor = VoxelMapImageProcessor(
-            rerun=True,
-            rerun_visualizer=self.robot._rerun,
-            log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-            robot=self.robot,
-        )  # type: ignore
-        self.encoder = self.image_processor.get_encoder()
+        # self.image_processor = VoxelMapImageProcessor(
+        #     rerun=True,
+        #     rerun_visualizer=self.robot._rerun,
+        #     log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     robot=self.robot,
+        # )  # type: ignore
+        # self.encoder = self.image_processor.get_encoder()
         context = zmq.Context()
         self.manip_socket = context.socket(zmq.REQ)
         self.manip_socket.connect("tcp://100.108.67.79:" + str(manip_port))
@@ -176,6 +187,44 @@ class RobotAgent(RobotAgentBase):
         self._running = True
 
         self._start_threads()
+
+    def create_obstacle_map(self, parameters):
+        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+        self.detection_model = OwlPerception(device=self.device)
+        current_datetime = datetime.datetime.now()
+        self.log = "debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        self.voxel_map = SparseVoxelMap(
+            resolution=parameters["voxel_size"],
+            local_radius=parameters["local_radius"],
+            obs_min_height=parameters["obs_min_height"],
+            obs_max_height=parameters["obs_max_height"],
+            obs_min_density=parameters["obs_min_density"],
+            grid_resolution=0.1,
+            min_depth=self.min_depth,
+            max_depth=self.max_depth,
+            pad_obstacles=parameters["pad_obstacles"],
+            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
+            remove_visited_from_obstacles=parameters.get(
+                "remove_visited_from_obstacles", default=False
+            ),
+            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
+            use_median_filter=parameters.get("filters/use_median_filter", False),
+            median_filter_size=parameters.get("filters/median_filter_size", 5),
+            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
+            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            detection=self.detection_model,
+            log=self.log,
+        )
+        self.space = SparseVoxelMapNavigationSpace(
+            self.voxel_map,
+            rotation_step_size=parameters["rotation_step_size"],
+            dilate_frontier_size=parameters[
+                "dilate_frontier_size"
+            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
+            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+        )
+        self.planner = AStar(self.space)
 
     def compute_blur_metric(self, image):
         """
