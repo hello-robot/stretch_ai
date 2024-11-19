@@ -933,7 +933,6 @@ class SparseVoxelMap(object):
                 logger.warning("nelement of xyz is 0, returning empty map")
 
             logger.warning("No points in point cloud, returning empty map")
-            breakpoint()
             return (
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
