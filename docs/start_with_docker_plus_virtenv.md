@@ -172,7 +172,7 @@ git pull -ff origin main
 # Optional; rarely needed
 git submodule update --init --recursive
 ```
-*Do not run the install script again unles you want a new environment.* Running the install script will delete your current environment. You can also run it without the `--no-version` flag to create a versioned environment, eg. `stretch_ai_0.1.16`:
+*Do not run the install script again unless you want a new, clean environment.* Running the install script will delete your current environment. You can also run it without the `--no-version` flag to create a versioned environment, eg. `stretch_ai_0.1.16`:
 
 ```bash
 ./install.sh --cuda=$CUDA_VERSION
