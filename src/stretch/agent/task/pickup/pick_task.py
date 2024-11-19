@@ -186,7 +186,7 @@ class PickObjectTask:
             task.connect_on_failure(go_to_object.name, search_for_object.name)
 
         # Terminate the task on successfull grasp
-        task.terminate_on_success(grasp_object)
+        task.terminate_on_success(grasp_object.name)
 
         return task
 
