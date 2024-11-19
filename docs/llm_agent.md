@@ -64,6 +64,11 @@ For example if you want to test with Gemma 2b, you can run:
 python -m stretch.app.ai_pickup --use_llm --llm gemma2b
 ```
 
+You can also run many of the components individually, as explained below:
+  - [Mapping and Exploration](#mapping-and-exploration) of the environment
+  - [Grasping](#grasping) objects from the floor
+  - [Chat](#chat) with a large language model
+
 #### Using OpenAI Models with Stretch AI
 
 To use an OpenAI model, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
