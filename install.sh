@@ -54,7 +54,9 @@ done
 # If not, install them
 # If these packages are not installed, you will run into issues with pyaudio
 sudo apt-get update
-# If yes:
+echo "Checking for required packages: "
+echo "     libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg"
+echo "If these are not installed, you will run into issues with pyaudio."
 if [ "$SKIP_ASKING" == "true" ]; then
 	sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
 else
