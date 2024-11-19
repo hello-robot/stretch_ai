@@ -207,6 +207,8 @@ _Click to follow the link to YouTube:_
 
 [![Pick up the plastic cup](https://img.youtube.com/vi/8iM06kefxjw/0.jpg)](https://www.youtube.com/watch?v=8iM06kefxjw)
 
+This GUI will only appear when using the `grasp_object` app directly. It shows the robot's view of the object complete with mask on the left, and the depth image on the right. The blue and green dots show the grasp center and the center of the object mask.
+
 #### Chat
 
 You can chat with the robot using LLMs by running the following command:
