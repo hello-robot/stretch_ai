@@ -114,7 +114,6 @@ if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
     echo "   - torch-scatter"
 fi
 echo "   - python=$PYTHON_VERSION"
-echo " - Python version 3.12 is not supported by Open3d."
 echo "---------------------------------------------"
 echo "Currently:"
 echo " - CUDA_HOME=$CUDA_HOME"
