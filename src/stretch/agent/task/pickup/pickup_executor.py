@@ -69,6 +69,9 @@ class PickupExecutor:
             target_receptacle: The receptacle to place the object in.
         """
 
+        if target_receptacle is None or len(target_receptacle) == 0:
+            self._pick_only(target_object)
+
         logger.alert(f"[Pickup task] Pickup: {target_object} Place: {target_receptacle}")
 
         # After the robot has started...
