@@ -30,10 +30,10 @@ from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
 from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path
 
-from huggingface_hub import hf_hub_download
 
-
-def run_sam_batch(image: np.ndarray, predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndarray]:
+def run_sam_batch(
+    image: np.ndarray, predictor: SamPredictor, boxes, batch_size=16
+) -> List[np.ndarray]:
     """Run SAM on a batch of boxes.
 
     Arguments:
