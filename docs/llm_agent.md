@@ -214,7 +214,7 @@ Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/
   - `match_method` - either `feature` or `class`; if `feature`, the robot will attempt to match the object to a feature vector, and if `class`, the robot will attempt to match the object to a class label.
   - `target_object: str` - the name of the object to grasp. Must be a class label if `match_method` is `class`.
   - `servo_to_grasp: bool` - if it should use visual servoing to grasp. If false, will grasp open-loop based on past head observations, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
-  - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging, but is not necessary for normal operation. If you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
+  - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging; if you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
 
 _Click to follow the link to YouTube:_
 
