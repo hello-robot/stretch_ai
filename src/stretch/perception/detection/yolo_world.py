@@ -48,7 +48,7 @@ def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndar
     for i in range(0, num_boxes, batch_size):
         batch_boxes = boxes[i : i + batch_size]
         batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
-
+        
         masks, _, _ = predictor.predict_torch(
             point_coords=None, point_labels=None, boxes=batch_boxes, multimask_output=False
         )
@@ -196,7 +196,6 @@ class YoloWorldPerception(PerceptionModule):
         self.sam_predictor.set_image(image)
         masks = run_sam_batch(self.sam_predictor, boxes, batch_size=16)
         masks = merge_masks(masks, height, width)
-        breakpoint()
 
         # Add some visualization code for YOLO
         if draw_instance_predictions:
