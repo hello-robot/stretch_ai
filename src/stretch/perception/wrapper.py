@@ -37,6 +37,7 @@ class OvmmPerception:
         gpu_device_id: int = 0,
         verbose: bool = False,
         module_kwargs: Dict[str, Any] = {},
+        category_map_file: Optional[str] = None,
     ):
         self.parameters = parameters
         self._use_detic_viz = self.parameters.get("detection/use_detic_viz", False)
@@ -46,9 +47,13 @@ class OvmmPerception:
         self._current_vocabulary: RearrangeDETICCategories = None
         self._current_vocabulary_id: int = None
         self.verbose = verbose
+
         if self._detection_module == "detic":
             # Lazy import
             from stretch.perception.detection.detic import DeticPerception
+
+            if category_map_file is None:
+                category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
             self._segmentation = DeticPerception(
                 vocabulary="custom",
@@ -58,6 +63,11 @@ class OvmmPerception:
                 confidence_threshold=self._confidence_threshold,
                 **module_kwargs,
             )
+
+            obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
+            vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
+            self.update_vocabulary_list(vocab, 0)
+            self.set_vocabulary(0)
 
         elif self._detection_module == "sam":
             from stretch.perception.detection.sam import SAMPerception
@@ -279,7 +289,6 @@ def build_vocab_from_category_map(
 
 def create_semantic_sensor(
     parameters: Optional[Parameters] = None,
-    category_map_file: Optional[str] = None,
     device_id: int = 0,
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
@@ -304,8 +313,6 @@ def create_semantic_sensor(
         print("[PERCEPTION] Loading configuration")
     if parameters is None:
         parameters = get_parameters(config_path)
-    if category_map_file is None:
-        category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
     if verbose:
         logger.alert(
@@ -318,8 +325,4 @@ def create_semantic_sensor(
         verbose=verbose,
         module_kwargs=module_kwargs,
     )
-    obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
-    vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
-    semantic_sensor.update_vocabulary_list(vocab, 0)
-    semantic_sensor.set_vocabulary(0)
     return semantic_sensor
