@@ -21,7 +21,7 @@ from typing import List, Optional
 import cv2
 import numpy as np
 import torch
-from ultralytics import YOLO
+from ultralytics import YOLOWorld
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
