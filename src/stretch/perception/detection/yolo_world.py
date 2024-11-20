@@ -21,15 +21,14 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import numpy as np
 import torch
+from segment_anything import SamPredictor, sam_model_registry
 from ultralytics import YOLOWorld
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
-from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
+from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path
-
-from segment_anything import sam_model_registry, SamPredictor
 
 
 def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndarray]:
@@ -47,17 +46,14 @@ def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndar
     all_masks = []
 
     for i in range(0, num_boxes, batch_size):
-        batch_boxes = boxes[i:i+batch_size]
+        batch_boxes = boxes[i : i + batch_size]
         batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
 
         masks, _, _ = predictor.predict_torch(
-            point_coords=None,
-            point_labels=None,
-            boxes=batch_boxes,
-            multimask_output=False
+            point_coords=None, point_labels=None, boxes=batch_boxes, multimask_output=False
         )
         all_masks.extend(masks.cpu().numpy())
-    
+
     # print(f"Extracted {len(all_masks)} masks")
     # print(all_masks[0].shape)
     return all_masks
@@ -88,6 +84,7 @@ def merge_masks(masks, height, width) -> np.ndarray:
         merged_mask[mask_resized] = i + 1
 
     return merged_mask
+
 
 class YoloWorldPerception(PerceptionModule):
     def __init__(
@@ -131,10 +128,9 @@ class YoloWorldPerception(PerceptionModule):
                 f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
             )
 
-
         # Initialize SAM
         sam = sam_model_registry["default"](checkpoint="sam_vit_h_4b8939.pth")
-        sam.to(device='cuda' if torch.cuda.is_available() else 'cpu')
+        sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
         self.sam_predictor = SamPredictor(sam)
 
         self.model = YOLOWorld(checkpoint_file)
