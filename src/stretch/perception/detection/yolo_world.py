@@ -39,6 +39,7 @@ class YoloWorldPerception(PerceptionModule):
         checkpoint_file=None,
         sem_gpu_id=0,
         verbose: bool = False,
+        size: str = "m",
         confidence_threshold: Optional[float] = None,
     ):
         """Load trained YOLO model for inference.
@@ -59,7 +60,7 @@ class YoloWorldPerception(PerceptionModule):
             class_list = CLASS_LABELS_200
 
         if checkpoint_file is None:
-            checkpoint_file = get_full_config_path("perception/yolo_world/yolov8s-world.pt")
+            checkpoint_file = get_full_config_path(f"perception/yolo_world/yolov8{size}-world.pt")
 
         # Check if checkpoint file exists
         if not Path(checkpoint_file).exists():
@@ -68,7 +69,7 @@ class YoloWorldPerception(PerceptionModule):
             # Download the model
             os.system(
                 f"wget -O {checkpoint_file} "
-                "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-worldv2.pt"
+                f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
             )
 
         self.model = YOLOWorld(checkpoint_file)
@@ -149,6 +150,10 @@ class YoloWorldPerception(PerceptionModule):
         task_observations["instance_map"] = instance_map
         task_observations["instance_classes"] = class_idcs
         task_observations["instance_scores"] = scores
+
+        import matplotlib.pyplot as plt
+        plt.imshow(semantic)
+        plt.show()
 
         return semantic, instance, task_observations
 
