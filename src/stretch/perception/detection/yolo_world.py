@@ -21,7 +21,8 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import numpy as np
 import torch
-from segment_anything import SamPredictor, sam_model_registry
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 from ultralytics import YOLOWorld
 
 from stretch.core.abstract_perception import PerceptionModule
@@ -31,7 +32,7 @@ from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path
 
 
-def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndarray]:
+def run_sam_batch(predictor: SAM2ImagePredictor, boxes, batch_size=16) -> List[np.ndarray]:
     """Run SAM on a batch of boxes.
 
     Arguments:
@@ -49,13 +50,18 @@ def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndar
         batch_boxes = boxes[i : i + batch_size]
         batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
 
-        masks, _, _ = predictor.predict_torch(
-            point_coords=None, point_labels=None, boxes=batch_boxes, multimask_output=False
+        masks, _, _ = predictor.predict(
+            point_coords=None, point_labels=None, box=batch_boxes, multimask_output=False
         )
+
+        if masks.ndim == 3:
+            masks = torch.Tensor(masks).bool()
+        else:
+            masks = torch.Tensor(masks[:, 0, :, :]).bool()
         all_masks.extend(masks.cpu().numpy())
 
-    # print(f"Extracted {len(all_masks)} masks")
-    # print(all_masks[0].shape)
+    print(f"Extracted {len(all_masks)} masks")
+    print(all_masks[0].shape)
     return all_masks
 
 
@@ -111,6 +117,7 @@ class YoloWorldPerception(PerceptionModule):
             verbose: whether to print out debug information
         """
         self.verbose = verbose
+        self.confidence = confidence_threshold if confidence_threshold is not None else 0.05
 
         if class_list is None:
             class_list = CLASS_LABELS_200
@@ -129,9 +136,21 @@ class YoloWorldPerception(PerceptionModule):
             )
 
         # Initialize SAM
-        sam = sam_model_registry["default"](checkpoint="sam_vit_h_4b8939.pth")
-        sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
-        self.sam_predictor = SamPredictor(sam)
+        sam_checkpoint = f"./sam2_hiera_small.pt"
+        sam_config = "sam2_hiera_s.yaml"
+        if not Path(sam_checkpoint).exists():
+            Path(sam_checkpoint).parent.mkdir(parents=True, exist_ok=True)
+            os.system(
+                f"wget -O {checkpoint_file} "
+                f"https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt"
+            )
+        sam2_model = build_sam2(
+            sam_config,
+            sam_checkpoint,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+            apply_postprocessing=False,
+        )
+        self.sam_predictor = SAM2ImagePredictor(sam2_model)
 
         self.model = YOLOWorld(checkpoint_file)
         self.model.to("cuda" if torch.cuda.is_available() else "cpu")
@@ -175,7 +194,7 @@ class YoloWorldPerception(PerceptionModule):
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
-        pred = self.model(image, verbose=self.verbose)
+        pred = self.model(image, verbose=self.verbose, conf=self.confidence)
         task_observations = dict()
 
         if pred[0].boxes is None:

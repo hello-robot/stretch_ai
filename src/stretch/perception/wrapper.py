@@ -97,11 +97,13 @@ class OvmmPerception:
             from stretch.perception.detection.yolo_world import YoloWorldPerception
 
             yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "m")
+            yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.05)
 
             self._segmentation = YoloWorldPerception(
                 sem_gpu_id=gpu_device_id,
                 size=yolo_world_model_size,
                 verbose=verbose,
+                confidence_threshold=yolo_threshold,
                 **module_kwargs,
             )
         else:
