@@ -53,7 +53,9 @@ class OvmmPerception:
             from stretch.perception.detection.detic import DeticPerception
 
             if category_map_file is None:
-                category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
+                category_map_file = get_full_config_path(
+                    parameters["detection"]["category_map_file"]
+                )
 
             self._segmentation = DeticPerception(
                 vocabulary="custom",
