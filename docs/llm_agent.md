@@ -213,7 +213,7 @@ Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/
   - `talk: bool` - whether the robot should speak out loud while performing the task (if false, the robot will stay quiet)
   - `match_method` - either `feature` or `class`; if `feature`, the robot will attempt to match the object to a feature vector, and if `class`, the robot will attempt to match the object to a class label.
   - `target_object: str` - the name of the object to grasp. Must be a class label if `match_method` is `class`.
-  - `servo_to_grasp: bool` - if it should use visual servoing to grasp. If false, will grasp blindly based on head observations, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
+  - `servo_to_grasp: bool` - if it should use visual servoing to grasp. If false, will grasp open-loop based on past head observations, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
   - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging, but is not necessary for normal operation. If you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
 
 _Click to follow the link to YouTube:_
@@ -324,7 +324,7 @@ The `grasp_object` app will try to display what the robot is seeing using opencv
 
 ##### My robot is at an inconvenient starting position
 
-You can use the `reset` app to have the robot (blindly) move back to wherever you started the robot server from:
+You can use the `reset` app to have the robot move back to wherever you started the robot server from, *without any further observations or obstacle avoidance*:
 ```bash
 python -m stretch.app.reset
 ```
