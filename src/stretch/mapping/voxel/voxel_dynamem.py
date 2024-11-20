@@ -117,19 +117,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.detection_model = detection
         self.log = log
 
-    def calculate_clip_and_st_embeddings_for_queries(self, queries):
-        if isinstance(queries, str):
-            queries = [queries]
-        inputs = self.encoder.preprocessor(text=queries, padding="max_length", return_tensors="pt")
-        for input in inputs:
-            inputs[input] = inputs[input].to(self.clip_model.device)
-        all_clip_tokens = self.encoder.model.get_text_features(**inputs)
-
-        all_clip_tokens = F.normalize(all_clip_tokens, p=2, dim=-1)
-        return all_clip_tokens
-
     def find_alignment_over_model(self, queries):
-        # clip_text_tokens = self.calculate_clip_and_st_embeddings_for_queries(queries)
         clip_text_tokens = self.encoder.encode_text(queries).cpu()
         points, features, weights, _ = self.semantic_memory.get_pointcloud()
         if points is None:
@@ -149,6 +137,19 @@ class SparseVoxelMap(SparseVoxelMapBase):
         obs_counts = self.semantic_memory._obs_counts
         alignments = self.find_alignment_over_model(A).cpu()
         return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
+
+    def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
+        if isinstance(point, np.ndarray):
+            point = torch.from_numpy(point)
+        points, _, _, _ = self.semantic_memory.get_pointcloud()
+        distances = torch.linalg.norm(point - points.detach().cpu(), dim=-1)
+        if torch.min(distances) > distance_threshold:
+            print("Points are so far from other points!")
+            return False
+        alignments = self.find_alignment_over_model(A).detach().cpu()[0]
+        if torch.max(alignments[distances <= distance_threshold]) < similarity_threshold:
+            print("Points close the the point are not similar to the text!")
+        return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
 
     def get_2d_map(
         self, debug: bool = False, return_history_id: bool = False
@@ -312,13 +313,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if not os.path.exists(self.log):
             os.mkdir(self.log)
         self.obs_count += 1
-
-        # self.add(
-        #     camera_pose=torch.Tensor(pose),
-        #     rgb=torch.Tensor(rgb),
-        #     depth=torch.Tensor(depth),
-        #     camera_K=torch.Tensor(intrinsics),
-        # )
 
         cv2.imwrite(self.log + "/rgb" + str(self.obs_count) + ".jpg", rgb[:, :, [2, 1, 0]])
         np.save(self.log + "/rgb" + str(self.obs_count) + ".npy", rgb)

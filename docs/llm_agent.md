@@ -64,6 +64,11 @@ For example if you want to test with Gemma 2b, you can run:
 python -m stretch.app.ai_pickup --use_llm --llm gemma2b
 ```
 
+You can also run many of the components individually, as explained below:
+  - [Mapping and Exploration](#mapping-and-exploration) of the environment
+  - [Grasping](#grasping) objects from the floor
+  - [Chat](#chat) with a large language model
+
 #### Using OpenAI Models with Stretch AI
 
 To use an OpenAI model, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
@@ -142,6 +147,10 @@ This lists the different functions that the LLM agent can use to interact with t
 
 #### Mapping and Exploration
 
+[![Rerun visualization of partly-mapped home](images/rerun_map.png)](images/rerun_map.png)
+
+[Mapping](../src/stretch/app/mapping.py) is a key component of the robot's ability to navigate and interact with the world.
+
 You can test the mapping capabilities of the robot by running the following command:
 
 ```bash
@@ -192,6 +201,14 @@ _Click to follow the link to YouTube:_
 
 Other parameters will configure how visual servoing operates and how close the robot needs to get to the object before closing the gripper; to understand these, it's best to look at the [GraspObjectOperation source code](../src/stretch/agent/task/grasp/grasp_object.py).
 
+##### Visual Servoing GUI
+
+_Click to follow the link to YouTube:_
+
+[![Pick up the plastic cup](https://img.youtube.com/vi/8iM06kefxjw/0.jpg)](https://www.youtube.com/watch?v=8iM06kefxjw)
+
+This GUI will only appear when using the `grasp_object` app directly. It shows the robot's view of the object complete with mask on the left, and the depth image on the right. The blue and green dots show the grasp center and the center of the object mask.
+
 #### Chat
 
 You can chat with the robot using LLMs by running the following command:
@@ -239,6 +256,16 @@ python -m stretch.app.chat --voice
 
 Press enter to speak. The robot will respond to your voice input, processed using [OpenAI Whisper](https://www.openai.com/whisper/).
 
+If you want the robot to speak back, you can enable this with the `--talk` flag:
+```bash
+python -m stretch.app.chat --voice --talk
+```
+
+And optionally specify the IP address of the robot:
+```bash
+python -m stretch.app.chat --voice --talk --robot_ip 192.168.1.69
+```
+
 ### Common Issues
 
 #### Motion Planning
@@ -247,7 +274,11 @@ The robot uses a motion planner to avoid obstacles on its feature-rich 3D map of
 
 ##### Too Many Obstacles in 3D Map
 
-Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles.
+[![Rerun visualization of partly-mapped home with spurious obstacles](images/rerun_map_bad.png)](images/rerun_map_bad.png)
+
+Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles. You can see an example of this in the image above.
+
+Most often, this happens because the head is not where the robot thinks it is, which can be challenging to fix.
 
 *If you are seeing areas marked as red obstacles for no reason*, then try changing the following parameters in the config file, especially `obs_min_height`:
 ```yaml

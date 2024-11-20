@@ -134,6 +134,8 @@ mamba
 
 If you get an "command not found" error, then follow the install instructions for mamba here: https://github.com/conda-forge/miniforge#download
 
+Make sure to run `mamba init` and restart your terminal before proceeding.
+
 Then, run:
 
 ```bash
@@ -143,33 +145,51 @@ git lfs install
 
 # Clone the repository
 # Do not forget the --recursive flag to clone submodules
-git clone git@github.com:hello-robot/stretch_ai.git --recursive
-
-# Install system dependencies
-# Pyaudio will fail if these are not installed
-sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+git clone https://github.com/hello-robot/stretch_ai.git --recursive
 
 # Run install script to create a conda environment and install dependencies
-./install.sh
+# WARNING: this will delete an existing stretch_ai environment - do not do this to update your code!
+cd stretch_ai
+./install.sh --cuda=$CUDA_VERSION --no-version
 ```
 
-At the prompt to install Detic, say **no**. Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
+This will create a mamba environment called `stretch_ai` and install all the necessary dependencies.
 
-Next, run:
+Here, `$CUDA_VERSION` is the version of CUDA installed on your computer. If you don't know the version of CUDA installed on your computer, you can run the following command:
 
 ```bash
-# Activate your virtual env
-mamba activate stretch_ai_<version>
-
-# Tell mamba to not use your user sitepackages
-mamba env config vars set PYTHONNOUSERSITE=1
-
-# Install a version of setuptools for which clip works
-pip install setuptools==69.5.1
-
-# Install stretch-ai in "editable" mode so you can develop on it
-pip install -e ./src[dev]
+nvidia-smi
 ```
+
+Or you can skip automatic perception installation as described in [Manual Perception Installation](#manual-perception-installation).
+
+##### Updating Stretch AI
+
+To update stretch AI, simply pull:
+```
+git pull -ff origin main
+
+# Optional; rarely needed
+git submodule update --init --recursive
+```
+*Do not run the install script again unless you want a new, clean environment.* Running the install script will delete your current environment. You can also run it without the `--no-version` flag to create a versioned environment, eg. `stretch_ai_0.1.16`:
+
+```bash
+./install.sh --cuda=$CUDA_VERSION
+```
+
+##### Optional: Use Conda instead of Mamba
+
+You can pass the `--conda` flag into the install script if you have it installed:
+```bash
+./install.sh --conda
+```
+
+##### Manual Perception Installation
+
+If you don't have CUDA installed or don't know what it is, you can answer **no** to the prompt to install Detic. If you do have CUDA installed, you can answer **yes** to the prompt to install Detic.
+
+If you answered no, you can then install Detic manually. Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
 
 Next, run:
 
@@ -188,14 +208,6 @@ pip install -r requirements.txt
 # Download DETIC checkpoint...
 mkdir -p models
 wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
-```
-
-**Note:** A new env should be created for each new version of *stretch-ai* (each time you `git pull`) using the above instructions.
-
-#### Activate your virtual env
-
-```bash
-mamba activate stretch_ai_<version>
 ```
 
 ## Simple Installation Test
@@ -224,6 +236,6 @@ To exit the app, you can press `q` with any of the popup windows selected.
 
 If the `view_images` app doesn't work, the most common issue is that the GPU computer is unable to communicate with the robot over the network. We recommend that you verify your robot's IP address and use [`ping`](<https://en.wikipedia.org/wiki/Ping_(networking_utility)>) on your GPU computer to check that it can reach the robot.
 
-If your installation is working, we recommend that you try out [language-directed pick and place](https://github.com/hello-robot/stretch_ai#language-directed-pick-and-place).
+If your installation is working, we recommend that you try out [language-directed pick and place](llm_agent.md).
 
 

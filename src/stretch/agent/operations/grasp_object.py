@@ -678,7 +678,7 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
-                    success = self._grasp()
+                    success = self._grasp(distance=center_depth)
                 else:
                     # Could not find the object
                     failed_counter += 1
@@ -731,7 +731,7 @@ class GraspObjectOperation(ManagedOperation):
                         success = self._grasp(distance=prev_center_depth)
                     else:
                         self.info("Aligned and close enough to grasp.")
-                        success = self._grasp()
+                        success = self._grasp(distance=center_depth)
                     break
 
                 # If we are aligned, step the whole thing closer by some amount

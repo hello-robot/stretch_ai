@@ -69,6 +69,10 @@ class PickupExecutor:
             target_receptacle: The receptacle to place the object in.
         """
 
+        if target_receptacle is None or len(target_receptacle) == 0:
+            self._pick_only(target_object)
+            return
+
         logger.alert(f"[Pickup task] Pickup: {target_object} Place: {target_receptacle}")
 
         # After the robot has started...
@@ -98,11 +102,10 @@ class PickupExecutor:
             pickup_task = PickObjectTask(
                 self.agent,
                 target_object=target_object,
-                target_receptacle=None,
                 matching=self._match_method,
                 use_visual_servoing_for_grasp=not self._open_loop,
             )
-            task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+            task = pickup_task.get_task(add_rotate=True)
         except Exception as e:
             print(f"Error creating task: {e}")
             self.robot.stop()

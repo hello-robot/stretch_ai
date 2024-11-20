@@ -52,6 +52,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             extend_mode=extend_mode,
         )
         self.create_collision_masks(orientation_resolution)
+        self.traj = None
 
     def create_collision_masks(self, orientation_resolution: int):
         """Create a set of orientation masks
@@ -256,3 +257,135 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             plt.scatter(index[1], index[0], s=15, c="r")
             plt.show()
         return time_heuristics
+
+    def sample_navigation(self, start, point, mode="navigation"):
+        plt.clf()
+        if point is None:
+            start_pt = self.planner.to_pt(start)
+            return None
+        goal = self.sample_target_point(
+            start, point, self.planner, exploration=mode != "navigation"
+        )
+        print("point:", point, "goal:", goal)
+        obstacles, explored = self.voxel_map.get_2d_map()
+        plt.imshow(obstacles)
+        start_pt = self.planner.to_pt(start)
+        plt.scatter(start_pt[1], start_pt[0], s=15, c="b")
+        point_pt = self.planner.to_pt(point)
+        plt.scatter(point_pt[1], point_pt[0], s=15, c="r")
+        if goal is not None:
+            goal_pt = self.planner.to_pt(goal)
+            plt.scatter(goal_pt[1], goal_pt[0], s=10, c="g")
+        # plt.show()
+        return goal
+
+    def sample_frontier(self, start_pose=[0, 0, 0], text=None):
+        with self.voxel_map_lock:
+            if text is not None and text != "":
+                (
+                    index,
+                    time_heuristics,
+                    alignments_heuristics,
+                    total_heuristics,
+                ) = self.sample_exploration(
+                    start_pose, self.planner, self.voxel_map_localizer, text, debug=False
+                )
+            else:
+                index, time_heuristics, _, total_heuristics = self.sample_exploration(
+                    start_pose, self.planner, None, None, debug=False
+                )
+                alignments_heuristics = time_heuristics
+
+            obstacles, explored = self.voxel_map.get_2d_map()
+            return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
+
+    def process_text(self, text, start_pose):
+        """
+        Process the text query and return the trajectory for the robot to follow.
+        """
+
+        print("Processing", text, "starts")
+
+        debug_text = ""
+        mode = "navigation"
+        obs = None
+        localized_point = None
+        waypoints = None
+
+        if text is not None and text != "" and self.traj is not None:
+            print("saved traj", self.traj)
+            traj_target_point = self.traj[-1]
+            with self.voxel_map_lock:
+                if self.voxel_map.verify_point(text, traj_target_point):
+                    localized_point = traj_target_point
+                    debug_text += (
+                        "## Last visual grounding results looks fine so directly use it.\n"
+                    )
+
+        print("Target verification finished")
+
+        if text is not None and text != "" and localized_point is None:
+            (
+                localized_point,
+                debug_text,
+                obs,
+                pointcloud,
+            ) = self.voxel_map.localize_A(text, debug=True, return_debug=True)
+            print("Target point selected!")
+
+        # Do Frontier based exploration
+        if text is None or text == "" or localized_point is None:
+            debug_text += "## Navigation fails, so robot starts exploring environments.\n"
+            localized_point = self.sample_frontier(start_pose, text)
+            mode = "exploration"
+
+        if localized_point is None:
+            return []
+
+        if len(localized_point) == 2:
+            localized_point = np.array([localized_point[0], localized_point[1], 0])
+
+        point = self.sample_navigation(start_pose, localized_point)
+
+        print("Navigation endpoint selected")
+
+        waypoints = None
+
+        if point is None:
+            res = None
+            print("Unable to find any target point, some exception might happen")
+        else:
+            res = self.planner.plan(start_pose, point)
+
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
+        # If we are navigating to some object of interest, send (x, y, z) of
+        # the object so that we can make sure the robot looks at the object after navigation
+        traj = []
+        if waypoints is not None:
+            finished = len(waypoints) <= 8 and mode == "navigation"
+            if finished:
+                self.traj = None
+            else:
+                self.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            if not finished:
+                waypoints = waypoints[:8]
+            traj = self.planner.clean_path_for_xy(waypoints)
+            if finished:
+                traj.append([np.nan, np.nan, np.nan])
+                if isinstance(localized_point, torch.Tensor):
+                    localized_point = localized_point.tolist()
+                traj.append(localized_point)
+            print("Planned trajectory:", traj)
+
+        # Talk about what you are doing, as the robot.
+        if self.robot is not None:
+            if text is not None and text != "":
+                self.robot.say("I am looking for a " + text + ".")
+            else:
+                self.robot.say("I am exploring the environment.")
+
+        return traj
