@@ -42,6 +42,7 @@ detection:
   # module: "detic"
   module: "yolo"
   # module: "yolo_world"
+  confidence_threshold: 0.5
   category_map_file: example_cat_map.json
   use_detic_viz: False
 

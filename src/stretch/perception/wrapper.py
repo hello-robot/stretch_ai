@@ -36,12 +36,12 @@ class OvmmPerception:
         parameters: Parameters,
         gpu_device_id: int = 0,
         verbose: bool = False,
-        confidence_threshold: float = 0.5,
         module_kwargs: Dict[str, Any] = {},
     ):
         self.parameters = parameters
         self._use_detic_viz = self.parameters.get("detection/use_detic_viz", False)
         self._detection_module = self.parameters.get("detection/module", "detic")
+        self._confidence_threshold = self.parameters.get("detection/confidence_threshold", 0.5)
         self._vocabularies: Dict[int, RearrangeDETICCategories] = {}
         self._current_vocabulary: RearrangeDETICCategories = None
         self._current_vocabulary_id: int = None
@@ -55,7 +55,7 @@ class OvmmPerception:
                 custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
-                confidence_threshold=confidence_threshold,
+                confidence_threshold=self._confidence_threshold,
                 **module_kwargs,
             )
 
@@ -286,7 +286,6 @@ def create_semantic_sensor(
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
     config_path="default_planner.yaml",
-    confidence_threshold: float = 0.5,
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes.
@@ -298,7 +297,6 @@ def create_semantic_sensor(
         verbose: whether to print debug information
         module_kwargs: additional arguments to pass to the segmentation model
         config_path: path to config file
-        confidence_threshold: confidence threshold for detection
         **kwargs: additional arguments
 
     Returns:
@@ -320,7 +318,6 @@ def create_semantic_sensor(
         parameters=parameters,
         gpu_device_id=device_id,
         verbose=verbose,
-        confidence_threshold=confidence_threshold,
         module_kwargs=module_kwargs,
     )
     obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
