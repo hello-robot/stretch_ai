@@ -39,11 +39,11 @@ max_depth: 2.0
 # Object detection parameters
 detection:
   # module: "mobile_sam"
-  # module: "detic"
+  module: "detic"
   # module: "yolo"
-  module: "yolo_world"
+  # module: "yolo_world"
   yolo_world_model_size: "m" 
-  yolo_confidence_threshold: 0.05
+  yolo_confidence_threshold: 0.1
   confidence_threshold: 0.5
   category_map_file: example_cat_map.json  # This is used for Detic
   use_detic_viz: False
@@ -75,12 +75,6 @@ motion:
     wrist_roll: 0.1
     wrist_pitch: 0.1
     wrist_yaw: 0.1
-    # arm: 0.05
-    # base_x: 0.05
-    # lift: 0.05
-    # wrist_roll: 0.25
-    # wrist_pitch: 0.25
-    # wrist_yaw: 0.05
     head_pan: 0.01
     head_tilt: 0.01
   joint_thresholds:
