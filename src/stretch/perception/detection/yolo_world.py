@@ -132,10 +132,10 @@ class YoloWorldPerception(PerceptionModule):
         sam_checkpoint = get_full_config_path("perception/yolo_world/sam_vit_h_4b8939.pth")
         if not Path(sam_checkpoint).exists():
             # Make parent directory
-            Path(checkpoint_file).parent.mkdir(parents=True, exist_ok=True)
+            Path(sam_checkpoint).parent.mkdir(parents=True, exist_ok=True)
             # Download the model
             os.system(
-                f"wget -O {checkpoint_file} "
+                f"wget -O {sam_checkpoint} "
                 f"https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth"
             )
 
