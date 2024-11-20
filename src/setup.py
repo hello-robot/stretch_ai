@@ -70,6 +70,8 @@ setuptools.setup(
         "transformers",
         "accelerate",
         "einops",
+        # Meta neural nets
+        "segment-anything",
         # Compression tools
         "pyliblzfse",
         "webp",

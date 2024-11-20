@@ -30,6 +30,8 @@ from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
 from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path
 
+from huggingface_hub import hf_hub_download
+
 
 def run_sam_batch(image: np.ndarray, predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndarray]:
     """Run SAM on a batch of boxes.
@@ -126,8 +128,19 @@ class YoloWorldPerception(PerceptionModule):
                 f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
             )
 
+        # Download the SAM checkpoint if it does not exist
+        sam_checkpoint = get_full_config_path("perception/yolo_world/sam_vit_h_4b8939.pth")
+        if not Path(sam_checkpoint).exists():
+            # Make parent directory
+            Path(checkpoint_file).parent.mkdir(parents=True, exist_ok=True)
+            # Download the model
+            os.system(
+                f"wget -O {checkpoint_file} "
+                f"https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth"
+            )
+
         # Initialize SAM
-        sam = sam_model_registry["default"](checkpoint="sam_vit_h_4b8939.pth")
+        sam = sam_model_registry["default"](checkpoint=sam_checkpoint)
         sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
         self.sam_predictor = SamPredictor(sam)
 
