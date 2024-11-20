@@ -157,7 +157,9 @@ class YoloWorldPerception(PerceptionModule):
         # TODO: create masks using segment anything
         boxes = pred[0].boxes.xyxy.cpu().numpy()
         # Use SAM to extract masks
-        masks = run_sam_batch(predictor, boxes, batch_size=16)
+
+        self.sam_predictor.set_image(image)
+        masks = run_sam_batch(self.sam_predictor, boxes, batch_size=16)
 
         # Resize masks to original image size
         masks = np.array([cv2.resize(mask, (width, height)) for mask in masks])
