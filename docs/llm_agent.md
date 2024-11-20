@@ -32,6 +32,8 @@ For more details see the following sections:
     - [Chat](#chat) - testing the AI agent chat functionality
   - [Common Issues](#common-issues) - for debugging common problems
 
+Stretch AI also has a set of [apps](apps.md), which are standalone programs you can execute on your robot. Several of these are described in [Testing Individual Components](#testing-individual-components) below, in addition to in the [apps documentation](apps.md).
+
 ## Running the AI Agent
 
 The entry point to the AI demo is the `ai_pickup` script:
@@ -165,6 +167,12 @@ Take a look at how the prompt starts out:
 > - quit()  # end the conversation
 
 This lists the different functions that the LLM agent can use to interact with the world. If you wanted to add your own functions to this list, you would start by adding them here. You would then add them to the `parse_command` function in the [PickupPrompt](../src/stretch/llms/prompts/pickup_prompt.py) class, and add the appropriate logic handling the function call to the [PickupExecutor](../src/stretch/agent/task/pickup/pickup_executor.py) class.
+
+### Tasks and Operations
+
+The agent code uses two additional abstractions, [Operations and Tasks](../src/stretch/core/task.py), to manage the robot's behavior. These are:
+  - An *Operation* is a single, useful component: it's the basic API that the agent calls to interact with the world most of the time. An example is the [GraspObjectOperation](../src/stretch/agent/operations/grasp_object.py), which defines how the robot should grasp an object.
+  - A *Task* is a simple finite state machine which defines how a set of operations. An example is the [PickupTask](../src/stretch/agent/task/pickup/pickup_task.py), which defines how the robot should pick up an object and place it in a receptacle by searching for both the object and the receptacle, grasping the object, and placing it in the receptacle.
 
 ### Testing Individual Components
 
