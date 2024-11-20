@@ -80,12 +80,6 @@ motion:
     wrist_roll: 0.1
     wrist_pitch: 0.1
     wrist_yaw: 0.1
-    # arm: 0.05
-    # base_x: 0.05
-    # lift: 0.05
-    # wrist_roll: 0.25
-    # wrist_pitch: 0.25
-    # wrist_yaw: 0.05
     head_pan: 0.01
     head_tilt: 0.01
   joint_thresholds:
