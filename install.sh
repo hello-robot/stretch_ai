@@ -177,8 +177,8 @@ echo "Will be installed via pip into env: $ENV_NAME"
 
 python -m pip install -e ./src[dev]
 
-echo "---- Install SAM ----"
-pip install git+https://github.com/facebookresearch/segment-anything.git
+# echo "---- Install SAM ----"
+# pip install git+https://github.com/facebookresearch/segment-anything.git
 
 echo ""
 echo "---------------------------------------------"
