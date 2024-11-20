@@ -176,7 +176,7 @@ class YoloWorldPerception(PerceptionModule):
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
-        pred = self.model(image, verbose=self.verbose, confidence=self.confidence)
+        pred = self.model(image, verbose=self.verbose, conf=self.confidence)
         task_observations = dict()
 
         if pred[0].boxes is None:
