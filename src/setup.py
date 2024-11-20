@@ -53,6 +53,8 @@ setuptools.setup(
         # From openai
         "openai",
         "openai-clip",
+        # For Yolo
+        "ultralytics",
         # Hardware dependencies
         "hello-robot-stretch-urdf",
         "pyrealsense2",
