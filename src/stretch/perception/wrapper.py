@@ -77,7 +77,6 @@ class OvmmPerception:
             from stretch.perception.detection.yolo import YoloPerception
 
             self._segmentation = YoloPerception(
-                custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
                 **module_kwargs,
@@ -86,7 +85,6 @@ class OvmmPerception:
             from stretch.perception.detection.yolo_world import YoloWorldPerception
 
             self._segmentation = YoloWorldPerception(
-                custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
                 **module_kwargs,
