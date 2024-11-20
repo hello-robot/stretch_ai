@@ -13,6 +13,29 @@ _Click to follow the link to YouTube:_
 python -m stretch.app.ai_pickup --use_llm --use_voice
 ```
 
+You can also run individual components:
+```
+# AI agent chat only
+python -m stretch.app.chat --prompt pickup
+
+# Exploration and mapping
+python -m stretch.app.mapping
+
+# Grasping objects
+python -m stretch.app.grasp_object --target_object "stuffed toy leopard"
+```
+
+For more details see the following sections:
+  - [Running the AI Agent](#running-the-ai-agent)
+  - [Agent Architecture](#agent-architecture) - for how to modify it
+  - [Testing Individual Components](#testing-individual-components)
+    - [Mapping and Exploration](#mapping-and-exploration) - testing the robot's ability to explore and map the environment
+    - [Grasping](#grasping) - testing the robot's ability to pick up objects
+    - [Chat](#chat) - testing the AI agent chat functionality
+  - [Common Issues](#common-issues) - for debugging common problems
+
+Stretch AI also has a set of [apps](apps.md), which are standalone programs you can execute on your robot. Several of these are described in [Testing Individual Components](#testing-individual-components) below, in addition to in the [apps documentation](apps.md).
+
 ## Running the AI Agent
 
 The entry point to the AI demo is the `ai_pickup` script:
@@ -27,7 +50,7 @@ While attempting to perform this task, Stretch will speak to tell you what it is
 
 Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
 
-You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot.
+You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch robot, which can be done with the following command (only needed once):
 
 ```bash
 ./scripts/set_robot_ip.sh #.#.#.#
@@ -37,7 +60,9 @@ You need to let the GPU computer know the IP address (#.#.#.#) for your Stretch 
 
 Next, run the application on your GPU computer:
 
-It will first spend time downloading various models that it depends on. Once the program starts, you will be able to bring up a [Rerun-based GUI](https://rerun.io/) in your web browser.
+It will first spend time downloading various models that it depends on. Once the program starts, you will see a [Rerun](https://rerun.io/) GUI that looks like the one below.
+
+```bash
 
 ![Rerun-based GUI for the ai_pickup app.](images/rerun_example.png)
 
@@ -110,7 +135,7 @@ You: Find a toy chicken
 
 Currently, the prompt used by the LLM encourages the robot to both pick and place, so you may find that a primitive request results in the full demonstration task.
 
-You can find the prompt used by the LLM at the following location. When running your Docker image in the development mode or running *stretch-ai* from source, you can modify this file to see how it changes the robot's behavior.
+You can find the prompt used by the LLM at the following location. When running the `ai_pickup` demo, you can modify this file to see how it changes the robot's behavior:
 
 [./../src/stretch/llms/prompts/pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py)
 
@@ -118,7 +143,7 @@ You can find the prompt used by the LLM at the following location. When running 
 
 The entry point into the LLM Agent is the [ai_pickup.py](../src/stretch/app/ai_pickup.py) file. This file creates an instance of the [PickupExecutor](../src/stretch/agent/task/pickup/pickup_executor.py) class, which is responsible for parsing the instructions from the LLM and creating a task plan for the robot to execute.
 
-In addition, if you ruin it with the `--use_llm` flag, it creates a chat wrapper:
+In addition, if you run it with the `--use_llm` flag, it creates a chat wrapper:
 ```python
 if use_llm:
 	llm_client = get_llm_client(llm, prompt=prompt)
@@ -145,6 +170,12 @@ Take a look at how the prompt starts out:
 
 This lists the different functions that the LLM agent can use to interact with the world. If you wanted to add your own functions to this list, you would start by adding them here. You would then add them to the `parse_command` function in the [PickupPrompt](../src/stretch/llms/prompts/pickup_prompt.py) class, and add the appropriate logic handling the function call to the [PickupExecutor](../src/stretch/agent/task/pickup/pickup_executor.py) class.
 
+### Tasks and Operations
+
+The agent code uses two additional abstractions, [Operations and Tasks](../src/stretch/core/task.py), to manage the robot's behavior. These are:
+  - An *Operation* is a single, useful component: it's the basic API that the agent calls to interact with the world most of the time. An example is the [GraspObjectOperation](../src/stretch/agent/operations/grasp_object.py), which defines how the robot should grasp an object.
+  - A *Task* is a simple finite state machine which defines how a set of operations. An example is the [PickupTask](../src/stretch/agent/task/pickup/pickup_task.py), which defines how the robot should pick up an object and place it in a receptacle by searching for both the object and the receptacle, grasping the object, and placing it in the receptacle.
+
 ### Testing Individual Components
 
 #### Mapping and Exploration
@@ -160,8 +191,6 @@ python -m stretch.app.mapping
 ```
 
 This will start the robot in a mapping mode, where it will explore the environment and build a map of the room. You should be able to see this map in Rerun.
-
-If your robot is 
 
 #### Grasping
 
@@ -194,8 +223,8 @@ Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/
   - `talk: bool` - whether the robot should speak out loud while performing the task (if false, the robot will stay quiet)
   - `match_method` - either `feature` or `class`; if `feature`, the robot will attempt to match the object to a feature vector, and if `class`, the robot will attempt to match the object to a class label.
   - `target_object: str` - the name of the object to grasp. Must be a class label if `match_method` is `class`.
-  - `servo_to_grasp: bool` - if it should used visual servoing. If false, will grasp blindly based on head calibration, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
-  - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging, but not necessary for normal operation. If you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
+  - `servo_to_grasp: bool` - if it should use visual servoing to grasp. If false, will grasp open-loop based on past head observations, which relies on good hand-eye calibration, a well-calibrated head, and accurate base pose estimates. True is strongly recommended.
+  - `show_servo_gui: bool` - if it should show the visual servoing GUI. This is useful for debugging; if you are having trouble with grasping, you may want to set this to `True` to see what the robot is seeing. Can cause issues if OpenCV is not installed properly - see [Common Issues](#common-issues) below.
 
 _Click to follow the link to YouTube:_
 
@@ -305,7 +334,7 @@ The `grasp_object` app will try to display what the robot is seeing using opencv
 
 ##### My robot is at an inconvenient starting position
 
-You can use the `reset` app to have the robot (blindly) move back to wherever you started the robot server from:
+You can use the `reset` app to have the robot move back to wherever you started the robot server from, *without any further observations or obstacle avoidance*:
 ```bash
 python -m stretch.app.reset
 ```
