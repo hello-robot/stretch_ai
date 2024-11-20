@@ -21,8 +21,7 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import numpy as np
 import torch
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
+from segment_anything import SamPredictor, sam_model_registry
 from ultralytics import YOLOWorld
 
 from stretch.core.abstract_perception import PerceptionModule
@@ -32,7 +31,9 @@ from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path
 
 
-def run_sam_batch(predictor: SAM2ImagePredictor, boxes, batch_size=16) -> List[np.ndarray]:
+def run_sam_batch(
+    image: np.ndarray, predictor: SamPredictor, boxes, batch_size=16
+) -> List[np.ndarray]:
     """Run SAM on a batch of boxes.
 
     Arguments:
@@ -46,22 +47,14 @@ def run_sam_batch(predictor: SAM2ImagePredictor, boxes, batch_size=16) -> List[n
     num_boxes = len(boxes)
     all_masks = []
 
-    for i in range(0, num_boxes, batch_size):
-        batch_boxes = boxes[i : i + batch_size]
-        batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
+    predictor.set_image(image)
 
-        masks, _, _ = predictor.predict(
-            point_coords=None, point_labels=None, box=batch_boxes, multimask_output=False
-        )
+    boxes = np.round(boxes)
 
-        if masks.ndim == 3:
-            masks = torch.Tensor(masks).bool()
-        else:
-            masks = torch.Tensor(masks[:, 0, :, :]).bool()
-        all_masks.extend(masks.cpu().numpy())
+    for i in range(0, num_boxes):
+        mask, score, logits = predictor.predict(box=boxes[i], multimask_output=False)
+        all_masks.extend(mask)
 
-    print(f"Extracted {len(all_masks)} masks")
-    print(all_masks[0].shape)
     return all_masks
 
 
@@ -135,22 +128,21 @@ class YoloWorldPerception(PerceptionModule):
                 f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
             )
 
-        # Initialize SAM
-        sam_checkpoint = f"./sam2_hiera_small.pt"
-        sam_config = "sam2_hiera_s.yaml"
+        # Download the SAM checkpoint if it does not exist
+        sam_checkpoint = get_full_config_path("perception/yolo_world/sam_vit_b_01ec64.pth")
         if not Path(sam_checkpoint).exists():
+            # Make parent directory
             Path(sam_checkpoint).parent.mkdir(parents=True, exist_ok=True)
+            # Download the model
             os.system(
-                f"wget -O {checkpoint_file} "
-                f"https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt"
+                f"wget -O {sam_checkpoint} "
+                f"https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth"
             )
-        sam2_model = build_sam2(
-            sam_config,
-            sam_checkpoint,
-            device="cuda" if torch.cuda.is_available() else "cpu",
-            apply_postprocessing=False,
-        )
-        self.sam_predictor = SAM2ImagePredictor(sam2_model)
+
+        # Initialize SAM
+        sam = sam_model_registry["default"](checkpoint=sam_checkpoint)
+        sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
+        self.sam_predictor = SamPredictor(sam)
 
         self.model = YOLOWorld(checkpoint_file)
         self.model.to("cuda" if torch.cuda.is_available() else "cpu")
@@ -211,10 +203,11 @@ class YoloWorldPerception(PerceptionModule):
         boxes = pred[0].boxes.xyxy.cpu().numpy()
         # Use SAM to extract masks
 
-        self.sam_predictor.set_image(image)
-        masks = run_sam_batch(self.sam_predictor, boxes, batch_size=16)
-        masks = merge_masks(masks, height, width)
-        breakpoint()
+        masks = run_sam_batch(image, self.sam_predictor, boxes, batch_size=16)
+        # merged_masks = merge_masks(masks, height, width)
+        # import matplotlib.pyplot as plt
+        # plt.imshow(merged_masks)
+        # plt.show()
 
         # Add some visualization code for YOLO
         if draw_instance_predictions:
