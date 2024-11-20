@@ -82,6 +82,8 @@ def merge_masks(masks, height, width) -> np.ndarray:
             mask = mask[0]
         if mask.shape != (height, width):
             mask_resized = cv2.resize(mask, (width, height))
+        else:
+            mask_resized = mask
         # Add the mask to the merged image with a unique ID
         merged_mask[mask_resized] = i + 1
 
