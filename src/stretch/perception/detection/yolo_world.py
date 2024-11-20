@@ -67,7 +67,7 @@ class YoloPerception(PerceptionModule):
                 "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-seg.pt"
             )
 
-        self.yolo = YOLO(checkpoint_file, task="segment", verbose=verbose)
+        self.yolo = YOLOWorld(checkpoint_file, task="segment", verbose=verbose)
 
         if self.verbose:
             print(f"Loaded YOLO model from {checkpoint_file}")
