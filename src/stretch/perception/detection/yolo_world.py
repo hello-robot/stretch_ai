@@ -29,6 +29,27 @@ from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
 from stretch.utils.config import get_full_config_path
 
+from segment_anything import sam_model_registry, SamPredictor
+
+
+def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16):
+    num_boxes = len(boxes)
+    all_masks = []
+
+    for i in range(0, num_boxes, batch_size):
+        batch_boxes = boxes[i:i+batch_size]
+        batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
+
+        masks, _, _ = predictor.predict_torch(
+            point_coords=None,
+            point_labels=None,
+            boxes=batch_boxes,
+            multimask_output=False
+        )
+        all_masks.extend(masks.cpu().numpy())
+
+    return all_masks
+
 
 class YoloWorldPerception(PerceptionModule):
     def __init__(
@@ -71,6 +92,12 @@ class YoloWorldPerception(PerceptionModule):
                 f"wget -O {checkpoint_file} "
                 f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
             )
+
+
+        # Initialize SAM
+        sam = sam_model_registry["default"](checkpoint="sam_vit_h_4b8939.pth")
+        sam.to(device='cuda' if torch.cuda.is_available() else 'cpu')
+        self.sam_predictor = SamPredictor(sam)
 
         self.model = YOLOWorld(checkpoint_file)
         self.model.to("cuda" if torch.cuda.is_available() else "cpu")
@@ -117,7 +144,7 @@ class YoloWorldPerception(PerceptionModule):
         pred = self.model(image, verbose=self.verbose)
         task_observations = dict()
 
-        if pred[0].boxes is None or pred[0].masks is None:
+        if pred[0].boxes is None:
             task_observations["semantic_frame"] = None
             return (
                 np.zeros((rgb.shape[0], rgb.shape[1])),
@@ -126,7 +153,11 @@ class YoloWorldPerception(PerceptionModule):
             )
 
         class_idcs = pred[0].boxes.cls.cpu().numpy()
-        masks = pred[0].masks.data.cpu().numpy()
+
+        # TODO: create masks using segment anything
+        boxes = pred[0].boxes.xyxy.cpu().numpy()
+        # Use SAM to extract masks
+        masks = run_sam_batch(predictor, boxes, batch_size=16)
 
         # Resize masks to original image size
         masks = np.array([cv2.resize(mask, (width, height)) for mask in masks])
@@ -150,10 +181,6 @@ class YoloWorldPerception(PerceptionModule):
         task_observations["instance_map"] = instance_map
         task_observations["instance_classes"] = class_idcs
         task_observations["instance_scores"] = scores
-
-        import matplotlib.pyplot as plt
-        plt.imshow(semantic)
-        plt.show()
 
         return semantic, instance, task_observations
 
