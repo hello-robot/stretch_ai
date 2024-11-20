@@ -161,6 +161,8 @@ class OvmmPerception:
         """return name of a class from a detection"""
         if isinstance(oid, torch.Tensor):
             oid = int(oid.item())
+        if self._current_vocabulary is None:
+            return None
         if oid not in self._current_vocabulary.goal_id_to_goal_name:
             return None
         return self._current_vocabulary.goal_id_to_goal_name[oid]
