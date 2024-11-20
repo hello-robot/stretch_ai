@@ -111,6 +111,7 @@ class YoloWorldPerception(PerceptionModule):
             verbose: whether to print out debug information
         """
         self.verbose = verbose
+        self.confidence = confidence_threshold if confidence_threshold is not None else 0.05
 
         if class_list is None:
             class_list = CLASS_LABELS_200
@@ -175,7 +176,7 @@ class YoloWorldPerception(PerceptionModule):
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
-        pred = self.model(image, verbose=self.verbose)
+        pred = self.model(image, verbose=self.verbose, confidence=self.confidence)
         task_observations = dict()
 
         if pred[0].boxes is None:
