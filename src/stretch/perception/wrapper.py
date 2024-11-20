@@ -94,8 +94,11 @@ class OvmmPerception:
         elif self._detection_module == "yolo_world":
             from stretch.perception.detection.yolo_world import YoloWorldPerception
 
+            yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "m")
+
             self._segmentation = YoloWorldPerception(
                 sem_gpu_id=gpu_device_id,
+                size=yolo_world_model_size,
                 verbose=verbose,
                 **module_kwargs,
             )
