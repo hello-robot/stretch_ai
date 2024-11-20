@@ -49,31 +49,10 @@ def run_sam_batch(image: np.ndarray, predictor: SamPredictor, boxes, batch_size=
 
     boxes = np.round(boxes)
 
-    for i in range(0, num_boxes, batch_size):
-        batch_boxes = boxes[i : i + batch_size]
-        batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
-        
-        masks, _, _ = predictor.predict_torch(
-            point_coords=None, point_labels=None, boxes=batch_boxes, multimask_output=False
-        )
-        all_masks.extend(masks.cpu().numpy())
+    for i in range(0, num_boxes):
+        mask, score, logits = predictor.predict(box=boxes[i], multimask_output=False)
+        all_masks.extend(mask)
 
-        # Display original image and masks
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 2, 1)
-        plt.imshow(image_rgb)
-        plt.title("Original Image")
-
-        plt.subplot(1, 2, 2)
-        for mask in masks:
-            plt.imshow(mask, alpha=0.5)  # Overlay masks with transparency
-        plt.title("Predicted Masks")
-        plt.axis('off')
-        plt.show()
-
-    # print(f"Extracted {len(all_masks)} masks")
-    # print(all_masks[0].shape)
     return all_masks
 
 
@@ -212,7 +191,10 @@ class YoloWorldPerception(PerceptionModule):
         # Use SAM to extract masks
 
         masks = run_sam_batch(image, self.sam_predictor, boxes, batch_size=16)
-        masks = merge_masks(masks, height, width)
+        # merged_masks = merge_masks(masks, height, width)
+        # import matplotlib.pyplot as plt
+        # plt.imshow(merged_masks)
+        # plt.show()
 
         # Add some visualization code for YOLO
         if draw_instance_predictions:
