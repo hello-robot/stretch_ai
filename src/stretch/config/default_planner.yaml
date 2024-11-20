@@ -39,9 +39,11 @@ max_depth: 2.0
 # Object detection parameters
 detection:
   # module: "mobile_sam"
-  module: "detic"
+  # module: "detic"
   # module: "yolo"
-  category_map_file: example_cat_map.json
+  module: "yolo_world"
+  confidence_threshold: 0.5
+  category_map_file: example_cat_map.json  # This is used for Detic
   use_detic_viz: False
 
 # Point cloud cleanup

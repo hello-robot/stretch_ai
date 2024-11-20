@@ -16,28 +16,30 @@
 import argparse
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 import torch
-from ultralytics import YOLO
+from ultralytics import YOLOWorld
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
 from stretch.perception.detection.utils import filter_depth, overlay_masks
+from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
 from stretch.utils.config import get_full_config_path
 
 
-class YoloPerception(PerceptionModule):
+class YoloWorldPerception(PerceptionModule):
     def __init__(
         self,
         config_file=None,
         vocabulary="coco",
-        custom_vocabulary="",
+        class_list: Optional[Union[List[str], Tuple[str]]] = None,
         checkpoint_file=None,
         sem_gpu_id=0,
         verbose: bool = False,
+        size: str = "m",
         confidence_threshold: Optional[float] = None,
     ):
         """Load trained YOLO model for inference.
@@ -54,8 +56,11 @@ class YoloPerception(PerceptionModule):
         """
         self.verbose = verbose
 
+        if class_list is None:
+            class_list = CLASS_LABELS_200
+
         if checkpoint_file is None:
-            checkpoint_file = get_full_config_path("perception/yolo_world/yolov8s-seg.pt")
+            checkpoint_file = get_full_config_path(f"perception/yolo_world/yolov8{size}-world.pt")
 
         # Check if checkpoint file exists
         if not Path(checkpoint_file).exists():
@@ -63,19 +68,16 @@ class YoloPerception(PerceptionModule):
             Path(checkpoint_file).parent.mkdir(parents=True, exist_ok=True)
             # Download the model
             os.system(
-                f"wget -O {checkpoint_file}"
-                "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-seg.pt"
+                f"wget -O {checkpoint_file} "
+                f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
             )
 
-        self.yolo = YOLO(checkpoint_file, task="segment", verbose=verbose)
+        self.model = YOLOWorld(checkpoint_file)
+        self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.set_classes(class_list)
 
         if self.verbose:
             print(f"Loaded YOLO model from {checkpoint_file}")
-
-        if vocabulary == "custom":
-            # assert custom_vocabulary != ""
-            # string_args += f""" --custom_vocabulary {custom_vocabulary}"""
-            print("Custom vocabulary not supported for YOLO")
 
         self.num_sem_categories = 80
 
@@ -112,7 +114,7 @@ class YoloPerception(PerceptionModule):
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
-        pred = self.yolo(image)
+        pred = self.model(image, verbose=self.verbose)
         task_observations = dict()
 
         if pred[0].boxes is None or pred[0].masks is None:
@@ -148,6 +150,10 @@ class YoloPerception(PerceptionModule):
         task_observations["instance_map"] = instance_map
         task_observations["instance_classes"] = class_idcs
         task_observations["instance_scores"] = scores
+
+        import matplotlib.pyplot as plt
+        plt.imshow(semantic)
+        plt.show()
 
         return semantic, instance, task_observations
 
