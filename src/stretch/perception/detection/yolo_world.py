@@ -31,7 +31,7 @@ from stretch.perception.detection.utils import filter_depth, overlay_masks
 from stretch.utils.config import get_full_config_path
 
 
-def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndarray]:
+def run_sam_batch(image: np.ndarray, predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndarray]:
     """Run SAM on a batch of boxes.
 
     Arguments:
@@ -45,6 +45,10 @@ def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndar
     num_boxes = len(boxes)
     all_masks = []
 
+    predictor.set_image(image)
+
+    boxes = np.round(boxes)
+
     for i in range(0, num_boxes, batch_size):
         batch_boxes = boxes[i : i + batch_size]
         batch_boxes = torch.tensor(batch_boxes, device=predictor.device)
@@ -53,6 +57,20 @@ def run_sam_batch(predictor: SamPredictor, boxes, batch_size=16) -> List[np.ndar
             point_coords=None, point_labels=None, boxes=batch_boxes, multimask_output=False
         )
         all_masks.extend(masks.cpu().numpy())
+
+        # Display original image and masks
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 2, 1)
+        plt.imshow(image_rgb)
+        plt.title("Original Image")
+
+        plt.subplot(1, 2, 2)
+        for mask in masks:
+            plt.imshow(mask, alpha=0.5)  # Overlay masks with transparency
+        plt.title("Predicted Masks")
+        plt.axis('off')
+        plt.show()
 
     # print(f"Extracted {len(all_masks)} masks")
     # print(all_masks[0].shape)
@@ -193,8 +211,7 @@ class YoloWorldPerception(PerceptionModule):
         boxes = pred[0].boxes.xyxy.cpu().numpy()
         # Use SAM to extract masks
 
-        self.sam_predictor.set_image(image)
-        masks = run_sam_batch(self.sam_predictor, boxes, batch_size=16)
+        masks = run_sam_batch(image, self.sam_predictor, boxes, batch_size=16)
         masks = merge_masks(masks, height, width)
 
         # Add some visualization code for YOLO
