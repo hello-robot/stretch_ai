@@ -74,9 +74,18 @@ class OvmmPerception:
             self._segmentation = SAM2Perception()
 
         elif self._detection_module == "yolo":
-            from stretch.perception.detection.yolo.yolo_perception import YoloPerception
+            from stretch.perception.detection.yolo import YoloPerception
 
             self._segmentation = YoloPerception(
+                custom_vocabulary=".",
+                sem_gpu_id=gpu_device_id,
+                verbose=verbose,
+                **module_kwargs,
+            )
+        elif self._detection_module == "yolo_world":
+            from stretch.perception.detection.yolo_world import YoloWorldPerception
+
+            self._segmentation = YoloWorldPerception(
                 custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
