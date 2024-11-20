@@ -110,7 +110,7 @@ class YoloWorldPerception(PerceptionModule):
             verbose: whether to print out debug information
         """
         self.verbose = verbose
-        self.confidence = confidence_threshold if confidence_threshold is not None else 0.05
+        self.confidence = confidence_threshold if confidence_threshold is not None else 0.1
 
         if class_list is None:
             class_list = CLASS_LABELS_200
@@ -140,7 +140,8 @@ class YoloWorldPerception(PerceptionModule):
             )
 
         # Initialize SAM
-        sam = sam_model_registry["default"](checkpoint=sam_checkpoint)
+        # sam = sam_model_registry["default"](checkpoint=sam_checkpoint)
+        sam = sam_model_registry["vit_b"](checkpoint=sam_checkpoint)
         sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
         self.sam_predictor = SamPredictor(sam)
 
@@ -162,6 +163,7 @@ class YoloWorldPerception(PerceptionModule):
         depth: Optional[np.ndarray] = None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = True,
+        confidence_threshold: Optional[float] = None,
     ) -> Observations:
         """
         Arguments:
@@ -186,7 +188,10 @@ class YoloWorldPerception(PerceptionModule):
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
         image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
-        pred = self.model(image, verbose=self.verbose, conf=self.confidence)
+        if confidence_threshold is None:
+            pred = self.model(image, verbose=self.verbose, conf=self.confidence)
+        else:
+            pred = self.model(image, verbose=self.verbose, conf=confidence_threshold)
         task_observations = dict()
 
         if pred[0].boxes is None:
