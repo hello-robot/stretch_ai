@@ -138,7 +138,7 @@ motion_planner:
   rotation_step_size: 0.1
   # algorithm: "rrt_connect"  # ["rrt", "rrt_connect", "a_star"]
   algorithm: "a_star"  # ["rrt", "rrt_connect", "a_star"]
-  simplify_plans: True
+  simplify_plans: False
   shortcut_plans: True
   simplify:
     max_step: 0.5
