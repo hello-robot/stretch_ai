@@ -379,5 +379,9 @@ class AStar:
             )
             trajectory.append(Node([waypoints[i][0], waypoints[i][1], float(theta)]))
         trajectory.append(Node([waypoints[-1][0], waypoints[-1][1], goal[-1]]))
+
+        # Save the nodes for this planner
+        self.nodes = trajectory
+
         # print('Finish computing theta ', time.time() - self.start_time, ' seconds after path planning starts')
         return PlanResult(True, trajectory=trajectory)
