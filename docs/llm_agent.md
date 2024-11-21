@@ -318,6 +318,31 @@ python -m stretch.app.chat --voice --talk --robot_ip 192.168.1.69
 
 The robot uses a motion planner to avoid obstacles on its feature-rich 3D map of the environment. If you are having trouble, you may want to tune the [config file](../src/stretch/config/default_planner.yaml) until it works. Some advice below.
 
+You can find the motion planning block in the config file:
+
+```
+motion_planner:
+  step_size: 0.05
+  rotation_step_size: 0.1
+  algorithm: "a_star"  # ["rrt", "rrt_connect", "a_star"]
+  simplify_plans: False
+  shortcut_plans: False
+  simplify:
+    max_step: 0.5
+    min_step: 0.05
+    num_steps: 8
+    min_angle: 0.1
+  shortcut_iter: 100
+```
+
+What these do:
+  - `step_size` is how far the robot moves in each step -- together with the `rotation_step_size`, this determines how granular collision checking will be
+  - `rotation_step_size` is how far the robot rotates in each step -- together, these are used to determine how the robot moves
+  - `algorithm` is the algorithm used to plan the robot's path -- `rrt_connect` works fairly well
+  - `simplify_plans` and `shortcut_plans` are used to simplify the robot's path -- these can be useful if the robot is taking too long to get places, and are intended to be used with the `simplify` and `shortcut_iter` parameters and the `rrt_connect` algorithm
+
+If you want to try `a_star`, you can set `algorithm` to `a_star`. This is a simpler algorithm that may work better in some cases. You may want to disable `simplify_plans` and `shortcut_plans` if you are using `a_star`.
+
 ##### Too Many Obstacles in 3D Map
 
 [![Rerun visualization of partly-mapped home with spurious obstacles](images/rerun_map_bad.png)](images/rerun_map_bad.png)

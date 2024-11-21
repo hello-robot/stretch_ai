@@ -1067,7 +1067,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         close_to_goal = False
 
-        while True:
+        while not self._finish:
 
             # Minor delay at the end - give it time to get new messages
             time.sleep(0.01)
@@ -1331,19 +1331,23 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if isinstance(trajectory, PlanResult):
             trajectory = [pt.state for pt in trajectory.trajectory]
 
+        if relative:
+            raise NotImplementedError("Relative trajectories not yet supported")
+
         for i, pt in enumerate(trajectory):
             assert (
                 len(pt) == 3 or len(pt) == 2
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
-            # just_xy = len(pt) == 2
-            # self.move_base_to(pt, relative, position_only=just_xy, blocking=False)
+            self.move_base_to(pt, relative, blocking=False, reliable=False)
+            print("Moving to", pt)
             last_waypoint = i == len(trajectory) - 1
             self.move_base_to(
                 pt,
-                relative,
+                relative=False,
                 blocking=last_waypoint,
                 timeout=final_timeout if last_waypoint else per_waypoint_timeout,
                 verbose=verbose,
+                reliable=False,
             )
             if not last_waypoint:
                 self.wait_for_waypoint(

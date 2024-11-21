@@ -136,9 +136,8 @@ scene_graph:
 motion_planner:
   step_size: 0.05
   rotation_step_size: 0.1
-  # algorithm: "rrt_connect"  # ["rrt", "rrt_connect", "a_star"]
-  algorithm: "a_star"  # ["rrt", "rrt_connect", "a_star"]
-  simplify_plans: False
+  algorithm: "rrt_connect"  # ["rrt", "rrt_connect", "a_star"]
+  simplify_plans: True
   shortcut_plans: True
   simplify:
     max_step: 0.5
