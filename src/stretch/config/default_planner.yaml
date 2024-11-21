@@ -98,8 +98,12 @@ agent:
     maximum_matched_observations: 25
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
     camera_pose_match_threshold: 0.05
+  
+  # Configuration of the realtime updates
   use_realtime_updates: True
   realtime_rotation_steps: 4
+
+  # Configuration of the in-place rotation
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   sweep_head_on_update: False
   # in_place_rotation_steps: 4
