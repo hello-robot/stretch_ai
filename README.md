@@ -5,7 +5,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\PickPlaceFullTask.gif)
+![](https://github.com/hello-robot/stretch_ai/docs/images/PickPlaceFullTask.gif)
+
+
 
 **Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
