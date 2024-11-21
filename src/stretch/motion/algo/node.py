@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List
 
 from stretch.motion.base import Node
 
