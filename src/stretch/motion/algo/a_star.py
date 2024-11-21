@@ -37,15 +37,20 @@ def neighbors(pt: Tuple[int, int]) -> List[Tuple[int, int]]:
 
 
 class AStar:
-    """Define RRT planning problem and parameters"""
+    """Define A* motion planning problem and parameters"""
 
     def __init__(
         self,
         space: SparseVoxelMapNavigationSpace,
+        validate_fn: callable = None,
     ):
-        """Create RRT planner with configuration"""
+        """Create A* planner with configuration"""
         self.space = space
         self.reset()
+        if validate_fn is not None:
+            self.validate = validate_fn
+        else:
+            self.validate = self.space.is_valid
 
     def compute_theta(self, cur_x, cur_y, end_x, end_y):
         theta = 0
@@ -110,7 +115,16 @@ class AStar:
         # # type: ignore to bypass mypy checking
         return self.space.to_xy(pt)
 
-    def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
+    def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]) -> float:
+        """Compute distance between two points a and b.
+
+        Args:
+            a: The first point.
+            b: The second point.
+
+        Returns:
+            The distance between the two points.
+        """
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
 
     def compute_obstacle_punishment(self, a: Tuple[int, int], weight: int, avoid: int) -> float:
@@ -361,5 +375,9 @@ class AStar:
             )
             trajectory.append(Node([waypoints[i][0], waypoints[i][1], float(theta)]))
         trajectory.append(Node([waypoints[-1][0], waypoints[-1][1], goal[-1]]))
+
+        # Save the nodes for this planner
+        self.nodes = trajectory
+
         # print('Finish computing theta ', time.time() - self.start_time, ' seconds after path planning starts')
         return PlanResult(True, trajectory=trajectory)

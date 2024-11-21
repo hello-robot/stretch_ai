@@ -38,7 +38,7 @@ max_depth: 2.0
 
 # Object detection parameters
 # Recommendations for this part: 
-# For yolo world, threshold should be 0.05 - 0.2, for Detic, threshold should be ~0.5
+# For yolo world, threshold should be 0.05 - 0.2, for Detic, threshold should be < 0.5
 # If you want to detect as many objects in the environment, threshold should be low
 # If you want to determine whether one object exists, 
 # you'd better refer to the official documentation for the best threshold hyperparemeters
@@ -47,7 +47,7 @@ detection:
   module: "detic"
   # module: "yolo"
   # module: "yolo_world"
-  yolo_world_model_size: "l" 
+  yolo_world_model_size: "l"   # Choose from ["s", "m", "l", "x"]
   yolo_confidence_threshold: 0.1
   confidence_threshold: 0.2
   category_map_file: example_cat_map.json  # This is used for Detic
@@ -98,8 +98,12 @@ agent:
     maximum_matched_observations: 25
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
     camera_pose_match_threshold: 0.05
+  
+  # Configuration of the realtime updates
   use_realtime_updates: True
   realtime_rotation_steps: 4
+
+  # Configuration of the in-place rotation
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   sweep_head_on_update: False
   # in_place_rotation_steps: 4
@@ -132,6 +136,8 @@ scene_graph:
 motion_planner:
   step_size: 0.05
   rotation_step_size: 0.1
+  # algorithm: "rrt_connect"  # ["rrt", "rrt_connect", "a_star"]
+  algorithm: "a_star"  # ["rrt", "rrt_connect", "a_star"]
   simplify_plans: True
   shortcut_plans: True
   simplify:
