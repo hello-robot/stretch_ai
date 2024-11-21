@@ -78,7 +78,7 @@ Now that you have the server running on Stretch, we recommend you try a demonstr
 
 For this application, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
 
-While attempting to perf
+While attempting to perform this task, Stretch will speak to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings on Stretch's computer should be set so that you can hear what Stretch says.
 
 Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
 
