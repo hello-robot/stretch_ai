@@ -90,7 +90,7 @@ class GraspObjectOperation(ManagedOperation):
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
     # grasp_distance = 0.12
-    grasp_distance = 0.16
+    grasp_distance = 0.14
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
@@ -441,6 +441,7 @@ class GraspObjectOperation(ManagedOperation):
         if self.talk:
             self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
+        print("Distance:", distance)
         if not self.open_loop or distance is not None:
             joint_state = self.robot.get_joint_positions()
             # Now compute what to do
@@ -451,6 +452,7 @@ class GraspObjectOperation(ManagedOperation):
 
             if distance is not None:
                 distance = max(distance - self.grasp_distance, 0)
+                print("Distance to move:", distance)
                 if distance > 0:
                     # Use wrist pitch to compute arm and lift offsets
                     arm_component = np.cos(wrist_pitch) * distance

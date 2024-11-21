@@ -1,6 +1,8 @@
 # The Stretch AI Agent
 
-Stretch AI contains the tools to talk to your robot and have it perform tasks like exploration, mapping, and pick-and-place. In this document, we'll walk through what the AI agent is, how it works, and how to test out different components of the LLM.
+*What is an AI agent?* In our case, it's a program that uses a large language model (LLM) to generate instructions for the robot. The LLM takes in text input and generates a list of API calls that the robot should make to accomplish a task.
+
+Stretch AI contains the tools to talk to your robot and have it perform tasks like exploration, mapping, and pick-and-place. In this document, we'll walk through how it works and how to test out different components of the system.
 
 _Click to follow the link to YouTube:_
 

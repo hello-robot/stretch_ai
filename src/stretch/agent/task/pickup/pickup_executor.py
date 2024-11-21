@@ -94,6 +94,11 @@ class PickupExecutor:
         task.run()
 
     def _pick_only(self, target_object: str) -> None:
+        """Create a task to pick up the object and execute it.
+
+        Args:
+            target_object: The object to pick up.
+        """
 
         logger.alert(f"[Pickup task] Pickup: {target_object}")
 
