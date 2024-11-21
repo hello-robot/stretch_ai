@@ -130,7 +130,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         self.link_names = trimesh_list["link"]
         self.link_poses = trimesh_list["pose"]
         for i in range(len(trimesh_list["link"])):
-            log_to_rerun(
+            rr.log(
                 f"world/robot/mesh/{trimesh_list['link'][i]}",
                 rr.Mesh3D(
                     vertex_positions=trimesh_list["mesh"][i].vertices,
@@ -174,7 +174,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         for link in self.link_names:
             idx = self.link_names.index(link)
             rr.set_time_seconds("realtime", time.time())
-            log_to_rerun(
+            rr.log(
                 f"world/robot/mesh/{link}",
                 rr.Transform3D(
                     translation=self.link_poses[idx][:3, 3],
@@ -231,7 +231,7 @@ class RerunVisualizer:
             self.urdf_logger.load_robot_mesh(use_collision=False)
 
         # Create environment Box place holder
-        log_to_rerun(
+        rr.log(
             "world/map_box",
             rr.Boxes3D(half_sizes=[10, 10, 3], centers=[0, 0, 2], colors=[255, 255, 255, 255]),
             static=True,
@@ -277,7 +277,7 @@ class RerunVisualizer:
         Args:
             identity_name (str): rerun identity name
         """
-        log_to_rerun(identity_name, rr.Clear(recursive=True))
+        rr.log(identity_name, rr.Clear(recursive=True))
 
     def log_custom_2d_image(self, identity_name: str, img: Union[np.ndarray, torch.Tensor]):
         """Log custom 2d image
@@ -297,7 +297,7 @@ class RerunVisualizer:
             text (str): Markdown codes you want to log in rerun
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
-        log_to_rerun(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
+        rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
 
     def log_arrow3D(
         self,
@@ -317,7 +317,7 @@ class RerunVisualizer:
             radii (float): size of the arrows
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
-        log_to_rerun(
+        rr.log(
             identity_name,
             rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
         )
@@ -397,12 +397,12 @@ class RerunVisualizer:
             labels="robot",
             colors=[255, 0, 0, 255],
         )
-        log_to_rerun("world/robot/arrow", rb_arrow, static=True)
-        log_to_rerun(
+        rr.log("world/robot/arrow", rb_arrow, static=True)
+        rr.log(
             "world/robot/blob",
             rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13),
         )
-        log_to_rerun(
+        rr.log(
             "world/robot",
             rr.Transform3D(
                 translation=[xy[0], xy[1], 0],
@@ -428,7 +428,7 @@ class RerunVisualizer:
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
         # log_to_rerun("world/ee/arrow", ee_arrow)
-        log_to_rerun("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
+        rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_ee_camera(self, servo):
         """Log end effector camera pose and images
@@ -488,7 +488,7 @@ class RerunVisualizer:
         rr.set_time_seconds("realtime", time.time())
         state = obs["joint"]
         for k in HelloStretchIdx.name_to_idx:
-            log_to_rerun(
+            rr.log(
                 f"robot_state/joint_pose/{k}",
                 rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]),
                 static=True,
