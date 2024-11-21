@@ -161,7 +161,7 @@ After this, [read the learning from demonstration instructions](docs/learning_fr
 
 ### Grasp an Object
 
-[![Grasp Object](https://img.youtube.com/vi/YmJKvmYRQ9o/0.jpg)](https://youtu.be/YmJKvmYRQ9o)
+![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\VisualServoing.gif)
 
 This app has the robot grasp an object positioned in front of its arm, on the floor, about a meter away. You can see the [grasp practice video on YouTube](https://youtu.be/YmJKvmYRQ9o) to see how it works.
 

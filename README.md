@@ -5,6 +5,8 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
+![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\PickPlaceFullTask.gif)
+
 **Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
 - grasping
@@ -68,10 +70,9 @@ On your remote machine, you can install docker as normal, then, you can start th
 
 This script will download the Docker image and start the container. You will be able to run Stretch AI applications from within the container.
 
-
 ### Language-Directed Pick and Place
 
-[![Example of Stretch AI using Voice Control](https://img.youtube.com/vi/oO9qRkiuiAQ/0.jpg)](https://www.youtube.com/watch?v=oO9qRkiuiAQ)
+![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\orange%20cup%20in%20box.gif)
 
 Now that you have the server running on Stretch, we recommend you try a demonstration of language-directed pick and place.
 
@@ -102,11 +103,11 @@ It will first spend time downloading various models that it depends on. Once the
 Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
 ```
-Enter the target object: brown moose toy
-Enter the target receptacle: white laundry basket 
+Enter the target object: plush rabbit toy
+Enter the target receptacle: yellow chair 
 ```
 
-![Example of using the ai_pickup app with a toy moose and a laundry basket.](docs/images/ai_pickup_moose_and_basket_example.jpg)
+![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\Rabbit%20Chair.gif)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
