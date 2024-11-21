@@ -103,6 +103,17 @@ def occupancy_map_to_3d_points(
     return points
 
 
+def log_to_rerun(topic_name, data, **kwargs):
+    """
+    Log data to rerun
+    Args:
+        topic_name (str): Topic name
+        data (object): Data to log
+    """
+    rr.log(topic_name, rr.Clear(recursive=True))
+    rr.log(topic_name, data, **kwargs)
+
+
 class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
     link_names = []
     link_poses = []
@@ -119,7 +130,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         self.link_names = trimesh_list["link"]
         self.link_poses = trimesh_list["pose"]
         for i in range(len(trimesh_list["link"])):
-            rr.log(
+            log_to_rerun(
                 f"world/robot/mesh/{trimesh_list['link'][i]}",
                 rr.Mesh3D(
                     vertex_positions=trimesh_list["mesh"][i].vertices,
@@ -163,7 +174,7 @@ class StretchURDFLogger(urdf_visualizer.URDFVisualizer):
         for link in self.link_names:
             idx = self.link_names.index(link)
             rr.set_time_seconds("realtime", time.time())
-            rr.log(
+            log_to_rerun(
                 f"world/robot/mesh/{link}",
                 rr.Transform3D(
                     translation=self.link_poses[idx][:3, 3],
@@ -220,13 +231,13 @@ class RerunVisualizer:
             self.urdf_logger.load_robot_mesh(use_collision=False)
 
         # Create environment Box place holder
-        rr.log(
+        log_to_rerun(
             "world/map_box",
             rr.Boxes3D(half_sizes=[10, 10, 3], centers=[0, 0, 2], colors=[255, 255, 255, 255]),
             static=True,
         )
         # World Origin
-        rr.log(
+        log_to_rerun(
             "world/xyz",
             rr.Arrows3D(
                 vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -266,7 +277,7 @@ class RerunVisualizer:
         Args:
             identity_name (str): rerun identity name
         """
-        rr.log(identity_name, rr.Clear(recursive=True))
+        log_to_rerun(identity_name, rr.Clear(recursive=True))
 
     def log_custom_2d_image(self, identity_name: str, img: Union[np.ndarray, torch.Tensor]):
         """Log custom 2d image
@@ -276,7 +287,7 @@ class RerunVisualizer:
             img (2D or 3D array): the 2d image you want to log into rerun
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
-        rr.log(identity_name, rr.Image(img))
+        log_to_rerun(identity_name, rr.Image(img))
 
     def log_text(self, identity_name: str, text: str):
         """Log a custom markdown text
@@ -286,7 +297,7 @@ class RerunVisualizer:
             text (str): Markdown codes you want to log in rerun
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
-        rr.log(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
+        log_to_rerun(identity_name, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
 
     def log_arrow3D(
         self,
@@ -306,7 +317,7 @@ class RerunVisualizer:
             radii (float): size of the arrows
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
-        rr.log(
+        log_to_rerun(
             identity_name,
             rr.Arrows3D(origins=origins, vectors=vectors, colors=colors, radii=radii),
         )
@@ -327,7 +338,7 @@ class RerunVisualizer:
             radii (float): size of the arrows
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
-        rr.log(
+        log_to_rerun(
             identity_name,
             rr.Points3D(
                 points,
@@ -344,12 +355,12 @@ class RerunVisualizer:
         """
         # rr.init("Stretch_robot", spawn=(not self.open_browser))
         rr.set_time_seconds("realtime", time.time())
-        rr.log("world/head_camera/rgb", rr.Image(obs.rgb))
+        log_to_rerun("world/head_camera/rgb", rr.Image(obs.rgb))
 
         if self.show_camera_point_clouds:
             head_xyz = obs.get_xyz_in_world_frame().reshape(-1, 3)
             head_rgb = obs.rgb.reshape(-1, 3)
-            rr.log(
+            log_to_rerun(
                 "world/head_camera/points",
                 rr.Points3D(
                     positions=head_xyz,
@@ -358,14 +369,14 @@ class RerunVisualizer:
                 ),
             )
         else:
-            rr.log("world/head_camera/depth", rr.depthimage(obs.head_depth))
+            log_to_rerun("world/head_camera/depth", rr.depthimage(obs.head_depth))
 
         if self.show_cameras_in_3d_view:
             rot, trans = decompose_homogeneous_matrix(obs.camera_pose)
-            rr.log(
+            log_to_rerun(
                 "world/head_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3)
             )
-            rr.log(
+            log_to_rerun(
                 "world/head_camera",
                 rr.Pinhole(
                     resolution=[obs.rgb.shape[1], obs.rgb.shape[0]],
@@ -386,12 +397,12 @@ class RerunVisualizer:
             labels="robot",
             colors=[255, 0, 0, 255],
         )
-        rr.log("world/robot/arrow", rb_arrow, static=True)
-        rr.log(
+        log_to_rerun("world/robot/arrow", rb_arrow, static=True)
+        log_to_rerun(
             "world/robot/blob",
             rr.Points3D([0, 0, 0], colors=[255, 0, 0, 255], radii=0.13),
         )
-        rr.log(
+        log_to_rerun(
             "world/robot",
             rr.Transform3D(
                 translation=[xy[0], xy[1], 0],
@@ -416,8 +427,8 @@ class RerunVisualizer:
         ee_arrow = rr.Arrows3D(
             origins=[0, 0, 0], vectors=[0.2, 0, 0], radii=0.02, labels="ee", colors=[0, 255, 0, 255]
         )
-        # rr.log("world/ee/arrow", ee_arrow)
-        rr.log("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
+        # log_to_rerun("world/ee/arrow", ee_arrow)
+        log_to_rerun("world/ee", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3))
 
     def log_ee_camera(self, servo):
         """Log end effector camera pose and images
@@ -430,7 +441,7 @@ class RerunVisualizer:
             return
 
         # EE Camera
-        rr.log("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
+        log_to_rerun("world/ee_camera/rgb", rr.Image(servo.ee_rgb))
 
         if self.show_camera_point_clouds:
             ee_xyz = servo.get_ee_xyz_in_world_frame().reshape(-1, 3)
@@ -447,7 +458,7 @@ class RerunVisualizer:
                 np.random.shuffle(idx)
                 ee_xyz = ee_xyz[idx[: self.max_displayed_points_per_camera]]
                 ee_rgb = ee_rgb[idx[: self.max_displayed_points_per_camera]]
-            rr.log(
+            log_to_rerun(
                 "world/ee_camera/points",
                 rr.Points3D(
                     positions=ee_xyz,
@@ -456,14 +467,14 @@ class RerunVisualizer:
                 ),
             )
         else:
-            rr.log("world/ee_camera/depth", rr.depthimage(servo.ee_depth))
+            log_to_rerun("world/ee_camera/depth", rr.depthimage(servo.ee_depth))
 
         if self.show_cameras_in_3d_view:
             rot, trans = decompose_homogeneous_matrix(servo.ee_camera_pose)
-            rr.log(
+            log_to_rerun(
                 "world/ee_camera", rr.Transform3D(translation=trans, mat3x3=rot, axis_length=0.3)
             )
-            rr.log(
+            log_to_rerun(
                 "world/ee_camera",
                 rr.Pinhole(
                     resolution=[servo.ee_rgb.shape[1], servo.ee_rgb.shape[0]],
@@ -477,7 +488,7 @@ class RerunVisualizer:
         rr.set_time_seconds("realtime", time.time())
         state = obs["joint"]
         for k in HelloStretchIdx.name_to_idx:
-            rr.log(
+            log_to_rerun(
                 f"robot_state/joint_pose/{k}",
                 rr.Scalar(state[HelloStretchIdx.name_to_idx[k]]),
                 static=True,
@@ -508,7 +519,7 @@ class RerunVisualizer:
         if rgb is None:
             return
 
-        rr.log(
+        log_to_rerun(
             "world/point_cloud",
             rr.Points3D(
                 positions=points, radii=np.ones(rgb.shape[0]) * world_radius, colors=np.int64(rgb)
@@ -538,7 +549,7 @@ class RerunVisualizer:
         t5 = timeit.default_timer()
 
         # Log points
-        rr.log(
+        log_to_rerun(
             "world/obstacles",
             rr.Points3D(
                 positions=obs_points,
@@ -546,7 +557,7 @@ class RerunVisualizer:
                 colors=[255, 0, 0],
             ),
         )
-        rr.log(
+        log_to_rerun(
             "world/explored",
             rr.Points3D(
                 positions=explored_points,
@@ -595,7 +606,7 @@ class RerunVisualizer:
                 bbox_bounds = best_view.bounds  # 3D Bounds
                 point_cloud_rgb = instance.point_cloud
                 pcd_rgb = instance.point_cloud_rgb
-                rr.log(
+                log_to_rerun(
                     f"world/{instance.id}_{name}",
                     rr.Points3D(positions=point_cloud_rgb, colors=np.int64(pcd_rgb)),
                     static=True,
@@ -608,7 +619,7 @@ class RerunVisualizer:
                 if name is not None:
                     labels.append(f"{name} {confidence:.2f}")
                 colors.append(self.bbox_colors_memory[name])
-            rr.log(
+            log_to_rerun(
                 "world/objects",
                 rr.Boxes3D(
                     half_sizes=bounds,
@@ -630,8 +641,8 @@ class RerunVisualizer:
         """
         ts = time.time()
         rr.set_time_seconds("realtime", ts)
-        rr.log("world/xyt_goal", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
-        rr.log(
+        log_to_rerun("world/xyt_goal", rr.Points3D([0, 0, 0], colors=[0, 255, 0, 50], radii=0.1))
+        log_to_rerun(
             "world/xyt_goal",
             rr.Transform3D(
                 translation=[goal[0], goal[1], 0],
@@ -640,7 +651,7 @@ class RerunVisualizer:
             ),
         )
         # rr.set_time_seconds("realtime", ts + timeout)
-        # rr.log("world/xyt_goal", rr.Clear(recursive=True))
+        # log_to_rerun("world/xyt_goal", rr.Clear(recursive=True))
         # rr.set_time_seconds("realtime", ts)
 
     def step(self, obs, servo):
