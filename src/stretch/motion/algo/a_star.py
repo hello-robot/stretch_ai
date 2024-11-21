@@ -42,10 +42,15 @@ class AStar:
     def __init__(
         self,
         space: SparseVoxelMapNavigationSpace,
+        validate_fn: callable = None,
     ):
         """Create A* planner with configuration"""
         self.space = space
         self.reset()
+        if validate_fn is not None:
+            self.validate = validate_fn
+        else:
+            self.validate = self.space.is_valid
 
     def compute_theta(self, cur_x, cur_y, end_x, end_y):
         theta = 0

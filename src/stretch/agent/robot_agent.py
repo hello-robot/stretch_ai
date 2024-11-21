@@ -31,13 +31,14 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
-from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
+from stretch.motion.algo import Shortcut, SimplifyXYT
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
 from stretch.utils.logger import Logger
 from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
+from stretch.motion.algo import get_planner
 
 logger = Logger(__name__)
 
@@ -194,7 +195,7 @@ class RobotAgent:
         self._previous_goal = None
 
         # Create a simple motion planner
-        self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
+        self.planner: Planner = get_planner(self.parameters.get("motion_planner/algorithm", "rrt_connect"), self.space, self.space.is_valid)
         # Add shotcutting to the planner
         if self.parameters.get("motion_planner/shortcut_plans", False):
             self.planner = Shortcut(
