@@ -961,11 +961,10 @@ class SparseVoxelMap(object):
         # If we have no points, just return zeros
         if xyz is None or xyz.nelement() == 0:
             if xyz is None:
-                logger.warning("No point cloud, returning empty map")
+                logger.warning("No point cloud yet, returning empty map")
             else:
                 logger.warning("nelement of xyz is 0, returning empty map")
 
-            logger.warning("No points in point cloud, returning empty map")
             return (
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
