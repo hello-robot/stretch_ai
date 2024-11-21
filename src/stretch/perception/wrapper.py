@@ -36,28 +36,40 @@ class OvmmPerception:
         parameters: Parameters,
         gpu_device_id: int = 0,
         verbose: bool = False,
-        confidence_threshold: float = 0.5,
         module_kwargs: Dict[str, Any] = {},
+        category_map_file: Optional[str] = None,
     ):
         self.parameters = parameters
         self._use_detic_viz = self.parameters.get("detection/use_detic_viz", False)
         self._detection_module = self.parameters.get("detection/module", "detic")
+        self._confidence_threshold = self.parameters.get("detection/confidence_threshold", 0.5)
         self._vocabularies: Dict[int, RearrangeDETICCategories] = {}
         self._current_vocabulary: RearrangeDETICCategories = None
         self._current_vocabulary_id: int = None
         self.verbose = verbose
+
         if self._detection_module == "detic":
             # Lazy import
             from stretch.perception.detection.detic import DeticPerception
+
+            if category_map_file is None:
+                category_map_file = get_full_config_path(
+                    parameters["detection"]["category_map_file"]
+                )
 
             self._segmentation = DeticPerception(
                 vocabulary="custom",
                 custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
-                confidence_threshold=confidence_threshold,
+                confidence_threshold=self._confidence_threshold,
                 **module_kwargs,
             )
+
+            obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
+            vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
+            self.update_vocabulary_list(vocab, 0)
+            self.set_vocabulary(0)
 
         elif self._detection_module == "sam":
             from stretch.perception.detection.sam import SAMPerception
@@ -74,12 +86,24 @@ class OvmmPerception:
             self._segmentation = SAM2Perception()
 
         elif self._detection_module == "yolo":
-            from stretch.perception.detection.yolo.yolo_perception import YoloPerception
+            from stretch.perception.detection.yolo import YoloPerception
 
             self._segmentation = YoloPerception(
-                custom_vocabulary=".",
                 sem_gpu_id=gpu_device_id,
                 verbose=verbose,
+                **module_kwargs,
+            )
+        elif self._detection_module == "yolo_world":
+            from stretch.perception.detection.yolo_world import YoloWorldPerception
+
+            yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "m")
+            yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.05)
+
+            self._segmentation = YoloWorldPerception(
+                sem_gpu_id=gpu_device_id,
+                size=yolo_world_model_size,
+                verbose=verbose,
+                confidence_threshold=yolo_threshold,
                 **module_kwargs,
             )
         else:
@@ -137,6 +161,8 @@ class OvmmPerception:
         """return name of a class from a detection"""
         if isinstance(oid, torch.Tensor):
             oid = int(oid.item())
+        if self._current_vocabulary is None:
+            return None
         if oid not in self._current_vocabulary.goal_id_to_goal_name:
             return None
         return self._current_vocabulary.goal_id_to_goal_name[oid]
@@ -198,9 +224,14 @@ class OvmmPerception:
         return obs.semantic, obs.instance, obs.task_observations
 
     def predict(
-        self, obs: Observations, depth_threshold: Optional[float] = None, ee: bool = False
+        self,
+        obs: Observations,
+        depth_threshold: Optional[float] = None,
+        ee: bool = False,
+        confidence_threshold=None,
     ) -> Observations:
         """Run with no postprocessing. Updates observation to add semantics."""
+
         semantic, instance, task_observations = self._segmentation.predict(
             rgb=obs.rgb if not ee else obs.ee_rgb,
             depth=obs.depth if not ee else obs.ee_depth,
@@ -272,12 +303,10 @@ def build_vocab_from_category_map(
 
 def create_semantic_sensor(
     parameters: Optional[Parameters] = None,
-    category_map_file: Optional[str] = None,
     device_id: int = 0,
     verbose: bool = True,
     module_kwargs: Dict[str, Any] = {},
     config_path="default_planner.yaml",
-    confidence_threshold: float = 0.5,
     **kwargs,
 ):
     """Create segmentation sensor and load config. Returns config from file, as well as a OvmmPerception object that can be used to label scenes.
@@ -289,7 +318,6 @@ def create_semantic_sensor(
         verbose: whether to print debug information
         module_kwargs: additional arguments to pass to the segmentation model
         config_path: path to config file
-        confidence_threshold: confidence threshold for detection
         **kwargs: additional arguments
 
     Returns:
@@ -299,8 +327,6 @@ def create_semantic_sensor(
         print("[PERCEPTION] Loading configuration")
     if parameters is None:
         parameters = get_parameters(config_path)
-    if category_map_file is None:
-        category_map_file = get_full_config_path(parameters["detection"]["category_map_file"])
 
     if verbose:
         logger.alert(
@@ -311,11 +337,6 @@ def create_semantic_sensor(
         parameters=parameters,
         gpu_device_id=device_id,
         verbose=verbose,
-        confidence_threshold=confidence_threshold,
         module_kwargs=module_kwargs,
     )
-    obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
-    vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
-    semantic_sensor.update_vocabulary_list(vocab, 0)
-    semantic_sensor.set_vocabulary(0)
     return semantic_sensor

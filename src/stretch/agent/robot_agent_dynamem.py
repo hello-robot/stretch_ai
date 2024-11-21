@@ -343,9 +343,7 @@ class RobotAgent(RobotAgentBase):
         self._obs_history_lock.release()
 
         if obs is not None and self.robot.in_navigation_mode():
-            self.image_processor.process_rgbd_images(
-                obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-            )
+            self.voxel_map.process_rgbd_images(obs.rgb, obs.depth, obs.camera_K, obs.camera_pose)
 
         robot_center = np.zeros(3)
         robot_center[:2] = self.robot.get_base_pose()[:2]
@@ -394,7 +392,7 @@ class RobotAgent(RobotAgentBase):
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         start_time = time.time()
-        self.image_processor.process_rgbd_images(rgb, depth, K, camera_pose)
+        self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
         end_time = time.time()
 
     def look_around(self):
@@ -431,9 +429,9 @@ class RobotAgent(RobotAgentBase):
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
-        res = self.image_processor.process_text(text, start)
+        res = self.voxel_map.process_text(text, start)
         if len(res) == 0 and text != "" and text is not None:
-            res = self.image_processor.process_text("", start)
+            res = self.space.process_text("", start)
 
         if len(res) > 0:
             print("Plan successful!")
@@ -540,7 +538,7 @@ class RobotAgent(RobotAgentBase):
 
     def get_voxel_map(self):
         """Return the voxel map"""
-        return self.image_processor.voxel_map
+        return self.voxel_map
 
     def manipulate(
         self,
@@ -614,5 +612,4 @@ class RobotAgent(RobotAgentBase):
         return True
 
     def save(self):
-        with self.image_processor.voxel_map_lock:
-            self.image_processor.write_to_pickle()
+        pass
