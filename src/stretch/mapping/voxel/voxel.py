@@ -1122,6 +1122,17 @@ class SparseVoxelMap(object):
         else:
             return None
 
+    def grid_coords_to_xy(self, grid_coords: torch.Tensor) -> np.ndarray:
+        """Convert grid coordinates to xy
+
+        Args:
+            grid_coords (torch.Tensor): grid coordinates
+
+        Returns:
+            np.ndarray: xy coordinates
+        """
+        return self.grid.grid_coords_to_xy(grid_coords)
+
     def xyt_is_safe(self, xyt: np.ndarray, robot: Optional[RobotModel] = None) -> bool:
         """Check to see if a given xyt position is known to be safe."""
         if robot is not None:

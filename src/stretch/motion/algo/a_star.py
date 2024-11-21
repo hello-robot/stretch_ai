@@ -119,7 +119,16 @@ class AStar:
         xy = self.space.voxel_map.grid_coords_to_xy(pt)  # type: ignore
         return float(xy[0]), float(xy[1])
 
-    def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
+    def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]) -> float:
+        """Compute distance between two points a and b.
+
+        Args:
+            a: The first point.
+            b: The second point.
+
+        Returns:
+            The distance between the two points.
+        """
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
 
     def compute_obstacle_punishment(self, a: Tuple[int, int], weight: int, avoid: int) -> float:
