@@ -277,12 +277,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
         else:
             return obstacles, explored, history_soft
 
-    def get_2d_alignment_heuristics(self, voxel_map_localizer, text, debug: bool = False):
-        if voxel_map_localizer.voxel_pcd._points is None:
+    def get_2d_alignment_heuristics(self, text, debug: bool = False):
+        if self.semantic_memory._points is None:
             return None
         # Convert metric measurements to discrete
         # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
-        xyz, _, _, _ = voxel_map_localizer.voxel_pcd.get_pointcloud()
+        xyz, _, _, _ = self.semantic_memory.get_pointcloud()
         xyz = xyz.detach().cpu()
         if xyz is None:
             xyz = torch.zeros((0, 3))
@@ -299,7 +299,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
         xyz = xyz[obs_mask, :]
-        alignments = voxel_map_localizer.find_alignment_over_model(text)[0].detach().cpu()
+        alignments = self.find_alignment_over_model(text)[0].detach().cpu()
         alignments = alignments[obs_mask][:, None]
 
         alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")

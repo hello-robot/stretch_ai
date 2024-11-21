@@ -96,9 +96,7 @@ class AStar:
             The point in discrete grid coordinates.
         """
         # # type: ignore to bypass mypy checking
-        xy = np.array([xy[0], xy[1]])  # type: ignore
-        pt = self.space.voxel_map.xy_to_grid_coords(xy)  # type: ignore
-        return int(pt[0]), int(pt[1])
+        return self.space.to_pt(xy)
 
     def to_xy(self, pt: Tuple[int, int]) -> Tuple[float, float]:
         """Converts a point from grid coordinates to continuous, world xy coordinates.
@@ -110,9 +108,7 @@ class AStar:
             The point in continuous xy coordinates.
         """
         # # type: ignore to bypass mypy checking
-        pt = np.array([pt[0], pt[1]])  # type: ignore
-        xy = self.space.voxel_map.grid_coords_to_xy(pt)  # type: ignore
-        return float(xy[0]), float(xy[1])
+        return self.space.to_xy(pt)
 
     def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5

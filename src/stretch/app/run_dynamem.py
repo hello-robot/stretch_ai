@@ -150,10 +150,10 @@ def main(
     else:
         grasp_object = None
 
-    if input_path is None:
-        agent.rotate_in_place()
-    else:
-        agent.image_processor.read_from_pickle(input_path)
+    # if input_path is None:
+    #     agent.rotate_in_place()
+    # else:
+    #     agent.image_processor.read_from_pickle(input_path)
 
     agent.save()
 

@@ -178,9 +178,6 @@ class RobotAgent(RobotAgentBase):
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
-        # Placeholder for the robot navigation space (not used)
-        self.space = None
-
         # Previously sampled goal during exploration
         self._previous_goal = None
 
@@ -191,7 +188,7 @@ class RobotAgent(RobotAgentBase):
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
         self.detection_model = OwlPerception(device=self.device)
-        current_datetime = datetime.datetime.now()
+        current_datetime = datetime.now()
         self.log = "debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
@@ -200,8 +197,8 @@ class RobotAgent(RobotAgentBase):
             obs_max_height=parameters["obs_max_height"],
             obs_min_density=parameters["obs_min_density"],
             grid_resolution=0.1,
-            min_depth=self.min_depth,
-            max_depth=self.max_depth,
+            min_depth=parameters["min_depth"],
+            max_depth=parameters["max_depth"],
             pad_obstacles=parameters["pad_obstacles"],
             add_local_radius_points=parameters.get("add_local_radius_points", default=True),
             remove_visited_from_obstacles=parameters.get(
@@ -214,6 +211,7 @@ class RobotAgent(RobotAgentBase):
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             detection=self.detection_model,
+            encoder=self.encoder,
             log=self.log,
         )
         self.space = SparseVoxelMapNavigationSpace(
@@ -429,9 +427,9 @@ class RobotAgent(RobotAgentBase):
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
-        res = self.voxel_map.process_text(text, start)
+        res = self.process_text(text, start)
         if len(res) == 0 and text != "" and text is not None:
-            res = self.space.process_text("", start)
+            res = self.process_text("", start)
 
         if len(res) > 0:
             print("Plan successful!")
@@ -469,6 +467,94 @@ class RobotAgent(RobotAgentBase):
             print("Exploration failed! Perhaps nowhere to explore!")
             return False
         return True
+
+    def process_text(self, text, start_pose):
+        """
+        Process the text query and return the trajectory for the robot to follow.
+        """
+
+        print("Processing", text, "starts")
+
+        debug_text = ""
+        mode = "navigation"
+        obs = None
+        localized_point = None
+        waypoints = None
+
+        if text is not None and text != "" and self.space.traj is not None:
+            print("saved traj", self.space.traj)
+            traj_target_point = self.space.traj[-1]
+            if self.voxel_map.verify_point(text, traj_target_point):
+                localized_point = traj_target_point
+                debug_text += "## Last visual grounding results looks fine so directly use it.\n"
+
+        print("Target verification finished")
+
+        if text is not None and text != "" and localized_point is None:
+            (
+                localized_point,
+                debug_text,
+                obs,
+                pointcloud,
+            ) = self.voxel_map.localize_A(text, debug=True, return_debug=True)
+            print("Target point selected!")
+
+        # Do Frontier based exploration
+        if text is None or text == "" or localized_point is None:
+            debug_text += "## Navigation fails, so robot starts exploring environments.\n"
+            localized_point = self.space.sample_frontier(self.planner, start_pose, text)
+            mode = "exploration"
+
+        if localized_point is None:
+            return []
+
+        if len(localized_point) == 2:
+            localized_point = np.array([localized_point[0], localized_point[1], 0])
+
+        point = self.space.sample_navigation(start_pose, self.planner, localized_point)
+
+        print("Navigation endpoint selected")
+
+        waypoints = None
+
+        if point is None:
+            res = None
+            print("Unable to find any target point, some exception might happen")
+        else:
+            res = self.planner.plan(start_pose, point)
+
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
+        # If we are navigating to some object of interest, send (x, y, z) of
+        # the object so that we can make sure the robot looks at the object after navigation
+        traj = []
+        if waypoints is not None:
+            finished = len(waypoints) <= 8 and mode == "navigation"
+            if finished:
+                self.space.traj = None
+            else:
+                self.space.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            if not finished:
+                waypoints = waypoints[:8]
+            traj = self.planner.clean_path_for_xy(waypoints)
+            if finished:
+                traj.append([np.nan, np.nan, np.nan])
+                if isinstance(localized_point, torch.Tensor):
+                    localized_point = localized_point.tolist()
+                traj.append(localized_point)
+            print("Planned trajectory:", traj)
+
+        # Talk about what you are doing, as the robot.
+        if self.robot is not None:
+            if text is not None and text != "":
+                self.robot.say("I am looking for a " + text + ".")
+            else:
+                self.robot.say("I am exploring the environment.")
+
+        return traj
 
     def navigate(self, text, max_step=10):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
