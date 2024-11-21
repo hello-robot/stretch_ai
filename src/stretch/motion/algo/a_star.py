@@ -37,13 +37,13 @@ def neighbors(pt: Tuple[int, int]) -> List[Tuple[int, int]]:
 
 
 class AStar:
-    """Define RRT planning problem and parameters"""
+    """Define A* motion planning problem and parameters"""
 
     def __init__(
         self,
         space: SparseVoxelMapNavigationSpace,
     ):
-        """Create RRT planner with configuration"""
+        """Create A* planner with configuration"""
         self.space = space
         self.reset()
 
