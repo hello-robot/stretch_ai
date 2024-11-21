@@ -9,6 +9,8 @@
 
 import logging
 import os
+import pickle
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import cv2
@@ -69,7 +71,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         use_negative_obstacles: bool = False,
         point_update_threshold: float = 0.9,
         detection=None,
-        image_shape=(360, 270),
+        image_shape=(480, 360),
         log="test",
     ):
         super().__init__(
@@ -616,3 +618,94 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if not isinstance(grid_coords, np.ndarray):
             grid_coords = np.array(grid_coords)
         return self.grid.grid_coords_to_xyt(torch.Tensor(grid_coords))
+
+    def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
+        print("Reading from ", pickle_file_name)
+        if isinstance(pickle_file_name, str):
+            pickle_file_name = Path(pickle_file_name)
+        assert pickle_file_name.exists(), f"No file found at {pickle_file_name}"
+        with pickle_file_name.open("rb") as f:
+            data = pickle.load(f)
+        for i, (camera_pose, xyz, rgb, feats, depth, base_pose, K, world_xyz,) in enumerate(
+            zip(
+                data["camera_poses"],
+                data["xyz"],
+                data["rgb"],
+                data["feats"],
+                data["depth"],
+                data["base_poses"],
+                data["camera_K"],
+                data["world_xyz"],
+            )
+        ):
+            # Handle the case where we dont actually want to load everything
+            if num_frames > 0 and i >= num_frames:
+                break
+
+            camera_pose = self.fix_data_type(camera_pose)
+            xyz = self.fix_data_type(xyz)
+            rgb = self.fix_data_type(rgb)
+            depth = self.fix_data_type(depth)
+            intrinsics = self.fix_data_type(K)
+            if feats is not None:
+                feats = self.fix_data_type(feats)
+            base_pose = self.fix_data_type(base_pose)
+            self.voxel_pcd.clear_points(depth, intrinsics, camera_pose)
+            self.add(
+                camera_pose=camera_pose,
+                xyz=xyz,
+                rgb=rgb,
+                feats=feats,
+                depth=depth,
+                base_pose=base_pose,
+                camera_K=K,
+            )
+
+            self.obs_count += 1
+        self.semantic_memory._points = data["combined_xyz"]
+        self.semantic_memory._features = data["combined_feats"]
+        self.semantic_memory._weights = data["combined_weights"]
+        self.semantic_memory._rgb = data["combined_rgb"]
+        self.semantic_memory._obs_counts = data["obs_id"]
+        self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
+        self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
+
+    def write_to_pickle(self):
+        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
+        if not os.path.exists("debug"):
+            os.mkdir("debug")
+        filename = self.log + ".pkl"
+        data = {}
+        data["camera_poses"] = []
+        data["camera_K"] = []
+        data["base_poses"] = []
+        data["xyz"] = []
+        data["world_xyz"] = []
+        data["rgb"] = []
+        data["depth"] = []
+        data["feats"] = []
+        for frame in self.observations:
+            # add it to pickle
+            # TODO: switch to using just Obs struct?
+            data["camera_poses"].append(frame.camera_pose)
+            data["base_poses"].append(frame.base_pose)
+            data["camera_K"].append(frame.camera_K)
+            data["xyz"].append(frame.xyz)
+            data["world_xyz"].append(frame.full_world_xyz)
+            data["rgb"].append(frame.rgb)
+            data["depth"].append(frame.depth)
+            data["feats"].append(frame.feats)
+            for k, v in frame.info.items():
+                if k not in data:
+                    data[k] = []
+                data[k].append(v)
+        (
+            data["combined_xyz"],
+            data["combined_feats"],
+            data["combined_weights"],
+            data["combined_rgb"],
+        ) = self.semantic_memory.get_pointcloud()
+        data["obs_id"] = self.semantic_memory._obs_counts
+        with open(filename, "wb") as f:
+            pickle.dump(data, f)
+        print("write all data to", filename)

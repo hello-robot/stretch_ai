@@ -150,12 +150,12 @@ def main(
     else:
         grasp_object = None
 
-    # if input_path is None:
-    #     agent.rotate_in_place()
-    # else:
-    #     agent.image_processor.read_from_pickle(input_path)
+    if input_path is None:
+        agent.rotate_in_place()
+    else:
+        agent.voxel_map.read_from_pickle(input_path)
 
-    agent.save()
+    agent.voxel_map.write_to_pickle()
 
     while agent.is_running():
 
@@ -168,7 +168,7 @@ def main(
 
         if mode == "S":
             robot.say("Saving data. Goodbye!")
-            agent.image_processor.write_to_pickle()
+            agent.voxel_map.write_to_pickle()
             break
 
         if mode == "E":
@@ -276,7 +276,7 @@ def main(
                 agent.place(text, theta)
                 robot.move_to_nav_posture()
 
-            agent.save()
+            agent.voxel_map.write_to_pickle()
 
         # Clear mode after the first trial - otherwise it will go on forever
         mode = None

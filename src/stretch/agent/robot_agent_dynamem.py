@@ -80,6 +80,7 @@ class RobotAgent(RobotAgentBase):
         obs_sub_port: int = 4450,
         re: int = 3,
         manip_port: int = 5557,
+        log: Optional[str] = None,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -105,6 +106,16 @@ class RobotAgent(RobotAgentBase):
         # else:
         #     self.encoder: BaseImageTextEncoder = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        if not os.path.exists("dynamem_log"):
+            os.makedirs("dynamem_log")
+
+        if log is None:
+            current_datetime = datetime.now()
+            self.log = "dynamem_log/debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        else:
+            self.log = "dynamem_log/" + log
+
         self.create_obstacle_map(parameters)
 
         # ==============================================
@@ -144,9 +155,6 @@ class RobotAgent(RobotAgentBase):
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
-
-        if not os.path.exists("dynamem_log"):
-            os.makedirs("dynamem_log")
 
         # self.image_processor = VoxelMapImageProcessor(
         #     rerun=True,
@@ -188,8 +196,6 @@ class RobotAgent(RobotAgentBase):
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
         self.detection_model = OwlPerception(device=self.device)
-        current_datetime = datetime.now()
-        self.log = "debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             local_radius=parameters["local_radius"],
@@ -389,9 +395,7 @@ class RobotAgent(RobotAgentBase):
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        start_time = time.time()
         self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
-        end_time = time.time()
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
@@ -416,8 +420,6 @@ class RobotAgent(RobotAgentBase):
         self,
         text: str,
     ):
-        start_time = time.time()
-
         if not self._realtime_updates:
             self.robot.look_front()
             self.look_around()
@@ -696,6 +698,3 @@ class RobotAgent(RobotAgentBase):
         )
 
         return True
-
-    def save(self):
-        pass
