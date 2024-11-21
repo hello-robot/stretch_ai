@@ -1754,7 +1754,7 @@ class RobotAgent:
         for i in range(explore_iter):
             if audio_feedback:
                 self.robot.say_sync(f"Step {i + 1} of {explore_iter}")
-                time.sleep(4.0)
+                time.sleep(2.0)
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1765,7 +1765,7 @@ class RobotAgent:
                 print("Start not valid. back up a bit.")
                 if audio_feedback:
                     self.robot.say_sync("Start not valid. Backing up a bit.")
-                    time.sleep(4.0)
+                    time.sleep(2.0)
 
                 ok = self.recover_from_invalid_start()
                 if ok:
@@ -1776,7 +1776,7 @@ class RobotAgent:
 
                     if audio_feedback:
                         self.robot.say_sync("Failed to recover from invalid start state!")
-                        time.sleep(4.0)
+                        time.sleep(2.0)
                     break
 
             # Now actually plan to the frontier
