@@ -5,9 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-![](https://github.com/hello-robot/stretch_ai/docs/images/PickPlaceFullTask.gif)
-
-
+![](./docs/images/PickPlaceFullTask.gif)
 
 **Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
@@ -74,13 +72,13 @@ This script will download the Docker image and start the container. You will be 
 
 ### Language-Directed Pick and Place
 
-![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\orange%20cup%20in%20box.gif)
+![](./docs/images/orangecupinbox.gif)
 
 Now that you have the server running on Stretch, we recommend you try a demonstration of language-directed pick and place.
 
 For this application, Stretch will attempt to pick up an object from the floor and place it inside a nearby receptacle on the floor. You will use words to describe the object and the receptacle that you'd like Stretch to use.
 
-While attempting to perform this task, Stretch will speak to tell you what it is doing. So, it is a good idea to make sure that you have the speaker volume up on your robot. Both the physical knob on Stretch's head and the volume settings on Stretch's computer should be set so that you can hear what Stretch says.
+While attempting to perf
 
 Now, on your GPU computer, run the following commands in the Docker container that you started with the script above.
 
@@ -109,7 +107,7 @@ Enter the target object: plush rabbit toy
 Enter the target receptacle: yellow chair 
 ```
 
-![](C:\Users\bm\OneDrive\Documents\GitHub\stretch_ai\docs\images\Rabbit%20Chair.gif)
+![](./docs/images/RabbitChair.gif)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
