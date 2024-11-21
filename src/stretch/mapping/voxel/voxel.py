@@ -1081,6 +1081,10 @@ class SparseVoxelMap(object):
                 traj.append(self.grid.xy_to_grid_coords(node.state[:2]))
             return traj
 
+    def xy_to_grid_coords(self, xy: np.ndarray) -> Optional[torch.Tensor]:
+        """Convert xy to grid coordinates"""
+        return self.grid.xy_to_grid_coords(xy)
+
     def get_kd_tree(self) -> open3d.geometry.KDTreeFlann:
         """Return kdtree for collision checks
 
