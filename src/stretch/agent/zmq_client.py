@@ -1347,7 +1347,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 blocking=last_waypoint,
                 timeout=final_timeout if last_waypoint else per_waypoint_timeout,
                 verbose=verbose,
-                reliable=False,
+                reliable=True if last_waypoint else False,
             )
             if not last_waypoint:
                 self.wait_for_waypoint(
