@@ -116,14 +116,13 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = enable_realtime_updates and self.parameters.get(
+        self._realtime_updates = enable_realtime_updates or self.parameters.get(
             "agent/use_realtime_updates", False
         )
-        if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
-            logger.warning(
-                "Real-time updates are not enabled but the agent is configured to use them in the config file."
-            )
-            logger.warning("We will not be able to update the map in real-time.")
+        if not enable_realtime_updates and self._realtime_updates:
+            logger.warn("Real-time updates are enabled via command line.")
+        if self._realtime_updates:
+            logger.alert("Real-time updates are enabled!")
 
         # ==============================================
         # Update configuration

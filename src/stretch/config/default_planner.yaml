@@ -107,7 +107,7 @@ agent:
     camera_pose_match_threshold: 0.05
   
   # Configuration of the realtime updates
-  use_realtime_updates: True
+  use_realtime_updates: False
   realtime_rotation_steps: 4
 
   # Configuration of the in-place rotation
