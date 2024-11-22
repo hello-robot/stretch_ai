@@ -45,6 +45,7 @@ class ManagedSearchOperation(ManagedOperation):
         return self._object_class.replace("_", " ")
 
     def __init__(self, *args, match_method="feature", **kwargs):
+        """Search for an object in the environment. By default, we will search for an object by its feature vector."""
         super().__init__(*args, **kwargs)
         self.match_method = match_method
 
@@ -55,6 +56,15 @@ class ManagedSearchOperation(ManagedOperation):
         self._object_class_feature = None
 
     def is_match_by_feature(self, instance: Instance) -> bool:
+        """Check if the instance is a match for the target object class by comparing feature vectors.
+
+        Args:
+            instance (Instance): the instance to check
+
+        Returns:
+            bool: True if the instance is a match, False otherwise
+        """
+
         # Compute the feature vector for the object if not saved
         if self._object_class_feature is None:
             self._object_class_feature = self.agent.encode_text(self.object_class)
@@ -105,14 +115,14 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
         # Now update the world
         self.update()
 
-        print(f"So far we have found: {len(self.agent.voxel_map.instances)} objects.")
+        print(f"So far we have found: {len(self.agent.get_voxel_map().instances)} objects.")
         if self.object_class is None:
             self.set_target_object_class("box")
 
         if self.show_map_so_far:
             # This shows us what the robot has found so far
             xyt = self.robot.get_base_pose()
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
@@ -128,10 +138,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
             self.error(
                 "This means there was an issue with navigation. Please disable the robot and move it to a safe location."
             )
-            breakpoint()
 
         # Check to see if we have a receptacle in the map
-        instances = self.agent.voxel_map.instances.get_instances()
+        instances = self.agent.get_voxel_map().instances.get_instances()
         print("Check explored instances for reachable receptacles:")
         for i, instance in enumerate(instances):
             # For debugging during exploration
@@ -185,7 +194,7 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
                 # This shows us what the robot has found so far
                 object_xyz = self.agent.current_receptacle.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
-                self.agent.voxel_map.show(
+                self.agent.get_voxel_map().show(
                     orig=object_xyz,
                     xyt=xyt,
                     footprint=self.robot_model.get_footprint(),
@@ -207,9 +216,20 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
     # Important parameters
     plan_for_manipulation: bool = True
     update_at_start: bool = False
+    require_receptacle: bool = True
+
+    def __init__(self, require_receptacle: bool = True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.require_receptacle = require_receptacle
 
     def can_start(self) -> bool:
-        self.attempt("If receptacle is found, we can start searching for objects.")
+        if self.require_receptacle:
+            self.attempt("If receptacle is found, we can start searching for objects.")
+            return self.agent.current_receptacle is not None
+        else:
+            self.attempt("Will start searching for objects.")
+            return True
+
         return self.agent.current_receptacle is not None
 
     def run(self) -> None:
@@ -233,7 +253,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
         if self.show_map_so_far:
             # This shows us what the robot has found so far
             xyt = self.robot.get_base_pose()
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=np.zeros(3), xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 
@@ -243,7 +263,6 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             self.error(
                 "Robot is in an invalid configuration. It is probably too close to geometry, or localization has failed."
             )
-            breakpoint()
 
         if self.show_instances_detected:
             # Show the last instance image
@@ -253,11 +272,11 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            plt.imshow(self.agent.voxel_map.observations[0].instance)
+            plt.imshow(self.agent.get_voxel_map().observations[0].instance)
             plt.show()
 
         # Check to see if we have a receptacle in the map
-        instances = self.agent.voxel_map.instances.get_instances()
+        instances = self.agent.get_voxel_map().instances.get_instances()
 
         # Compute scene graph from instance memory so that we can use it
         scene_graph = self.agent.get_scene_graph()
@@ -317,7 +336,7 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                 # This shows us what the robot has found so far
                 object_xyz = self.agent.current_object.point_cloud.mean(axis=0).cpu().numpy()
                 xyt = self.robot.get_base_pose()
-                self.agent.voxel_map.show(
+                self.agent.get_voxel_map().show(
                     orig=object_xyz,
                     xyt=xyt,
                     footprint=self.robot_model.get_footprint(),

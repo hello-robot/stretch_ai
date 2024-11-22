@@ -14,7 +14,11 @@ import torch
 from PIL import Image
 from transformers import AutoModel, AutoProcessor, AutoTokenizer
 
+from stretch.utils.logger import Logger
+
 from .base_encoder import BaseImageTextEncoder
+
+logger = Logger(__name__)
 
 
 class SiglipEncoder(BaseImageTextEncoder):
@@ -32,12 +36,14 @@ class SiglipEncoder(BaseImageTextEncoder):
         normalize: bool = True,
         device: Optional[str] = None,
         version: Optional[str] = None,
+        feature_matching_threshold: float = 0.05,
         **kwargs,
     ) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.normalize = normalize
+        self.feature_matching_threshold = feature_matching_threshold
 
         if version is None:
             version = "base"
@@ -46,26 +52,26 @@ class SiglipEncoder(BaseImageTextEncoder):
             model_name = "google/siglip-base-patch16-224"
         elif version == "so400m":
             model_name = "google/siglip-so400m-patch14-384"
-        elif version == "so800m":
-            model_name = "google/siglip-so800m-patch14-384"
         else:
-            raise ValueError(
-                f"Invalid version {version}: must be one of 'base', 'so400m', 'so800m'"
-            )
+            raise ValueError(f"Invalid version {version}: must be one of 'base', 'so400m'")
 
         self.processor = AutoProcessor.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(self.device)
 
     def encode_image(
-        self, image: Union[torch.tensor, np.ndarray], image_shape=(360, 270)
+        self,
+        image: Union[torch.tensor, np.ndarray],
+        image_shape=(360, 270),
+        verbose: bool = False,
     ) -> torch.Tensor:
         """Encode this input image to a feature vector"""
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy()
         image = image.astype(np.uint8)
         pil_image = Image.fromarray(image)
-        # print("Encoding image", pil_image.size)
+        if verbose:
+            logger.info("Encoding image", pil_image.size)
         inputs = self.processor(images=pil_image, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():

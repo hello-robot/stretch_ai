@@ -14,6 +14,7 @@ from typing import Optional
 import numpy as np
 
 from stretch.agent.base import ManagedOperation
+from stretch.agent.robot_agent import RobotAgent
 from stretch.mapping.instance import Instance
 from stretch.motion import HelloStretchIdx
 from stretch.utils.geometry import point_global_to_base
@@ -30,6 +31,13 @@ class PlaceObjectOperation(ManagedOperation):
     verbose: bool = True
     talk: bool = True
 
+    # Do we require an object to be present?
+    require_object: bool = True
+
+    def __init__(self, name, agent: RobotAgent, require_object: bool = True, *args, **kwargs):
+        super().__init__(name, agent, *args, **kwargs)
+        self.require_object = require_object
+
     def configure(
         self,
         lift_distance: float = 0.2,
@@ -37,6 +45,7 @@ class PlaceObjectOperation(ManagedOperation):
         show_place_in_voxel_grid: bool = False,
         place_step_size: float = 0.25,
         use_pitch_from_vertical: bool = True,
+        require_object: bool = True,
     ):
         """Configure the place operation.
 
@@ -52,6 +61,7 @@ class PlaceObjectOperation(ManagedOperation):
         self.show_place_in_voxel_grid = show_place_in_voxel_grid
         self.place_step_size = place_step_size
         self.use_pitch_from_vertical = use_pitch_from_vertical
+        self.require_object = require_object
 
     def get_target(self) -> Instance:
         """Get the target object to place."""
@@ -98,8 +108,11 @@ class PlaceObjectOperation(ManagedOperation):
         self.attempt(
             "will start placing the object if we have object and receptacle, and are close enough to drop."
         )
-        if self.agent.current_object is None or self.agent.current_receptacle is None:
-            self.error("Object or receptacle not found.")
+        if self.agent.current_object is None and self.require_object:
+            self.error("Object not found.")
+            return False
+        if self.agent.current_receptacle is None:
+            self.error("Receptacle not found.")
             return False
         # TODO: this should be deteriministic
         # It currently is, but if you change this to something sampling-base dwe must update the test
@@ -185,7 +198,7 @@ class PlaceObjectOperation(ManagedOperation):
         )
 
         if self.show_place_in_voxel_grid:
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=place_xyz, xyt=xyt, footprint=self.robot_model.get_footprint()
             )
 

@@ -128,7 +128,7 @@ def main(
     print("Loading:", input_path)
 
     print("Reading from pkl file of raw observations...")
-    agent.voxel_map.read_from_pickle(input_path, num_frames=-1)
+    agent.get_voxel_map().read_from_pickle(input_path, num_frames=-1)
 
     prompt = ObjectManipNavPromptBuilder()
     # client = OpenaiClient(prompt)

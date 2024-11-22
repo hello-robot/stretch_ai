@@ -7,12 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import os
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+
+import os
 import time
 import timeit
 from datetime import datetime
@@ -22,9 +23,9 @@ from uuid import uuid4
 import cv2
 import numpy as np
 import rerun as rr
+import torch
 import zmq
 
-import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -47,10 +48,18 @@ from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     move_to_point,
     pickup,
 )
-from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
+
+# from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance
-from stretch.mapping.voxel import SparseVoxelMap
-from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
+from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
+from stretch.mapping.voxel import (
+    SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
+)
+from stretch.motion.algo.a_star import AStar
+from stretch.perception.detection.owl import OwlPerception
+
+# from stretch.perception.encoders import BaseImageTextEncoder, MaskSiglipEncoder, get_encoder
+from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 
@@ -67,7 +76,7 @@ class RobotAgent(RobotAgentBase):
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        realtime_updates: bool = True,
+        realtime_updates: bool = False,
         obs_sub_port: int = 4450,
         re: int = 3,
         manip_port: int = 5557,
@@ -89,12 +98,14 @@ class RobotAgent(RobotAgentBase):
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
 
-        if self.parameters.get("encoder", None) is not None:
-            self.encoder: BaseImageTextEncoder = get_encoder(
-                self.parameters["encoder"], self.parameters.get("encoder_args", {})
-            )
-        else:
-            self.encoder: BaseImageTextEncoder = None
+        # if self.parameters.get("encoder", None) is not None:
+        #     self.encoder: BaseImageTextEncoder = get_encoder(
+        #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
+        #     )
+        # else:
+        #     self.encoder: BaseImageTextEncoder = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.create_obstacle_map(parameters)
 
         # ==============================================
         self.obs_count = 0
@@ -137,12 +148,13 @@ class RobotAgent(RobotAgentBase):
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
 
-        self.image_processor = VoxelMapImageProcessor(
-            rerun=True,
-            rerun_visualizer=self.robot._rerun,
-            log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-        )  # type: ignore
-        self.encoder = self.image_processor.get_encoder()
+        # self.image_processor = VoxelMapImageProcessor(
+        #     rerun=True,
+        #     rerun_visualizer=self.robot._rerun,
+        #     log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
+        #     robot=self.robot,
+        # )  # type: ignore
+        # self.encoder = self.image_processor.get_encoder()
         context = zmq.Context()
         self.manip_socket = context.socket(zmq.REQ)
         self.manip_socket.connect("tcp://100.108.67.79:" + str(manip_port))
@@ -161,6 +173,8 @@ class RobotAgent(RobotAgentBase):
 
         self.reset_object_plans()
 
+        self.re = re
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -170,35 +184,47 @@ class RobotAgent(RobotAgentBase):
         # Previously sampled goal during exploration
         self._previous_goal = None
 
+        self._running = True
+
         self._start_threads()
 
-    def get_observations_loop(self):
-        while True:
-            obs = None
-            t0 = timeit.default_timer()
-
-            self._obs_history_lock.acquire()
-            while obs is None:
-                obs = self.robot.get_observation()
-                # obs = self.sub_socket.recv_pyobj()
-                if obs is None:
-                    continue
-
-                if (len(self.obs_history) > 0) and (
-                    obs.lidar_timestamp == self.obs_history[-1].lidar_timestamp
-                ):
-                    obs = None
-                t1 = timeit.default_timer()
-                if t1 - t0 > 10:
-                    logger.error("Failed to get observation")
-                    break
-                time.sleep(0.05)
-
-            # t1 = timeit.default_timer()
-            self.obs_history.append(obs)
-            self._obs_history_lock.release()
-            self.obs_count += 1
-            time.sleep(0.1)
+    def create_obstacle_map(self, parameters):
+        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+        self.detection_model = OwlPerception(device=self.device)
+        current_datetime = datetime.datetime.now()
+        self.log = "debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        self.voxel_map = SparseVoxelMap(
+            resolution=parameters["voxel_size"],
+            local_radius=parameters["local_radius"],
+            obs_min_height=parameters["obs_min_height"],
+            obs_max_height=parameters["obs_max_height"],
+            obs_min_density=parameters["obs_min_density"],
+            grid_resolution=0.1,
+            min_depth=self.min_depth,
+            max_depth=self.max_depth,
+            pad_obstacles=parameters["pad_obstacles"],
+            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
+            remove_visited_from_obstacles=parameters.get(
+                "remove_visited_from_obstacles", default=False
+            ),
+            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
+            use_median_filter=parameters.get("filters/use_median_filter", False),
+            median_filter_size=parameters.get("filters/median_filter_size", 5),
+            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
+            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
+            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
+            detection=self.detection_model,
+            log=self.log,
+        )
+        self.space = SparseVoxelMapNavigationSpace(
+            self.voxel_map,
+            rotation_step_size=parameters["rotation_step_size"],
+            dilate_frontier_size=parameters[
+                "dilate_frontier_size"
+            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
+            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+        )
+        self.planner = AStar(self.space)
 
     def compute_blur_metric(self, image):
         """
@@ -317,9 +343,7 @@ class RobotAgent(RobotAgentBase):
         self._obs_history_lock.release()
 
         if obs is not None and self.robot.in_navigation_mode():
-            self.image_processor.process_rgbd_images(
-                obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-            )
+            self.voxel_map.process_rgbd_images(obs.rgb, obs.depth, obs.camera_K, obs.camera_pose)
 
         robot_center = np.zeros(3)
         robot_center[:2] = self.robot.get_base_pose()[:2]
@@ -360,12 +384,35 @@ class RobotAgent(RobotAgentBase):
         # print(f"Done clearing out old observations. Time: {t6 - t5}")
         self._obs_history_lock.release()
 
+    def update(self):
+        """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
+        # Sleep some time for the robot camera to focus
+        # time.sleep(0.3)
+        obs = self.robot.get_observation()
+        self.obs_count += 1
+        rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
+        start_time = time.time()
+        self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
+        end_time = time.time()
+
     def look_around(self):
-        for pan in [0.4, -0.4, -1.2, -1.6]:
+        print("*" * 10, "Look around to check", "*" * 10)
+        # for pan in [0.6, -0.2, -1.0, -1.8]:
+        for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.65]:
-                self.robot.head_to(pan, tilt, blocking=True)
-                time.sleep(0.3)
-        self.robot.head_to(0, -0.7, blocking=True)
+                self.robot.head_to(pan, tilt, blocking=False)
+                time.sleep(0.2)
+                self.update()
+
+    def rotate_in_place(self):
+        print("*" * 10, "Rotate in place", "*" * 10)
+        xyt = self.robot.get_base_pose()
+        self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
+        for i in range(8):
+            xyt[2] += 2 * np.pi / 8
+            self.robot.move_base_to(xyt, blocking=True)
+            if not self._realtime_updates:
+                self.update()
 
     def execute_action(
         self,
@@ -373,12 +420,18 @@ class RobotAgent(RobotAgentBase):
     ):
         start_time = time.time()
 
+        if not self._realtime_updates:
+            self.robot.look_front()
+            self.look_around()
+            self.robot.look_front()
+            self.robot.switch_to_navigation_mode()
+
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
-        res = self.image_processor.process_text(text, start)
+        res = self.voxel_map.process_text(text, start)
         if len(res) == 0 and text != "" and text is not None:
-            res = self.image_processor.process_text("", start)
+            res = self.space.process_text("", start)
 
         if len(res) > 0:
             print("Plan successful!")
@@ -401,7 +454,6 @@ class RobotAgent(RobotAgentBase):
                     rot_err_threshold=self.rot_err_threshold,
                     blocking=True,
                 )
-                # self.look_around()
                 return False, None
         else:
             print("Failed. Try again!")
@@ -418,7 +470,7 @@ class RobotAgent(RobotAgentBase):
             return False
         return True
 
-    def navigate(self, text, max_step=5):
+    def navigate(self, text, max_step=10):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         finished = False
         step = 0
@@ -454,6 +506,7 @@ class RobotAgent(RobotAgentBase):
             socket=self.manip_socket,
             hello_robot=self.manip_wrapper,
         )
+        print("Place: ", rotation, translation)
 
         if rotation is None:
             return False
@@ -485,7 +538,7 @@ class RobotAgent(RobotAgentBase):
 
     def get_voxel_map(self):
         """Return the voxel map"""
-        return self.image_processor.voxel_map
+        return self.voxel_map
 
     def manipulate(
         self,
@@ -559,5 +612,4 @@ class RobotAgent(RobotAgentBase):
         return True
 
     def save(self):
-        with self.image_processor.voxel_map_lock:
-            self.image_processor.write_to_pickle()
+        pass

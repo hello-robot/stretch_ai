@@ -7,6 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import time
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -356,9 +358,34 @@ class StretchClient(AbstractRobotClient):
         """Get 3x3 matrix of camera intrisics K"""
         return torch.from_numpy(self.head._ros_client.rgb_cam.K).float()
 
-    def head_to(self, pan: float, tilt: float, blocking: bool = False):
+    def head_to(
+        self,
+        pan: float,
+        tilt: float,
+        blocking: bool = False,
+        threshold: float = 0.2,
+        timeout: float = 0.8,
+    ):
         """Send head commands"""
         self.head.goto_joint_positions(pan=float(pan), tilt=float(tilt), blocking=blocking)
+        t0 = time.time()
+        if blocking:
+            while True:
+                cur_pan, cur_tilt = self.head.get_pan_tilt()
+                t1 = time.time()
+                if (abs(cur_pan - pan) <= threshold and abs(cur_tilt - tilt) < threshold) or (
+                    t1 - t0 > timeout
+                ):
+                    break
+                else:
+                    time.sleep(0.1)
+                    print(
+                        "head pan error",
+                        abs(cur_pan - pan),
+                        "head tilt error",
+                        abs(cur_tilt - tilt),
+                    )
+        time.sleep(0.2)
 
     def get_has_wrist(self) -> bool:
         return self._ros_client.get_has_wrist()

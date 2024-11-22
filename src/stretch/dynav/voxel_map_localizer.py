@@ -17,8 +17,10 @@ from sklearn.cluster import DBSCAN
 from torch import Tensor
 
 # from ultralytics import YOLOWorld
-from transformers import AutoModel, AutoProcessor, Owlv2ForObjectDetection
+# from transformers import AutoModel, AutoProcessor, CLIPTokenizer, Owlv2ForObjectDetection
+from transformers import AutoModel, AutoProcessor
 
+from stretch.perception.detection.owl import OwlPerception
 from stretch.utils.logger import Logger
 from stretch.utils.voxel import VoxelizedPointcloud
 
@@ -94,7 +96,7 @@ class VoxelMapLocalizer:
     def __init__(
         self,
         voxel_map_wrapper=None,
-        exist_model=True,
+        # exist_model=True,
         clip_model=None,
         processor=None,
         device="cuda",
@@ -117,18 +119,19 @@ class VoxelMapLocalizer:
             self.preprocessor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
             self.clip_model.eval()
         self.voxel_pcd = VoxelizedPointcloud(voxel_size=0.05).to(self.device)
+        self.detection_model = OwlPerception()
         # self.exist_model = YOLOWorld("yolov8l-worldv2.pt")
-        self.existence_checking_model = exist_model
-        if exist_model:
-            logger.info("WE ARE USING OWLV2!")
-            self.exist_processor = AutoProcessor.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
-            )
-            self.exist_model = Owlv2ForObjectDetection.from_pretrained(
-                "google/owlv2-base-patch16-ensemble"
-            ).to(self.device)
-        else:
-            logger.info("YOU ARE USING NOTHING!")
+        # self.existence_checking_model = exist_model
+        # if exist_model:
+        #     logger.info("WE ARE USING OWLV2!")
+        #     self.exist_processor = AutoProcessor.from_pretrained(
+        #         "google/owlv2-large-patch14-ensemble"
+        #     )
+        #     self.exist_model = Owlv2ForObjectDetection.from_pretrained(
+        #         "google/owlv2-large-patch14-ensemble"
+        #     ).to(self.device)
+        # else:
+        #     logger.info("YOU ARE USING NOTHING!")
 
     def add(
         self,
@@ -171,8 +174,10 @@ class VoxelMapLocalizer:
         else:
             text = clip.tokenize(queries).to(self.clip_model.device)
             all_clip_tokens = self.clip_model.encode_text(text)
-        # text = clip.tokenize(queries).to(self.device)
+
+        # text = self.tokenizer(queries, return_tensors="pt", padding=True).input_ids.to(self.device)
         # all_clip_tokens = self.clip_model.encode_text(text)
+
         all_clip_tokens = F.normalize(all_clip_tokens, p=2, dim=-1)
         return all_clip_tokens
 
@@ -198,51 +203,15 @@ class VoxelMapLocalizer:
         return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
 
     def compute_coord(self, text, obs_id, threshold=0.2):
-        # print(obs_id, len(self.voxel_map_wrapper.observations))
         if obs_id <= 0 or obs_id > len(self.voxel_map_wrapper.observations):
             return None
         rgb = self.voxel_map_wrapper.observations[obs_id - 1].rgb
         pose = self.voxel_map_wrapper.observations[obs_id - 1].camera_pose
         depth = self.voxel_map_wrapper.observations[obs_id - 1].depth
         K = self.voxel_map_wrapper.observations[obs_id - 1].camera_K
-        xyzs = get_xyz(depth, pose, K)[0]
-        # rgb[depth >= 2.5] = 0
-        rgb = rgb.permute(2, 0, 1).to(torch.uint8)
-        inputs = self.exist_processor(
-            text=[["a photo of a " + text]], images=rgb, return_tensors="pt"
+        return self.detection_model.compute_obj_coord(
+            text, rgb, depth, K, pose, confidence_threshold=threshold
         )
-        for input in inputs:
-            inputs[input] = inputs[input].to("cuda")
-
-        with torch.no_grad():
-            outputs = self.exist_model(**inputs)
-
-        target_sizes = torch.Tensor([rgb.size()[-2:]]).to(self.device)
-        results = self.exist_processor.image_processor.post_process_object_detection(
-            outputs, threshold=threshold, target_sizes=target_sizes
-        )[0]
-        # if len(results['scores']) == 0:
-        #     return None
-        # tl_x, tl_y, br_x, br_y = results['boxes'][torch.argmax(results['scores'])]
-        # w, h = depth.shape
-        # tl_x, tl_y, br_x, br_y = int(max(0, tl_x.item())), int(max(0, tl_y.item())), int(min(h, br_x.item())), int(min(w, br_y.item()))
-        # return torch.median(xyzs[tl_y: br_y, tl_x: br_x].reshape(-1, 3), dim = 0).values
-        for idx, (score, bbox) in enumerate(
-            sorted(zip(results["scores"], results["boxes"]), key=lambda x: x[0], reverse=True)
-        ):
-
-            tl_x, tl_y, br_x, br_y = bbox
-            w, h = depth.shape
-            tl_x, tl_y, br_x, br_y = (
-                int(max(0, tl_x.item())),
-                int(max(0, tl_y.item())),
-                int(min(h, br_x.item())),
-                int(min(w, br_y.item())),
-            )
-
-            if torch.median(depth[tl_y:br_y, tl_x:br_x].reshape(-1)) < 3:
-                return torch.median(xyzs[tl_y:br_y, tl_x:br_x].reshape(-1, 3), dim=0).values
-        return None
 
     def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
         if isinstance(point, np.ndarray):
@@ -315,7 +284,7 @@ class VoxelMapLocalizer:
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
             if self.siglip:
-                cosine_similarity_check = alignments.max().item() > 0.14
+                cosine_similarity_check = alignments.max().item() > 0.13
             else:
                 cosine_similarity_check = alignments.max().item() > 0.3
             if cosine_similarity_check:

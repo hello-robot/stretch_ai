@@ -190,6 +190,7 @@ class DeticPerception(PerceptionModule):
         depth: Optional[np.ndarray] = None,
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = True,
+        confidence_threshold: Optional[float] = None,
     ) -> Tuple[np.ndarray, np.ndarray, dict]:
         """
         Arguments:

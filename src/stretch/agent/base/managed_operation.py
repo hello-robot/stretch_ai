@@ -37,6 +37,10 @@ class ManagedOperation(Operation):
         elif robot is not None:
             self.robot = robot
             self.parameters = robot.parameters
+        else:
+            raise ValueError("Either agent or robot must be provided.")
+
+        assert self.robot is not None, "Robot client must be provided."
 
         # Get the robot kinematic model
         self.robot_model = self.robot.get_robot_model()
@@ -87,7 +91,7 @@ class ManagedOperation(Operation):
             matplotlib.use("TkAgg")
         import matplotlib.pyplot as plt
 
-        plt.imshow(self.agent.voxel_map.observations[0].instance)
+        plt.imshow(self.agent.get_voxel_map().observations[0].instance)
         plt.show()
 
     def show_instance(self, instance: Instance, title: Optional[str] = None):

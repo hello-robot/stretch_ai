@@ -7,8 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import time
-
 import numpy as np
 import pinocchio as pin
 
@@ -18,6 +16,14 @@ from stretch.dynav.ok_robot_hw.utils.utils import apply_se3_transform
 
 
 def capture_and_process_image(camera, mode, obj, socket, hello_robot):
+    """Find an an object in the camera frame and return the translation and rotation of the object.
+
+    Returns:
+        rotation: Rotation of the object
+        translation: Translation of the object
+        depth: Depth of the object (distance from the camera; only for pick mode)
+        width: Width of the object (only for pick mode)
+    """
 
     print("Currently in " + mode + " mode and the robot is about to manipulate " + obj + ".")
 
@@ -31,11 +37,16 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
     head_pan = INIT_HEAD_PAN
 
     while retry_flag:
+
+        print("Capturing image: ")
+        print(f"retry flag : {retry_flag}")
+        print(f"side retries : {side_retries}")
+        print(f"tilt retries : {tilt_retries}")
+
         translation, rotation, depth, width, retry_flag = image_publisher.publish_image(
             obj, mode, head_tilt=head_tilt
         )
 
-        print(f"retry flag : {retry_flag}")
         if retry_flag == 1:
             base_trans = translation[0]
             head_tilt += rotation[0]
@@ -43,11 +54,9 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
             hello_robot.move_to_position(
                 base_trans=base_trans, head_pan=head_pan, head_tilt=head_tilt
             )
-            time.sleep(1)
 
         elif retry_flag != 0 and side_retries == 3:
             print("Tried in all angles but couldn't succeed")
-            time.sleep(1)
             return None, None, None, None
 
         elif side_retries == 2 and tilt_retries == 3:
@@ -69,14 +78,15 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
                     head_pan=head_pan, head_tilt=head_tilt + head_tilt_angles[tilt_retries]
                 )
                 tilt_retries += 1
-                time.sleep(1)
 
     if mode == "place":
         translation = np.array([-translation[1], -translation[0], -translation[2]])
 
     if mode == "pick":
+        print("Pick: Returning translation, rotation, depth, width")
         return rotation, translation, depth, width
     else:
+        print("Place: Returning translation, rotation")
         return rotation, translation
 
 
@@ -199,7 +209,7 @@ def pickup(
 
     diff_value = (
         0.225 - gripper_depth - gripper_height
-    )  # 0.228 is the distance between link_Straight_gripper node and the gripper tip
+    )  # 0.225 is the distance between link_Straight_gripper node and the gripper tip
     pin_transformed_point1[2] -= diff_value
     ref_diff = diff_value
 
@@ -226,7 +236,8 @@ def pickup(
         dist = diff - 0.08
         state = robot.robot.get_six_joints()
         state[1] += 0.02
-        # state[0] -= 0.015
+        state[2] += 0.02
+        # state[0] -= 0.012
         robot.robot.arm_to(state, blocking=True)
         robot.move_to_pose([0, 0, dist], [0, 0, 0], [1])
         diff = diff - dist

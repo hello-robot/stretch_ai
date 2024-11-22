@@ -66,7 +66,7 @@ class PreGraspObjectOperation(ManagedOperation):
         xyt = self.robot.get_base_pose()
         if self.show_object_in_voxel_grid:
             # Show where the object is together with the robot base
-            self.agent.voxel_map.show(
+            self.agent.get_voxel_map().show(
                 orig=object_xyz.cpu().numpy(), xyt=xyt, footprint=self.robot_model.get_footprint()
             )
         relative_object_xyz = point_global_to_base(object_xyz, xyt)

@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 Hello Robot by Chris Paxton
+# (c) 2024 Hello Robot
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -39,6 +39,12 @@ from stretch.perception import create_semantic_sensor
     default=-1,
     help="Number of exploration steps, i.e. times the robot will try to move to an unexplored frontier",
 )
+@click.option(
+    "--radius",
+    default=-1.0,
+    type=float,
+    help="Radius of the circle around initial position where the robot is allowed to go.",
+)
 @click.option("--navigate-home", default=False, is_flag=True)
 @click.option("--force-explore", default=False, is_flag=True)
 @click.option("--no-manip", default=False, is_flag=True)
@@ -57,6 +63,7 @@ from stretch.perception import create_semantic_sensor
     is_flag=True,
     help="Disable real-time updates so the robot will stop and sequentially scan its environment",
 )
+@click.option("--silent", is_flag=True, help="Disable audio feedback")
 @click.option("--save", is_flag=True, help="Save the map to memory")
 def main(
     visualize,
@@ -78,9 +85,13 @@ def main(
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
     disable_realtime_updates: bool = False,
+    silent: bool = False,
     save: bool = True,
+    radius: float = -1.0,
     **kwargs,
 ):
+
+    audio_feedback = not silent
 
     print("- Load parameters")
     parameters = get_parameters(parameter_file)
@@ -113,6 +124,8 @@ def main(
         parameter_file=parameter_file,
         disable_realtime_updates=disable_realtime_updates,
         reset=reset,
+        radius=radius,
+        audio_feedback=audio_feedback,
         save=save,
         **kwargs,
     )
@@ -132,12 +145,14 @@ def demo_main(
     random_goals: bool = True,
     force_explore: bool = False,
     no_manip: bool = False,
+    radius: float = -1.0,
     explore_iter: int = 10,
     write_instance_images: bool = False,
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
     disable_realtime_updates: bool = False,
+    audio_feedback: bool = False,
     save: bool = True,
     **kwargs,
 ):
@@ -178,25 +193,29 @@ def demo_main(
         semantic_sensor = None
 
     print("- Start robot agent with data collection")
-    demo = RobotAgent(
+    agent = RobotAgent(
         robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
     )
-    demo.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
+    if radius is not None and radius > 0:
+        agent.set_allowed_radius(radius)
+
+    agent.start(goal=object_to_find, visualize_map_at_start=show_intermediate_maps)
     if reset:
-        demo.move_closed_loop([0, 0, 0], max_time=60.0)
+        agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     if object_to_find is not None:
         print(f"\nSearch for {object_to_find} and {location_to_place}")
-        matches = demo.get_found_instances_by_class(object_to_find)
+        matches = agent.get_found_instances_by_class(object_to_find)
         print(f"Currently {len(matches)} matches for {object_to_find}.")
     else:
         matches = []
 
     # Rotate in place
     if parameters["agent"]["in_place_rotation_steps"] > 0:
-        demo.rotate_in_place(
+        agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
+            audio_feedback=audio_feedback,
         )
 
     # Run the actual procedure
@@ -204,17 +223,18 @@ def demo_main(
         if len(matches) == 0 or force_explore:
             if object_to_find is not None:
                 print(f"Exploring for {object_to_find}...")
-            demo.run_exploration(
+            agent.run_exploration(
                 manual_wait,
                 explore_iter=parameters["exploration_steps"],
                 task_goal=object_to_find,
                 random_goals=False,
                 go_home_at_end=navigate_home,
                 visualize=show_intermediate_maps,
+                audio_feedback=audio_feedback,
             )
         print("Done collecting data.")
         if object_to_find is not None:
-            matches = demo.get_found_instances_by_class(object_to_find)
+            matches = agent.get_found_instances_by_class(object_to_find)
             print("-> Found", len(matches), f"instances of class {object_to_find}.")
 
     except Exception as e:
@@ -222,12 +242,12 @@ def demo_main(
     finally:
 
         # Stop updating the map
-        demo.stop_realtime_updates()
+        agent.stop_realtime_updates()
 
         if show_final_map:
-            pc_xyz, pc_rgb = demo.voxel_map.show()
+            pc_xyz, pc_rgb = agent.get_voxel_map().show()
         else:
-            pc_xyz, pc_rgb = demo.voxel_map.get_xyz_rgb()
+            pc_xyz, pc_rgb = agent.get_voxel_map().get_xyz_rgb()
 
         if pc_rgb is None:
             return
@@ -235,15 +255,15 @@ def demo_main(
         # Create pointcloud and write it out
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
-            demo.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.get_voxel_map().write_to_pickle(output_pkl_filename)
 
         if save:
-            demo.save_map()
+            agent.save_map()
 
         if write_instance_images:
-            demo.save_instance_images(".")
+            agent.save_instance_images(".")
 
-        demo.go_home()
+        agent.go_home()
         robot.stop()
 
 

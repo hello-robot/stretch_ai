@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 Hello Robot by Chris Paxton
+# (c) 2024 Hello Robot
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -138,15 +138,15 @@ def main(
 
         # Save out file
         if len(output_pkl_filename) > 0:
-            agent.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.get_voxel_map().write_to_pickle(output_pkl_filename)
     else:
         real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
-        agent.voxel_map.read_from_pickle(input_path, num_frames=frame)
+        agent.get_voxel_map().read_from_pickle(input_path, num_frames=frame)
 
     if show_svm:
-        agent.voxel_map.show()
+        agent.get_voxel_map().show()
 
     try:
         if len(text) == 0:

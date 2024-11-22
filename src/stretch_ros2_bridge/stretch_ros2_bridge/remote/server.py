@@ -8,7 +8,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 chris paxton for Hello Robot, under MIT license
+# (c) 2024 Hello Robot, under MIT license
 
 from typing import Any, Dict
 
@@ -33,6 +33,14 @@ class ZmqServer(BaseZmqServer):
         # ROS2 client interface
         self.client = StretchClient(d405=use_d405)
         self.use_d405 = use_d405
+
+        # Check if the robot is homed
+        if not self.client.is_homed:
+            raise RuntimeError("Robot is not homed. Please home the robot first.")
+
+        # Check if the robot is runstopped
+        if self.client.is_runstopped:
+            raise RuntimeError("Robot is runstopped. Please unstop the robot first.")
 
         # Map saver - write and load map information from SLAM
         self.map_saver = MapSerializerDeserializer()
@@ -154,6 +162,9 @@ class ZmqServer(BaseZmqServer):
             # Text to speech from the robot, not the client/agent device
             print("Saying:", action["say"])
             self.text_to_speech.say_async(action["say"])
+        elif "say_sync" in action:
+            print("Saying:", action["say_sync"])
+            self.text_to_speech.say(action["say_sync"])
         elif "xyt" in action:
             # Check control mode
             if not self.client.in_navigation_mode():
@@ -191,13 +202,16 @@ class ZmqServer(BaseZmqServer):
                 head_pan_cmd, head_tilt_cmd = action["head_to"]
             else:
                 head_pan_cmd, head_tilt_cmd = None, None
+
+            _is_blocking = action.get("blocking", False)
+
             # Now send all command fields here
             self.client.arm_to(
                 action["joint"],
                 gripper=gripper_cmd,
                 head_pan=head_pan_cmd,
                 head_tilt=head_tilt_cmd,
-                blocking=False,
+                blocking=_is_blocking,
             )
         elif "head_to" in action:
             # This will send head without anything else
@@ -206,7 +220,7 @@ class ZmqServer(BaseZmqServer):
             self.client.head_to(
                 action["head_to"][0],
                 action["head_to"][1],
-                blocking=False,
+                blocking=True,
             )
         elif "gripper" in action and "joint" not in action:
             if self.verbose or True:

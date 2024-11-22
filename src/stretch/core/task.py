@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 import abc
-from typing import Optional
+from typing import Dict, List, Optional
 
 from termcolor import colored
 
@@ -30,6 +30,7 @@ class Operation(abc.ABC):
         on_failure: Optional["Operation"] = None,
         on_cannot_start: Optional["Operation"] = None,
         retry_on_failure: bool = False,
+        max_failures: int = 5,
     ) -> None:
         self._name = name
         self._started = False
@@ -38,6 +39,7 @@ class Operation(abc.ABC):
         self.on_success = on_success
         self.on_failure = on_failure
         self.retry_on_failure = retry_on_failure
+        self.max_failures = max_failures
 
         if self.parent is not None and self.parent.on_success is None:
             self.parent.on_success = self
@@ -65,6 +67,10 @@ class Operation(abc.ABC):
     def set_status(self, status: str):
         """Set the status of the operation."""
         self.status = status
+
+    def set_on_failure(self, operation: "Operation"):
+        """Set the on_failure operation."""
+        self.on_failure = operation
 
     @property
     def name(self) -> str:
@@ -103,19 +109,19 @@ class Operation(abc.ABC):
         else:
             logger.error(f"Operation {self.name} cannot start.")
             return False
-        self.run()
         return self.was_successful()
 
 
 class Task:
     """A task is a series of operations that are executed in sequence. At each step, we check validity."""
 
-    def __init__(self):
+    def __init__(self, max_failures: int = 5) -> None:
         self.current_operation = None
         self.initial_operation = None
-        self._all_operations = []
-        self._terminal_operations = []
-        self._operations = dict()
+        self._all_operations: List[Operation] = []
+        self._terminal_operations: List[Operation] = []
+        self._operations: Dict[str, Operation] = dict()
+        self.max_failures = max_failures
 
     def add_operation(self, operation, terminal: bool = False):
         """Add this operation into the task.
@@ -165,31 +171,62 @@ class Task:
         on_success = self._operations[on_success_name]
         operation.on_success = on_success
 
+    def terminate_on_success(self, operation_name: str):
+        """Terminate the task on success.
+
+        Args:
+            operation_name: The operation to terminate on success.
+        """
+        operation = self._operations[operation_name]
+        self._terminal_operations.append(operation)
+        operation.on_success = None
+
+    def get_operation(self, operation_name: str) -> Operation:
+        """Get the operation by name."""
+        return self._operations[operation_name]
+
     def info(self, message):
         print(colored("[TASK INFO] " + str(message), "cyan"))
 
-    def run(self):
-        """Start the task. This is a blocking loop which will continue until there are no operations left to execute."""
+    def run(self) -> bool:
+        """Start the task. This is a blocking loop which will continue until there are no operations left to execute.
+
+        Returns:
+            True if the task was successful, False otherwise.
+        """
         self.current_operation = self.initial_operation
         if self.current_operation is None:
             raise ValueError("No initial operation set.")
+        failures = 0
         while self.current_operation is not None:
             if self.current_operation.can_start():
                 self.info(f"Starting operation {self.current_operation.name}")
                 self.current_operation.run()
                 self.info("Operation complete.")
+                failures = 0
                 if self.current_operation.was_successful():
                     # Transition if we were successful
                     self.info(f"Operation {self.current_operation.name} successful.")
                     self.current_operation = self.current_operation.on_success
                     if self.current_operation is None:
                         self.info("Task completed successfully!")
+                        return True
                     else:
                         self.info(f"Transitioning to {self.current_operation.name}")
                 else:
                     # And if we failed
                     self.info(f"Operation {self.current_operation.name} failed.")
                     self.current_operation = self.current_operation.on_failure
+                    failures += 1
+                    if self.current_operation is None:
+                        logger.error("Task failed.")
+                        return False
+                    elif failures >= self.current_operation.max_failures:
+                        logger.error(
+                            f"Operation {self.current_operation.name} failed too many times!"
+                        )
+                        self.error(f"Task failed after {failures} operation failures.")
+                        return False
             else:
                 self.info(f"Operation {self.current_operation.name} cannot start.")
                 if self.current_operation.on_cannot_start is None:
@@ -197,3 +234,4 @@ class Task:
                 self.current_operation = self.current_operation.on_cannot_start
 
         print("Task complete.")
+        return True

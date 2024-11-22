@@ -205,7 +205,7 @@ class RerunVisualizer:
             # Check environment variables to see if this is docker
             if "DOCKER" in os.environ:
                 spawn_gui = False
-                open_browser = False
+                open_browser = True
                 logger.warning("Docker environment detected. Disabling GUI.")
         rr.init("Stretch_robot", spawn=spawn_gui)
         if open_browser:
@@ -565,7 +565,10 @@ class RerunVisualizer:
             print("Time to log points: ", t6 - t5, "% = ", (t6 - t5) / (t6 - t0))
 
     def update_scene_graph(
-        self, scene_graph: SceneGraph, semantic_sensor: Optional[OvmmPerception] = None
+        self,
+        scene_graph: SceneGraph,
+        semantic_sensor: Optional[OvmmPerception] = None,
+        verbose: bool = False,
     ):
         """Log objects bounding boxes and relationships
         Args:
@@ -617,7 +620,8 @@ class RerunVisualizer:
                 static=True,
             )
             t1 = timeit.default_timer()
-            print("Time to log scene graph objects: ", t1 - t0)
+            if verbose:
+                print("Time to log scene graph objects: ", t1 - t0)
 
     def update_nav_goal(self, goal, timeout=10):
         """Log navigation goal

@@ -16,6 +16,7 @@ import pickle
 import timeit
 from collections import namedtuple
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -27,20 +28,23 @@ import tqdm
 from torch import Tensor
 
 import stretch.utils.compression as compression
-import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
-from stretch.motion import Footprint, PlanResult, RobotModel
+from stretch.motion import Footprint, HelloStretchIdx, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
+from stretch.utils.logger import Logger
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd, points_in_mesh
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
+from stretch.visualization.urdf_visualizer import URDFVisualizer
+
+logger = Logger(__name__)
 
 Frame = namedtuple(
     "Frame",
@@ -65,7 +69,16 @@ Frame = namedtuple(
 VALID_FRAMES = ["camera", "world"]
 
 
-def ensure_tensor(arr):
+def ensure_tensor(arr) -> Tensor:
+    """Make sure this is a tensor.
+
+    Args:
+        arr: array or tensor to convert
+
+    Returns:
+        Tensor: the converted tensor
+    """
+
     if isinstance(arr, np.ndarray):
         return Tensor(arr)
     if not isinstance(arr, Tensor):
@@ -201,6 +214,9 @@ class SparseVoxelMap(object):
         self.median_filter_max_error = median_filter_max_error
         self.use_negative_obstacles = use_negative_obstacles
 
+        # If we have an allowed radius to move in, we can store a mask with extra obstacles
+        self.allowed_map: torch.Tensor = None
+
         # Derivative filter params
         self.use_derivative_filter = use_derivative_filter
         self.derivative_filter_threshold = derivative_filter_threshold
@@ -219,6 +235,7 @@ class SparseVoxelMap(object):
         self.encoder = encoder
         self.map_2d_device = map_2d_device
         self._min_points_per_voxel = min_points_per_voxel
+        self.urdf_visualizer = URDFVisualizer()
 
         # Is the 2d map stale?
         self._stale_2d = True
@@ -305,19 +322,34 @@ class SparseVoxelMap(object):
         self._map2d = None
 
     def get_instances(self) -> List[Instance]:
-        """Return a list of all viewable instances"""
+        """Return a list of all viewable instances.
+
+        Returns:
+            List[Instance]: a list of instances
+        """
         if self.instances is None:
             return []
         return list(self.instances.instances[0].values())
 
     def get_instances_as_dict(self) -> Dict[int, Instance]:
-        """Return a dictionary of all viewable instances"""
+        """Return a dictionary of all viewable instances. Maps from instance_id to Instance.
+
+        Returns:
+            Dict[int, Instance]: a dictionary of instances
+        """
         if self.instances is None:
             return {}
         return self.instances.instances[0]
 
     def fix_type(self, tensor: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
-        """Convert to tensor and float"""
+        """Convert to tensor and float. If tensor is None, return None.
+
+        Args:
+            tensor: the tensor to convert
+
+        Returns:
+            torch.Tensor: the converted tensor
+        """
         if tensor is None:
             return None
         if isinstance(tensor, np.ndarray):
@@ -565,6 +597,40 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
+            # Remove points that are too close to the robot
+            if obs is not None and obs.joint is not None:
+                state = obs.joint
+                cfg = {}
+                for k in HelloStretchIdx.name_to_idx:
+                    cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
+                lk_cfg = {
+                    "joint_wrist_yaw": cfg["wrist_yaw"],
+                    "joint_wrist_pitch": cfg["wrist_pitch"],
+                    "joint_wrist_roll": cfg["wrist_roll"],
+                    "joint_lift": cfg["lift"],
+                    "joint_arm_l0": cfg["arm"] / 4,
+                    "joint_arm_l1": cfg["arm"] / 4,
+                    "joint_arm_l2": cfg["arm"] / 4,
+                    "joint_arm_l3": cfg["arm"] / 4,
+                    "joint_head_pan": cfg["head_pan"],
+                    "joint_head_tilt": cfg["head_tilt"],
+                }
+                if "gripper" in cfg.keys():
+                    lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+                    lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
+
+                mesh = self.urdf_visualizer.get_combined_robot_mesh(cfg=lk_cfg, use_collision=True)
+
+                selected_indices = points_in_mesh(world_xyz, mesh, base_pose)
+            else:
+                selected_indices = torch.ones_like(world_xyz[:, 0], dtype=torch.bool)
+            world_xyz = world_xyz[selected_indices]
+
+            if feats is not None:
+                feats = feats[selected_indices]
+
+            rgb = rgb[selected_indices]
+
             self.voxel_pcd.add(
                 world_xyz,
                 features=feats,
@@ -587,6 +653,10 @@ class SparseVoxelMap(object):
 
         # Increment sequence counter
         self._seq += 1
+
+    def is_empty(self) -> bool:
+        """Check if the voxel map is empty."""
+        return len(self.observations) == 0
 
     def mask_from_bounds(self, bounds: np.ndarray, debug: bool = False):
         """create mask from a set of 3d object bounds"""
@@ -833,8 +903,47 @@ class SparseVoxelMap(object):
         """
         return self.voxel_pcd.get_pointcloud()
 
+    def set_allowed_radius(self, radius: float, origin: Union[torch.Tensor, np.ndarray]) -> None:
+        """Set the allowed radius for exploration around the robot. This is used to add points to the map around the robot.
+
+        Args:
+            radius (float): radius in meters
+            origin (torch.Tensor | np.ndarray): origin of the robot in the map
+        """
+
+        # Create a map of the same size as obstacles etc
+        self.allowed_map = torch.zeros(self.grid_size, device=self.map_2d_device)
+
+        # Convert origin to grid coordinates
+        origin = np.round(
+            (origin[:2] / self.grid_resolution) + self.grid_origin[:2].cpu().numpy()
+        ).astype(int)
+
+        # Create a disk around the robot
+        disk_size = int(np.ceil(radius / self.grid_resolution))
+        disk = torch.from_numpy(create_disk(disk_size, (2 * disk_size) + 1)).to(self.map_2d_device)
+        x0 = int(origin[0] - disk_size)
+        x1 = int(origin[0] + disk_size + 1)
+        y0 = int(origin[1] - disk_size)
+        y1 = int(origin[1] + disk_size + 1)
+        assert x0 >= 0
+        assert y0 >= 0
+        self.allowed_map[x0:x1, y0:y1] += disk
+
+        if len(self.observations) > 0:
+            # Force a map update
+            self.get_2d_map(force_update=True)
+
     def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-        """Get 2d map with explored area and frontiers."""
+        """Get 2d map with explored area and frontiers.
+
+        Args:
+            force_update(bool): whether to force an update of the map
+            debug(bool): whether to show debug plots
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: 2d map with obstacles and explored area
+        """
 
         # Is this already cached? If so we don't need to go to all this work
         if (
@@ -848,6 +957,19 @@ class SparseVoxelMap(object):
         # Convert metric measurements to discrete
         # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
         xyz, _, counts, _ = self.voxel_pcd.get_pointcloud()
+
+        # If we have no points, just return zeros
+        if xyz is None or xyz.nelement() == 0:
+            if xyz is None:
+                logger.warning("No point cloud, returning empty map")
+            else:
+                logger.warning("nelement of xyz is 0, returning empty map")
+
+            logger.warning("No points in point cloud, returning empty map")
+            return (
+                torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
+                torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
+            )
 
         device = xyz.device
         xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
@@ -910,6 +1032,10 @@ class SparseVoxelMap(object):
                 binary_erosion(obstacles.float().unsqueeze(0).unsqueeze(0), self.smooth_kernel),
                 self.smooth_kernel,
             )[0, 0].bool()
+
+        # If self.allowed_map is not none, add its inverse to obstacles
+        if self.allowed_map is not None:
+            obstacles = obstacles | ~self.allowed_map.bool()
 
         if debug:
             import matplotlib.pyplot as plt
@@ -1296,3 +1422,21 @@ class SparseVoxelMap(object):
             },
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
+
+
+class SparseVoxelMapProxy(object):
+    def __init__(self, voxel_map: SparseVoxelMap, lock: Lock):
+        self._voxel_map = voxel_map
+        self._lock = lock
+
+    def __getattr__(self, name):
+        def locked_method(*args, **kwargs):
+            with self._lock:  # Acquire read lock for external access
+                method = getattr(self._voxel_map, name)
+                return method(*args, **kwargs)
+
+        if callable(getattr(self._voxel_map, name)):
+            return locked_method
+        else:
+            with self._lock:
+                return getattr(self._voxel_map, name)
