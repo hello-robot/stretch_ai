@@ -699,6 +699,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if verbose:
                 print("Goal pose in global coordinates", _xyt)
 
+        if blocking and not reliable:
+            logger.warning("Sending blocking commands without reliable is not recommended")
+
         # We never send a relative motion over wireless - this is because we can run into timing issues.
         # Instead, we always send the absolute position and let the robot handle the motions itself.
         next_action = {"xyt": _xyt, "nav_relative": False, "nav_blocking": blocking}
