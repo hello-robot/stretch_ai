@@ -23,6 +23,7 @@ from uuid import uuid4
 import cv2
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 import torch
 import zmq
 
@@ -100,6 +101,7 @@ class RobotAgent(RobotAgentBase):
         self.current_state = "WAITING"
 
         self.rerun_visualizer = self.robot._rerun
+        self.setup_custom_blueprint()
 
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
@@ -231,6 +233,25 @@ class RobotAgent(RobotAgentBase):
             dilate_obstacle_size=parameters["dilate_obstacle_size"],
         )
         self.planner = AStar(self.space)
+
+    def setup_custom_blueprint(self):
+        main = rrb.Horizontal(
+            rrb.Spatial3DView(name="3D View", origin="world"),
+            rrb.Vertical(
+                rrb.TextDocumentView(name="text", origin="robot_monologue"),
+                rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+            ),
+            rrb.Vertical(
+                rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+                rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+            ),
+            column_shares=[2, 1, 1],
+        )
+        my_blueprint = rrb.Blueprint(
+            rrb.Vertical(main, rrb.TimePanel(state=True)),
+            collapse_panels=True,
+        )
+        rr.send_blueprint(my_blueprint)
 
     def compute_blur_metric(self, image):
         """
