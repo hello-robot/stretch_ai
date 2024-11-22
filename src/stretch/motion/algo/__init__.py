@@ -9,13 +9,13 @@
 
 from typing import Callable
 
+from stretch.motion.base import ConfigurationSpace, Planner
+
+from .a_star import AStar
 from .rrt import RRT
 from .rrt_connect import RRTConnect
 from .shortcut import Shortcut
 from .simplify import SimplifyXYT
-from .a_star import AStar
-
-from stretch.motion.base import ConfigurationSpace, Planner
 
 
 def get_planner(algo: str, space: ConfigurationSpace, validate_fn: Callable, **kwargs) -> Planner:
@@ -28,4 +28,3 @@ def get_planner(algo: str, space: ConfigurationSpace, validate_fn: Callable, **k
         return AStar(space, **kwargs)
     else:
         raise ValueError(f"Planner {algo} not supported. Choose from rrt, rrt_connect, a_star")
-
