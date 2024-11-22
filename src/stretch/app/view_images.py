@@ -44,6 +44,7 @@ from stretch.utils.image import adjust_gamma
     help="Run semantic segmentation on EE rgb images",
 )
 @click.option("--segment_ee", is_flag=True, help="Run semantic segmentation on EE rgb images")
+@click.option("--start-rerun", "--start_rerun", is_flag=True, help="Start the rerun server")
 @click.option("--aruco", is_flag=True, help="Run aruco detection on EE rgb images")
 def main(
     robot_ip: str = "192.168.1.15",
@@ -58,6 +59,7 @@ def main(
     gamma: float = 1.0,
     segment_ee: bool = False,
     aruco: bool = False,
+    start_rerun: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -65,7 +67,7 @@ def main(
         robot_ip=robot_ip,
         use_remote_computer=(not local),
         parameters=parameters,
-        enable_rerun_server=False,
+        enable_rerun_server=start_rerun,
     )
     if segment_ee:
         run_semantic_segmentation = True
