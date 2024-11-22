@@ -200,6 +200,18 @@ python -m stretch.app.mapping
 
 This will start the robot in a mapping mode, where it will explore the environment and build a map of the room. You should be able to see this map in Rerun.
 
+You can run this command with the `--explore-iter` flag to set the number of iterations the robot should explore for:
+
+```bash
+python -m stretch.app.mapping --explore-iter 10
+```
+
+And if you do not like the robot spending time talking to you, run it with the silent flag:
+
+```bash
+python -m stretch.app.mapping --silent
+```
+
 #### Grasping
 
 The AI demo operates on detected images of objects, like these:
