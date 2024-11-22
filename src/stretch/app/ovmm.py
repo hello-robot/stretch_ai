@@ -34,7 +34,12 @@ from stretch.perception import create_semantic_sensor
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--task", default="", help="Default task to perform")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
-@click.option("--disable_realtime_updates", "--disable-realtime-updates", is_flag=True, help="Disable real-time updates")
+@click.option(
+    "--disable_realtime_updates",
+    "--disable-realtime-updates",
+    is_flag=True,
+    help="Disable real-time updates",
+)
 def main(
     local: bool = True,
     robot_ip: str = "",
