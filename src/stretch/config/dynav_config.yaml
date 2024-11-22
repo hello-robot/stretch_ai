@@ -129,17 +129,6 @@ agent:
   in_place_rotation_steps: 4
   sweep_head_on_update: True
 
-# User interface
-# Choose one of: (object_to_find, location_to_place), command, or chat
-# Don't use all of them!
-# High level stuff: commands to execute 
-command: "pick up a bottle and put it on the chair"
-name: "stretch"
-exploration_steps: 10
-object_to_find: "bottle"
-location_to_place: "chair"
-
-
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
 instance_memory:
   min_instance_thickness: 0.01

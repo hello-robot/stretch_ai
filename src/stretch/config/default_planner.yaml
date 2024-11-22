@@ -32,7 +32,7 @@ pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacle
 min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
-add_local_every_step: False
+add_local_every_step: False  # Add a local radius around the robot every step
 remove_visited_from_obstacles: False
 min_depth: 0.5
 max_depth: 2.0
@@ -178,8 +178,3 @@ trajectory_per_step_timeout: 3.0
 # High level stuff: commands to execute 
 exploration_steps: 50
 name: "stretch"
-task:
-  command: "pick up a bottle and put it on the chair"
-  # object_to_find: "bottle"
-  # object_to_find: "toy_vehicle"
-  # location_to_place: "chair"
