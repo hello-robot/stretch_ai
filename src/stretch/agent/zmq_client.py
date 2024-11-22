@@ -1321,7 +1321,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self,
         trajectory: List[np.ndarray],
         pos_err_threshold: float = 0.2,
-        rot_err_threshold: float = 0.75,
+        rot_err_threshold: float = 0.1,
         spin_rate: int = 10,
         verbose: bool = False,
         per_waypoint_timeout: float = 10.0,
