@@ -21,9 +21,8 @@ from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 
-from stretch.motion.base import ConfigurationSpace, Node, Planner, PlanResult
-
 from stretch.motion.algo.node import TreeNode
+from stretch.motion.base import ConfigurationSpace, Planner, PlanResult
 
 
 class RRT(Planner):

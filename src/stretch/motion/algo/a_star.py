@@ -19,7 +19,8 @@ from typing import Callable, List, Set, Tuple
 
 import numpy as np
 
-from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
+from stretch.motion import ConfigurationSpace
+from stretch.motion import Node as BaseNode
 from stretch.motion import Planner, PlanResult
 from stretch.motion.algo.node import TreeNode as Node
 
@@ -35,7 +36,7 @@ class AStar(Planner):
 
     def __init__(
         self,
-        space: SparseVoxelMapNavigationSpace,
+        space: ConfigurationSpace,
         validate_fn: Callable = None,
     ):
         """Create A* planner with configuration"""
@@ -364,7 +365,7 @@ class AStar(Planner):
             if verbose:
                 print("A* fails, check obstacle map")
             return PlanResult(False, reason="A* fails, check obstacle map")
-        trajectory = []
+        trajectory: List[BaseNode] = []
         for i in range(len(waypoints) - 1):
             theta = self.compute_theta(
                 waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1]
@@ -373,8 +374,12 @@ class AStar(Planner):
                 parent = trajectory[-1]
             else:
                 parent = None
-            trajectory.append(Node(np.array([waypoints[i][0], waypoints[i][1], float(theta)]), parent=parent))
-        trajectory.append(Node(np.array([waypoints[-1][0], waypoints[-1][1], goal[-1]]), parent=trajectory[-1]))
+            trajectory.append(
+                Node(np.array([waypoints[i][0], waypoints[i][1], float(theta)]), parent=parent)
+            )
+        trajectory.append(
+            Node(np.array([waypoints[-1][0], waypoints[-1][1], goal[-1]]), parent=trajectory[-1])
+        )
 
         # Save the nodes for this planner
         self.nodes = trajectory

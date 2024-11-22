@@ -13,11 +13,12 @@
 # LICENSE file in the root directory of this source tree.
 
 
-
-import numpy as np
 from typing import List
 
+import numpy as np
+
 from stretch.motion.base import Node
+
 
 class TreeNode(Node):
     """Stores an individual spot in the tree"""
@@ -37,5 +38,3 @@ class TreeNode(Node):
             sequence.append(node)
             node = node.parent
         return sequence[::-1]
-
-
