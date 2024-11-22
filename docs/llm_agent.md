@@ -363,6 +363,8 @@ An alternate [configuration file for A star](../src/stretch/config/a_star_planne
 python -m stretch.app.mapping --explore-iter 15 --parameter-file a_star_planner.yaml
 ```
 
+#### Too Many Obstacles in 3D Map
+
 [![Rerun visualization of partly-mapped home with spurious obstacles](images/rerun_map_bad.png)](images/rerun_map_bad.png)
 
 Sometimes, the head camera is not well aligned, or is poorly calibrated. This can cause issues with the robot's ability to navigate, and results in large swathes of the robot's map appearing as red obstacles. You can see an example of this in the image above.
