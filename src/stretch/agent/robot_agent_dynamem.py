@@ -99,6 +99,8 @@ class RobotAgent(RobotAgentBase):
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
 
+        self.rerun_visualizer = self.robot._rerun
+
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
         #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
@@ -396,6 +398,15 @@ class RobotAgent(RobotAgentBase):
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
+        if self.voxel_map.voxel_pcd._points is not None:
+            self.rerun_visualizer.update_voxel_map(space=self.space)
+        if self.voxel_map.semantic_memory._points is not None:
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/semantic_memory/pointcloud",
+                self.voxel_map.semantic_memory._points.detach().cpu(),
+                self.voxel_map.semantic_memory._rgb.detach().cpu() / 255.0,
+                0.03,
+            )
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
@@ -477,6 +488,12 @@ class RobotAgent(RobotAgentBase):
 
         print("Processing", text, "starts")
 
+        self.rerun_visualizer.clear_identity("world/object")
+        self.rerun_visualizer.clear_identity("world/robot_start_pose")
+        self.rerun_visualizer.clear_identity("world/direction")
+        self.rerun_visualizer.clear_identity("robot_monologue")
+        self.rerun_visualizer.clear_identity("/observation_similar_to_text")
+
         debug_text = ""
         mode = "navigation"
         obs = None
@@ -507,9 +524,15 @@ class RobotAgent(RobotAgentBase):
             localized_point = self.space.sample_frontier(self.planner, start_pose, text)
             mode = "exploration"
 
+        if obs is not None and mode == "navigation":
+            obs = self.voxel_map.find_obs_id_for_A(text)
+            rgb = self.voxel_map.observations[obs - 1].rgb
+            self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
+
         if localized_point is None:
             return []
 
+        # TODO: Do we really need this line?
         if len(localized_point) == 2:
             localized_point = np.array([localized_point[0], localized_point[1], 0])
 
@@ -534,6 +557,14 @@ class RobotAgent(RobotAgentBase):
         # the object so that we can make sure the robot looks at the object after navigation
         traj = []
         if waypoints is not None:
+
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/object",
+                [localized_point[0], localized_point[1], 1.5],
+                torch.Tensor([1, 0, 0]),
+                0.1,
+            )
+
             finished = len(waypoints) <= 8 and mode == "navigation"
             if finished:
                 self.space.traj = None
@@ -555,6 +586,32 @@ class RobotAgent(RobotAgentBase):
                 self.robot.say("I am looking for a " + text + ".")
             else:
                 self.robot.say("I am exploring the environment.")
+
+        if text is not None and text != "":
+            debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text
+        else:
+            debug_text = "### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n"
+        debug_text = "# Robot's monologue: \n" + debug_text
+        self.rerun_visualizer.log_text("robot_monologue", debug_text)
+
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            self.rerun_visualizer.log_arrow3D(
+                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+            )
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/robot_start_pose",
+                [start_pose[0], start_pose[1], 1.5],
+                torch.Tensor([0, 0, 1]),
+                0.1,
+            )
 
         return traj
 

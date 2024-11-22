@@ -71,7 +71,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         use_negative_obstacles: bool = False,
         point_update_threshold: float = 0.9,
         detection=None,
-        image_shape=(480, 360),
+        image_shape=(360, 270),
         log="test",
     ):
         super().__init__(
