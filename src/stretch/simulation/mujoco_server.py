@@ -508,7 +508,8 @@ class MujocoZmqServer(BaseZmqServer):
         elif "load_map" in action:
             logger.warning("Loading map not supported in Mujoco simulation")
         elif "say" in action:
-            self.text_to_speech.say_async(action["say"])
+            # self.text_to_speech.say_async(action["say"])
+            do_nothing = True
         if "joint" in action:
             # Move the robot to the given joint configuration
             # Only send the manipulator joints, not gripper or head
@@ -569,6 +570,8 @@ class MujocoZmqServer(BaseZmqServer):
             "step": self._last_step,
             "at_goal": self.base_controller_at_goal(),
             "is_simulation": True,
+            "lidar_points": None,
+            "lidar_timestamp": None,
         }
         return message
 

@@ -79,7 +79,13 @@ class UpdateOperation(ManagedOperation):
             self.warn("Robot is not in manipulation mode. Moving to manip posture.")
             self.robot.move_to_manip_posture()
             time.sleep(2.0)
-        self.robot.arm_to([0.0, self.arm_height, 0.05, 0, -np.pi / 4, 0], blocking=True)
+
+        # self.robot.arm_to([0.0, self.arm_height, 0.05, 0, -np.pi / 4, 0], blocking=True)
+        self.robot.arm_to([0.0, self.arm_height, 0.05, 0, 0.5, 0], blocking=True)
+
+        # rotating base to fix base rotation bug
+        self.robot.move_base_to([0.0, 0.0, 0.0])
+
         xyt = self.robot.get_base_pose()
 
         # Now update the world

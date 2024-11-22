@@ -18,7 +18,7 @@ import numpy as np
 import zmq
 
 import stretch.utils.logger as logger
-from stretch.audio.text_to_speech import get_text_to_speech
+# from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
 
 
@@ -66,7 +66,7 @@ class BaseZmqServer(CommsNode, ABC):
 
         # Extensions to the ROS server
         # Text to speech engine - let's let the robot talk
-        self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+        # self.text_to_speech = get_text_to_speech(text_to_speech_engine)
 
         print("Done setting up connections! Server ready to start.")
 

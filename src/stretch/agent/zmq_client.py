@@ -746,7 +746,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self, blocking: bool = True, timeout: float = 10.0, verbose: bool = False
     ) -> bool:
         """Open the gripper based on hard-coded presets."""
-        gripper_target = self._robot_model.GRIPPER_OPEN
+        gripper_target = 1.0 # self._robot_model.GRIPPER_OPEN
         print("[ZMQ CLIENT] Opening gripper to", gripper_target)
         self.gripper_to(gripper_target, blocking=False)
         if blocking:
