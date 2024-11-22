@@ -31,7 +31,7 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
-from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
+from stretch.motion.algo import Shortcut, SimplifyXYT, get_planner
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
@@ -116,14 +116,13 @@ class RobotAgent:
         self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = enable_realtime_updates and self.parameters.get(
+        self._realtime_updates = enable_realtime_updates or self.parameters.get(
             "agent/use_realtime_updates", False
         )
-        if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
-            logger.warning(
-                "Real-time updates are not enabled but the agent is configured to use them."
-            )
-            logger.warning("We will not be able to update the map in real-time.")
+        if not enable_realtime_updates and self._realtime_updates:
+            logger.warn("Real-time updates are enabled via command line.")
+        if self._realtime_updates:
+            logger.alert("Real-time updates are enabled!")
 
         # ==============================================
         # Update configuration
@@ -194,7 +193,11 @@ class RobotAgent:
         self._previous_goal = None
 
         # Create a simple motion planner
-        self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
+        self.planner: Planner = get_planner(
+            self.parameters.get("motion_planner/algorithm", "rrt_connect"),
+            self.space,
+            self.space.is_valid,
+        )
         # Add shotcutting to the planner
         if self.parameters.get("motion_planner/shortcut_plans", False):
             self.planner = Shortcut(
@@ -1753,7 +1756,7 @@ class RobotAgent:
         for i in range(explore_iter):
             if audio_feedback:
                 self.robot.say_sync(f"Step {i + 1} of {explore_iter}")
-                time.sleep(4.0)
+                time.sleep(2.0)
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1764,7 +1767,7 @@ class RobotAgent:
                 print("Start not valid. back up a bit.")
                 if audio_feedback:
                     self.robot.say_sync("Start not valid. Backing up a bit.")
-                    time.sleep(4.0)
+                    time.sleep(2.0)
 
                 ok = self.recover_from_invalid_start()
                 if ok:
@@ -1775,7 +1778,7 @@ class RobotAgent:
 
                     if audio_feedback:
                         self.robot.say_sync("Failed to recover from invalid start state!")
-                        time.sleep(4.0)
+                        time.sleep(2.0)
                     break
 
             # Now actually plan to the frontier

@@ -19,6 +19,7 @@ tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.04 # Size of a voxel in meters
+# voxel_size: 0.1 # Size of a voxel in meters - better performance with A* planner
 obs_min_height: 0.10  # Ignore things less than this high when planning motions
 obs_max_height: 1.8  # Ignore things over this height (eg ceilings)
 neg_obs_height: -0.05  # Things less than this height ARE obstacles
@@ -31,41 +32,47 @@ pad_obstacles: 3  # Add this many units (voxel_size) to the area around obstacle
 min_pad_obstacles: 1  # Do not pad LESS than this amount, for safety.
 
 local_radius: 0.8  # Area around the robot to mark as explored (kind of a hack)
-add_local_every_step: False
+add_local_every_step: False  # Add a local radius around the robot every step
 remove_visited_from_obstacles: False
 min_depth: 0.5
 max_depth: 2.0
 
 # Object detection parameters
 # Recommendations for this part: 
-# For yolo world, threshold should be 0.05 - 0.2, for Detic, threshold should be ~0.5
+# For yolo world, threshold should be 0.05 - 0.2, for Detic, threshold should be < 0.5
 # If you want to detect as many objects in the environment, threshold should be low
 # If you want to determine whether one object exists, 
 # you'd better refer to the official documentation for the best threshold hyperparemeters
 detection:
+  module: "detic"  # Best performing method for our system
   # module: "mobile_sam"
-  module: "detic"
   # module: "yolo"
   # module: "yolo_world"
-  yolo_world_model_size: "l" 
+  yolo_world_model_size: "l"   # Choose from ["s", "m", "l", "x"]
   yolo_confidence_threshold: 0.1
   confidence_threshold: 0.2
   category_map_file: example_cat_map.json  # This is used for Detic
   use_detic_viz: False
 
 # Point cloud cleanup
+# These parameters are used to clean up the point clouds going into the map we use for reasoning
+# The idea is to remove noise and make the map more reliable. You can experiment with these values
+# to see what works best for your environment.
 filters:
   # Use a simple convolutional filter
   smooth_kernel_size: 3
   # smooth_kernel_size: 4
   # smooth_kernel_size: 0
+  # Applies a median filter to the point cloud. Also drops outliers that are too far from the
+  # median, to remove noise and streaking artifacts.
   use_median_filter: True
   median_filter_size: 4
   # median_filter_size: 2
   median_filter_max_error: 0.01
+  # The derivative filter is supposed to drop points where the change in the point cloud is really
+  # high to remove streaking artifacts. It is not currently used.
   use_derivative_filter: False
   derivative_filter_threshold: 0.1
-  # use_voxel_filter: True
 
 # Motion convergence parameters
 # These are to make sure the robot is not doing anything weird
@@ -98,8 +105,12 @@ agent:
     maximum_matched_observations: 25
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
     camera_pose_match_threshold: 0.05
-  use_realtime_updates: True
+  
+  # Configuration of the realtime updates
+  use_realtime_updates: False
   realtime_rotation_steps: 4
+
+  # Configuration of the in-place rotation
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   sweep_head_on_update: False
   # in_place_rotation_steps: 4
@@ -132,6 +143,7 @@ scene_graph:
 motion_planner:
   step_size: 0.05
   rotation_step_size: 0.1
+  algorithm: "rrt_connect"  # ["rrt", "rrt_connect", "a_star"]
   simplify_plans: True
   shortcut_plans: True
   simplify:
@@ -166,8 +178,3 @@ trajectory_per_step_timeout: 3.0
 # High level stuff: commands to execute 
 exploration_steps: 50
 name: "stretch"
-task:
-  command: "pick up a bottle and put it on the chair"
-  # object_to_find: "bottle"
-  # object_to_find: "toy_vehicle"
-  # location_to_place: "chair"

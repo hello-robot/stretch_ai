@@ -15,19 +15,14 @@
 import heapq
 import math
 import time
-from typing import List, Set, Tuple
+from typing import Callable, List, Set, Tuple
 
 import numpy as np
 
-from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
-from stretch.motion import PlanResult
-
-
-class Node:
-    """Stores an individual spot in the tree"""
-
-    def __init__(self, state):
-        self.state = state
+from stretch.motion import ConfigurationSpace
+from stretch.motion import Node as BaseNode
+from stretch.motion import Planner, PlanResult
+from stretch.motion.algo.node import TreeNode as Node
 
 
 def neighbors(pt: Tuple[int, int]) -> List[Tuple[int, int]]:
@@ -36,15 +31,18 @@ def neighbors(pt: Tuple[int, int]) -> List[Tuple[int, int]]:
     ]
 
 
-class AStar:
-    """Define RRT planning problem and parameters"""
+class AStar(Planner):
+    """Define A* motion planning problem and parameters"""
 
     def __init__(
         self,
-        space: SparseVoxelMapNavigationSpace,
+        space: ConfigurationSpace,
+        validate_fn: Callable = None,
     ):
-        """Create RRT planner with configuration"""
-        self.space = space
+        """Create A* planner with configuration"""
+        if validate_fn is None:
+            validate_fn = space.is_valid
+        super(AStar, self).__init__(space, validate_fn)
         self.reset()
 
     def compute_theta(self, cur_x, cur_y, end_x, end_y):
@@ -114,7 +112,16 @@ class AStar:
         xy = self.space.voxel_map.grid_coords_to_xy(pt)  # type: ignore
         return float(xy[0]), float(xy[1])
 
-    def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]):
+    def compute_dis(self, a: Tuple[int, int], b: Tuple[int, int]) -> float:
+        """Compute distance between two points a and b.
+
+        Args:
+            a: The first point.
+            b: The second point.
+
+        Returns:
+            The distance between the two points.
+        """
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
 
     def compute_obstacle_punishment(self, a: Tuple[int, int], weight: int, avoid: int) -> float:
@@ -358,12 +365,24 @@ class AStar:
             if verbose:
                 print("A* fails, check obstacle map")
             return PlanResult(False, reason="A* fails, check obstacle map")
-        trajectory = []
+        trajectory: List[BaseNode] = []
         for i in range(len(waypoints) - 1):
             theta = self.compute_theta(
                 waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1]
             )
-            trajectory.append(Node([waypoints[i][0], waypoints[i][1], float(theta)]))
-        trajectory.append(Node([waypoints[-1][0], waypoints[-1][1], goal[-1]]))
+            if i > 0:
+                parent = trajectory[-1]
+            else:
+                parent = None
+            trajectory.append(
+                Node(np.array([waypoints[i][0], waypoints[i][1], float(theta)]), parent=parent)
+            )
+        trajectory.append(
+            Node(np.array([waypoints[-1][0], waypoints[-1][1], goal[-1]]), parent=trajectory[-1])
+        )
+
+        # Save the nodes for this planner
+        self.nodes = trajectory
+
         # print('Finish computing theta ', time.time() - self.start_time, ' seconds after path planning starts')
         return PlanResult(True, trajectory=trajectory)
