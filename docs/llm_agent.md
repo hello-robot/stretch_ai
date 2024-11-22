@@ -343,7 +343,13 @@ What these do:
 
 If you want to try `a_star`, you can set `algorithm` to `a_star`. This is a simpler algorithm that may work better in some cases. You may want to disable `simplify_plans` and `shortcut_plans` if you are using `a_star`.
 
-##### Too Many Obstacles in 3D Map
+##### Try Mapping with A Star Planner
+
+An alternate [configuration file for A star](../src/stretch/config/a_star_planner.yaml) is available. You can use this by running the following command:
+
+```bash
+python -m stretch.app.mapping --explore-iter 15 --parameter-file a_star_planner.yaml
+```
 
 [![Rerun visualization of partly-mapped home with spurious obstacles](images/rerun_map_bad.png)](images/rerun_map_bad.png)
 
