@@ -121,7 +121,7 @@ class RobotAgent:
         )
         if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
             logger.warning(
-                "Real-time updates are not enabled but the agent is configured to use them."
+                "Real-time updates are not enabled but the agent is configured to use them in the config file."
             )
             logger.warning("We will not be able to update the map in real-time.")
 
