@@ -732,7 +732,7 @@ class RobotAgent:
             self._obs_history_lock.release()
             time.sleep(1.0)
 
-    def match_pose_graph_loop(self, verbose: bool = False):
+    def match_pose_graph_loop(self, verbose: bool = True):
         while True:
             t0 = timeit.default_timer()
             self.pose_graph = self.robot.get_pose_graph()
@@ -837,14 +837,14 @@ class RobotAgent:
                 print(f"Done updating past observations. Time: {t2- t1}")
 
             self._obs_history_lock.release()
-            time.sleep(0.15)
+            time.sleep(0.05)
 
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time."""
         while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
-            time.sleep(0.5)
+            time.sleep(1.5)
 
     def update(
         self,
