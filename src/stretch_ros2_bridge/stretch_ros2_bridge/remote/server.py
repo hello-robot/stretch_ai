@@ -88,6 +88,7 @@ class ZmqServer(BaseZmqServer):
             "camera_pose": obs.camera_pose,
             "ee_pose": self.client.ee_pose,
             "joint": obs.joint,
+            "joint_velocities": obs.joint_velocities,
             "gps": obs.gps,
             "compass": obs.compass,
             "rgb_width": width,

@@ -1277,6 +1277,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 lidar_timestamp=self._obs["lidar_timestamp"],
             )
             observation.joint = self._obs.get("joint", None)
+            observation.joint_velocities = self._obs.get("joint_velocities", None)
             observation.ee_pose = self._obs.get("ee_pose", None)
             observation.camera_K = self._obs.get("camera_K", None)
             observation.camera_pose = self._obs.get("camera_pose", None)

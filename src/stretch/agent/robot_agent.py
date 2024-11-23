@@ -32,6 +32,7 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
 from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
@@ -106,10 +107,13 @@ class RobotAgent:
         self._matched_vertices_obs_count: Dict[float, int] = dict()
         self._matched_observations_poses: List[np.ndarray] = []
         self._maximum_matched_observations = self.parameters.get(
-            "agent/realtime/maximum_matched_observations", 10
+            "agent/realtime/maximum_matched_observations", 50
         )
         self._camera_pose_match_threshold = self.parameters.get(
             "agent/realtime/camera_pose_match_threshold", 0.05
+        )
+        self._head_not_moving_tolerance = float(
+            self.parameters.get("motion/joint_thresholds/head_not_moving_tolerance", 1.0e-4)
         )
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
@@ -624,6 +628,13 @@ class RobotAgent:
             for pose in self._matched_observations_poses:
                 if np.linalg.norm(pose - obs.camera_pose) < self._camera_pose_match_threshold:
                     return True
+
+        head_speed = np.linalg.norm(
+            obs.joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+        )
+
+        if head_speed > self._head_not_moving_tolerance:
+            return True
 
         return False
 
