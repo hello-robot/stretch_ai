@@ -617,7 +617,6 @@ class RobotAgent:
                 self._matched_vertices_obs_count[pose_graph_timestamp]
                 > self._maximum_matched_observations
             ):
-                print(f"Matched {self._maximum_matched_observations} observations for {pose_graph_timestamp}. Dropping.")
                 return True
 
         # Check if there are any observations with camera poses that are too close
@@ -676,16 +675,16 @@ class RobotAgent:
                 del_idx = 0
                 while (
                     del_count < 50 and len(self.obs_history) > 0 and del_idx < len(self.obs_history)
-                ):                    
+                ):
                     # If obs is too recent, skip it
                     if self.obs_history[del_idx].lidar_timestamp - time.time() < 10:
                         del_idx += 1
-                        
+
                         if del_idx >= len(self.obs_history):
                             break
 
                         continue
-                    
+
                     if not self.obs_history[del_idx].is_pose_graph_node:
                         # Remove corresponding matched observation
                         if (
