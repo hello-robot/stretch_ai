@@ -1201,20 +1201,17 @@ class RobotAgent:
                 return True
         return False
 
-    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
-        """Try to recover from an invalid start state.
-
-        Returns:
-            bool: whether the robot recovered from the invalid start state
-        """
-
-        print("Recovering from invalid start state...")
-
+    def recover(self):
         # Get current invalid pose
-        start = self.robot.get_base_pose()
 
         for step_i in range(5, 100, 5):
             step = step_i / 100.0
+
+            start = self.robot.get_base_pose()
+
+            if self.space.is_valid(start, verbose=True):
+                logger.warning("Start state is valid!")
+                break
 
             # Apply relative transformation to XYT
             forward = np.array([-1 * step, 0, 0])
@@ -1228,23 +1225,38 @@ class RobotAgent:
             if self.space.is_valid(xyt_goal_backward, verbose=True):
                 logger.warning("Trying to move backwards...")
                 # Compute the position forward or backward from the robot
-                self.robot.move_base_to(xyt_goal_backward, relative=False)
-                break
+                self.robot.move_base_to(xyt_goal_backward, relative=False, blocking=True)
             elif self.space.is_valid(xyt_goal_forward, verbose=True):
                 logger.warning("Trying to move forward...")
                 # Compute the position forward or backward from the robot
-                self.robot.move_base_to(xyt_goal_forward, relative=False)
-                break
+                self.robot.move_base_to(xyt_goal_forward, relative=False, blocking=True)
             else:
                 logger.warning(f"Could not recover from invalid start state with step of {step}!")
 
-        # Get the current position in case we are still invalid
-        start = self.robot.get_base_pose()
-        start_is_valid = self.space.is_valid(start, verbose=True)
+    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
+        """Try to recover from an invalid start state.
+
+        Returns:
+            bool: whether the robot recovered from the invalid start state
+        """
+
+        print("Recovering from invalid start state...")
+
+        max_tries = 10
+
+        while max_tries > 0:
+            self.recover()
+
+            # Get the current position in case we are still invalid
+            start = self.robot.get_base_pose()
+            start_is_valid = self.space.is_valid(start, verbose=True)
+
+            if start_is_valid:
+                return True
 
         if not start_is_valid:
             logger.warning("Tried and failed to recover from invalid start state!")
-            return False
+
         return start_is_valid
 
     def move_to_any_instance(
