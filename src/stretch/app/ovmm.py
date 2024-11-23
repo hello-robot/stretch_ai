@@ -49,6 +49,7 @@ def main(
     parameter_file: str = "config/default_planner.yaml",
     task: str = "",
     yes: bool = False,
+    disable_realtime_updates: bool = False,
 ):
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -61,7 +62,9 @@ def main(
         device_id=device_id,
         verbose=verbose,
     )
-    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
+    agent = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
+    )
     agent.start()
 
     prompt = ObjectManipNavPromptBuilder()
