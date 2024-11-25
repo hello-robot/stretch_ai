@@ -632,12 +632,13 @@ class RobotAgent:
                 if np.linalg.norm(pose - obs.camera_pose) < self._camera_pose_match_threshold:
                     return True
 
-        head_speed = np.linalg.norm(
-            obs.joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
-        )
+        if obs.joint_velocities is not None:
+            head_speed = np.linalg.norm(
+                obs.joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+            )
 
-        if head_speed > self._head_not_moving_tolerance:
-            return True
+            if head_speed > self._head_not_moving_tolerance:
+                return True
 
         return False
 

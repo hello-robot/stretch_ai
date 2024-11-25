@@ -118,7 +118,6 @@ logger = Logger(__name__)
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
-)
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
