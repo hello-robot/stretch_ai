@@ -15,6 +15,9 @@ from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
+# Mapping and perception
+from stretch.core.parameters import get_parameters
+
 # Dynamem stuff
 from stretch.dynav.utils import compute_tilt, get_mode
 from stretch.perception import create_semantic_sensor
@@ -81,9 +84,30 @@ def main(
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
     robot = HomeRobotZmqClient(robot_ip=robot_ip)
 
+    print("- Load parameters")
+    parameters = get_parameters("dynav_config.yaml")
+    # print(parameters)
+    # if explore_iter >= 0:
+    #     parameters["exploration_steps"] = explore_iter
     object_to_find, location_to_place = None, None
     robot.move_to_nav_posture()
     robot.set_velocity(v=30.0, w=15.0)
+
+    # Create semantic sensor if visual servoing is enabled
+    print("- Create semantic sensor if visual servoing is enabled")
+    if visual_servo:
+        semantic_sensor = create_semantic_sensor(
+            parameters=parameters,
+            device_id=device_id,
+            verbose=False,
+        )
+    else:
+        parameters["encoder"] = None
+        semantic_sensor = None
+
+    print("- Start robot agent with data collection")
+    agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent.start()
 
     if visual_servo:
         grasp_object = GraspObjectOperation(

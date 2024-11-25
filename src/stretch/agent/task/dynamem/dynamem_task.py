@@ -9,10 +9,13 @@
 
 from typing import List, Tuple
 
-from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.core import AbstractRobotClient
+from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.utils.logger import Logger
+
+# Mapping and perception
+from stretch.core.parameters import get_parameters
 
 logger = Logger(__name__)
 
@@ -21,10 +24,7 @@ class DynamemTaskExecutor:
     def __init__(
         self,
         robot: AbstractRobotClient,
-        agent: RobotAgent,
         match_method: str = "feature",
-        open_loop: bool = False,
-        dry_run: bool = False,
     ) -> None:
         """Initialize the executor.
 
@@ -34,20 +34,37 @@ class DynamemTaskExecutor:
             dry_run: If true, don't actually execute the commands.
         """
         self.robot = robot
-        self.agent = agent
+
+        print("- Load parameters")
+        parameters = get_parameters("dynav_config.yaml")
+        self.parameters = parameters
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
             raise TypeError(f"Expected AbstractRobotClient, got {type(self.robot)}")
-        if not isinstance(self.agent, RobotAgent):
-            raise TypeError(f"Expected RobotAgent, got {type(self.agent)}")
-
-        self.dry_run = dry_run
-        self.emote_task = EmoteTask(self.agent)
 
         # Configuration
         self._match_method = match_method
-        self._open_loop = open_loop
+
+        # Create semantic sensor if visual servoing is enabled
+        print("- Create semantic sensor if visual servoing is enabled")
+        if visual_servo:
+            semantic_sensor = create_semantic_sensor(
+                parameters=parameters,
+                device_id=device_id,
+                verbose=False,
+            )
+        else:
+            parameters["encoder"] = None
+            semantic_sensor = None
+
+        print("- Start robot agent with data collection")
+        self.agent = RobotAgent(robot, parameters, semantic_sensor)
+        self.agent.start()
+
+        # Task stuff
+        self.emote_task = EmoteTask(self.agent)
+
 
     def _pickup(self, target_object: str) -> None:
         """Pick up an object.
