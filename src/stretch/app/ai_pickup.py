@@ -51,7 +51,7 @@ logger = Logger(__name__)
     "--realtime",
     "--real-time",
     is_flag=True,
-    help="Set to enable real-time updates",
+    help="Enable real-time updates so that the robot will dynamically update its map",
 )
 @click.option(
     "--device_id",
@@ -116,11 +116,6 @@ logger = Logger(__name__)
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
-@click.option(
-    "--enable-realtime-updates",
-    "--enable_realtime_updates",
-    is_flag=True,
-    help="Enable real-time updates so that the robot will dynamically update its map",
 )
 def main(
     robot_ip: str = "192.168.1.15",
@@ -141,7 +136,6 @@ def main(
     realtime: bool = False,
     radius: float = 3.0,
     input_path: str = "",
-    enable_realtime_updates: bool = False,
 ):
     """Set up the robot, create a task plan, and execute it."""
     # Create robot
@@ -166,7 +160,7 @@ def main(
 
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+        robot, parameters, semantic_sensor, enable_realtime_updates=realtime
     )
     print("Starting robot agent: initializing...")
     agent.start(visualize_map_at_start=show_intermediate_maps)
