@@ -15,12 +15,23 @@ from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
+# Dynamem stuff
+from stretch.dynav.utils import compute_tilt
+
 # Mapping and perception
 from stretch.core.parameters import get_parameters
 from stretch.perception import create_semantic_sensor
 
 
 def get_mode(mode: str) -> str:
+    """Helper function to get the mode from the user input. Mode can be navigation, exploration, manipulation, or save.
+
+    Args:
+        mode (str): mode to select
+
+    Returns:
+        str: mode
+    """
 
     if mode == "navigation":
         return "N"
