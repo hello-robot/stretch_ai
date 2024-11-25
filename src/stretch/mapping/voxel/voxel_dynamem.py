@@ -9,6 +9,8 @@
 
 import logging
 import os
+import pickle
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import cv2
@@ -48,8 +50,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         add_local_radius_points: bool = True,
         remove_visited_from_obstacles: bool = False,
         local_radius: float = 0.8,
-        min_depth: float = 0.1,
-        max_depth: float = 4.0,
+        min_depth: float = 0.25,
+        max_depth: float = 2.5,
         pad_obstacles: int = 0,
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
@@ -277,12 +279,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
         else:
             return obstacles, explored, history_soft
 
-    def get_2d_alignment_heuristics(self, voxel_map_localizer, text, debug: bool = False):
-        if voxel_map_localizer.voxel_pcd._points is None:
+    def get_2d_alignment_heuristics(self, text, debug: bool = False):
+        if self.semantic_memory._points is None:
             return None
         # Convert metric measurements to discrete
         # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
-        xyz, _, _, _ = voxel_map_localizer.voxel_pcd.get_pointcloud()
+        xyz, _, _, _ = self.semantic_memory.get_pointcloud()
         xyz = xyz.detach().cpu()
         if xyz is None:
             xyz = torch.zeros((0, 3))
@@ -299,7 +301,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         # Mask out obstacles only above a certain height
         obs_mask = xyz[:, -1] < max_height
         xyz = xyz[obs_mask, :]
-        alignments = voxel_map_localizer.find_alignment_over_model(text)[0].detach().cpu()
+        alignments = self.find_alignment_over_model(text)[0].detach().cpu()
         alignments = alignments[obs_mask][:, None]
 
         alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
@@ -616,3 +618,94 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if not isinstance(grid_coords, np.ndarray):
             grid_coords = np.array(grid_coords)
         return self.grid.grid_coords_to_xyt(torch.Tensor(grid_coords))
+
+    def read_from_pickle(self, pickle_file_name, num_frames: int = -1):
+        print("Reading from ", pickle_file_name)
+        if isinstance(pickle_file_name, str):
+            pickle_file_name = Path(pickle_file_name)
+        assert pickle_file_name.exists(), f"No file found at {pickle_file_name}"
+        with pickle_file_name.open("rb") as f:
+            data = pickle.load(f)
+        for i, (camera_pose, xyz, rgb, feats, depth, base_pose, K, world_xyz,) in enumerate(
+            zip(
+                data["camera_poses"],
+                data["xyz"],
+                data["rgb"],
+                data["feats"],
+                data["depth"],
+                data["base_poses"],
+                data["camera_K"],
+                data["world_xyz"],
+            )
+        ):
+            # Handle the case where we dont actually want to load everything
+            if num_frames > 0 and i >= num_frames:
+                break
+
+            camera_pose = self.fix_data_type(camera_pose)
+            xyz = self.fix_data_type(xyz)
+            rgb = self.fix_data_type(rgb)
+            depth = self.fix_data_type(depth)
+            intrinsics = self.fix_data_type(K)
+            if feats is not None:
+                feats = self.fix_data_type(feats)
+            base_pose = self.fix_data_type(base_pose)
+            self.voxel_pcd.clear_points(depth, intrinsics, camera_pose)
+            self.add(
+                camera_pose=camera_pose,
+                xyz=xyz,
+                rgb=rgb,
+                feats=feats,
+                depth=depth,
+                base_pose=base_pose,
+                camera_K=K,
+            )
+
+            self.obs_count += 1
+        self.semantic_memory._points = data["combined_xyz"]
+        self.semantic_memory._features = data["combined_feats"]
+        self.semantic_memory._weights = data["combined_weights"]
+        self.semantic_memory._rgb = data["combined_rgb"]
+        self.semantic_memory._obs_counts = data["obs_id"]
+        self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
+        self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
+
+    def write_to_pickle(self):
+        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
+        if not os.path.exists("debug"):
+            os.mkdir("debug")
+        filename = self.log + ".pkl"
+        data = {}
+        data["camera_poses"] = []
+        data["camera_K"] = []
+        data["base_poses"] = []
+        data["xyz"] = []
+        data["world_xyz"] = []
+        data["rgb"] = []
+        data["depth"] = []
+        data["feats"] = []
+        for frame in self.observations:
+            # add it to pickle
+            # TODO: switch to using just Obs struct?
+            data["camera_poses"].append(frame.camera_pose)
+            data["base_poses"].append(frame.base_pose)
+            data["camera_K"].append(frame.camera_K)
+            data["xyz"].append(frame.xyz)
+            data["world_xyz"].append(frame.full_world_xyz)
+            data["rgb"].append(frame.rgb)
+            data["depth"].append(frame.depth)
+            data["feats"].append(frame.feats)
+            for k, v in frame.info.items():
+                if k not in data:
+                    data[k] = []
+                data[k].append(v)
+        (
+            data["combined_xyz"],
+            data["combined_feats"],
+            data["combined_weights"],
+            data["combined_rgb"],
+        ) = self.semantic_memory.get_pointcloud()
+        data["obs_id"] = self.semantic_memory._obs_counts
+        with open(filename, "wb") as f:
+            pickle.dump(data, f)
+        print("write all data to", filename)

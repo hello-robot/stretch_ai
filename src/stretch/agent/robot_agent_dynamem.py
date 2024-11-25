@@ -23,6 +23,7 @@ from uuid import uuid4
 import cv2
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 import torch
 import zmq
 
@@ -80,6 +81,7 @@ class RobotAgent(RobotAgentBase):
         obs_sub_port: int = 4450,
         re: int = 3,
         manip_port: int = 5557,
+        log: Optional[str] = None,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -98,6 +100,9 @@ class RobotAgent(RobotAgentBase):
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
         self.current_state = "WAITING"
 
+        self.rerun_visualizer = self.robot._rerun
+        self.setup_custom_blueprint()
+
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
         #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
@@ -105,6 +110,16 @@ class RobotAgent(RobotAgentBase):
         # else:
         #     self.encoder: BaseImageTextEncoder = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        if not os.path.exists("dynamem_log"):
+            os.makedirs("dynamem_log")
+
+        if log is None:
+            current_datetime = datetime.now()
+            self.log = "dynamem_log/debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        else:
+            self.log = "dynamem_log/" + log
+
         self.create_obstacle_map(parameters)
 
         # ==============================================
@@ -145,9 +160,6 @@ class RobotAgent(RobotAgentBase):
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
 
-        if not os.path.exists("dynamem_log"):
-            os.makedirs("dynamem_log")
-
         # self.image_processor = VoxelMapImageProcessor(
         #     rerun=True,
         #     rerun_visualizer=self.robot._rerun,
@@ -178,9 +190,6 @@ class RobotAgent(RobotAgentBase):
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
-        # Placeholder for the robot navigation space (not used)
-        self.space = None
-
         # Previously sampled goal during exploration
         self._previous_goal = None
 
@@ -191,8 +200,6 @@ class RobotAgent(RobotAgentBase):
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
         self.detection_model = OwlPerception(device=self.device)
-        current_datetime = datetime.datetime.now()
-        self.log = "debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             local_radius=parameters["local_radius"],
@@ -200,8 +207,8 @@ class RobotAgent(RobotAgentBase):
             obs_max_height=parameters["obs_max_height"],
             obs_min_density=parameters["obs_min_density"],
             grid_resolution=0.1,
-            min_depth=self.min_depth,
-            max_depth=self.max_depth,
+            min_depth=parameters["min_depth"],
+            max_depth=parameters["max_depth"],
             pad_obstacles=parameters["pad_obstacles"],
             add_local_radius_points=parameters.get("add_local_radius_points", default=True),
             remove_visited_from_obstacles=parameters.get(
@@ -214,6 +221,7 @@ class RobotAgent(RobotAgentBase):
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             detection=self.detection_model,
+            encoder=self.encoder,
             log=self.log,
         )
         self.space = SparseVoxelMapNavigationSpace(
@@ -225,6 +233,25 @@ class RobotAgent(RobotAgentBase):
             dilate_obstacle_size=parameters["dilate_obstacle_size"],
         )
         self.planner = AStar(self.space)
+
+    def setup_custom_blueprint(self):
+        main = rrb.Horizontal(
+            rrb.Spatial3DView(name="3D View", origin="world"),
+            rrb.Vertical(
+                rrb.TextDocumentView(name="text", origin="robot_monologue"),
+                rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+            ),
+            rrb.Vertical(
+                rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
+                rrb.Spatial2DView(name="ee_rgb", origin="/world/ee_camera"),
+            ),
+            column_shares=[2, 1, 1],
+        )
+        my_blueprint = rrb.Blueprint(
+            rrb.Vertical(main, rrb.TimePanel(state=True)),
+            collapse_panels=True,
+        )
+        rr.send_blueprint(my_blueprint)
 
     def compute_blur_metric(self, image):
         """
@@ -391,9 +418,16 @@ class RobotAgent(RobotAgentBase):
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        start_time = time.time()
         self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
-        end_time = time.time()
+        if self.voxel_map.voxel_pcd._points is not None:
+            self.rerun_visualizer.update_voxel_map(space=self.space)
+        if self.voxel_map.semantic_memory._points is not None:
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/semantic_memory/pointcloud",
+                self.voxel_map.semantic_memory._points.detach().cpu(),
+                self.voxel_map.semantic_memory._rgb.detach().cpu() / 255.0,
+                0.03,
+            )
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
@@ -418,8 +452,6 @@ class RobotAgent(RobotAgentBase):
         self,
         text: str,
     ):
-        start_time = time.time()
-
         if not self._realtime_updates:
             self.robot.look_front()
             self.look_around()
@@ -429,9 +461,9 @@ class RobotAgent(RobotAgentBase):
         self.robot.switch_to_navigation_mode()
 
         start = self.robot.get_base_pose()
-        res = self.voxel_map.process_text(text, start)
+        res = self.process_text(text, start)
         if len(res) == 0 and text != "" and text is not None:
-            res = self.space.process_text("", start)
+            res = self.process_text("", start)
 
         if len(res) > 0:
             print("Plan successful!")
@@ -469,6 +501,140 @@ class RobotAgent(RobotAgentBase):
             print("Exploration failed! Perhaps nowhere to explore!")
             return False
         return True
+
+    def process_text(self, text, start_pose):
+        """
+        Process the text query and return the trajectory for the robot to follow.
+        """
+
+        print("Processing", text, "starts")
+
+        self.rerun_visualizer.clear_identity("world/object")
+        self.rerun_visualizer.clear_identity("world/robot_start_pose")
+        self.rerun_visualizer.clear_identity("world/direction")
+        self.rerun_visualizer.clear_identity("robot_monologue")
+        self.rerun_visualizer.clear_identity("/observation_similar_to_text")
+
+        debug_text = ""
+        mode = "navigation"
+        obs = None
+        localized_point = None
+        waypoints = None
+
+        if text is not None and text != "" and self.space.traj is not None:
+            print("saved traj", self.space.traj)
+            traj_target_point = self.space.traj[-1]
+            if self.voxel_map.verify_point(text, traj_target_point):
+                localized_point = traj_target_point
+                debug_text += "## Last visual grounding results looks fine so directly use it.\n"
+
+        print("Target verification finished")
+
+        if text is not None and text != "" and localized_point is None:
+            (
+                localized_point,
+                debug_text,
+                obs,
+                pointcloud,
+            ) = self.voxel_map.localize_A(text, debug=True, return_debug=True)
+            print("Target point selected!")
+
+        # Do Frontier based exploration
+        if text is None or text == "" or localized_point is None:
+            debug_text += "## Navigation fails, so robot starts exploring environments.\n"
+            localized_point = self.space.sample_frontier(self.planner, start_pose, text)
+            mode = "exploration"
+
+        if obs is not None and mode == "navigation":
+            obs = self.voxel_map.find_obs_id_for_A(text)
+            rgb = self.voxel_map.observations[obs - 1].rgb
+            self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
+
+        if localized_point is None:
+            return []
+
+        # TODO: Do we really need this line?
+        if len(localized_point) == 2:
+            localized_point = np.array([localized_point[0], localized_point[1], 0])
+
+        point = self.space.sample_navigation(start_pose, self.planner, localized_point)
+
+        print("Navigation endpoint selected")
+
+        waypoints = None
+
+        if point is None:
+            res = None
+            print("Unable to find any target point, some exception might happen")
+        else:
+            res = self.planner.plan(start_pose, point)
+
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
+        # If we are navigating to some object of interest, send (x, y, z) of
+        # the object so that we can make sure the robot looks at the object after navigation
+        traj = []
+        if waypoints is not None:
+
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/object",
+                [localized_point[0], localized_point[1], 1.5],
+                torch.Tensor([1, 0, 0]),
+                0.1,
+            )
+
+            finished = len(waypoints) <= 8 and mode == "navigation"
+            if finished:
+                self.space.traj = None
+            else:
+                self.space.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
+            if not finished:
+                waypoints = waypoints[:8]
+            traj = self.planner.clean_path_for_xy(waypoints)
+            if finished:
+                traj.append([np.nan, np.nan, np.nan])
+                if isinstance(localized_point, torch.Tensor):
+                    localized_point = localized_point.tolist()
+                traj.append(localized_point)
+            print("Planned trajectory:", traj)
+
+        # Talk about what you are doing, as the robot.
+        if self.robot is not None:
+            if text is not None and text != "":
+                self.robot.say("I am looking for a " + text + ".")
+            else:
+                self.robot.say("I am exploring the environment.")
+
+        if text is not None and text != "":
+            debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text
+        else:
+            debug_text = "### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n"
+        debug_text = "# Robot's monologue: \n" + debug_text
+        self.rerun_visualizer.log_text("robot_monologue", debug_text)
+
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            self.rerun_visualizer.log_arrow3D(
+                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+            )
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/robot_start_pose",
+                [start_pose[0], start_pose[1], 1.5],
+                torch.Tensor([0, 0, 1]),
+                0.1,
+            )
+
+        return traj
 
     def navigate(self, text, max_step=10):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
@@ -610,6 +776,3 @@ class RobotAgent(RobotAgentBase):
         )
 
         return True
-
-    def save(self):
-        pass
