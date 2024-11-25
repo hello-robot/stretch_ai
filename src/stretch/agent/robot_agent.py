@@ -31,8 +31,8 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
-from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.algo import Shortcut, SimplifyXYT, get_planner
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global

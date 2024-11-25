@@ -160,9 +160,7 @@ def main(
         use_voice = False
 
     # Agents wrap the robot high level planning interface for now
-    agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=realtime
-    )
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=realtime)
     print("Starting robot agent: initializing...")
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
