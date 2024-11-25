@@ -52,10 +52,10 @@ from stretch.perception import create_semantic_sensor
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
-    "--disable-realtime-updates",
-    "--disable_realtime_updates",
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
     is_flag=True,
-    help="Disable real-time updates so the robot will stop and sequentially scan its environment",
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
 def main(
     rate,
@@ -77,7 +77,7 @@ def main(
     local: bool = True,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
-    disable_realtime_updates: bool = False,
+    enable_realtime_updates: bool = False,
     **kwargs,
 ):
 
@@ -112,7 +112,7 @@ def main(
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
         reset=reset,
-        disable_realtime_updates=disable_realtime_updates,
+        enable_realtime_updates=enable_realtime_updates,
         **kwargs,
     )
 
@@ -137,7 +137,7 @@ def demo_main(
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
-    disable_realtime_updates: bool = False,
+    enable_realtime_updates: bool = False,
     **kwargs,
 ):
     """
@@ -228,7 +228,7 @@ def demo_main(
         parameters,
         semantic_sensor,
         voxel_map=None,
-        enable_realtime_updates=not disable_realtime_updates,
+        enable_realtime_updates=enable_realtime_updates,
     )
     voxel_map = demo.voxel_map
     print("Reading from pkl file of raw observations...")

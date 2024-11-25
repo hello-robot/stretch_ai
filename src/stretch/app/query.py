@@ -63,10 +63,10 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 @click.option("--show-svm", is_flag=True, help="Show the SVM output")
 @click.option("-o", "--offline", is_flag=True, help="Run code offline on stored data.")
 @click.option(
-    "--disable-realtime-updates",
-    "--disable_realtime_updates",
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
     is_flag=True,
-    help="Disable real-time updates so the robot will stop and sequentially scan its environment",
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
 def main(
     device_id: int = 0,
@@ -90,7 +90,7 @@ def main(
     threshold: float = 0.5,
     offline: bool = False,
     show_svm: bool = False,
-    disable_realtime_updates: bool = False,
+    enable_realtime_updates: bool = False,
 ):
 
     print("- Load parameters")
@@ -116,7 +116,7 @@ def main(
         )
         robot.move_to_nav_posture()
         agent = RobotAgent(
-            robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
+            robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
         )
 
         if reset:

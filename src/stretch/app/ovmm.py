@@ -35,10 +35,10 @@ from stretch.perception import create_semantic_sensor
 @click.option("--task", default="", help="Default task to perform")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation")
 @click.option(
-    "--disable_realtime_updates",
-    "--disable-realtime-updates",
+    "--enable_realtime_updates",
+    "--enable-realtime-updates",
     is_flag=True,
-    help="Disable real-time updates",
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
 def main(
     local: bool = True,
@@ -49,7 +49,7 @@ def main(
     parameter_file: str = "config/default_planner.yaml",
     task: str = "",
     yes: bool = False,
-    disable_realtime_updates: bool = False,
+    enable_realtime_updates: bool = False,
 ):
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -63,7 +63,7 @@ def main(
         verbose=verbose,
     )
     agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
+        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
     )
     agent.start()
 

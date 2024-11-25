@@ -58,10 +58,10 @@ from stretch.perception import create_semantic_sensor
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
-    "--disable-realtime-updates",
-    "--disable_realtime_updates",
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
     is_flag=True,
-    help="Disable real-time updates so the robot will stop and sequentially scan its environment",
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
 @click.option("--silent", is_flag=True, help="Disable audio feedback")
 @click.option("--save", is_flag=True, help="Save the map to memory")
@@ -84,7 +84,7 @@ def main(
     local: bool = True,
     robot_ip: str = "192.168.1.15",
     reset: bool = False,
-    disable_realtime_updates: bool = False,
+    enable_realtime_updates: bool = False,
     silent: bool = False,
     save: bool = True,
     radius: float = -1.0,
@@ -101,7 +101,7 @@ def main(
         use_remote_computer=(not local),
         parameters=parameters,
         enable_rerun_server=True,
-        publish_observations=not disable_realtime_updates,
+        publish_observations=enable_realtime_updates,
     )
     # Call demo_main with all the arguments
     demo_main(
@@ -122,7 +122,7 @@ def main(
         explore_iter=explore_iter,
         write_instance_images=write_instance_images,
         parameter_file=parameter_file,
-        disable_realtime_updates=disable_realtime_updates,
+        enable_realtime_updates=enable_realtime_updates,
         reset=reset,
         radius=radius,
         audio_feedback=audio_feedback,
@@ -151,7 +151,7 @@ def demo_main(
     parameters: Optional[Parameters] = None,
     parameter_file: str = "config/default.yaml",
     reset: bool = False,
-    disable_realtime_updates: bool = False,
+    enable_realtime_updates: bool = False,
     audio_feedback: bool = False,
     save: bool = True,
     **kwargs,
@@ -194,7 +194,7 @@ def demo_main(
 
     print("- Start robot agent with data collection")
     agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=not disable_realtime_updates
+        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
     )
     if radius is not None and radius > 0:
         agent.set_allowed_radius(radius)
