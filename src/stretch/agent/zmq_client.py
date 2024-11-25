@@ -334,6 +334,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         if self.update_base_pose_from_full_obs:
             with self._obs_lock:
+                print("[Getting base pose from full obs]")
                 while self._obs is None:
                     time.sleep(0.01)
                     if timeit.default_timer() - t0 > timeout:
@@ -1177,15 +1178,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
 
-    def is_up_to_date(self):
+    def is_up_to_date(self, no_action=False):
         """Check if the robot is up to date with the latest observation"""
         with self._obs_lock:
-            # print("obs", self._obs["step"], self._last_step, self._iter)
-            obs_ok = (
-                self._obs is not None
-                and self._obs["step"] >= self._last_step
-                and self._obs["step"] >= self._iter - 1
-            )
+            if no_action:
+                obs_ok = self._obs is not None and self._obs["step"] >= self._last_step
+            else:
+                obs_ok = (
+                    self._obs is not None
+                    and self._obs["step"] >= self._last_step
+                    and self._obs["step"] >= self._iter - 1
+                )
         return obs_ok
 
     def send_message(self, message: dict):
@@ -1258,11 +1261,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
     def get_observation(self, max_iter: int = 5):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
         iteration = 0
-        while not self.is_up_to_date() and iteration < max_iter:
-            if self.is_up_to_date():
+        while not self.is_up_to_date(no_action=True) and iteration < max_iter:
+            if self.is_up_to_date(no_action=True):
                 iteration += 1
             time.sleep(0.1)
         time.sleep(0.1)
+
         with self._obs_lock:
             if self._obs is None:
                 return None
@@ -1276,10 +1280,12 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 lidar_timestamp=self._obs["lidar_timestamp"],
             )
             observation.joint = self._obs.get("joint", None)
+            observation.joint_velocities = self._obs.get("joint_velocities", None)
             observation.ee_pose = self._obs.get("ee_pose", None)
             observation.camera_K = self._obs.get("camera_K", None)
             observation.camera_pose = self._obs.get("camera_pose", None)
             observation.seq_id = self._seq_id
+
             return observation
 
     def get_images(self, compute_xyz=False):

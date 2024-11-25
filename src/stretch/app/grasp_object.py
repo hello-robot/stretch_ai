@@ -72,6 +72,12 @@ def get_task(robot, demo, target_object):
 @click.option(
     "--repeat_count", type=int, default=1, help="Number of times to repeat the grasp - for testing"
 )
+@click.option(
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
+    is_flag=True,
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
+)
 def main(
     robot_ip: str = "",
     local: bool = False,
@@ -82,6 +88,7 @@ def main(
     reset: bool = False,
     target_object: str = "toy",
     repeat_count: int = 1,
+    enable_realtime_updates: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -98,8 +105,10 @@ def main(
     )
 
     # Agents wrap the robot high level planning interface for now
-    demo = RobotAgent(robot, parameters, semantic_sensor)
-    demo.start(visualize_map_at_start=show_intermediate_maps, verbose=True)
+    demo = RobotAgent(
+        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+    )
+    demo.start(visualize_map_at_start=show_intermediate_maps)
 
     task = get_task(robot, demo, target_object)
     task.run()
