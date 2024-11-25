@@ -50,6 +50,8 @@ logger = Logger(__name__)
 @click.option(
     "--realtime",
     "--real-time",
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
     is_flag=True,
     help="Enable real-time updates so that the robot will dynamically update its map",
 )
