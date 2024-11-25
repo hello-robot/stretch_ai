@@ -1989,7 +1989,7 @@ class RobotAgent:
         if self._realtime_updates:
             # Clear the observations
             with self._obs_history_lock:
-                self._obs_history.clear()
+                self.obs_history.clear()
                 self.obs_count = 0
                 self._matched_observations_poses.clear()
                 self._matched_vertices_obs_count.clear()
