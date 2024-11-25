@@ -9,13 +9,12 @@
 
 from typing import List, Tuple
 
+from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.core import AbstractRobotClient
-from stretch.agent.robot_agent_dynamem import RobotAgent
-from stretch.utils.logger import Logger
 
 # Mapping and perception
-from stretch.core.parameters import get_parameters
+from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
 
@@ -24,6 +23,7 @@ class DynamemTaskExecutor:
     def __init__(
         self,
         robot: AbstractRobotClient,
+        parameters: Parameters,
         match_method: str = "feature",
     ) -> None:
         """Initialize the executor.
@@ -34,9 +34,6 @@ class DynamemTaskExecutor:
             dry_run: If true, don't actually execute the commands.
         """
         self.robot = robot
-
-        print("- Load parameters")
-        parameters = get_parameters("dynav_config.yaml")
         self.parameters = parameters
 
         # Do type checks
@@ -64,7 +61,6 @@ class DynamemTaskExecutor:
 
         # Task stuff
         self.emote_task = EmoteTask(self.agent)
-
 
     def _pickup(self, target_object: str) -> None:
         """Pick up an object.
@@ -154,3 +150,149 @@ class DynamemTaskExecutor:
             i += 1
         # If we did not explicitly receive a quit command, we are not yet done.
         return True
+
+def main():
+
+    object_to_find, location_to_place = None, None
+    robot.move_to_nav_posture()
+    robot.set_velocity(v=30.0, w=15.0)
+
+    if visual_servo:
+        grasp_object = GraspObjectOperation(
+            "grasp_the_object",
+            agent,
+        )
+    else:
+        grasp_object = None
+
+    if input_path is None:
+        agent.rotate_in_place()
+    else:
+        agent.voxel_map.read_from_pickle(input_path)
+
+    agent.voxel_map.write_to_pickle()
+
+    while agent.is_running():
+
+        # If target object and receptacle are provided, set mode to manipulation
+        if target_object is not None and target_receptacle is not None:
+            mode = "M"
+        else:
+            # Get mode from user input
+            mode = get_mode(mode)
+
+        if mode == "S":
+            robot.say("Saving data. Goodbye!")
+            agent.voxel_map.write_to_pickle()
+            break
+
+        if mode == "E":
+            robot.switch_to_navigation_mode()
+            robot.say("Exploring.")
+            for epoch in range(explore_iter):
+                print("\n", "Exploration epoch ", epoch, "\n")
+                if not agent.run_exploration():
+                    print("Exploration failed! Quitting!")
+                    continue
+        else:
+            # Add some audio to make it easier to tell what's going on.
+            robot.say("Running manipulation.")
+
+            text = None
+            point = None
+
+            if skip_confirmations or input("Do you want to look for an object? (y/n): ") != "n":
+                robot.move_to_nav_posture()
+                robot.switch_to_navigation_mode()
+                if target_object is not None:
+                    text = target_object
+                else:
+                    text = input("Enter object name: ")
+                point = agent.navigate(text)
+                if point is None:
+                    print("Navigation Failure!")
+                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
+                robot.switch_to_navigation_mode()
+                xyt = robot.get_base_pose()
+                xyt[2] = xyt[2] + np.pi / 2
+                robot.move_base_to(xyt, blocking=True)
+
+            # If the object is found, grasp it
+            if skip_confirmations or input("Do you want to pick up an object? (y/n): ") != "n":
+                robot.switch_to_manipulation_mode()
+                if text is None:
+                    text = input("Enter object name: ")
+                camera_xyz = robot.get_head_pose()[:3, 3]
+                if point is not None:
+                    theta = compute_tilt(camera_xyz, point)
+                else:
+                    theta = -0.6
+
+                # Grasp the object using operation if it's available
+                if grasp_object is not None:
+                    robot.say("Grasping the " + str(text) + ".")
+                    print("Using operation to grasp object:", text)
+                    print(" - Point:", point)
+                    print(" - Theta:", theta)
+                    grasp_object(
+                        target_object=text,
+                        object_xyz=point,
+                        match_method="feature",
+                        show_object_to_grasp=False,
+                        show_servo_gui=True,
+                        delete_object_after_grasp=False,
+                    )
+                    # This retracts the arm
+                    robot.move_to_nav_posture()
+                else:
+                    # Otherwise, use the agent's manipulation method
+                    # This is from OK Robot
+                    print("Using agent to grasp object:", text)
+                    agent.manipulate(text, theta, skip_confirmation=skip_confirmations)
+                robot.look_front()
+
+            # Reset text and point for placement
+            text = None
+            point = None
+            if skip_confirmations or input("You want to find a receptacle? (y/n): ") != "n":
+                robot.switch_to_navigation_mode()
+                if target_receptacle is not None:
+                    text = target_receptacle
+                else:
+                    text = input("Enter receptacle name: ")
+
+                print("Going to the " + str(text) + ".")
+                point = agent.navigate(text)
+
+                if point is None:
+                    print("Navigation Failure")
+                    robot.say("I could not find the " + str(text) + ".")
+
+                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
+                robot.switch_to_navigation_mode()
+                xyt = robot.get_base_pose()
+                xyt[2] = xyt[2] + np.pi / 2
+                robot.move_base_to(xyt, blocking=True)
+
+            # Execute placement if the object is found
+            if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
+                robot.switch_to_manipulation_mode()
+
+                if text is None:
+                    text = input("Enter receptacle name: ")
+
+                camera_xyz = robot.get_head_pose()[:3, 3]
+                if point is not None:
+                    theta = compute_tilt(camera_xyz, point)
+                else:
+                    theta = -0.6
+
+                robot.say("Placing object on the " + str(text) + ".")
+                agent.place(text, theta)
+                robot.move_to_nav_posture()
+
+            agent.voxel_map.write_to_pickle()
+
+        # Clear mode after the first trial - otherwise it will go on forever
+        mode = None
+
