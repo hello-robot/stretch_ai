@@ -15,11 +15,11 @@ from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
-# Dynamem stuff
-from stretch.dynav.utils import compute_tilt
-
 # Mapping and perception
 from stretch.core.parameters import get_parameters
+
+# Dynamem stuff
+from stretch.dynav.utils import compute_tilt, get_mode
 from stretch.perception import create_semantic_sensor
 
 

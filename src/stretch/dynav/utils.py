@@ -9,6 +9,7 @@
 
 import numpy as np
 
+
 def compute_tilt(camera_xyz, target_xyz):
     """
     a util function for computing robot head tilts so the robot can look at the target object after navigation
@@ -51,5 +52,3 @@ def get_mode(mode: str) -> str:
             else:
                 print("Invalid mode. Please select again.")
         return mode.upper()
-
-

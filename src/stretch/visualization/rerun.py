@@ -601,7 +601,7 @@ class RerunVisualizer:
                     name = semantic_sensor.get_class_name_for_id(instance.category_id)
                 else:
                     name = None
-                
+
                 # Replace spaces with underscores
                 name = name.replace(" ", "_") if name is not None else None
 
