@@ -23,36 +23,6 @@ from stretch.core.parameters import get_parameters
 from stretch.perception import create_semantic_sensor
 
 
-def get_mode(mode: str) -> str:
-    """Helper function to get the mode from the user input. Mode can be navigation, exploration, manipulation, or save.
-
-    Args:
-        mode (str): mode to select
-
-    Returns:
-        str: mode
-    """
-
-    if mode == "navigation":
-        return "N"
-    elif mode == "explore":
-        return "E"
-    elif mode == "manipulation":
-        return "manipulation"
-    elif mode == "save":
-        return "S"
-    else:
-        mode = None
-        print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
-        while mode is None:
-            mode = input("select mode? E/N/S: ")
-            if mode == "E" or mode == "N" or mode == "S":
-                break
-            else:
-                print("Invalid mode. Please select again.")
-        return mode.upper()
-
-
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
 @click.option("--server_ip", "--server-ip", default="127.0.0.1", type=str)

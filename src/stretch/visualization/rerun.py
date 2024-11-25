@@ -237,7 +237,7 @@ class RerunVisualizer:
             static=True,
         )
         # World Origin
-        log_to_rerun(
+        rr.log(
             "world/xyz",
             rr.Arrows3D(
                 vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
