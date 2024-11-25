@@ -102,13 +102,13 @@ agent:
     # It is how close lidar spins have to be to be considered the same
     temporal_threshold: 0.1
     # Maximum number of observations to match with a pose graph node
-    maximum_matched_observations: 25
+    maximum_matched_observations: 50
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
-    camera_pose_match_threshold: 0.05
+    camera_pose_match_threshold: 0.5
   
   # Configuration of the realtime updates
   use_realtime_updates: False
-  realtime_rotation_steps: 4
+  realtime_rotation_steps: 2
 
   # Configuration of the in-place rotation
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often

@@ -51,7 +51,7 @@ def main(
         )
     else:
         semantic_sensor = None
-    agent = RobotAgent(robot, robot.parameters, semantic_sensor)
+    agent = RobotAgent(robot, robot.parameters, semantic_sensor, enable_realtime_updates=False)
 
     observation = robot.get_observation()
     robot.move_to_nav_posture()

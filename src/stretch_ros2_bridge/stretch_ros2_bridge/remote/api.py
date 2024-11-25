@@ -333,7 +333,7 @@ class StretchClient(AbstractRobotClient):
         gps = relative_pose.translation()[:2]
 
         # Get joint state information
-        joint_positions, _, _ = self.get_joint_state()
+        joint_positions, joint_velocities, _ = self.get_joint_state()
 
         # Get lidar points and timestamp
         lidar_points = self.lidar.get()
@@ -348,6 +348,7 @@ class StretchClient(AbstractRobotClient):
             compass=np.array([theta]),
             camera_pose=self.head_camera_pose,
             joint=joint_positions,
+            joint_velocities=joint_velocities,
             camera_K=self.get_camera_intrinsics(),
             lidar_points=lidar_points,
             lidar_timestamp=lidar_timestamp,
