@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -59,7 +59,7 @@ class DynamemTaskExecutor:
             )
             self.grasp_object = GraspObjectOperation(
                 "grasp_the_object",
-                agent,
+                self.agent,
             )
         else:
             self.parameters["encoder"] = None
@@ -73,15 +73,48 @@ class DynamemTaskExecutor:
         # Task stuff
         self.emote_task = EmoteTask(self.agent)
 
-    def _pickup(self, target_object: str) -> None:
+    def _pickup(
+        self,
+        target_object: str,
+        point: Optional[np.ndarray] = None,
+        skip_confirmations: bool = False,
+    ) -> None:
         """Pick up an object.
 
         Args:
             target_object: The object to pick up.
         """
-        raise NotImplementedError
+        self.robot.switch_to_manipulation_mode()
+        camera_xyz = self.robot.get_head_pose()[:3, 3]
+        if point is not None:
+            theta = compute_tilt(camera_xyz, point)
+        else:
+            theta = -0.6
 
-    def _place(self, target_receptacle: str) -> None:
+        # Grasp the object using operation if it's available
+        if self.grasp_object is not None:
+            self.robot.say("Grasping the " + str(target_object) + ".")
+            print("Using operation to grasp object:", target_object)
+            print(" - Point:", point)
+            print(" - Theta:", theta)
+            self.grasp_object(
+                target_object=target_object,
+                object_xyz=point,
+                match_method="feature",
+                show_object_to_grasp=False,
+                show_servo_gui=True,
+                delete_object_after_grasp=False,
+            )
+            # This retracts the arm
+            self.robot.move_to_nav_posture()
+        else:
+            # Otherwise, use the self.agent's manipulation method
+            # This is from OK Robot
+            print("Using self.agent to grasp object:", target_object)
+            self.agent.manipulate(target_object, theta, skip_confirmation=skip_confirmations)
+        self.robot.look_front()
+
+    def _place(self, target_receptacle: str, point: Optional[np.ndarray]) -> None:
         """Place an object.
 
         Args:
@@ -94,11 +127,11 @@ class DynamemTaskExecutor:
         else:
             theta = -0.6
 
-        self.robot.say("Placing object on the " + str(text) + ".")
-        self.agent.place(text, theta)
+        self.robot.say("Placing object on the " + str(target_receptacle) + ".")
+        self.agent.place(target_receptacle, theta)
         self.robot.move_to_nav_posture()
-    
-    def _navigate_to(self, target_receptacle: str) -> None:
+
+    def _navigate_to(self, target_receptacle: str) -> np.ndarray:
         """Navigate to a receptacle.
 
         Args:
@@ -107,7 +140,7 @@ class DynamemTaskExecutor:
 
         self.robot.switch_to_navigation_mode()
         print("Going to the " + str(target_receptacle) + ".")
-        point = agent.navigate(target_receptacle)
+        point = self.agent.navigate(target_receptacle)
 
         if point is None:
             print("Navigation Failure")
@@ -119,7 +152,7 @@ class DynamemTaskExecutor:
         xyt[2] = xyt[2] + np.pi / 2
         self.robot.move_base_to(xyt, blocking=True)
 
-
+        return point
 
     def __call__(self, response: List[Tuple[str, str]]) -> bool:
         """Execute the list of commands given by the LLM bot.
@@ -273,37 +306,9 @@ class DynamemTaskExecutor:
 
                 # If the object is found, grasp it
                 if skip_confirmations or input("Do you want to pick up an object? (y/n): ") != "n":
-                    self.robot.switch_to_manipulation_mode()
                     if text is None:
                         text = input("Enter object name: ")
-                    camera_xyz = self.robot.get_head_pose()[:3, 3]
-                    if point is not None:
-                        theta = compute_tilt(camera_xyz, point)
-                    else:
-                        theta = -0.6
-
-                    # Grasp the object using operation if it's available
-                    if grasp_object is not None:
-                        self.robot.say("Grasping the " + str(text) + ".")
-                        print("Using operation to grasp object:", text)
-                        print(" - Point:", point)
-                        print(" - Theta:", theta)
-                        grasp_object(
-                            target_object=text,
-                            object_xyz=point,
-                            match_method="feature",
-                            show_object_to_grasp=False,
-                            show_servo_gui=True,
-                            delete_object_after_grasp=False,
-                        )
-                        # This retracts the arm
-                        self.robot.move_to_nav_posture()
-                    else:
-                        # Otherwise, use the self.agent's manipulation method
-                        # This is from OK Robot
-                        print("Using self.agent to grasp object:", text)
-                        self.agent.manipulate(text, theta, skip_confirmation=skip_confirmations)
-                    self.robot.look_front()
+                    self._pickup(text, point=point, skip_confirmations=skip_confirmations)
 
                 # Reset text and point for placement
                 text = None
@@ -313,13 +318,13 @@ class DynamemTaskExecutor:
                         text = target_receptacle
                     else:
                         text = input("Enter receptacle name: ")
-                    self._navigate_to(text)
+                    point = self._navigate_to(text)
 
                 # Execute placement if the object is found
                 if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
                     if text is None:
                         text = input("Enter receptacle name: ")
-                    self._place(text)
+                    self._place(text, point=point)
 
                 self.agent.voxel_map.write_to_pickle()
 
