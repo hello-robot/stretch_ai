@@ -112,6 +112,12 @@ def main(
         device_id=device_id,
     )
 
+    if input_path is None:
+        start_command = [("rotate_in_place", "")]
+    else:
+        start_command = [("read_from_pickle", input_path)]
+    ok = executor(start_command)
+
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
 

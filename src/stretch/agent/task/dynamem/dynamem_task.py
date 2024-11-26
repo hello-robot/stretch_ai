@@ -242,6 +242,12 @@ class DynamemTaskExecutor:
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
                 self.agent.move_to_manip_posture()
+            elif command == "rotate_in_place":
+                logger.info("Rotate in place to scan environments.")
+                self.agent.rotate_in_place()
+            elif command == "read_from_pickle":
+                logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
+                self.agent.read_from_pickle(args)
             elif command == "go_home":
                 logger.info("[Pickup task] Going home.")
                 if self.agent.get_voxel_map().is_empty():

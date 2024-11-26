@@ -552,6 +552,7 @@ class RobotAgent(RobotAgentBase):
             mode = "exploration"
 
         if obs is not None and mode == "navigation":
+            print(obs, len(self.voxel_map.observations))
             obs = self.voxel_map.find_obs_id_for_A(text)
             rgb = self.voxel_map.observations[obs - 1].rgb
             self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
