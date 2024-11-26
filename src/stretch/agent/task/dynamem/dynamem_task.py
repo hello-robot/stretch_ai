@@ -15,8 +15,9 @@ import numpy as np
 from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.emote import EmoteTask
+from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
-from stretch.dynav.utils import compute_tilt, get_mode
+from stretch.dynav.utils import compute_tilt
 from stretch.perception import create_semantic_sensor
 
 # Mapping and perception
@@ -156,6 +157,22 @@ class DynamemTaskExecutor:
         self.agent.place(target_receptacle, theta)
         self.robot.move_to_nav_posture()
 
+    def _hand_over(self) -> None:
+        """Create a task to find a person, navigate to them, and extend the arm toward them"""
+        logger.alert(f"[Pickup task] Hand Over")
+
+        # After the robot has started...
+        try:
+            hand_over_task = HandOverTask(self.agent)
+            task = hand_over_task.get_task()
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
     def _navigate_to(self, target_receptacle: str) -> np.ndarray:
         """Navigate to a receptacle.
 
@@ -218,6 +235,8 @@ class DynamemTaskExecutor:
                 logger.info(f"[Pickup task] Place: {args}")
                 point = self._navigate_to(args)
                 self._place(args, point=point)
+            elif command == "hand_over":
+                self._hand_over()
             elif command == "wave":
                 logger.info("[Pickup task] Waving.")
                 self.agent.move_to_manip_posture()
@@ -257,99 +276,3 @@ class DynamemTaskExecutor:
             i += 1
         # If we did not explicitly receive a quit command, we are not yet done.
         return True
-
-    def run(
-        self,
-        mode: str = None,
-        target_object: str = None,
-        target_receptacle: str = None,
-        input_path: str = None,
-        skip_confirmations: bool = False,
-        explore_iter: int = 3,
-    ) -> None:
-        """This is the core logic from the original run_dynamem.py script."""
-
-        object_to_find, location_to_place = None, None
-        self.robot.move_to_nav_posture()
-        self.robot.set_velocity(v=30.0, w=15.0)
-
-        if mode is None:
-            mode = get_mode(mode)
-
-        if self.visual_servo:
-            grasp_object = GraspObjectOperation(
-                "grasp_the_object",
-                self.agent,
-            )
-        else:
-            grasp_object = None
-
-        if input_path is None:
-            self.agent.rotate_in_place()
-        else:
-            self.agent.voxel_map.read_from_pickle(input_path)
-
-        self.agent.voxel_map.write_to_pickle()
-
-        while self.agent.is_running():
-
-            # If target object and receptacle are provided, set mode to manipulation
-            if target_object is not None and target_receptacle is not None:
-                mode = "M"
-            else:
-                # Get mode from user input
-                mode = get_mode(mode)
-
-            if mode == "S":
-                self.robot.say("Saving data. Goodbye!")
-                self.agent.voxel_map.write_to_pickle()
-                break
-
-            if mode == "E":
-                self.robot.switch_to_navigation_mode()
-                self.robot.say("Exploring.")
-                for epoch in range(explore_iter):
-                    print("\n", "Exploration epoch ", epoch, "\n")
-                    if not self.agent.run_exploration():
-                        print("Exploration failed! Quitting!")
-                        continue
-            else:
-                # Add some audio to make it easier to tell what's going on.
-                self.robot.say("Running manipulation.")
-
-                text = None
-                point = None
-
-                if skip_confirmations or input("Do you want to look for an object? (y/n): ") != "n":
-                    if target_object is not None:
-                        text = target_object
-                    else:
-                        text = input("Enter object name: ")
-                    point = self._find(text)
-
-                # If the object is found, grasp it
-                if skip_confirmations or input("Do you want to pick up an object? (y/n): ") != "n":
-                    if text is None:
-                        text = input("Enter object name: ")
-                    self._pickup(text, point=point, skip_confirmations=skip_confirmations)
-
-                # Reset text and point for placement
-                text = None
-                point = None
-                if skip_confirmations or input("You want to find a receptacle? (y/n): ") != "n":
-                    if target_receptacle is not None:
-                        text = target_receptacle
-                    else:
-                        text = input("Enter receptacle name: ")
-                    point = self._navigate_to(text)
-
-                # Execute placement if the object is found
-                if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
-                    if text is None:
-                        text = input("Enter receptacle name: ")
-                    self._place(text, point=point)
-
-                self.agent.voxel_map.write_to_pickle()
-
-            # Clear mode after the first trial - otherwise it will go on forever
-            mode = None

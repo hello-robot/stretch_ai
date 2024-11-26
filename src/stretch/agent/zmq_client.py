@@ -482,10 +482,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         reliable: bool = True,
     ):
-        """Move the head to a particular configuration."""
+        """Move the head to a particular configuration.
+
+        Args:
+            head_pan: The pan angle of the head
+            head_tilt: The tilt angle of the head
+            blocking: Whether to block until the motion is complete
+            timeout: How long to wait for the motion to complete
+            reliable: Whether to resend the action if it is not received
+        """
         if head_pan < self._head_pan_min or head_pan > self._head_pan_max:
             logger.warning(
-                "Head pan is restricted to be between {self._head_pan_min} and {self._head_pan_max} for safety: was {head_pan}"
+                f"Head pan is restricted to be between {self._head_pan_min} and {self._head_pan_max} for safety: was {head_pan}"
             )
         if head_tilt > self._head_tilt_max or head_tilt < self._head_tilt_min:
             logger.warning(
