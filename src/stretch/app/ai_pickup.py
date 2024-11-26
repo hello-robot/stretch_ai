@@ -50,8 +50,10 @@ logger = Logger(__name__)
 @click.option(
     "--realtime",
     "--real-time",
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
     is_flag=True,
-    help="Set to enable real-time updates",
+    help="Enable real-time updates so that the robot will dynamically update its map",
 )
 @click.option(
     "--device_id",
@@ -109,13 +111,13 @@ logger = Logger(__name__)
     type=float,
     help="Radius of the circle around initial position where the robot is allowed to go.",
 )
+@click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 @click.option(
     "--debug_llm",
     "--debug-llm",
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
-@click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
