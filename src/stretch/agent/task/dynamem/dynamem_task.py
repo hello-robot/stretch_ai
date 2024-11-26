@@ -151,6 +151,7 @@ class DynamemTaskExecutor:
         # If we did not explicitly receive a quit command, we are not yet done.
         return True
 
+
 def main():
 
     object_to_find, location_to_place = None, None
@@ -295,4 +296,3 @@ def main():
 
         # Clear mode after the first trial - otherwise it will go on forever
         mode = None
-

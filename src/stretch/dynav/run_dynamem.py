@@ -50,6 +50,9 @@ from stretch.perception import create_semantic_sensor
 @click.option("--target_receptacle", type=str, default=None, help="Target receptacle to place")
 @click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
+    "--output-path", "--output_path", type=click.Path(), default="output.pkl", help="Output path"
+)
+@click.option(
     "--input-path",
     type=click.Path(),
     default=None,
@@ -73,6 +76,7 @@ def main(
     device_id: int = 0,
     target_object: str = None,
     target_receptacle: str = None,
+    output_path: str = "output.pkl",
     **kwargs,
 ):
     """
@@ -122,7 +126,7 @@ def main(
     else:
         agent.voxel_map.read_from_pickle(input_path)
 
-    agent.voxel_map.write_to_pickle()
+    agent.voxel_map.write_to_pickle(output_path)
 
     while agent.is_running():
 
@@ -135,7 +139,7 @@ def main(
 
         if mode == "S":
             robot.say("Saving data. Goodbye!")
-            agent.voxel_map.write_to_pickle()
+            agent.voxel_map.write_to_pickle(output_path)
             break
 
         if mode == "E":
@@ -243,7 +247,7 @@ def main(
                 agent.place(text, theta)
                 robot.move_to_nav_posture()
 
-            agent.voxel_map.write_to_pickle()
+            agent.voxel_map.write_to_pickle(output_path)
 
         # Clear mode after the first trial - otherwise it will go on forever
         mode = None

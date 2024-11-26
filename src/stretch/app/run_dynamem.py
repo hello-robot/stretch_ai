@@ -13,14 +13,12 @@ import numpy as np
 
 from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
-from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.agent.task.dynamem import DynamemTaskExecutor
+from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.parameters import get_parameters
 
 # Dynamem stuff
 from stretch.dynav.utils import compute_tilt, get_mode
-from stretch.perception import create_semantic_sensor
-
 
 
 @click.command()
@@ -55,7 +53,9 @@ from stretch.perception import create_semantic_sensor
     default=None,
     help="Input path with default value 'output.npy'",
 )
-@click.option("--match-method", "--match_method", type=click.Choice(["class", "feature"]), default="feature")
+@click.option(
+    "--match-method", "--match_method", type=click.Choice(["class", "feature"]), default="feature"
+)
 @click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
 def main(
     server_ip,
@@ -90,7 +90,9 @@ def main(
     robot = HomeRobotZmqClient(robot_ip=robot_ip)
 
     print("- Create task executor")
-    task_executor = DynamemTaskExecutor(robot, parameters, visual_servo=visual_servo, match_method=kwargs["match_method"])
+    task_executor = DynamemTaskExecutor(
+        robot, parameters, visual_servo=visual_servo, match_method=kwargs["match_method"]
+    )
 
 
 if __name__ == "__main__":
