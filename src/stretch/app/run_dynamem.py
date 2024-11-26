@@ -8,17 +8,10 @@
 # license information maybe found below, if so.
 
 import click
-import cv2
-import numpy as np
 
-from stretch.agent.operations import GraspObjectOperation
-from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.dynamem import DynamemTaskExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.parameters import get_parameters
-
-# Dynamem stuff
-from stretch.dynav.utils import compute_tilt, get_mode
 
 
 @click.command()
