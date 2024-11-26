@@ -78,6 +78,29 @@ class DynamemTaskExecutor:
         """
 
         raise NotImplementedError
+    
+    def _navigate_to(self, target_receptacle: str) -> None:
+        """Navigate to a receptacle.
+
+        Args:
+            target_receptacle: The receptacle to navigate to.
+        """
+
+        self.robot.switch_to_navigation_mode()
+        print("Going to the " + str(target_receptacle) + ".")
+        point = agent.navigate(target_receptacle)
+
+        if point is None:
+            print("Navigation Failure")
+            self.robot.say("I could not find the " + str(target_receptacle) + ".")
+
+        cv2.imwrite(target_receptacle + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
+        self.robot.switch_to_navigation_mode()
+        xyt = self.robot.get_base_pose()
+        xyt[2] = xyt[2] + np.pi / 2
+        self.robot.move_base_to(xyt, blocking=True)
+
+
 
     def __call__(self, response: List[Tuple[str, str]]) -> bool:
         """Execute the list of commands given by the LLM bot.
@@ -256,24 +279,12 @@ def main():
             text = None
             point = None
             if skip_confirmations or input("You want to find a receptacle? (y/n): ") != "n":
-                robot.switch_to_navigation_mode()
                 if target_receptacle is not None:
                     text = target_receptacle
                 else:
                     text = input("Enter receptacle name: ")
 
-                print("Going to the " + str(text) + ".")
-                point = agent.navigate(text)
-
-                if point is None:
-                    print("Navigation Failure")
-                    robot.say("I could not find the " + str(text) + ".")
-
-                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
-                robot.switch_to_navigation_mode()
-                xyt = robot.get_base_pose()
-                xyt[2] = xyt[2] + np.pi / 2
-                robot.move_base_to(xyt, blocking=True)
+                self._navigate_to(text)
 
             # Execute placement if the object is found
             if skip_confirmations or input("You want to run placement? (y/n): ") != "n":
