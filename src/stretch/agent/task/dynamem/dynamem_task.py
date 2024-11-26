@@ -15,6 +15,7 @@ import numpy as np
 from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.emote import EmoteTask
+from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
 from stretch.dynav.utils import compute_tilt
 from stretch.perception import create_semantic_sensor
@@ -156,6 +157,22 @@ class DynamemTaskExecutor:
         self.agent.place(target_receptacle, theta)
         self.robot.move_to_nav_posture()
 
+    def _hand_over(self) -> None:
+        """Create a task to find a person, navigate to them, and extend the arm toward them"""
+        logger.alert(f"[Pickup task] Hand Over")
+
+        # After the robot has started...
+        try:
+            hand_over_task = HandOverTask(self.agent)
+            task = hand_over_task.get_task()
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
     def _navigate_to(self, target_receptacle: str) -> np.ndarray:
         """Navigate to a receptacle.
 
@@ -218,6 +235,8 @@ class DynamemTaskExecutor:
                 logger.info(f"[Pickup task] Place: {args}")
                 point = self._navigate_to(args)
                 self._place(args, point=point)
+            elif command == "hand_over":
+                self._hand_over()
             elif command == "wave":
                 logger.info("[Pickup task] Waving.")
                 self.agent.move_to_manip_posture()
