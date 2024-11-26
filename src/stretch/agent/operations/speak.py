@@ -24,11 +24,7 @@ class SpeakOperation(ManagedOperation):
     def can_start(self) -> bool:
         return True
 
-    def configure(
-            self,
-            message: str = "Hello, world!",
-            sleep_time: float = 3.0
-    ):
+    def configure(self, message: str = "Hello, world!", sleep_time: float = 3.0):
         """Configure the operation given a message to speak."""
         self._message = message
         self._sleep_time = sleep_time

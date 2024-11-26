@@ -49,7 +49,7 @@ class UpdateOperation(ManagedOperation):
         target_object: str = "cup",
         match_method: str = "feature",
         arm_height: float = 0.4,
-        tilt: float = -1 * np.pi / 4
+        tilt: float = -1 * np.pi / 4,
     ):
         """Configure the operation with the given parameters."""
         self.move_head = move_head
@@ -92,7 +92,7 @@ class UpdateOperation(ManagedOperation):
 
         # Notify and move the arm back to normal. Showing the map is optional.
         print(f"So far we have found: {len(self.agent.get_voxel_map().instances)} objects.")
-        
+
         if not self.robot.in_manipulation_mode():
             self.warn("Robot is not in manipulation mode. Moving to manip posture.")
             self.robot.move_to_manip_posture()
@@ -162,7 +162,7 @@ class UpdateOperation(ManagedOperation):
         print("Check explored instances for reachable target objects:")
         for i, (score, instance) in enumerate(zip(scores, instances)):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
-            
+
             print(
                 f" - Found instance {i} with name {name} and global id {instance.global_id}: score = {score}."
             )

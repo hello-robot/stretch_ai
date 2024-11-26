@@ -8,16 +8,13 @@
 # license information maybe found below, if so.
 
 import numpy as np
-from typing import Optional
 
 from stretch.agent.operations import (
-    GoToNavOperation,
-    RotateInPlaceOperation,
-    UpdateOperation,
-    NavigateToObjectOperation,
     ExtendArm,
+    NavigateToObjectOperation,
     OpenGripper,
-    SpeakOperation
+    SpeakOperation,
+    UpdateOperation,
 )
 from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
@@ -26,16 +23,12 @@ from stretch.core.task import Task
 class HandOverTask:
     """Find a person, navigate to them, and extend the arm toward them"""
 
-    def __init__(
-        self,
-        agent: RobotAgent,
-        target_object: str = "person"
-    ) -> None:
+    def __init__(self, agent: RobotAgent, target_object: str = "person") -> None:
         # super().__init__(agent)
         self.agent = agent
 
         self.target_object = target_object
-              
+
         # Sync these things
         self.robot = self.agent.robot
         self.voxel_map = self.agent.get_voxel_map()
@@ -65,9 +58,9 @@ class HandOverTask:
 
     def get_one_shot_task(self, add_rotate: bool = False) -> Task:
         """Create a task plan"""
-        
+
         task = Task()
-        
+
         # # Put the robot into navigation mode
         # go_to_navigation_mode = GoToNavOperation(
         #     "go to navigation mode", self.agent, retry_on_failure=True
@@ -79,30 +72,25 @@ class HandOverTask:
         #         "rotate_in_place", self.agent, parent=go_to_navigation_mode
         #     )
 
-        
         update = UpdateOperation("update_scene", self.agent, retry_on_failure=True)
         update.configure(
             move_head=True,
             target_object=self.target_object,
-            show_map_so_far=False, #Uses Open3D display (blocking)
-            clear_voxel_map=False, #True, 
-            show_instances_detected=False, #Uses OpenCV image display (blocking)
-            match_method="name",#"feature",
+            show_map_so_far=False,  # Uses Open3D display (blocking)
+            clear_voxel_map=False,  # True,
+            show_instances_detected=False,  # Uses OpenCV image display (blocking)
+            match_method="name",  # "feature",
             arm_height=0.6,
-            tilt=-1.0 * np.pi/8.0
+            tilt=-1.0 * np.pi / 8.0,
         )
 
         found_a_person = SpeakOperation(
-            name="found_a_person",
-            agent=self.agent,
-            parent=update,
-            on_cannot_start=update
+            name="found_a_person", agent=self.agent, parent=update, on_cannot_start=update
         )
         found_a_person.configure(
-            message="I found a person! I am going to navigate to them.",
-            sleep_time=2.0
-            )
-        
+            message="I found a person! I am going to navigate to them.", sleep_time=2.0
+        )
+
         # After searching for object, we should go to an instance that we've found. If we cannot do that, keep searching.
         go_to_object = NavigateToObjectOperation(
             name="go_to_object",
@@ -116,14 +104,14 @@ class HandOverTask:
             name="ready_to_extend_arm",
             agent=self.agent,
             parent=go_to_object,
-            on_cannot_start=update
+            on_cannot_start=update,
         )
         ready_to_extend_arm.configure(
             message="I navigated to the person. Now I am going to extend my arm toward them.",
-            sleep_time=2.0
-            )
-        
-        extend_arm = ExtendArm(        
+            sleep_time=2.0,
+        )
+
+        extend_arm = ExtendArm(
             name="extend_arm",
             agent=self.agent,
             parent=ready_to_extend_arm,
@@ -135,14 +123,13 @@ class HandOverTask:
             name="ready_to_open_gripper",
             agent=self.agent,
             parent=extend_arm,
-            on_cannot_start=update
+            on_cannot_start=update,
         )
         ready_to_open_gripper.configure(
-            message="I am now going to open my gripper to release the object.",
-            sleep_time=2.0
-            )
-        
-        open_gripper = OpenGripper(        
+            message="I am now going to open my gripper to release the object.", sleep_time=2.0
+        )
+
+        open_gripper = OpenGripper(
             name="open_gripper",
             agent=self.agent,
             parent=ready_to_open_gripper,
@@ -150,17 +137,13 @@ class HandOverTask:
         )
 
         finished_handover = SpeakOperation(
-            name="finished_handover",
-            agent=self.agent,
-            parent=open_gripper,
-            on_cannot_start=update
+            name="finished_handover", agent=self.agent, parent=open_gripper, on_cannot_start=update
         )
         finished_handover.configure(
-            message="I have finished handing over the object.",
-            sleep_time=5.0
-            )
-        
-        retract_arm = ExtendArm(        
+            message="I have finished handing over the object.", sleep_time=5.0
+        )
+
+        retract_arm = ExtendArm(
             name="retract_arm",
             agent=self.agent,
             parent=finished_handover,
@@ -168,9 +151,8 @@ class HandOverTask:
         )
         retract_arm.configure(arm_extension=0.05)
 
-        
-        #task.add_operation(go_to_navigation_mode)
-        #if add_rotate:
+        # task.add_operation(go_to_navigation_mode)
+        # if add_rotate:
         #    task.add_operation(rotate_in_place)
         task.add_operation(update)
         task.add_operation(found_a_person)
@@ -181,7 +163,7 @@ class HandOverTask:
         task.add_operation(open_gripper)
         task.add_operation(finished_handover)
         task.add_operation(retract_arm)
-        
+
         # Terminate on a successful place
         return task
 
@@ -194,7 +176,5 @@ if __name__ == "__main__":
     # Create a robot agent with instance memory
     agent = RobotAgent(robot, create_semantic_sensor=True)
 
-    task = HandOverTask(agent).get_task(
-        add_rotate=False
-    )
+    task = HandOverTask(agent).get_task(add_rotate=False)
     task.run()

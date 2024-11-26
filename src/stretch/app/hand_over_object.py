@@ -12,14 +12,19 @@
 import click
 import numpy as np
 
-from stretch.agent.operations import UpdateOperation, NavigateToObjectOperation, ExtendArm, SpeakOperation
+from stretch.agent.operations import (
+    ExtendArm,
+    NavigateToObjectOperation,
+    SpeakOperation,
+    UpdateOperation,
+)
 from stretch.agent.robot_agent import RobotAgent
+from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.core.task import Task
 from stretch.perception import create_semantic_sensor
 
-from stretch.agent.task.pickup.hand_over_task import HandOverTask
 
 @click.command()
 @click.option(
@@ -44,7 +49,7 @@ def main(
     verbose: bool = False,
     show_intermediate_maps: bool = False,
     reset: bool = False,
-    target_object: str = "person", #"face"
+    target_object: str = "person",  # "face"
     repeat_count: int = 1,
 ):
     # Create robot
@@ -64,12 +69,10 @@ def main(
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(robot, parameters, semantic_sensor)
     agent.start(visualize_map_at_start=show_intermediate_maps, verbose=True)
-    
-    task = HandOverTask(agent).get_task(
-        add_rotate=False
-    )
-    
-    #task = get_task(robot, agent, target_object)
+
+    task = HandOverTask(agent).get_task(add_rotate=False)
+
+    # task = get_task(robot, agent, target_object)
     task.run()
     robot.open_gripper()
 

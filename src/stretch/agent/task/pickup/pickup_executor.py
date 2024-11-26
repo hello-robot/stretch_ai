@@ -12,10 +12,10 @@ from typing import List, Tuple
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.find_task import FindObjectTask
+from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.agent.task.pickup.pick_task import PickObjectTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.agent.task.pickup.place_task import PlaceOnReceptacleTask
-from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient
 from stretch.utils.logger import Logger
 
@@ -119,7 +119,7 @@ class PickupExecutor:
 
         # Execute the task
         task.run()
-        
+
     def _place(self, target_receptacle: str) -> None:
         """Create a task to place the object and execute it.
 
@@ -170,15 +170,12 @@ class PickupExecutor:
         task.run()
 
     def _hand_over(self) -> None:
-        """Create a task to find a person, navigate to them, and extend the arm toward them
-        """
+        """Create a task to find a person, navigate to them, and extend the arm toward them"""
         logger.alert(f"[Pickup task] Hand Over")
 
         # After the robot has started...
         try:
-            hand_over_task = HandOverTask(
-                self.agent
-            )
+            hand_over_task = HandOverTask(self.agent)
             task = hand_over_task.get_task()
         except Exception as e:
             print(f"Error creating task: {e}")
@@ -187,7 +184,7 @@ class PickupExecutor:
 
         # Execute the task
         task.run()
-        
+
     def __call__(self, response: List[Tuple[str, str]]) -> bool:
         """Execute the list of commands given by the LLM bot.
 

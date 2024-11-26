@@ -7,11 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from time import sleep
 
-import numpy as np
-
-import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
 
 
@@ -19,6 +15,7 @@ class OpenGripper(ManagedOperation):
     """
     Open the robot's gripper.
     """
+
     def can_start(self) -> bool:
         return True
 
@@ -31,7 +28,6 @@ class OpenGripper(ManagedOperation):
         assert self.robot.in_manipulation_mode(), "Did not switch to manipulation mode"
 
         self.robot.open_gripper()
-        
+
     def was_successful(self) -> bool:
         return True
-
