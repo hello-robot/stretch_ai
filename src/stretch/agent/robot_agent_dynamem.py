@@ -14,7 +14,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import time
 import timeit
 from datetime import datetime
 from threading import Lock
@@ -440,8 +439,7 @@ class RobotAgent(RobotAgentBase):
         # for pan in [0.6, -0.2, -1.0, -1.8]:
         for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.65]:
-                self.robot.head_to(pan, tilt, blocking=False)
-                time.sleep(0.2)
+                self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 
     def rotate_in_place(self):

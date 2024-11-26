@@ -214,8 +214,9 @@ class DynamemTaskExecutor:
             self.agent.robot_say("I'm sorry, I didn't understand that.")
             return True
 
-        logger.info("Resetting agent...")
-        self.agent.reset()
+        # Dynamem aims to life long robot, we should not reset the robot's memory.
+        # logger.info("Resetting agent...")
+        # self.agent.reset()
 
         # Loop over every command we have been given
         # Pull out pickup and place as a single arg if they are in a row
@@ -236,7 +237,7 @@ class DynamemTaskExecutor:
                     self._pickup(target_object, point=point)
                 else:
                     logger.error("Could not find the object.")
-                    robot.say("I could not find the " + str(args) + ".")
+                    self.robot.say("I could not find the " + str(args) + ".")
                     break
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
@@ -245,7 +246,7 @@ class DynamemTaskExecutor:
                     self._place(args, point=point)
                 else:
                     logger.error("Could not navigate to the receptacle.")
-                    robot.say("I could not find the " + str(args) + ".")
+                    self.robot.say("I could not find the " + str(args) + ".")
                     break
             elif command == "hand_over":
                 self._hand_over()

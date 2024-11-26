@@ -138,7 +138,7 @@ def main(
             if target_object is None or len(target_object) == 0:
                 target_object = input("Enter the target object: ")
             if target_receptacle is None or len(target_receptacle) == 0:
-                receptacle = input("Enter the target receptacle: ")
+                target_receptacle = input("Enter the target receptacle: ")
             llm_response = [("pickup", target_object), ("place", target_receptacle)]
         else:
             # Call the LLM client and parse
