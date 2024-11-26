@@ -21,7 +21,6 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
 @click.option("--explore-iter", default=3)
-@click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
 @click.option("--mode", default="", type=click.Choice(["navigation", "manipulation", "save", ""]))
 @click.option(
@@ -36,7 +35,6 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     is_flag=True,
     help="Set to use voice input",
 )
-@click.option("--test", default=1, type=int)
 @click.option(
     "--visual_servo",
     "--vs",
@@ -67,10 +65,8 @@ def main(
     manual_wait,
     navigate_home: bool = False,
     explore_iter: int = 3,
-    re: int = 1,
     mode: str = "navigation",
     method: str = "dynamem",
-    test: int = 1,
     input_path: str = None,
     robot_ip: str = "",
     visual_servo: bool = False,
@@ -78,6 +74,8 @@ def main(
     device_id: int = 0,
     target_object: str = None,
     target_receptacle: str = None,
+    use_llm: bool = False,
+    use_voice: bool = False,
     **kwargs,
 ):
     """
