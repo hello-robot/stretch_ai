@@ -92,6 +92,7 @@ class DynamemTaskExecutor:
         point = self.agent.navigate(target_object)
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
+            return None
         cv2.imwrite(target_object + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
         self.robot.switch_to_navigation_mode()
         xyt = self.robot.get_base_pose()
@@ -187,6 +188,7 @@ class DynamemTaskExecutor:
         if point is None:
             print("Navigation Failure")
             self.robot.say("I could not find the " + str(target_receptacle) + ".")
+            return None
 
         cv2.imwrite(target_receptacle + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
         self.robot.switch_to_navigation_mode()
@@ -230,11 +232,21 @@ class DynamemTaskExecutor:
                 target_object = args
                 next_command, next_args = response[i]
                 point = self._find(args)
-                self._pickup(target_object, point=point)
+                if point is not None:
+                    self._pickup(target_object, point=point)
+                else:
+                    logger.error("Could not find the object.")
+                    robot.say("I could not find the " + str(args) + ".")
+                    break
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
                 point = self._navigate_to(args)
-                self._place(args, point=point)
+                if point is not None:
+                    self._place(args, point=point)
+                else:
+                    logger.error("Could not navigate to the receptacle.")
+                    robot.say("I could not find the " + str(args) + ".")
+                    break
             elif command == "hand_over":
                 self._hand_over()
             elif command == "wave":
