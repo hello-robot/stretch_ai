@@ -10,7 +10,6 @@
 # license information maybe found below, if so.
 
 import click
-import numpy as np
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup.hand_over_task import HandOverTask
