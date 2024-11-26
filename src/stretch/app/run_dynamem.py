@@ -29,6 +29,13 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     is_flag=True,
     help="Set to use the language model",
 )
+@click.option(
+    "--llm",
+    # default="gemma2b",
+    default="qwen25-3B-Instruct",
+    help="Client to use for language model. Recommended: gemma2b, openai",
+    type=click.Choice(get_llm_choices()),
+)
 @click.option("--debug_llm", "--debug-llm", is_flag=True, help="Set to debug the language model")
 @click.option(
     "--use_voice",
@@ -78,6 +85,7 @@ def main(
     use_llm: bool = False,
     use_voice: bool = False,
     debug_llm: bool = False,
+    llm: str = "qwen25-3B-Instruct",
     **kwargs,
 ):
     """
