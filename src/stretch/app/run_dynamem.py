@@ -56,7 +56,9 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
 @click.option("--target_object", type=str, default=None, help="Target object to grasp")
-@click.option("--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place")
+@click.option(
+    "--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place"
+)
 @click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
@@ -102,7 +104,7 @@ def main(
     robot = HomeRobotZmqClient(robot_ip=robot_ip)
 
     print("- Create task executor")
-    task_executor = DynamemTaskExecutor(
+    executor = DynamemTaskExecutor(
         robot,
         parameters,
         visual_servo=visual_servo,
@@ -129,7 +131,7 @@ def main(
             # Call the LLM client and parse
             if target_object is None or len(target_object) == 0:
                 target_object = input("Enter the target object: ")
-            if target_receptacle is None or len(receptacle) == 0:
+            if target_receptacle is None or len(target_receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
             llm_response = [("pickup", target_object), ("place", target_receptacle)]
         else:
@@ -145,7 +147,6 @@ def main(
 
     # At the end, disable everything
     robot.stop()
-
 
 
 if __name__ == "__main__":
