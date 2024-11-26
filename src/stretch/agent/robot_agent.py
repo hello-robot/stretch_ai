@@ -32,6 +32,7 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
 from stretch.motion.algo import Shortcut, SimplifyXYT, get_planner
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
@@ -67,8 +68,8 @@ class RobotAgent:
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        create_semantic_sensor: bool = False,
         enable_realtime_updates: bool = False,
+        create_semantic_sensor: bool = False,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
@@ -106,10 +107,13 @@ class RobotAgent:
         self._matched_vertices_obs_count: Dict[float, int] = dict()
         self._matched_observations_poses: List[np.ndarray] = []
         self._maximum_matched_observations = self.parameters.get(
-            "agent/realtime/maximum_matched_observations", 10
+            "agent/realtime/maximum_matched_observations", 50
         )
         self._camera_pose_match_threshold = self.parameters.get(
-            "agent/realtime/camera_pose_match_threshold", 0.1
+            "agent/realtime/camera_pose_match_threshold", 0.05
+        )
+        self._head_not_moving_tolerance = float(
+            self.parameters.get("motion/joint_thresholds/head_not_moving_tolerance", 1.0e-4)
         )
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
@@ -571,7 +575,7 @@ class RobotAgent:
         """Return whether the robot agent is still running."""
         return self._running and self.robot.running
 
-    def get_observations_loop(self) -> None:
+    def get_observations_loop(self, verbose=False) -> None:
         """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
         while self.robot.running and self._running:
             obs = None
@@ -594,7 +598,6 @@ class RobotAgent:
                     obs = None
                 t1 = timeit.default_timer()
                 if t1 - t0 > 10:
-                    logger.error("Failed to get observation")
                     break
 
                 # Add a delay to make sure we don't get too many observations
@@ -605,7 +608,10 @@ class RobotAgent:
                 self.obs_history.append(obs)
                 self.obs_count += 1
             self._obs_history_lock.release()
-            time.sleep(0.1)
+
+            if verbose:
+                print("Done getting an observation")
+            time.sleep(0.05)
 
     def stop_realtime_updates(self):
         """Stop the update threads."""
@@ -622,9 +628,16 @@ class RobotAgent:
 
         # Check if there are any observations with camera poses that are too close
         if len(self._matched_observations_poses) > 0:
-            poses = np.array([obs.camera_pose])
-            dists = np.linalg.norm(self._matched_observations_poses - poses, axis=1)
-            if np.any(dists < self._camera_pose_match_threshold):
+            for pose in self._matched_observations_poses:
+                if np.linalg.norm(pose - obs.camera_pose) < self._camera_pose_match_threshold:
+                    return True
+
+        if obs.joint_velocities is not None:
+            head_speed = np.linalg.norm(
+                obs.joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+            )
+
+            if head_speed > self._head_not_moving_tolerance:
                 return True
 
         return False
@@ -642,11 +655,6 @@ class RobotAgent:
             if obs.is_pose_graph_node:
                 matched_obs.append(obs)
 
-        t1 = timeit.default_timer()
-
-        if verbose:
-            print(f"Done copying matched observations. Time: {t1 - t0}")
-
         self._obs_history_lock.release()
 
         with self._voxel_map_lock:
@@ -656,17 +664,6 @@ class RobotAgent:
                 if obs.is_pose_graph_node:
                     self.voxel_map.add_obs(obs)
                     added += 1
-
-        t2 = timeit.default_timer()
-        if verbose:
-            print(f"Done updating voxel map. Time: {t2 - t1}")
-
-        if verbose:
-            print("----")
-            print(f"Added {added} observations to voxel map")
-            print()
-
-        # self._obs_history_lock.release()
 
         robot_center = np.zeros(3)
         robot_center[:2] = self.robot.get_base_pose()[:2]
@@ -678,29 +675,32 @@ class RobotAgent:
         if len(self.get_voxel_map().observations) > 0:
             self.update_rerun()
 
-        t3 = timeit.default_timer()
-        # print(f"Done updating scene graph. Time: {t3 - t2}")
+        t1 = timeit.default_timer()
+        if verbose:
+            print(f"Done updating scene graph. Time: {t1 - t0}")
 
     def prune_old_observations_loop(self, verbose: bool = False):
         while True:
+            t0 = timeit.default_timer()
             self._obs_history_lock.acquire()
 
-            # print(f"Total observation count: {len(self.obs_history)}")
-
-            # Clear out observations that are too old and are not pose graph nodes
             if len(self.obs_history) > 1000:
-                # print("Clearing out old observations")
-                # Remove 10 oldest observations that are not pose graph nodes
+                # Remove 50 oldest observations that are not pose graph nodes
                 del_count = 0
                 del_idx = 0
                 while (
                     del_count < 50 and len(self.obs_history) > 0 and del_idx < len(self.obs_history)
                 ):
-                    # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
-                    if not self.obs_history[del_idx].is_pose_graph_node:
-                        # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
-                        # del self.obs_history[del_idx]
+                    # If obs is too recent, skip it
+                    if self.obs_history[del_idx].lidar_timestamp - time.time() < 10:
+                        del_idx += 1
 
+                        if del_idx >= len(self.obs_history):
+                            break
+
+                        continue
+
+                    if not self.obs_history[del_idx].is_pose_graph_node:
                         # Remove corresponding matched observation
                         if (
                             self.obs_history[del_idx].lidar_timestamp
@@ -730,9 +730,11 @@ class RobotAgent:
                         if del_idx >= len(self.obs_history):
                             break
 
-            t6 = timeit.default_timer()
-            # print(f"Done clearing out old observations. Time: {t6 - t5}")
+            t1 = timeit.default_timer()
             self._obs_history_lock.release()
+
+            if verbose:
+                print("Done pruning old observations. Time: ", t1 - t0)
             time.sleep(1.0)
 
     def match_pose_graph_loop(self, verbose: bool = False):
@@ -740,11 +742,9 @@ class RobotAgent:
             t0 = timeit.default_timer()
             self.pose_graph = self.robot.get_pose_graph()
 
-            t1 = timeit.default_timer()
-
             # Update past observations based on our new pose graph
-            # print("Updating past observations")
             self._obs_history_lock.acquire()
+
             for idx in range(len(self.obs_history)):
                 lidar_timestamp = self.obs_history[idx].lidar_timestamp
                 gps_past = self.obs_history[idx].gps
@@ -755,11 +755,6 @@ class RobotAgent:
                         break
 
                     if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
-                        if verbose:
-                            print(
-                                f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}"
-                            )
-
                         self.obs_history[idx].is_pose_graph_node = True
                         self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
                         self.obs_history[idx].compass = np.array(
@@ -767,11 +762,6 @@ class RobotAgent:
                                 vertex[3],
                             ]
                         )
-
-                        if verbose:
-                            print(
-                                f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                            )
 
                         if (
                             self.obs_history[idx].task_observations is None
@@ -792,11 +782,6 @@ class RobotAgent:
                         < self._realtime_matching_distance
                         and self.obs_history[idx].pose_graph_timestamp is None
                     ):
-                        if verbose:
-                            print(
-                                f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}"
-                            )
-
                         self.obs_history[idx].is_pose_graph_node = True
                         self.obs_history[idx].pose_graph_timestamp = vertex[0]
                         self.obs_history[idx].initial_pose_graph_gps = np.array(
@@ -835,19 +820,20 @@ class RobotAgent:
                         self.obs_history[idx].gps = new_gps
                         self.obs_history[idx].compass = new_compass
 
-            t2 = timeit.default_timer()
-            if verbose:
-                print(f"Done updating past observations. Time: {t2- t1}")
+            t1 = timeit.default_timer()
 
             self._obs_history_lock.release()
-            time.sleep(0.15)
+
+            if verbose:
+                print(f"[Match] Released obs history lock. Time: {t1 - t0}.")
+            time.sleep(0.05)
 
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time."""
         while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
-            time.sleep(0.5)
+            time.sleep(0.75)
 
     def update(
         self,
@@ -855,6 +841,8 @@ class RobotAgent:
         debug_instances: bool = False,
         move_head: Optional[bool] = None,
     ):
+        if self._realtime_updates:
+            return
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
         t0 = timeit.default_timer()
@@ -886,12 +874,10 @@ class RobotAgent:
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
-            if self._realtime_updates:
-                self._obs_history_lock.acquire()
+
             self.obs_history.append(obs)
-            if self._realtime_updates:
-                self._obs_history_lock.release()
             self.obs_count += 1
+
             # Optionally do this
             if self.semantic_sensor is not None:
                 # Semantic prediction
@@ -1219,20 +1205,17 @@ class RobotAgent:
                 return True
         return False
 
-    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
-        """Try to recover from an invalid start state.
-
-        Returns:
-            bool: whether the robot recovered from the invalid start state
-        """
-
-        print("Recovering from invalid start state...")
-
+    def recover(self):
         # Get current invalid pose
-        start = self.robot.get_base_pose()
 
         for step_i in range(5, 100, 5):
             step = step_i / 100.0
+
+            start = self.robot.get_base_pose()
+
+            if self.space.is_valid(start, verbose=True):
+                logger.warning("Start state is valid!")
+                break
 
             # Apply relative transformation to XYT
             forward = np.array([-1 * step, 0, 0])
@@ -1246,23 +1229,38 @@ class RobotAgent:
             if self.space.is_valid(xyt_goal_backward, verbose=True):
                 logger.warning("Trying to move backwards...")
                 # Compute the position forward or backward from the robot
-                self.robot.move_base_to(xyt_goal_backward, relative=False)
-                break
+                self.robot.move_base_to(xyt_goal_backward, relative=False, blocking=True)
             elif self.space.is_valid(xyt_goal_forward, verbose=True):
                 logger.warning("Trying to move forward...")
                 # Compute the position forward or backward from the robot
-                self.robot.move_base_to(xyt_goal_forward, relative=False)
-                break
+                self.robot.move_base_to(xyt_goal_forward, relative=False, blocking=True)
             else:
                 logger.warning(f"Could not recover from invalid start state with step of {step}!")
 
-        # Get the current position in case we are still invalid
-        start = self.robot.get_base_pose()
-        start_is_valid = self.space.is_valid(start, verbose=True)
+    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
+        """Try to recover from an invalid start state.
+
+        Returns:
+            bool: whether the robot recovered from the invalid start state
+        """
+
+        print("Recovering from invalid start state...")
+
+        max_tries = 10
+
+        while max_tries > 0:
+            self.recover()
+
+            # Get the current position in case we are still invalid
+            start = self.robot.get_base_pose()
+            start_is_valid = self.space.is_valid(start, verbose=True)
+
+            if start_is_valid:
+                return True
 
         if not start_is_valid:
             logger.warning("Tried and failed to recover from invalid start state!")
-            return False
+
         return start_is_valid
 
     def move_to_any_instance(
@@ -1367,7 +1365,7 @@ class RobotAgent:
         goal: Optional[str] = None,
         visualize_map_at_start: bool = False,
         can_move: bool = True,
-        verbose: bool = False,
+        verbose: bool = True,
     ) -> None:
 
         # Call the robot's own startup hooks

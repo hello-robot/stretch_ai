@@ -63,6 +63,12 @@ from stretch.llms.prompts.object_manip_nav_prompt import ObjectManipNavPromptBui
     is_flag=True,
     help="Don't move the robot to the instance, if using real robot instead of offline data",
 )
+@click.option(
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
+    is_flag=True,
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
+)
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -83,6 +89,7 @@ def main(
     stationary: bool = False,
     all_matches: bool = False,
     threshold: float = 0.5,
+    enable_realtime_updates: bool = False,
 ):
 
     print("- Load parameters")
@@ -107,7 +114,13 @@ def main(
         parameters=parameters,
     )
     robot.move_to_nav_posture()
-    agent = RobotAgent(robot, parameters, semantic_sensor, voxel_map=None)
+    agent = RobotAgent(
+        robot,
+        parameters,
+        semantic_sensor,
+        voxel_map=None,
+        enable_realtime_updates=enable_realtime_updates,
+    )
 
     input_path = "kitchen_2024-08-13_17-03-52.pkl"
     # Load map

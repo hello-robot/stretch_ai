@@ -102,8 +102,8 @@ def main(
         parameters=parameters,
     )
     robot.move_to_nav_posture()
-    agent = RobotAgent(robot, parameters, semantic_sensor)
-    # agent.get_voxel_map().read_from_pickle(input_file)
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=False)
+    # agent.voxel_map.read_from_pickle(input_file)
 
     prompt = ObjectManipNavPromptBuilder()
     client = OpenaiClient(prompt)

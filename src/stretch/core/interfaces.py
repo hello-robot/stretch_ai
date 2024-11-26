@@ -254,6 +254,7 @@ class Observations:
 
     # Proprioreception
     joint: Optional[np.ndarray] = None  # joint positions of the robot
+    joint_velocities: Optional[np.ndarray] = None  # joint velocities of the robot
     relative_resting_position: Optional[
         np.ndarray
     ] = None  # end-effector position relative to the desired resting position

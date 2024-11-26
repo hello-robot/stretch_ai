@@ -17,6 +17,7 @@ import os
 import time
 import timeit
 from datetime import datetime
+from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -56,6 +57,7 @@ from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
+from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
 
@@ -121,6 +123,10 @@ class RobotAgent(RobotAgentBase):
             self.log = "dynamem_log/" + log
 
         self.create_obstacle_map(parameters)
+
+        # Create voxel map information for multithreaded access
+        self._voxel_map_lock = Lock()
+        self.voxel_map_proxy = SparseVoxelMapProxy(self.voxel_map, self._voxel_map_lock)
 
         # ==============================================
         self.obs_count = 0
