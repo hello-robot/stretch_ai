@@ -1,12 +1,22 @@
-# `Dynamem`
+# Dynamem
 
 [![arXiv](https://img.shields.io/badge/arXiv-2401.12202-163144.svg?style=for-the-badge)](https://arxiv.org/abs/2411.04999)
 ![License](https://img.shields.io/github/license/notmahi/bet?color=873a7e&style=for-the-badge)
 [![Code Style: Black](https://img.shields.io/badge/Code%20Style-Black-262626?style=for-the-badge)](https://github.com/psf/black)
 [![PyTorch](https://img.shields.io/badge/Videos-Website-db6a4b.svg?style=for-the-badge&logo=airplayvideo)](https://dynamem.github.io)
 
-We are still in the halfway of code cleaning so only open vocabulary navigation is available.
+Dynamem is an open vocabulary mobile manipulation system that works life long in any unseen environments. It can continuously process text queries in the form of "pick up A and place it on B" (e.g. "pick up apple and place it on the plate"). 
 
+Compared to Stretch AI Agent mentioned [here](llm_agent.md), Dynamem can
+* continuously update its semantic memory when they observe the environment changes, which allows the system to work life long in homes without rescanning the environments;
+* pick up more objects, especially bowl like objects.
+
+However, there is some reason why sometimes we should still use AI agent:
+* Dynamem does an open loop pick up, which requires the robot urdf to be very well calibrated as the robot does not take new observation to correct itself once the action plan is generated.
+* Dynamem uses Anygrasp, a closed source gripper pose prediction model. Some researchers or companies might not be allowed or be able to use it.
+
+# Running Dynamem
+You should follow the these instructions to run Dynamem.
 ## Launch SLAM on robots
 
 To run navigation system of [Dynamem](https://dynamem.github.io), you first need to install environment with these commands:
