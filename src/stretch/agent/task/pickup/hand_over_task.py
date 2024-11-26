@@ -61,17 +61,6 @@ class HandOverTask:
 
         task = Task()
 
-        # # Put the robot into navigation mode
-        # go_to_navigation_mode = GoToNavOperation(
-        #     "go to navigation mode", self.agent, retry_on_failure=True
-        # )
-
-        # if add_rotate:
-        #     # Spin in place to find objects.
-        #     rotate_in_place = RotateInPlaceOperation(
-        #         "rotate_in_place", self.agent, parent=go_to_navigation_mode
-        #     )
-
         update = UpdateOperation("update_scene", self.agent, retry_on_failure=True)
         update.configure(
             move_head=True,

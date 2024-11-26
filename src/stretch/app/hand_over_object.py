@@ -12,17 +12,10 @@
 import click
 import numpy as np
 
-from stretch.agent.operations import (
-    ExtendArm,
-    NavigateToObjectOperation,
-    SpeakOperation,
-    UpdateOperation,
-)
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.core.task import Task
 from stretch.perception import create_semantic_sensor
 
 
