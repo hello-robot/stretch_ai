@@ -19,6 +19,8 @@ from .emote import (
 
 # from .grasp_closed_loop import ClosedLoopGraspObjectOperation
 from .explore import ExploreOperation
+from .extend_arm import ExtendArm
+from .open_gripper import OpenGripper
 from .go_home import GoHomeOperation
 from .go_to import GoToOperation
 from .grasp_object import GraspObjectOperation

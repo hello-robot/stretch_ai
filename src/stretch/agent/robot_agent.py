@@ -854,6 +854,7 @@ class RobotAgent:
         visualize_map: bool = False,
         debug_instances: bool = False,
         move_head: Optional[bool] = None,
+        tilt: float = -1 * np.pi / 4
     ):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
@@ -865,7 +866,8 @@ class RobotAgent:
             self.robot.move_to_nav_posture()
             # Pause a bit first to make sure the robot is in the right posture
             time.sleep(self._before_head_motion_sleep_t)
-            num_steps = 5
+            #num_steps = 5
+            num_steps = 11
         else:
             num_steps = 1
 
@@ -875,11 +877,11 @@ class RobotAgent:
             if t1 - t0 > 10:
                 logger.error("Failed to get observation")
                 break
-
-        tilt = -1 * np.pi / 4
+        
         for i in range(num_steps):
             if move_head:
-                pan = -1 * i * np.pi / 4
+                #pan = -1 * i * np.pi / 4
+                pan = (np.pi / 3) + (-1 * i * np.pi / 6)
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
                 time.sleep(self._after_head_motion_sleep_t)
