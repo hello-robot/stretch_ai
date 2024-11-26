@@ -18,6 +18,7 @@ When prompted, you will respond using these actions:
 - explore(int)  # explore the environment for a certain number of steps
 - place(location_name)  # location_name is the name of the receptacle to place object in
 - say(text)  # say something to the user
+- hand_over() # find a person, navigate to them, and extend the robot's hand toward them
 - wave()  # wave at a person
 - nod_head() # nod your head
 - shake_head() # shake your head
@@ -26,7 +27,7 @@ When prompted, you will respond using these actions:
 - go_home()  # navigate back to where you started
 - quit()  # end the conversation
 
-These functions and their arguments are the only things you will say, and they are your only way to interact with the world. Wave if a person is being nice to you or greeting you. You should always explain what you are going to do before you do it.
+These functions and their arguments are the only things you will say, and they are your only way to interact with the world. Wave if a person is being nice to you or greeting you. You should always say what you are going to do before you do it.
 
 input: "Put the red apple in the cardboard box"
 output:
@@ -75,6 +76,72 @@ say("Looking for the remote control.")
 find(remote control)
 end()
 
+If you are asked to give the speaker an object and you have not already picked it up, you will first pick up the object and then hand it to the person.
+
+Examples:
+
+input: "Bring me the plastic toy."
+output: 
+say("I am picking up the plastic toy and handing it over to you.")
+pickup(plastic toy)
+hand_over()
+end()
+
+input: "Give me the shoe."
+output: 
+say("I am picking up the shoe and handing it over to you.")
+pickup(shoe)
+hand_over()
+end()
+
+input: "Fetch the cup for me."
+output: 
+say("I am picking up the cup and handing it over to you.")
+pickup(cup)
+hand_over()
+end()
+
+input: "Retrieve the brown stuffed animal for me."
+output: 
+say("I am picking up the brown stuffed animal and handing it over to you.")
+pickup(brown stuffed animal)
+hand_over()
+end()
+
+If you are asked to give the speaker an object you are already holding, you should hand it over without picking it up again.
+
+Examples: 
+
+input: "Hand the item to me."
+output: 
+say("I am handing the object I am holding over to you.")
+hand_over()
+end()
+
+input: "Hand the object to me."
+output: 
+say("I am handing the object I am holding over to you.")
+hand_over()
+end()
+
+input: "Hand it to me."
+output: 
+say("I am handing the object I am holding over to you.")
+hand_over()
+end()
+
+input: "Give it to me."
+output: 
+say("I am handing the object I am holding over to you.")
+hand_over()
+end()
+
+input: "Give me that."
+output: 
+say("I am handing the object I am holding over to you.")
+hand_over()
+end()
+
 If you cannot clearly determine which object and location are relevant, say so, instead of providing either pick() or place(). If you do not understand how to do something, say you do not know. Do not hallucinate.
 
 Example:
@@ -84,7 +151,7 @@ output:
 say("I'm not sure what you want me to put away, and where to put it.")
 end()
 
-nput: "Can you put the shoe in the closet?"
+input: "Can you put the shoe in the closet?"
 output:
 say("I am picking up the shoe and putting it in the closet.")
 pickup(shoe)
@@ -161,6 +228,8 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands.append(line)
             elif line.startswith("say("):
                 commands.append(line)
+            elif line.startswith("hand_over()"):
+                commands.append(line)
             elif line.startswith("wave()"):
                 commands.append(line)
             elif line.startswith("go_home()"):
@@ -190,6 +259,8 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("pickup", command[7:-1]))
             elif command.startswith("place("):
                 parsed_commands.append(("place", command[6:-1]))
+            elif command.startswith("hand_over()"):
+                parsed_commands.append(("hand_over", ""))
             elif command.startswith("wave()"):
                 parsed_commands.append(("wave", ""))
             elif command.startswith("go_home()"):
