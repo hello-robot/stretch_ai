@@ -29,6 +29,7 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     is_flag=True,
     help="Set to use the language model",
 )
+@click.option("--debug_llm", "--debug-llm", is_flag=True, help="Set to debug the language model")
 @click.option(
     "--use_voice",
     "--use-voice",
@@ -48,7 +49,7 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
 )
 @click.option("--target_object", type=str, default=None, help="Target object to grasp")
-@click.option("--target_receptacle", type=str, default=None, help="Target receptacle to place")
+@click.option("--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place")
 @click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
@@ -76,6 +77,7 @@ def main(
     target_receptacle: str = None,
     use_llm: bool = False,
     use_voice: bool = False,
+    debug_llm: bool = False,
     **kwargs,
 ):
     """
@@ -117,11 +119,11 @@ def main(
         say_this = None
         if llm_client is None:
             # Call the LLM client and parse
-            if len(target_object) == 0:
+            if target_object is None or len(target_object) == 0:
                 target_object = input("Enter the target object: ")
-            if len(receptacle) == 0:
+            if target_receptacle is None or len(receptacle) == 0:
                 receptacle = input("Enter the target receptacle: ")
-            llm_response = [("pickup", target_object), ("place", receptacle)]
+            llm_response = [("pickup", target_object), ("place", target_receptacle)]
         else:
             # Call the LLM client and parse
             llm_response = chat_wrapper.query(verbose=debug_llm)

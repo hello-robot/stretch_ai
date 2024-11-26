@@ -57,18 +57,22 @@ class DynamemTaskExecutor:
                 device_id=device_id,
                 verbose=False,
             )
+        else:
+            self.parameters["encoder"] = None
+            self.semantic_sensor = None
+
+        print("- Start robot agent with data collection")
+        self.agent = RobotAgent(self.robot, self.parameters, self.semantic_sensor)
+        self.agent.start()
+
+        # Create grasp object operation
+        if self.visual_servo:
             self.grasp_object = GraspObjectOperation(
                 "grasp_the_object",
                 self.agent,
             )
         else:
-            self.parameters["encoder"] = None
-            self.semantic_sensor = None
             self.grasp_object = None
-
-        print("- Start robot agent with data collection")
-        self.agent = RobotAgent(self.robot, self.parameters, self.semantic_sensor)
-        self.agent.start()
 
         # Task stuff
         self.emote_task = EmoteTask(self.agent)
