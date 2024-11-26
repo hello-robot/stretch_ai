@@ -778,6 +778,13 @@ class GraspObjectOperation(ManagedOperation):
                     else:
                         self.info("Aligned and close enough to grasp.")
                         success = self._grasp()
+
+                    # record image
+                    servo = self.robot.get_servo_observation()
+                    debug_viz = np.zeros((240, 640, 3))
+                    debug_viz[:, :320, :] = servo.ee_rgb
+                    debug_viz[:, 320:, :] = servo.rgb
+                    Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_point_{iter_+1:03d}.png')
                     break
 
                 # If we are aligned, step the whole thing closer by some amount
@@ -887,6 +894,9 @@ class GraspObjectOperation(ManagedOperation):
 
         assert self.target_object is not None, "Target object must be set before running."
 
+        # open gripper
+        self.robot.open_gripper(blocking=True)
+
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
@@ -914,8 +924,9 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        # joint_state[HelloStretchIdx.WRIST_PITCH] = -0.5 # self.offset_from_vertical + pitch_from_vertical
+        joint_state[HelloStretchIdx.WRIST_PITCH] = -0.5 # self.offset_from_vertical + pitch_from_vertical
         # joint_state[HelloStretchIdx.WRIST_YAW] = 0.5 # self.offset_from_vertical + pitch_from_vertical
+        # joint_state[HelloStretchIdx.GRIPPER] = 100.
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
