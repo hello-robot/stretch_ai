@@ -25,6 +25,12 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option("--method", default="dynamem", type=str)
 @click.option("--mode", default="", type=click.Choice(["navigation", "manipulation", "save", ""]))
 @click.option(
+    "--use_llm",
+    "--use-llm",
+    is_flag=True,
+    help="Set to use the language model",
+)
+@click.option(
     "--use_voice",
     "--use-voice",
     is_flag=True,
