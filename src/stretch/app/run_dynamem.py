@@ -23,7 +23,12 @@ from stretch.core.parameters import get_parameters
 @click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
 @click.option("--mode", default="", type=click.Choice(["navigation", "manipulation", "save", ""]))
-@click.option("--env", default=1, type=int)
+@click.option(
+    "--use_voice",
+    "--use-voice",
+    is_flag=True,
+    help="Set to use voice input",
+)
 @click.option("--test", default=1, type=int)
 @click.option(
     "--visual_servo",
@@ -58,7 +63,6 @@ def main(
     re: int = 1,
     mode: str = "navigation",
     method: str = "dynamem",
-    env: int = 1,
     test: int = 1,
     input_path: str = None,
     robot_ip: str = "",
@@ -87,7 +91,43 @@ def main(
         robot, parameters, visual_servo=visual_servo, match_method=kwargs["match_method"],
         device_id=device_id,
     )
-    task_executor.run(target_object=target_object, target_receptacle=target_receptacle)
+
+    # Create the prompt we will use to control the robot
+    prompt = PickupPromptBuilder()
+
+    # Get the LLM client
+    llm_client = None
+    if use_llm:
+        llm_client = get_llm_client(llm, prompt=prompt)
+        chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
+
+    # Parse things and listen to the user
+    ok = True
+    while robot.running and ok:
+        # agent.reset()
+
+        say_this = None
+        if llm_client is None:
+            # Call the LLM client and parse
+            if len(target_object) == 0:
+                target_object = input("Enter the target object: ")
+            if len(receptacle) == 0:
+                receptacle = input("Enter the target receptacle: ")
+            llm_response = [("pickup", target_object), ("place", receptacle)]
+        else:
+            # Call the LLM client and parse
+            llm_response = chat_wrapper.query(verbose=debug_llm)
+            if debug_llm:
+                print("Parsed LLM Response:", llm_response)
+
+        ok = executor(llm_response)
+
+        if llm_client is None:
+            break
+
+    # At the end, disable everything
+    robot.stop()
+
 
 
 if __name__ == "__main__":

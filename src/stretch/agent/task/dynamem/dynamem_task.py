@@ -73,6 +73,27 @@ class DynamemTaskExecutor:
         # Task stuff
         self.emote_task = EmoteTask(self.agent)
 
+    def _find(self, target_object: str) -> np.ndarray:
+        """Find an object. This is a helper function for the main loop.
+
+        Args:
+            target_object: The object to find.
+
+        Returns:
+            The point where the object is located.
+        """
+        self.robot.move_to_nav_posture()
+        self.robot.switch_to_navigation_mode()
+        point = self.agent.navigate(target_object)
+        if point is None:
+            logger.error("Navigation Failure: Could not find the object {}".format(target_object))
+        cv2.imwrite(target_object + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
+        self.robot.switch_to_navigation_mode()
+        xyt = self.robot.get_base_pose()
+        xyt[2] = xyt[2] + np.pi / 2
+        self.robot.move_base_to(xyt, blocking=True)
+        return point
+
     def _pickup(self, target_object: str) -> None:
         """Pick up an object.
 
@@ -154,30 +175,37 @@ class DynamemTaskExecutor:
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
                 next_command, next_args = response[i]
-                self._pickup(target_object)
+                point = self._find(args)
+                self._pickup(target_object, point=point)
             elif command == "place":
-                logger.warning(
-                    "Place without pickup! Try giving a full pick-and-place instruction."
-                )
-                self._place(args)
+                logger.info(f"[Pickup task] Place: {args}")
+                point = self._navigate_to(args)
+                self._place(args, point=point)
             elif command == "wave":
+                logger.info("[Pickup task] Waving.")
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
                 self.agent.move_to_manip_posture()
             elif command == "go_home":
+                logger.info("[Pickup task] Going home.")
                 if self.agent.get_voxel_map().is_empty():
                     logger.warning("No map data available. Cannot go home.")
                 else:
                     self.agent.go_home()
             elif command == "explore":
+                logger.info("[Pickup task] Exploring.")
                 self.agent.explore()
             elif command == "find":
-                self._find(args)
+                logger.info("[Pickup task] Finding {}.".format(args))
+                point = self._find(args)
             elif command == "nod_head":
+                logger.info("[Pickup task] Nodding head.")
                 self.emote_task.get_task("nod_head").run()
             elif command == "shake_head":
+                logger.info("[Pickup task] Shaking head.")
                 self.emote_task.get_task("shake_head").run()
             elif command == "avert_gaze":
+                logger.info("[Pickup task] Averting gaze.")
                 self.emote_task.get_task("avert_gaze").run()
             elif command == "quit":
                 logger.info("[Pickup task] Quitting.")
@@ -256,20 +284,11 @@ class DynamemTaskExecutor:
                 point = None
 
                 if skip_confirmations or input("Do you want to look for an object? (y/n): ") != "n":
-                    self.robot.move_to_nav_posture()
-                    self.robot.switch_to_navigation_mode()
                     if target_object is not None:
                         text = target_object
                     else:
                         text = input("Enter object name: ")
-                    point = self.agent.navigate(text)
-                    if point is None:
-                        print("Navigation Failure!")
-                    cv2.imwrite(text + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
-                    self.robot.switch_to_navigation_mode()
-                    xyt = self.robot.get_base_pose()
-                    xyt[2] = xyt[2] + np.pi / 2
-                    self.robot.move_base_to(xyt, blocking=True)
+                    point = self._find(text)
 
                 # If the object is found, grasp it
                 if skip_confirmations or input("Do you want to pick up an object? (y/n): ") != "n":
