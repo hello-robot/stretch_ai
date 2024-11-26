@@ -190,7 +190,8 @@ class DynamemTaskExecutor:
             self.robot.say("I could not find the " + str(target_receptacle) + ".")
             return None
 
-        cv2.imwrite(target_receptacle + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
+        print("Saving current robot memory to pickle file")
+        self.agent.voxel_map.write_to_pickle()
         self.robot.switch_to_navigation_mode()
         xyt = self.robot.get_base_pose()
         xyt[2] = xyt[2] + np.pi / 2
@@ -214,8 +215,9 @@ class DynamemTaskExecutor:
             self.agent.robot_say("I'm sorry, I didn't understand that.")
             return True
 
-        logger.info("Resetting agent...")
-        self.agent.reset()
+        # Dynamem aims to life long robot, we should not reset the robot's memory.
+        # logger.info("Resetting agent...")
+        # self.agent.reset()
 
         # Loop over every command we have been given
         # Pull out pickup and place as a single arg if they are in a row
@@ -236,7 +238,7 @@ class DynamemTaskExecutor:
                     self._pickup(target_object, point=point)
                 else:
                     logger.error("Could not find the object.")
-                    robot.say("I could not find the " + str(args) + ".")
+                    self.robot.say("I could not find the " + str(args) + ".")
                     break
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
@@ -245,7 +247,7 @@ class DynamemTaskExecutor:
                     self._place(args, point=point)
                 else:
                     logger.error("Could not navigate to the receptacle.")
-                    robot.say("I could not find the " + str(args) + ".")
+                    self.robot.say("I could not find the " + str(args) + ".")
                     break
             elif command == "hand_over":
                 self._hand_over()
@@ -254,6 +256,13 @@ class DynamemTaskExecutor:
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
                 self.agent.move_to_manip_posture()
+            elif command == "rotate_in_place":
+                logger.info("Rotate in place to scan environments.")
+                self.agent.rotate_in_place()
+                self.agent.voxel_map.write_to_pickle()
+            elif command == "read_from_pickle":
+                logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
+                self.agent.voxel_map.read_from_pickle(args)
             elif command == "go_home":
                 logger.info("[Pickup task] Going home.")
                 if self.agent.get_voxel_map().is_empty():

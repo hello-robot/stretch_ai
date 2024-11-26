@@ -112,6 +112,12 @@ def main(
         device_id=device_id,
     )
 
+    if input_path is None:
+        start_command = [("rotate_in_place", "")]
+    else:
+        start_command = [("read_from_pickle", input_path)]
+    executor(start_command)
+
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
 
@@ -123,7 +129,7 @@ def main(
 
     # Parse things and listen to the user
     ok = True
-    while robot.running and ok:
+    while ok:
         # agent.reset()
 
         say_this = None
@@ -132,7 +138,7 @@ def main(
             if target_object is None or len(target_object) == 0:
                 target_object = input("Enter the target object: ")
             if target_receptacle is None or len(target_receptacle) == 0:
-                receptacle = input("Enter the target receptacle: ")
+                target_receptacle = input("Enter the target receptacle: ")
             llm_response = [("pickup", target_object), ("place", target_receptacle)]
         else:
             # Call the LLM client and parse
