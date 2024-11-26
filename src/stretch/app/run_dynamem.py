@@ -116,7 +116,7 @@ def main(
         start_command = [("rotate_in_place", "")]
     else:
         start_command = [("read_from_pickle", input_path)]
-    ok = executor(start_command)
+    executor(start_command)
 
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
@@ -129,7 +129,7 @@ def main(
 
     # Parse things and listen to the user
     ok = True
-    while robot.running and ok:
+    while ok:
         # agent.reset()
 
         say_this = None

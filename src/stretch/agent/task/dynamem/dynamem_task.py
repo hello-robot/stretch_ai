@@ -190,7 +190,8 @@ class DynamemTaskExecutor:
             self.robot.say("I could not find the " + str(target_receptacle) + ".")
             return None
 
-        cv2.imwrite(target_receptacle + ".jpg", self.robot.get_observation().rgb[:, :, [2, 1, 0]])
+        print("Saving current robot memory to pickle file")
+        self.agent.voxel_map.write_to_pickle()
         self.robot.switch_to_navigation_mode()
         xyt = self.robot.get_base_pose()
         xyt[2] = xyt[2] + np.pi / 2
@@ -258,9 +259,10 @@ class DynamemTaskExecutor:
             elif command == "rotate_in_place":
                 logger.info("Rotate in place to scan environments.")
                 self.agent.rotate_in_place()
+                self.agent.voxel_map.write_to_pickle()
             elif command == "read_from_pickle":
                 logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
-                self.agent.read_from_pickle(args)
+                self.agent.voxel_map.read_from_pickle(args)
             elif command == "go_home":
                 logger.info("[Pickup task] Going home.")
                 if self.agent.get_voxel_map().is_empty():
