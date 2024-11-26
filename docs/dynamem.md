@@ -15,6 +15,14 @@ However, there is some reason why sometimes we should still use AI agent:
 * Dynamem does an open loop pick up, which requires the robot urdf to be very well calibrated as the robot does not take new observation to correct itself once the action plan is generated.
 * Dynamem uses Anygrasp, a closed source gripper pose prediction model. Some researchers or companies might not be allowed or be able to use it.
 
+# Understanding Dynamem code structures
+Dynamem consists of three components, navigation, picking, and placing. 
+To complete "Pick up A and Place it on B", it will call 4 modules sequentially:
+- `navigate(A)`
+- `pick(A)`
+- `navigate(B)`
+- `place(B)`
+
 # Running Dynamem
 You should follow the these instructions to run Dynamem.
 ## Launch SLAM on robots
