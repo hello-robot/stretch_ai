@@ -84,8 +84,10 @@ def main(
 
     print("- Create task executor")
     task_executor = DynamemTaskExecutor(
-        robot, parameters, visual_servo=visual_servo, match_method=kwargs["match_method"]
+        robot, parameters, visual_servo=visual_servo, match_method=kwargs["match_method"],
+        device_id=device_id,
     )
+    task_executor.run(target_object=target_object, target_receptacle=target_receptacle)
 
 
 if __name__ == "__main__":

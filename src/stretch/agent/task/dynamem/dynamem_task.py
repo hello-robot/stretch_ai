@@ -38,6 +38,10 @@ class DynamemTaskExecutor:
         self.robot = robot
         self.parameters = parameters
 
+        # Other parameters
+        self.visual_servo = visual_servo
+        self.match_method = match_method
+
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
             raise TypeError(f"Expected AbstractRobotClient, got {type(self.robot)}")
@@ -47,18 +51,23 @@ class DynamemTaskExecutor:
 
         # Create semantic sensor if visual servoing is enabled
         print("- Create semantic sensor if visual servoing is enabled")
-        if visual_servo:
-            semantic_sensor = create_semantic_sensor(
-                parameters=parameters,
+        if self.visual_servo:
+            self.semantic_sensor = create_semantic_sensor(
+                parameters=self.parameters,
                 device_id=device_id,
                 verbose=False,
             )
+            self.grasp_object = GraspObjectOperation(
+                "grasp_the_object",
+                agent,
+            )
         else:
-            parameters["encoder"] = None
-            semantic_sensor = None
+            self.parameters["encoder"] = None
+            self.semantic_sensor = None
+            self.grasp_object = None
 
         print("- Start robot agent with data collection")
-        self.agent = RobotAgent(robot, parameters, semantic_sensor)
+        self.agent = RobotAgent(self.robot, self.parameters, self.semantic_sensor)
         self.agent.start()
 
         # Task stuff
@@ -186,7 +195,7 @@ class DynamemTaskExecutor:
 
     def run(
         self,
-        mode: str,
+        mode: str = None,
         target_object: str = None,
         target_receptacle: str = None,
         input_path: str = None,
@@ -198,6 +207,9 @@ class DynamemTaskExecutor:
         object_to_find, location_to_place = None, None
         self.robot.move_to_nav_posture()
         self.robot.set_velocity(v=30.0, w=15.0)
+
+        if mode is None:
+            mode = get_mode(mode)
 
         if self.visual_servo:
             grasp_object = GraspObjectOperation(
