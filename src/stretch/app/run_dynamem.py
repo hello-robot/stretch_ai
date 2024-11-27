@@ -7,6 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+from typing import Optional
+
 import click
 
 from stretch.agent.task.dynamem import DynamemTaskExecutor
@@ -64,7 +66,13 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     "--input-path",
     type=click.Path(),
     default=None,
-    help="Input path with default value 'output.npy'",
+    help="Input path with default value None",
+)
+@click.option(
+    "--output-path",
+    type=click.Path(),
+    default=None,
+    help="Input path with default value None",
 )
 @click.option(
     "--match-method", "--match_method", type=click.Choice(["class", "feature"]), default="feature"
@@ -77,7 +85,8 @@ def main(
     explore_iter: int = 3,
     mode: str = "navigation",
     method: str = "dynamem",
-    input_path: str = None,
+    input_path: Optional[str] = None,
+    output_path: Optional[str] = None,
     robot_ip: str = "",
     visual_servo: bool = False,
     skip_confirmations: bool = False,
@@ -110,6 +119,7 @@ def main(
         visual_servo=visual_servo,
         match_method=kwargs["match_method"],
         device_id=device_id,
+        output_path=output_path,
     )
 
     if input_path is None:
