@@ -28,6 +28,7 @@ To complete "Pick up A and Place it on B", it will call 4 commands sequentially:
 - `pick(A)`
 - `navigate(B)`
 - `place(B)`
+
 Besides these commands, Dynamem also provides exploration module
 - `explore()`
 
@@ -99,10 +100,17 @@ The command looks like this
 python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --output-path #PICKLE_FILE_PATH --input-path $PICKLE_FILE_PATH
 ```
 
-### Running with AnyGrasp
-TBA. Now you can follow [OK-Robot installation instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#installation) to install AnyGrasp and follow [OK-Robot running instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#on-workstation) to run AnyGrasp.
+### Manipulation with AnyGrasp
+TBA. 
 
-### Running without AnyGrasp
+Now you can follow [OK-Robot installation instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#installation) to install AnyGrasp and follow [OK-Robot running instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#on-workstation) to run AnyGrasp.
+
+After AnyGrasp is launched, you can run default Dynamem commands as described above.
+```
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP
+```
+
+### Manipulation with Stretch AI visual servoing manipulation
 
 If you do not have access to AnyGrasp, you can run with the Stretch AI Visual Servoing code, as described in the [LLM Agent documentation](llm_agent.md). In this case, you can run Dynamem with the following command:
 ```
