@@ -15,7 +15,7 @@ However, there is some reason why sometimes we should still use AI agent:
 * Dynamem does an open loop pick up, which requires the robot urdf to be very well calibrated as the robot does not take new observation to correct itself once the action plan is generated.
 * Dynamem uses Anygrasp, a closed source gripper pose prediction model. Some researchers or companies might not be allowed or be able to use it.
 
-# Understanding Dynamem code structures
+## Understanding Dynamem code structures
 Dynamem consists of three components, navigation, picking, and placing. 
 To complete "Pick up A and Place it on B", it will call 4 modules sequentially:
 - `navigate(A)`
@@ -23,9 +23,12 @@ To complete "Pick up A and Place it on B", it will call 4 modules sequentially:
 - `navigate(B)`
 - `place(B)`
 
-# Running Dynamem
-You should follow the these instructions to run Dynamem.
-## Launch SLAM on robots
+## Running Dynamem
+You should follow the these instructions to run Dynamem. SLAM and control codes are supposed to be run on the robot while perception models are supposed to be run on the workstation (e.g. a laptop, a lambda machine; might also be run on the robot but not recommended).
+
+### On the robot
+#### Startup
+#### Launch SLAM on robots
 
 To run navigation system of [Dynamem](https://dynamem.github.io), you first need to install environment with these commands:
 ```
@@ -43,13 +46,24 @@ docker ./scripts/run_stretch_ai_ros2_bridge.sh
 
 For more information, see the [Stretch AI startup guide](start_with_docker_plus_virtenv.md).
 
-### Arguments in Dynamem scripts
+### On the workstation
+
+
+
+#### Arguments in Dynamem scripts
 
 On the workstation, we run following command on the workstation to run dynamem
 ```
-python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP [--input-path $PICKLE_FILE_PATH]
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP
 ```
 `robot_ip` is used to communicate robot and `server_ip` is used to communicate the server where AnyGrasp runs (If you only want to try navigation, then set this to `127.0.0.1`)
+
+### Loading from previous semantic memory
+Dynamem stores the semantic memory into pickle file
+
+```
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --input-path $PICKLE_FILE_PATH
+```
 
 If you want to run Dynamem directly based on previous runs, you can always find the pickle file saved in previous runs and set `input-path`. If you want to run from scratch, then simply not include `input-path` argument and the robot will first rotate in place to scan surroundings.
 
