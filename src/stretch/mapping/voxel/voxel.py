@@ -360,6 +360,7 @@ class SparseVoxelMap(object):
         self,
         obs: Observations,
         camera_K: Optional[torch.Tensor] = None,
+        realtime_max_depth: Optional[float] = None,
         *args,
         **kwargs,
     ):
@@ -399,6 +400,7 @@ class SparseVoxelMap(object):
             instance_image=instance_image,
             instance_classes=instance_classes,
             instance_scores=instance_scores,
+            realtime_max_depth=realtime_max_depth,
             *args,
             **kwargs,
         )  # type: ignore
@@ -418,6 +420,7 @@ class SparseVoxelMap(object):
         obs: Optional[Observations] = None,
         xyz_frame: str = "camera",
         pose_correction: Optional[Tensor] = None,
+        realtime_max_depth: Optional[float] = None,
         **info,
     ):
         """Add this to our history of observations. Also update the current running map.
@@ -536,7 +539,10 @@ class SparseVoxelMap(object):
 
         valid_depth = torch.full_like(rgb[:, 0], fill_value=True, dtype=torch.bool)
         if depth is not None:
-            valid_depth = (depth > self.min_depth) & (depth < self.max_depth)
+            if realtime_max_depth is not None:
+                valid_depth = valid_depth & (depth < realtime_max_depth)
+            else:
+                valid_depth = (depth > self.min_depth) & (depth < self.max_depth)
 
             if self.use_derivative_filter:
                 edges = get_edges(depth, threshold=self.derivative_filter_threshold)

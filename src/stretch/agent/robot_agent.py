@@ -115,6 +115,7 @@ class RobotAgent:
         self._head_not_moving_tolerance = float(
             self.parameters.get("motion/joint_thresholds/head_not_moving_tolerance", 1.0e-4)
         )
+        self.realtime_max_depth = float(self.parameters.get("agent/realtime/max_depth", 1.75))
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
@@ -638,6 +639,12 @@ class RobotAgent:
             )
 
             if head_speed > self._head_not_moving_tolerance:
+                return True
+
+        if obs.joint_velocities is not None:
+            base_angular_speed = abs(obs.joint_velocities[HelloStretchIdx.BASE_THETA])
+
+            if base_angular_speed > 0.075:
                 return True
 
         return False

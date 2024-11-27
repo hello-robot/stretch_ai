@@ -105,6 +105,7 @@ agent:
     maximum_matched_observations: 50
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
     camera_pose_match_threshold: 0.5
+    max_depth: 1.75
   
   # Configuration of the realtime updates
   use_realtime_updates: False
