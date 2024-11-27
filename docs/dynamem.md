@@ -28,6 +28,13 @@ You should follow the these instructions to run Dynamem. SLAM and control codes 
 
 ### On the robot
 #### Startup
+Once you turn on Stretch robot, you should first calibrate it
+```
+stretch_free_robot_process.py
+stretch_robot_home.py
+```
+If you have already run these codes to start up the robot, you may move to the next step.
+
 #### Launch SLAM on robots
 
 To run navigation system of [Dynamem](https://dynamem.github.io), you first need to install environment with these commands:
@@ -48,15 +55,20 @@ For more information, see the [Stretch AI startup guide](start_with_docker_plus_
 
 ### On the workstation
 
+Most of AI codes (e.g. VLMs, mLLMs) are run on the workstation.
 
+#### Specifying IPs in Dynamem scripts
 
-#### Arguments in Dynamem scripts
+Firstly you should know the ip address of your robot and workstation by running `ifconfig` on these two machines.
 
-On the workstation, we run following command on the workstation to run dynamem
+Continuously tracking ips of different machines is an annoying task. We recommend using [Tailscale](https://tailscale.com) to manage a series of virtual ip addresses. 
+
+Run following command on the workstation to run dynamem
 ```
 python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP
 ```
-`robot_ip` is used to communicate robot and `server_ip` is used to communicate the server where AnyGrasp runs (If you only want to try navigation, then set this to `127.0.0.1`)
+`robot_ip` is used to communicate robot and `server_ip` is used to communicate the server where AnyGrasp runs. If you don't run anygrasp (e.g. navigation only or running Stretch AI visual servoing manipulation instead), then set `server_ip` to `127.0.0.1`.
+If you plan to run AnyGrasp on the same workstation, we highly recommend you find the ip of this workstation instead of naivly setting `server_ip` to `127.0.0.1`.
 
 ### Loading from previous semantic memory
 Dynamem stores the semantic memory into pickle file
@@ -97,7 +109,7 @@ OPENAI_API_KEY=your_key_here
 python -m stretch.app.run_dynamem --use-llm --llm openai
 ```
 
-### Select between different options to control your system
+<!-- ### Select between different options to control your system
 
 You will be asked to choose between some options when running.
 
@@ -113,7 +125,7 @@ Following this pattern, choose not to place the object and you will be asked to 
 
 ![no](./images/dynamem_instruction3.jpg)
 
-To quit from the process, just select S.
+To quit from the process, just select S. -->
 
 ### Cite Dynamem
 
