@@ -1,4 +1,4 @@
-# How to add a new LLM task
+# How to Add a New LLM Task
 
 With Stretch AI, you can command your robot to perform tasks using speech and a large language model (LLM). This documentation provides an example of adding a new task to Stretch AI that can be called by an LLM. Specifically, it describes how we added a **simple** handover task to the [pick-and-place demo](https://github.com/hello-robot/stretch_ai/blob/main/docs/llm_agent.md) that comes with Stretch AI. 
 
