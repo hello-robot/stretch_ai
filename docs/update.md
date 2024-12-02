@@ -5,12 +5,12 @@ This is a set of steps used to make sure your robot hardware is up to date. We w
 - [stretch_ai](https://github.com/hello-robot/stretch_ai/)
 - [stretch_urdf](https://github.com/hello-robot/stretch_urdf/)
 
-There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually as below.
+Code installed from git must be updated manually as below.
 
 ### Step 1: Update the stretch_ai repository
 
 1. Open a terminal and navigate to the `stretch_ai` directory.
-1. Run the following commands to update the repository:
+2. Run the following commands to update the repository:
 
 ```bash
 git pull
@@ -34,7 +34,7 @@ pip install --upgrade hello-robot-stretch-body hello-robot-stretch-urdf
 ### Step 2: Update the stretch_urdf repository
 
 1. Open a terminal and navigate to the `stretch_urdf` directory.
-1. Run the following commands to update the repository:
+2. Run the following commands to update the repository:
 
 ```bash
 git pull
