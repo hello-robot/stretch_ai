@@ -141,7 +141,13 @@ You can test out most code in the [simulation](docs/simulation.md) environment, 
 
 ### Updating Code on the Robot
 
-See the [update guide](docs/update.md) for more information. There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually, including code from this repository.
+See the [update guide](docs/update.md) for more information. Code installed from git must be updated manually, including code from this repository.
+
+You can also pull the latest docker image on the robot with the following command:
+
+```bash
+./scripts/run_stretch_ai_ros2_bridge_server.sh --update
+```
 
 ### Building Docker Images
 
