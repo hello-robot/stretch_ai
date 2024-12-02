@@ -28,7 +28,7 @@ We'll now provide details for each of these additions.
 
 ## A New Task
 
-We started by copying an existing task and modifying it. This mostly involved editing the [get_one_shot_task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L59) method. The get_one_shot_task method, first [creates a task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L62).
+We started by copying an existing task and modifying it. This mostly involved editing the [get_one_shot_task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L59) method. The get_one_shot_task method first [creates a task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L62).
 
 `task = Task()`
 
