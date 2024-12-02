@@ -20,9 +20,9 @@ Creating the new handover task primarily involved adding:
 - **[a new app](#a-new-app)**
   - The [hand_over_object.py](../src/stretch/app/hand_over_object.py) app, found in the [/src/stretch/app/](../src/stretch/app) directory, tests the new handover task in isolation, which can simplify development. 
 - **[a new execution method](#a-new-execution-method)**
-  - The [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method for the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_executor.py) processes a list of task tuples resulting from use of an LLM. 
+  - The [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) processes a list of task tuples resulting from the use of an LLM and executes the associated tasks. We added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method and the [conditional statement to call it](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L246) to the PickupExecutor in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_executor.py).
 - **[an engineered LLM prompt](#an-engineered-llm-prompt)**
-  - Engineering the LLM prompt enables the LLM to call the new handover task. Specifically, we edited the [LLM prompt text](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L79) and the [parse_response](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L221) method in [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py), which is found in the [/src/stretch/llms/prompts](../src/stretch/llms/prompts) directory.
+  - Engineering the LLM prompt enables the LLM to call the new handover task. Specifically, we edited the [LLM prompt text](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L79) and code in [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py), which is found in the [/src/stretch/llms/prompts](../src/stretch/llms/prompts) directory.
 
 We'll now provide details for each of these additions. 
 
@@ -133,9 +133,9 @@ python -m stretch.app.hand_over_object --target_object "person"
 
 ## A New Execution Method
 
-Stretch AI uses an executor to process a list of task tuples and call the relevant tasks. 
+Stretch AI uses an executor to process a list of task tuples and execute the relevant tasks. 
 
-Since we wanted to add the handover task to the existing pick and place demo, we added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method to the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_executor.py).
+Since we wanted to add the handover task to the existing pick and place demo, we added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method and the [conditional statement to call it](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L246) to the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_executor.py).
 
 Some tasks called by the executor require an argument provided by the LLM. For example, the [_find](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L147) method takes a target_object as an argument, which enables it to find an object requested using natural language. The handover task does not take an argument, since it always looks for a person.
 
