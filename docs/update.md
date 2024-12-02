@@ -17,6 +17,12 @@ git pull
 git submodule update --init --recursive
 ```
 
+You can install with pip:
+
+```bash
+python -m pip install -e .[dev]
+```
+
 ### Step 2: Update pip packages
 
 1. Open a terminal and run the following command to update all pip packages:
