@@ -65,11 +65,11 @@ task.add_operation(retract_arm)
 
 ### Finding and Navigating to Objects
 
-The most critical operations used by the handover task are the `update` object and the `go_to_object` object. `update` is an [UpdateOperation](../src/stretch/agent/operations/update.py) and `go_to_object` is a [NavigateToObjectOperation](../src/stretch/agent/operations/navigate.py).
+The most critical operations used by the handover task are the update operation and the go_to_object operation. update is an [UpdateOperation](../src/stretch/agent/operations/update.py) and go_to_object is a [NavigateToObjectOperation](../src/stretch/agent/operations/navigate.py).
 
-An UpdateOperation first updates the robot's map. Then it looks for an instance in the map that matches the `target_object` using the `match_method`. **When the robot detects a significant object, it creates an instance for the object that gathers information about the detected object, such as a cuboid defined with respect to the map, point clouds, images, and feature vectors.** Stretch AI's  [Rerun](https://rerun.io/) visualization displays instances as colorful line drawn cuboids. You can learn more about instances from the code found in the [/src/stretch/mapping/instance](../src/stretch/mapping/instance) directory. For example, the Instance class and InstanceView class are defined in [./instance/core.py](../src/stretch/mapping/instance/core.py).
+An UpdateOperation first updates the robot's map. Then it looks for an instance in the map that matches the target_object using the match_method. **When the robot detects a significant object, it creates an instance for the object that gathers information about the detected object, such as a cuboid defined with respect to the map, point clouds, images, and feature vectors.** Stretch AI's  [Rerun](https://rerun.io/) visualization displays instances as colorful line drawn cuboids. You can learn more about instances from the code found in the [/src/stretch/mapping/instance](../src/stretch/mapping/instance) directory. For example, the Instance class and InstanceView class are defined in [./instance/core.py](../src/stretch/mapping/instance/core.py).
 
-The following code excerpt illustrates creating the `update` operation and configuring it to find a person by tilting the robot's head upward, rotating it around, and updating the map. After updating the map, it attempts to find an instance with a detected class name that exactly matches the string "person". 
+The following code excerpt illustrates creating the update operation and configuring it to find a person by tilting the robot's head upward, rotating it around, and updating the map. After updating the map, it attempts to find an instance with a detected class name that exactly matches the string "person". 
 
 ```
 update = UpdateOperation("update_scene", self.agent, retry_on_failure=True)
@@ -88,7 +88,7 @@ The NavigateToObjectOperation navigates to the current target object, which is s
 
 ### Detecting Relevant Objects
 
-Notably, many of the steps in the pick and place demo use the `"feature"` match method to find instances. The "feature" match method uses embeddings to match text to images of the instance. We did not have success using the "feature" match method to find a person instance, so we instead used the original class label assigned by the underlying object detector that results in the creation of instances. 
+Notably, many of the steps in the pick and place demo use the "feature" match method to find instances. The "feature" match method uses embeddings to match text to images of the instance. We did not have success using the "feature" match method to find a person instance, so we instead used the original class label assigned by the underlying object detector that results in the creation of instances. 
 
 **By default, the robot only creates instances for object categories listed in [example_cat_map.json](../src/stretch/config/example_cat_map.json) and detected by [Detic](https://github.com/facebookresearch/Detic).** Detic can attempt to detect the twenty-one-thousand classes used in the [ImageNet](https://en.wikipedia.org/wiki/ImageNet) database. By default, Stretch AI only uses a small subset of these classes (e.g., 108 classes when the handover task was originally created).
 
@@ -98,7 +98,7 @@ Notably, many of the steps in the pick and place demo use the `"feature"` match 
 
 We recommend that you have the robot provide frequent feedback via speech. For example, the handover task has the robot make four announcements, each of which uses the SpeakOperation class found in [speak.py](../src/stretch/agent/operations/speak.py). 
 
-The first announcement creates the `found_a_person` operation with the following code:
+The first announcement creates the found_a_person operation with the following code:
 
 ```
 found_a_person = SpeakOperation(...)
