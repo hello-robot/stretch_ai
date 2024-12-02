@@ -11,20 +11,20 @@ python -m stretch.app.ai_pickup --use_llm --use_voice
 
 ## Overview
 
-Creating the new handover task primarily involved adding:
+Creating the new handover task primarily involved the following steps:
 
-- **[a new task](#create-a-new-task)**
+- **[Create a New Task](#create-a-new-task)**
   - [hand_over_task.py](../src/stretch/agent/task/pickup/hand_over_task.py) defines the new task. It's found in the [/src/stretch/agent/task/pickup](../src/stretch/agent/task/pickup) directory. 
-- **[new operations](#create-new-operations)** 
+- **[Create New Operations](#create-new-operations)** 
   - The handover task uses a series of operations, some of which we created specifically for the handover task. For example, the [extend_arm.py](../src/stretch/agent/operations/extend_arm.py) operation, found in the [/src/stretch/agent/operations](../src/stretch/agent/operations) directory, extends the arm during a handover.
-- **[a new app](#create-a-new-app)**
+- **[Create a New App](#create-a-new-app)**
   - The [hand_over_object.py](../src/stretch/app/hand_over_object.py) app, found in the [/src/stretch/app/](../src/stretch/app) directory, tests the new handover task in isolation, which can simplify development. 
-- **[a new execution method](#update-the-executor)**
+- **[Update the Executor](#update-the-executor)**
   - The [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) processes a list of task tuples resulting from the use of an LLM and executes the associated tasks. We added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method and the [conditional statement to call it](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L246) to the PickupExecutor in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_executor.py).
-- **[an engineered LLM prompt](#modify-the-llm-prompt)**
+- **[Modify the LLM Prompt](#modify-the-llm-prompt)**
   - Engineering the LLM prompt enables the LLM to call the new handover task. Specifically, we edited the [LLM prompt text](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L79) and code in [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py), which is found in the [/src/stretch/llms/prompts](../src/stretch/llms/prompts) directory.
 
-We'll now provide details for each of these additions. 
+We'll now provide details for each of these steps.
 
 ## Create A New Task
 
