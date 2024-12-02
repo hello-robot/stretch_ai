@@ -135,7 +135,7 @@ pip install -e .[dev]
 pre-commit install
 ```
 
-Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
+Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information. There is some information on how to [debug](docs/debug.md) and [update](docs/update.md) the codebase.
 
 ### Updating Code on the Robot
 
