@@ -69,8 +69,10 @@ It will first spend time downloading various models that it depends on. Once the
 
 Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
 
+```bash
 Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
+```
 
 ![Example of using the ai_pickup app with a toy moose and a laundry basket.](images/ai_pickup_moose_and_basket_example.jpg)
 
@@ -79,13 +81,15 @@ At Hello Robot, people have successfully commanded the robot to pick up a variet
 ### What is the AI Agent?
 
 When you run the `ai_pickup` command, it will create a [Pickup Executor](../src/stretch/agent/task/pickup/pickup_executor.py) object, which parses instructions from either an LLM or from a handful of templates and uses them to create a reactive task plan for the robot to execute. When you use this with the `--use_llm` flag -- which is recommended -- it will instantiate one of a number of LLM clients to generate the instructions. The LLM clients are defined in the [llm_agent.py](../src/stretch/agent/llm/__init__.py) file and are:
-  - `qwen25` and variants: the Qwen2.5 model from Tencent; a permissively-licensed model. The default is `qwen25-3B-Instruct`.
-  - `openai`: the OpenAI GPT-4o-mini model; a proprietary model accessed through the OpenAI API.
-  - `gemma2b`: the Gemma2b model from Google, accessed via Hugging Face's model hub.
+
+- `qwen25` and variants: the Qwen2.5 model from Tencent; a permissively-licensed model. The default is `qwen25-3B-Instruct`.
+- `openai`: the OpenAI GPT-4o-mini model; a proprietary model accessed through the OpenAI API.
+- `gemma2b`: the Gemma2b model from Google, accessed via Hugging Face's model hub.
 
 We recommend `qwen25-3B-Instruct` or `gemma2b` if running locally on a powerful machine (e.g. a computer with an NVIDIA 4090 or similar), and `openai` if you have access to the OpenAI API.
 
 For example if you want to test with Gemma 2b, you can run:
+
 ```bash
 python -m stretch.app.ai_pickup --use_llm --llm gemma2b
 ```
@@ -235,7 +239,7 @@ To test the grasping app, place an object directly in front of the robot, and ru
 python -m stretch.app.grasp_object --target_object "pink plastic cup"
 ```
 
-Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/task/grasp/grasp_object.py) class. This class has a lot of options, available via the `configure()` function. Some to note:
+Grasping is implemented in the [GraspObjectOperation](../src/stretch/agent/operations/grasp_object.py) class. This class has a lot of options, available via the `configure()` function. Some to note:
 
 - `talk: bool` - whether the robot should speak out loud while performing the task (if false, the robot will stay quiet)
 - `match_method` - either `feature` or `class`; if `feature`, the robot will attempt to match the object to a feature vector, and if `class`, the robot will attempt to match the object to a class label.
@@ -247,7 +251,7 @@ _Click to follow the link to YouTube:_
 
 [![Pick up the stuffed toy zebra](https://img.youtube.com/vi/OISraQrl8rA/0.jpg)](https://www.youtube.com/watch?v=OISraQrl8rA)
 
-Other parameters will configure how visual servoing operates and how close the robot needs to get to the object before closing the gripper; to understand these, it's best to look at the [GraspObjectOperation source code](../src/stretch/agent/task/grasp/grasp_object.py).
+Other parameters will configure how visual servoing operates and how close the robot needs to get to the object before closing the gripper; to understand these, it's best to look at the [GraspObjectOperation source code](../src/stretch/agent/operations/grasp_object.py).
 
 ##### Visual Servoing GUI
 
@@ -265,7 +269,7 @@ You can chat with the robot using LLMs by running the following command:
 python -m stretch.app.chat
 ```
 
-You can run this command with the `--llm` flag to set a specific backend (by default it is `gemma2b`):
+You can run this command with the `--llm` flag to set a specific backend:
 
 ```bash
 python -m stretch.app.chat --llm qwen25
@@ -345,10 +349,11 @@ motion_planner:
 ```
 
 What these do:
-  - `step_size` is how far the robot moves in each step -- together with the `rotation_step_size`, this determines how granular collision checking will be
-  - `rotation_step_size` is how far the robot rotates in each step -- together, these are used to determine how the robot moves
-  - `algorithm` is the algorithm used to plan the robot's path -- `rrt_connect` works fairly well
-  - `simplify_plans` and `shortcut_plans` are used to simplify the robot's path -- these can be useful if the robot is taking too long to get places, and are intended to be used with the `simplify` and `shortcut_iter` parameters and the `rrt_connect` algorithm
+
+- `step_size` is how far the robot moves in each step -- together with the `rotation_step_size`, this determines how granular collision checking will be
+- `rotation_step_size` is how far the robot rotates in each step -- together, these are used to determine how the robot moves
+- `algorithm` is the algorithm used to plan the robot's path -- `rrt_connect` works fairly well
+- `simplify_plans` and `shortcut_plans` are used to simplify the robot's path -- these can be useful if the robot is taking too long to get places, and are intended to be used with the `simplify` and `shortcut_iter` parameters and the `rrt_connect` algorithm
 
 If you want to try `a_star`, you can set `algorithm` to `a_star`. This is a simpler algorithm that may work better in some cases. You may want to disable `simplify_plans` and `shortcut_plans` if you are using `a_star`.
 
