@@ -100,7 +100,7 @@ By specifying `intput-path`, the robot will first read semantic memory from spec
 The command looks like this
 
 ```
-python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --output-path #PICKLE_FILE_PATH --input-path $PICKLE_FILE_PATH
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --output-path $PICKLE_FILE_PATH --input-path $PICKLE_FILE_PATH
 ```
 
 ### Manipulation with AnyGrasp
