@@ -69,7 +69,7 @@ The most critical operations used by the handover task are the `update` object a
 
 An UpdateOperation first updates the robot's map. Then it looks for an instance in the map that matches the `target_object` using the `match_method`. **When the robot detects a significant object, it creates an instance for the object that gathers information about the detected object, such as a cuboid defined with respect to the map, point clouds, images, and feature vectors.** Stretch AI's  [Rerun](https://rerun.io/) visualization displays instances as colorful line drawn cuboids. You can learn more about instances from the code found in the [/src/stretch/mapping/instance](../src/stretch/mapping/instance) directory. For example, the Instance class and InstanceView class are defined in [./instance/core.py](../src/stretch/mapping/instance/core.py).
 
-The following code excerpt illustrates creating the `update` operation and configuring it to find a person by tilting the robot's head upward, rotating it around, and updating the map. After updating the map, it attempts to find an instance with a detected class name that exactly matches string "person". 
+The following code excerpt illustrates creating the `update` operation and configuring it to find a person by tilting the robot's head upward, rotating it around, and updating the map. After updating the map, it attempts to find an instance with a detected class name that exactly matches the string "person". 
 
 ```
 update = UpdateOperation("update_scene", self.agent, retry_on_failure=True)
