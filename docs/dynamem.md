@@ -17,7 +17,7 @@ However, there is some reason why sometimes we should still use AI agent:
 
 _Click to follow the link to YouTube:_
 
-[![Example of Dynamem in the wild](https://i9.ytimg.com/vi/oBHzOfUdRnE/mqdefault.jpg?sqp=CMD0nboG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGGUgXShTMA8=&rs=AOn4CLAOlWNMyxe1WcShGRpP1BaH3wK2bg)](https://youtu.be/oBHzOfUdRnE)
+[![Example of Dynamem in the wild](images/dynamem.png)](https://youtu.be/oBHzOfUdRnE)
 
 [Above](https://youtu.be/oBHzOfUdRnE) shows Dynamem running in NYU kitchen.
 
@@ -85,6 +85,9 @@ python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_
 `robot_ip` is used to communicate robot and `server_ip` is used to communicate the server where AnyGrasp runs. If you don't run anygrasp (e.g. navigation only or running Stretch AI visual servoing manipulation instead), then set `server_ip` to `127.0.0.1`.
 If you plan to run AnyGrasp on the same workstation, we highly recommend you find the ip of this workstation instead of naivly setting `server_ip` to `127.0.0.1`.
 
+Once the robot starts doing OVMM, a rerun window will be popped up to visualize robot's thoughts.
+![Example of Dynamem in the wild](images/dynamem_rerun.png)
+
 ### Loading from previous semantic memory
 Dynamem stores the semantic memory as a pickle file after initial rotation in place and everyt time `navigate(A)` is executed. This allows Dynamem to read from saved pickle file so that it can directly load semantic memory from previous runs without rotating in place and scanning surroundings again.
 
@@ -97,7 +100,7 @@ By specifying `intput-path`, the robot will first read semantic memory from spec
 The command looks like this
 
 ```
-python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --output-path #PICKLE_FILE_PATH --input-path $PICKLE_FILE_PATH
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --output-path $PICKLE_FILE_PATH --input-path $PICKLE_FILE_PATH
 ```
 
 ### Manipulation with AnyGrasp
