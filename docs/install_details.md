@@ -2,7 +2,7 @@
 
 Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](./start_with_docker.md).
 
-If you do not start with docker, follow the [install guide](docs/install.md).
+If you do not start with docker, follow the [install guide](docs/install_details.md).
 
 ### System Dependencies
 

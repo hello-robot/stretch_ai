@@ -7,7 +7,7 @@ Stretch AI comes with several apps that you can run to test the robot's capabili
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
 - [Gripper](#use-the-gripper) - Open and close the gripper.
-- [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
+- [Rerun](#rerun-web-server) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
 - [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
 Advanced:
@@ -19,10 +19,10 @@ Advanced:
 Finally:
 
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
-- [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
+- [Learning from Demonstration (LfD)](learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
 - [Dynamem OVMM system](dynamem.md) - Deploy open vocabulary mobile manipulation system [Dynamem](https://dynamem.github.io)
 
-There are also some apps for [debugging](docs/debug.md).
+There are also some apps for [debugging](debug.md).
 
 ## List of Apps
 
@@ -155,9 +155,9 @@ python -m pip install mediapipe
 python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
 ```
 
-[Read the data collection documentation](docs/data_collection.md) for more details.
+[Read the data collection documentation](data_collection.md) for more details.
 
-After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
+After this, [read the learning from demonstration instructions](learning_from_demonstration.md) to train a policy.
 
 ### Grasp an Object
 
@@ -189,7 +189,7 @@ Another useful flag when testing is the `--reset` flag, which will reset the rob
 
 ### Voxel Map Visualization
 
-You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](src/test/mapping/hq_small.pkl)  or [hq_large](src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
+You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](../src/test/mapping/hq_small.pkl)  or [hq_large](../src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
 
 ```bash
 python -m stretch.app.read_map -i hq_small.pkl
