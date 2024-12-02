@@ -20,7 +20,7 @@ Creating the new handover task primarily involved adding:
 - **[a new app](#a-new-app)**
   - The [hand_over_object.py](../src/stretch/app/hand_over_object.py) app, found in the [/src/stretch/app/](../src/stretch/app) directory, tests the new handover task in isolation, which can simplify development. 
 - **[a new execution method](#a-new-execution-method)**
-  - The [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method for the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_exeecutor.py) processes a list of command tuples resulting from use of an LLM. 
+  - The [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method for the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_exeecutor.py) processes a list of task tuples resulting from use of an LLM. 
 - **[an engineered LLM prompt](#an-engineered-llm-prompt)**
   - Engineering the LLM prompt enables the LLM to call the new handover task. Specifically, we edited the [LLM prompt text](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L79) and the [parse_response](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L221) method in [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py), which is found in the [/src/stretch/llms/prompts](../src/stretch/llms/prompts) directory.
 
@@ -133,7 +133,7 @@ python -m stretch.app.hand_over_object --target_object "person"
 
 ## A New Execution Method
 
-Stretch AI uses an executor to process a list of command tuples and call the relevant tasks. 
+Stretch AI uses an executor to process a list of task tuples and call the relevant tasks. 
 
 Since we wanted to add the handover task to the existing pick and place demo, we added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method to the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_exeecutor.py).
 
@@ -141,7 +141,7 @@ Some tasks called by the executor require an argument provided by the LLM. For e
 
 ## An Engineered LLM Prompt
  
-With Stretch AI's [pick-and-place demo](https://github.com/hello-robot/stretch_ai/blob/main/docs/llm_agent.md), you can provide a natural language request to an LLM and the LLM will output text that specifies the tasks that the robot should perform. The LLM's text output is then parsed into a list of tuples of tasks and task arguments. This list then goes to the executor described in the previous section, which processes the list of tuples and executes the tasks. 
+With Stretch AI's [pick-and-place demo](https://github.com/hello-robot/stretch_ai/blob/main/docs/llm_agent.md), you can provide a natural language request to an LLM and the LLM will output text that specifies the tasks that the robot should perform. The LLM's text output is then parsed into a list of tuples of tasks identifiers with task arguments. This list then goes to the executor described in the previous section, which processes the list of tuples and executes the tasks. 
  
 ### Tell the LLM How to Use Your Task
  
@@ -178,7 +178,7 @@ end()
 ...
 ```
 
-When using an LLM with Stretch AI, prior requests and actions are provided as context for new request. So, **individual requests provided to the LLM are not treated independently.**
+When using an LLM with Stretch AI, prior requests and actions are provided as context for a new request. So, **individual requests provided to the LLM are not treated independently.**
 
 The second instruction we added attempts to address situations that depend on this context. 
 
@@ -198,7 +198,7 @@ end()
 
 ### Convert LLM Output Text to Tuples
 
-Finally, you need to edit the [parse_response](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L221) method in [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py) to convert the text output by the LLM into a tuple of commands an arguments. 
+Finally, you need to edit the [parse_response](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/llms/prompts/pickup_prompt.py#L221) method in [pickup_prompt.py](../src/stretch/llms/prompts/pickup_prompt.py) to convert the text output by the LLM into a tuple with a task identifier and task argument. 
 
 ### Test Your Prompt
 
