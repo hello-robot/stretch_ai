@@ -202,7 +202,7 @@ Finally, you need to edit the [parse_response](https://github.com/hello-robot/st
 
 ### Test Your Prompt
 
-The effectiveness of your prompt can depend on the specific LLM you are using. While performing prompt engineering, we tested the effectiveness of our prompts using the following command, which displays the text output from the LLM when given a request via speech. 
+The effectiveness of your prompt can depend on the specific LLM you are using. While performing prompt engineering, we tested the effectiveness of our prompts using the following command, which displays the list of task tuples output when given requests via speech. 
 
 ```
 python -m stretch.app.chat --voice --llm qwen25 --prompt pickup
