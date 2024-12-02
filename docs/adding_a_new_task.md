@@ -14,7 +14,7 @@ python -m stretch.app.ai_pickup --use_llm --use_voice
 Creating the new handover task primarily involved adding:
 
 - **[a new task](#a-new-task)**
-  - The [hand_over_task.py](../src/stretch/agent/task/pickup/hand_over_task.py), found in the [/src/stretch/agent/task/pickup](../src/stretch/agent/task/pickup) directory. 
+  - [hand_over_task.py](../src/stretch/agent/task/pickup/hand_over_task.py) defines the new task. It's found in the [/src/stretch/agent/task/pickup](../src/stretch/agent/task/pickup) directory. 
 - **[new operations](#new-operations)** 
   - The handover task uses a series of operations, some of which we created specifically for the handover task. For example, the [extend_arm.py](../src/stretch/agent/operations/extend_arm.py) operation, found in the [/src/stretch/agent/operations](../src/stretch/agent/operations) directory, extends the arm during a handover.
 - **[a new app](#a-new-app)**
