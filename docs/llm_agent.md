@@ -65,12 +65,11 @@ Next, run the application on your GPU computer:
 
 It will first spend time downloading various models that it depends on. Once the program starts, you will see a [Rerun](https://rerun.io/) GUI that looks like the one below.
 
-```bash
 ![Rerun-based GUI for the ai_pickup app.](images/rerun_example.png)
 
 Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
-```
 
+```
 Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
 
