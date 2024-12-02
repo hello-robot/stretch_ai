@@ -135,7 +135,7 @@ python -m stretch.app.hand_over_object --target_object "person"
 
 Stretch AI uses an executor to process a list of task tuples and call the relevant tasks. 
 
-Since we wanted to add the handover task to the existing pick and place demo, we added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method to the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_exeecutor.py).
+Since we wanted to add the handover task to the existing pick and place demo, we added the [_hand_over](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L172) method to the [PickupExecutor](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L27) class found in [pickup_executor.py](../src/stretch/agent/task/pickup/pickup_executor.py).
 
 Some tasks called by the executor require an argument provided by the LLM. For example, the [_find](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/pickup_executor.py#L147) method takes a target_object as an argument, which enables it to find an object requested using natural language. The handover task does not take an argument, since it always looks for a person.
 
