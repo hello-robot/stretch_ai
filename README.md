@@ -113,6 +113,16 @@ At Hello Robot, people have successfully commanded the robot to pick up a variet
 
 Find out more about the LLM-based AI agent in its [documentation](docs/llm_agent.md). And once you're ready to learn more about Stretch AI, you can try out the [variety of applications (apps)](docs/apps.md) that demonstrate various capabilities.
 
+## Next Steps
+
+Check out documentation for different demos:
+
+  - [LLM Agent](docs/llm_agent.md) -- how to use the LLM agent for language-directed pick and place
+  - [Apps](docs/apps.md) -- list of many different apps that you can run
+  - [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and plce objects as the robot explores
+  - [Data Collection for Learning from Demonstration](docs/data_collection.md) -- how to collect data for learning from demonstration
+  - [Learning from Demonstration](docs/learning_from_demonstration.md)  -- how to train and evaluate policies with LfD
+
 ## Development
 
 Clone this repo on your Stretch and PC, and install it locally using pip with the "editable" flag:
