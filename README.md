@@ -137,6 +137,8 @@ pre-commit install
 
 Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information. There is some information on how to [debug](docs/debug.md) and [update](docs/update.md) the codebase.
 
+You can test out most code in the [simulation](docs/simulation.md) environment, which is a good way to test code without needing a robot.
+
 ### Updating Code on the Robot
 
 See the [update guide](docs/update.md) for more information. There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually, including code from this repository.

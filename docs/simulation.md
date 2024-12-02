@@ -46,4 +46,8 @@ python -m stretch.simulation.mujoco_server --use-robocasa
 In another run an app, like mapping:
 
 ```bash
+# Just point the app to the local IP address instead of to your robot.
+python -m stretch.app.mapping --robot_ip 127.0.0.1
 ```
+
+Using the `--robot_ip` option will update your default IP address; you will need to reset it or provide it again to connect to your physical robot from the same machine.
