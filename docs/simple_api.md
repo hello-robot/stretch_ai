@@ -50,4 +50,4 @@ robot.move_base_to([0, 0, 3.14159/2], relative=True)
 robot.move_base_to([0, 0, -3.14159/2], relative=True)
 ```
 
-You can find this code in [examples/simple_navigation.py](examples/simple_navigation.py).
+You can find a version of this code in [examples/simple_motions.py](examples/simple_motions.py).
