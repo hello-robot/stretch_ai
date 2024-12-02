@@ -65,16 +65,13 @@ Next, run the application on your GPU computer:
 
 It will first spend time downloading various models that it depends on. Once the program starts, you will see a [Rerun](https://rerun.io/) GUI that looks like the one below.
 
-```bash
 ![Rerun-based GUI for the ai_pickup app.](images/rerun_example.png)
 
 Then, in the terminal, it will ask you to specify an object and a receptacle. For example, in the example pictured below, the user provided the following descriptions for the object and the receptacle.
-```
 
 Enter the target object: brown moose toy
 Enter the target receptacle: white laundry basket 
 
-```
 ![Example of using the ai_pickup app with a toy moose and a laundry basket.](images/ai_pickup_moose_and_basket_example.jpg)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
@@ -101,7 +98,7 @@ You can also run many of the components individually, as explained below:
 
 #### Using OpenAI Models with Stretch AI
 
-To use an OpenAI model, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
+To use an OpenAI model for generating the instructions, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
 
 ```bash
 export OPENAI_API_KEY="your_api_key_here"
@@ -268,7 +265,7 @@ You can chat with the robot using LLMs by running the following command:
 python -m stretch.app.chat
 ```
 
-You can run this command with the `--llm` flag to set a specific backend:
+You can run this command with the `--llm` flag to set a specific backend (by default it is `gemma2b`):
 
 ```bash
 python -m stretch.app.chat --llm qwen25
