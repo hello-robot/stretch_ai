@@ -219,6 +219,7 @@ class RerunVisualizer:
                 open_browser = True
                 logger.warning("Docker environment detected. Disabling GUI.")
         rr.init("Stretch_robot", spawn=spawn_gui)
+
         if open_browser:
             rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 
@@ -237,7 +238,7 @@ class RerunVisualizer:
             static=True,
         )
         # World Origin
-        log_to_rerun(
+        rr.log(
             "world/xyz",
             rr.Arrows3D(
                 vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -549,7 +550,7 @@ class RerunVisualizer:
         t5 = timeit.default_timer()
 
         # Log points
-        log_to_rerun(
+        rr.log(
             "world/obstacles",
             rr.Points3D(
                 positions=obs_points,
@@ -557,7 +558,7 @@ class RerunVisualizer:
                 colors=[255, 0, 0],
             ),
         )
-        log_to_rerun(
+        rr.log(
             "world/explored",
             rr.Points3D(
                 positions=explored_points,
@@ -600,14 +601,20 @@ class RerunVisualizer:
                     name = semantic_sensor.get_class_name_for_id(instance.category_id)
                 else:
                     name = None
+
+                # Replace spaces with underscores
+                name = name.replace(" ", "_") if name is not None else None
+
+                # Create colors
                 if name not in self.bbox_colors_memory:
                     self.bbox_colors_memory[name] = np.random.randint(0, 255, 3)
+
                 best_view = instance.get_best_view()
                 bbox_bounds = best_view.bounds  # 3D Bounds
                 point_cloud_rgb = instance.point_cloud
                 pcd_rgb = instance.point_cloud_rgb
                 log_to_rerun(
-                    f"world/{instance.id}_{name}",
+                    f"world/{instance.id}_{name}" if name is not None else f"world/{instance.id}",
                     rr.Points3D(positions=point_cloud_rgb, colors=np.int64(pcd_rgb)),
                     static=True,
                 )

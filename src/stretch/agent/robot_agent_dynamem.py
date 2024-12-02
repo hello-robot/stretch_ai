@@ -14,9 +14,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import time
 import timeit
 from datetime import datetime
+from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -56,6 +56,7 @@ from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
+from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
 
@@ -121,6 +122,10 @@ class RobotAgent(RobotAgentBase):
             self.log = "dynamem_log/" + log
 
         self.create_obstacle_map(parameters)
+
+        # Create voxel map information for multithreaded access
+        self._voxel_map_lock = Lock()
+        self.voxel_map_proxy = SparseVoxelMapProxy(self.voxel_map, self._voxel_map_lock)
 
         # ==============================================
         self.obs_count = 0
@@ -431,11 +436,10 @@ class RobotAgent(RobotAgentBase):
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        # for pan in [0.6, -0.2, -1.0, -1.8]:
-        for pan in [0.4, -0.4, -1.2]:
+        for pan in [0.6, -0.2, -1.0, -1.8]:
+            # for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.65]:
-                self.robot.head_to(pan, tilt, blocking=False)
-                time.sleep(0.2)
+                self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 
     def rotate_in_place(self):
@@ -546,6 +550,7 @@ class RobotAgent(RobotAgentBase):
             mode = "exploration"
 
         if obs is not None and mode == "navigation":
+            print(obs, len(self.voxel_map.observations))
             obs = self.voxel_map.find_obs_id_for_A(text)
             rgb = self.voxel_map.observations[obs - 1].rgb
             self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)

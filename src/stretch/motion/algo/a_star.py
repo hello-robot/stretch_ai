@@ -377,8 +377,12 @@ class AStar(Planner):
             trajectory.append(
                 Node(np.array([waypoints[i][0], waypoints[i][1], float(theta)]), parent=parent)
             )
+        if len(trajectory) <= 0:
+            parent = None
+        else:
+            parent = trajectory[-1]
         trajectory.append(
-            Node(np.array([waypoints[-1][0], waypoints[-1][1], goal[-1]]), parent=trajectory[-1])
+            Node(np.array([waypoints[-1][0], waypoints[-1][1], goal[-1]]), parent=parent)
         )
 
         # Save the nodes for this planner

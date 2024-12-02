@@ -1367,7 +1367,7 @@ class RobotAgent:
         goal: Optional[str] = None,
         visualize_map_at_start: bool = False,
         can_move: bool = True,
-        verbose: bool = False,
+        verbose: bool = True,
     ) -> None:
 
         # Call the robot's own startup hooks

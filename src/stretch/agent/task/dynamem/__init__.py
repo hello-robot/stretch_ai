@@ -6,15 +6,4 @@
 #
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
-
-# Store the version here so:
-# 1) we don't load dependencies by storing it in __init__.py
-# 2) we can import it in setup.py for the same reason
-# 3) we can import it into your module
-
-__version__ = "0.1.19"
-
-__stretchpy_protocol__ = "spp0"
-
-if __name__ == "__main__":
-    print(__version__)
+from .dynamem_task import DynamemTaskExecutor
