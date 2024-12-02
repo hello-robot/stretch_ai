@@ -118,10 +118,11 @@ Find out more about the LLM-based AI agent in its [documentation](docs/llm_agent
 Check out documentation for different demos:
 
   - [LLM Agent](docs/llm_agent.md) -- how to use the LLM agent for language-directed pick and place
-  - [Apps](docs/apps.md) -- list of many different apps that you can run
   - [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and plce objects as the robot explores
   - [Data Collection for Learning from Demonstration](docs/data_collection.md) -- how to collect data for learning from demonstration
   - [Learning from Demonstration](docs/learning_from_demonstration.md)  -- how to train and evaluate policies with LfD
+  - [Apps](docs/apps.md) -- list of many different apps that you can run
+  - [Open-vocabulary mobile manipulation](docs/ovmm.md) -- experimental code which can handle more complex language commands
 
 ## Development
 
