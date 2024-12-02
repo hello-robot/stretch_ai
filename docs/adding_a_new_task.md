@@ -28,11 +28,11 @@ We'll now provide details for each of these additions.
 
 ## A New Task
 
-We started by copying an existing task and modifying it. This mostly involved editing the [get_one_shot_task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L59) method. The get_one_shot_task method, first [creates a task object](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L62).
+We started by copying an existing task and modifying it. This mostly involved editing the [get_one_shot_task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L59) method. The get_one_shot_task method, first [creates a task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L62).
 
 `task = Task()`
 
-It then creates operation objects and [adds them to the task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L146). In total, the handover task performs nine operations in a simple linear sequence. 
+It then creates operations and [adds them to the task](https://github.com/hello-robot/stretch_ai/blob/64c718773bad384599752ce6f52e6add9013b92d/src/stretch/agent/task/pickup/hand_over_task.py#L146). In total, the handover task performs nine operations in a simple linear sequence. 
 
 ```
 # rotate the head and look for a person
