@@ -115,9 +115,10 @@ Find out more about the LLM-based AI agent in its [documentation](docs/llm_agent
 
 ## Next Steps
 
-Check out documentation for different demos:
+Check out additional documentation for ways to use Stretch AI:
 
-  - [LLM Agent](docs/llm_agent.md) -- how to use the LLM agent for language-directed pick and place
+  - [LLM Agent](docs/llm_agent.md) -- How to use the LLM agent for language-directed pick and place
+  - [How to Add a New LLM Task](docs/adding_a_new_task.md) -- How to add a new task that can be called by an LLM
   - [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and plce objects as the robot explores
   - [Data Collection for Learning from Demonstration](docs/data_collection.md) -- how to collect data for learning from demonstration
   - [Learning from Demonstration](docs/learning_from_demonstration.md)  -- how to train and evaluate policies with LfD
