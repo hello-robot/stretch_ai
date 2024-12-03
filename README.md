@@ -122,8 +122,9 @@ Check out additional documentation for ways to use Stretch AI:
   - [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and plce objects as the robot explores
   - [Data Collection for Learning from Demonstration](docs/data_collection.md) -- how to collect data for learning from demonstration
   - [Learning from Demonstration](docs/learning_from_demonstration.md)  -- how to train and evaluate policies with LfD
-  - [Apps](docs/apps.md) -- list of many different apps that you can run
   - [Open-vocabulary mobile manipulation](docs/ovmm.md) -- experimental code which can handle more complex language commands
+  - [Apps](docs/apps.md) -- list of many different apps that you can run
+  - [Simple API](docs/simple_api.md) -- how to use the simple API to control the robot over wireless
 
 ## Development
 
@@ -135,11 +136,19 @@ pip install -e .[dev]
 pre-commit install
 ```
 
-Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
+Then follow the quickstart section. See [CONTRIBUTING.md](CONTRIBUTING.md) for more information. There is some information on how to [debug](docs/debug.md) and [update](docs/update.md) the codebase.
+
+You can test out most code in the [simulation](docs/simulation.md) environment, which is a good way to test code without needing a robot.
 
 ### Updating Code on the Robot
 
-See the [update guide](docs/update.md) for more information. There is an [update script](scripts.update.sh) which should handle some aspects of this. Code installed from git must be updated manually, including code from this repository.
+See the [update guide](docs/update.md) for more information. Code installed from git must be updated manually, including code from this repository.
+
+You can also pull the latest docker image on the robot with the following command:
+
+```bash
+./scripts/run_stretch_ai_ros2_bridge_server.sh --update
+```
 
 ### Building Docker Images
 
