@@ -18,7 +18,7 @@ import wave
 from typing import List
 
 import numpy as np
-# import pyaudio
+import pyaudio
 from tqdm import tqdm
 
 from stretch.audio.base import AbstractSpeechToText
