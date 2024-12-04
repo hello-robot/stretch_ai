@@ -33,6 +33,7 @@ def compute_tilt(camera_xyz, target_xyz):
 
 
 @click.command()
+@click.option("--robot-ip", "--robot_ip", default="127.0.0.1", type=str)
 @click.option("--server-ip", "--server_ip", default="127.0.0.1", type=str)
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
@@ -45,6 +46,7 @@ def compute_tilt(camera_xyz, target_xyz):
     help="Input path with default value 'output.npy'",
 )
 def main(
+    robot_ip,
     server_ip,
     manual_wait,
     navigate_home: bool = False,
@@ -60,7 +62,7 @@ def main(
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = RobotClient(robot_ip="100.79.44.11")
+    robot = RobotClient(robot_ip=robot_ip)
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")

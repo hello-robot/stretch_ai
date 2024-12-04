@@ -29,9 +29,10 @@ from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
-from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace
+from stretch.mapping.voxel import SparseVoxelMap, SparseVoxelMapNavigationSpace, SparseVoxelMapProxy
 from stretch.motion import ConfigurationSpace, Planner, PlanResult
-from stretch.motion.algo import RRTConnect, Shortcut, SimplifyXYT
+from stretch.motion.algo import Shortcut, SimplifyXYT, get_planner
+from stretch.motion.kinematics import HelloStretchIdx
 from stretch.perception.encoders import BaseImageTextEncoder, get_encoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.geometry import angle_difference, xyt_base_to_global
@@ -67,8 +68,8 @@ class RobotAgent:
         voxel_map: Optional[SparseVoxelMap] = None,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
-        create_semantic_sensor: bool = False,
         enable_realtime_updates: bool = False,
+        create_semantic_sensor: bool = False,
         obs_sub_port: int = 4450,
     ):
         self.reset_object_plans()
@@ -103,19 +104,29 @@ class RobotAgent:
         )
         self.obs_count = 0
         self.obs_history: List[Observations] = []
+        self._matched_vertices_obs_count: Dict[float, int] = dict()
+        self._matched_observations_poses: List[np.ndarray] = []
+        self._maximum_matched_observations = self.parameters.get(
+            "agent/realtime/maximum_matched_observations", 50
+        )
+        self._camera_pose_match_threshold = self.parameters.get(
+            "agent/realtime/camera_pose_match_threshold", 0.05
+        )
+        self._head_not_moving_tolerance = float(
+            self.parameters.get("motion/joint_thresholds/head_not_moving_tolerance", 1.0e-4)
+        )
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
         # self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
-        self._realtime_updates = enable_realtime_updates and self.parameters.get(
+        self._realtime_updates = enable_realtime_updates or self.parameters.get(
             "agent/use_realtime_updates", False
         )
-        if not enable_realtime_updates and self.parameters.get("agent/use_realtime_updates"):
-            logger.warning(
-                "Real-time updates are not enabled but the agent is configured to use them."
-            )
-            logger.warning("We will not be able to update the map in real-time.")
+        if not enable_realtime_updates and self._realtime_updates:
+            logger.warn("Real-time updates are enabled via command line.")
+        if self._realtime_updates:
+            logger.alert("Real-time updates are enabled!")
 
         # ==============================================
         # Update configuration
@@ -132,9 +143,7 @@ class RobotAgent:
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = self.parameters.get(
-            "encoder_args/matching/feature_match_threshold", 0.05
-        )
+        self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
@@ -158,9 +167,12 @@ class RobotAgent:
         else:
             self.voxel_map = self._create_voxel_map(self.parameters)
 
+        self._voxel_map_lock = Lock()
+        self.voxel_map_proxy = SparseVoxelMapProxy(self.voxel_map, self._voxel_map_lock)
+
         # Create planning space
         self.space = SparseVoxelMapNavigationSpace(
-            self.voxel_map,
+            self.get_voxel_map(),
             self.robot.get_robot_model(),
             step_size=self.parameters["motion_planner"]["step_size"],
             rotation_step_size=self.parameters["motion_planner"]["rotation_step_size"],
@@ -170,7 +182,7 @@ class RobotAgent:
             dilate_obstacle_size=self.parameters["motion_planner"]["frontier"][
                 "dilate_obstacle_size"
             ],
-            grid=self.voxel_map.grid,
+            grid=self.get_voxel_map().grid,
         )
 
         self.reset_object_plans()
@@ -185,7 +197,11 @@ class RobotAgent:
         self._previous_goal = None
 
         # Create a simple motion planner
-        self.planner: Planner = RRTConnect(self.space, self.space.is_valid)
+        self.planner: Planner = get_planner(
+            self.parameters.get("motion_planner/algorithm", "rrt_connect"),
+            self.space,
+            self.space.is_valid,
+        )
         # Add shotcutting to the planner
         if self.parameters.get("motion_planner/shortcut_plans", False):
             self.planner = Shortcut(
@@ -221,6 +237,14 @@ class RobotAgent:
             self._update_map_thread = Thread(target=self.update_map_loop)
             self._update_map_thread.start()
 
+            # Prune old observations
+            self._prune_old_observations_thread = Thread(target=self.prune_old_observations_loop)
+            self._prune_old_observations_thread.start()
+
+            # Match pose graph
+            self._match_pose_graph_thread = Thread(target=self.match_pose_graph_loop)
+            self._match_pose_graph_thread.start()
+
             # Get observations thread
             self._get_observations_thread = Thread(target=self.get_observations_loop)
             self._get_observations_thread.start()
@@ -232,9 +256,9 @@ class RobotAgent:
         """Return the robot in use by this model"""
         return self.robot
 
-    def get_voxel_map(self) -> SparseVoxelMap:
+    def get_voxel_map(self) -> SparseVoxelMapProxy:
         """Return the voxel map in use by this model"""
-        return self.voxel_map
+        return self.voxel_map_proxy
 
     def __del__(self):
         """Destructor. Clean up threads."""
@@ -347,11 +371,11 @@ class RobotAgent:
             "max",
             "mean",
         ], f"Invalid aggregation method {aggregation_method}"
-        encoded_text = self.encode_text(text_query).to(self.voxel_map.map_2d_device)
+        encoded_text = self.encode_text(text_query).to(self.get_voxel_map().map_2d_device)
         best_instance = None
         best_activation = -1.0
         print("--- Searching for instance ---")
-        for instance in self.voxel_map.get_instances():
+        for instance in self.get_voxel_map().get_instances():
             ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
@@ -370,7 +394,7 @@ class RobotAgent:
 
     def get_instances(self) -> List[Instance]:
         """Return all instances in the voxel map."""
-        return self.voxel_map.get_instances()
+        return self.get_voxel_map().get_instances()
 
     def get_instances_from_text(
         self,
@@ -403,9 +427,9 @@ class RobotAgent:
         activations = []
         matches = []
         # Encode the text query and move it to the same device as the instance embeddings
-        encoded_text = self.encode_text(text_query).to(self.voxel_map.map_2d_device)
+        encoded_text = self.encode_text(text_query).to(self.get_voxel_map().map_2d_device)
         # Compute the cosine similarity between the text query and each instance embedding
-        for instance in self.voxel_map.get_instances():
+        for instance in self.get_voxel_map().get_instances():
             ins = instance.get_instance_id()
             emb = instance.get_image_embedding(
                 aggregation_method=aggregation_method, normalize=normalize
@@ -521,7 +545,7 @@ class RobotAgent:
                 print("Update took", t1 - t0, "seconds")
 
             if visualize:
-                self.voxel_map.show(
+                self.get_voxel_map().show(
                     orig=np.zeros(3),
                     xyt=self.robot.get_base_pose(),
                     footprint=self.robot.get_robot_model().get_footprint(),
@@ -540,7 +564,7 @@ class RobotAgent:
 
     def show_map(self) -> None:
         """Helper function to visualize the 3d map as it stands right now."""
-        self.voxel_map.show(
+        self.get_voxel_map().show(
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
             footprint=self.robot.get_robot_model().get_footprint(),
@@ -551,7 +575,7 @@ class RobotAgent:
         """Return whether the robot agent is still running."""
         return self._running and self.robot.running
 
-    def get_observations_loop(self) -> None:
+    def get_observations_loop(self, verbose=False) -> None:
         """Threaded function that gets observations in real-time. This is useful for when we are processing real-time updates."""
         while self.robot.running and self._running:
             obs = None
@@ -574,175 +598,252 @@ class RobotAgent:
                     obs = None
                 t1 = timeit.default_timer()
                 if t1 - t0 > 10:
-                    logger.error("Failed to get observation")
                     break
 
                 # Add a delay to make sure we don't get too many observations
                 time.sleep(0.05)
 
             # t1 = timeit.default_timer()
-            self.obs_history.append(obs)
+            if obs is not None:
+                self.obs_history.append(obs)
+                self.obs_count += 1
             self._obs_history_lock.release()
-            self.obs_count += 1
-            time.sleep(0.1)
+
+            if verbose:
+                print("Done getting an observation")
+            time.sleep(0.05)
 
     def stop_realtime_updates(self):
         """Stop the update threads."""
         self._running = False
 
+    def should_drop_observation(self, obs: Observations, pose_graph_timestamp: int) -> bool:
+        """Check if we should drop an observation."""
+        if pose_graph_timestamp in self._matched_vertices_obs_count:
+            if (
+                self._matched_vertices_obs_count[pose_graph_timestamp]
+                > self._maximum_matched_observations
+            ):
+                return True
+
+        # Check if there are any observations with camera poses that are too close
+        if len(self._matched_observations_poses) > 0:
+            for pose in self._matched_observations_poses:
+                if np.linalg.norm(pose - obs.camera_pose) < self._camera_pose_match_threshold:
+                    return True
+
+        if obs.joint_velocities is not None:
+            head_speed = np.linalg.norm(
+                obs.joint_velocities[HelloStretchIdx.HEAD_PAN : HelloStretchIdx.HEAD_TILT]
+            )
+
+            if head_speed > self._head_not_moving_tolerance:
+                return True
+
+        return False
+
     def update_map_with_pose_graph(self, verbose: bool = False):
         """Update our voxel map using a pose graph.
         Updates the map from pose graph. This is useful for when we are processing real-time updates."""
 
-        t0 = timeit.default_timer()
-        self.pose_graph = self.robot.get_pose_graph()
-
-        t1 = timeit.default_timer()
-
-        # Update past observations based on our new pose graph
-        # print("Updating past observations")
         self._obs_history_lock.acquire()
-        for idx in range(len(self.obs_history)):
-            lidar_timestamp = self.obs_history[idx].lidar_timestamp
-            gps_past = self.obs_history[idx].gps
+        t0 = timeit.default_timer()
 
-            for vertex in self.pose_graph:
-                if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
-                    if verbose:
-                        print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
+        matched_obs = []
 
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
+        for obs in self.obs_history:
+            if obs.is_pose_graph_node:
+                matched_obs.append(obs)
 
-                    if verbose:
-                        print(
-                            f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                        )
+        self._obs_history_lock.release()
 
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-                # check if the gps is close to the gps of the pose graph node
-                elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
-                    < self._realtime_matching_distance
-                    and self.obs_history[idx].pose_graph_timestamp is None
-                ):
-                    if verbose:
-                        print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].pose_graph_timestamp = vertex[0]
-                    self.obs_history[idx].initial_pose_graph_gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].initial_pose_graph_compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-
-                elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
-                    # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
-                    delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
-                    delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
-
-                    # Calculate new gps and compass
-                    new_gps = self.obs_history[idx].gps + delta_gps
-                    new_compass = self.obs_history[idx].compass + delta_compass
-
-                    # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
-                    self.obs_history[idx].gps = new_gps
-                    self.obs_history[idx].compass = new_compass
-
-        t2 = timeit.default_timer()
-        if verbose:
-            print(f"Done updating past observations. Time: {t2- t1}")
-
-            print("Updating voxel map")
-
-        t3 = timeit.default_timer()
-        with self._map_lock:
+        with self._voxel_map_lock:
             self.voxel_map.reset()
             added = 0
-            for obs in self.obs_history:
+            for obs in matched_obs:
                 if obs.is_pose_graph_node:
                     self.voxel_map.add_obs(obs)
                     added += 1
 
-        if verbose:
-            print("----")
-            print(f"Added {added} observations to voxel map")
-            print()
-
-        self._obs_history_lock.release()
-
         robot_center = np.zeros(3)
         robot_center[:2] = self.robot.get_base_pose()[:2]
-
-        t4 = timeit.default_timer()
-        # print(f"Done updating voxel map. Time: {t4 - t3}")
 
         if self.use_scene_graph:
             self._update_scene_graph()
             self.scene_graph.get_relationships()
 
-        if len(self.voxel_map.observations) > 0:
+        if len(self.get_voxel_map().observations) > 0:
             self.update_rerun()
 
-        t5 = timeit.default_timer()
-        # print(f"Done updating scene graph. Time: {t5 - t4}")
+        t1 = timeit.default_timer()
+        if verbose:
+            print(f"Done updating scene graph. Time: {t1 - t0}")
 
-        self._obs_history_lock.acquire()
+    def prune_old_observations_loop(self, verbose: bool = False):
+        while True:
+            t0 = timeit.default_timer()
+            self._obs_history_lock.acquire()
 
-        # print(f"Total observation count: {len(self.obs_history)}")
+            if len(self.obs_history) > 1000:
+                # Remove 50 oldest observations that are not pose graph nodes
+                del_count = 0
+                del_idx = 0
+                while (
+                    del_count < 50 and len(self.obs_history) > 0 and del_idx < len(self.obs_history)
+                ):
+                    # If obs is too recent, skip it
+                    if self.obs_history[del_idx].lidar_timestamp - time.time() < 10:
+                        del_idx += 1
 
-        # Clear out observations that are too old and are not pose graph nodes
-        if len(self.obs_history) > 500:
-            # print("Clearing out old observations")
-            # Remove 10 oldest observations that are not pose graph nodes
-            del_count = 0
-            del_idx = 0
-            while del_count < 15 and len(self.obs_history) > 0 and del_idx < len(self.obs_history):
-                # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
-                if not self.obs_history[del_idx].is_pose_graph_node:
-                    # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
-                    del self.obs_history[del_idx]
-                    del_count += 1
-                else:
-                    del_idx += 1
+                        if del_idx >= len(self.obs_history):
+                            break
 
-                    if del_idx >= len(self.obs_history):
+                        continue
+
+                    if not self.obs_history[del_idx].is_pose_graph_node:
+                        # Remove corresponding matched observation
+                        if (
+                            self.obs_history[del_idx].lidar_timestamp
+                            in self._matched_vertices_obs_count
+                        ):
+                            self._matched_vertices_obs_count[
+                                self.obs_history[del_idx].lidar_timestamp
+                            ] -= 1
+
+                        # Remove caemra pose from matched observations
+                        for idx in range(len(self._matched_observations_poses)):
+                            if (
+                                np.linalg.norm(
+                                    self._matched_observations_poses[idx]
+                                    - self.obs_history[del_idx].camera_pose
+                                )
+                                < 0.1
+                            ):
+                                self._matched_observations_poses.pop(idx)
+                                break
+
+                        del self.obs_history[del_idx]
+                        del_count += 1
+                    else:
+                        del_idx += 1
+
+                        if del_idx >= len(self.obs_history):
+                            break
+
+            t1 = timeit.default_timer()
+            self._obs_history_lock.release()
+
+            if verbose:
+                print("Done pruning old observations. Time: ", t1 - t0)
+            time.sleep(1.0)
+
+    def match_pose_graph_loop(self, verbose: bool = False):
+        while True:
+            t0 = timeit.default_timer()
+            self.pose_graph = self.robot.get_pose_graph()
+
+            # Update past observations based on our new pose graph
+            self._obs_history_lock.acquire()
+
+            for idx in range(len(self.obs_history)):
+                lidar_timestamp = self.obs_history[idx].lidar_timestamp
+                gps_past = self.obs_history[idx].gps
+
+                for vertex in self.pose_graph:
+
+                    if self.should_drop_observation(self.obs_history[idx], vertex[0]):
                         break
 
-        t6 = timeit.default_timer()
-        # print(f"Done clearing out old observations. Time: {t6 - t5}")
-        self._obs_history_lock.release()
+                    if abs(vertex[0] - lidar_timestamp) < self._realtime_temporal_threshold:
+                        self.obs_history[idx].is_pose_graph_node = True
+                        self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
+                        self.obs_history[idx].compass = np.array(
+                            [
+                                vertex[3],
+                            ]
+                        )
+
+                        if (
+                            self.obs_history[idx].task_observations is None
+                            and self.semantic_sensor is not None
+                        ):
+                            self.obs_history[idx] = self.semantic_sensor.predict(
+                                self.obs_history[idx]
+                            )
+
+                        if vertex[0] not in self._matched_vertices_obs_count:
+                            self._matched_vertices_obs_count[vertex[0]] = 0
+
+                        self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
+                        self._matched_vertices_obs_count[vertex[0]] += 1
+                    # check if the gps is close to the gps of the pose graph node
+                    elif (
+                        np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]]))
+                        < self._realtime_matching_distance
+                        and self.obs_history[idx].pose_graph_timestamp is None
+                    ):
+                        self.obs_history[idx].is_pose_graph_node = True
+                        self.obs_history[idx].pose_graph_timestamp = vertex[0]
+                        self.obs_history[idx].initial_pose_graph_gps = np.array(
+                            [vertex[1], vertex[2]]
+                        )
+                        self.obs_history[idx].initial_pose_graph_compass = np.array(
+                            [
+                                vertex[3],
+                            ]
+                        )
+
+                        if (
+                            self.obs_history[idx].task_observations is None
+                            and self.semantic_sensor is not None
+                        ):
+                            self.obs_history[idx] = self.semantic_sensor.predict(
+                                self.obs_history[idx]
+                            )
+
+                        if vertex[0] not in self._matched_vertices_obs_count:
+                            self._matched_vertices_obs_count[vertex[0]] = 0
+
+                        self._matched_observations_poses.append(self.obs_history[idx].camera_pose)
+                        self._matched_vertices_obs_count[vertex[0]] += 1
+
+                    elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
+                        # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
+                        delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
+                        delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
+
+                        # Calculate new gps and compass
+                        new_gps = self.obs_history[idx].gps + delta_gps
+                        new_compass = self.obs_history[idx].compass + delta_compass
+
+                        # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
+                        self.obs_history[idx].gps = new_gps
+                        self.obs_history[idx].compass = new_compass
+
+            t1 = timeit.default_timer()
+
+            self._obs_history_lock.release()
+
+            if verbose:
+                print(f"[Match] Released obs history lock. Time: {t1 - t0}.")
+            time.sleep(0.05)
 
     def update_map_loop(self):
         """Threaded function that updates our voxel map in real-time."""
         while self.robot.running and self._running:
             with self._robot_lock:
                 self.update_map_with_pose_graph()
-            time.sleep(0.5)
+            time.sleep(0.75)
 
     def update(
         self,
         visualize_map: bool = False,
         debug_instances: bool = False,
         move_head: Optional[bool] = None,
+        tilt: float = -1 * np.pi / 4,
     ):
+        if self._realtime_updates:
+            return
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         obs = None
         t0 = timeit.default_timer()
@@ -753,7 +854,8 @@ class RobotAgent:
             self.robot.move_to_nav_posture()
             # Pause a bit first to make sure the robot is in the right posture
             time.sleep(self._before_head_motion_sleep_t)
-            num_steps = 5
+            # num_steps = 5
+            num_steps = 11
         else:
             num_steps = 1
 
@@ -764,29 +866,27 @@ class RobotAgent:
                 logger.error("Failed to get observation")
                 break
 
-        tilt = -1 * np.pi / 4
         for i in range(num_steps):
             if move_head:
-                pan = -1 * i * np.pi / 4
+                # pan = -1 * i * np.pi / 4
+                pan = (np.pi / 3) + (-1 * i * np.pi / 6)
                 print(f"[UPDATE] Head sweep {i} at {pan}, {tilt}")
                 self.robot.head_to(pan, tilt, blocking=True)
                 time.sleep(self._after_head_motion_sleep_t)
                 obs = self.robot.get_observation()
 
             t1 = timeit.default_timer()
-            if self._realtime_updates:
-                self._obs_history_lock.acquire()
+
             self.obs_history.append(obs)
-            if self._realtime_updates:
-                self._obs_history_lock.release()
             self.obs_count += 1
+
             # Optionally do this
             if self.semantic_sensor is not None:
                 # Semantic prediction
                 obs = self.semantic_sensor.predict(obs)
 
             t2 = timeit.default_timer()
-            self.voxel_map.add_obs(obs)
+            self.get_voxel_map().add_obs(obs)
             t3 = timeit.default_timer()
 
             if not move_head:
@@ -795,8 +895,8 @@ class RobotAgent:
         if move_head:
             self.robot.head_to(0, tilt, blocking=True)
             x, y, theta = self.robot.get_base_pose()
-            self.voxel_map.delete_obstacles(
-                radius=0.3, point=np.array([x, y]), min_height=self.voxel_map.obs_min_height
+            self.get_voxel_map().delete_obstacles(
+                radius=0.3, point=np.array([x, y]), min_height=self.get_voxel_map().obs_min_height
             )
 
         if self.use_scene_graph:
@@ -808,7 +908,7 @@ class RobotAgent:
         # Add observation - helper function will unpack it
         if visualize_map:
             # Now draw 2d maps to show what was happening
-            self.voxel_map.get_2d_map(debug=True)
+            self.get_voxel_map().get_2d_map(debug=True)
 
         t5 = timeit.default_timer()
 
@@ -820,7 +920,7 @@ class RobotAgent:
             matplotlib.use("TkAgg")
             import matplotlib.pyplot as plt
 
-            instances = self.voxel_map.get_instances()
+            instances = self.get_voxel_map().get_instances()
             for instance in instances:
                 best_view = instance.get_best_view()
                 plt.imshow(best_view.get_image())
@@ -856,9 +956,9 @@ class RobotAgent:
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
         if self.scene_graph is None:
-            self.scene_graph = SceneGraph(self.parameters, self.voxel_map.get_instances())
+            self.scene_graph = SceneGraph(self.parameters, self.get_voxel_map().get_instances())
         else:
-            self.scene_graph.update(self.voxel_map.get_instances())
+            self.scene_graph.update(self.get_voxel_map().get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
         # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
@@ -895,7 +995,7 @@ class RobotAgent:
         """
 
         if isinstance(instance, int):
-            _instance = self.voxel_map.get_instance(instance)
+            _instance = self.get_voxel_map().get_instance(instance)
         else:
             _instance = instance
 
@@ -925,7 +1025,7 @@ class RobotAgent:
 
         start = start if start is not None else self.robot.get_base_pose()
         if isinstance(start, np.ndarray):
-            start = torch.tensor(start, device=self.voxel_map.device)
+            start = torch.tensor(start, device=self.get_voxel_map().device)
         object_xyz = instance.get_center()
         if np.linalg.norm(start[:2] - object_xyz[:2]) < self._manipulation_radius:
             return True
@@ -968,8 +1068,7 @@ class RobotAgent:
             for j, view in enumerate(instance.instance_views):
                 print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
-        with self._map_lock:
-            start_is_valid = self.space.is_valid(start, verbose=False)
+        start_is_valid = self.space.is_valid(start, verbose=False)
         if not start_is_valid:
             return PlanResult(success=False, reason="invalid start state")
 
@@ -979,11 +1078,11 @@ class RobotAgent:
             res = self._cached_plans[instance_id]
             has_plan = res.success
             if verbose:
-                print(f"- try retrieving cached plan for {instance_id}: {has_plan=}")
+                for j, view in enumerate(instance.instance_views):
+                    print(f"- instance {instance_id} view {j} at {view.cam_to_world}")
 
         # Plan to the instance
         if not has_plan:
-            # Call planner
             print(
                 "planning to instance: ",
                 instance_id,
@@ -994,6 +1093,7 @@ class RobotAgent:
                 "rotation_offset: ",
                 rotation_offset,
             )
+            # Call planner
             res = self.plan_to_bounds(
                 instance.bounds,
                 start,
@@ -1029,46 +1129,45 @@ class RobotAgent:
             PlanResult: the result of the motion planner
         """
 
-        with self._map_lock:
-            mask = self.voxel_map.mask_from_bounds(bounds)
-            try_count = 0
-            res = None
-            start_is_valid = self.space.is_valid(start, verbose=False)
+        mask = self.get_voxel_map().mask_from_bounds(bounds)
+        try_count = 0
+        res = None
+        start_is_valid = self.space.is_valid(start, verbose=False)
 
-            conservative_sampling = True
-            # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
-            for goal in self.space.sample_near_mask(
-                mask,
-                radius_m=radius_m,
-                conservative=conservative_sampling,
-                rotation_offset=rotation_offset,
-            ):
-                goal = goal.cpu().numpy()
+        conservative_sampling = True
+        # We will sample conservatively, staying away from obstacles and the edges of explored space -- at least at first.
+        for goal in self.space.sample_near_mask(
+            mask,
+            radius_m=radius_m,
+            conservative=conservative_sampling,
+            rotation_offset=rotation_offset,
+        ):
+            goal = goal.cpu().numpy()
+            if verbose:
+                print("       Start:", start)
+                print("Sampled Goal:", goal)
+            show_goal = np.zeros(3)
+            show_goal[:2] = goal[:2]
+            goal_is_valid = self.space.is_valid(goal, verbose=False)
+            if verbose:
+                print("Start is valid:", start_is_valid)
+                print(" Goal is valid:", goal_is_valid)
+            if not goal_is_valid:
                 if verbose:
-                    print("       Start:", start)
-                    print("Sampled Goal:", goal)
-                show_goal = np.zeros(3)
-                show_goal[:2] = goal[:2]
-                goal_is_valid = self.space.is_valid(goal, verbose=False)
-                if verbose:
-                    print("Start is valid:", start_is_valid)
-                    print(" Goal is valid:", goal_is_valid)
-                if not goal_is_valid:
-                    if verbose:
-                        print(" -> resample goal.")
-                    continue
+                    print(" -> resample goal.")
+                continue
 
-                res = self.planner.plan(start, goal, verbose=False)
-                if verbose:
-                    print("Found plan:", res.success)
-                try_count += 1
-                if res.success or try_count > max_tries:
-                    break
+            res = self.planner.plan(start, goal, verbose=False)
+            if verbose:
+                print("Found plan:", res.success)
+            try_count += 1
+            if res.success or try_count > max_tries:
+                break
 
-            # Planning failed
-            if res is None:
-                return PlanResult(success=False, reason="no valid plans found")
-            return res
+        # Planning failed
+        if res is None:
+            return PlanResult(success=False, reason="no valid plans found")
+        return res
 
     def move_to_instance(self, instance: Instance, max_try_per_instance=10) -> bool:
         """Move to a specific instance. Goes until a motion plan is found.
@@ -1108,23 +1207,18 @@ class RobotAgent:
                 return True
         return False
 
-    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
-        """Try to recover from an invalid start state.
-
-        Returns:
-            bool: whether the robot recovered from the invalid start state
-        """
-
-        print("Recovering from invalid start state...")
-
+    def recover(self):
         # Get current invalid pose
-        start = self.robot.get_base_pose()
 
-        steps = [0.05, 0.1]
+        for step_i in range(5, 100, 5):
+            step = step_i / 100.0
 
-        self._map_lock.acquire()
+            start = self.robot.get_base_pose()
 
-        for step in steps:
+            if self.space.is_valid(start, verbose=True):
+                logger.warning("Start state is valid!")
+                break
+
             # Apply relative transformation to XYT
             forward = np.array([-1 * step, 0, 0])
             backward = np.array([step, 0, 0])
@@ -1137,26 +1231,38 @@ class RobotAgent:
             if self.space.is_valid(xyt_goal_backward, verbose=True):
                 logger.warning("Trying to move backwards...")
                 # Compute the position forward or backward from the robot
-                self.robot.move_base_to(xyt_goal_backward, relative=False)
-                break
+                self.robot.move_base_to(xyt_goal_backward, relative=False, blocking=True)
             elif self.space.is_valid(xyt_goal_forward, verbose=True):
                 logger.warning("Trying to move forward...")
                 # Compute the position forward or backward from the robot
-                self.robot.move_base_to(xyt_goal_forward, relative=False)
-                break
+                self.robot.move_base_to(xyt_goal_forward, relative=False, blocking=True)
             else:
                 logger.warning(f"Could not recover from invalid start state with step of {step}!")
 
-        # Get the current position in case we are still invalid
-        start = self.robot.get_base_pose()
-        start_is_valid = self.space.is_valid(start, verbose=True)
+    def recover_from_invalid_start(self, verbose: bool = True) -> bool:
+        """Try to recover from an invalid start state.
 
-        # We can now allow the map to be updated
-        self._map_lock.release()
+        Returns:
+            bool: whether the robot recovered from the invalid start state
+        """
+
+        print("Recovering from invalid start state...")
+
+        max_tries = 10
+
+        while max_tries > 0:
+            self.recover()
+
+            # Get the current position in case we are still invalid
+            start = self.robot.get_base_pose()
+            start_is_valid = self.space.is_valid(start, verbose=True)
+
+            if start_is_valid:
+                return True
 
         if not start_is_valid:
             logger.warning("Tried and failed to recover from invalid start state!")
-            return False
+
         return start_is_valid
 
     def move_to_any_instance(
@@ -1247,7 +1353,7 @@ class RobotAgent:
             logger.warning("Tried to print classes without semantic sensor!")
             return
 
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         if goal is not None:
             print(f"Looking for {goal}.")
         print("So far, we have found these classes:")
@@ -1261,7 +1367,7 @@ class RobotAgent:
         goal: Optional[str] = None,
         visualize_map_at_start: bool = False,
         can_move: bool = True,
-        verbose: bool = False,
+        verbose: bool = True,
     ) -> None:
 
         # Call the robot's own startup hooks
@@ -1292,7 +1398,7 @@ class RobotAgent:
             if not self._realtime_updates:
                 self.update(visualize_map=False)  # Append latest observations
             print("- Visualize map after updating")
-            self.voxel_map.show(
+            self.get_voxel_map().show(
                 orig=np.zeros(3),
                 xyt=self.robot.get_base_pose(),
                 footprint=self.robot.get_robot_model().get_footprint(),
@@ -1318,7 +1424,7 @@ class RobotAgent:
         if goal is None:
             # No goal means no matches
             return []
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         for i, instance in enumerate(instances):
             oid = int(instance.category_id.item())
             name = self.semantic_sensor.get_class_name_for_id(oid)
@@ -1342,7 +1448,7 @@ class RobotAgent:
         """
         reachable_matches = []
         start = self.robot.get_base_pose() if current_pose is None else current_pose
-        for i, instance in enumerate(self.voxel_map.get_instances()):
+        for i, instance in enumerate(self.get_voxel_map().get_instances()):
             if i not in self._cached_plans.keys():
                 res = self.plan_to_instance(instance, start)
                 self._cached_plans[i] = res
@@ -1368,7 +1474,7 @@ class RobotAgent:
             instance_id(int): a unique int identifying this instance
             instance(Instance): information about a particular object detection
         """
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         goal_emb = self.encode_text(goal)
         ranked_matches = []
         for i, instance in enumerate(instances):
@@ -1480,7 +1586,7 @@ class RobotAgent:
         Returns:
             Instance: the best instance to move to
         """
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
         goal_emb = self.encode_text(goal)
         if debug:
             neg1_emb = self.encode_text("the color purple")
@@ -1515,7 +1621,7 @@ class RobotAgent:
         logger.info("[Agent] Setting allowed radius to", radius, "meters.")
         self._allowed_radius = radius
 
-        self.voxel_map.set_allowed_radius(radius, origin=self.robot.get_base_pose()[0:2])
+        self.get_voxel_map().set_allowed_radius(radius, origin=self.robot.get_base_pose()[0:2])
 
     def plan_to_frontier(
         self,
@@ -1541,77 +1647,77 @@ class RobotAgent:
         Returns:
             PlanResult: the result of the motion planner
         """
-        with self._map_lock:
-            start_is_valid = self.space.is_valid(start, verbose=True)
-            # if start is not valid move backwards a bit
-            if not start_is_valid:
-                if verbose:
-                    print("Start not valid. Try to recover.")
-                ok = self.recover_from_invalid_start()
-                if not ok:
-                    return PlanResult(False, reason="invalid start state")
-            else:
-                print("Planning to frontier...")
+        start_is_valid = self.space.is_valid(start, verbose=True)
+        # if start is not valid move backwards a bit
+        if not start_is_valid:
+            if verbose:
+                print("Start not valid. Try to recover.")
+            ok = self.recover_from_invalid_start()
+            if not ok:
+                return PlanResult(False, reason="invalid start state")
+        else:
+            print("Planning to frontier...")
 
-            # sample a goal
-            if random_goals:
-                goal = next(self.space.sample_random_frontier()).cpu().numpy()
-            else:
-                # Get frontier sampler
-                sampler = self.space.sample_closest_frontier(
-                    start,
-                    verbose=False,
-                    expand_size=self._default_expand_frontier_size,
-                    min_dist=self._frontier_min_dist,
-                    step_dist=self._frontier_step_dist,
-                )
-                for i, goal in enumerate(sampler):
-                    if goal is None:
-                        # No more positions to sample
+        # sample a goal
+        if random_goals:
+            goal = next(self.space.sample_random_frontier()).cpu().numpy()
+        else:
+            # Get frontier sampler
+            sampler = self.space.sample_closest_frontier(
+                start,
+                verbose=False,
+                expand_size=self._default_expand_frontier_size,
+                min_dist=self._frontier_min_dist,
+                step_dist=self._frontier_step_dist,
+            )
+            for i, goal in enumerate(sampler):
+                if goal is None:
+                    # No more positions to sample
+                    if verbose:
+                        print("No more frontiers to sample.")
+                    break
+
+                # print("Sampled Goal is:", goal.cpu().numpy())
+                if self._previous_goal is not None:
+                    if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
                         if verbose:
-                            print("No more frontiers to sample.")
-                        break
-
-                    # print("Sampled Goal is:", goal.cpu().numpy())
-                    if self._previous_goal is not None:
-                        if np.linalg.norm(goal.cpu().numpy() - self._previous_goal) < 0.1:
-                            if verbose:
-                                print("Same goal as last time. Skipping.")
-                            self._previous_goal = goal.cpu().numpy()
-                            continue
-                    self._previous_goal = goal.cpu().numpy()
-
-                    if self.space.is_valid(goal.cpu().numpy(), verbose=True):
-                        if verbose:
-                            print("       Start:", start)
-                            print("Sampled Goal:", goal.cpu().numpy())
-                    else:
+                            print("Same goal as last time. Skipping.")
+                        self._previous_goal = goal.cpu().numpy()
                         continue
+                self._previous_goal = goal.cpu().numpy()
 
-                    # For debugging, we can set the random seed to 0
-                    if fix_random_seed:
-                        np.random.seed(0)
-                        random.seed(0)
+                print("Checking if goal is valid...")
+                if self.space.is_valid(goal.cpu().numpy(), verbose=True):
+                    if verbose:
+                        print("       Start:", start)
+                        print("Sampled Goal:", goal.cpu().numpy())
+                else:
+                    continue
 
-                    if push_locations_to_stack:
-                        print("Pushing visited locations to stack...")
-                        self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
-                    # print("Planning to goal...")
-                    res = self.planner.plan(start, goal.cpu().numpy())
-                    if res.success:
-                        if verbose:
-                            print("Plan successful!")
-                        return res
-                    else:
-                        # print("Plan failed. Reason:", res.reason)
-                        if verbose:
-                            print("Plan failed. Reason:", res.reason)
-            return PlanResult(False, reason="no valid plans found")
+                # For debugging, we can set the random seed to 0
+                if fix_random_seed:
+                    np.random.seed(0)
+                    random.seed(0)
+
+                if push_locations_to_stack:
+                    print("Pushing visited locations to stack...")
+                    self.planner.space.push_locations_to_stack(self.get_history(reversed=True))
+                # print("Planning to goal...")
+                res = self.planner.plan(start, goal.cpu().numpy())
+                if res.success:
+                    if verbose:
+                        print("Plan successful!")
+                    return res
+                else:
+                    # print("Plan failed. Reason:", res.reason)
+                    if verbose:
+                        print("Plan failed. Reason:", res.reason)
+        return PlanResult(False, reason="no valid plans found")
 
     def get_history(self, reversed: bool = False) -> List[np.ndarray]:
         """Get the history of the robot's positions."""
         history = []
-        for obs in self.voxel_map.observations:
+        for obs in self.get_voxel_map().observations:
             history.append(obs.base_pose)
         if reversed:
             history.reverse()
@@ -1650,7 +1756,7 @@ class RobotAgent:
         for i in range(explore_iter):
             if audio_feedback:
                 self.robot.say_sync(f"Step {i + 1} of {explore_iter}")
-                time.sleep(4.0)
+                time.sleep(2.0)
 
             print("\n" * 2)
             print("-" * 20, i + 1, "/", explore_iter, "-" * 20)
@@ -1661,7 +1767,7 @@ class RobotAgent:
                 print("Start not valid. back up a bit.")
                 if audio_feedback:
                     self.robot.say_sync("Start not valid. Backing up a bit.")
-                    time.sleep(4.0)
+                    time.sleep(2.0)
 
                 ok = self.recover_from_invalid_start()
                 if ok:
@@ -1672,25 +1778,25 @@ class RobotAgent:
 
                     if audio_feedback:
                         self.robot.say_sync("Failed to recover from invalid start state!")
-                        time.sleep(4.0)
+                        time.sleep(2.0)
                     break
 
             # Now actually plan to the frontier
             print("       Start:", start)
             self.print_found_classes(task_goal)
 
-            if audio_feedback:
+            if audio_feedback and self.semantic_sensor is not None:
                 if len(all_goals) > 0:
                     self.robot.say_sync(
                         f"So far, I have found {len(all_goals)} object{'s' if len(all_goals) > 2 else ''}"
                     )
                 else:
                     self.robot.say_sync(f"My map is currently empty")
-                time.sleep(4.0)
+                time.sleep(1.0)
 
             if audio_feedback:
                 self.robot.say_sync("Looking for frontiers nearby...")
-                time.sleep(4.0)
+                time.sleep(1.0)
 
             res = self.plan_to_frontier(
                 start=start, random_goals=random_goals, try_to_plan_iter=try_to_plan_iter
@@ -1714,7 +1820,7 @@ class RobotAgent:
                     print("Showing goal location:")
                     robot_center = np.zeros(3)
                     robot_center[:2] = self.robot.get_base_pose()[:2]
-                    self.voxel_map.show(
+                    self.get_voxel_map().show(
                         orig=robot_center,
                         xyt=res.trajectory[-1].state,
                         footprint=self.robot.get_robot_model().get_footprint(),
@@ -1747,7 +1853,6 @@ class RobotAgent:
                     print("No where left to explore. Quitting.")
                     break
 
-                # breakpoint()
                 # if it fails, try again or just quit
                 if self._retry_on_fail:
                     print("Exploration failed. Try again!")
@@ -1831,7 +1936,7 @@ class RobotAgent:
 
     def show_voxel_map(self):
         """Show the voxel map in Open3D for debugging."""
-        self.voxel_map.show(
+        self.get_voxel_map().show(
             orig=np.zeros(3),
             xyt=self.robot.get_base_pose(),
             footprint=self.robot.get_robot_model().get_footprint(),
@@ -1877,8 +1982,17 @@ class RobotAgent:
             print(
                 "[WARNING] Resetting the robot's spatial memory. Everything it knows will go away!"
             )
-        self.voxel_map.reset()
+        with self._voxel_map_lock:
+            self.voxel_map.reset()
         self.reset_object_plans()
+
+        if self._realtime_updates:
+            # Clear the observations
+            with self._obs_history_lock:
+                self.obs_history.clear()
+                self.obs_count = 0
+                self._matched_observations_poses.clear()
+                self._matched_vertices_obs_count.clear()
 
     def save_instance_images(self, root: Union[Path, str] = ".", verbose: bool = False) -> None:
         """Save out instance images from the voxel map that we have collected while exploring."""
@@ -1887,7 +2001,7 @@ class RobotAgent:
             root = Path(root)
 
         # Write out instance images
-        for i, instance in enumerate(self.voxel_map.get_instances()):
+        for i, instance in enumerate(self.get_voxel_map().get_instances()):
             for j, view in enumerate(instance.instance_views):
                 image = Image.fromarray(view.cropped_image.byte().cpu().numpy())
                 filename = f"instance{i}_view{j}.png"
@@ -2020,7 +2134,7 @@ class RobotAgent:
         loaded_voxel_map.read_from_pickle(filename, perception=self.semantic_sensor)
 
         xyz1, _, _, rgb1 = loaded_voxel_map.get_pointcloud()
-        xyz2, _, _, rgb2 = self.voxel_map.get_pointcloud()
+        xyz2, _, _, rgb2 = self.get_voxel_map().get_pointcloud()
 
         # tform = find_se3_transform(xyz1, xyz2, rgb1, rgb2)
         tform, fitness, inlier_rmse, num_inliers = ransac_transform(
@@ -2049,14 +2163,14 @@ class RobotAgent:
 
         # Add the loaded map to the current map
         print("Reprocessing map with new pose transform...")
-        self.voxel_map.read_from_pickle(
+        self.get_voxel_map().read_from_pickle(
             filename, perception=self.semantic_sensor, transform_pose=tform
         )
-        self.voxel_map.show()
+        self.get_voxel_map().show()
 
     def get_detections(self, **kwargs) -> List[str]:
         """Get the current detections."""
-        instances = self.voxel_map.get_instances()
+        instances = self.get_voxel_map().get_instances()
 
         # Consider only instances close to the robot
         robot_pose = self.robot.get_base_pose()
@@ -2169,7 +2283,7 @@ class RobotAgent:
         if plan_with_reachable_instances:
             instances = self.get_all_reachable_instances(current_pose=current_pose)
         else:
-            instances = self.voxel_map.get_instances()
+            instances = self.get_voxel_map().get_instances()
 
         scene_graph = None
 
@@ -2207,6 +2321,4 @@ class RobotAgent:
         # Backup the saved map
         memory.backup_saved_map()
 
-        with self._map_lock:
-            # Write the new map to the file
-            self.voxel_map.write_to_pickle(filename)
+        self.get_voxel_map().write_to_pickle(filename)

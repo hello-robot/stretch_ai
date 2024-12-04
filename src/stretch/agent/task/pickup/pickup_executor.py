@@ -12,6 +12,7 @@ from typing import List, Tuple
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.find_task import FindObjectTask
+from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.agent.task.pickup.pick_task import PickObjectTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.agent.task.pickup.place_task import PlaceOnReceptacleTask
@@ -69,6 +70,10 @@ class PickupExecutor:
             target_receptacle: The receptacle to place the object in.
         """
 
+        if target_receptacle is None or len(target_receptacle) == 0:
+            self._pick_only(target_object)
+            return
+
         logger.alert(f"[Pickup task] Pickup: {target_object} Place: {target_receptacle}")
 
         # After the robot has started...
@@ -90,6 +95,11 @@ class PickupExecutor:
         task.run()
 
     def _pick_only(self, target_object: str) -> None:
+        """Create a task to pick up the object and execute it.
+
+        Args:
+            target_object: The object to pick up.
+        """
 
         logger.alert(f"[Pickup task] Pickup: {target_object}")
 
@@ -98,11 +108,10 @@ class PickupExecutor:
             pickup_task = PickObjectTask(
                 self.agent,
                 target_object=target_object,
-                target_receptacle=None,
                 matching=self._match_method,
                 use_visual_servoing_for_grasp=not self._open_loop,
             )
-            task = pickup_task.get_task(add_rotate=True, mode=self._pickup_task_mode)
+            task = pickup_task.get_task(add_rotate=True)
         except Exception as e:
             print(f"Error creating task: {e}")
             self.robot.stop()
@@ -152,6 +161,22 @@ class PickupExecutor:
                 matching=self._match_method,
             )
             task = find_task.get_task(add_rotate=True)
+        except Exception as e:
+            print(f"Error creating task: {e}")
+            self.robot.stop()
+            raise e
+
+        # Execute the task
+        task.run()
+
+    def _hand_over(self) -> None:
+        """Create a task to find a person, navigate to them, and extend the arm toward them"""
+        logger.alert(f"[Pickup task] Hand Over")
+
+        # After the robot has started...
+        try:
+            hand_over_task = HandOverTask(self.agent)
+            task = hand_over_task.get_task()
         except Exception as e:
             print(f"Error creating task: {e}")
             self.robot.stop()
@@ -218,12 +243,14 @@ class PickupExecutor:
                     "Place without pickup! Try giving a full pick-and-place instruction."
                 )
                 self._place(args)
+            elif command == "hand_over":
+                self._hand_over()
             elif command == "wave":
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()
                 self.agent.move_to_manip_posture()
             elif command == "go_home":
-                if self.agent.voxel_map.is_empty():
+                if self.agent.get_voxel_map().is_empty():
                     logger.warning("No map data available. Cannot go home.")
                 else:
                     self.agent.go_home()

@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 chris paxton under MIT license
+# (c) 2024 Hello Robot under MIT license
 
 import sys
 import threading
@@ -334,6 +334,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         if self.update_base_pose_from_full_obs:
             with self._obs_lock:
+                print("[Getting base pose from full obs]")
                 while self._obs is None:
                     time.sleep(0.01)
                     if timeit.default_timer() - t0 > timeout:
@@ -481,10 +482,18 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         reliable: bool = True,
     ):
-        """Move the head to a particular configuration."""
+        """Move the head to a particular configuration.
+
+        Args:
+            head_pan: The pan angle of the head
+            head_tilt: The tilt angle of the head
+            blocking: Whether to block until the motion is complete
+            timeout: How long to wait for the motion to complete
+            reliable: Whether to resend the action if it is not received
+        """
         if head_pan < self._head_pan_min or head_pan > self._head_pan_max:
             logger.warning(
-                "Head pan is restricted to be between {self._head_pan_min} and {self._head_pan_max} for safety: was {head_pan}"
+                f"Head pan is restricted to be between {self._head_pan_min} and {self._head_pan_max} for safety: was {head_pan}"
             )
         if head_tilt > self._head_tilt_max or head_tilt < self._head_tilt_min:
             logger.warning(
@@ -500,9 +509,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
             whole_body_q = np.zeros(self._robot_model.dof, dtype=np.float32)
             whole_body_q[HelloStretchIdx.HEAD_PAN] = float(head_pan)
             whole_body_q[HelloStretchIdx.HEAD_TILT] = float(head_tilt)
-            time.sleep(0.25)
+
+            time.sleep(0.1)
             self._wait_for_head(whole_body_q, block_id=step)
-            time.sleep(0.25)
+            time.sleep(0.1)
+
+            # time.sleep(0.25)
+            # self._wait_for_head(whole_body_q, block_id=step)
+            # time.sleep(0.25)
 
     def look_front(self, blocking: bool = True, timeout: float = 10.0):
         """Let robot look to its front."""
@@ -694,6 +708,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if verbose:
                 print("Goal pose in global coordinates", _xyt)
 
+        if blocking and not reliable:
+            logger.warning("Sending blocking commands without reliable is not recommended")
+
         # We never send a relative motion over wireless - this is because we can run into timing issues.
         # Instead, we always send the absolute position and let the robot handle the motions itself.
         next_action = {"xyt": _xyt, "nav_relative": False, "nav_blocking": blocking}
@@ -867,9 +884,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
         prev_joint_positions = None
         prev_t = None
         while not self._finish:
+
+            # Check to make sure message was sent and received
+            if self.out_of_date():
+                time.sleep(0.01)
+                continue
+
             joint_positions, joint_velocities, _ = self.get_joint_state()
 
             if joint_positions is None:
+                time.sleep(0.01)
                 continue
 
             # if self._last_step < block_id:
@@ -1055,7 +1079,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         t0 = timeit.default_timer()
         close_to_goal = False
 
-        while True:
+        while not self._finish:
 
             # Minor delay at the end - give it time to get new messages
             time.sleep(0.01)
@@ -1119,6 +1143,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 print(
                     f"Waiting for step={block_id} {self._last_step} prev={self._last_step} at {pos} moved {moved_dist:0.04f} angle {angle_dist:0.04f} not_moving {not_moving_count} at_goal {self._state['at_goal']}"
                 )
+                print(min_steps_not_moving, self._last_step, at_goal)
                 if goal_angle is not None:
                     print(f"Goal angle {goal_angle} angle dist to goal {angle_dist_to_goal}")
             if self._last_step >= block_id and at_goal and not_moving_count > min_steps_not_moving:
@@ -1161,15 +1186,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
             if self._iter <= 0:
                 self._iter = max(self._last_step, self._iter)
 
-    def is_up_to_date(self):
+    def is_up_to_date(self, no_action=False):
         """Check if the robot is up to date with the latest observation"""
         with self._obs_lock:
-            # print("obs", self._obs["step"], self._last_step, self._iter)
-            obs_ok = (
-                self._obs is not None
-                and self._obs["step"] >= self._last_step
-                and self._obs["step"] >= self._iter - 1
-            )
+            if no_action:
+                obs_ok = self._obs is not None and self._obs["step"] >= self._last_step
+            else:
+                obs_ok = (
+                    self._obs is not None
+                    and self._obs["step"] >= self._last_step
+                    and self._obs["step"] >= self._iter - 1
+                )
         return obs_ok
 
     def send_message(self, message: dict):
@@ -1182,6 +1209,14 @@ class HomeRobotZmqClient(AbstractRobotClient):
         with self._obs_lock:
             if "pose_graph" in obs:
                 self._pose_graph = obs["pose_graph"]
+
+    def out_of_date(self):
+        """Check if the robot is out of date with the latest observation. This is used to determine if we should wait for the robot to catch up."""
+        with self._obs_lock:
+            obs_ood = self._obs is not None and self._obs["step"] < self._last_step
+        with self._state_lock:
+            state_ood = self._state is not None and self._state["step"] < self._last_step
+        return obs_ood or state_ood
 
     def _update_state(self, state: dict) -> None:
         """Update state internally with lock. This is expected to be much more responsive than using full observations, which should be reserved for higher level control.
@@ -1231,8 +1266,15 @@ class HomeRobotZmqClient(AbstractRobotClient):
         next_action = {"load_map": filename}
         self.send_action(next_action)
 
-    def get_observation(self):
+    def get_observation(self, max_iter: int = 5):
         """Get the current observation. This uses the FULL observation track. Expected to be syncd with RGBD."""
+        iteration = 0
+        while not self.is_up_to_date(no_action=True) and iteration < max_iter:
+            if self.is_up_to_date(no_action=True):
+                iteration += 1
+            time.sleep(0.1)
+        time.sleep(0.1)
+
         with self._obs_lock:
             if self._obs is None:
                 return None
@@ -1246,13 +1288,25 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 lidar_timestamp=self._obs["lidar_timestamp"],
             )
             observation.joint = self._obs.get("joint", None)
+            observation.joint_velocities = self._obs.get("joint_velocities", None)
             observation.ee_pose = self._obs.get("ee_pose", None)
             observation.camera_K = self._obs.get("camera_K", None)
             observation.camera_pose = self._obs.get("camera_pose", None)
             observation.seq_id = self._seq_id
-        return observation
+
+            return observation
 
     def get_images(self, compute_xyz=False):
+        """Get the current RGB and depth images from the robot.
+
+        Args:
+            compute_xyz (bool): whether to compute the XYZ image
+
+        Returns:
+            rgb (np.ndarray): the RGB image
+            depth (np.ndarray): the depth image
+            xyz (np.ndarray): the XYZ image if compute_xyz is True
+        """
         obs = self.get_observation()
         if compute_xyz:
             return obs.rgb, obs.depth, obs.xyz
@@ -1260,10 +1314,20 @@ class HomeRobotZmqClient(AbstractRobotClient):
             return obs.rgb, obs.depth
 
     def get_camera_K(self):
+        """Get the camera intrinsics.
+
+        Returns:
+            camera_K (np.ndarray): the camera intrinsics
+        """
         obs = self.get_observation()
         return obs.camera_K
 
     def get_head_pose(self):
+        """Get the head pose.
+
+        Returns:
+            head_pose (np.ndarray): the head pose as a SE(3) matrix [R | t]
+        """
         obs = self.get_observation()
         return obs.camera_pose
 
@@ -1271,7 +1335,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         self,
         trajectory: List[np.ndarray],
         pos_err_threshold: float = 0.2,
-        rot_err_threshold: float = 0.75,
+        rot_err_threshold: float = 0.1,
         spin_rate: int = 10,
         verbose: bool = False,
         per_waypoint_timeout: float = 10.0,
@@ -1284,19 +1348,23 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if isinstance(trajectory, PlanResult):
             trajectory = [pt.state for pt in trajectory.trajectory]
 
+        if relative:
+            raise NotImplementedError("Relative trajectories not yet supported")
+
         for i, pt in enumerate(trajectory):
             assert (
                 len(pt) == 3 or len(pt) == 2
             ), "base trajectory needs to be 2-3 dimensions: x, y, and (optionally) theta"
-            # just_xy = len(pt) == 2
-            # self.move_base_to(pt, relative, position_only=just_xy, blocking=False)
+            self.move_base_to(pt, relative, blocking=False, reliable=False)
+            print("Moving to", pt)
             last_waypoint = i == len(trajectory) - 1
             self.move_base_to(
                 pt,
-                relative,
+                relative=False,
                 blocking=last_waypoint,
                 timeout=final_timeout if last_waypoint else per_waypoint_timeout,
                 verbose=verbose,
+                reliable=True if last_waypoint else False,
             )
             if not last_waypoint:
                 self.wait_for_waypoint(

@@ -163,7 +163,7 @@ class Camera(object):
     def get_pose(self):
         return self.pose_matrix.copy()
 
-    def depth_to_xyz(self, depth):
+    def depth_to_xyz(self, depth, data_type: type = np.float16):
         """get depth from numpy using simple pinhole self model"""
         indices = np.indices((self.height, self.width), dtype=np.float32).transpose(1, 2, 0)
         z = depth
@@ -171,7 +171,7 @@ class Camera(object):
         x = (indices[:, :, 1] - self.px) * (z / self.fx)
         y = (indices[:, :, 0] - self.py) * (z / self.fy)
         # Should now be height x width x 3, after this:
-        xyz = np.stack([x, y, z], axis=-1)
+        xyz = np.stack([x, y, z], axis=-1).astype(data_type)
         return xyz
 
     def fix_depth(self, depth):
@@ -184,6 +184,28 @@ class Camera(object):
         depth[depth > self.far_val] = 0
         depth[depth < self.near_val] = 0
         return depth
+
+
+def camera_xyz_to_global_xyz(camera_xyz, camera_pose):
+    """
+    camera_xyz (height, width, 3)
+    camera_pose (4, 4)
+    """
+    height, width, _ = camera_xyz.shape
+
+    camera_xyz_flat = camera_xyz.reshape(-1, 3)
+    ones = np.ones((camera_xyz_flat.shape[0], 1))
+    camera_homogeneous = np.hstack((camera_xyz_flat, ones))  # Shape (N, 4)
+
+    global_homogeneous = (camera_pose @ camera_homogeneous.T).T  # Shape (N, 4)
+
+    # Convert back to Cartesian coordinates
+    global_xyz_flat = global_homogeneous[:, :3] / global_homogeneous[:, 3:4]  # Shape (N, 3)
+
+    # Reshape back to (height, width, 3)
+    global_xyz = global_xyz_flat.reshape(height, width, 3)
+
+    return global_xyz
 
 
 def z_from_opengl_depth(depth, camera: Camera):

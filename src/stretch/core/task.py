@@ -68,6 +68,10 @@ class Operation(abc.ABC):
         """Set the status of the operation."""
         self.status = status
 
+    def set_on_failure(self, operation: "Operation"):
+        """Set the on_failure operation."""
+        self.on_failure = operation
+
     @property
     def name(self) -> str:
         """Return the name of the operation."""
@@ -105,7 +109,6 @@ class Operation(abc.ABC):
         else:
             logger.error(f"Operation {self.name} cannot start.")
             return False
-        self.run()
         return self.was_successful()
 
 
@@ -168,6 +171,20 @@ class Task:
         on_success = self._operations[on_success_name]
         operation.on_success = on_success
 
+    def terminate_on_success(self, operation_name: str):
+        """Terminate the task on success.
+
+        Args:
+            operation_name: The operation to terminate on success.
+        """
+        operation = self._operations[operation_name]
+        self._terminal_operations.append(operation)
+        operation.on_success = None
+
+    def get_operation(self, operation_name: str) -> Operation:
+        """Get the operation by name."""
+        return self._operations[operation_name]
+
     def info(self, message):
         print(colored("[TASK INFO] " + str(message), "cyan"))
 
@@ -201,8 +218,11 @@ class Task:
                     self.info(f"Operation {self.current_operation.name} failed.")
                     self.current_operation = self.current_operation.on_failure
                     failures += 1
-                    if failures >= self.max_failures:
-                        self.error(
+                    if self.current_operation is None:
+                        logger.error("Task failed.")
+                        return False
+                    elif failures >= self.current_operation.max_failures:
+                        logger.error(
                             f"Operation {self.current_operation.name} failed too many times!"
                         )
                         self.error(f"Task failed after {failures} operation failures.")

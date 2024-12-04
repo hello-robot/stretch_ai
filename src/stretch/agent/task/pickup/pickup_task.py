@@ -51,11 +51,11 @@ class PickupTask:
 
         # Sync these things
         self.robot = self.agent.robot
-        self.voxel_map = self.agent.voxel_map
+        self.voxel_map = self.agent.get_voxel_map()
         self.navigation_space = self.agent.space
         self.semantic_sensor = self.agent.semantic_sensor
         self.parameters = self.agent.parameters
-        self.instance_memory = self.agent.voxel_map.instances
+        self.instance_memory = self.agent.get_voxel_map().instances
         assert (
             self.instance_memory is not None
         ), "Make sure instance memory was created! This is configured in parameters file."
@@ -211,10 +211,14 @@ class PickupTask:
         task.connect_on_success(pregrasp_object.name, grasp_object.name)
         task.connect_on_success(grasp_object.name, go_to_receptacle.name)
         task.connect_on_success(go_to_receptacle.name, place_object_on_receptacle.name)
+        task.terminate_on_success(place_object_on_receptacle.name)
 
         task.connect_on_success(search_for_receptacle.name, search_for_object.name)
 
         task.connect_on_cannot_start(go_to_object.name, search_for_object.name)
         # task.connect_on_cannot_start(go_to_receptacle.name, search_for_receptacle.name)
+
+        # Terminate on a successful place
+        task.terminate_on_success(place_object_on_receptacle.name)
 
         return task

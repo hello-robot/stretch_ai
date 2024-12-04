@@ -19,12 +19,14 @@ from .emote import (
 
 # from .grasp_closed_loop import ClosedLoopGraspObjectOperation
 from .explore import ExploreOperation
+from .extend_arm import ExtendArm
 from .go_home import GoHomeOperation
 from .go_to import GoToOperation
 from .grasp_object import GraspObjectOperation
 # from .grasp_object_clean import GraspObjectOperation
 from .grasp_open_loop import OpenLoopGraspObjectOperation
 from .navigate import NavigateToObjectOperation
+from .open_gripper import OpenGripper
 from .place_object import PlaceObjectOperation
 from .pregrasp import PreGraspObjectOperation
 from .rotate_in_place import RotateInPlaceOperation
@@ -32,3 +34,4 @@ from .search_for_object import SearchForObjectOnFloorOperation, SearchForRecepta
 from .speak import SpeakOperation
 from .switch_mode import GoToNavOperation
 from .update import UpdateOperation
+from .utility_operations import SetCurrentObjectOperation, SetCurrentReceptacleOperation

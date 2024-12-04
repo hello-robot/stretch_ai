@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# This script (c) 2024 Chris Paxton under the MIT license: https://opensource.org/licenses/MIT
+# This script (c) 2024 Hello Robot under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
 export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
-CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 script_dir="$(dirname "$0")"
-VERSION=`python $script_dir/src/stretch/version.py`
+VERSION=`python3 $script_dir/src/stretch/version.py`
 CPU_ONLY="false"
 NO_REMOVE="false"
 NO_SUBMODULES="false"
@@ -43,12 +41,33 @@ do
             NO_VERSION="true"
             shift
             ;;
+        --cuda=*)
+            CUDA_VERSION="${arg#*=}"
+            echo "Setting CUDA Version: $CUDA_VERSION"
+            shift
+            ;;
         *)
             shift
             # unknown option
             ;;
     esac
 done
+
+CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
+export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
+
+# Check if the user has the required packages
+# If not, install them
+# If these packages are not installed, you will run into issues with pyaudio
+sudo apt-get update
+echo "Checking for required packages: "
+echo "     libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg"
+echo "If these are not installed, you will run into issues with pyaudio."
+if [ "$SKIP_ASKING" == "true" ]; then
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
+else
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+fi
 
 # If cpu only, set the cuda version to cpu
 if [ "$CPU_ONLY" == "true" ]; then
@@ -89,13 +108,12 @@ echo " - This script will install the following packages:"
 echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
-if [ $INSTALL_TORCH_GEOMETRIC = "true" ]; then
+if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
     echo "   - torch-geometric"
     echo "   - torch-cluster"
     echo "   - torch-scatter"
 fi
 echo "   - python=$PYTHON_VERSION"
-echo " - Python version 3.12 is not supported by Open3d."
 echo "---------------------------------------------"
 echo "Currently:"
 echo " - CUDA_HOME=$CUDA_HOME"
@@ -141,17 +159,26 @@ else
     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
 fi
 
-source activate $ENV_NAME
+echo "Activate env $ENV_NAME"
+if [ "$MAMBA" == "conda" ]; then
+    eval "$(conda shell.bash hook)"
+    source activate $ENV_NAME
+else
+    source activate $ENV_NAME
+fi
 
 echo "Install a version of setuptools for which clip works."
-pip install setuptools==69.5.1
+python -m pip install setuptools==69.5.1
 
 echo ""
 echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
-pip install -e ./src[dev]
+python -m pip install -e ./src[dev]
+
+# echo "---- Install SAM ----"
+# pip install git+https://github.com/facebookresearch/segment-anything.git
 
 echo ""
 echo "---------------------------------------------"
@@ -165,7 +192,7 @@ else
     case $yn in
         y ) echo "Starting installation..." ;;
         n ) echo "Exiting...";
-            exit ;;
+            CPU_ONLY="true" ;;
         * ) echo Invalid response!;
             exit 1 ;;
     esac
@@ -206,5 +233,5 @@ echo "CUDA_HOME=$CUDA_HOME"
 echo "python=`which python`"
 echo "You can start using it with:"
 echo ""
-echo "     source activate $ENV_NAME"
+echo "     $MAMBA activate $ENV_NAME"
 echo "=============================================="

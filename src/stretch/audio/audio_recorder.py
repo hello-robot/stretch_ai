@@ -70,6 +70,7 @@ class AudioRecorder:
         Start recording audio.
         """
         self.stream = self.get_stream()
+        self.stream.stop_stream()
 
     def record(
         self, filename: str = "recording.wav", duration: float = 10.0, silence_limit: float = 1.0

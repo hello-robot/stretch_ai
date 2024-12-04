@@ -22,9 +22,11 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 import torch
+
 from PIL import Image
 import os
 from datetime import datetime
+from scipy.spatial.transform import Rotation as R
 
 import stretch.motion.constants as constants
 from stretch.agent.base import ManagedOperation
@@ -61,6 +63,7 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = False
     show_point_cloud: bool = False
+    debug_grasping: bool = False
 
     # This will delete the object from instance memory/voxel map after grasping
     delete_object_after_grasp: bool = False
@@ -85,14 +88,14 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.10 # 0.21
+    median_distance_when_grasping: float = 0.10
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
     # grasp_distance = 0.12
-    grasp_distance = 0.16
+    grasp_distance = 0.14
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
@@ -449,6 +452,7 @@ class GraspObjectOperation(ManagedOperation):
         if self.talk:
             self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
+        print("Distance:", distance)
         if not self.open_loop or distance is not None:
             joint_state = self.robot.get_joint_positions()
             # Now compute what to do
@@ -459,6 +463,7 @@ class GraspObjectOperation(ManagedOperation):
 
             if distance is not None:
                 distance = max(distance - self.grasp_distance, 0)
+                print("Distance to move:", distance)
                 if distance > 0:
                     # Use wrist pitch to compute arm and lift offsets
                     arm_component = np.cos(wrist_pitch) * distance
@@ -557,10 +562,11 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
         self.warn("Starting visual servoing.")
 
-        # make debug dir
-        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        debug_dir_name = f"debug/debug_{current_time}"
-        os.mkdir(debug_dir_name)
+        if self.debug_grasping:
+          # make debug dir
+          current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          debug_dir_name = f"debug/debug_{current_time}"
+          os.mkdir(debug_dir_name)
 
         iter_ = 0
 
@@ -628,14 +634,15 @@ class GraspObjectOperation(ManagedOperation):
             # Compute depth as median of object pixels near center_y, center_x
             center_depth = self._compute_center_depth(servo, target_mask, center_y, center_x)
 
-            # save data
-            mask = target_mask.astype(np.uint8) * 255
-            debug_viz = np.zeros((240, 640, 3))
-            debug_viz[:, :320, :] = servo.ee_rgb
-            debug_viz[:, 320:, 0] = mask
-            debug_viz[:, 320:, 1] = mask
-            debug_viz[:, 320:, 2] = mask
-            Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_{iter_:03d}.png')
+            if self.debug_grasping:
+              # save data
+              mask = target_mask.astype(np.uint8) * 255
+              debug_viz = np.zeros((240, 640, 3))
+              debug_viz[:, :320, :] = servo.ee_rgb
+              debug_viz[:, 320:, 0] = mask
+              debug_viz[:, 320:, 1] = mask
+              debug_viz[:, 320:, 2] = mask
+              Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_{iter_:03d}.png')
             iter_ += 1
 
             # Compute the center of the mask in image coords
@@ -724,7 +731,7 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
-                    success = self._grasp()
+                    success = self._grasp(distance=center_depth)
                 else:
                     # Could not find the object
                     failed_counter += 1
@@ -779,12 +786,15 @@ class GraspObjectOperation(ManagedOperation):
                         self.info("Aligned and close enough to grasp.")
                         success = self._grasp()
 
-                    # record image
-                    servo = self.robot.get_servo_observation()
-                    debug_viz = np.zeros((240, 640, 3))
-                    debug_viz[:, :320, :] = servo.ee_rgb
-                    debug_viz[:, 320:, :] = servo.rgb
-                    Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_point_{iter_+1:03d}.png')
+                    # Added debugging code to make sure that we are seeing the right object
+                    if self.debug_grasping:
+                      # record image
+                      servo = self.robot.get_servo_observation()
+                      debug_viz = np.zeros((240, 640, 3))
+                      debug_viz[:, :320, :] = servo.ee_rgb
+                      debug_viz[:, 320:, :] = servo.rgb
+                      Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_point_{iter_+1:03d}.png')
+                      
                     break
 
                 # If we are aligned, step the whole thing closer by some amount
@@ -850,7 +860,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
@@ -936,7 +946,7 @@ class GraspObjectOperation(ManagedOperation):
         # clear observations
         if self.reset_observation:
             self.agent.reset_object_plans()
-            self.agent.voxel_map.instances.pop_global_instance(
+            self.agent.get_voxel_map().instances.pop_global_instance(
                 env_id=0, global_instance_id=self.agent.current_object.global_id
             )
 
@@ -945,6 +955,7 @@ class GraspObjectOperation(ManagedOperation):
             voxel_map = self.agent.get_voxel_map()
             if voxel_map is not None:
                 voxel_map.delete_instance(self.agent.current_object, assume_explored=False)
+
         # Say we grasped the object
         if self.talk and self._success:
             self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
@@ -972,12 +983,25 @@ class GraspObjectOperation(ManagedOperation):
 
         shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
 
+        # End effector should be at most 45 degrees inclined
+        rotation = R.from_quat(ee_rot)
+        rotation = rotation.as_euler("xyz")
+        print("Rotation", rotation)
+        if rotation[1] > np.pi / 4:
+            rotation[1] = np.pi / 4
+        old_ee_rot = ee_rot
+        ee_rot = R.from_euler("xyz", rotation).as_quat()
+
         # IK
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
             shifted_object_xyz, ee_rot, q0=joint_state
         )
         print("Pregrasp joint positions: ")
-        print(target_joint_positions)
+        print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
+        print(" - lift: ", target_joint_positions[HelloStretchIdx.LIFT])
+        print(" - roll: ", target_joint_positions[HelloStretchIdx.WRIST_ROLL])
+        print(" - pitch: ", target_joint_positions[HelloStretchIdx.WRIST_PITCH])
+        print(" - yaw: ", target_joint_positions[HelloStretchIdx.WRIST_YAW])
 
         # get point 10cm from object
         if not success:
@@ -985,8 +1009,8 @@ class GraspObjectOperation(ManagedOperation):
             self._success = False
             return
         elif (
-            target_joint_positions[HelloStretchIdx.ARM] < 0
-            or target_joint_positions[HelloStretchIdx.LIFT] < 0
+            target_joint_positions[HelloStretchIdx.ARM] < -0.05
+            or target_joint_positions[HelloStretchIdx.LIFT] < -0.05
         ):
             print(
                 f"{self.name}: Target joint state is invalid: {target_joint_positions}. Positions for arm and lift must be positive."
@@ -994,24 +1018,24 @@ class GraspObjectOperation(ManagedOperation):
             self._success = False
             return
 
+        # Make sure arm and lift are positive
+        target_joint_positions[HelloStretchIdx.ARM] = max(
+            target_joint_positions[HelloStretchIdx.ARM], 0
+        )
+        target_joint_positions[HelloStretchIdx.LIFT] = max(
+            target_joint_positions[HelloStretchIdx.LIFT], 0
+        )
+
+        # Zero out roll and yaw
+        target_joint_positions[HelloStretchIdx.WRIST_YAW] = 0
+        target_joint_positions[HelloStretchIdx.WRIST_ROLL] = 0
+
         # Lift the arm up a bit
         target_joint_positions_lifted = target_joint_positions.copy()
         target_joint_positions_lifted[HelloStretchIdx.LIFT] += self.lift_distance
 
-        # Move to the target joint state
-        robot_pose = [
-            target_joint_positions[HelloStretchIdx.BASE_X],
-            target_joint_positions[HelloStretchIdx.LIFT],
-            target_joint_positions[HelloStretchIdx.ARM],
-            0.0,
-            target_joint_positions[HelloStretchIdx.WRIST_PITCH],
-            0.0,
-        ]
         print(f"{self.name}: Moving to pre-grasp position.")
         self.robot.arm_to(target_joint_positions, head=constants.look_at_ee, blocking=True)
-
-        # wait for image to stabilize
-        time.sleep(1.0)
 
     def grasp_open_loop(self, object_xyz: np.ndarray):
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
@@ -1062,7 +1086,7 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.close_gripper(blocking=True)
         time.sleep(0.5)
         print(f"{self.name}: Lifting the arm up so as not to hit the base.")
-        self.robot.arm_to(target_joint_positions_lifted, head=constants.look_at_ee, blocking=False)
+        self.robot.arm_to(target_joint_positions_lifted, head=constants.look_at_ee, blocking=True)
         print(f"{self.name}: Return arm to initial configuration.")
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
         print(f"{self.name}: Done.")

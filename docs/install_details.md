@@ -1,8 +1,8 @@
 # Stretch AI Installation
 
-Stretch AI supports Python 3.10. We recommend using \[mamba\]https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](./start_with_docker.md).
+Stretch AI supports Python 3.10. We recommend using [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) to manage dependencies, or [starting with Docker](./start_with_docker.md).
 
-If you do not start with docker, follow the [install guide](docs/install.md).
+If you do not start with docker, follow the [install guide](docs/install_details.md).
 
 ### System Dependencies
 
@@ -24,7 +24,11 @@ sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp
 On both your PC and your robot, clone and install the package:
 
 ```bash
+# Set up SSH keys if you want to develop and push
 git clone git@github.com:hello-robot/stretch_ai.git --recursive
+
+# Use HTTPS if you do not have SSH keys set up
+git clone https://github.com/hello-robot/stretch_ai.git
 ```
 
 #### Install On PC

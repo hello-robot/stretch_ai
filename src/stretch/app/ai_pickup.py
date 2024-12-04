@@ -48,6 +48,14 @@ logger = Logger(__name__)
     type=click.Choice(get_llm_choices()),
 )
 @click.option(
+    "--realtime",
+    "--real-time",
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
+    is_flag=True,
+    help="Enable real-time updates so that the robot will dynamically update its map",
+)
+@click.option(
     "--device_id",
     default=0,
     help="ID of the device to use for perception",
@@ -103,13 +111,13 @@ logger = Logger(__name__)
     type=float,
     help="Radius of the circle around initial position where the robot is allowed to go.",
 )
+@click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 @click.option(
     "--debug_llm",
     "--debug-llm",
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
-@click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
 def main(
     robot_ip: str = "192.168.1.15",
     local: bool = False,
@@ -126,6 +134,7 @@ def main(
     use_voice: bool = False,
     open_loop: bool = False,
     debug_llm: bool = False,
+    realtime: bool = False,
     radius: float = 3.0,
     input_path: str = "",
 ):
@@ -151,18 +160,22 @@ def main(
         use_voice = False
 
     # Agents wrap the robot high level planning interface for now
-    agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=realtime)
+    print("Starting robot agent: initializing...")
     agent.start(visualize_map_at_start=show_intermediate_maps)
     if reset:
+        print("Reset: moving robot to origin")
         agent.move_closed_loop([0, 0, 0], max_time=60.0)
 
     if radius is not None and radius > 0:
+        print("Setting allowed radius to:", radius)
         agent.set_allowed_radius(radius)
 
     # Load a PKL file from a previous run and process it
     # This will use ICP to match current observations to the previous ones
     # ANd then update the map with the new observations
     if input_path is not None and len(input_path) > 0:
+        print("Loading map from:", input_path)
         agent.load_map(input_path)
 
     # Create the prompt we will use to control the robot

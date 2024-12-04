@@ -31,17 +31,51 @@ detection:
 
 # Point cloud cleanup
 filters:
-        smooth_kernel_size: 2
-        use_median_filter: True
-        median_filter_size: 2
-        median_filter_max_error: 0.01
-        use_derivative_filter: True
-        derivative_filter_threshold: 0.2
-        # use_voxel_filter: True
+  # Use a simple convolutional filter
+  smooth_kernel_size: 3
+  # smooth_kernel_size: 4
+  # smooth_kernel_size: 0
+  use_median_filter: True
+  median_filter_size: 4
+  # median_filter_size: 2
+  median_filter_max_error: 0.01
+  use_derivative_filter: True
+  derivative_filter_threshold: 0.2
+  # use_voxel_filter: True
 
 # Exploration
-# in_place_rotation_steps: 8
-in_place_rotation_steps: 0
+agent:
+  realtime:
+    # This is the distance to pose graph nodes
+    matching_distance: 0.5
+    # This was 0.05 in Atharva's experiments
+    # It is how close lidar spins have to be to be considered the same
+    temporal_threshold: 0.1
+    # Maximum number of observations to match with a pose graph node
+    maximum_matched_observations: 10
+    # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
+    camera_pose_match_threshold: 0.1
+  use_realtime_updates: True
+  realtime_rotation_steps: 4
+  in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
+  sweep_head_on_update: False
+  # in_place_rotation_steps: 4
+  # sweep_head_on_update: True
+
+# Instance memory parameters
+# These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
+instance_memory:
+  min_instance_thickness: 0.01
+  min_instance_vol: 1e-6
+  max_instance_vol: 10.0
+  min_instance_height: 0.01
+  max_instance_height: 1.8
+  min_pixels_for_instance_view: 100
+  min_percent_for_instance_view: 0.1
+  # Should we remove the background from the instance views?
+  # What doe this mean? If you have a view of a bottle on a table, should we remove the table?
+  # It will have an effect on performance.
+  mask_cropped_instances: False  # Should we remove the background from the instance views?
 
 # TAMP parameters
 guarantee_instance_is_reachable: True
@@ -66,21 +100,22 @@ motion_planner:
   shortcut_iter: 100
   # Parameters for frontier exploration using the motion planner.
   frontier:
-    dilate_frontier_size: 5  # Used to shrink the frontier back from the edges of the world
-    dilate_obstacle_size: 6  # Used when selecting goals and computing what the "frontier" is 
-    default_expand_frontier_size: 10  # margin along the frontier where final robot position can be
+    dilate_frontier_size: 2  # Used to shrink the frontier back from the edges of the world
+    dilate_obstacle_size: 4  # Used when selecting goals and computing what the "frontier" is 
+    default_expand_frontier_size: 12  # margin along the frontier where final robot position can be
     # Distance away you search for frontier points
     min_dist: 0.1
     # Subsampling frontier space at this discretization
     step_dist: 0.2
   goals:
-    manipulation_radius: 0.45
+    # manipulation_radius: 0.45
+    manipulation_radius: 0.55
 
 # Trajectory following - how closely we follow intermediate waypoints
 # These should be less strict than whatever parameters the low-level controller is using; this will
 # make sure that the motions end up looking smooth.
 trajectory_pos_err_threshold: 0.15
-trajectory_rot_err_threshold: 0.3
+trajectory_rot_err_threshold: 0.5
 trajectory_per_step_timeout: 3.0
 
 agent:
@@ -93,23 +128,6 @@ agent:
   realtime_rotation_steps: 4
   in_place_rotation_steps: 4
   sweep_head_on_update: True
-
-# User interface
-# Choose one of: (object_to_find, location_to_place), command, or chat
-# Don't use all of them!
-name: "stretch_demo"  # for logging - currently not used
-chat: False
-start_ui_server: False
-vlm_context_length: 20  # How long messages sent to the vlm server can be if we are using it
-limited_obs_publish_sleep: 0.5
-
-# High level stuff: commands to execute 
-command: "pick up a bottle and put it on the chair"
-name: "stretch"
-exploration_steps: 10
-object_to_find: "bottle"
-location_to_place: "chair"
-
 
 # These are mostly around making sure that we reject views of objects that are too small, too spotty, too unreliable, etc.
 instance_memory:

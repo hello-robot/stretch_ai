@@ -16,6 +16,7 @@ import pickle
 import timeit
 from collections import namedtuple
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -31,16 +32,17 @@ from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.mapping.grid import GridParams
 from stretch.mapping.instance import Instance, InstanceMemory
-from stretch.motion import Footprint, PlanResult, RobotModel
+from stretch.motion import Footprint, HelloStretchIdx, PlanResult, RobotModel
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.perception.wrapper import OvmmPerception
 from stretch.utils.data_tools.dict import update
 from stretch.utils.logger import Logger
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd, points_in_mesh
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
+from stretch.visualization.urdf_visualizer import URDFVisualizer
 
 logger = Logger(__name__)
 
@@ -67,7 +69,16 @@ Frame = namedtuple(
 VALID_FRAMES = ["camera", "world"]
 
 
-def ensure_tensor(arr):
+def ensure_tensor(arr) -> Tensor:
+    """Make sure this is a tensor.
+
+    Args:
+        arr: array or tensor to convert
+
+    Returns:
+        Tensor: the converted tensor
+    """
+
     if isinstance(arr, np.ndarray):
         return Tensor(arr)
     if not isinstance(arr, Tensor):
@@ -224,6 +235,7 @@ class SparseVoxelMap(object):
         self.encoder = encoder
         self.map_2d_device = map_2d_device
         self._min_points_per_voxel = min_points_per_voxel
+        self.urdf_visualizer = URDFVisualizer()
 
         # Is the 2d map stale?
         self._stale_2d = True
@@ -310,19 +322,34 @@ class SparseVoxelMap(object):
         self._map2d = None
 
     def get_instances(self) -> List[Instance]:
-        """Return a list of all viewable instances"""
+        """Return a list of all viewable instances.
+
+        Returns:
+            List[Instance]: a list of instances
+        """
         if self.instances is None:
             return []
         return list(self.instances.instances[0].values())
 
     def get_instances_as_dict(self) -> Dict[int, Instance]:
-        """Return a dictionary of all viewable instances"""
+        """Return a dictionary of all viewable instances. Maps from instance_id to Instance.
+
+        Returns:
+            Dict[int, Instance]: a dictionary of instances
+        """
         if self.instances is None:
             return {}
         return self.instances.instances[0]
 
     def fix_type(self, tensor: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
-        """Convert to tensor and float"""
+        """Convert to tensor and float. If tensor is None, return None.
+
+        Args:
+            tensor: the tensor to convert
+
+        Returns:
+            torch.Tensor: the converted tensor
+        """
         if tensor is None:
             return None
         if isinstance(tensor, np.ndarray):
@@ -570,6 +597,40 @@ class SparseVoxelMap(object):
 
         # TODO: weights could also be confidence, inv distance from camera, etc
         if world_xyz.nelement() > 0:
+            # Remove points that are too close to the robot
+            if obs is not None and obs.joint is not None:
+                state = obs.joint
+                cfg = {}
+                for k in HelloStretchIdx.name_to_idx:
+                    cfg[k] = state[HelloStretchIdx.name_to_idx[k]]
+                lk_cfg = {
+                    "joint_wrist_yaw": cfg["wrist_yaw"],
+                    "joint_wrist_pitch": cfg["wrist_pitch"],
+                    "joint_wrist_roll": cfg["wrist_roll"],
+                    "joint_lift": cfg["lift"],
+                    "joint_arm_l0": cfg["arm"] / 4,
+                    "joint_arm_l1": cfg["arm"] / 4,
+                    "joint_arm_l2": cfg["arm"] / 4,
+                    "joint_arm_l3": cfg["arm"] / 4,
+                    "joint_head_pan": cfg["head_pan"],
+                    "joint_head_tilt": cfg["head_tilt"],
+                }
+                if "gripper" in cfg.keys():
+                    lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
+                    lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
+
+                mesh = self.urdf_visualizer.get_combined_robot_mesh(cfg=lk_cfg, use_collision=True)
+
+                selected_indices = points_in_mesh(world_xyz, mesh, base_pose)
+            else:
+                selected_indices = torch.ones_like(world_xyz[:, 0], dtype=torch.bool)
+            world_xyz = world_xyz[selected_indices]
+
+            if feats is not None:
+                feats = feats[selected_indices]
+
+            rgb = rgb[selected_indices]
+
             self.voxel_pcd.add(
                 world_xyz,
                 features=feats,
@@ -842,7 +903,7 @@ class SparseVoxelMap(object):
         """
         return self.voxel_pcd.get_pointcloud()
 
-    def set_allowed_radius(self, radius: float, origin: torch.Tensor | np.ndarray) -> None:
+    def set_allowed_radius(self, radius: float, origin: Union[torch.Tensor, np.ndarray]) -> None:
         """Set the allowed radius for exploration around the robot. This is used to add points to the map around the robot.
 
         Args:
@@ -869,11 +930,20 @@ class SparseVoxelMap(object):
         assert y0 >= 0
         self.allowed_map[x0:x1, y0:y1] += disk
 
-        # Force a map update
-        self.get_2d_map(force_update=True)
+        if len(self.observations) > 0:
+            # Force a map update
+            self.get_2d_map(force_update=True)
 
     def get_2d_map(self, force_update=False, debug: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-        """Get 2d map with explored area and frontiers."""
+        """Get 2d map with explored area and frontiers.
+
+        Args:
+            force_update(bool): whether to force an update of the map
+            debug(bool): whether to show debug plots
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: 2d map with obstacles and explored area
+        """
 
         # Is this already cached? If so we don't need to go to all this work
         if (
@@ -890,7 +960,11 @@ class SparseVoxelMap(object):
 
         # If we have no points, just return zeros
         if xyz is None or xyz.nelement() == 0:
-            logger.warning("No points in point cloud, returning empty map")
+            if xyz is None:
+                logger.warning("No point cloud yet, returning empty map")
+            else:
+                logger.warning("nelement of xyz is 0, returning empty map")
+
             return (
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
                 torch.zeros(self.grid_size, device=self.map_2d_device).bool(),
@@ -1006,6 +1080,10 @@ class SparseVoxelMap(object):
                 traj.append(self.grid.xy_to_grid_coords(node.state[:2]))
             return traj
 
+    def xy_to_grid_coords(self, xy: np.ndarray) -> Optional[torch.Tensor]:
+        """Convert xy to grid coordinates"""
+        return self.grid.xy_to_grid_coords(xy)
+
     def get_kd_tree(self) -> open3d.geometry.KDTreeFlann:
         """Return kdtree for collision checks
 
@@ -1043,6 +1121,19 @@ class SparseVoxelMap(object):
             return self.grid.grid_coords_to_xy(valid_indices[random_index])
         else:
             return None
+
+    def grid_coords_to_xy(self, grid_coords: Union[torch.Tensor, np.ndarray]) -> np.ndarray:
+        """Convert grid coordinates to xy
+
+        Args:
+            grid_coords (torch.Tensor): grid coordinates
+
+        Returns:
+            np.ndarray: xy coordinates
+        """
+        if isinstance(grid_coords, np.ndarray):
+            grid_coords = torch.from_numpy(grid_coords)
+        return self.grid.grid_coords_to_xy(grid_coords)
 
     def xyt_is_safe(self, xyt: np.ndarray, robot: Optional[RobotModel] = None) -> bool:
         """Check to see if a given xyt position is known to be safe."""
@@ -1347,3 +1438,21 @@ class SparseVoxelMap(object):
             },
             prune_detected_objects=parameters.get("prune_detected_objects", False),
         )
+
+
+class SparseVoxelMapProxy(object):
+    def __init__(self, voxel_map: SparseVoxelMap, lock: Lock):
+        self._voxel_map = voxel_map
+        self._lock = lock
+
+    def __getattr__(self, name):
+        def locked_method(*args, **kwargs):
+            with self._lock:  # Acquire read lock for external access
+                method = getattr(self._voxel_map, name)
+                return method(*args, **kwargs)
+
+        if callable(getattr(self._voxel_map, name)):
+            return locked_method
+        else:
+            with self._lock:
+                return getattr(self._voxel_map, name)

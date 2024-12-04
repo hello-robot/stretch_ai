@@ -2,7 +2,9 @@
 
 You can install Robocasa by following the instructions below, or you can try the [install script](scripts/install_robocasa.sh).
 
-## Install Robosuite
+## Installation
+
+### Install Robosuite
 
 ```bash
 git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1
@@ -10,7 +12,7 @@ cd robosuite
 pip install -e .
 ```
 
-## Install Robocasa
+### Install Robocasa
 
 ```bash
 cd ..
@@ -19,7 +21,7 @@ cd robocasa
 pip install -e .
 ```
 
-## Install Stretch Mujoco
+### Install Stretch Mujoco
 
 ```bash
 cd ..
@@ -28,12 +30,21 @@ cd stretch_mujoco
 pip install -e .
 ```
 
-## Download assets
+### Download assets
 
 ```bash
 python robocasa/scripts/download_kitchen_assets.py   # Caution: Assets to be downloaded are around 5GB.
 python robocasa/scripts/setup_macros.py              # Set up system variables.
 ```
+
+### Upgrade Protobuf
+
+As of 2024-12-04, you may need to update Google protobuf because of an issue with Google text-to-speech:
+```bash
+pip install --upgrade protobuf
+```
+
+You may see a compatibility error in pip, but it should not make a difference.
 
 ## Run Robocasa
 
@@ -46,4 +57,8 @@ python -m stretch.simulation.mujoco_server --use-robocasa
 In another run an app, like mapping:
 
 ```bash
+# Just point the app to the local IP address instead of to your robot.
+python -m stretch.app.mapping --robot_ip 127.0.0.1
 ```
+
+Using the `--robot_ip` option will update your default IP address; you will need to reset it or provide it again to connect to your physical robot from the same machine.

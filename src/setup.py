@@ -53,6 +53,8 @@ setuptools.setup(
         # From openai
         "openai",
         "openai-clip",
+        # For Yolo
+        # "ultralytics",
         # Hardware dependencies
         "hello-robot-stretch-urdf",
         "pyrealsense2",
@@ -70,6 +72,8 @@ setuptools.setup(
         "transformers",
         "accelerate",
         "einops",
+        # Meta neural nets
+        "segment-anything",
         # Compression tools
         "pyliblzfse",
         "webp",

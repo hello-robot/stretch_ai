@@ -184,7 +184,7 @@ def main(
         voxel_map=loaded_voxel_map,
         semantic_sensor=semantic_sensor,
     )
-    voxel_map = agent.voxel_map
+    voxel_map = agent.get_voxel_map()
 
     if len(input_path) > 0:
         # load from pickle

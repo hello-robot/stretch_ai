@@ -7,7 +7,7 @@ Stretch AI comes with several apps that you can run to test the robot's capabili
 - [View Images](#visualization-and-streaming-video) - View images from the robot's cameras.
 - [Show Point Cloud](#show-point-cloud) - Show a joint point cloud from the end effector and head cameras.
 - [Gripper](#use-the-gripper) - Open and close the gripper.
-- [Rerun](#rerun) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
+- [Rerun](#rerun-web-server) - Start a [rerun.io](https://rerun.io/)-based web server to visualize data from your robot.
 - [LLM Voice Chat](#voice-chat) - Chat with the robot using LLMs.
 
 Advanced:
@@ -15,14 +15,14 @@ Advanced:
 - [Grasp an Object](#grasp-an-object) - Grasp an object with the robot.
 - [Automatic 3d Mapping](#automatic-3d-mapping) - Automatically explore and map a room, saving the result as a PKL file.
 - [Read saved map](#voxel-map-visualization) - Read a saved map and visualize it.
-- [Pickup Objects](#pickup-toys) - Have the robot pickup toys lying on the floor and put them in a box.
 
 Finally:
 
 - [Dex Teleop data collection](#dex-teleop-for-data-collection) - Dexterously teleoperate the robot to collect demonstration data.
-- [Learning from Demonstration (LfD)](docs/learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
+- [Learning from Demonstration (LfD)](learning_from_demonstration.md) - Train SOTA policies using [HuggingFace LeRobot](https://github.com/huggingface/lerobot)
+- [Dynamem OVMM system](dynamem.md) - Deploy open vocabulary mobile manipulation system [Dynamem](https://dynamem.github.io)
 
-There are also some apps for [debugging](docs/debug.md).
+There are also some apps for [debugging](debug.md).
 
 ## List of Apps
 
@@ -155,13 +155,13 @@ python -m pip install mediapipe
 python -m stretch.app.dex_teleop.ros2_leader -i $ROBOT_IP --teleop-mode base_x --save-images --record-success --task-name default_task
 ```
 
-[Read the data collection documentation](docs/data_collection.md) for more details.
+[Read the data collection documentation](data_collection.md) for more details.
 
-After this, [read the learning from demonstration instructions](docs/learning_from_demonstration.md) to train a policy.
+After this, [read the learning from demonstration instructions](learning_from_demonstration.md) to train a policy.
 
 ### Grasp an Object
 
-[![Grasp Object](https://img.youtube.com/vi/YmJKvmYRQ9o/0.jpg)](https://youtu.be/YmJKvmYRQ9o)
+![](./images/VisualServoing.gif)
 
 This app has the robot grasp an object positioned in front of its arm, on the floor, about a meter away. You can see the [grasp practice video on YouTube](https://youtu.be/YmJKvmYRQ9o) to see how it works.
 
@@ -189,7 +189,7 @@ Another useful flag when testing is the `--reset` flag, which will reset the rob
 
 ### Voxel Map Visualization
 
-You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](src/test/mapping/hq_small.pkl)  or [hq_large](src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
+You can test the voxel code on a captured pickle file. We recommend trying with the included [hq_small.pkl](../src/test/mapping/hq_small.pkl)  or [hq_large](../src/test/mapping/hq_large.pkl) files, which contain a short and a long captured trajectory from Hello Robot.
 
 ```bash
 python -m stretch.app.read_map -i hq_small.pkl
@@ -226,20 +226,6 @@ python -m stretch.app.read_map -i hq_small.pkl --test-sampling --start 4.5,1.4,0
 python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --query "cardboard box"
 ```
 
-### Pickup Objects
-
-This will have the robot move around the room, explore, and pickup toys placed on the floor in order to put them in a box.
-
-```bash
-python -m stretch.app.pickup --target_object toy
-```
-
-You can add the `--reset` flag to make it go back to the start position. The default object is "toy", but you can specify other objects as well, like "bottle", "cup", or "shoe".
-
-```
-python -m stretch.app.pickup --reset
-```
-
 ## Experimental
 
 ### VLM Planning
@@ -249,3 +235,17 @@ This is an experimental app that uses the voxel map to plan a path to a goal. It
 ```bash
 python -m stretch.app.vlm_planning
 ```
+
+### Open-Vocabulary Mobile Manipulation
+
+This is an experimental app that uses a language model to generate commands for the robot given a natural language input. It is not yet fully functional.
+
+```bash
+python -m stretch.app.ovmm
+```
+
+Options include:
+
+- `--robot_ip` - The IP address of the robot.
+- `--task` - The task to perform. Can be a natural language command for the robot.
+- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma2b`.

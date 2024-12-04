@@ -6,9 +6,4 @@
 #
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
-
-# (c) 2024 Hello Robot by Atharva Pusalkar
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-from .yolo_perception import YoloPerception
+from .dynamem_task import DynamemTaskExecutor

@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 Hello Robot by Chris Paxton
+# (c) 2024 Hello Robot
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -62,6 +62,12 @@ from stretch.utils.dummy_stretch_client import DummyStretchClient
 )
 @click.option("--show-svm", is_flag=True, help="Show the SVM output")
 @click.option("-o", "--offline", is_flag=True, help="Run code offline on stored data.")
+@click.option(
+    "--enable-realtime-updates",
+    "--enable_realtime_updates",
+    is_flag=True,
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
+)
 def main(
     device_id: int = 0,
     verbose: bool = True,
@@ -84,6 +90,7 @@ def main(
     threshold: float = 0.5,
     offline: bool = False,
     show_svm: bool = False,
+    enable_realtime_updates: bool = False,
 ):
 
     print("- Load parameters")
@@ -108,7 +115,9 @@ def main(
             parameters=parameters,
         )
         robot.move_to_nav_posture()
-        agent = RobotAgent(robot, parameters, semantic_sensor)
+        agent = RobotAgent(
+            robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+        )
 
         if reset:
             agent.move_closed_loop([0, 0, 0], max_time=60.0)
@@ -129,15 +138,15 @@ def main(
 
         # Save out file
         if len(output_pkl_filename) > 0:
-            agent.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.get_voxel_map().write_to_pickle(output_pkl_filename)
     else:
         real_robot = False
         dummy_robot = DummyStretchClient()
         agent = RobotAgent(dummy_robot, parameters, semantic_sensor)
-        agent.voxel_map.read_from_pickle(input_path, num_frames=frame)
+        agent.get_voxel_map().read_from_pickle(input_path, num_frames=frame)
 
     if show_svm:
-        agent.voxel_map.show()
+        agent.get_voxel_map().show()
 
     try:
         if len(text) == 0:

@@ -95,6 +95,7 @@ class AbstractRobotClient(ABC):
         per_waypoint_timeout: float = 10.0,
         relative: bool = False,
         final_timeout: float = 60.0,
+        blocking: bool = True,
     ):
         """Open loop trajectory execution"""
         raise NotImplementedError()

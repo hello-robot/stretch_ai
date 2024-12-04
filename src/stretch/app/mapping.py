@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-# (c) 2024 Hello Robot by Chris Paxton
+# (c) 2024 Hello Robot
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -59,10 +59,9 @@ from stretch.perception import create_semantic_sensor
 @click.option("--reset", is_flag=True, help="Reset the robot to origin before starting")
 @click.option(
     "--enable-realtime-updates",
-    "--enable_realtime-updates",
     "--enable_realtime_updates",
     is_flag=True,
-    help="Enable real-time updates so the robot will scan its environment and update the map as it moves around",
+    help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
 @click.option("--silent", is_flag=True, help="Disable audio feedback")
 @click.option("--save", is_flag=True, help="Save the map to memory")
@@ -213,10 +212,6 @@ def demo_main(
 
     # Rotate in place
     if parameters["agent"]["in_place_rotation_steps"] > 0:
-
-        if audio_feedback:
-            robot.say("Rotating in place to scan the environment.")
-
         agent.rotate_in_place(
             steps=parameters["agent"]["in_place_rotation_steps"],
             visualize=show_intermediate_maps,
@@ -250,9 +245,9 @@ def demo_main(
         agent.stop_realtime_updates()
 
         if show_final_map:
-            pc_xyz, pc_rgb = agent.voxel_map.show()
+            pc_xyz, pc_rgb = agent.get_voxel_map().show()
         else:
-            pc_xyz, pc_rgb = agent.voxel_map.get_xyz_rgb()
+            pc_xyz, pc_rgb = agent.get_voxel_map().get_xyz_rgb()
 
         if pc_rgb is None:
             return
@@ -260,7 +255,7 @@ def demo_main(
         # Create pointcloud and write it out
         if len(output_pkl_filename) > 0:
             print(f"Write pkl to {output_pkl_filename}...")
-            agent.voxel_map.write_to_pickle(output_pkl_filename)
+            agent.get_voxel_map().write_to_pickle(output_pkl_filename)
 
         if save:
             agent.save_map()

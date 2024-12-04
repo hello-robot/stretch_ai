@@ -19,11 +19,11 @@ class LLMPlanTask:
         # Sync these things
         self.agent = agent
         self.robot = agent.robot
-        self.voxel_map = agent.voxel_map
+        self.voxel_map = agent.get_voxel_map()
         self.navigation_space = agent.space
         self.semantic_sensor = agent.semantic_sensor
         self.parameters = agent.parameters
-        self.instance_memory = agent.voxel_map.instances
+        self.instance_memory = agent.get_voxel_map().instances
 
         # Task information
         self.llm_plan = llm_plan

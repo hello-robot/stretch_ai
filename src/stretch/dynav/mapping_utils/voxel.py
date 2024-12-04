@@ -31,9 +31,10 @@ from stretch.core.interfaces import Observations
 from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud, scatter3d
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd, points_in_mesh
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
+from stretch.visualization.urdf_visualizer import URDFVisualizer
 
 Frame = namedtuple(
     "Frame",
@@ -53,7 +54,7 @@ Frame = namedtuple(
 
 VALID_FRAMES = ["camera", "world"]
 
-DEFAULT_GRID_SIZE = [200, 200]
+DEFAULT_GRID_SIZE = [120, 120]
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,8 @@ class SparseVoxelMap(object):
 
         self.voxel_kwargs = voxel_kwargs
         self.map_2d_device = map_2d_device
+        # URDF Visualizer to check for collisions
+        self.urdf_visualizer = URDFVisualizer()
 
         if self.pad_obstacles > 0:
             self.dilate_obstacles_kernel = torch.nn.Parameter(
@@ -395,6 +398,11 @@ class SparseVoxelMap(object):
             ]
             if len(selected_indices) == 0:
                 return
+
+            # Remove points that are too close to the robot
+            mesh = self.urdf_visualizer.get_combined_robot_mesh()
+            selected_indices = points_in_mesh(world_xyz, mesh)
+
             if world_xyz is not None:
                 world_xyz = world_xyz[selected_indices]
             if feats is not None:
@@ -654,7 +662,7 @@ class SparseVoxelMap(object):
 
         history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
-        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=5))
+        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=7))
 
         if self._remove_visited_from_obstacles:
             # Remove "visited" points containing observations of the robot
@@ -727,6 +735,11 @@ class SparseVoxelMap(object):
         obstacles[-30:, :] = True
         obstacles[:, 0:30] = True
         obstacles[:, -30:] = True
+        if history_soft is not None:
+            history_soft[0:35, :] = history_soft.max().item()
+            history_soft[-35:, :] = history_soft.max().item()
+            history_soft[:, 0:35] = history_soft.max().item()
+            history_soft[:, -35:] = history_soft.max().item()
         self._map2d = (obstacles, explored)
         self._2d_last_updated = self._seq
         self._history_soft = history_soft
