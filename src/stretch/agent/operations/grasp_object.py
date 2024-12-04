@@ -115,6 +115,7 @@ class GraspObjectOperation(ManagedOperation):
     track_image_center: bool = False
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
+    detected_center_offset_x: int = 0  # -10
     detected_center_offset_y: int = 0  # -40
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
@@ -242,11 +243,6 @@ class GraspObjectOperation(ManagedOperation):
         if len(depth) == 0:
             return 0.0
 
-        median_depth = np.median(depth)
-
-        # trying to get depth from target mask, not from region close to the midpoint of aruco markers
-        depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, target_mask)
-        depth = servo.ee_depth[depth_mask]
         median_depth = np.median(depth)
 
         return median_depth
@@ -597,14 +593,13 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 center = self.gripper_aruco_detector.detect_center(servo.ee_rgb)
                 if center is not None:
-                    # center_y, center_x = np.round(center).astype(int)
-                    center_x, center_y = np.round(center).astype(int)
+                    center_y, center_x = np.round(center).astype(int)
                     center_y += self.detected_center_offset_y
                 else:
                     center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
 
             # add offset to center
-            # center_x -= 10  # move closer to top
+            center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
