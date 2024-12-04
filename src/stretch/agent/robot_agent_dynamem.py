@@ -83,7 +83,7 @@ class RobotAgent(RobotAgentBase):
         re: int = 3,
         manip_port: int = 5557,
         log: Optional[str] = None,
-        server_ip: Optional[bool] = "127.0.0.1",
+        server_ip: Optional[str] = "127.0.0.1",
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
