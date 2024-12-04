@@ -31,6 +31,7 @@ except ImportError as e:
 import stretch.motion.constants as constants
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
+import stretch.simulation.utils as sim_utils
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
 from stretch.motion.control.goto_controller import GotoVelocityController
@@ -182,16 +183,14 @@ class MujocoZmqServer(BaseZmqServer):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
         # TODO: decide how we want to save scenes, if they should be here in stretch_ai or in stretch_mujoco
         # They should probably stay in stretch mujoco
-        # if scene_path is None:
-        #     scene_path = get_scene_path("default_scene.xml")
-        # elif not scene_path.endswith(".xml"):
-        #     scene_path = get_scene_by_name(scene_path)
+        if scene_path is None:
+            scene_path = sim_utils.get_default_scene_path()
         if scene_model is not None:
             if scene_path is not None:
                 logger.warning("Both scene model and scene path provided. Using scene model.")
             self.robot_sim = StretchMujocoSimulator(model=scene_model)
         else:
-            self.robot_sim = StretchMujocoSimulator(scene_path)
+            self.robot_sim = StretchMujocoSimulator(scene_xml_path=scene_path)
         self.simulation_rate = simulation_rate
         self.objects_info = objects_info
 
@@ -796,6 +795,10 @@ def main(
                 layout=robocasa_layout,
                 write_to_file=scene_path,
             )
+
+    # If no scene path
+    if scene_path is None or len(scene_path) == 0:
+        scene_path = sim_utils.get_default_scene_path()
 
     server = MujocoZmqServer(
         send_port,
