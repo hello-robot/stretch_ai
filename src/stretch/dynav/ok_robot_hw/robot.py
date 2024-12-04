@@ -16,10 +16,22 @@ import pinocchio as pin
 from scipy.spatial.transform import Rotation as R
 
 from stretch.dynav.ok_robot_hw.global_parameters import *
-from stretch.dynav.ok_robot_hw.utils import transform_joint_array
 from stretch.motion.kinematics import HelloStretchIdx
 
 OVERRIDE_STATES: dict[str, float] = {}
+
+
+def transform_joint_array(joint_array):
+    n = len(joint_array)
+    new_joint_array = []
+    for i in range(n + 3):
+        if i < 2:
+            new_joint_array.append(joint_array[i])
+        elif i < 6:
+            new_joint_array.append(joint_array[2] / 4.0)
+        else:
+            new_joint_array.append(joint_array[i - 3])
+    return np.array(new_joint_array)
 
 
 class HelloRobot:
@@ -131,14 +143,9 @@ class HelloRobot:
         if not wrist_roll is None:
             target_state[5] = wrist_roll
 
-        # self.r.goto_joint_positions(target_state, blocking = True)
-
-        self.robot.arm_to(target_state, blocking=blocking, head=np.array([self.pan, self.tilt]))
-        # self.robot.arm_to(target_state, blocking=False)
-        # time.sleep(0.5)
-
-        # Head state update and Movement
-        # target_head_pan, target_head_tilt = self.robot.get_pan_tilt()
+        self.robot.arm_to(
+            target_state, blocking=blocking, head=np.array([self.pan, self.tilt]), reliable=False
+        )
 
         target_head_pan = self.pan
         target_head_tilt = self.tilt
@@ -150,14 +157,6 @@ class HelloRobot:
             self.pan = head_pan
 
         self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
-        # self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=False)
-        # time.sleep(0.3)
-
-        # print("Expected", target_state)
-        # print("Actual", self.robot.get_six_joints())
-        # print("Error", target_state - self.robot.get_six_joints())
-        # self.pan, self.tilt = self.robot.get_pan_tilt()
-        # time.sleep(0.7)
 
     def pickup(self, width):
         """
@@ -233,18 +232,12 @@ class HelloRobot:
             target1 = state
             target1[0] = target_state[0]
             target1[1] = min(1.1, target_state[1] + 0.2)
-            self.robot.arm_to(target1, blocking=True, head=np.array([self.pan, self.tilt]))
+            self.robot.arm_to(
+                target1, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
+            )
 
         self.robot.arm_to(target_state, blocking=True)
-        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
-
-        # self.robot.arm_to(target_state, blocking=True, head=np.array([self.pan, self.tilt]))
-        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True)
-
-        # print('pan tilt after', self.robot.get_pan_tilt())
-        # print(f"current state {self.robot.get_six_joints()}")
-        # print(f"target state {target_state}")
-        # time.sleep(1)
+        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
 
         # NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
         OVERRIDE_STATES["wrist_pitch"] = joints["joint_wrist_pitch"]
