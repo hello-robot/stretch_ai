@@ -20,7 +20,7 @@ from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
 
 try:
-    from stretch.simulation.robocasa_gen import model_generation_wizard
+    from stretch.simulation.robocasa_gen import load_model_from_xml, model_generation_wizard
 except ImportError as e:
     from stretch.utils.logger import error
 
@@ -689,6 +689,7 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
 @click.option("--headless", default=False, help="Run the simulation headless", is_flag=True)
 @click.option("--seed", default=0, help="Seed for the simulation")
+@click.option("--filename", default="", help="Filename for a generated scene to load.")
 @click.option(
     "--robocasa-write-to-xml",
     default=False,
@@ -713,6 +714,7 @@ def main(
     robocasa_write_to_xml: bool,
     show_viewer_ui: bool,
     headless: bool = False,
+    filename: str = "",
     seed: int = 0,
 ):
 
@@ -723,7 +725,9 @@ def main(
         np.random.seed(seed)
         random.seed(seed)
 
-    if use_robocasa:
+    if filename is not None and len(filename) > 0:
+        scene_model = load_model_from_xml(filename)
+    elif use_robocasa:
         scene_model, scene_xml, objects_info = model_generation_wizard(
             task=robocasa_task,
             style=robocasa_style,

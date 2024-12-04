@@ -244,6 +244,11 @@ def model_generation_wizard(
     return model, xml, object_placements_info
 
 
+def load_model_from_xml(xml: str) -> mujoco.MjModel:
+    model = mujoco.MjModel.from_xml_string(xml)
+    return model
+
+
 def custom_cleanups(xml: str) -> Tuple[str, dict]:
     """
     Custom cleanups to models from robocasa envs to support
