@@ -752,7 +752,7 @@ class GraspObjectOperation(ManagedOperation):
             print()
             print("----- STEP VISUAL SERVOING -----")
             print("Observed this many target mask points:", np.sum(target_mask.flatten()))
-            if True:  # self.verbose:
+            if self.verbose:
                 print("failed =", failed_counter, "/", self.max_failed_attempts)
                 print("cur x =", base_x)
                 print(" lift =", lift)
