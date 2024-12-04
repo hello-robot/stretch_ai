@@ -590,6 +590,7 @@ class MujocoZmqServer(BaseZmqServer):
             "at_goal": self.base_controller_at_goal(),
             "is_homed": True,
             "is_runstopped": False,
+            "step": self._last_step,
         }
         return message
 
