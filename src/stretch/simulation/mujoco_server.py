@@ -516,7 +516,10 @@ class MujocoZmqServer(BaseZmqServer):
             # If we are switching to manipulation mode, recort base xyt
             if new_control_mode == "manipulation" and self.get_control_mode() == "navigation":
                 self._manip_xyt = self.get_base_pose()
-                logger.info("Switching to manipulation mode, recording initial base pose for manipulation: " + str(self._manip_xyt))
+                logger.info(
+                    "Switching to manipulation mode, recording initial base pose for manipulation: "
+                    + str(self._manip_xyt)
+                )
 
             self.control_mode = new_control_mode
 
