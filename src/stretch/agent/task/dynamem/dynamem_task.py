@@ -37,6 +37,7 @@ class DynamemTaskExecutor:
         output_path: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
         skip_confirmations: bool = True,
+        explore_iter: int = 5,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -46,13 +47,11 @@ class DynamemTaskExecutor:
         self.visual_servo = visual_servo
         self.match_method = match_method
         self.skip_confirmations = skip_confirmations
+        self.explore_iter = explore_iter
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
             raise TypeError(f"Expected AbstractRobotClient, got {type(self.robot)}")
-
-        # Configuration
-        self._match_method = match_method
 
         # Create semantic sensor if visual servoing is enabled
         print("- Create semantic sensor if visual servoing is enabled")
@@ -298,7 +297,8 @@ class DynamemTaskExecutor:
                     self.agent.go_home()
             elif command == "explore":
                 logger.info("[Pickup task] Exploring.")
-                self.agent.run_exploration()
+                for _ in range(self.explore_iter):
+                    self.agent.run_exploration()
             elif command == "find":
                 logger.info("[Pickup task] Finding {}.".format(args))
                 point = self._find(args)
