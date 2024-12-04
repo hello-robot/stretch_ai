@@ -203,6 +203,7 @@ class MujocoZmqServer(BaseZmqServer):
         self._camera_data = None
         self._status = None
         self._initial_xyt = None
+        self._manip_xyt = None
 
         # Controller stuff
         # Is the velocity controller active?
@@ -217,9 +218,6 @@ class MujocoZmqServer(BaseZmqServer):
         self.control_mode = "navigation"
         self.controller_finished = True
         self.active = False
-
-        # Other
-        # self.verbose = True
 
         # Control module
         controller_cfg = get_control_config(config_name)
@@ -450,9 +448,21 @@ class MujocoZmqServer(BaseZmqServer):
             # Just read the manipulator joints
             for i, idx in enumerate(manip_idx):
                 if idx == HelloStretchIdx.BASE_X:
-                    # TODO: Implement base_x
-                    continue
-                self.robot_sim.move_to(mujoco_actuators[idx], q[i])
+                    if not self.in_manipulation_mode:
+                        logger.warning("Cannot move base by base_x alone in navigation mode")
+                        continue
+                    elif self._manip_xyt is None:
+                        logger.error("Manipulation mode not set up correctly")
+                    # Send an xyt goal: x, y, theta
+                    # This is computed based on self._manip_xyt
+                    xyt_delta = [q[i], 0, 0]
+                    xyt_goal = xyt_base_to_global(xyt_delta, self._manip_xyt)
+                    print("Manip xyt =", self._manip_xyt)
+                    print("delta =", xyt_delta)
+                    print("Setting base to", xyt_goal)
+                    self.set_goal_pose(xyt_goal, relative=False)
+                else:
+                    self.robot_sim.move_to(mujoco_actuators[idx], q[i])
 
     def __del__(self):
         self.stop()
@@ -499,7 +509,16 @@ class MujocoZmqServer(BaseZmqServer):
     def handle_action(self, action: Dict[str, Any]):
         """Handle the action received from the client."""
         if "control_mode" in action:
-            self.control_mode = action["control_mode"]
+            new_control_mode = action["control_mode"]
+            if new_control_mode not in ["navigation", "manipulation"]:
+                logger.error(f"Control mode {new_control_mode} not supported")
+            # If we are switching to manipulation mode, recort base xyt
+            if new_control_mode == "manipulation" and self.get_control_mode() == "navigation":
+                self._manip_xyt = self.get_base_pose()
+                logger.info("Switching to manipulation mode, recording initial base pose for manipulation: " + str(self._manip_xyt))
+
+            self.control_mode = new_control_mode
+
         if "posture" in action:
             self.set_posture(action["posture"])
         if "gripper" in action:
@@ -743,11 +762,11 @@ def main(
         recv_port,
         send_state_port,
         send_servo_port,
-        use_remote_computer,
-        verbose,
-        image_scaling,
-        ee_image_scaling,
-        depth_scaling,
+        use_remote_computer=use_remote_computer,
+        verbose=verbose,
+        image_scaling=image_scaling,
+        ee_image_scaling=ee_image_scaling,
+        depth_scaling=depth_scaling,
         scene_path=scene_path,
         scene_model=scene_model,
         objects_info=objects_info,

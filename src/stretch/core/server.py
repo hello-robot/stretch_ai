@@ -133,6 +133,16 @@ class BaseZmqServer(CommsNode, ABC):
         self._send_state_thread.start()
         self._send_servo_thread.start()
 
+    @property
+    def in_manipulation_mode(self) -> bool:
+        """Check if the robot is in manipulation mode."""
+        return self.control_mode == "manipulation"
+
+    @property
+    def in_navigation_mode(self) -> bool:
+        """Check if the robot is in navigation mode."""
+        return self.control_mode == "navigation"
+
     # ==================================================================
     # BEGIN: Implement the following methods
 
