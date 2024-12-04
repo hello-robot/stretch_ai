@@ -239,8 +239,10 @@ class GraspObjectOperation(ManagedOperation):
         depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, mask)
 
         depth = servo.ee_depth[target_mask & depth_mask]
+        if len(depth) == 0:
+            return 0.0
+
         median_depth = np.median(depth)
-        # print(f"Center depth: {median_depth}")
 
         # trying to get depth from target mask, not from region close to the midpoint of aruco markers
         depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, target_mask)
