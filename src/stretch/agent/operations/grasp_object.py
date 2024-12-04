@@ -930,6 +930,7 @@ class GraspObjectOperation(ManagedOperation):
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
             shifted_object_xyz, ee_rot, q0=joint_state
         )
+
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
         print(" - lift: ", target_joint_positions[HelloStretchIdx.LIFT])

@@ -102,7 +102,7 @@ You can also run many of the components individually, as explained below:
 
 #### Using OpenAI Models with Stretch AI
 
-To use an OpenAI model, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
+To use an OpenAI model for generating the instructions, first create an OpenAI API KEY by following the [OpenAI quickstart instructions](https://platform.openai.com/quickstart). Then, set the `OPENAI_API_KEY` environment variable to your API key. You can do this by adding the following line to your `~/.bashrc` or `~/.bash_profile` file:
 
 ```bash
 export OPENAI_API_KEY="your_api_key_here"

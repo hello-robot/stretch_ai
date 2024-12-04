@@ -83,6 +83,7 @@ class RobotAgent(RobotAgentBase):
         re: int = 3,
         manip_port: int = 5557,
         log: Optional[str] = None,
+        server_ip: Optional[str] = "127.0.0.1",
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -174,7 +175,7 @@ class RobotAgent(RobotAgentBase):
         # self.encoder = self.image_processor.get_encoder()
         context = zmq.Context()
         self.manip_socket = context.socket(zmq.REQ)
-        self.manip_socket.connect("tcp://100.108.67.79:" + str(manip_port))
+        self.manip_socket.connect("tcp://" + server_ip + ":" + str(manip_port))
 
         if re == 1 or re == 2:
             stretch_gripper_max = 0.3
