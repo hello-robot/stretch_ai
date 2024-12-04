@@ -294,6 +294,7 @@ class GraspObjectOperation(ManagedOperation):
             best_score = float("-inf")
             best_iid = None
             all_matches = []
+
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -502,6 +503,8 @@ class GraspObjectOperation(ManagedOperation):
         return True
 
     def blue_highlight_mask(self, img):
+        """Get a binary mask for the blue highlights in the image."""
+
         # Conditions for each channel
         blue_condition = img[:, :, 2] > 100
         red_condition = img[:, :, 0] < 50

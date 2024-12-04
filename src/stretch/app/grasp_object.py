@@ -19,7 +19,7 @@ from stretch.core.task import Task
 from stretch.perception import create_semantic_sensor
 
 
-def get_task(robot, demo, target_object):
+def get_task(robot, demo, target_object, verbose: bool = False) -> Task:
     """Create a very simple task just to test visual servoing to grasp."""
     print("[GRASP OBJECT APP] Target object is set to", target_object)
     try:
@@ -48,6 +48,7 @@ def get_task(robot, demo, target_object):
             match_method="feature",
         )
         grasp_object.set_target_object_class(target_object)
+        grasp_object.verbose = verbose
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -82,7 +83,7 @@ def get_task(robot, demo, target_object):
 def main(
     robot_ip: str = "",
     local: bool = False,
-    parameter_file: str = "config/default_planner.yaml",
+    parameter_file: str = "default_planner.yaml",
     device_id: int = 0,
     verbose: bool = False,
     reset: bool = False,
@@ -110,7 +111,7 @@ def main(
     )
     demo.start(visualize_map_at_start=False)
 
-    task = get_task(robot, demo, target_object)
+    task = get_task(robot, demo, target_object, verbose=verbose)
     task.run()
     robot.open_gripper()
 
