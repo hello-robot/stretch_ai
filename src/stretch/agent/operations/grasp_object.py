@@ -15,17 +15,16 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 import time
 import timeit
+from datetime import datetime
 from typing import Optional, Tuple
 
 import cv2
 import numpy as np
 import torch
-
 from PIL import Image
-import os
-from datetime import datetime
 from scipy.spatial.transform import Rotation as R
 
 import stretch.motion.constants as constants
@@ -79,8 +78,8 @@ class GraspObjectOperation(ManagedOperation):
     # These are the values used to decide when it's aligned enough to grasp
     # align_x_threshold: int = 25
     # align_y_threshold: int = 20
-    align_x_threshold: int = 50 # 30
-    align_y_threshold: int = 50 # 25
+    align_x_threshold: int = 50  # 30
+    align_y_threshold: int = 50  # 25
 
     # This is the distance before we start servoing to the object
     pregrasp_distance_from_object: float = 0.25
@@ -99,7 +98,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
-    base_x_step: float = 1.0 # 0.10
+    base_x_step: float = 1.0  # 0.10
     wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
     # ------------------------
 
@@ -118,7 +117,7 @@ class GraspObjectOperation(ManagedOperation):
     track_image_center: bool = False
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
-    detected_center_offset_y: int = 0 # -40
+    detected_center_offset_y: int = 0  # -40
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
@@ -563,10 +562,10 @@ class GraspObjectOperation(ManagedOperation):
         self.warn("Starting visual servoing.")
 
         if self.debug_grasping:
-          # make debug dir
-          current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-          debug_dir_name = f"debug/debug_{current_time}"
-          os.mkdir(debug_dir_name)
+            # make debug dir
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            debug_dir_name = f"debug/debug_{current_time}"
+            os.mkdir(debug_dir_name)
 
         iter_ = 0
 
@@ -635,14 +634,16 @@ class GraspObjectOperation(ManagedOperation):
             center_depth = self._compute_center_depth(servo, target_mask, center_y, center_x)
 
             if self.debug_grasping:
-              # save data
-              mask = target_mask.astype(np.uint8) * 255
-              debug_viz = np.zeros((240, 640, 3))
-              debug_viz[:, :320, :] = servo.ee_rgb
-              debug_viz[:, 320:, 0] = mask
-              debug_viz[:, 320:, 1] = mask
-              debug_viz[:, 320:, 2] = mask
-              Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_{iter_:03d}.png')
+                # save data
+                mask = target_mask.astype(np.uint8) * 255
+                debug_viz = np.zeros((240, 640, 3))
+                debug_viz[:, :320, :] = servo.ee_rgb
+                debug_viz[:, 320:, 0] = mask
+                debug_viz[:, 320:, 1] = mask
+                debug_viz[:, 320:, 2] = mask
+                Image.fromarray(debug_viz.astype("uint8")).save(
+                    f"{debug_dir_name}/img_{iter_:03d}.png"
+                )
             iter_ += 1
 
             # Compute the center of the mask in image coords
@@ -678,7 +679,6 @@ class GraspObjectOperation(ManagedOperation):
                 if self.show_point_cloud:
                     self._debug_show_point_cloud(servo, current_xyz)
 
-
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
@@ -713,9 +713,12 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
-            # show all four images
-            concatenated_image = np.concatenate((debug_viz.astype('uint8'), viz_image), axis=1)
-            Image.fromarray(concatenated_image).save(f'{debug_dir_name}/img_point_{iter_:03d}.png')
+            if self.debug_grasping:
+                # show all four images
+                concatenated_image = np.concatenate((debug_viz.astype("uint8"), viz_image), axis=1)
+                Image.fromarray(concatenated_image).save(
+                    f"{debug_dir_name}/img_point_{iter_:03d}.png"
+                )
 
             # check not moving threshold
             if not_moving_count > max_not_moving_count:
@@ -727,7 +730,7 @@ class GraspObjectOperation(ManagedOperation):
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None:
                 object_depth = servo.ee_depth[target_mask]
-                median_object_depth = np.median(servo.ee_depth[target_mask]) # / 1000
+                median_object_depth = np.median(servo.ee_depth[target_mask])  # / 1000
             else:
                 # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
@@ -752,7 +755,7 @@ class GraspObjectOperation(ManagedOperation):
             print()
             print("----- STEP VISUAL SERVOING -----")
             print("Observed this many target mask points:", np.sum(target_mask.flatten()))
-            if True: # self.verbose:
+            if True:  # self.verbose:
                 print("failed =", failed_counter, "/", self.max_failed_attempts)
                 print("cur x =", base_x)
                 print(" lift =", lift)
@@ -788,13 +791,15 @@ class GraspObjectOperation(ManagedOperation):
 
                     # Added debugging code to make sure that we are seeing the right object
                     if self.debug_grasping:
-                      # record image
-                      servo = self.robot.get_servo_observation()
-                      debug_viz = np.zeros((240, 640, 3))
-                      debug_viz[:, :320, :] = servo.ee_rgb
-                      debug_viz[:, 320:, :] = servo.rgb
-                      Image.fromarray(debug_viz.astype('uint8')).save(f'{debug_dir_name}/img_point_{iter_+1:03d}.png')
-                      
+                        # record image
+                        servo = self.robot.get_servo_observation()
+                        debug_viz = np.zeros((240, 640, 3))
+                        debug_viz[:, :320, :] = servo.ee_rgb
+                        debug_viz[:, 320:, :] = servo.rgb
+                        Image.fromarray(debug_viz.astype("uint8")).save(
+                            f"{debug_dir_name}/img_point_{iter_+1:03d}.png"
+                        )
+
                     break
 
                 # If we are aligned, step the whole thing closer by some amount
@@ -838,7 +843,7 @@ class GraspObjectOperation(ManagedOperation):
                 0.0,
                 0.0,
                 wrist_pitch,
-                -0.5, # 0.0,
+                -0.5,  # 0.0,
                 0.0,
                 0.0,
             ]  # 11 DOF: see HelloStretchIdx
@@ -934,7 +939,9 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[HelloStretchIdx.WRIST_PITCH] = -0.5 # self.offset_from_vertical + pitch_from_vertical
+        joint_state[
+            HelloStretchIdx.WRIST_PITCH
+        ] = -0.5  # self.offset_from_vertical + pitch_from_vertical
         # joint_state[HelloStretchIdx.WRIST_YAW] = 0.5 # self.offset_from_vertical + pitch_from_vertical
         # joint_state[HelloStretchIdx.GRIPPER] = 100.
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
