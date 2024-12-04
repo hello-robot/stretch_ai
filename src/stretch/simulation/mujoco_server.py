@@ -8,6 +8,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import random
 import threading
 import time
 import timeit
@@ -687,6 +688,7 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
 @click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
 @click.option("--headless", default=False, help="Run the simulation headless", is_flag=True)
+@click.option("--seed", default=0, help="Seed for the simulation")
 @click.option(
     "--robocasa-write-to-xml",
     default=False,
@@ -711,10 +713,16 @@ def main(
     robocasa_write_to_xml: bool,
     show_viewer_ui: bool,
     headless: bool = False,
+    seed: int = 0,
 ):
 
     scene_model = None
     objects_info = None
+
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+
     if use_robocasa:
         scene_model, scene_xml, objects_info = model_generation_wizard(
             task=robocasa_task,
