@@ -69,6 +69,10 @@ A few notes:
 
 The simulation planner config file is mostly the same, but decreases some thresholds and tweaks the object detection model, as the default real-world parameters don't work so well in simulation.
 
+![Visual Servoing in Simulation](images/visual_servo_in_sim.png)
+
+You should be able to see the visual servoing UI in sim, just like you would in real life. The red cylinder will be highlighted.
+
 ## Run Robocasa
 
 In one terminal start the server:

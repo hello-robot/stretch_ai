@@ -24,6 +24,7 @@ logger = Logger(__name__)
 
 try:
     from stretch.audio.text_to_speech import get_text_to_speech
+
     imported_text_to_speech = True
 except ImportError:
     logger.error("Could not import text to speech")
