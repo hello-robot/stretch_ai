@@ -460,6 +460,7 @@ class MujocoZmqServer(BaseZmqServer):
                     print("Manip xyt =", self._manip_xyt)
                     print("delta =", xyt_delta)
                     print("Setting base to", xyt_goal)
+                    print("Current base is", self.get_base_pose())
                     self.set_goal_pose(xyt_goal, relative=False)
                 else:
                     self.robot_sim.move_to(mujoco_actuators[idx], q[i])
@@ -649,6 +650,16 @@ class MujocoZmqServer(BaseZmqServer):
 
         # Get position info
         positions, _, _ = self.get_joint_state()
+
+        if self.in_manipulation_mode:
+            # Get current base xyt
+            xyt = self.get_base_pose()
+            # Compute the relative xyt
+            xyt = xyt_global_to_base(xyt, self._manip_xyt)
+            # Set the base x to the x from this xyt
+            positions[HelloStretchIdx.BASE_X] = xyt[0]
+            print("!!!!!!")
+            print("Setting base x to", xyt[0])
 
         # Get the camera matrices
         head_rgb_K = cam_data["cam_d435i_K"]
