@@ -23,7 +23,6 @@ from .extend_arm import ExtendArm
 from .go_home import GoHomeOperation
 from .go_to import GoToOperation
 from .grasp_object import GraspObjectOperation
-# from .grasp_object_clean import GraspObjectOperation
 from .grasp_open_loop import OpenLoopGraspObjectOperation
 from .navigate import NavigateToObjectOperation
 from .open_gripper import OpenGripper

@@ -605,9 +605,6 @@ class GraspObjectOperation(ManagedOperation):
                 servo, prev_mask=prev_target_mask, center=(center_x, center_y)
             )
 
-            # running blue detector
-            latest_mask = self.blue_highlight_mask(servo.ee_rgb)
-
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
             mask_np = latest_mask.astype(np.uint8)
