@@ -36,6 +36,7 @@ class DynamemTaskExecutor:
         device_id: int = 0,
         output_path: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
+        skip_confirmations: bool = True,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -44,6 +45,7 @@ class DynamemTaskExecutor:
         # Other parameters
         self.visual_servo = visual_servo
         self.match_method = match_method
+        self.skip_confirmations = skip_confirmations
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
@@ -91,9 +93,9 @@ class DynamemTaskExecutor:
         Returns:
             The point where the object is located.
         """
-        self.robot.move_to_nav_posture()
         self.robot.switch_to_navigation_mode()
         point = self.agent.navigate(target_object)
+        self.agent.voxel_map.write_to_pickle()
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
             return None
@@ -178,31 +180,6 @@ class DynamemTaskExecutor:
         # Execute the task
         task.run()
 
-    def _navigate_to(self, target_receptacle: str) -> np.ndarray:
-        """Navigate to a receptacle.
-
-        Args:
-            target_receptacle: The receptacle to navigate to.
-        """
-
-        self.robot.switch_to_navigation_mode()
-        print("Going to the " + str(target_receptacle) + ".")
-        point = self.agent.navigate(target_receptacle)
-
-        if point is None:
-            print("Navigation Failure")
-            self.robot.say("I could not find the " + str(target_receptacle) + ".")
-            return None
-
-        print("Saving current robot memory to pickle file")
-        self.agent.voxel_map.write_to_pickle()
-        self.robot.switch_to_navigation_mode()
-        xyt = self.robot.get_base_pose()
-        xyt[2] = xyt[2] + np.pi / 2
-        self.robot.move_base_to(xyt, blocking=True)
-
-        return point
-
     def __call__(self, response: List[Tuple[str, str]]) -> bool:
         """Execute the list of commands given by the LLM bot.
 
@@ -237,22 +214,68 @@ class DynamemTaskExecutor:
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
                 next_command, next_args = response[i]
-                point = self._find(args)
-                if point is not None:
-                    self._pickup(target_object, point=point)
+
+                # Navigation
+
+                # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
+                if self.skip_confirmations or (
+                    not self.skip_confirmations
+                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                ):
+                    self.robot.move_to_nav_posture()
+                    point = self._find(args)
+                # Or the user explicitly tells that he or she does not want to run navigation.
                 else:
-                    logger.error("Could not find the object.")
-                    self.robot.say("I could not find the " + str(args) + ".")
-                    break
+                    point = None
+
+                # Pick up
+
+                if self.skip_confirmations:
+                    if point is not None:
+                        self._pickup(target_object, point=point)
+                    else:
+                        logger.error("Could not find the object.")
+                        self.robot.say("I could not find the " + str(args) + ".")
+                        break
+                else:
+                    if input("Do you want to run picking? [Y/N]").upper() != "N":
+                        self._pickup(target_object, point=point)
+                    else:
+                        logger.info("Skip picking!")
+                        break
+
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
-                point = self._navigate_to(args)
-                if point is not None:
-                    self._place(args, point=point)
+                target_object = args
+                next_command, next_args = response[i]
+
+                # Navigation
+
+                # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
+                if self.skip_confirmations or (
+                    not self.skip_confirmations
+                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                ):
+                    point = self._find(args)
+                # Or the user explicitly tells that he or she does not want to run navigation.
                 else:
-                    logger.error("Could not navigate to the receptacle.")
-                    self.robot.say("I could not find the " + str(args) + ".")
-                    break
+                    point = None
+
+                # Placing
+
+                if self.skip_confirmations:
+                    if point is not None:
+                        self._place(target_object, point=point)
+                    else:
+                        logger.error("Could not find the object.")
+                        self.robot.say("I could not find the " + str(args) + ".")
+                        break
+                else:
+                    if input("Do you want to run picking? [Y/N]").upper() != "N":
+                        self._place(target_object, point=point)
+                    else:
+                        logger.info("Skip picking!")
+                        break
             elif command == "hand_over":
                 self._hand_over()
             elif command == "wave":
@@ -275,7 +298,7 @@ class DynamemTaskExecutor:
                     self.agent.go_home()
             elif command == "explore":
                 logger.info("[Pickup task] Exploring.")
-                self.agent.explore()
+                self.agent.run_exploration()
             elif command == "find":
                 logger.info("[Pickup task] Finding {}.".format(args))
                 point = self._find(args)

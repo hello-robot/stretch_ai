@@ -1487,10 +1487,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             self.send_message(next_action)
 
-            # while reliable and self._last_step < block_id:
-            #     # print(next_action)
-            #     self.send_message(next_action)
-            #     time.sleep(0.01)
+            while reliable and self._last_step < block_id:
+                # print(next_action)
+                self.send_message(next_action)
+                time.sleep(0.01)
 
             # For tracking goal
             if "xyt" in next_action:
