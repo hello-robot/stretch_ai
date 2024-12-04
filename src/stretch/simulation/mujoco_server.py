@@ -365,7 +365,7 @@ class MujocoZmqServer(BaseZmqServer):
         velocities[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["vel"]
 
         # Gripper joint
-        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"] + 0.5
+        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"]
         velocities[HelloStretchIdx.GRIPPER] = status["gripper"]["vel"]
 
         # Head pan joint
@@ -531,7 +531,35 @@ class MujocoZmqServer(BaseZmqServer):
         if "posture" in action:
             self.set_posture(action["posture"])
         if "gripper" in action:
-            self.robot_sim.move_to("gripper", action["gripper"])
+            # Get current gripper pose
+            positions, _, _ = self.get_joint_state()
+            current_gripper_pos = positions[HelloStretchIdx.GRIPPER]
+            target_gripper_pos = action["gripper"]
+            step = 0.01
+            t0 = timeit.default_timer()
+            if current_gripper_pos < target_gripper_pos:
+                while current_gripper_pos < target_gripper_pos:
+                    current_gripper_pos += step
+                    positions, _, _ = self.get_joint_state()
+                    print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
+                    self.robot_sim.move_to("gripper", current_gripper_pos)
+                    time.sleep(0.01)
+                    dt = timeit.default_timer() - t0
+                    if dt > 5:
+                        logger.error("Gripper move took too long")
+                        break
+            else:
+                while current_gripper_pos > target_gripper_pos:
+                    current_gripper_pos -= step
+                    positions, _, _ = self.get_joint_state()
+                    print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
+                    self.robot_sim.move_to("gripper", current_gripper_pos)
+                    time.sleep(0.02)
+                    dt = timeit.default_timer() - t0
+                    if dt > 5:
+                        logger.error("Gripper move took too long")
+                        break
+
         if "save_map" in action:
             logger.warning("Saving map not supported in Mujoco simulation")
         elif "load_map" in action:
