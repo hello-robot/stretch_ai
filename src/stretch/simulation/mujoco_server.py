@@ -376,6 +376,14 @@ class MujocoZmqServer(BaseZmqServer):
         positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["pos"]
         velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["vel"]
 
+        if self.in_manipulation_mode:
+            # Get current base xyt
+            xyt = self.get_base_pose()
+            # Compute the relative xyt
+            xyt = xyt_global_to_base(xyt, self._manip_xyt)
+            # Set the base x to the x from this xyt
+            positions[HelloStretchIdx.BASE_X] = xyt[0]
+
         return positions, velocities, efforts
 
     def get_base_pose(self) -> np.ndarray:
@@ -653,16 +661,6 @@ class MujocoZmqServer(BaseZmqServer):
 
         # Get position info
         positions, _, _ = self.get_joint_state()
-
-        if self.in_manipulation_mode:
-            # Get current base xyt
-            xyt = self.get_base_pose()
-            # Compute the relative xyt
-            xyt = xyt_global_to_base(xyt, self._manip_xyt)
-            # Set the base x to the x from this xyt
-            positions[HelloStretchIdx.BASE_X] = xyt[0]
-            print("!!!!!!")
-            print("Setting base x to", xyt[0])
 
         # Get the camera matrices
         head_rgb_K = cam_data["cam_d435i_K"]
