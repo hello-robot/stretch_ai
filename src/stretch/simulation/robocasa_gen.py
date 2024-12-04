@@ -259,7 +259,14 @@ def model_generation_wizard(
     return model, xml, object_placements_info
 
 
-def load_model_from_xml(xml: str) -> mujoco.MjModel:
+def load_model_from_xml(xml_file: str) -> mujoco.MjModel:
+    """Load a mujoco model from an xml file.
+
+    Args:
+        xml_file (str): Path to the xml file.
+    """
+    with open(xml_file, "r") as f:
+        xml = f.read()
     model = mujoco.MjModel.from_xml_string(xml)
     return model
 
