@@ -689,7 +689,6 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
 @click.option("--headless", default=False, help="Run the simulation headless", is_flag=True)
 @click.option("--seed", default=0, help="Seed for the simulation")
-@click.option("--filename", default="", help="Filename for a generated scene to load.")
 @click.option(
     "--robocasa-write-to-xml",
     default=False,
@@ -714,7 +713,6 @@ def main(
     robocasa_write_to_xml: bool,
     show_viewer_ui: bool,
     headless: bool = False,
-    filename: str = "",
     seed: int = 0,
 ):
 
@@ -726,14 +724,14 @@ def main(
         random.seed(seed)
 
     if use_robocasa:
-        if not robocasa_write_to_xml and (filename is not None and len(filename) > 0):
-            scene_model = load_model_from_xml(filename)
+        if not robocasa_write_to_xml and (scene_path is not None and len(scene_path) > 0):
+            scene_model = load_model_from_xml(scene_path)
         else:
             scene_model, scene_xml, objects_info = model_generation_wizard(
                 task=robocasa_task,
                 style=robocasa_style,
                 layout=robocasa_layout,
-                write_to_file=filename,
+                write_to_file=scene_path,
             )
 
     server = MujocoZmqServer(
