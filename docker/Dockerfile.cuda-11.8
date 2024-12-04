@@ -76,6 +76,23 @@ RUN chmod +x install.sh && \
 # Configure mamba to start in the correct environment
 RUN mamba init
 
+# Clone robosuite repo
+# from git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1
+RUN mamba activate stretch_ai && git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1 && \
+    cd robosuite && \
+    pip install -e .
+
+# Clone robocasa: git clone https://github.com/robocasa/robocasa
+RUN mamba activate stretch_ai && git clone https://github.com/robocasa/robocasa && \
+    cd robocasa && \
+    pip install -e . && \
+    python robocasa/scripts/setup_macros.py              # Set up system variables.
+
+# Install stretch mujoco
+RUN mamba activate stretch_ai && git clone git@github.com:hello-robot/stretch_mujoco.git && \
+    cd stretch_mujoco && \
+    pip install -e .
+
 # Add to bashrc so that it starts into the correct environment
 RUN echo "mamba activate stretch_ai" >> ~/.bashrc
 
