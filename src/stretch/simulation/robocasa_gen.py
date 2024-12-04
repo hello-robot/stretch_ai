@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 from collections import OrderedDict
 from typing import Tuple
 
@@ -237,6 +238,20 @@ def model_generation_wizard(
     model = mujoco.MjModel.from_xml_string(xml)
 
     if write_to_file is not None and len(write_to_file) > 0:
+
+        # Fix the file extension
+        if write_to_file[-4:] != ".xml":
+            write_to_file += ".xml"
+
+        # Check if the file exists
+        if os.path.exists(write_to_file):
+            # Ask if it's ok to overwrite
+            click.secho(f"File {write_to_file} already exists.", fg="red")
+            click.secho("Do you want to overwrite it? [y/n]", fg="red")
+            choice = input().lower()
+            if choice != "y":
+                return model, xml, object_placements_info
+
         with open(write_to_file, "w") as f:
             f.write(xml)
         print(colored(f"Model saved to {write_to_file}", "green"))
