@@ -286,7 +286,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
         return joint_positions
 
     def get_six_joints(self, timeout: float = 5.0) -> np.ndarray:
-        """Get the six major joint positions"""
+        """
+        Get the 6-dof joint positions
+        So basically it contains:
+            0. Base
+            1. Lift
+            2. Arm
+            3. Yaw
+            4. Pitch
+            5. Roll
+        """
         joint_positions = self.get_joint_positions(timeout=timeout)
         return np.array(self._extract_joint_pos(joint_positions))
 
@@ -547,7 +556,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         verbose: bool = False,
         min_time: float = 2.5,
-        reliable: bool = True,
+        reliable: bool = False,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
@@ -609,7 +618,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # cur_pan, cur_tilt = self.get_pan_tilt()
             # _next_action["head_to"] = np.array([cur_pan, cur_tilt])
         _next_action["manip_blocking"] = blocking
-        self.send_action(_next_action)
+        self.send_action(_next_action, verbose=True, reliable=reliable)
 
         # Handle blocking
         steps = 0
@@ -617,9 +626,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             t0 = timeit.default_timer()
             while not self._finish:
 
-                if steps % 10 == 9:
+                if steps % 40 == 39:
+                    print("-" * 20, steps, "-" * 20)
                     # Resend the action until we get there
-                    self.send_action(_next_action)
+                    self.send_action(_next_action, verbose=True, reliable=reliable)
                     if verbose:
                         print("Resending action", joint_angles)
 
@@ -1459,6 +1469,13 @@ class HomeRobotZmqClient(AbstractRobotClient):
         """
         if verbose:
             logger.info("-> sending", next_action)
+            cur_joints = self.get_six_joints()
+            print(" - base: ", cur_joints[0])
+            print(" - lift: ", cur_joints[1])
+            print(" - arm: ", cur_joints[2])
+            print(" - yaw: ", cur_joints[3])
+            print(" - pitch: ", cur_joints[4])
+            print(" - roll: ", cur_joints[5])
         blocking = False
         block_id = None
         with self._act_lock:
@@ -1470,10 +1487,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
 
             self.send_message(next_action)
 
-            while reliable and self._last_step < block_id:
-                # print(next_action)
-                self.send_message(next_action)
-                time.sleep(0.01)
+            # while reliable and self._last_step < block_id:
+            #     # print(next_action)
+            #     self.send_message(next_action)
+            #     time.sleep(0.01)
 
             # For tracking goal
             if "xyt" in next_action:

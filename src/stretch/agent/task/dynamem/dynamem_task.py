@@ -35,6 +35,7 @@ class DynamemTaskExecutor:
         visual_servo: bool = False,
         device_id: int = 0,
         output_path: Optional[str] = None,
+        server_ip: Optional[str] = "127.0.0.1",
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -64,7 +65,9 @@ class DynamemTaskExecutor:
             self.semantic_sensor = None
 
         print("- Start robot agent with data collection")
-        self.agent = RobotAgent(self.robot, self.parameters, self.semantic_sensor, log=output_path)
+        self.agent = RobotAgent(
+            self.robot, self.parameters, self.semantic_sensor, log=output_path, server_ip=server_ip
+        )
         self.agent.start()
 
         # Create grasp object operation

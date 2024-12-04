@@ -81,7 +81,6 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 def main(
     server_ip,
     manual_wait,
-    navigate_home: bool = False,
     explore_iter: int = 3,
     mode: str = "navigation",
     method: str = "dynamem",
@@ -120,6 +119,7 @@ def main(
         match_method=kwargs["match_method"],
         device_id=device_id,
         output_path=output_path,
+        server_ip=server_ip,
     )
 
     if input_path is None:
@@ -140,8 +140,6 @@ def main(
     # Parse things and listen to the user
     ok = True
     while ok:
-        # agent.reset()
-
         say_this = None
         if llm_client is None:
             # Call the LLM client and parse
@@ -157,9 +155,8 @@ def main(
                 print("Parsed LLM Response:", llm_response)
 
         ok = executor(llm_response)
-
-        if llm_client is None:
-            break
+        target_object = None
+        target_receptacle = None
 
     # At the end, disable everything
     robot.stop()
