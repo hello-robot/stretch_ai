@@ -56,6 +56,19 @@ In one terminal start the server:
 python -m stretch.simulation.mujoco_server
 ```
 
+Then run the grasping app:
+
+```bash
+python -m stretch.app.grasp_object  --robot_ip 192.168.1.10 --target_object "red cylinder" --parameter_file=sim_planner.yam
+```
+
+A few notes:
+  - `--robot_ip` is the IP address of the machine hosting the simulator (does not need to be the same as running the app)
+  - `--target_object` is the object to grasp; the default environment has a red and a blue object.
+  - `--parameter_file` is the file that contains the parameters for the planner. For the simulator, it's best to use the `sim_planner.yaml` file.
+
+The simulation planner config file is mostly the same, but decreases some thresholds and tweaks the object detection model, as the default real-world parameters don't work so well in simulation.
+
 ## Run Robocasa
 
 In one terminal start the server:
