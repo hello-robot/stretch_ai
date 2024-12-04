@@ -46,6 +46,16 @@ pip install --upgrade protobuf
 
 You may see a compatibility error in pip, but it should not make a difference.
 
+## Test Grasping in Simulation
+
+![Grasping in simulation](images/rerun_mujoco.png)
+
+In one terminal start the server:
+
+```bash
+python -m stretch.simulation.mujoco_server
+```
+
 ## Run Robocasa
 
 In one terminal start the server:
