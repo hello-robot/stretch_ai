@@ -1,6 +1,9 @@
 # Robocasa Installation
 
-You can install Robocasa by following the instructions below, or you can try the [install script](scripts/install_robocasa.sh).
+You can install Robocasa by following the instructions below, or you can try the [install script](scripts/install_robocasa.sh). Our simulation has three dependencies:
+  - [Robosuite](https://github.com/ARISE-Initiative/robosuite)
+  - [Robocasa](https://github.com/robocasa/robocasa) - [project page](https://robocasa.ai/)
+  - [Stretch Mujoco](https://github.com/hello-robot/stretch_mujoco/)
 
 ## Installation
 
@@ -89,3 +92,7 @@ python -m stretch.app.mapping --robot_ip 127.0.0.1
 ```
 
 Using the `--robot_ip` option will update your default IP address; you will need to reset it or provide it again to connect to your physical robot from the same machine.
+
+## Creating your own scenes
+
+Mujoco scenes are stored as XML files. You can see an example at [../src/stretch/simulation/models/scene.xml](../src/stretch/simulation/models/scene.xml). You can create your own scenes by modifying this file or creating a new one.
