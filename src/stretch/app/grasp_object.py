@@ -78,13 +78,13 @@ def get_task(robot, demo, target_object):
     is_flag=True,
     help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
+@click.option("--verbose", is_flag=True, help="Print debug information")
 def main(
     robot_ip: str = "",
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     device_id: int = 0,
     verbose: bool = False,
-    show_intermediate_maps: bool = False,
     reset: bool = False,
     target_object: str = "toy",
     repeat_count: int = 1,
@@ -108,7 +108,7 @@ def main(
     demo = RobotAgent(
         robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
     )
-    demo.start(visualize_map_at_start=show_intermediate_maps)
+    demo.start(visualize_map_at_start=False)
 
     task = get_task(robot, demo, target_object)
     task.run()

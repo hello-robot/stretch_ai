@@ -15,13 +15,16 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 import time
 import timeit
+from datetime import datetime
 from typing import Optional, Tuple
 
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 from scipy.spatial.transform import Rotation as R
 
 import stretch.motion.constants as constants
@@ -59,6 +62,7 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = False
     show_point_cloud: bool = False
+    debug_grasping: bool = False
 
     # This will delete the object from instance memory/voxel map after grasping
     delete_object_after_grasp: bool = False
@@ -83,7 +87,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.18
+    median_distance_when_grasping: float = 0.10
     lift_min_height: float = 0.1
     lift_max_height: float = 0.5
 
@@ -113,7 +117,7 @@ class GraspObjectOperation(ManagedOperation):
     track_image_center: bool = False
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
-    detected_center_offset_y: int = -40
+    detected_center_offset_y: int = 0  # -40
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
@@ -239,6 +243,12 @@ class GraspObjectOperation(ManagedOperation):
         depth = servo.ee_depth[target_mask & depth_mask]
         median_depth = np.median(depth)
         # print(f"Center depth: {median_depth}")
+
+        # trying to get depth from target mask, not from region close to the midpoint of aruco markers
+        depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, target_mask)
+        depth = servo.ee_depth[depth_mask]
+        median_depth = np.median(depth)
+
         return median_depth
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
@@ -491,6 +501,18 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(lifted_joint_state, head=constants.look_at_ee, blocking=True)
         return True
 
+    def blue_highlight_mask(self, img):
+        # Conditions for each channel
+        blue_condition = img[:, :, 2] > 100
+        red_condition = img[:, :, 0] < 50
+        green_condition = img[:, :, 1] < 50
+
+        # Combine conditions to create a binary mask
+        mask = blue_condition & red_condition & green_condition
+
+        # Convert boolean mask to binary (0 and 1)
+        return mask.astype(np.uint8)
+
     def visual_servo_to_object(
         self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 50
     ) -> bool:
@@ -539,6 +561,16 @@ class GraspObjectOperation(ManagedOperation):
         time.sleep(0.5)
         self.warn("Starting visual servoing.")
 
+        if self.debug_grasping:
+            # make debug dir
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            debug_dir_name = f"debug/debug_{current_time}"
+            os.mkdir(debug_dir_name)
+
+        # This is a counter used for saving debug images
+        # It's not used in the actual grasping code
+        iter_ = 0
+
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
 
@@ -560,13 +592,14 @@ class GraspObjectOperation(ManagedOperation):
             else:
                 center = self.gripper_aruco_detector.detect_center(servo.ee_rgb)
                 if center is not None:
-                    center_y, center_x = np.round(center).astype(int)
+                    # center_y, center_x = np.round(center).astype(int)
+                    center_x, center_y = np.round(center).astype(int)
                     center_y += self.detected_center_offset_y
                 else:
                     center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
 
             # add offset to center
-            center_x -= 10  # move closer to top
+            # center_x -= 10  # move closer to top
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
@@ -598,6 +631,19 @@ class GraspObjectOperation(ManagedOperation):
 
             # Compute depth as median of object pixels near center_y, center_x
             center_depth = self._compute_center_depth(servo, target_mask, center_y, center_x)
+
+            if self.debug_grasping:
+                # save data
+                mask = target_mask.astype(np.uint8) * 255
+                debug_viz = np.zeros((240, 640, 3))
+                debug_viz[:, :320, :] = servo.ee_rgb
+                debug_viz[:, 320:, 0] = mask
+                debug_viz[:, 320:, 1] = mask
+                debug_viz[:, 320:, 2] = mask
+                Image.fromarray(debug_viz.astype("uint8")).save(
+                    f"{debug_dir_name}/img_{iter_:03d}.png"
+                )
+            iter_ += 1
 
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
@@ -666,6 +712,13 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
+            if self.debug_grasping:
+                # show all four images
+                concatenated_image = np.concatenate((debug_viz.astype("uint8"), viz_image), axis=1)
+                Image.fromarray(concatenated_image).save(
+                    f"{debug_dir_name}/img_point_{iter_:03d}.png"
+                )
+
             # check not moving threshold
             if not_moving_count > max_not_moving_count:
                 self.info("Not moving; try to grasp.")
@@ -676,7 +729,7 @@ class GraspObjectOperation(ManagedOperation):
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None:
                 object_depth = servo.ee_depth[target_mask]
-                median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
+                median_object_depth = np.median(servo.ee_depth[target_mask])  # / 1000
             else:
                 # print("detected classes:", np.unique(servo.ee_semantic))
                 if center_depth < self.median_distance_when_grasping:
@@ -733,7 +786,19 @@ class GraspObjectOperation(ManagedOperation):
                         success = self._grasp(distance=prev_center_depth)
                     else:
                         self.info("Aligned and close enough to grasp.")
-                        success = self._grasp(distance=center_depth)
+                        success = self._grasp()
+
+                    # Added debugging code to make sure that we are seeing the right object
+                    if self.debug_grasping:
+                        # record image
+                        servo = self.robot.get_servo_observation()
+                        debug_viz = np.zeros((240, 640, 3))
+                        debug_viz[:, :320, :] = servo.ee_rgb
+                        debug_viz[:, 320:, :] = servo.rgb
+                        Image.fromarray(debug_viz.astype("uint8")).save(
+                            f"{debug_dir_name}/img_point_{iter_+1:03d}.png"
+                        )
+
                     break
 
                 # If we are aligned, step the whole thing closer by some amount
@@ -777,7 +842,7 @@ class GraspObjectOperation(ManagedOperation):
                 0.0,
                 0.0,
                 wrist_pitch,
-                0.0,
+                -0.5,  # 0.0,
                 0.0,
                 0.0,
             ]  # 11 DOF: see HelloStretchIdx
@@ -843,6 +908,9 @@ class GraspObjectOperation(ManagedOperation):
 
         assert self.target_object is not None, "Target object must be set before running."
 
+        # open gripper
+        self.robot.open_gripper(blocking=True)
+
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
         obs = self.robot.get_observation()
@@ -870,7 +938,11 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
+        joint_state[
+            HelloStretchIdx.WRIST_PITCH
+        ] = -0.5  # self.offset_from_vertical + pitch_from_vertical
+        # joint_state[HelloStretchIdx.WRIST_YAW] = 0.5 # self.offset_from_vertical + pitch_from_vertical
+        # joint_state[HelloStretchIdx.GRIPPER] = 100.
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
