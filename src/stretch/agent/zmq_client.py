@@ -556,7 +556,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         timeout: float = 10.0,
         verbose: bool = False,
         min_time: float = 2.5,
-        reliable: bool = False,
+        reliable: bool = True,
         **config,
     ) -> bool:
         """Move the arm to a particular joint configuration.
@@ -618,7 +618,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # cur_pan, cur_tilt = self.get_pan_tilt()
             # _next_action["head_to"] = np.array([cur_pan, cur_tilt])
         _next_action["manip_blocking"] = blocking
-        self.send_action(_next_action, verbose=True, reliable=reliable)
+        self.send_action(_next_action, reliable=reliable)
 
         # Handle blocking
         steps = 0
@@ -629,7 +629,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if steps % 40 == 39:
                     print("-" * 20, steps, "-" * 20)
                     # Resend the action until we get there
-                    self.send_action(_next_action, verbose=True, reliable=reliable)
+                    self.send_action(_next_action, reliable=reliable)
                     if verbose:
                         print("Resending action", joint_angles)
 
@@ -1470,6 +1470,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if verbose:
             logger.info("-> sending", next_action)
             cur_joints = self.get_six_joints()
+            print("Current robot states")
             print(" - base: ", cur_joints[0])
             print(" - lift: ", cur_joints[1])
             print(" - arm: ", cur_joints[2])

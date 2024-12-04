@@ -16,10 +16,22 @@ import pinocchio as pin
 from scipy.spatial.transform import Rotation as R
 
 from stretch.dynav.ok_robot_hw.global_parameters import *
-from stretch.dynav.ok_robot_hw.utils import transform_joint_array
 from stretch.motion.kinematics import HelloStretchIdx
 
 OVERRIDE_STATES: dict[str, float] = {}
+
+
+def transform_joint_array(joint_array):
+    n = len(joint_array)
+    new_joint_array = []
+    for i in range(n + 3):
+        if i < 2:
+            new_joint_array.append(joint_array[i])
+        elif i < 6:
+            new_joint_array.append(joint_array[2] / 4.0)
+        else:
+            new_joint_array.append(joint_array[i - 3])
+    return np.array(new_joint_array)
 
 
 class HelloRobot:
