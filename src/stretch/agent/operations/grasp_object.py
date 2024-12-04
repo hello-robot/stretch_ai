@@ -295,6 +295,7 @@ class GraspObjectOperation(ManagedOperation):
             best_iid = None
             all_matches = []
 
+            # Loop over all detected instances
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -309,6 +310,7 @@ class GraspObjectOperation(ManagedOperation):
                 if self.verbose:
                     print(f" - Score for {iid} is {score}")
 
+                # Score is determined based on the feature comparison
                 if score > best_score:
                     best_score = score
                     best_iid = iid

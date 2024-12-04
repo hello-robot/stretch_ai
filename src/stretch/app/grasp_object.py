@@ -109,8 +109,10 @@ def main(
     demo = RobotAgent(
         robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
     )
+    print("Start robot agent...")
     demo.start(visualize_map_at_start=False)
 
+    print("Create task...")
     task = get_task(robot, demo, target_object, verbose=verbose)
     task.run()
     robot.open_gripper()
