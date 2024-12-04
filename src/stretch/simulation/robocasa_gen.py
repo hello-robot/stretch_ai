@@ -236,7 +236,7 @@ def model_generation_wizard(
     xml = add_stretch_to_kitchen(xml, robot_base_fixture_pose)
     model = mujoco.MjModel.from_xml_string(xml)
 
-    if write_to_file is not None:
+    if write_to_file is not None and len(write_to_file) > 0:
         with open(write_to_file, "w") as f:
             f.write(xml)
         print(colored(f"Model saved to {write_to_file}", "green"))

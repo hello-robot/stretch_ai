@@ -725,15 +725,16 @@ def main(
         np.random.seed(seed)
         random.seed(seed)
 
-    if filename is not None and len(filename) > 0:
-        scene_model = load_model_from_xml(filename)
-    elif use_robocasa:
-        scene_model, scene_xml, objects_info = model_generation_wizard(
-            task=robocasa_task,
-            style=robocasa_style,
-            layout=robocasa_layout,
-            write_to_file=robocasa_write_to_xml,  # type: ignore
-        )
+    if use_robocasa:
+        if not robocasa_write_to_xml and (filename is not None and len(filename) > 0):
+            scene_model = load_model_from_xml(filename)
+        else:
+            scene_model, scene_xml, objects_info = model_generation_wizard(
+                task=robocasa_task,
+                style=robocasa_style,
+                layout=robocasa_layout,
+                write_to_file=filename,
+            )
 
     server = MujocoZmqServer(
         send_port,
