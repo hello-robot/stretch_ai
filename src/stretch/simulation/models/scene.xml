@@ -31,9 +31,9 @@
       <freejoint/>
       <geom type="cylinder" size=".02 .04 .04" mass=".5" rgba=".8 .2 .2 1"/>
     </body>
-    <body name="object3" pos="0.0 -0.55 .6">
+    <body name="object3" pos="0.1 -0.68 .6">
       <freejoint/>
-      <geom type="box" size=".02 .04 .04" mass=".5" rgba=".2 .5 .2 1"/>
+      <geom type="box" size=".03 .03 .04" mass=".5" rgba=".2 .5 .2 1"/>
     </body>
   </worldbody>
 </mujoco>
