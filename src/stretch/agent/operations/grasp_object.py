@@ -567,6 +567,8 @@ class GraspObjectOperation(ManagedOperation):
             debug_dir_name = f"debug/debug_{current_time}"
             os.mkdir(debug_dir_name)
 
+        # This is a counter used for saving debug images
+        # It's not used in the actual grasping code
         iter_ = 0
 
         # Main loop - run unless we time out, blocking.
