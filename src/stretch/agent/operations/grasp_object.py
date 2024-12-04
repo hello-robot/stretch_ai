@@ -76,10 +76,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
-    # align_x_threshold: int = 25
-    # align_y_threshold: int = 20
     align_x_threshold: int = 30
-    align_y_threshold: int = 25
+    align_y_threshold: int = 30
 
     # This is the distance before we start servoing to the object
     pregrasp_distance_from_object: float = 0.25
@@ -747,7 +745,12 @@ class GraspObjectOperation(ManagedOperation):
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
 
             # Is the center of the image part of the target mask or not?
-            center_in_mask = target_mask[int(center_y), int(center_x)] > 0
+
+            # Erode the target mask to make sure we are not just on the edge
+            kernel = np.ones((3, 3), np.uint8)
+            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=3)
+
+            center_in_mask = eroded_target_mask[int(center_y), int(center_x)] > 0
             # TODO: add deadband bubble around this?
 
             # Since we were able to detect it, copy over the target mask
@@ -770,15 +773,13 @@ class GraspObjectOperation(ManagedOperation):
                 print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
             print("Center in mask?", center_in_mask)
-            if self.verbose:
-                print("Current XYZ:", current_xyz)
             print("Aligned?", aligned)
 
             # Fix lift to only go down
             lift = min(lift, prev_lift)
 
             # If we are aligned, try to grasp
-            if aligned:
+            if aligned or center_in_mask:
                 # First, check to see if we are close enough to grasp
                 if center_depth < self.median_distance_when_grasping:
                     print(
