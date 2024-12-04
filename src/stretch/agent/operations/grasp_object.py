@@ -295,6 +295,7 @@ class GraspObjectOperation(ManagedOperation):
             best_iid = None
             all_matches = []
 
+            # Loop over all detected instances
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -309,6 +310,7 @@ class GraspObjectOperation(ManagedOperation):
                 if self.verbose:
                     print(f" - Score for {iid} is {score}")
 
+                # Score is determined based on the feature comparison
                 if score > best_score:
                     best_score = score
                     best_iid = iid
@@ -813,24 +815,25 @@ class GraspObjectOperation(ManagedOperation):
                 arm += arm_component
                 lift += lift_component
 
-            if True:
-                # Add these to do some really hacky proportionate control
-                px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
-                py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+            # Add these to do some really hacky proportionate control
+            px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
+            py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
 
-                # Move the base and modify the wrist pitch
-                # TODO: remove debug code
-                # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
-                if dx > self.align_x_threshold:
-                    # Move in x - this means translate the base
-                    base_x += -self.base_x_step * px
-                elif dx < -1 * self.align_x_threshold:
-                    base_x += self.base_x_step * px
-                if dy > self.align_y_threshold:
-                    # Move in y - this means translate the base
-                    wrist_pitch += -self.wrist_pitch_step * py
-                elif dy < -1 * self.align_y_threshold:
-                    wrist_pitch += self.wrist_pitch_step * py
+            # Move the base and modify the wrist pitch
+            # TODO: remove debug code
+            # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
+            print("base x =", base_x)
+            if dx > self.align_x_threshold:
+                # Move in x - this means translate the base
+                base_x += -self.base_x_step * px
+            elif dx < -1 * self.align_x_threshold:
+                base_x += self.base_x_step * px
+            print("base x =", base_x)
+            if dy > self.align_y_threshold:
+                # Move in y - this means translate the base
+                wrist_pitch += -self.wrist_pitch_step * py
+            elif dy < -1 * self.align_y_threshold:
+                wrist_pitch += self.wrist_pitch_step * py
 
             # Force to reacquire the target mask if we moved the camera too much
             prev_target_mask = None

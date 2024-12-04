@@ -23,6 +23,7 @@ import torch
 from PIL import Image
 
 import stretch.utils.memory as memory
+
 # from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
@@ -1375,6 +1376,9 @@ class RobotAgent:
         if not started:
             # update here
             raise RuntimeError("Robot failed to start!")
+
+        if verbose:
+            print("ZMQ connection to robot started.")
 
         if can_move:
             # First, open the gripper...
