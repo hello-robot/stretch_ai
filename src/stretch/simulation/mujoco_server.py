@@ -29,9 +29,9 @@ except ImportError as e:
     error(f"Error: {e}")
 
 import stretch.motion.constants as constants
+import stretch.simulation.utils as sim_utils
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
-import stretch.simulation.utils as sim_utils
 from stretch.core.server import BaseZmqServer
 from stretch.motion import HelloStretchIdx
 from stretch.motion.control.goto_controller import GotoVelocityController
