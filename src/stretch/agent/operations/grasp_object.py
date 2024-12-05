@@ -1007,6 +1007,9 @@ class GraspObjectOperation(ManagedOperation):
             shifted_object_xyz, ee_rot, q0=joint_state
         )
 
+        # Maybe this helps the success of the model
+        target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
         print(" - lift: ", target_joint_positions[HelloStretchIdx.LIFT])
