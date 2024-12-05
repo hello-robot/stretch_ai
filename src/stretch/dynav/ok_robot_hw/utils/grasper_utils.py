@@ -12,7 +12,15 @@ import pinocchio as pin
 
 from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.image_publisher import ImagePublisher
-from stretch.dynav.ok_robot_hw.utils.utils import apply_se3_transform
+
+
+def apply_se3_transform(se3_obj, point):
+    homogeneous_point = np.append(point.flatten(), 1)
+    print(homogeneous_point)
+    transformed_homogeneous_point = se3_obj.homogeneous.dot(homogeneous_point)
+    transformed_point = transformed_homogeneous_point[:3]
+
+    return transformed_point
 
 
 def capture_and_process_image(camera, mode, obj, socket, hello_robot):
