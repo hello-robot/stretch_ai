@@ -743,12 +743,12 @@ class MujocoZmqServer(BaseZmqServer):
     "--scene_path", default=None, help="Provide a path to mujoco scene file with stretch.xml"
 )
 @click.option(
-    "--use-robocasa", default=False, help="Use robocasa for generating a scene", is_flag=True
+    "--use-robocasa", "--use_robocasa", default=False, help="Use robocasa for generating a scene", is_flag=True
 )
-@click.option("--robocasa-task", default="PnPCounterToCab", help="Robocasa task to generate")
-@click.option("--robocasa-style", type=int, default=1, help="Robocasa style to generate")
-@click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
-@click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
+@click.option("--robocasa-task", "--robocasa_task", default="PnPCounterToCab", help="Robocasa task to generate")
+@click.option("--robocasa-style", "--robocasa_style", type=int, default=1, help="Robocasa style to generate")
+@click.option("--robocasa-layout", "--robocasa_layout", type=int, default=1, help="Robocasa layout to generate")
+@click.option("--show-viewer-ui", "--show_viewier_ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
 @click.option("--headless", default=False, help="Run the simulation headless", is_flag=True)
 @click.option("--seed", default=0, help="Seed for the simulation")
 @click.option(
