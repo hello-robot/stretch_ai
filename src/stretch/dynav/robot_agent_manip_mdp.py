@@ -20,12 +20,8 @@ import zmq
 # from stretch.agent import RobotClient
 from stretch.core.parameters import Parameters
 from stretch.dynav.communication_util import recv_array, send_array, send_everything
+from stretch.dynav.ok_robot_hw.grasper_utils import capture_and_process_image, move_to_point, pickup
 from stretch.dynav.ok_robot_hw.robot import HelloRobot as ManipulationWrapper
-from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
-    capture_and_process_image,
-    move_to_point,
-    pickup,
-)
 
 INIT_LIFT_POS = 0.45
 INIT_WRIST_PITCH = -1.57

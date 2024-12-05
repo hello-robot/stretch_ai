@@ -32,12 +32,8 @@ from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
+from stretch.dynav.ok_robot_hw.grasper_utils import capture_and_process_image, move_to_point, pickup
 from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
-from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
-    capture_and_process_image,
-    move_to_point,
-    pickup,
-)
 
 # from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance

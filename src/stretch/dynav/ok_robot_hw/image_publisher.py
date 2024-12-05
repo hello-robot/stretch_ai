@@ -10,12 +10,32 @@
 import cv2
 import numpy as np
 
-from stretch.dynav.ok_robot_hw.utils.communication_utils import (
-    recv_array,
-    send_array,
-    send_depth_img,
-    send_rgb_img,
-)
+
+def send_array(socket, A, flags=0, copy=True, track=False):
+    """send a numpy array with metadata"""
+    return socket.send_pyobj(A)
+
+
+def recv_array(socket, flags=0, copy=True, track=False):
+    """recv a numpy array"""
+    return socket.recv_pyobj()
+
+
+def send_rgb_img(socket, img):
+    img = img.astype(np.uint8)
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+    _, img_encoded = cv2.imencode(".jpg", img, encode_param)
+    socket.send(img_encoded.tobytes())
+
+
+def send_depth_img(socket, depth_img):
+    depth_img = (depth_img * 1000).astype(np.uint16)
+    encode_param = [
+        int(cv2.IMWRITE_PNG_COMPRESSION),
+        3,
+    ]  # Compression level from 0 (no compression) to 9 (max compression)
+    _, depth_img_encoded = cv2.imencode(".png", depth_img, encode_param)
+    socket.send(depth_img_encoded.tobytes())
 
 
 class DynamemCamera:
