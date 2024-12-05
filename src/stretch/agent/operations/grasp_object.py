@@ -80,7 +80,7 @@ class GraspObjectOperation(ManagedOperation):
     align_y_threshold: int = 30
 
     # This is the distance before we start servoing to the object
-    pregrasp_distance_from_object: float = 0.25
+    pregrasp_distance_from_object: float = 0.3
 
     # ------------------------
     # Grasping motion planning parameters and offsets
