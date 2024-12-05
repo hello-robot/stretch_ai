@@ -732,7 +732,7 @@ class GraspObjectOperation(ManagedOperation):
                 median_object_depth = np.median(servo.ee_depth[target_mask])  # / 1000
             else:
                 # print("detected classes:", np.unique(servo.ee_semantic))
-                if center_depth < self.median_distance_when_grasping:
+                if center_depth < self.median_distance_when_grasping and center_depth > 1e-8:
                     success = self._grasp(distance=center_depth)
                 else:
                     # Could not find the object
@@ -744,8 +744,8 @@ class GraspObjectOperation(ManagedOperation):
             # Is the center of the image part of the target mask or not?
 
             # Erode the target mask to make sure we are not just on the edge
-            kernel = np.ones((3, 3), np.uint8)
-            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=3)
+            kernel = np.ones((4, 4), np.uint8)
+            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=5)
 
             center_in_mask = eroded_target_mask[int(center_y), int(center_x)] > 0
             # TODO: add deadband bubble around this?
@@ -778,7 +778,7 @@ class GraspObjectOperation(ManagedOperation):
             # If we are aligned, try to grasp
             if aligned or center_in_mask:
                 # First, check to see if we are close enough to grasp
-                if center_depth < self.median_distance_when_grasping:
+                if center_depth < self.median_distance_when_grasping and center_depth > 1e-8:
                     print(
                         f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
                     )
