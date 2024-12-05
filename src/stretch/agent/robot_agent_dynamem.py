@@ -32,17 +32,6 @@ from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
-from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
-from stretch.dynav.ok_robot_hw.global_parameters import (
-    INIT_ARM_POS,
-    INIT_HEAD_PAN,
-    INIT_HEAD_TILT,
-    INIT_LIFT_POS,
-    INIT_WRIST_PITCH,
-    INIT_WRIST_ROLL,
-    INIT_WRIST_YAW,
-    TOP_CAMERA_NODE,
-)
 from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
 from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
     capture_and_process_image,
@@ -63,6 +52,14 @@ from stretch.perception.detection.owl import OwlPerception
 # from stretch.perception.encoders import BaseImageTextEncoder, MaskSiglipEncoder, get_encoder
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
+
+INIT_LIFT_POS = 0.45
+INIT_WRIST_PITCH = -1.57
+INIT_ARM_POS = 0
+INIT_WRIST_ROLL = 0
+INIT_WRIST_YAW = 0
+INIT_HEAD_PAN = -1.57
+INIT_HEAD_TILT = -0.65
 
 
 class RobotAgent(RobotAgentBase):
@@ -437,8 +434,8 @@ class RobotAgent(RobotAgentBase):
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.6, -0.2, -1.0, -1.8]:
-            # for pan in [0.4, -0.4, -1.2]:
+        # for pan in [0.6, -0.2, -1.0, -1.8]:
+        for pan in [0.4, -0.4, -1.2]:
             for tilt in [-0.65]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
@@ -656,7 +653,7 @@ class RobotAgent(RobotAgentBase):
                 return None
         return end_point
 
-    def place(self, text, init_tilt=INIT_HEAD_TILT, base_node=TOP_CAMERA_NODE):
+    def place(self, text, init_tilt=INIT_HEAD_TILT, base_node="camera_depth_optical_frame"):
         """
         An API for running placing. By calling this API, human will ask the robot to place whatever it holds
         onto objects specified by text queries A
@@ -669,10 +666,8 @@ class RobotAgent(RobotAgentBase):
         self.robot.switch_to_manipulation_mode()
         self.robot.look_at_ee()
         self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
-        camera = RealSenseCamera(self.robot)
 
         rotation, translation = capture_and_process_image(
-            camera=camera,
             mode="place",
             obj=text,
             socket=self.manip_socket,
@@ -716,7 +711,7 @@ class RobotAgent(RobotAgentBase):
         self,
         text,
         init_tilt=INIT_HEAD_TILT,
-        base_node=TOP_CAMERA_NODE,
+        base_node="camera_depth_optical_frame",
         skip_confirmation: bool = False,
     ):
         """
@@ -745,10 +740,7 @@ class RobotAgent(RobotAgentBase):
             wrist_yaw=INIT_WRIST_YAW,
         )
 
-        camera = RealSenseCamera(self.robot)
-
         rotation, translation, depth, width = capture_and_process_image(
-            camera=camera,
             mode="pick",
             obj=text,
             socket=self.manip_socket,

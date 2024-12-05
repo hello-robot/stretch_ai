@@ -7,8 +7,8 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import cv2
 import numpy as np
-from PIL import Image as PILImage
 
 from stretch.dynav.ok_robot_hw.utils.communication_utils import (
     recv_array,
@@ -18,9 +18,35 @@ from stretch.dynav.ok_robot_hw.utils.communication_utils import (
 )
 
 
+class DynamemCamera:
+    def __init__(self, robot):
+        self.robot = robot
+
+        # Camera intrinsics
+        intrinsics = self.robot.get_camera_K()
+        self.fy = intrinsics[0, 0]
+        self.fx = intrinsics[1, 1]
+        self.cy = intrinsics[0, 2]
+        self.cx = intrinsics[1, 2]
+        print(self.fx, self.fy, self.cx, self.cy)
+
+        # selected ix and iy coordinates
+        self.ix, self.iy = None, None
+
+    def capture_image(self):
+        self.rgb_image, self.depth_image, self.points = self.robot.get_images(compute_xyz=True)
+        self.rgb_image = np.rot90(self.rgb_image, k=1)[:, :, [2, 1, 0]]
+        self.depth_image = np.rot90(self.depth_image, k=1)
+        self.points = np.rot90(self.points, k=1)
+
+        self.rgb_image = cv2.cvtColor(self.rgb_image, cv2.COLOR_BGR2RGB)
+
+        return self.rgb_image, self.depth_image, self.points
+
+
 class ImagePublisher:
-    def __init__(self, camera, socket):
-        self.camera = camera
+    def __init__(self, robot, socket):
+        self.camera = DynamemCamera(robot)
         self.socket = socket
 
     def publish_image(self, text, mode, head_tilt=-1):
@@ -30,18 +56,12 @@ class ImagePublisher:
         rotated_image = np.rot90(image, k=-1)
         rotated_depth = np.rot90(depth, k=-1)
         rotated_point = np.rot90(points, k=-1)
-        PILImage.fromarray(rotated_image).save("./test_rgb.png")
-        np.save("./test_depth", rotated_depth)
 
         ## Send RGB, depth and camera intrinsics data
         send_rgb_img(self.socket, rotated_image)
         print(self.socket.recv_string())
         send_depth_img(self.socket, rotated_depth)
         print(self.socket.recv_string())
-        # send_array(self.socket, rotated_image)
-        # print(self.socket.recv_string())
-        # send_array(self.socket, rotated_depth)
-        # print(self.socket.recv_string())
         send_array(
             self.socket,
             np.array(

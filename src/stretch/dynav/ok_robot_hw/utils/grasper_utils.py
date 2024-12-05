@@ -10,7 +10,6 @@
 import numpy as np
 import pinocchio as pin
 
-from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.dynav.ok_robot_hw.image_publisher import ImagePublisher
 
 
@@ -23,7 +22,7 @@ def apply_se3_transform(se3_obj, point):
     return transformed_point
 
 
-def capture_and_process_image(camera, mode, obj, socket, hello_robot):
+def capture_and_process_image(mode, obj, socket, hello_robot):
     """Find an an object in the camera frame and return the translation and rotation of the object.
 
     Returns:
@@ -35,14 +34,14 @@ def capture_and_process_image(camera, mode, obj, socket, hello_robot):
 
     print("Currently in " + mode + " mode and the robot is about to manipulate " + obj + ".")
 
-    image_publisher = ImagePublisher(camera, socket)
+    image_publisher = ImagePublisher(hello_robot.robot, socket)
 
     # Centering the object
     head_tilt_angles = [0, -0.1, 0.1]
     tilt_retries, side_retries = 1, 0
     retry_flag = True
-    head_tilt = INIT_HEAD_TILT
-    head_pan = INIT_HEAD_PAN
+    head_tilt = -0.65
+    head_pan = -1.57
 
     while retry_flag:
 
