@@ -996,9 +996,11 @@ class GraspObjectOperation(ManagedOperation):
         # End effector should be at most 45 degrees inclined
         rotation = R.from_quat(ee_rot)
         rotation = rotation.as_euler("xyz")
+        steep = False
         print("Rotation", rotation)
         if rotation[1] > np.pi / 4:
             rotation[1] = np.pi / 4
+            steep = True
         old_ee_rot = ee_rot
         ee_rot = R.from_euler("xyz", rotation).as_quat()
 
@@ -1008,7 +1010,9 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Maybe this helps the success of the model
-        target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+        # We only want to increase it if the angle isn't really steep already
+        if not steep:
+            target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
