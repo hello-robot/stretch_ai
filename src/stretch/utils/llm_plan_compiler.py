@@ -275,8 +275,12 @@ class LLMPlanCompiler(ast.NodeVisitor):
                 new_node = LLMTreeNode(function_call=function_call)
 
             # Recursively build success and failure branches
-            if len(node.body) > 0:
-                new_node.success = self.build_tree(node.body[0])
+            temp_node = new_node
+            for expr in node.body:
+                operation = self.build_tree(expr)
+                temp_node.success = operation
+                temp_node = operation
+
             if len(node.orelse) > 0:
                 new_node.failure = self.build_tree(node.orelse[0])
 
