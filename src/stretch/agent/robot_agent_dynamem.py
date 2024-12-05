@@ -27,15 +27,19 @@ import rerun.blueprint as rrb
 import torch
 import zmq
 
+from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
+    DynamemManipulationWrapper as ManipulationWrapper,
+)
+from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
+    capture_and_process_image,
+    move_to_point,
+    pickup,
+)
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
-from stretch.dynav.ok_robot_hw.grasper_utils import capture_and_process_image, move_to_point, pickup
-from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
-
-# from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
@@ -49,6 +53,7 @@ from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
+# Manipulation hyperparameters
 INIT_LIFT_POS = 0.45
 INIT_WRIST_PITCH = -1.57
 INIT_ARM_POS = 0
@@ -177,7 +182,7 @@ class RobotAgent(RobotAgentBase):
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = Manipulation_Wrapper(
+        self.manip_wrapper = ManipulationWrapper(
             self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
         )
         self.robot.move_to_nav_posture()
