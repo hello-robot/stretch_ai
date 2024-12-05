@@ -996,6 +996,8 @@ class GraspObjectOperation(ManagedOperation):
         # End effector should be at most 45 degrees inclined
         rotation = R.from_quat(ee_rot)
         rotation = rotation.as_euler("xyz")
+
+        # Track if the angle to the target object is too large (i.e. it's on the floor)
         steep = False
         print("Rotation", rotation)
         if rotation[1] > np.pi / 4:
