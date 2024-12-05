@@ -15,7 +15,6 @@ import pinocchio as pin
 # from urdf_parser_py.urdf import URDF
 from scipy.spatial.transform import Rotation as R
 
-from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.motion.kinematics import HelloStretchIdx
 
 OVERRIDE_STATES: dict[str, float] = {}
@@ -68,7 +67,7 @@ class HelloRobot:
 
         # end_link is the frame of reference node
         self.end_link = end_link
-        self.set_end_link(end_link)
+        self.joint_list = self.init_joint_list[:-1]
 
         # Initialize StretchClient controller
         self.robot = robot
@@ -78,12 +77,6 @@ class HelloRobot:
         # Constraining the robots movement
         self.clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
         self.pan, self.tilt = self.robot.get_pan_tilt()
-
-    def set_end_link(self, link):
-        if link == GRIPPER_FINGERTIP_LEFT_NODE or GRIPPER_FINGERTIP_RIGHT_NODE:
-            self.joint_list = self.init_joint_list
-        else:
-            self.joint_list = self.init_joint_list[:-1]
 
     def get_joints(self):
         """
