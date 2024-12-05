@@ -23,7 +23,6 @@ import torch
 from PIL import Image
 
 import stretch.utils.memory as memory
-
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
@@ -45,6 +44,7 @@ logger = Logger(__name__)
 
 try:
     from stretch.audio.text_to_speech import get_text_to_speech
+
     imported_tts = True
     logger.error("Failed to import text to speech")
 except ImportError:

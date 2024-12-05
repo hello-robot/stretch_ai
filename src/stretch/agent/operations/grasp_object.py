@@ -402,7 +402,7 @@ class GraspObjectOperation(ManagedOperation):
                 print("!!! CENTERED ON THE RIGHT OBJECT !!!")
                 return current_instance_mask
 
-           # Simply find the mask with the most points
+            # Simply find the mask with the most points
             mask = np.bitwise_and(current_instance_mask, class_mask)
             num_pts = sum(mask.flatten())
             if num_pts > target_mask_pts:
@@ -587,9 +587,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
-            latest_mask = self.get_target_mask(
-                servo, center=(center_x, center_y)
-            )
+            latest_mask = self.get_target_mask(servo, center=(center_x, center_y))
 
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
