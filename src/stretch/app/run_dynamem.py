@@ -61,7 +61,7 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place"
 )
-@click.option("--skip_confirmations", "--yes", "-y", is_flag=True, help="Skip many confirmations")
+@click.option("--skip_confirmations", "--skip", "-S", is_flag=True, help="Skip many confirmations")
 @click.option(
     "--input-path",
     type=click.Path(),
@@ -81,7 +81,6 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 def main(
     server_ip,
     manual_wait,
-    navigate_home: bool = False,
     explore_iter: int = 3,
     mode: str = "navigation",
     method: str = "dynamem",
@@ -89,7 +88,7 @@ def main(
     output_path: Optional[str] = None,
     robot_ip: str = "",
     visual_servo: bool = False,
-    skip_confirmations: bool = False,
+    skip_confirmations: bool = True,
     device_id: int = 0,
     target_object: str = None,
     target_receptacle: str = None,
@@ -120,6 +119,8 @@ def main(
         match_method=kwargs["match_method"],
         device_id=device_id,
         output_path=output_path,
+        server_ip=server_ip,
+        skip_confirmations=skip_confirmations,
     )
 
     if input_path is None:
@@ -140,16 +141,20 @@ def main(
     # Parse things and listen to the user
     ok = True
     while ok:
-        # agent.reset()
-
         say_this = None
         if llm_client is None:
             # Call the LLM client and parse
-            if target_object is None or len(target_object) == 0:
-                target_object = input("Enter the target object: ")
-            if target_receptacle is None or len(target_receptacle) == 0:
-                target_receptacle = input("Enter the target receptacle: ")
-            llm_response = [("pickup", target_object), ("place", target_receptacle)]
+            explore = input(
+                "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]: "
+            )
+            if explore.upper() == "E":
+                llm_response = [("explore", None)]
+            else:
+                if target_object is None or len(target_object) == 0:
+                    target_object = input("Enter the target object: ")
+                if target_receptacle is None or len(target_receptacle) == 0:
+                    target_receptacle = input("Enter the target receptacle: ")
+                llm_response = [("pickup", target_object), ("place", target_receptacle)]
         else:
             # Call the LLM client and parse
             llm_response = chat_wrapper.query(verbose=debug_llm)
@@ -157,9 +162,8 @@ def main(
                 print("Parsed LLM Response:", llm_response)
 
         ok = executor(llm_response)
-
-        if llm_client is None:
-            break
+        target_object = None
+        target_receptacle = None
 
     # At the end, disable everything
     robot.stop()

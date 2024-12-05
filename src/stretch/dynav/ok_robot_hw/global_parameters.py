@@ -7,9 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-POS_TOL = 0.1
-YAW_TOL = 0.2
-
 TOP_CAMERA_NODE = "camera_depth_optical_frame"
 GRIPPER_FINGERTIP_LEFT_NODE = "link_gripper_fingertip_left"
 GRIPPER_FINGERTIP_RIGHT_NODE = "link_gripper_fingertip_right"
