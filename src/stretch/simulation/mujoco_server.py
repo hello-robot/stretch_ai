@@ -89,7 +89,7 @@ class MujocoZmqServer(BaseZmqServer):
 
     # Print debug messages for control loop
     debug_control_loop = False
-    debug_set_goal_pose = True
+    debug_set_goal_pose = False
 
     def get_body_xyt(self, body_name: str) -> np.ndarray:
         """Get the se(2) base pose: x, y, and theta"""
@@ -543,7 +543,8 @@ class MujocoZmqServer(BaseZmqServer):
                 while current_gripper_pos < target_gripper_pos:
                     current_gripper_pos += step
                     positions, _, _ = self.get_joint_state()
-                    print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
+                    # TODO: remove debug print
+                    # print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
                     self.robot_sim.move_to("gripper", current_gripper_pos)
                     time.sleep(0.01)
                     dt = timeit.default_timer() - t0
@@ -554,7 +555,8 @@ class MujocoZmqServer(BaseZmqServer):
                 while current_gripper_pos > target_gripper_pos:
                     current_gripper_pos -= step
                     positions, _, _ = self.get_joint_state()
-                    print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
+                    # TODO: remove debug print
+                    # print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
                     self.robot_sim.move_to("gripper", current_gripper_pos)
                     time.sleep(0.02)
                     dt = timeit.default_timer() - t0
