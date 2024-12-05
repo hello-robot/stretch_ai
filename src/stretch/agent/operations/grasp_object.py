@@ -77,7 +77,7 @@ class GraspObjectOperation(ManagedOperation):
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
     align_x_threshold: int = 30
-    align_y_threshold: int = 30
+    align_y_threshold: int = 25
 
     # This is the distance before we start servoing to the object
     pregrasp_distance_from_object: float = 0.3
@@ -370,13 +370,12 @@ class GraspObjectOperation(ManagedOperation):
         self,
         servo: Observations,
         center: Tuple[int, int],
-        prev_mask: Optional[np.ndarray] = None,
     ) -> Optional[np.ndarray]:
         """Get target mask to move to. If we do not provide the mask from the previous step, we will simply find the mask with the most points of the correct class. Otherwise, we will try to find the mask that most overlaps with the previous mask. There are two options here: one where we simply find the mask with the most points, and another where we try to find the mask that most overlaps with the previous mask. This is in case we are losing track of particular objects and getting classes mixed up.
 
         Args:
             servo (Observations): Servo observation
-            prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
+            center (Tuple[int, int]): Center of the image
 
         Returns:
             Optional[np.ndarray]: Target mask to move to
@@ -403,19 +402,7 @@ class GraspObjectOperation(ManagedOperation):
                 print("!!! CENTERED ON THE RIGHT OBJECT !!!")
                 return current_instance_mask
 
-            # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
-            # This is in case we are losing track of particular objects and getting classes mixed up
-            if prev_mask is not None and self.use_prev_mask:
-                # Find the mask with the most points
-                mask = np.bitwise_and(current_instance_mask, prev_mask)
-                mask = np.bitwise_and(mask, class_mask)
-                num_pts = sum(mask.flatten())
-
-                if num_pts > maximum_overlap_pts:
-                    maximum_overlap_pts = num_pts
-                    maximum_overlap_mask = mask
-
-            # Simply find the mask with the most points
+           # Simply find the mask with the most points
             mask = np.bitwise_and(current_instance_mask, class_mask)
             num_pts = sum(mask.flatten())
             if num_pts > target_mask_pts:
@@ -427,7 +414,7 @@ class GraspObjectOperation(ManagedOperation):
         if target_mask is not None:
             return target_mask
         else:
-            return prev_mask
+            return None
 
     def sayable_target_object(self) -> str:
         """Get the target object in a sayable format.
@@ -532,7 +519,6 @@ class GraspObjectOperation(ManagedOperation):
         t0 = timeit.default_timer()
         aligned_once = False
         pregrasp_done = False
-        prev_target_mask = None
         success = False
         prev_lift = float("Inf")
 
@@ -604,7 +590,7 @@ class GraspObjectOperation(ManagedOperation):
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(
-                servo, prev_mask=prev_target_mask, center=(center_x, center_y)
+                servo, center=(center_x, center_y)
             )
 
             # dilate mask
@@ -750,9 +736,6 @@ class GraspObjectOperation(ManagedOperation):
             center_in_mask = eroded_target_mask[int(center_y), int(center_x)] > 0
             # TODO: add deadband bubble around this?
 
-            # Since we were able to detect it, copy over the target mask
-            prev_target_mask = target_mask
-
             # Are we aligned to the object
             aligned = np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
 
@@ -832,9 +815,6 @@ class GraspObjectOperation(ManagedOperation):
                 wrist_pitch += -self.wrist_pitch_step * py
             elif dy < -1 * self.align_y_threshold:
                 wrist_pitch += self.wrist_pitch_step * py
-
-            # Force to reacquire the target mask if we moved the camera too much
-            prev_target_mask = None
 
             # safety checks
             q = [
