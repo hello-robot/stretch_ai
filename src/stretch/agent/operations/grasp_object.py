@@ -464,7 +464,11 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [
                     base_x,
-                    np.clip(lift + lift_component, min(joint_state[HelloStretchIdx.LIFT], self.lift_min_height), self.lift_max_height),
+                    np.clip(
+                        lift + lift_component,
+                        min(joint_state[HelloStretchIdx.LIFT], self.lift_min_height),
+                        self.lift_max_height,
+                    ),
                     arm + arm_component,
                     0,
                     wrist_pitch,
