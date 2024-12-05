@@ -988,23 +988,25 @@ class GraspObjectOperation(ManagedOperation):
         model = self.robot.get_robot_model()
         ee_pos, ee_rot = model.manip_fk(joint_state)
 
-        vector_to_object = relative_object_xyz - ee_pos
-        vector_to_object = vector_to_object / np.linalg.norm(vector_to_object)
-
-        shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
-
         # End effector should be at most 45 degrees inclined
         rotation = R.from_quat(ee_rot)
         rotation = rotation.as_euler("xyz")
 
         # Track if the angle to the target object is too large (i.e. it's on the floor)
-        steep = False
         print("Rotation", rotation)
         if rotation[1] > np.pi / 4:
             rotation[1] = np.pi / 4
-            steep = True
         old_ee_rot = ee_rot
         ee_rot = R.from_euler("xyz", rotation).as_quat()
+
+        vector_to_object = relative_object_xyz - ee_pos
+        vector_to_object = vector_to_object / np.linalg.norm(vector_to_object)
+
+        # It should not be more than 45 degrees inclined
+        vector_to_object[2] = max(vector_to_object[2], vector_to_object[1])
+
+        shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
+        print("Pregrasp xyz:", shifted_object_xyz)
 
         # IK
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
@@ -1012,9 +1014,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Maybe this helps the success of the model
-        # We only want to increase it if the angle isn't really steep already
-        if not steep:
-            target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+        # target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
