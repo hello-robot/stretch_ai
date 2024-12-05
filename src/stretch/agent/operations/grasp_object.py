@@ -438,8 +438,8 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
         print("Distance:", distance)
+        joint_state = self.robot.get_joint_positions()
         if not self.open_loop or distance is not None:
-            joint_state = self.robot.get_joint_positions()
             # Now compute what to do
             base_x = joint_state[HelloStretchIdx.BASE_X]
             wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
@@ -464,7 +464,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [
                     base_x,
-                    np.clip(lift + lift_component, self.lift_min_height, self.lift_max_height),
+                    np.clip(lift + lift_component, min(joint_state[HelloStretchIdx.LIFT], self.lift_min_height), self.lift_max_height),
                     arm + arm_component,
                     0,
                     wrist_pitch,
@@ -518,7 +518,6 @@ class GraspObjectOperation(ManagedOperation):
 
         t0 = timeit.default_timer()
         aligned_once = False
-        pregrasp_done = False
         success = False
         prev_lift = float("Inf")
 
@@ -537,12 +536,11 @@ class GraspObjectOperation(ManagedOperation):
         center_depth = None
         prev_center_depth = None
 
-        if not pregrasp_done:
-            # Move to pregrasp position
-            self.pregrasp_open_loop(
-                self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
-            )
-            pregrasp_done = True
+        # Move to pregrasp position
+        self.pregrasp_open_loop(
+            self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
+        )
+        input()
 
         # Give a short pause here to make sure ee image is up to date
         time.sleep(0.5)
@@ -876,7 +874,11 @@ class GraspObjectOperation(ManagedOperation):
             np.ndarray: Object xyz location
         """
         if self._object_xyz is None:
-            object_xyz = self.agent.current_object.get_center()
+            # xyz = self.robot.get_base_pose()
+            # xyz[2] = 0.5
+            # object_xyz = self.agent.current_object.get_closest_point(xyz)
+            # object_xyz = self.agent.current_object.get_center()
+            object_xyz = self.agent.current_object.get_median()
         else:
             object_xyz = self._object_xyz
         return object_xyz
@@ -985,6 +987,8 @@ class GraspObjectOperation(ManagedOperation):
         # It should not be more than 45 degrees inclined
         vector_to_object[2] = max(vector_to_object[2], vector_to_object[1])
 
+        print("Absolute object xyz was:", object_xyz)
+        print("Relative object xyz was:", relative_object_xyz)
         shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
         print("Pregrasp xyz:", shifted_object_xyz)
 
