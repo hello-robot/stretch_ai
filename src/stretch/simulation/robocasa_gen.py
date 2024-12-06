@@ -263,12 +263,16 @@ def model_generation_wizard(
 
     return model, xml, object_placements_info
 
+
 def add_floor_to_kitchen(xml: str) -> str:
-    floor = '<geom name="floor" pos="0 0 -0.5" size="0 0 0.05" type="plane" rgba="0.25 0.25 0.25 1" />'
+    floor = (
+        '<geom name="floor" pos="0 0 -0.5" size="0 0 0.05" type="plane" rgba="0.25 0.25 0.25 1" />'
+    )
     # Find the </worldbody> tag
     worldbody_end = xml.find("</worldbody>")
     xml = xml[:worldbody_end] + floor + xml[worldbody_end:]
     return xml
+
 
 def load_model_from_xml(xml_file: str) -> mujoco.MjModel:
     """Load a mujoco model from an xml file.
