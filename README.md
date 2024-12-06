@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-![](./docs/images/PickPlaceFullTask.gif)
+![PickPlaceFullTask](https://github.com/user-attachments/assets/a1db635c-03b5-48e8-9167-45f09bc8a9b2)
 
 **Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
@@ -72,7 +72,7 @@ This script will download the Docker image and start the container. You will be 
 
 ### Language-Directed Pick and Place
 
-![](./docs/images/orangecupinbox.gif)
+![orangecupinbox](https://github.com/user-attachments/assets/f6659e40-8ed2-410a-889e-84f8bf8d38ad)
 
 Now that you have the server running on Stretch, we recommend you try a demonstration of language-directed pick and place.
 
@@ -107,7 +107,7 @@ Enter the target object: plush rabbit toy
 Enter the target receptacle: yellow chair 
 ```
 
-![](./docs/images/RabbitChair.gif)
+![RabbitChair](https://github.com/user-attachments/assets/dc7c19d2-49bd-45af-95ef-42abf22be5aa)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
@@ -117,14 +117,14 @@ Find out more about the LLM-based AI agent in its [documentation](docs/llm_agent
 
 Check out additional documentation for ways to use Stretch AI:
 
-  - [LLM Agent](docs/llm_agent.md) -- How to use the LLM agent for language-directed pick and place
-  - [Add a New LLM Task](docs/adding_a_new_task.md) -- How to add a new task that can be called by an LLM
-  - [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and place objects as the robot explores
-  - [Data Collection for Learning from Demonstration](docs/data_collection.md) -- How to collect data for learning from demonstration
-  - [Learning from Demonstration](docs/learning_from_demonstration.md)  -- How to train and evaluate policies with LfD
-  - [Open-Vocabulary Mobile Manipulation](docs/ovmm.md) -- Experimental code which can handle more complex language commands
-  - [Apps](docs/apps.md) -- List of many different apps that you can run
-  - [Simple API](docs/simple_api.md) -- How to use the simple API to control the robot over wireless
+- [LLM Agent](docs/llm_agent.md) -- How to use the LLM agent for language-directed pick and place
+- [Add a New LLM Task](docs/adding_a_new_task.md) -- How to add a new task that can be called by an LLM
+- [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and place objects as the robot explores
+- [Data Collection for Learning from Demonstration](docs/data_collection.md) -- How to collect data for learning from demonstration
+- [Learning from Demonstration](docs/learning_from_demonstration.md)  -- How to train and evaluate policies with LfD
+- [Open-Vocabulary Mobile Manipulation](docs/ovmm.md) -- Experimental code which can handle more complex language commands
+- [Apps](docs/apps.md) -- List of many different apps that you can run
+- [Simple API](docs/simple_api.md) -- How to use the simple API to control the robot over wireless
 
 ## Development
 
