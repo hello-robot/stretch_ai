@@ -34,6 +34,8 @@ class SceneGraph:
             for idx_b, ins_b in enumerate(instances):
                 if idx_a == idx_b:
                     continue
+                if ins_a.global_id > len(self.instances) or ins_b.global_id > len(self.instances):
+                    continue
                 # TODO: add "on", "in" ... relationships
                 # Add "near" relationship for if something is near something else - aka just within some distance threshold
                 if (
