@@ -30,6 +30,17 @@ from stretch.perception import create_semantic_sensor
 @click.option("--robot_ip", default="")
 @click.option("--device-id", default=0, help="Device ID for the semantic sensor")
 @click.option("--llm", default="qwen25-3B-Instruct", help="Language model to use")
+@click.option(
+    "--input-path",
+    "-i",
+    "--input_file",
+    "--input-file",
+    "--input",
+    "--input_path",
+    type=click.Path(),
+    default="",
+    help="Path to a saved datafile from a previous exploration of the world.",
+)
 @click.option("--verbose", default=True)
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--task", default="", help="Default task to perform")
@@ -50,6 +61,7 @@ def main(
     task: str = "",
     yes: bool = False,
     enable_realtime_updates: bool = False,
+    input_path: str = "",
 ):
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -66,6 +78,10 @@ def main(
         robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
     )
     agent.start()
+
+    if input_path is not None and len(input_path) > 0:
+        print("Loading map from:", input_path)
+        agent.load_map(input_path)
 
     prompt = ObjectManipNavPromptBuilder()
     client = get_llm_client(llm, prompt=prompt)
