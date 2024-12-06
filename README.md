@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-![](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExejAwN3V3dnNuamx0MGxtdm16MXpneGtuMHNqbWxqZjNrOWE1NmRqMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/cE4rWlAHPVZpopV4cj/200.gif)
+![](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZDg1dXUxbHVkemkydXJyZ2Y2dHBkaTFwbmZiM24xMWU0dWdocjA4ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/8M8Hx5tSQW6N9jDTFe/200.gif)
 
 **Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
@@ -72,7 +72,7 @@ This script will download the Docker image and start the container. You will be 
 
 ### Language-Directed Pick and Place
 
-![](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNGQ5bjFlbjJvd3E4MmRoenR4aTg1M3I3bHNlc2lidm55NXIxdjR5bSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/c86I1taQZxaHUzOpnY/200.gif)
+![](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExa3FvZHE1YzFlZmVwNjRxdGp3amFzaXVnenN1aXRwa2NqZjFoZXlieSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VvRFNjyMBko0K9QpeN/200.gif)
 
 Now that you have the server running on Stretch, we recommend you try a demonstration of language-directed pick and place.
 
@@ -107,7 +107,7 @@ Enter the target object: plush rabbit toy
 Enter the target receptacle: yellow chair 
 ```
 
-![](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzN0bzlkNzhpc3hucmMyOTk1azUycHh4NmF2OGg5Mng4cWU0NjB1MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/cE0eHnKRiOSQTbBBt3/200.gif)
+![](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXZnbzNwYWYxc256bzdzdjJua3IwOTFkdmluaDBydW80YXhsMzc1MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xIM6zOLYM1m6XKkJKI/200.gif)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
