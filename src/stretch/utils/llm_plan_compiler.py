@@ -274,15 +274,19 @@ class LLMPlanCompiler(ast.NodeVisitor):
             else:
                 new_node = LLMTreeNode(function_call=function_call)
 
-            # Recursively build success and failure branches
-            temp_node = new_node
-            for expr in node.body:
-                operation = self.build_tree(expr)
-                temp_node.success = operation
-                temp_node = operation
-
             if len(node.orelse) > 0:
                 new_node.failure = self.build_tree(node.orelse[0])
+
+            # Recursively build success and failure branches
+            temp_node = new_node
+            prev_node_failure = new_node
+            prev_node_success = new_node
+            for expr in node.body:
+                print("expr", expr)
+                operation = self.build_tree(expr)
+                temp_node.success = operation
+                operation.failure = new_node.failure
+                temp_node = operation
 
             return new_node
 
@@ -388,6 +392,16 @@ class LLMPlanCompiler(ast.NodeVisitor):
         """Compile the LLM plan into a task"""
         self._operation_naming_counter = 0
         self.task = Task()
+
+        llm_plan_lines = self.llm_plan.split("\n")
+
+        llm_plan_lines_shifted = [llm_plan_lines[0]]
+        llm_plan_lines_shifted.append("    if say('On it!'):")
+        for line in llm_plan_lines[1:]:
+            llm_plan_lines_shifted.append("    " + line)
+
+        self.llm_plan = "\n".join(llm_plan_lines_shifted)
+
         tree = ast.parse(self.llm_plan)
         self.build_tree(tree)
         self.convert_to_task(self.root)
