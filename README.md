@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://timothycrosley.github.io/isort/)
 
-![PickPlaceFullTask](https://github.com/user-attachments/assets/1420fed9-4ca6-48cd-b1e0-24edf6170898)
+![PickPlaceFullTask](https://github.com/user-attachments/assets/a1db635c-03b5-48e8-9167-45f09bc8a9b2)
 
 **Stretch AI** is designed to help researchers and developers build intelligent behaviors for the [Stretch 3](https://hello-robot.com/stretch-3-product) mobile manipulator from [Hello Robot](https://hello-robot.com/). It contains code for:
 
@@ -72,7 +72,7 @@ This script will download the Docker image and start the container. You will be 
 
 ### Language-Directed Pick and Place
 
-![orangecupinbox](https://github.com/user-attachments/assets/687b0154-20a7-4542-ae1f-bdac52421b01)
+![orangecupinbox](https://github.com/user-attachments/assets/f6659e40-8ed2-410a-889e-84f8bf8d38ad)
 
 Now that you have the server running on Stretch, we recommend you try a demonstration of language-directed pick and place.
 
@@ -107,7 +107,7 @@ Enter the target object: plush rabbit toy
 Enter the target receptacle: yellow chair 
 ```
 
-![RabbitChair](https://github.com/user-attachments/assets/2b39a06f-6c42-4792-806d-c8ff3e6e3ffd)
+![RabbitChair](https://github.com/user-attachments/assets/dc7c19d2-49bd-45af-95ef-42abf22be5aa)
 
 At Hello Robot, people have successfully commanded the robot to pick up a variety of objects from the floor and place them in nearby containers, such as baskets and boxes.
 
