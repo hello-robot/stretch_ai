@@ -15,13 +15,16 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 import time
 import timeit
+from datetime import datetime
 from typing import Optional, Tuple
 
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 from scipy.spatial.transform import Rotation as R
 
 import stretch.motion.constants as constants
@@ -59,6 +62,7 @@ class GraspObjectOperation(ManagedOperation):
     show_object_to_grasp: bool = False
     show_servo_gui: bool = False
     show_point_cloud: bool = False
+    debug_grasping: bool = False
 
     # This will delete the object from instance memory/voxel map after grasping
     delete_object_after_grasp: bool = False
@@ -72,13 +76,11 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
-    # align_x_threshold: int = 25
-    # align_y_threshold: int = 20
     align_x_threshold: int = 30
     align_y_threshold: int = 25
 
     # This is the distance before we start servoing to the object
-    pregrasp_distance_from_object: float = 0.25
+    pregrasp_distance_from_object: float = 0.3
 
     # ------------------------
     # Grasping motion planning parameters and offsets
@@ -113,7 +115,8 @@ class GraspObjectOperation(ManagedOperation):
     track_image_center: bool = False
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
-    detected_center_offset_y: int = -40
+    detected_center_offset_x: int = 0  # -10
+    detected_center_offset_y: int = 0  # -40
     percentage_of_image_when_grasping: float = 0.2
     open_loop_z_offset: float = -0.1
     open_loop_x_offset: float = -0.1
@@ -237,8 +240,11 @@ class GraspObjectOperation(ManagedOperation):
         depth_mask = np.bitwise_and(servo.ee_depth > 1e-8, mask)
 
         depth = servo.ee_depth[target_mask & depth_mask]
+        if len(depth) == 0:
+            return 0.0
+
         median_depth = np.median(depth)
-        # print(f"Center depth: {median_depth}")
+
         return median_depth
 
     def get_class_mask(self, servo: Observations) -> np.ndarray:
@@ -284,6 +290,8 @@ class GraspObjectOperation(ManagedOperation):
             best_score = float("-inf")
             best_iid = None
             all_matches = []
+
+            # Loop over all detected instances
             for iid in np.unique(servo.instance):
 
                 # Ignore the background
@@ -298,6 +306,7 @@ class GraspObjectOperation(ManagedOperation):
                 if self.verbose:
                     print(f" - Score for {iid} is {score}")
 
+                # Score is determined based on the feature comparison
                 if score > best_score:
                     best_score = score
                     best_iid = iid
@@ -361,13 +370,12 @@ class GraspObjectOperation(ManagedOperation):
         self,
         servo: Observations,
         center: Tuple[int, int],
-        prev_mask: Optional[np.ndarray] = None,
     ) -> Optional[np.ndarray]:
         """Get target mask to move to. If we do not provide the mask from the previous step, we will simply find the mask with the most points of the correct class. Otherwise, we will try to find the mask that most overlaps with the previous mask. There are two options here: one where we simply find the mask with the most points, and another where we try to find the mask that most overlaps with the previous mask. This is in case we are losing track of particular objects and getting classes mixed up.
 
         Args:
             servo (Observations): Servo observation
-            prev_mask (Optional[np.ndarray], optional): Mask from the previous step. Defaults to None.
+            center (Tuple[int, int]): Center of the image
 
         Returns:
             Optional[np.ndarray]: Target mask to move to
@@ -394,18 +402,6 @@ class GraspObjectOperation(ManagedOperation):
                 print("!!! CENTERED ON THE RIGHT OBJECT !!!")
                 return current_instance_mask
 
-            # Option 2 - try to find the map that most overlapped with what we were just trying to grasp
-            # This is in case we are losing track of particular objects and getting classes mixed up
-            if prev_mask is not None and self.use_prev_mask:
-                # Find the mask with the most points
-                mask = np.bitwise_and(current_instance_mask, prev_mask)
-                mask = np.bitwise_and(mask, class_mask)
-                num_pts = sum(mask.flatten())
-
-                if num_pts > maximum_overlap_pts:
-                    maximum_overlap_pts = num_pts
-                    maximum_overlap_mask = mask
-
             # Simply find the mask with the most points
             mask = np.bitwise_and(current_instance_mask, class_mask)
             num_pts = sum(mask.flatten())
@@ -418,7 +414,7 @@ class GraspObjectOperation(ManagedOperation):
         if target_mask is not None:
             return target_mask
         else:
-            return prev_mask
+            return None
 
     def sayable_target_object(self) -> str:
         """Get the target object in a sayable format.
@@ -442,8 +438,8 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.robot_say(f"Grasping the {self.sayable_target_object()}!")
 
         print("Distance:", distance)
+        joint_state = self.robot.get_joint_positions()
         if not self.open_loop or distance is not None:
-            joint_state = self.robot.get_joint_positions()
             # Now compute what to do
             base_x = joint_state[HelloStretchIdx.BASE_X]
             wrist_pitch = joint_state[HelloStretchIdx.WRIST_PITCH]
@@ -468,7 +464,11 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [
                     base_x,
-                    np.clip(lift + lift_component, self.lift_min_height, self.lift_max_height),
+                    np.clip(
+                        lift + lift_component,
+                        min(joint_state[HelloStretchIdx.LIFT], self.lift_min_height),
+                        self.lift_max_height,
+                    ),
                     arm + arm_component,
                     0,
                     wrist_pitch,
@@ -491,6 +491,20 @@ class GraspObjectOperation(ManagedOperation):
         self.robot.arm_to(lifted_joint_state, head=constants.look_at_ee, blocking=True)
         return True
 
+    def blue_highlight_mask(self, img):
+        """Get a binary mask for the blue highlights in the image."""
+
+        # Conditions for each channel
+        blue_condition = img[:, :, 2] > 100
+        red_condition = img[:, :, 0] < 50
+        green_condition = img[:, :, 1] < 50
+
+        # Combine conditions to create a binary mask
+        mask = blue_condition & red_condition & green_condition
+
+        # Convert boolean mask to binary (0 and 1)
+        return mask.astype(np.uint8)
+
     def visual_servo_to_object(
         self, instance: Instance, max_duration: float = 120.0, max_not_moving_count: int = 50
     ) -> bool:
@@ -508,8 +522,6 @@ class GraspObjectOperation(ManagedOperation):
 
         t0 = timeit.default_timer()
         aligned_once = False
-        pregrasp_done = False
-        prev_target_mask = None
         success = False
         prev_lift = float("Inf")
 
@@ -528,16 +540,25 @@ class GraspObjectOperation(ManagedOperation):
         center_depth = None
         prev_center_depth = None
 
-        if not pregrasp_done:
-            # Move to pregrasp position
-            self.pregrasp_open_loop(
-                self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
-            )
-            pregrasp_done = True
+        # Move to pregrasp position
+        self.pregrasp_open_loop(
+            self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
+        )
+        input()
 
         # Give a short pause here to make sure ee image is up to date
         time.sleep(0.5)
         self.warn("Starting visual servoing.")
+
+        if self.debug_grasping:
+            # make debug dir
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            debug_dir_name = f"debug/debug_{current_time}"
+            os.mkdir(debug_dir_name)
+
+        # This is a counter used for saving debug images
+        # It's not used in the actual grasping code
+        iter_ = 0
 
         # Main loop - run unless we time out, blocking.
         while timeit.default_timer() - t0 < max_duration:
@@ -566,13 +587,11 @@ class GraspObjectOperation(ManagedOperation):
                     center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
 
             # add offset to center
-            center_x -= 10  # move closer to top
+            center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
-            latest_mask = self.get_target_mask(
-                servo, prev_mask=prev_target_mask, center=(center_x, center_y)
-            )
+            latest_mask = self.get_target_mask(servo, center=(center_x, center_y))
 
             # dilate mask
             kernel = np.ones((3, 3), np.uint8)
@@ -598,6 +617,19 @@ class GraspObjectOperation(ManagedOperation):
 
             # Compute depth as median of object pixels near center_y, center_x
             center_depth = self._compute_center_depth(servo, target_mask, center_y, center_x)
+
+            if self.debug_grasping:
+                # save data
+                mask = target_mask.astype(np.uint8) * 255
+                debug_viz = np.zeros((240, 640, 3))
+                debug_viz[:, :320, :] = servo.ee_rgb
+                debug_viz[:, 320:, 0] = mask
+                debug_viz[:, 320:, 1] = mask
+                debug_viz[:, 320:, 2] = mask
+                Image.fromarray(debug_viz.astype("uint8")).save(
+                    f"{debug_dir_name}/img_{iter_:03d}.png"
+                )
+            iter_ += 1
 
             # Compute the center of the mask in image coords
             mask_center = self.observations.get_latest_centroid()
@@ -666,6 +698,13 @@ class GraspObjectOperation(ManagedOperation):
                 if res == ord("q"):
                     break
 
+            if self.debug_grasping:
+                # show all four images
+                concatenated_image = np.concatenate((debug_viz.astype("uint8"), viz_image), axis=1)
+                Image.fromarray(concatenated_image).save(
+                    f"{debug_dir_name}/img_point_{iter_:03d}.png"
+                )
+
             # check not moving threshold
             if not_moving_count > max_not_moving_count:
                 self.info("Not moving; try to grasp.")
@@ -676,10 +715,10 @@ class GraspObjectOperation(ManagedOperation):
             # Otherwise we will just try to grasp if we are close enough - assume we lost track!
             if target_mask is not None:
                 object_depth = servo.ee_depth[target_mask]
-                median_object_depth = np.median(servo.ee_depth[target_mask]) / 1000
+                median_object_depth = np.median(servo.ee_depth[target_mask])  # / 1000
             else:
                 # print("detected classes:", np.unique(servo.ee_semantic))
-                if center_depth < self.median_distance_when_grasping:
+                if center_depth < self.median_distance_when_grasping and center_depth > 1e-8:
                     success = self._grasp(distance=center_depth)
                 else:
                     # Could not find the object
@@ -689,11 +728,13 @@ class GraspObjectOperation(ManagedOperation):
             dx, dy = mask_center[1] - center_x, mask_center[0] - center_y
 
             # Is the center of the image part of the target mask or not?
-            center_in_mask = target_mask[int(center_y), int(center_x)] > 0
-            # TODO: add deadband bubble around this?
 
-            # Since we were able to detect it, copy over the target mask
-            prev_target_mask = target_mask
+            # Erode the target mask to make sure we are not just on the edge
+            kernel = np.ones((4, 4), np.uint8)
+            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=5)
+
+            center_in_mask = eroded_target_mask[int(center_y), int(center_x)] > 0
+            # TODO: add deadband bubble around this?
 
             # Are we aligned to the object
             aligned = np.abs(dx) < self.align_x_threshold and np.abs(dy) < self.align_y_threshold
@@ -712,17 +753,15 @@ class GraspObjectOperation(ManagedOperation):
                 print(f"Median distance to object is {median_object_depth}.")
             print(f"Center distance to object is {center_depth}.")
             print("Center in mask?", center_in_mask)
-            if self.verbose:
-                print("Current XYZ:", current_xyz)
             print("Aligned?", aligned)
 
             # Fix lift to only go down
             lift = min(lift, prev_lift)
 
             # If we are aligned, try to grasp
-            if aligned:
+            if aligned or center_in_mask:
                 # First, check to see if we are close enough to grasp
-                if center_depth < self.median_distance_when_grasping:
+                if center_depth < self.median_distance_when_grasping and center_depth > 1e-8:
                     print(
                         f"Center depth of {center_depth} is close enough to grasp; less than {self.median_distance_when_grasping}."
                     )
@@ -733,7 +772,19 @@ class GraspObjectOperation(ManagedOperation):
                         success = self._grasp(distance=prev_center_depth)
                     else:
                         self.info("Aligned and close enough to grasp.")
-                        success = self._grasp(distance=center_depth)
+                        success = self._grasp()
+
+                    # Added debugging code to make sure that we are seeing the right object
+                    if self.debug_grasping:
+                        # record image
+                        servo = self.robot.get_servo_observation()
+                        debug_viz = np.zeros((240, 640, 3))
+                        debug_viz[:, :320, :] = servo.ee_rgb
+                        debug_viz[:, 320:, :] = servo.rgb
+                        Image.fromarray(debug_viz.astype("uint8")).save(
+                            f"{debug_dir_name}/img_point_{iter_+1:03d}.png"
+                        )
+
                     break
 
                 # If we are aligned, step the whole thing closer by some amount
@@ -745,27 +796,25 @@ class GraspObjectOperation(ManagedOperation):
                 arm += arm_component
                 lift += lift_component
 
-            if True:
-                # Add these to do some really hacky proportionate control
-                px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
-                py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+            # Add these to do some really hacky proportionate control
+            px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
+            py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
 
-                # Move the base and modify the wrist pitch
-                # TODO: remove debug code
-                # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
-                if dx > self.align_x_threshold:
-                    # Move in x - this means translate the base
-                    base_x += -self.base_x_step * px
-                elif dx < -1 * self.align_x_threshold:
-                    base_x += self.base_x_step * px
-                if dy > self.align_y_threshold:
-                    # Move in y - this means translate the base
-                    wrist_pitch += -self.wrist_pitch_step * py
-                elif dy < -1 * self.align_y_threshold:
-                    wrist_pitch += self.wrist_pitch_step * py
-
-            # Force to reacquire the target mask if we moved the camera too much
-            prev_target_mask = None
+            # Move the base and modify the wrist pitch
+            # TODO: remove debug code
+            # print(f"dx={dx}, dy={dy}, px={px}, py={py}")
+            print("base x =", base_x)
+            if dx > self.align_x_threshold:
+                # Move in x - this means translate the base
+                base_x += -self.base_x_step * px
+            elif dx < -1 * self.align_x_threshold:
+                base_x += self.base_x_step * px
+            print("base x =", base_x)
+            if dy > self.align_y_threshold:
+                # Move in y - this means translate the base
+                wrist_pitch += -self.wrist_pitch_step * py
+            elif dy < -1 * self.align_y_threshold:
+                wrist_pitch += self.wrist_pitch_step * py
 
             # safety checks
             q = [
@@ -777,7 +826,7 @@ class GraspObjectOperation(ManagedOperation):
                 0.0,
                 0.0,
                 wrist_pitch,
-                0.0,
+                -0.5,  # 0.0,
                 0.0,
                 0.0,
             ]  # 11 DOF: see HelloStretchIdx
@@ -799,7 +848,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=True,
+                blocking=False,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
@@ -827,7 +876,11 @@ class GraspObjectOperation(ManagedOperation):
             np.ndarray: Object xyz location
         """
         if self._object_xyz is None:
-            object_xyz = self.agent.current_object.get_center()
+            # xyz = self.robot.get_base_pose()
+            # xyz[2] = 0.5
+            # object_xyz = self.agent.current_object.get_closest_point(xyz)
+            # object_xyz = self.agent.current_object.get_center()
+            object_xyz = self.agent.current_object.get_median()
         else:
             object_xyz = self._object_xyz
         return object_xyz
@@ -842,6 +895,9 @@ class GraspObjectOperation(ManagedOperation):
         self.reset()
 
         assert self.target_object is not None, "Target object must be set before running."
+
+        # open gripper
+        self.robot.open_gripper(blocking=True)
 
         # Now we should be able to see the object if we orient gripper properly
         # Get the end effector pose
@@ -870,7 +926,11 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
+        joint_state[
+            HelloStretchIdx.WRIST_PITCH
+        ] = -0.5  # self.offset_from_vertical + pitch_from_vertical
+        # joint_state[HelloStretchIdx.WRIST_YAW] = 0.5 # self.offset_from_vertical + pitch_from_vertical
+        # joint_state[HelloStretchIdx.GRIPPER] = 100.
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
@@ -912,19 +972,27 @@ class GraspObjectOperation(ManagedOperation):
         model = self.robot.get_robot_model()
         ee_pos, ee_rot = model.manip_fk(joint_state)
 
-        vector_to_object = relative_object_xyz - ee_pos
-        vector_to_object = vector_to_object / np.linalg.norm(vector_to_object)
-
-        shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
-
         # End effector should be at most 45 degrees inclined
         rotation = R.from_quat(ee_rot)
         rotation = rotation.as_euler("xyz")
+
+        # Track if the angle to the target object is too large (i.e. it's on the floor)
         print("Rotation", rotation)
         if rotation[1] > np.pi / 4:
             rotation[1] = np.pi / 4
         old_ee_rot = ee_rot
         ee_rot = R.from_euler("xyz", rotation).as_quat()
+
+        vector_to_object = relative_object_xyz - ee_pos
+        vector_to_object = vector_to_object / np.linalg.norm(vector_to_object)
+
+        # It should not be more than 45 degrees inclined
+        vector_to_object[2] = max(vector_to_object[2], vector_to_object[1])
+
+        print("Absolute object xyz was:", object_xyz)
+        print("Relative object xyz was:", relative_object_xyz)
+        shifted_object_xyz = relative_object_xyz - (distance_from_object * vector_to_object)
+        print("Pregrasp xyz:", shifted_object_xyz)
 
         # IK
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
@@ -932,7 +1000,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Maybe this helps the success of the model
-        target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+        # target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
