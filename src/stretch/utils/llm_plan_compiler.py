@@ -257,8 +257,8 @@ class LLMPlanCompiler(ast.NodeVisitor):
         self.task.add_operation(speak_not_implemented, True)
         return "get_detections" + f"_{str(self._operation_naming_counter - 1)}"
 
-    def build_tree(self, node):
-        """Recursively build a tree of function calls"""
+    def build_tree(self, node, parent_success=None, parent_failure=None):
+        """Recursively build a tree of function calls and connect nested logic."""
         if isinstance(node, ast.If):
             # Extract function call in the test condition
             test = node.test
@@ -267,71 +267,75 @@ class LLMPlanCompiler(ast.NodeVisitor):
             else:
                 raise ValueError("Unexpected test condition")
 
-            # Create the root node with the function call
+            # Create the new node for this `if`
+            new_node = LLMTreeNode(function_call=function_call)
+
+            # Set the root if it hasn't been set yet
             if self.root is None:
-                self.root = LLMTreeNode(function_call=function_call)
-                new_node = self.root
-            else:
-                new_node = LLMTreeNode(function_call=function_call)
+                self.root = new_node
 
-            if len(node.orelse) > 0:
-                new_node.failure = self.build_tree(node.orelse[0])
+            # Attach to parent's success or failure context
+            if parent_success and not parent_success.success:
+                parent_success.success = new_node
+            if parent_failure and not parent_failure.failure:
+                parent_failure.failure = new_node
 
-            # Recursively build success and failure branches
-            temp_node = new_node
-            prev_node_failure = new_node
-            prev_node_success = new_node
+            # Initialize pointers to the last processed nodes for success and failure
+            last_success = new_node
+            last_failure = new_node
+
+            # Recursively process the `body` for success
             for expr in node.body:
-                print("expr", expr)
-                operation = self.build_tree(expr)
-                temp_node.success = operation
-                operation.failure = new_node.failure
-                temp_node = operation
+                last_success = self.build_tree(expr, parent_success=last_success)
+
+            # Recursively process the `orelse` for failure
+            for expr in node.orelse:
+                last_failure = self.build_tree(expr, parent_failure=last_failure)
 
             return new_node
 
         elif isinstance(node, ast.Expr):
-            # Extract function call
+            # Handle function calls directly
             expr = node.value
             if isinstance(expr, ast.Call):
                 function_call = ast.unparse(expr)
+                leaf_node = LLMTreeNode(function_call=function_call)
+
+                # Set the root if it hasn't been set yet
                 if self.root is None:
-                    self.root = LLMTreeNode(function_call=function_call)
-                    return self.root
-                else:
-                    return LLMTreeNode(function_call=function_call)
+                    self.root = leaf_node
+
+                # Attach to parent's success/failure context if provided
+                if parent_success and not parent_success.success:
+                    parent_success.success = leaf_node
+                elif parent_failure and not parent_failure.failure:
+                    parent_failure.failure = leaf_node
+
+                return leaf_node
 
         elif isinstance(node, ast.Module):
-            # Start processing the body of the module
-            if len(node.body) > 0:
-                return self.build_tree(node.body[0])
+            # Process the top-level module body
+            last_node = None
+            for expr in node.body:
+                last_node = self.build_tree(expr, parent_success=last_node)
+            return last_node
 
         elif isinstance(node, ast.FunctionDef):
-            if len(node.body) > 0:
-                previous_operation = None
-                first_operation = None
-                for expr in node.body:
-                    operation = self.build_tree(expr)
+            # Process the body of a function definition
+            last_node = None
+            for expr in node.body:
+                last_node = self.build_tree(expr, parent_success=last_node)
 
-                    if first_operation is None:
-                        first_operation = operation
+            # Set the root if it hasn't been set yet
+            if self.root is None and last_node:
+                self.root = last_node
 
-                    if previous_operation is None:
-                        previous_operation = operation
-                        continue
+            return last_node
 
-                    if previous_operation.function_call.startswith(
-                        "say"
-                    ) or previous_operation.function_call.startswith("wave"):
-                        previous_operation.success = operation
-
-                    previous_operation = operation
-
-                return first_operation
         else:
-            print("Unknown node type")
-
-        raise ValueError("Unexpected AST node")
+            # Handle unexpected nodes gracefully
+            print(f"Unknown node type: {type(node)}")
+            return None
 
     def convert_to_task(
         self, root: LLMTreeNode, parent_operation_name: str = None, success: bool = True
