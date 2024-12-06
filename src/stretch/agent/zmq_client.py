@@ -627,7 +627,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             while not self._finish:
 
                 if steps % 40 == 39:
-                    print("-" * 20, steps, "-" * 20)
                     # Resend the action until we get there
                     self.send_action(_next_action, reliable=reliable)
                     if verbose:

@@ -7,15 +7,12 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import os
-
 import numpy as np
 import pinocchio as pin
 
 # from urdf_parser_py.urdf import URDF
 from scipy.spatial.transform import Rotation as R
 
-from stretch.dynav.ok_robot_hw.global_parameters import *
 from stretch.motion.kinematics import HelloStretchIdx
 
 OVERRIDE_STATES: dict[str, float] = {}
@@ -34,11 +31,10 @@ def transform_joint_array(joint_array):
     return np.array(new_joint_array)
 
 
-class HelloRobot:
+class DynamemManipulationWrapper:
     def __init__(
         self,
         robot,
-        stretch_client_urdf_file="src/stretch/config/urdf",
         gripper_threshold=7.0,
         stretch_gripper_max=0.64,
         stretch_gripper_min=0,
@@ -46,7 +42,6 @@ class HelloRobot:
     ):
         self.STRETCH_GRIPPER_MAX = stretch_gripper_max
         self.STRETCH_GRIPPER_MIN = stretch_gripper_min
-        self.urdf_path = os.path.join(stretch_client_urdf_file, "stretch.urdf")
         self.joints_pin = {"joint_fake": 0}
 
         self.GRIPPER_THRESHOLD = gripper_threshold
@@ -68,7 +63,7 @@ class HelloRobot:
 
         # end_link is the frame of reference node
         self.end_link = end_link
-        self.set_end_link(end_link)
+        self.joint_list = self.init_joint_list[:-1]
 
         # Initialize StretchClient controller
         self.robot = robot
@@ -78,12 +73,6 @@ class HelloRobot:
         # Constraining the robots movement
         self.clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
         self.pan, self.tilt = self.robot.get_pan_tilt()
-
-    def set_end_link(self, link):
-        if link == GRIPPER_FINGERTIP_LEFT_NODE or GRIPPER_FINGERTIP_RIGHT_NODE:
-            self.joint_list = self.init_joint_list
-        else:
-            self.joint_list = self.init_joint_list[:-1]
 
     def get_joints(self):
         """
