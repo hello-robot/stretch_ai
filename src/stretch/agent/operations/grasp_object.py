@@ -1000,7 +1000,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Maybe this helps the success of the model
-        # target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+        target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
