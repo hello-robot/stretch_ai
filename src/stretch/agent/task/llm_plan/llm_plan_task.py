@@ -37,10 +37,9 @@ class LLMPlanTask:
         """Configure the task given a LLM plan."""
         self.llm_plan = llm_plan
 
-    def get_task(self) -> Task:
+    def run(self) -> Task:
         if self.llm_plan is None and self.task is None:
             self.llm_plan_compiler = LLMPlanCompiler(self.agent, self.llm_plan)
             # print("Compiling LLM plan...")
-            self.task = self.llm_plan_compiler.compile()
-
-        return self.task
+        
+        self.llm_plan_compiler.compile()

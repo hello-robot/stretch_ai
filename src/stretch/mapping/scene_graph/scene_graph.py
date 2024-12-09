@@ -84,8 +84,17 @@ class SceneGraph:
         ]
 
     def get_ins_center_pos(self, idx: int):
+        # print(f"Length of instances: {len(self.instances)} idx: {idx}")
+        if len(self.instances) < idx:
+            print(f"Length of instances: {len(self.instances)} idx: {idx}")
         """Get the center of an instance based on point cloud"""
-        return torch.mean(self.instances[idx].point_cloud, axis=0)
+        try:
+            return torch.mean(self.instances[idx].point_cloud, axis=0)
+        except Exception as e:
+            print(f"Error getting center position for instance {idx}: {e}")
+            # return torch.tensor([0, 0, 0])
+            print(f"Length of instances: {len(self.instances)} idx: {idx}")
+            return torch.tensor([0, 0, 0])
 
     def get_instance_image(self, idx: int) -> np.ndarray:
         """Get a viewable image from tensorized instances"""

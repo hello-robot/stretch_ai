@@ -108,8 +108,6 @@ def main(
             plan = plan.rsplit("\n", 1)[0]
 
         llm_plan_task = LLMPlanTask(agent, plan)
-        plan = llm_plan_task.get_task()
-        pprint.pprint(plan)
 
         if yes:
             proceed = "y"
@@ -119,7 +117,7 @@ def main(
             continue
 
         try:
-            plan.run()
+            llm_plan_task.run()
         except Exception as e:
             print(f"Error executing plan: {e}")
 
