@@ -81,9 +81,7 @@ def main(
     if not parameters.get("agent/use_realtime_updates") or enable_realtime_updates:
         logger.error("Real-time updates are required for this demo. Enabling them.")
 
-    agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=True
-    )
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
     agent.start()
 
     if input_path is not None and len(input_path) > 0:
