@@ -23,7 +23,9 @@ from stretch.core import get_parameters
 from stretch.llms import get_llm_client
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
+from stretch.utils import logger
 
+logger = logger.get_logger(__name__)
 
 @click.command()
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")
@@ -74,8 +76,12 @@ def main(
         device_id=device_id,
         verbose=verbose,
     )
+
+    if not parameters.get("agent/enable_realtime_updates") or enable_realtime_updates:
+        logger.error("Real-time updates are required for this demo. Enabling them.")
+
     agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
+        robot, parameters, semantic_sensor, enable_realtime_updates=True
     )
     agent.start()
 
