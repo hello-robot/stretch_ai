@@ -11,10 +11,10 @@ from typing import Optional
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.core.task import Task
-from stretch.utils.llm_plan_compiler import LLMPlanCompiler
+from stretch.utils.llm_plan_wrapper import LLMPlanWrapper
 
 
-class LLMPlanTask:
+class LLMPlanExecutor:
     def __init__(self, agent: RobotAgent, llm_plan: Optional[str] = None):
         # Sync these things
         self.agent = agent
@@ -30,8 +30,8 @@ class LLMPlanTask:
         self.task = None
 
         if llm_plan is not None:
-            self.llm_plan_compiler = LLMPlanCompiler(agent, self.llm_plan)
-            self.task = self.llm_plan_compiler.compile()
+            self.llm_plan_wrapper = LLMPlanWrapper(agent, self.llm_plan)
+            self.task = self.llm_plan_wrapper.run()
 
     def configure(self, llm_plan: Optional[str] = None):
         """Configure the task given a LLM plan."""
@@ -39,8 +39,8 @@ class LLMPlanTask:
 
     def get_task(self) -> Task:
         if self.llm_plan is None and self.task is None:
-            self.llm_plan_compiler = LLMPlanCompiler(self.agent, self.llm_plan)
+            self.llm_plan_wrapper = LLMPlanWrapper(self.agent, self.llm_plan)
             # print("Compiling LLM plan...")
-            self.task = self.llm_plan_compiler.compile()
+            self.task = self.llm_plan_wrapper.compile()
 
         return self.task
