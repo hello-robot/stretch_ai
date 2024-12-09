@@ -78,7 +78,7 @@ def main(
         verbose=verbose,
     )
 
-    if not parameters.get("agent/enable_realtime_updates") or enable_realtime_updates:
+    if not parameters.get("agent/use_realtime_updates") or enable_realtime_updates:
         logger.error("Real-time updates are required for this demo. Enabling them.")
 
     agent = RobotAgent(
