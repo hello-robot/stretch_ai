@@ -23,6 +23,9 @@ from stretch.core import get_parameters
 from stretch.llms import get_llm_client
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
+from stretch.utils import logger
+
+logger = logger.Logger(__name__)
 
 
 @click.command()
@@ -30,6 +33,17 @@ from stretch.perception import create_semantic_sensor
 @click.option("--robot_ip", default="")
 @click.option("--device-id", default=0, help="Device ID for the semantic sensor")
 @click.option("--llm", default="qwen25-3B-Instruct", help="Language model to use")
+@click.option(
+    "--input-path",
+    "-i",
+    "--input_file",
+    "--input-file",
+    "--input",
+    "--input_path",
+    type=click.Path(),
+    default="",
+    help="Path to a saved datafile from a previous exploration of the world.",
+)
 @click.option("--verbose", default=True)
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--task", default="", help="Default task to perform")
@@ -50,6 +64,7 @@ def main(
     task: str = "",
     yes: bool = False,
     enable_realtime_updates: bool = False,
+    input_path: str = "",
 ):
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -62,10 +77,16 @@ def main(
         device_id=device_id,
         verbose=verbose,
     )
-    agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
-    )
+
+    if not parameters.get("agent/use_realtime_updates") or enable_realtime_updates:
+        logger.error("Real-time updates are required for this demo. Enabling them.")
+
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
     agent.start()
+
+    if input_path is not None and len(input_path) > 0:
+        print("Loading map from:", input_path)
+        agent.load_map(input_path)
 
     prompt = ObjectManipNavPromptBuilder()
     client = get_llm_client(llm, prompt=prompt)

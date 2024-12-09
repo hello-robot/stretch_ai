@@ -627,7 +627,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             while not self._finish:
 
                 if steps % 40 == 39:
-                    print("-" * 20, steps, "-" * 20)
                     # Resend the action until we get there
                     self.send_action(_next_action, reliable=reliable)
                     if verbose:
@@ -779,7 +778,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
-                self.gripper_to(gripper_target, blocking=False)
+                # self.gripper_to(gripper_target, blocking=False)
                 joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
@@ -792,7 +791,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for gripper to open")
                     break
-                self.gripper_to(gripper_target, blocking=False)
+                # self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
             return False
         return True
@@ -825,17 +824,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for gripper to close")
                     break
-                self.gripper_to(gripper_target, blocking=False)
+                # self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
             return False
         return True
 
-    def gripper_to(self, target: float, blocking: bool = True):
+    def gripper_to(self, target: float, blocking: bool = True, reliable: bool = True):
         """Send the gripper to a target position."""
         next_action = {"gripper": target, "gripper_blocking": blocking}
-        self.send_action(next_action)
+        self.send_action(next_action, reliable=reliable)
         if blocking:
-            time.sleep(2.0)
+            time.sleep(0.5)
 
     def switch_to_navigation_mode(self):
         """Velocity control of the robot base."""

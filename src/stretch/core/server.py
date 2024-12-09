@@ -17,9 +17,18 @@ import cv2
 import numpy as np
 import zmq
 
-import stretch.utils.logger as logger
-from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.comms import CommsNode
+from stretch.utils.logger import Logger
+
+logger = Logger(__name__)
+
+try:
+    from stretch.audio.text_to_speech import get_text_to_speech
+
+    imported_text_to_speech = True
+except ImportError:
+    logger.error("Could not import text to speech")
+    imported_text_to_speech = False
 
 
 class BaseZmqServer(CommsNode, ABC):
@@ -66,7 +75,10 @@ class BaseZmqServer(CommsNode, ABC):
 
         # Extensions to the ROS server
         # Text to speech engine - let's let the robot talk
-        self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+        if imported_text_to_speech:
+            self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+        else:
+            self.text_to_speech = None
 
         print("Done setting up connections! Server ready to start.")
 
@@ -122,6 +134,16 @@ class BaseZmqServer(CommsNode, ABC):
         self._recv_thread.start()
         self._send_state_thread.start()
         self._send_servo_thread.start()
+
+    @property
+    def in_manipulation_mode(self) -> bool:
+        """Check if the robot is in manipulation mode."""
+        return self.control_mode == "manipulation"
+
+    @property
+    def in_navigation_mode(self) -> bool:
+        """Check if the robot is in navigation mode."""
+        return self.control_mode == "navigation"
 
     # ==================================================================
     # BEGIN: Implement the following methods
