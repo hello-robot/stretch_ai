@@ -25,7 +25,8 @@ from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
 from stretch.utils import logger
 
-logger = logger.get_logger(__name__)
+logger = logger.Logger(__name__)
+
 
 @click.command()
 @click.option("--local", is_flag=True, help="Run code locally on the robot.")

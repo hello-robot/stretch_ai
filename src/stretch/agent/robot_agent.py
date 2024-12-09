@@ -46,9 +46,12 @@ try:
     from stretch.audio.text_to_speech import get_text_to_speech
 
     imported_tts = True
-    logger.error("Failed to import text to speech")
-except ImportError:
+except ImportError as e:
     imported_tts = False
+
+    logger.error(str(e))
+    logger.error("Failed to import text to speech")
+    logger.error("Will continue without text to speech capabilities in the robot agent.")
 
 
 class RobotAgent:
