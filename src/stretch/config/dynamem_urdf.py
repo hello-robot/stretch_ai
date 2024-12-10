@@ -9,7 +9,7 @@
 
 """
     Dynamem uses OK-Robot's manipulation stack, so it relies on an accurately calibrated urdf.
-    This script 
+    This script does the same thing as described in https://github.com/ok-robot/ok-robot/blob/main/docs/robot-calibration.md
 """
 
 import argparse
@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--urdf-path",
-    default="urdf/stretch.urdf",
+    default="src/stretch/config/urdf/stretch.urdf",
     help="URDF path",
 )
 cfgs = parser.parse_args()
