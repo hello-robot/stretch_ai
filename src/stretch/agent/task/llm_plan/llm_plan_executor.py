@@ -31,16 +31,16 @@ class LLMPlanExecutor:
 
         if llm_plan is not None:
             self.llm_plan_wrapper = LLMPlanWrapper(agent, self.llm_plan)
-            self.task = self.llm_plan_wrapper.run()
 
     def configure(self, llm_plan: Optional[str] = None):
         """Configure the task given a LLM plan."""
         self.llm_plan = llm_plan
 
-    def get_task(self) -> Task:
-        if self.llm_plan is None and self.task is None:
+    def run(self) -> Task:
+        if self.llm_plan_wrapper is None:
             self.llm_plan_wrapper = LLMPlanWrapper(self.agent, self.llm_plan)
             # print("Compiling LLM plan...")
-            self.task = self.llm_plan_wrapper.compile()
 
-        return self.task
+        self.llm_plan_wrapper.run()
+
+        # return self.task

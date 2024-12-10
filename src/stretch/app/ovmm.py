@@ -11,13 +11,11 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import pprint
-
 import click
 
 # Mapping and perception
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.llm_plan import LLMPlanTask
+from stretch.agent.task.llm_plan import LLMPlanExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import get_llm_client
@@ -102,7 +100,7 @@ def main(
         print(f"Generated plan: \n{plan}")
 
         if yes:
-            proceed = True
+            proceed = "y"
         else:
             proceed = input("Proceed with plan? [y/n]: ")
 
@@ -112,25 +110,19 @@ def main(
         if plan.endswith("```"):
             plan = plan.rsplit("\n", 1)[0]
 
-        llm_plan_task = LLMPlanTask(agent, plan)
-        plan = llm_plan_task.get_task()
-        pprint.pprint(plan)
+        llm_plan_executor = LLMPlanExecutor(agent, plan)
 
-        if yes:
-            proceed = "y"
+        if proceed == "y":
+            try:
+                llm_plan_executor.run()
+            except Exception as e:
+                print(f"Error executing plan: {e}")
 
-        if proceed != "y":
-            print("Exiting...")
-            continue
-
-        try:
-            plan.run()
-        except Exception as e:
-            print(f"Error executing plan: {e}")
-
-        if task:
-            robot.stop()
-            break
+        # Reset variables
+        task = ""
+        plan = ""
+        proceed = ""
+        llm_plan_executor = None
 
 
 if __name__ == "__main__":
