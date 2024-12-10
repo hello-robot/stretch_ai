@@ -42,7 +42,19 @@ In terms of exploration, we discovered that commonly used frontier based explora
 ## Picking and placing
 Dynamem has two manipulation systems, one is Stretch AI Visual Servoing code, as described in the [LLM agent](llm_agent.md) while another is [OK-Robot manipulation](https://github.com/ok-robot/ok-robot/tree/main/ok-robot-manipulation)
 
-To run [OK-Robot manipulation](https://github.com/ok-robot/ok-robot/tree/main/ok-robot-manipulation), you need to follow [OK-Robot installation instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#installation) to prepare AnyGrasp.
+The high level idea for picking is
+- Transform RGBD image from Stretch head camera into a RGB pointcloud.
+- [AnyGrasp](https://arxiv.org/abs/2212.08333) proposes a set of collision free gripper poses given a RGB pointcloud.
+- [OWLv2](https://arxiv.org/abs/2306.09683) and [SAMv2](https://ai.meta.com/blog/segment-anything-2/) to select only gripper poses that actually manipulates the target object.
+- Transform the selected 6-DoF pose into gripper actions using URDF.
+
+Placing is relatively simpler as all you need to do is to segment the target receptacle in the image and select a middle point to drop on.
+
+The advantages of this manipulation system, compared to visual servoing manipulation in [LLM agent](llm_agent.md) includes:
+- More general purpose, dealing with objects with different shapes, such as bowls, bananas.
+The disadvantages includes:
+- Open loop so unable to recover from controller errors.
+- Reliance on accurate robot calibration and urdf.
 
 # Running Dynamem
 You should follow the these instructions to run Dynamem. SLAM and control codes are supposed to be run on the robot while perception models are supposed to be run on the workstation (e.g. a laptop, a lambda machine; might also be run on the robot but not recommended).
@@ -90,6 +102,33 @@ If you plan to run AnyGrasp on the same workstation, we highly recommend you fin
 Once the robot starts doing OVMM, a rerun window will be popped up to visualize robot's thoughts.
 ![Example of Dynamem in the wild](images/dynamem_rerun.png)
 
+### Prepare manipulation with AnyGrasp
+The very first thing is to make sure OK-Robot repo is a submodule in your Stretch AI repo in `third_party/`!!! 
+If not, run `git submodule update --init --recursive` to update all submodules.
+
+Few steps are needed to be done before you can try AnyGrasp:
+- Since AnyGrasp is a closed source model, you should first request for AnyGrasp license following [These instructions](https://github.com/graspnet/anygrasp_sdk?tab=readme-ov-file#license-registration)
+- Calibrate the robot well. Please follow instructions described in [Stretch Ros2](https://github.com/hello-robot/stretch_ros2/tree/humble/stretch_calibration).
+- Once you have a well calibrated urdf (usually located in `~/ament_ws/src/stretch_ros2/stretch_description/urdf/stretch.urdf` on your stretch robot), copy it to your workstation `src/stretch/config/urdf/stretch.urdf`. It is recommended to run following commands on your workstation:
+```
+scp hello-robot@[ROBOT IP]:~/ament_ws/src/stretch_ros2/stretch_description/urdf/stretch.urdf stretch_ai/src/stretch/config/urdf/
+```
+- Run the following command to replace urdf modification described in [OK Robot calibration docs](https://github.com/ok-robot/ok-robot/blob/main/docs/robot-calibration.md) 
+```
+python src/stretch/config/dynamem_urdf.py --urdf-path src/stretch/config/urdf/stretch.urdf
+```
+- Run AnyGrasp with following commands
+```
+cd third_party/ok-robot/ok-robot-manipulation/src/
+python demo.py --open_communication --port 5557
+```
+To understand more options in running AnyGrasp, please read [OK Robot Manipulation](https://github.com/ok-robot/ok-robot/tree/main/ok-robot-manipulation).
+
+After AnyGrasp is launched, you can run default Dynamem commands as described above.
+```
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP
+```
+
 ### Exploration and Manipulation
 Dynamem support both exploration & mapping and OVMM tasks. So before each task it will ask you whether you want to run E (denoted for exploration) and M (denoted for OVMM).
 
@@ -125,16 +164,6 @@ How is that functionality helpful? Sometimes when the robot is already facing th
 
 The flag `-S` in previous commands, it configures Dyname to skip these human confirmantions. To enable this functionality, you need to run
 
-```
-python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP
-```
-
-### Manipulation with AnyGrasp
-TBA. 
-
-Now you can follow [OK-Robot installation instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#installation) to install AnyGrasp and follow [OK-Robot running instructions](https://github.com/ok-robot/ok-robot/tree/main?tab=readme-ov-file#on-workstation) to run AnyGrasp.
-
-After AnyGrasp is launched, you can run default Dynamem commands as described above.
 ```
 python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP
 ```
