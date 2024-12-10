@@ -20,23 +20,18 @@ import zmq
 # from stretch.agent import RobotClient
 from stretch.core.parameters import Parameters
 from stretch.dynav.communication_util import recv_array, send_array, send_everything
-from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
-from stretch.dynav.ok_robot_hw.global_parameters import (
-    INIT_ARM_POS,
-    INIT_HEAD_PAN,
-    INIT_HEAD_TILT,
-    INIT_LIFT_POS,
-    INIT_WRIST_PITCH,
-    INIT_WRIST_ROLL,
-    INIT_WRIST_YAW,
-    TOP_CAMERA_NODE,
+from stretch.dynav.ok_robot_hw.dynamem_manipulation import (
+    DynamemManipulationWrapper as ManipulationWrapper,
 )
-from stretch.dynav.ok_robot_hw.robot import HelloRobot as ManipulationWrapper
-from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
-    capture_and_process_image,
-    move_to_point,
-    pickup,
-)
+from stretch.dynav.ok_robot_hw.grasper_utils import capture_and_process_image, move_to_point, pickup
+
+INIT_LIFT_POS = 0.45
+INIT_WRIST_PITCH = -1.57
+INIT_ARM_POS = 0
+INIT_WRIST_ROLL = 0
+INIT_WRIST_YAW = 0
+INIT_HEAD_PAN = -1.57
+INIT_HEAD_TILT = -0.65
 
 
 class RobotAgentMDP:
@@ -232,7 +227,7 @@ class RobotAgentMDP:
                 return None
         return end_point
 
-    def place(self, text, init_tilt=INIT_HEAD_TILT, base_node=TOP_CAMERA_NODE):
+    def place(self, text, init_tilt=INIT_HEAD_TILT, base_node="camera_depth_optical_frame"):
         """
         An API for running placing. By calling this API, human will ask the robot to place whatever it holds
         onto objects specified by text queries A
@@ -245,10 +240,8 @@ class RobotAgentMDP:
         self.robot.switch_to_manipulation_mode()
         self.robot.look_at_ee()
         self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
-        camera = RealSenseCamera(self.robot)
 
         rotation, translation = capture_and_process_image(
-            camera=camera,
             mode="place",
             obj=text,
             socket=self.image_sender.manip_socket,
@@ -283,7 +276,7 @@ class RobotAgentMDP:
         )
         return True
 
-    def manipulate(self, text, init_tilt=INIT_HEAD_TILT, base_node=TOP_CAMERA_NODE):
+    def manipulate(self, text, init_tilt=INIT_HEAD_TILT, base_node="camera_depth_optical_frame"):
         """
         An API for running manipulation. By calling this API, human will ask the robot to pick up objects
         specified by text queries A
@@ -310,10 +303,7 @@ class RobotAgentMDP:
             wrist_yaw=INIT_WRIST_YAW,
         )
 
-        camera = RealSenseCamera(self.robot)
-
         rotation, translation, depth, width = capture_and_process_image(
-            camera=camera,
             mode="pick",
             obj=text,
             socket=self.image_sender.manip_socket,
