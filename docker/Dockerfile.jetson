@@ -15,10 +15,11 @@ RUN apt-get update && apt-get install -y \
     libportaudiocpp0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install audio dependencies
+RUN python3 -m pip install --user pyaudio
+
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
-
-RUN python3 -m pip install pyaudio
 
 # Change to the detectron2 directory and install it
 WORKDIR /stretch_ai/third_party/detectron2
