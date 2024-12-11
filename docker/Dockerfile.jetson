@@ -7,7 +7,15 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Set a DOCKER flag to indicate we are running in a container
 ENV DOCKER 1
 
-# Copy the directory in
-COPY . .
+# Copy current directory to /stretch_ai
+COPY . /stretch_ai
 
-RUN ls
+# Change to the detectron2 directory and install it
+WORKDIR /stretch_ai/third_party/detectron2
+RUN pip install -e .
+
+# Set /stretch_ai as the working directory
+WORKDIR /stretch_ai
+
+# Add /stretch_ai/src to PYTHONPATH
+ENV PYTHONPATH="${PYTHONPATH}:/stretch_ai/src"
