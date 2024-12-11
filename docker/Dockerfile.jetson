@@ -35,8 +35,8 @@ RUN git clone https://github.com/scikit-learn/scikit-learn.git --branch 1.3.2 &&
 # Open3d and similar
 RUN python3 -m pip install open3d scikit-image trimesh urchin
 
-# UI stuff
-RUN python3 -m pip install termcolor webp
+# UI stuff and resources
+RUN python3 -m pip install termcolor webp hello-robot-stretch-urdf
 
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
