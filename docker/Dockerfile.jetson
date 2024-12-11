@@ -19,6 +19,12 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m pip install --user pyaudio simpleaudio sounddevice google-cloud-texttospeech \
     overrides pydub gtts
 
+# Other dependencies - networking 
+RUN python3 -m pip install --user zmq
+
+# Pinocchio IK solver
+RUN python3 -m pip install --user pin
+
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
 
