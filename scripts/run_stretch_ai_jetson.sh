@@ -60,8 +60,8 @@ echo "Running docker image hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
 
 # Check dev flag
 if [[ "$*" == *"--dev"* ]]; then
-    mount_option="-v $parent_dir:/app"
-    echo "Mounting $parent_dir into /app"
+    mount_option="-v $parent_dir:/stretch_ai"
+    echo "Mounting $parent_dir into /stretch_ai"
 else
     mount_option=""
     echo "Running in non-dev mode, not mounting any directory"
