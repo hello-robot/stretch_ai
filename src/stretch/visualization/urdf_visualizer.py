@@ -32,7 +32,7 @@ except AttributeError:
     # Fallback for Python < 3.9
     import pkg_resources
     def files(package):
-        return pkg_resources.path(package, '')
+        return pkg_resources.resource_filename(package, '')
     pkg_path = files("stretch_urdf")
 
 urdf_file_path = pkg_path + urdf_name
