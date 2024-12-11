@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install audio dependencies
-RUN python3 -m pip install --user pyaudio simpleaudio sounddevice google-cloud-texttospeech overrides
+RUN python3 -m pip install --user pyaudio simpleaudio sounddevice google-cloud-texttospeech \
+    overrides pydub
 
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
