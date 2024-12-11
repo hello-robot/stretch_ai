@@ -215,6 +215,22 @@ class Instance:
         center_xyz[2] = xyz[2]
         return center_xyz
 
+    def get_median(self) -> Tensor:
+        """Get the median of the instance in 3D space
+
+        Returns:
+            Tensor: [3,] tensor of the median of the instance
+        """
+        return self.point_cloud.median(dim=0).values
+
+    def get_closest_point(self, xyz) -> Tensor:
+        """Find the closest point in the point cloud to a given xyz point"""
+        if isinstance(xyz, np.ndarray):
+            xyz = torch.tensor(xyz)
+        dists = torch.norm(self.point_cloud - xyz, dim=1)
+        idx = dists.argmin()
+        return self.point_cloud[idx]
+
     def show_best_view(self, metric: str = "area", title: Optional[str] = None) -> None:
         """Show the best view of the instance"""
         best_view = self.get_best_view(metric=metric)

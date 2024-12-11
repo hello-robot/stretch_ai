@@ -8,6 +8,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import random
 import threading
 import time
 import timeit
@@ -19,7 +20,7 @@ from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
 
 try:
-    from stretch.simulation.robocasa_gen import model_generation_wizard
+    from stretch.simulation.robocasa_gen import load_model_from_xml, model_generation_wizard
 except ImportError as e:
     from stretch.utils.logger import error
 
@@ -28,6 +29,7 @@ except ImportError as e:
     error(f"Error: {e}")
 
 import stretch.motion.constants as constants
+import stretch.simulation.utils as sim_utils
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
@@ -87,7 +89,7 @@ class MujocoZmqServer(BaseZmqServer):
 
     # Print debug messages for control loop
     debug_control_loop = False
-    debug_set_goal_pose = True
+    debug_set_goal_pose = False
 
     def get_body_xyt(self, body_name: str) -> np.ndarray:
         """Get the se(2) base pose: x, y, and theta"""
@@ -181,16 +183,14 @@ class MujocoZmqServer(BaseZmqServer):
         super(MujocoZmqServer, self).__init__(*args, **kwargs)
         # TODO: decide how we want to save scenes, if they should be here in stretch_ai or in stretch_mujoco
         # They should probably stay in stretch mujoco
-        # if scene_path is None:
-        #     scene_path = get_scene_path("default_scene.xml")
-        # elif not scene_path.endswith(".xml"):
-        #     scene_path = get_scene_by_name(scene_path)
+        if scene_path is None:
+            scene_path = sim_utils.get_default_scene_path()
         if scene_model is not None:
             if scene_path is not None:
                 logger.warning("Both scene model and scene path provided. Using scene model.")
             self.robot_sim = StretchMujocoSimulator(model=scene_model)
         else:
-            self.robot_sim = StretchMujocoSimulator(scene_path)
+            self.robot_sim = StretchMujocoSimulator(scene_xml_path=scene_path)
         self.simulation_rate = simulation_rate
         self.objects_info = objects_info
 
@@ -202,6 +202,7 @@ class MujocoZmqServer(BaseZmqServer):
         self._camera_data = None
         self._status = None
         self._initial_xyt = None
+        self._manip_xyt = None
 
         # Controller stuff
         # Is the velocity controller active?
@@ -216,9 +217,6 @@ class MujocoZmqServer(BaseZmqServer):
         self.control_mode = "navigation"
         self.controller_finished = True
         self.active = False
-
-        # Other
-        # self.verbose = True
 
         # Control module
         controller_cfg = get_control_config(config_name)
@@ -366,7 +364,7 @@ class MujocoZmqServer(BaseZmqServer):
         velocities[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["vel"]
 
         # Gripper joint
-        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"] + 0.5
+        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"]
         velocities[HelloStretchIdx.GRIPPER] = status["gripper"]["vel"]
 
         # Head pan joint
@@ -376,6 +374,14 @@ class MujocoZmqServer(BaseZmqServer):
         # Head tilt joint
         positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["pos"]
         velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["vel"]
+
+        if self.in_manipulation_mode:
+            # Get current base xyt
+            xyt = self.get_base_pose()
+            # Compute the relative xyt
+            xyt = xyt_global_to_base(xyt, self._manip_xyt)
+            # Set the base x to the x from this xyt
+            positions[HelloStretchIdx.BASE_X] = xyt[0]
 
         return positions, velocities, efforts
 
@@ -449,9 +455,22 @@ class MujocoZmqServer(BaseZmqServer):
             # Just read the manipulator joints
             for i, idx in enumerate(manip_idx):
                 if idx == HelloStretchIdx.BASE_X:
-                    # TODO: Implement base_x
-                    continue
-                self.robot_sim.move_to(mujoco_actuators[idx], q[i])
+                    if not self.in_manipulation_mode:
+                        logger.warning("Cannot move base by base_x alone in navigation mode")
+                        continue
+                    elif self._manip_xyt is None:
+                        logger.error("Manipulation mode not set up correctly")
+                    # Send an xyt goal: x, y, theta
+                    # This is computed based on self._manip_xyt
+                    xyt_delta = [q[i], 0, 0]
+                    xyt_goal = xyt_base_to_global(xyt_delta, self._manip_xyt)
+                    print("Manip xyt =", self._manip_xyt)
+                    print("delta =", xyt_delta)
+                    print("Setting base to", xyt_goal)
+                    print("Current base is", self.get_base_pose())
+                    self.set_goal_pose(xyt_goal, relative=False)
+                else:
+                    self.robot_sim.move_to(mujoco_actuators[idx], q[i])
 
     def __del__(self):
         self.stop()
@@ -498,17 +517,60 @@ class MujocoZmqServer(BaseZmqServer):
     def handle_action(self, action: Dict[str, Any]):
         """Handle the action received from the client."""
         if "control_mode" in action:
-            self.control_mode = action["control_mode"]
+            new_control_mode = action["control_mode"]
+            if new_control_mode not in ["navigation", "manipulation"]:
+                logger.error(f"Control mode {new_control_mode} not supported")
+            # If we are switching to manipulation mode, recort base xyt
+            if new_control_mode == "manipulation" and self.get_control_mode() == "navigation":
+                self._manip_xyt = self.get_base_pose()
+                logger.info(
+                    "Switching to manipulation mode, recording initial base pose for manipulation: "
+                    + str(self._manip_xyt)
+                )
+
+            self.control_mode = new_control_mode
+
         if "posture" in action:
             self.set_posture(action["posture"])
         if "gripper" in action:
-            self.robot_sim.move_to("gripper", action["gripper"])
+            # Get current gripper pose
+            positions, _, _ = self.get_joint_state()
+            current_gripper_pos = positions[HelloStretchIdx.GRIPPER]
+            target_gripper_pos = action["gripper"]
+            step = 0.01
+            t0 = timeit.default_timer()
+            if current_gripper_pos < target_gripper_pos:
+                while current_gripper_pos < target_gripper_pos:
+                    current_gripper_pos += step
+                    positions, _, _ = self.get_joint_state()
+                    # TODO: remove debug print
+                    # print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
+                    self.robot_sim.move_to("gripper", current_gripper_pos)
+                    time.sleep(0.01)
+                    dt = timeit.default_timer() - t0
+                    if dt > 5:
+                        logger.error("Gripper move took too long")
+                        break
+            else:
+                while current_gripper_pos > target_gripper_pos:
+                    current_gripper_pos -= step
+                    positions, _, _ = self.get_joint_state()
+                    # TODO: remove debug print
+                    # print(current_gripper_pos, positions[HelloStretchIdx.GRIPPER])
+                    self.robot_sim.move_to("gripper", current_gripper_pos)
+                    time.sleep(0.02)
+                    dt = timeit.default_timer() - t0
+                    if dt > 5:
+                        logger.error("Gripper move took too long")
+                        break
+
         if "save_map" in action:
             logger.warning("Saving map not supported in Mujoco simulation")
         elif "load_map" in action:
             logger.warning("Loading map not supported in Mujoco simulation")
         elif "say" in action:
-            self.text_to_speech.say_async(action["say"])
+            # self.text_to_speech.say_async(action["say"])
+            do_nothing = True
         if "joint" in action:
             # Move the robot to the given joint configuration
             # Only send the manipulator joints, not gripper or head
@@ -569,6 +631,8 @@ class MujocoZmqServer(BaseZmqServer):
             "step": self._last_step,
             "at_goal": self.base_controller_at_goal(),
             "is_simulation": True,
+            "lidar_points": None,
+            "lidar_timestamp": None,
         }
         return message
 
@@ -586,6 +650,7 @@ class MujocoZmqServer(BaseZmqServer):
             "at_goal": self.base_controller_at_goal(),
             "is_homed": True,
             "is_runstopped": False,
+            "step": self._last_step,
         }
         return message
 
@@ -680,13 +745,37 @@ class MujocoZmqServer(BaseZmqServer):
     "--scene_path", default=None, help="Provide a path to mujoco scene file with stretch.xml"
 )
 @click.option(
-    "--use-robocasa", default=False, help="Use robocasa for generating a scene", is_flag=True
+    "--use-robocasa",
+    "--use_robocasa",
+    default=False,
+    help="Use robocasa for generating a scene",
+    is_flag=True,
 )
-@click.option("--robocasa-task", default="PnPCounterToCab", help="Robocasa task to generate")
-@click.option("--robocasa-style", type=int, default=1, help="Robocasa style to generate")
-@click.option("--robocasa-layout", type=int, default=1, help="Robocasa layout to generate")
-@click.option("--show-viewer-ui", default=False, help="Show the Mujoco viewer UI", is_flag=True)
+@click.option(
+    "--robocasa-task",
+    "--robocasa_task",
+    default="PnPCounterToCab",
+    help="Robocasa task to generate",
+)
+@click.option(
+    "--robocasa-style", "--robocasa_style", type=int, default=1, help="Robocasa style to generate"
+)
+@click.option(
+    "--robocasa-layout",
+    "--robocasa_layout",
+    type=int,
+    default=1,
+    help="Robocasa layout to generate",
+)
+@click.option(
+    "--show-viewer-ui",
+    "--show_viewier_ui",
+    default=False,
+    help="Show the Mujoco viewer UI",
+    is_flag=True,
+)
 @click.option("--headless", default=False, help="Run the simulation headless", is_flag=True)
+@click.option("--seed", default=0, help="Seed for the simulation")
 @click.option(
     "--robocasa-write-to-xml",
     default=False,
@@ -711,28 +800,41 @@ def main(
     robocasa_write_to_xml: bool,
     show_viewer_ui: bool,
     headless: bool = False,
+    seed: int = 0,
 ):
 
     scene_model = None
     objects_info = None
+
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+
     if use_robocasa:
-        scene_model, scene_xml, objects_info = model_generation_wizard(
-            task=robocasa_task,
-            style=robocasa_style,
-            layout=robocasa_layout,
-            write_to_file=robocasa_write_to_xml,  # type: ignore
-        )
+        if not robocasa_write_to_xml and (scene_path is not None and len(scene_path) > 0):
+            scene_model = load_model_from_xml(scene_path)
+        else:
+            scene_model, scene_xml, objects_info = model_generation_wizard(
+                task=robocasa_task,
+                style=robocasa_style,
+                layout=robocasa_layout,
+                write_to_file=scene_path,
+            )
+
+    # If no scene path
+    if scene_path is None or len(scene_path) == 0:
+        scene_path = sim_utils.get_default_scene_path()
 
     server = MujocoZmqServer(
         send_port,
         recv_port,
         send_state_port,
         send_servo_port,
-        use_remote_computer,
-        verbose,
-        image_scaling,
-        ee_image_scaling,
-        depth_scaling,
+        use_remote_computer=use_remote_computer,
+        verbose=verbose,
+        image_scaling=image_scaling,
+        ee_image_scaling=ee_image_scaling,
+        depth_scaling=depth_scaling,
         scene_path=scene_path,
         scene_model=scene_model,
         objects_info=objects_info,
