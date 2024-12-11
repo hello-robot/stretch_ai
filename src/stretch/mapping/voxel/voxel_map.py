@@ -14,7 +14,7 @@
 import math
 import time
 from collections import deque
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -825,7 +825,7 @@ class SparseVoxelMapNavigationSpace(XYT):
         else:
             yield None
 
-    def push_locations_to_stack(self, locations: list[Union[np.ndarray, torch.Tensor]]):
+    def push_locations_to_stack(self, locations: List[Union[np.ndarray, torch.Tensor]]):
         """Push locations to stack for sampling.
 
         Args:

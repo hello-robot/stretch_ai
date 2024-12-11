@@ -33,10 +33,13 @@ WORKDIR /stretch_ai/third_party/
 RUN git clone https://github.com/scikit-learn/scikit-learn.git --branch 1.3.2 && cd scikit-learn && python3 -m pip install -e .
 
 # Open3d and similar
-RUN python3 -m pip install open3d scikit-image trimesh urchin
+RUN python3 -m pip install open3d scikit-image trimesh urchin sophuspy
 
 # UI stuff and resources
 RUN python3 -m pip install termcolor webp hello-robot-stretch-urdf
+
+# Scikit-FMM
+RUN python3 -m pip install scikit-fmm
 
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
