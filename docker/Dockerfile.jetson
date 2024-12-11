@@ -22,8 +22,8 @@ RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install --user pyaudio simpleaudio sounddevice google-cloud-texttospeech \
     overrides pydub gtts
 
-# Other dependencies - networking 
-RUN python3 -m pip install --user pyzmq rerun-sdk
+# Other dependencies - networking and visualization
+RUN python3 -m pip install --user pyzmq rerun-sdk pyliblzfse
 
 # Pinocchio IK solver
 RUN python3 -m pip install --user pin
