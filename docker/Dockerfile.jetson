@@ -29,7 +29,7 @@ RUN python3 -m pip install --user pyzmq rerun-sdk pyliblzfse
 RUN python3 -m pip install --user pin
 
 # Open3d and similar
-RUN python3 -m pip install open3d scikit-image
+RUN python3 -m pip install open3d scikit-image trimesh
 
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
