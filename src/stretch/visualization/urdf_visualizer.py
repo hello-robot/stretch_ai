@@ -19,7 +19,16 @@ from trimesh import Trimesh
 
 from stretch.motion import HelloStretchIdx
 
-pkg_path = str(importlib_resources.files("stretch_urdf"))
+
+# Handle different versions of importlib
+# This is important for supporting older versions of python that are build on orin
+try:
+    files = importlib_resources.files
+except AttributeError:
+    # Fallback for Python < 3.9
+    def files(package):
+        return importlib_resources.path(package, '')
+pkg_path = files("stretch_urdf")
 
 model_name = "SE3"  # RE1V0, RE2V0, SE3
 tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
