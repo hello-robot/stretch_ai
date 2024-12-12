@@ -48,8 +48,6 @@ from stretch.mapping.voxel import (
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
-
-# from stretch.perception.encoders import BaseImageTextEncoder, MaskSiglipEncoder, get_encoder
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -559,7 +557,7 @@ class RobotAgent(RobotAgentBase):
                 debug_text,
                 obs,
                 pointcloud,
-            ) = self.voxel_map.localize_A(text, debug=True, return_debug=True)
+            ) = self.voxel_map.localize_text(text, debug=True, return_debug=True)
             print("Target point selected!")
 
         # Do Frontier based exploration
@@ -570,7 +568,7 @@ class RobotAgent(RobotAgentBase):
 
         if obs is not None and mode == "navigation":
             print(obs, len(self.voxel_map.observations))
-            obs = self.voxel_map.find_obs_id_for_A(text)
+            obs = self.voxel_map.find_obs_id_for_text(text)
             rgb = self.voxel_map.observations[obs - 1].rgb
             self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
 
