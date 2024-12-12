@@ -82,6 +82,7 @@ class RobotAgent(RobotAgentBase):
         manip_port: int = 5557,
         log: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
+        mllm: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -203,9 +204,24 @@ class RobotAgent(RobotAgentBase):
 
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        self.detection_model = OwlPerception(device=self.device)
+        # You can see a clear difference in hyperparameter selection in different querying strategies
+        # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
+        # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
+        if self.mllm:
+            self.detection_model = OwlPerception(
+                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
+            )
+            semantic_memory_resolution = 0.1
+            image_shape = (360, 270)
+        else:
+            self.detection_model = OwlPerception(
+                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
+            )
+            semantic_memory_resolution = 0.05
+            image_shape = (480, 360)
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
+            semantic_memory_resolution=semantic_memory_resolution,
             local_radius=parameters["local_radius"],
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
@@ -226,7 +242,9 @@ class RobotAgent(RobotAgentBase):
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             detection=self.detection_model,
             encoder=self.encoder,
+            image_shape=image_shape,
             log=self.log,
+            mllm=self.mllm,
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,

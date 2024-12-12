@@ -198,24 +198,6 @@ OPENAI_API_KEY=your_key_here
 python -m stretch.app.run_dynamem --use-llm --llm openai
 ```
 
-<!-- ### Select between different options to control your system
-
-You will be asked to choose between some options when running.
-
-If you want the robot to explore the environment, select E between E, N, S.
-![explore](./images/dynamem_instruction2.jpg)
-
-If you want the robot to run an OVMM task, select N between E, N, S; select y (yes) for the next question; enter text query.
-![navigate](./images/dynamem_instruction1.jpg)
-
-After the robot successfully navigates to the target object it will ask you whether you want to pick it up. Since we currently do not support manipulation, just select n (no).
-
-Following this pattern, choose not to place the object and you will be asked to select between E, N, S again.
-
-![no](./images/dynamem_instruction3.jpg)
-
-To quit from the process, just select S. -->
-
 ## Cite Dynamem
 
 If you find Dynamem useful in your research, please consider citing:

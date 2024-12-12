@@ -38,6 +38,7 @@ class DynamemTaskExecutor:
         server_ip: Optional[str] = "127.0.0.1",
         skip_confirmations: bool = True,
         explore_iter: int = 5,
+        mllm: bool = False,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -67,7 +68,12 @@ class DynamemTaskExecutor:
 
         print("- Start robot agent with data collection")
         self.agent = RobotAgent(
-            self.robot, self.parameters, self.semantic_sensor, log=output_path, server_ip=server_ip
+            self.robot,
+            self.parameters,
+            self.semantic_sensor,
+            log=output_path,
+            server_ip=server_ip,
+            mllm=mllm,
         )
         self.agent.start()
 
