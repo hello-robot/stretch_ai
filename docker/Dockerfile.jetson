@@ -60,6 +60,8 @@ RUN cd /deps/detectron2 && python3 -m pip install -e .
 WORKDIR /stretch_ai
 
 # Update transformers
+# Right now this causes issues - I am not sure why
+# RUN python3 -m pip install --upgrade transformers
 
 # Add /stretch_ai/src to PYTHONPATH
 ENV PYTHONPATH="${PYTHONPATH}:/stretch_ai/src"
