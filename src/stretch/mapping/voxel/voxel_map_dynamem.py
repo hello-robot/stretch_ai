@@ -193,7 +193,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             alignments_heuristics = self._alignment_heuristic(
                 alignments_heuristics, outside_frontier, debug=debug
             )
-            total_heuristics = time_heuristics + 0.5 * alignments_heuristics
+            total_heuristics = time_heuristics + 0.3 * alignments_heuristics
         else:
             alignments_heuristics = None
             total_heuristics = time_heuristics
