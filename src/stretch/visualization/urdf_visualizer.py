@@ -26,7 +26,7 @@ urdf_name = f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
 # Handle different versions of importlib
 # This is important for supporting older versions of python that are build on orin
 try:
-    pkg_path = importlib_resources.files("stretch_urdf")
+    pkg_path = str(importlib_resources.files("stretch_urdf"))
 except AttributeError:
     # Fallback for Python < 3.9
     import pkg_resources
