@@ -117,4 +117,4 @@ run_docker_command run \
     -v /dev/shm:/dev/shm \
     --group-add=audio \
     $mount_option \
-   stretch-ai_jetson:$VERSION
+    stretch-ai_jetson:$VERSION

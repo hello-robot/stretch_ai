@@ -96,7 +96,7 @@ This is essentially the same command:
 docker build -t stretch-ai-ros2-bridge . -f docker/Dockerfile.ros2
 ```
 
-Again, it's preferrable to build using the script.
+Again, it's preferable to build using the script.
 
 ## Running the Docker Image
 

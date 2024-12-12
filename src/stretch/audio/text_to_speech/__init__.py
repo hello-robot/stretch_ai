@@ -29,11 +29,14 @@ def get_text_to_speech(name: str) -> AbstractTextToSpeech:
     name = name.lower()
     if name == "google_cloud":
         from .google_cloud_engine import GoogleCloudTextToSpeech
+
         return GoogleCloudTextToSpeech()
     if name == "gtts":
         from .gtts_engine import GTTSTextToSpeech
+
         return GTTSTextToSpeech()
     if name == "pyttsx3":
         from .pyttsx3_engine import PyTTSx3TextToSpeech
+
         return PyTTSx3TextToSpeech()
     raise ValueError(f"Unsupported text-to-speech engine: {name}")

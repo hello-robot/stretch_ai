@@ -14,7 +14,7 @@
 import math
 import time
 from collections import deque
-from typing import Dict, Optional, Tuple, Union, List
+from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np

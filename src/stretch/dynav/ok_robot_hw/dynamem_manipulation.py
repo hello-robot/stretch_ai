@@ -8,10 +8,10 @@
 # license information maybe found below, if so.
 
 
+from typing import Dict
+
 import numpy as np
 import pinocchio as pin
-
-from typing import Dict
 
 # from urdf_parser_py.urdf import URDF
 from scipy.spatial.transform import Rotation as R
