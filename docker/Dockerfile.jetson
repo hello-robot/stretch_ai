@@ -36,16 +36,11 @@ RUN python3 -m pip install --user pin
 WORKDIR /deps/
 RUN git clone https://github.com/scikit-learn/scikit-learn.git --branch 1.3.2 && cd scikit-learn && python3 -m pip install -e .
 
-# Other dependencies - detectron2 for example
-WORKDIR /deps/
-COPY ./third_party/detectron2 ./detectron2
-RUN cd detectron2 && python3 -m pip install -e .
-
 # Open3d and similar
 RUN python3 -m pip install open3d scikit-image trimesh urchin sophuspy
 
-# OpenAI whisper
-RUN python3 -m pip install whisper openai
+# OpenAI whisper and other ai stuff
+RUN python3 -m pip install whisper openai openai-clip timm
 
 # UI stuff and resources
 RUN python3 -m pip install termcolor webp hello-robot-stretch-urdf
@@ -55,6 +50,11 @@ RUN python3 -m pip install scikit-fmm
 
 # Copy current directory to /stretch_ai
 COPY . /stretch_ai
+
+# Other dependencies - detectron2 for example
+WORKDIR /deps/
+COPY ./third_party/detectron2 /deps/detectron2
+RUN cd /deps/detectron2 && python3 -m pip install -e .
 
 # Set /stretch_ai as the working directory
 WORKDIR /stretch_ai
