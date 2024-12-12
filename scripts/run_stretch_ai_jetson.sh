@@ -95,11 +95,23 @@ run_docker_command run \
     -it \
     --runtime nvidia \
     --gpus all \
+    --shm-size=8g \
     -v /dev:/dev \
+    -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro \
     --device /dev/snd \
+    --device /dev/bus/usb \
     --privileged=true \
     --network host \
     --env DISPLAY="$DISPLAY" \
+    --env HF_HOME=$HF_HOME \
+    --volume /tmp/argus_socket:/tmp/argus_socket \
+    --volume /etc/enctune.conf:/etc/enctune.conf \
+    --volume /etc/nv_tegra_release:/etc/nv_tegra_release \
+    --volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
+    --volume /var/run/dbus:/var/run/dbus \
+    --volume /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
+    --volume /var/run/docker.sock:/var/run/docker.sock \
+    --volume $ROOT/data:/data \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /run/dbus/:/run/dbus/:rw \
     -v /dev/shm:/dev/shm \
