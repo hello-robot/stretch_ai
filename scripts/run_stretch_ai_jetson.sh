@@ -69,7 +69,7 @@ fi
 
 echo "===================================================="
 echo "Running docker container with GPU support"
-export DATA_DIR=$parent_dir/data
+export DATA_DIR=$HOME/data
 echo " - mounting data at $DATA_DIR"
 
 # Make sure the image is up to date

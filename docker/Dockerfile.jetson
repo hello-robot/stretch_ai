@@ -59,5 +59,8 @@ RUN pip install -e .
 # Set /stretch_ai as the working directory
 WORKDIR /stretch_ai
 
+ENV PIP_TRUSTED_HOST jetson.webredirect.org
+ENV PIP_INDEX_URL http://jetson.webredirect.org/jp6/cu126
+
 # Add /stretch_ai/src to PYTHONPATH
 ENV PYTHONPATH="${PYTHONPATH}:/stretch_ai/src"
