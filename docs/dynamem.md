@@ -35,7 +35,7 @@ Besides these commands, Dynamem also provides exploration module
 ## Navigation and exploration
 Dynamem stores (two) voxelized pointcloud for navigation and exploration. The first pointcloud is used to generate obstacle map for running A* path planning while another is used to store vision language features for visual grounding and generate value map for exploration.
 
-In [Dynamem paper](https://arxiv.org/pdf/2411.04999), three ways to query semantic memory are introduced, for now we only set up querying with vision language feature similarity. We will soon set up querying with the hybrid of mLLMs and vision language feature similarity.
+In [Dynamem paper](https://arxiv.org/pdf/2411.04999), three ways to query semantic memory for visual grounding are introduced, in this stack we only set up querying with vision language feature similarity and querying with the hybrid of mLLMs and vision language feature similarity. The first strategy is faster while the second has better performance. By default the stack will chose VL feature similarity to do visual grounding.
 
 In terms of exploration, we discovered that commonly used frontier based exploration (FBE) is not suitable for dynamic environments because obtacles might be moved around, creating new frontier, and already scanned portions of the room might also be changed. Therefore, we introduced a value based exploration that assigns any point in the 2D map a heuristic value evaluating how valuable it is to explore to this point. The detailed analysis is described in [Dynamem paper](https://arxiv.org/pdf/2411.04999).
 
@@ -138,6 +138,14 @@ One exploration iteration includes
 To specify how many exploration iterations you want the robot to run after selecting exploration, set up `explore-iter`. For example, if you want the robot to explore for 5 iterations, use the command.
 ```
 python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP -S --explore-iter 5
+```
+
+### Visual grounding with GPT4o
+One way to determine the object location is to first selecting few images with high similarity and prompting GPT4o to find the ones actually containing objects.
+
+To use this setting, you first need to follow [OPENAI's instructions](https://platform.openai.com/docs/overview) to create API keys. After that you can try this version by turning on mllm(`-M`) in your scripts:
+```
+OPNEAI_API_KEY=$YOUR_API_KEY python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP -S -M
 ```
 
 ### Loading from previous semantic memory

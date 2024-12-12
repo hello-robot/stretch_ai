@@ -75,7 +75,18 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     help="Input path with default value None",
 )
 @click.option(
-    "--match-method", "--match_method", type=click.Choice(["class", "feature"]), default="feature"
+    "--match-method",
+    "--match_method",
+    type=click.Choice(["class", "feature"]),
+    default="feature",
+    help="feature for visual servoing",
+)
+@click.option(
+    "--mllm-for-visual-grounding",
+    "--mllm",
+    "-M",
+    is_flag=True,
+    help="Use GPT4o for visual grounding",
 )
 @click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
 def main(
@@ -121,6 +132,7 @@ def main(
         output_path=output_path,
         server_ip=server_ip,
         skip_confirmations=skip_confirmations,
+        mllm=kwargs["mllm_for_visual_grounding"],
     )
 
     if input_path is None:

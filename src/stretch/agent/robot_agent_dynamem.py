@@ -104,6 +104,8 @@ class RobotAgent(RobotAgentBase):
         self.rerun_visualizer = self.robot._rerun
         self.setup_custom_blueprint()
 
+        self.mllm = mllm
+
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
         #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
@@ -453,9 +455,9 @@ class RobotAgent(RobotAgentBase):
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        # for pan in [0.6, -0.2, -1.0, -1.8]:
-        for pan in [0.4, -0.4, -1.2]:
-            for tilt in [-0.65]:
+        for pan in [0.6, -0.2, -1.0, -1.8]:
+            # for pan in [0.4, -0.4, -1.2]:
+            for tilt in [-0.7]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 

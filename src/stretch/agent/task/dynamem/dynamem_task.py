@@ -225,7 +225,7 @@ class DynamemTaskExecutor:
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
                 if self.skip_confirmations or (
                     not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                    and input("Do you want to run navigation? [Y/N]").upper() != "N"
                 ):
                     self.robot.move_to_nav_posture()
                     point = self._find(args)
