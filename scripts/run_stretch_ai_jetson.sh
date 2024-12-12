@@ -69,6 +69,8 @@ fi
 
 echo "===================================================="
 echo "Running docker container with GPU support"
+export DATA_DIR=$parent_dir/data
+echo " - mounting data at $DATA_DIR"
 
 # Make sure the image is up to date
 # Update the Docker image if --update flag is set
@@ -111,7 +113,7 @@ run_docker_command run \
     --volume /var/run/dbus:/var/run/dbus \
     --volume /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    --volume $ROOT/data:/data \
+    --volume $DATA_DIR:/data \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /run/dbus/:/run/dbus/:rw \
     -v /dev/shm:/dev/shm \
