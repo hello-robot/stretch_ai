@@ -957,7 +957,7 @@ class GraspObjectOperation(ManagedOperation):
         # Go back to manipulation posture
         self.robot.move_to_manip_posture()
 
-    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
+    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.35):
         """Move to a pregrasp position in an open loop manner.
 
         Args:
@@ -1000,7 +1000,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Maybe this helps the success of the model
-        target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+        # target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
