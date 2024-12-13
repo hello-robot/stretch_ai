@@ -89,7 +89,9 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     help="Use GPT4o for visual grounding",
 )
 @click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
-@click.option("--manipulation-only", "--manipulation", is_flag=True, help="For debugging manipulation")
+@click.option(
+    "--manipulation-only", "--manipulation", is_flag=True, help="For debugging manipulation"
+)
 def main(
     server_ip,
     manual_wait,
@@ -135,7 +137,7 @@ def main(
         server_ip=server_ip,
         skip_confirmations=skip_confirmations,
         mllm=kwargs["mllm_for_visual_grounding"],
-        manipulation_only = manipulation_only
+        manipulation_only=manipulation_only,
     )
 
     if not manipulation_only:

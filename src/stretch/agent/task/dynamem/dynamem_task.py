@@ -77,7 +77,7 @@ class DynamemTaskExecutor:
             log=output_path,
             server_ip=server_ip,
             mllm=mllm,
-            manipulation_only=manipulation_only
+            manipulation_only=manipulation_only,
         )
         self.agent.start()
 
