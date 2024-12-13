@@ -8,6 +8,8 @@
 # license information maybe found below, if so.
 
 
+from typing import Dict
+
 import numpy as np
 import pinocchio as pin
 
@@ -16,7 +18,7 @@ from scipy.spatial.transform import Rotation as R
 
 from stretch.motion.kinematics import HelloStretchIdx
 
-OVERRIDE_STATES: dict[str, float] = {}
+OVERRIDE_STATES: Dict[str, float] = {}
 
 
 def transform_joint_array(joint_array):

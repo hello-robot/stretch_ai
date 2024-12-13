@@ -10,7 +10,7 @@
 # Standard imports
 import abc
 import logging
-from typing import Any
+from typing import Any, List
 
 # Third-party imports
 import numpy as np
@@ -63,7 +63,7 @@ class AbstractTextToSpeech(abc.ABC):
             The logger to use for logging messages.
         """
         self._logger = logger
-        self._voice_ids: list[str] = []
+        self._voice_ids: List[str] = []
         self._voice_id = ""
         self._is_slow = False
 
@@ -71,7 +71,7 @@ class AbstractTextToSpeech(abc.ABC):
         self._can_say_async = False
 
     @property
-    def voice_ids(self) -> list[str]:
+    def voice_ids(self) -> List[str]:
         """
         Get the list of voice IDs available for the text-to-speech engine.
 
