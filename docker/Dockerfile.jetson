@@ -64,4 +64,4 @@ ENV PIP_INDEX_URL http://jetson.webredirect.org/jp6/cu126
 # RUN python3 -m pip install --upgrade transformers
 
 # Add /stretch_ai/src to PYTHONPATH
-ENV PYTHONPATH="${PYTHONPATH}:/stretch_ai/src"
+ENV PYTHONPATH="${PYTHONPATH}:/stretch_ai/src:/deps/detectron2"
