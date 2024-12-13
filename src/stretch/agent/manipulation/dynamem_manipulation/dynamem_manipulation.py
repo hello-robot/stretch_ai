@@ -136,16 +136,19 @@ class DynamemManipulationWrapper:
             target_state, blocking=blocking, head=np.array([self.pan, self.tilt]), reliable=False
         )
 
-        target_head_pan = self.pan
-        target_head_tilt = self.tilt
-        if not head_tilt is None:
+        if head_tilt is not None:
             target_head_tilt = head_tilt
             self.tilt = head_tilt
-        if not head_pan is None:
+        else:
+            target_head_tilt = self.tilt
+        if head_pan is not None:
             target_head_pan = head_pan
             self.pan = head_pan
-
-        self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
+        else:
+            target_head_pan = self.pan
+        
+        if head_tilt is not None or head_pan is not None:
+            self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
 
     def pickup(self, width):
         """
@@ -214,8 +217,6 @@ class DynamemManipulationWrapper:
             joints["joint_wrist_roll"],
         ]
 
-        # print('pan tilt before', self.robot.get_pan_tilt())
-
         # Moving only the lift first
         if mode == 1:
             target1 = state
@@ -225,8 +226,12 @@ class DynamemManipulationWrapper:
                 target1, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
             )
 
-        self.robot.arm_to(target_state, blocking=True)
-        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
+        # self.robot.arm_to(target_state, blocking=True)
+        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
+
+        self.robot.arm_to(
+            target_state, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
+        )
 
         # NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
         OVERRIDE_STATES["wrist_pitch"] = joints["joint_wrist_pitch"]
