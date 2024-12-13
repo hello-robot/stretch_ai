@@ -91,7 +91,7 @@ def main(
     target_object: str = "toy",
     repeat_count: int = 1,
     enable_realtime_updates: bool = False,
-    show_gui: bool = True,
+    show_gui: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
