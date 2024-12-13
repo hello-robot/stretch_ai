@@ -36,9 +36,6 @@ RUN python3 -m pip install --user pin
 WORKDIR /deps/
 RUN git clone https://github.com/scikit-learn/scikit-learn.git --branch 1.3.2 && cd scikit-learn && python3 -m pip install -e .
 
-WORKDIR /deps/
-RUN git clone https://github.com/opencv/opencv-python.git && cd opencv-python && python3 -m pip install -e .
-
 # Open3d and similar
 RUN python3 -m pip install open3d scikit-image trimesh urchin sophuspy
 
