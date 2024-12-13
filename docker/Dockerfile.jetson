@@ -44,8 +44,17 @@ RUN python3 -m pip install termcolor webp hello-robot-stretch-urdf
 # Scikit-FMM
 RUN python3 -m pip install scikit-fmm
 
-# Copy current directory to /stretch_ai
-COPY . /stretch_ai
+# Set the working directory
+WORKDIR /stretch_ai
+
+# Copy the src/stretch directory into /stretch_ai/src/stretch
+COPY ./src/stretch /stretch_ai/src/stretch
+
+# Copy the data directory into /stretch_ai/data
+COPY ./data /stretch_ai/data
+
+# Copy the src/setup.py file into /stretch_ai/src/setup.py
+COPY ./src/setup.py /stretch_ai/src/setup.py
 
 # Other dependencies - detectron2 for example
 WORKDIR /deps/
