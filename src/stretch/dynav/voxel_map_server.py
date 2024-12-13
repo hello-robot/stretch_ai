@@ -30,11 +30,9 @@ import stretch.utils.logger as logger
 from stretch.agent.zmq_client import HomeRobotZmqClient as RobotClient
 from stretch.core import get_parameters
 from stretch.dynav.communication_util import load_socket, recv_array, recv_everything, send_array
+from stretch.dynav.mapping_utils.voxel import SparseVoxelMap
+from stretch.dynav.mapping_utils.voxel_map import SparseVoxelMapNavigationSpace
 from stretch.dynav.voxel_map_localizer import VoxelMapLocalizer
-from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
-from stretch.mapping.voxel import (
-    SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
-)
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders import CustomImageTextEncoder, MaskSiglipEncoder
 
@@ -583,9 +581,9 @@ class ImageProcessor:
         if self.image_shape is not None:
             h, w = self.image_shape
             h_image, w_image = depth.shape
-            # rgb = F.interpolate(
-            #     rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            # ).squeeze()
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
             depth = F.interpolate(
                 depth.unsqueeze(0).unsqueeze(0),
                 size=self.image_shape,
@@ -629,10 +627,10 @@ class ImageProcessor:
                 camera_K=torch.Tensor(intrinsics),
             )
 
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
+        # if self.image_shape is not None:
+        #     rgb = F.interpolate(
+        #         rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+        #     ).squeeze()
 
         obs, exp = self.voxel_map.get_2d_map()
         if self.rerun and self.rerun_visualizer is None:

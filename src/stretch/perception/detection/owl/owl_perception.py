@@ -46,6 +46,8 @@ class OwlPerception:
             configuration = "google/owlv2-large-patch14-ensemble"
         elif version == "owlv2-B-p16-ensemble":
             configuration = "google/owlv2-base-patch16-ensemble"
+        elif version == "owlv2-B-p16":
+            configuration = "google/owlv2-base-patch16"
         else:
             raise ValueError("Owlv2 version not implemented yet!")
 
