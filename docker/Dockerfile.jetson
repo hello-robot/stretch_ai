@@ -7,10 +7,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Set a DOCKER flag to indicate we are running in a container
 ENV DOCKER 1
 
-# Ensure trusted host information is set properly
-ENV PIP_TRUSTED_HOST jetson.webredirect.org
-ENV PIP_INDEX_URL http://jetson.webredirect.org/jp6/cu126
-
 # Audio dependencies - for PyAudio
 RUN apt-get update && apt-get install -y \
     libasound-dev \
@@ -40,7 +36,7 @@ RUN git clone https://github.com/scikit-learn/scikit-learn.git --branch 1.3.2 &&
 RUN python3 -m pip install open3d scikit-image trimesh urchin sophuspy
 
 # OpenAI whisper and other ai stuff
-RUN python3 -m pip install whisper openai openai-clip timm
+RUN python3 -m pip install whisper openai openai-clip timm opencv-python
 
 # UI stuff and resources
 RUN python3 -m pip install termcolor webp hello-robot-stretch-urdf
@@ -58,6 +54,10 @@ RUN cd /deps/detectron2 && python3 -m pip install -e .
 
 # Set /stretch_ai as the working directory
 WORKDIR /stretch_ai
+
+# Ensure trusted host information is set properly
+ENV PIP_TRUSTED_HOST jetson.webredirect.org
+ENV PIP_INDEX_URL http://jetson.webredirect.org/jp6/cu126
 
 # Update transformers
 # Right now this causes issues - I am not sure why
