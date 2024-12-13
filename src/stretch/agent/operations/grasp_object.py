@@ -926,9 +926,7 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[
-            HelloStretchIdx.WRIST_PITCH
-        ] = self.offset_from_vertical + pitch_from_vertical
+        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:

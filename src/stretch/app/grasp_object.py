@@ -79,7 +79,9 @@ def get_task(robot, demo, target_object, verbose: bool = False, show_gui: bool =
     is_flag=True,
     help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
-@click.option("--show_gui", "--show-gui", is_flag=True, help="Show the visual servoing GUI while grasping")
+@click.option(
+    "--show_gui", "--show-gui", is_flag=True, help="Show the visual servoing GUI while grasping"
+)
 @click.option("--verbose", is_flag=True, help="Print debug information")
 def main(
     robot_ip: str = "",
