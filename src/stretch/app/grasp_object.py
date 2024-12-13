@@ -19,7 +19,7 @@ from stretch.core.task import Task
 from stretch.perception import create_semantic_sensor
 
 
-def get_task(robot, demo, target_object, verbose: bool = False) -> Task:
+def get_task(robot, demo, target_object, verbose: bool = False, show_gui: bool = True) -> Task:
     """Create a very simple task just to test visual servoing to grasp."""
     print("[GRASP OBJECT APP] Target object is set to", target_object)
     try:
@@ -42,7 +42,7 @@ def get_task(robot, demo, target_object, verbose: bool = False) -> Task:
             target_object=target_object,
             show_object_to_grasp=False,
             servo_to_grasp=True,
-            show_servo_gui=True,
+            show_servo_gui=False,
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
             match_method="feature",
@@ -79,6 +79,7 @@ def get_task(robot, demo, target_object, verbose: bool = False) -> Task:
     is_flag=True,
     help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
+@click.option("--show_gui", "--show-gui", is_flag=True, help="Show the visual servoing GUI while grasping")
 @click.option("--verbose", is_flag=True, help="Print debug information")
 def main(
     robot_ip: str = "",
@@ -90,6 +91,7 @@ def main(
     target_object: str = "toy",
     repeat_count: int = 1,
     enable_realtime_updates: bool = False,
+    show_gui: bool = True,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -113,7 +115,7 @@ def main(
     demo.start(visualize_map_at_start=False)
 
     print("Create task...")
-    task = get_task(robot, demo, target_object, verbose=verbose)
+    task = get_task(robot, demo, target_object, verbose=verbose, show_gui=show_gui)
     task.run()
     robot.open_gripper()
 
