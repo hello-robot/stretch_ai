@@ -584,9 +584,10 @@ class HomeRobotZmqClient(AbstractRobotClient):
             joint_positions = self.get_joint_positions()
             joint_angles = conversions.config_to_manip_command(joint_positions)
         elif len(joint_angles) > 6:
-            print(
-                "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
-            )
+            if verbose:
+                print(
+                    "arm_to: converting from full robot state to 6dof manipulation state."
+                )
             joint_angles = conversions.config_to_manip_command(joint_angles)
         if head is not None:
             assert len(head) == 2, "Head must be a 2D vector of pan and tilt"
