@@ -276,7 +276,7 @@ class DynamemTaskExecutor:
                         self.robot.say("I could not find the " + str(args) + ".")
                         break
                 else:
-                    if input("Do you want to run picking? [Y/n]").upper() != "N":
+                    if input("Do you want to run placement? [Y/n]").upper() != "N":
                         self._place(target_object, point=point)
                     else:
                         logger.info("Skip picking!")
