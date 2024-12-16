@@ -39,6 +39,7 @@ class DynamemTaskExecutor:
         skip_confirmations: bool = True,
         explore_iter: int = 5,
         mllm: bool = False,
+        manipulation_only: bool = False,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -49,6 +50,8 @@ class DynamemTaskExecutor:
         self.match_method = match_method
         self.skip_confirmations = skip_confirmations
         self.explore_iter = explore_iter
+
+        self.manipulation_only = manipulation_only
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
@@ -74,6 +77,7 @@ class DynamemTaskExecutor:
             log=output_path,
             server_ip=server_ip,
             mllm=mllm,
+            manipulation_only=manipulation_only,
         )
         self.agent.start()
 
