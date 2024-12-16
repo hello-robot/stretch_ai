@@ -81,6 +81,7 @@ class RobotAgent(RobotAgentBase):
         log: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
+        manipulation_only: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -103,6 +104,7 @@ class RobotAgent(RobotAgentBase):
         self.setup_custom_blueprint()
 
         self.mllm = mllm
+        self.manipulation_only = manipulation_only
 
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
@@ -203,11 +205,18 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+        if self.manipulation_only:
+            self.encoder = None
+        else:
+            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
-        if self.mllm:
+        if self.manipulation_only:
+            self.detection_model = None
+            semantic_memory_resolution = 0.1
+            image_shape = (360, 270)
+        elif self.mllm:
             self.detection_model = OwlPerception(
                 version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
             )
