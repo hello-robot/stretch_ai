@@ -8,6 +8,11 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+
+# Dynamem frequently shows unstable joint state control. 
+# It turns out there is latency in robot's head and arm joint state
+# Here we simulate how Dynamem uses AnyGrasp to pick up objects for debugging.
+
 import time
 
 import click
@@ -51,9 +56,9 @@ def main(
                 if j == 0
                 else cur_state + relative_arm_movement * 0.5
             )
-            robot.arm_to(new_state, head=[target_head_pan, target_head_tilt], blocking=True)
-            # robot.arm_to(new_state, blocking = True)
-            # robot.head_to(head_pan = target_head_pan, head_tilt = target_head_tilt, blocking = True)
+            # robot.arm_to(new_state, head=[target_head_pan, target_head_tilt], blocking=True)
+            robot.arm_to(new_state, blocking = True)
+            robot.head_to(head_pan = target_head_pan, head_tilt = target_head_tilt, blocking = True)
             time.sleep(0.3)
             final_state = robot.get_six_joints()
 
