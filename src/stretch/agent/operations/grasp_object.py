@@ -544,7 +544,6 @@ class GraspObjectOperation(ManagedOperation):
         self.pregrasp_open_loop(
             self.get_object_xyz(), distance_from_object=self.pregrasp_distance_from_object
         )
-        input()
 
         # Give a short pause here to make sure ee image is up to date
         time.sleep(0.5)
@@ -666,6 +665,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
+                print(" -> Displaying visual servoing GUI.")
                 servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
@@ -926,11 +926,7 @@ class GraspObjectOperation(ManagedOperation):
             pitch_from_vertical = 0.0
 
         # Compute final pregrasp joint state goal and send the robot there
-        joint_state[
-            HelloStretchIdx.WRIST_PITCH
-        ] = -0.5  # self.offset_from_vertical + pitch_from_vertical
-        # joint_state[HelloStretchIdx.WRIST_YAW] = 0.5 # self.offset_from_vertical + pitch_from_vertical
-        # joint_state[HelloStretchIdx.GRIPPER] = 100.
+        joint_state[HelloStretchIdx.WRIST_PITCH] = self.offset_from_vertical + pitch_from_vertical
         self.robot.arm_to(joint_state, head=constants.look_at_ee, blocking=True)
 
         if self.servo_to_grasp:
@@ -957,7 +953,7 @@ class GraspObjectOperation(ManagedOperation):
         # Go back to manipulation posture
         self.robot.move_to_manip_posture()
 
-    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.25):
+    def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.35):
         """Move to a pregrasp position in an open loop manner.
 
         Args:
@@ -1000,7 +996,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Maybe this helps the success of the model
-        target_joint_positions[HelloStretchIdx.LIFT] += 0.2
+        # target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])
@@ -1042,6 +1038,7 @@ class GraspObjectOperation(ManagedOperation):
 
         print(f"{self.name}: Moving to pre-grasp position.")
         self.robot.arm_to(target_joint_positions, head=constants.look_at_ee, blocking=True)
+        print("... done.")
 
     def grasp_open_loop(self, object_xyz: np.ndarray):
         """Grasp the object in an open loop manner. We will just move to object_xyz and close the gripper.
