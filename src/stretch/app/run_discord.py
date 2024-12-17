@@ -98,10 +98,7 @@ class StretchDiscordBot(DiscordBot):
             raise NotImplementedError(f"Task {task} is not implemented.")
 
         # Get the LLM client
-        llm_client = None
-        if llm is not None:
-            self.llm_client = get_llm_client(llm, prompt=prompt)
-            self.chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
+        self.llm_client = get_llm_client(llm, prompt=prompt)
 
         self._llm_lock = threading.Lock()
 
@@ -115,13 +112,6 @@ class StretchDiscordBot(DiscordBot):
         print("Bot User IDL", self.client.user.id)
         self._user_name = self.client.user.name
         self._user_id = self.client.user.id
-
-        if self.sent_prompt is False:
-            res = self.chat_wrapper.prompt(self.prompt, verbose=True)
-            print("Chat result:", res)
-            self.sent_prompt = True
-        else:
-            print(" -> We have already sent the prompt.")
 
         # This is from https://builtin.com/software-engineering-perspectives/discord-bot-python
         # LOOPS THROUGH ALL THE GUILD / SERVERS THAT THE BOT IS ASSOCIATED WITH.
@@ -146,7 +136,7 @@ class StretchDiscordBot(DiscordBot):
         print("Starting the message processing queue.")
         self.process_queue.start()
 
-        print("Loaded conversation history:", len(self.chat))
+        print("Loaded conversation history:", len(self.llm_client.get_history()))
         if len(self.chat) == 0:
             print(" -> we will resend the prompt at the appropriate time.")
             print()
