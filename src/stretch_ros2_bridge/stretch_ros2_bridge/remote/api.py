@@ -35,6 +35,7 @@ from .ros import StretchRosInterface
 JOINT_POS_TOL = 0.009
 JOINT_ANG_TOL = 0.03
 
+
 class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
@@ -400,7 +401,7 @@ class StretchClient(AbstractRobotClient):
         head_pan: float = None,
         head_tilt: float = None,
         blocking: bool = False,
-        timeout: float = 4.0
+        timeout: float = 4.0,
     ):
         """Send arm commands"""
         assert len(q) == 6
