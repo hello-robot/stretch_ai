@@ -12,6 +12,49 @@ Enter a name. We suggest naming your new bot after your Stretch, since you will 
 
 After this, I can see Stretch3005 listed under my applications. Click on it to continue.
 
+## Get installation link
 
+![Installation Tab](images/discord_install_page.png)
 
+You will need to retrieve the installation link for your bot from the Installation tab.
+```
+https://discord.com/oauth2/authorize?client_id=$TOKEN
+```
 
+where `$TOKEN` is the client ID of your bot.
+
+## Get OAuth2 Token
+
+![Oath2 redirects](images/discord_oauth2_redirects.png)
+
+Copy and paste the installation link under Redirects.
+
+![Discord Bot Permissions](images/discord_bot_permissions.png)
+
+Then make sure the bot has the correct permissions. You'll need `guild`, `messages.read`, and `bot` permissions at a minimum. Then, choose a redirect URL (the one you just entered above), and add the correct Bot permissions as well.
+
+The bot permissions need to include sending files and messages.
+
+Then you can create an install link. This will be the link you use to add the bot to your server. Integration type should be "guild install" -- guild is the internal term for a server in the Discord API.
+
+Finally, you'll get a URL you can copy into Discord and use to install your bot in a server. Copy and paste it into Discord (in a normal chat is fine), and click on the link to add the bot to your server.
+
+## Set the token in the command line
+
+The discord bot will read the token from the command line:
+
+```bash
+export DISCORD_TOKEN=$TOKEN
+```
+
+where, again, `$TOKEN` is the client ID of your bot. You can find this on the Installation page or in the OAuth2 Client Information section.
+
+## Running the bot
+
+You can now run the bot with the following command:
+
+```bash
+python3 -m stretch.app.run_discord --robot_ip $ROBOT_IP --llm openai
+```
+
+For more information, you can see the [LLM Agent docs](llm_agent.md).
