@@ -28,13 +28,49 @@ logger = Logger(__name__)
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
     
-    def __init__(self, token: Optional[st] = None, llm: str, task: str) -> None:
+    def __init__(self, agent: RobotAgent, token: Optional[st] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, kwargs: Dict[str, Any] = None) -> None:
         super().__init__(token)
+        robot = agent.robot
+
+        # Create the prompt we will use to control the robot
+        prompt = PickupPromptBuilder()
+
+        # Save the parameters
+        self.task = task
+        self.agent = agent
+        self.parameters = agent.parameters
+        self.visual_servo = visual_servo
+        self.device_id = device_id
+        self.output_path = output_path
+        self.server_ip = server_ip
+        self.skip_confirmations = skip_confirmations
+        self.kwargs = kwargs
+        self.prompt = prompt
+
+        if kwargs is None:
+            # Default parameters
+            kwargs = {
+                    "match_method": "feature",
+                    "mllm_for_visual_grounding": False,
+                    }
 
         # Executor handles outputs from the LLM client and converts them into executable actions
         if self.task == "pickup":
             self.executor = PickupExecutor(
                 robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+            )
+        elif self.task == "dynamem":
+            executor = DynamemTaskExecutor(
+                robot,
+                parameters,
+                visual_servo=visual_servo,
+                match_method=kwargs["match_method"],
+                device_id=device_id,
+                output_path=output_path,
+                server_ip=server_ip,
+                skip_confirmations=skip_confirmations,
+                mllm=kwargs["mllm_for_visual_grounding"],
+                manipulation_only=manipulation_only,
             )
         else:
             raise NotImplementedError(f"Task {task} is not implemented.")
@@ -213,11 +249,8 @@ def main(
         print("Loading map from:", input_path)
         agent.load_map(input_path)
 
-    # Create the prompt we will use to control the robot
-    prompt = PickupPromptBuilder()
-
     # Pass in the information we need to create the task
-    bot = StretchDiscordBot(token, agent, llm=llm, task="pickup")
+    bot = StretchDiscordBot(agent, token, llm=llm, task="pickup")
 
     # At the end, disable everything
     robot.stop()
