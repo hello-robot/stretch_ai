@@ -19,8 +19,41 @@ from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
 from stretch.utils.logger import Logger
+from stretch.utils.discord_bot import DiscordBot
+from stretch.utils.logger import Logger
+import threading
 
 logger = Logger(__name__)
+
+class StretchDiscordBot(DiscordBot):
+    """Simple stretch discord bot. Connects to Discord via the API."""
+    
+    def __init__(self, token: Optional[st] = None, llm: str, task: str) -> None:
+        super().__init__(token)
+
+        # Executor handles outputs from the LLM client and converts them into executable actions
+        if self.task == "pickup":
+            self.executor = PickupExecutor(
+                robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+            )
+        else:
+            raise NotImplementedError(f"Task {task} is not implemented.")
+
+        # Get the LLM client
+        llm_client = None
+        if llm is not None:
+            self.llm_client = get_llm_client(llm, prompt=prompt)
+            self.chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
+
+        self._llm_lock = threading.Lock()
+
+    def process(self):
+        with self._llm_lock:
+            llm_response = self.chat_wrapper.query(verbose=debug_llm)
+            if debug_llm:
+                print("Parsed LLM Response:", llm_response)
+
+            ok = executor(llm_response)
 
 
 @click.command()
@@ -118,8 +151,10 @@ logger = Logger(__name__)
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
+@click.option("--token", default=None, help="The token for the discord bot. Will be read from env if not available.")
 def main(
     robot_ip: str = "192.168.1.15",
+    token: Optional[str] = None,
     local: bool = False,
     parameter_file: str = "config/default_planner.yaml",
     device_id: int = 0,
@@ -181,40 +216,8 @@ def main(
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()
 
-    # Executor handles outputs from the LLM client and converts them into executable actions
-    executor = PickupExecutor(
-        robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
-    )
-
-    # Get the LLM client
-    llm_client = None
-    if use_llm:
-        llm_client = get_llm_client(llm, prompt=prompt)
-        chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
-
-    # Parse things and listen to the user
-    ok = True
-    while robot.running and ok:
-        # agent.reset()
-
-        say_this = None
-        if llm_client is None:
-            # Call the LLM client and parse
-            if len(target_object) == 0:
-                target_object = input("Enter the target object: ")
-            if len(receptacle) == 0:
-                receptacle = input("Enter the target receptacle: ")
-            llm_response = [("pickup", target_object), ("place", receptacle)]
-        else:
-            # Call the LLM client and parse
-            llm_response = chat_wrapper.query(verbose=debug_llm)
-            if debug_llm:
-                print("Parsed LLM Response:", llm_response)
-
-        ok = executor(llm_response)
-
-        if llm_client is None:
-            break
+    # Pass in the information we need to create the task
+    bot = StretchDiscordBot(token, agent, llm=llm, task="pickup")
 
     # At the end, disable everything
     robot.stop()

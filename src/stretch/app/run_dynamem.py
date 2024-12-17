@@ -15,14 +15,6 @@ from stretch.agent.task.dynamem import DynamemTaskExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.parameters import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
-from stretch.utils.discord_bot import DiscordBot
-from stretch.utils.logger import Logger
-
-logger = Logger(__name__)
-
-class StretchDiscordBot(DiscordBot):
-    """Simple stretch discord bot. Connects to Discord via the API."""
-
 
 
 @click.command()
