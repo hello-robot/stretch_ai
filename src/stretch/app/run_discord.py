@@ -136,14 +136,6 @@ class StretchDiscordBot(DiscordBot):
         print("Starting the message processing queue.")
         self.process_queue.start()
 
-        print("Loaded conversation history:", len(self.llm_client.get_history()))
-        if len(self.chat) == 0:
-            print(" -> we will resend the prompt at the appropriate time.")
-            print()
-            print("Prompt:")
-            print(self.prompt)
-            print()
-
     def process(self):
         with self._llm_lock:
             llm_response = self.chat_wrapper.query(verbose=debug_llm)
