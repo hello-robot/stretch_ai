@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
@@ -37,6 +37,7 @@ class PickupExecutor:
         open_loop: bool = False,
         dry_run: bool = False,
         available_actions: List[str] = None,
+        discord_bot: Optional["DiscordBot"] = None,
     ) -> None:
         """Initialize the executor.
 
@@ -44,6 +45,7 @@ class PickupExecutor:
             robot: The robot client.
             agent: The robot agent.
             dry_run: If true, don't actually execute the commands.
+            available_actions: A list of available actions.
         """
         self.robot = robot
         self.agent = agent

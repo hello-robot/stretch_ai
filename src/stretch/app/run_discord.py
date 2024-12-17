@@ -29,7 +29,7 @@ logger = Logger(__name__)
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
     
-    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, kwargs: Dict[str, Any] = None) -> None:
+    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, server_ip: str = "127.0.0.1", kwargs: Dict[str, Any] = None) -> None:
         """
         Create a new Discord bot that can interact with the robot.
 
@@ -199,6 +199,7 @@ class StretchDiscordBot(DiscordBot):
     help="Radius of the circle around initial position where the robot is allowed to go.",
 )
 @click.option("--open_loop", "--open-loop", is_flag=True, help="Use open loop grasping")
+@click.option("--server_ip", "--server-ip", default="127.0.0.1", type=str)
 @click.option(
     "--debug_llm",
     "--debug-llm",
@@ -225,6 +226,7 @@ def main(
     debug_llm: bool = False,
     realtime: bool = False,
     radius: float = 3.0,
+    server_ip: str = "127.0.0.1",
     input_path: str = "",
 ):
     """Set up the robot, create a task plan, and execute it."""
@@ -268,7 +270,7 @@ def main(
         agent.load_map(input_path)
 
     # Pass in the information we need to create the task
-    bot = StretchDiscordBot(agent, token, llm=llm, task="pickup")
+    bot = StretchDiscordBot(agent, token, llm=llm, task="pickup", skip_confirmations=True, output_path=".", device_id=device_id, visual_servo=True, kwargs={"match_method": match_method}, server_ip=server_ip)
 
     # At the end, disable everything
     robot.stop()
