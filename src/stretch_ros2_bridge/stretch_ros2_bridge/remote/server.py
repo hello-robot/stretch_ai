@@ -204,7 +204,7 @@ class ZmqServer(BaseZmqServer):
             else:
                 head_pan_cmd, head_tilt_cmd = None, None
 
-            # I found currently the blocking in arm to does not 
+            # I found currently the blocking in arm to does not
             # serve any actual purpose so maybe we should use this line instead
 
             # _is_blocking = action.get("blocking", False) or action.get("manip_blocking", False)
