@@ -32,6 +32,8 @@ from .modules.mapping import StretchMappingClient
 from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
+JOINT_POS_TOL = 0.0075
+JOINT_ANG_TOL = 0.03
 
 class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
@@ -398,11 +400,13 @@ class StretchClient(AbstractRobotClient):
         head_pan: float = None,
         head_tilt: float = None,
         blocking: bool = False,
+        timeout: float = 4.0
     ):
         """Send arm commands"""
         assert len(q) == 6
 
         print(f"-> Sending arm and gripper to {q=} {gripper=} {head_pan=} {head_tilt=}")
+        t0 = time.time()
 
         self.manip.goto_joint_positions(
             joint_positions=q,
@@ -411,6 +415,25 @@ class StretchClient(AbstractRobotClient):
             head_tilt=head_tilt,
             blocking=blocking,
         )
+
+        if blocking:
+            t0 = time.time()
+            while (time.time() - t0) < timeout:
+                self.manip.goto_joint_positions(
+                    joint_positions=q,
+                    gripper=gripper,
+                    head_pan=head_pan,
+                    head_tilt=head_tilt,
+                    blocking=blocking,
+                )
+                joint_pos_final = self.manip.get_joint_positions()
+                joint_err = np.array(joint_pos_final) - np.array(q)
+                arm_success = np.allclose(joint_err[:3], 0.0, atol=JOINT_POS_TOL)
+                wrist_success = np.allclose(joint_err[3:], 0.0, atol=JOINT_ANG_TOL)
+                print(arm_success, wrist_success, joint_err)
+                if arm_success and wrist_success:
+                    print(time.time() - t0)
+                    break
 
 
 if __name__ == "__main__":
