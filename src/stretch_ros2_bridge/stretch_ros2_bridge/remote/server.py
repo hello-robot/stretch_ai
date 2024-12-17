@@ -204,8 +204,11 @@ class ZmqServer(BaseZmqServer):
             else:
                 head_pan_cmd, head_tilt_cmd = None, None
 
-            _is_blocking = action.get("blocking", False) or action.get("manip_blocking", False)
-            # _is_blocking = action.get("blocking", False)
+            # I found currently the blocking in arm to does not 
+            # serve any actual purpose so maybe we should use this line instead
+
+            # _is_blocking = action.get("blocking", False) or action.get("manip_blocking", False)
+            _is_blocking = action.get("blocking", False)
 
             # Now send all command fields here
             self.client.arm_to(
