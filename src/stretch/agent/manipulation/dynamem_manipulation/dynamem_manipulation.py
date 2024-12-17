@@ -136,6 +136,9 @@ class DynamemManipulationWrapper:
             target_state, blocking=blocking, head=np.array([self.pan, self.tilt]), reliable=False
         )
 
+        # It is very important to remember head pan and head tilt for inverse kinematics
+        # As we need to transform the gripper pose in robot head coordinate to robot gripper coordinate
+        # So you always need to remember in which pan and tilt the robot generates the gripper pose.
         if head_tilt is not None:
             target_head_tilt = head_tilt
             self.tilt = head_tilt
@@ -228,12 +231,12 @@ class DynamemManipulationWrapper:
                 target1, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
             )
 
-        # self.robot.arm_to(target_state, blocking=True)
-        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
+        self.robot.arm_to(target_state, blocking=True)
+        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
 
-        self.robot.arm_to(
-            target_state, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
-        )
+        # self.robot.arm_to(
+        #     target_state, blocking=True, head=np.array([self.pan, self.tilt]), reliable=True
+        # )
 
         # NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
         OVERRIDE_STATES["wrist_pitch"] = joints["joint_wrist_pitch"]
