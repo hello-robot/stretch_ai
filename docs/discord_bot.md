@@ -5,7 +5,7 @@ To create a discord bot to chat with your stretch, you'll need to use the [Disco
 On your laptop, in your python environment, you will need to install the discord package:
 
 ```bash
-python -m pip install discord.py
+python -m pip install discord.py python-dotenv
 ```
 
 ![Create a New Application](images/discord_create_app.png)
