@@ -47,6 +47,16 @@ Then you can create an install link. This will be the link you use to add the bo
 
 Finally, you'll get a URL you can copy into Discord and use to install your bot in a server. Copy and paste it into Discord (in a normal chat is fine), and click on the link to add the bot to your server.
 
+## Set Privileged Intents and Get Token
+
+![Bot Token](images/discord_bot_token.png)
+
+Get the token from the Bot tab.
+
+Then set privileged intents to let it send messages, send images, and join the server.
+
+![Privileged Intents](images/discord_get_intents.png)
+
 ## Set the token in the command line
 
 The discord bot will read the token from the command line:

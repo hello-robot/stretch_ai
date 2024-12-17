@@ -29,7 +29,7 @@ logger = Logger(__name__)
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
     
-    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, server_ip: str = "127.0.0.1", use_voice: bool = False, debug_llm: bool = False, manipulation_only: bool = False, kwargs: Dict[str, Any] = None) -> None:
+    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, server_ip: str = "127.0.0.1", use_voice: bool = False, debug_llm: bool = False, manipulation_only: bool = False, kwargs: Dict[str, Any] = None, home_channel: str = "talk-to-stretch") -> None:
         """
         Create a new Discord bot that can interact with the robot.
 
@@ -64,6 +64,10 @@ class StretchDiscordBot(DiscordBot):
         self.skip_confirmations = skip_confirmations
         self.kwargs = kwargs
         self.prompt = prompt
+
+        # LLM info
+        self.home_channel = home_channel
+        self.sent_prompt = False
 
         if kwargs is None:
             # Default parameters
@@ -100,6 +104,55 @@ class StretchDiscordBot(DiscordBot):
             self.chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
 
         self._llm_lock = threading.Lock()
+
+    def on_ready(self):
+        """Event listener called when the bot has switched from offline to online."""
+        print(f"{self.client.user} has connected to Discord!")
+        guild_count = 0
+
+        print("Bot User name:", self.client.user.name)
+        print("Bot Global name:", self.client.user.global_name)
+        print("Bot User IDL", self.client.user.id)
+        self._user_name = self.client.user.name
+        self._user_id = self.client.user.id
+
+        if self.sent_prompt is False:
+            res = self.chat_wrapper.prompt(self.prompt, verbose=True)
+            print("Chat result:", res)
+            self.sent_prompt = True
+        else:
+            print(" -> We have already sent the prompt.")
+
+        # This is from https://builtin.com/software-engineering-perspectives/discord-bot-python
+        # LOOPS THROUGH ALL THE GUILD / SERVERS THAT THE BOT IS ASSOCIATED WITH.
+        for guild in self.client.guilds:
+            # PRINT THE SERVER'S ID AND NAME.
+            print(f"Joining Server {guild.id} (name: {guild.name})")
+
+            # INCREMENTS THE GUILD COUNTER.
+            guild_count = guild_count + 1
+
+            for channel in guild.text_channels:
+                if channel.name == self.home_channel:
+                    print(f"Adding home channel {channel} to the allowed channels.")
+                    self.allowed_channels.add_home(channel)
+                    break
+
+        print(self.allowed_channels)
+
+        # PRINTS HOW MANY GUILDS / SERVERS THE BOT IS IN.
+        print("This bot is in " + str(guild_count) + " guild(s).")
+
+        print("Starting the message processing queue.")
+        self.process_queue.start()
+
+        print("Loaded conversation history:", len(self.chat))
+        if len(self.chat) == 0:
+            print(" -> we will resend the prompt at the appropriate time.")
+            print()
+            print("Prompt:")
+            print(self.prompt)
+            print()
 
     def process(self):
         with self._llm_lock:
@@ -257,6 +310,20 @@ def main(
 
     # Pass in the information we need to create the task
     bot = StretchDiscordBot(agent, token, llm=llm, task="pickup", skip_confirmations=True, output_path=".", device_id=device_id, visual_servo=True, kwargs={"match_method": match_method}, server_ip=server_ip, use_voice=use_voice, debug_llm=debug_llm)
+
+    # Start the bot
+
+    @bot.client.command(name="summon", help="Summon the bot to a channel.")
+    async def summon(ctx):
+        """Summon the bot to a channel."""
+        print("Summoning the bot.")
+        print(" -> Channel name:", ctx.channel.name)
+        print(" -> Channel ID:", ctx.channel.id)
+        bot.allowed_channels.visit(ctx.channel)
+        await ctx.send("Hello! I am here to help you.")
+
+    bot.run()
+
 
     # At the end, disable everything
     robot.stop()
