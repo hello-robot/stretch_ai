@@ -29,7 +29,7 @@ logger = Logger(__name__)
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
     
-    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, server_ip: str = "127.0.0.1", kwargs: Dict[str, Any] = None) -> None:
+    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, server_ip: str = "127.0.0.1", use_voice: bool = False, debug_llm: bool = False, manipulation_only: bool = False, kwargs: Dict[str, Any] = None) -> None:
         """
         Create a new Discord bot that can interact with the robot.
 
@@ -181,12 +181,6 @@ class StretchDiscordBot(DiscordBot):
     help="Path to a saved datafile from a previous exploration of the world.",
 )
 @click.option(
-    "--use_llm",
-    "--use-llm",
-    is_flag=True,
-    help="Set to use the language model",
-)
-@click.option(
     "--use_voice",
     "--use-voice",
     is_flag=True,
@@ -220,7 +214,6 @@ def main(
     receptacle: str = "",
     match_method: str = "feature",
     llm: str = "gemma",
-    use_llm: bool = False,
     use_voice: bool = False,
     open_loop: bool = False,
     debug_llm: bool = False,
@@ -243,13 +236,6 @@ def main(
         verbose=verbose,
     )
 
-    if use_voice and not use_llm:
-        logger.warning("Voice input is only supported with a language model.")
-        logger.warning(
-            "Please set --use-llm to use voice input. For now, we will disable voice input."
-        )
-        use_voice = False
-
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=realtime)
     print("Starting robot agent: initializing...")
@@ -270,7 +256,7 @@ def main(
         agent.load_map(input_path)
 
     # Pass in the information we need to create the task
-    bot = StretchDiscordBot(agent, token, llm=llm, task="pickup", skip_confirmations=True, output_path=".", device_id=device_id, visual_servo=True, kwargs={"match_method": match_method}, server_ip=server_ip)
+    bot = StretchDiscordBot(agent, token, llm=llm, task="pickup", skip_confirmations=True, output_path=".", device_id=device_id, visual_servo=True, kwargs={"match_method": match_method}, server_ip=server_ip, use_voice=use_voice, debug_llm=debug_llm)
 
     # At the end, disable everything
     robot.stop()
