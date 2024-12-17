@@ -32,7 +32,7 @@ from .modules.mapping import StretchMappingClient
 from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
-JOINT_POS_TOL = 0.0075
+JOINT_POS_TOL = 0.009
 JOINT_ANG_TOL = 0.03
 
 class StretchClient(AbstractRobotClient):
@@ -430,9 +430,8 @@ class StretchClient(AbstractRobotClient):
                 joint_err = np.array(joint_pos_final) - np.array(q)
                 arm_success = np.allclose(joint_err[:3], 0.0, atol=JOINT_POS_TOL)
                 wrist_success = np.allclose(joint_err[3:], 0.0, atol=JOINT_ANG_TOL)
-                print(arm_success, wrist_success, joint_err)
+                time.sleep(0.1)
                 if arm_success and wrist_success:
-                    print(time.time() - t0)
                     break
 
 
