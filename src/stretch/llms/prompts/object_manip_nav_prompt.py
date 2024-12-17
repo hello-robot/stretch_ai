@@ -123,42 +123,6 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
     say("I have opened the drawer")
 
 Example 5:
-Command: Go to the white table and clean it
-Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
-    if go_to("white table"):
-        for obj in get_detections():
-            if pick(obj):
-                if place("dustbin"):
-                    say(f"I have placed {obj} in the dustbin")
-                else:
-                    say(f"I am sorry, I could not place {obj} in the dustbin")
-            else:
-                say(f"I am sorry, I could not pick {obj}")
-    else:
-        say("I am sorry, I could not reach the white table")
-
-Example 6:
-Command: Can you clean the white table for me but before that, can you pick up the black head band and place it on the white table?
-Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
-    if pick("black head band"):
-        if place("white table"):
-            say("I have placed the black head band on the white table")
-        else:
-            say("I am sorry, I could not place the black head band")
-        for obj in get_detections():
-            if pick(obj):
-                if place("dustbin"):
-                    say(f"I have placed {obj} in the dustbin")
-                else:
-                    say(f"I am sorry, I could not place {obj} in the dustbin")
-            else:
-                say(f"I am sorry, I could not pick {obj}")
-    else:
-        say("I am sorry, I could not pick the black head band")
-
-Example 7:
 Command: Can you pick up the purple shampoo bottle and place it on the chair? But before that, can you crack a joke?
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
@@ -171,19 +135,19 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
     else:
         say("I am sorry, I could not pick the purple shampoo bottle")
 
-Example 8:
+Example 6:
 Command: Tell me a joke
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
     say("Why did the tomato turn red? Because it saw the salad dressing!")
 
-Example 9:
+Example 7:
 Command: Tell me a fact
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
     say("The first oranges weren't orange")
 
-Example 10:
+Example 8:
 Command: Pick up the cup.
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
@@ -192,7 +156,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
     else:
         say("I am sorry, I could not pick the cup")
 
-Example 11:
+Example 9:
 Command: Can you bring me the wallet?
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
@@ -204,7 +168,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
     else:
         say("I am sorry, I could not pick the wallet")
 
-Example 12:
+Example 10:
 Command: Go to the chair.
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
@@ -213,7 +177,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
     else:
         say("I am sorry, I could not reach the chair")
 
-Example 13:
+Example 11:
 Command: Can you pick up the blue bottle and place it in the dustbin?
 Returns:
 def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):

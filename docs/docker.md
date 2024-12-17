@@ -1,4 +1,4 @@
-# Docker
+# Docker: Setup and Building Docker Images
 
 This is a guide to setting up a Docker container for running the Stretch software. This is useful for running the software on a computer that doesn't have the correct dependencies installed, or for running the software in a controlled environment.
 
@@ -41,18 +41,20 @@ newgrp docker
 
 ## Building the Docker Image
 
-To build the Docker image, clone this repository and run the following command in the root directory of the repository:
+To build the Docker image, clone this repository and you can run the following command in the root directory of the repository:
 
 ```bash
-docker build -t stretch-ai_cuda-11.8:latest .
+docker build -t stretch-ai_cuda-11.8:latest . -f docker/Dockerfile.cuda-11.8
 ```
+
+A helper script is also provided.
 
 ### Use The Docker Build Script
 
 There is a [docker build script](scripts/build-docker.sh) that can be used to build the Docker image. This script will build the Docker image with the correct CUDA version and tag it with the correct name. To use the script, run:
 
 ```bash
-./scripts/build-docker.sh
+./docker/build-docker.sh
 ```
 
 from the root directory of the repository.
@@ -81,6 +83,20 @@ You can pull with:
 ```bash
 docker pull hellorobotinc/stretch-ai_cuda-11.8:latest
 ```
+
+### Building the Robot Docker Images
+
+Similarly, there's a robot docker image build:
+```bash
+./docker/build-robot-docker.sh
+```
+
+This is essentially the same command:
+```
+docker build -t stretch-ai-ros2-bridge . -f docker/Dockerfile.ros2
+```
+
+Again, it's preferable to build using the script.
 
 ## Running the Docker Image
 

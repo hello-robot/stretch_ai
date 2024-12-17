@@ -11,18 +11,19 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-import pprint
-
 import click
 
 # Mapping and perception
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.llm_plan import LLMPlanTask
+from stretch.agent.task.llm_plan import LLMPlanExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import get_llm_client
 from stretch.llms.prompts import ObjectManipNavPromptBuilder
 from stretch.perception import create_semantic_sensor
+from stretch.utils import logger
+
+logger = logger.Logger(__name__)
 
 
 @click.command()
@@ -30,6 +31,17 @@ from stretch.perception import create_semantic_sensor
 @click.option("--robot_ip", default="")
 @click.option("--device-id", default=0, help="Device ID for the semantic sensor")
 @click.option("--llm", default="qwen25-3B-Instruct", help="Language model to use")
+@click.option(
+    "--input-path",
+    "-i",
+    "--input_file",
+    "--input-file",
+    "--input",
+    "--input_path",
+    type=click.Path(),
+    default="",
+    help="Path to a saved datafile from a previous exploration of the world.",
+)
 @click.option("--verbose", default=True)
 @click.option("--parameter-file", default="default_planner.yaml")
 @click.option("--task", default="", help="Default task to perform")
@@ -50,6 +62,7 @@ def main(
     task: str = "",
     yes: bool = False,
     enable_realtime_updates: bool = False,
+    input_path: str = "",
 ):
     parameters = get_parameters(parameter_file)
     robot = HomeRobotZmqClient(
@@ -62,10 +75,16 @@ def main(
         device_id=device_id,
         verbose=verbose,
     )
-    agent = RobotAgent(
-        robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
-    )
+
+    if not parameters.get("agent/use_realtime_updates") or enable_realtime_updates:
+        logger.error("Real-time updates are required for this demo. Enabling them.")
+
+    agent = RobotAgent(robot, parameters, semantic_sensor, enable_realtime_updates=True)
     agent.start()
+
+    if input_path is not None and len(input_path) > 0:
+        print("Loading map from:", input_path)
+        agent.load_map(input_path)
 
     prompt = ObjectManipNavPromptBuilder()
     client = get_llm_client(llm, prompt=prompt)
@@ -81,7 +100,7 @@ def main(
         print(f"Generated plan: \n{plan}")
 
         if yes:
-            proceed = True
+            proceed = "y"
         else:
             proceed = input("Proceed with plan? [y/n]: ")
 
@@ -91,25 +110,19 @@ def main(
         if plan.endswith("```"):
             plan = plan.rsplit("\n", 1)[0]
 
-        llm_plan_task = LLMPlanTask(agent, plan)
-        plan = llm_plan_task.get_task()
-        pprint.pprint(plan)
+        llm_plan_executor = LLMPlanExecutor(agent, plan)
 
-        if yes:
-            proceed = "y"
+        if proceed == "y":
+            try:
+                llm_plan_executor.run()
+            except Exception as e:
+                print(f"Error executing plan: {e}")
 
-        if proceed != "y":
-            print("Exiting...")
-            continue
-
-        try:
-            plan.run()
-        except Exception as e:
-            print(f"Error executing plan: {e}")
-
-        if task:
-            robot.stop()
-            break
+        # Reset variables
+        task = ""
+        plan = ""
+        proceed = ""
+        llm_plan_executor = None
 
 
 if __name__ == "__main__":

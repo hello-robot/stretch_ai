@@ -57,6 +57,7 @@ class OvmmPerception:
                     parameters["detection"]["category_map_file"]
                 )
 
+            print("---- CREATING DETIC PERCEPTION OBJECT ----")
             self._segmentation = DeticPerception(
                 vocabulary="custom",
                 custom_vocabulary=".",
@@ -65,11 +66,13 @@ class OvmmPerception:
                 confidence_threshold=self._confidence_threshold,
                 **module_kwargs,
             )
+            print("---- DETIC PERCEPTION OBJECT CREATED ----")
 
             obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
             vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
             self.update_vocabulary_list(vocab, 0)
             self.set_vocabulary(0)
+            print("... done.")
 
         elif self._detection_module == "sam":
             from stretch.perception.detection.sam import SAMPerception

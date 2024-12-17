@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+from .dynamem_visual_grounding_prompt import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from .object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .ok_robot_prompt import OkRobotPromptBuilder
 from .pickup_prompt import PickupPromptBuilder

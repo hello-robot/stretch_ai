@@ -31,7 +31,7 @@ from stretch.core.interfaces import Observations
 from stretch.dynav.mapping_utils.voxelized_pcd import VoxelizedPointcloud, scatter3d
 from stretch.motion import Footprint, PlanResult, RobotModel
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
-from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd, points_in_mesh
+from stretch.utils.point_cloud import create_visualization_geometries, numpy_to_pcd
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
 from stretch.utils.visualization import create_disk
 from stretch.visualization.urdf_visualizer import URDFVisualizer
@@ -400,8 +400,8 @@ class SparseVoxelMap(object):
                 return
 
             # Remove points that are too close to the robot
-            mesh = self.urdf_visualizer.get_combined_robot_mesh()
-            selected_indices = points_in_mesh(world_xyz, mesh)
+            # mesh = self.urdf_visualizer.get_combined_robot_mesh()
+            # selected_indices = points_in_mesh(world_xyz, mesh)
 
             if world_xyz is not None:
                 world_xyz = world_xyz[selected_indices]

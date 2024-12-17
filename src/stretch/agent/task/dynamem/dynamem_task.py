@@ -38,6 +38,8 @@ class DynamemTaskExecutor:
         server_ip: Optional[str] = "127.0.0.1",
         skip_confirmations: bool = True,
         explore_iter: int = 5,
+        mllm: bool = False,
+        manipulation_only: bool = False,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -48,6 +50,8 @@ class DynamemTaskExecutor:
         self.match_method = match_method
         self.skip_confirmations = skip_confirmations
         self.explore_iter = explore_iter
+
+        self.manipulation_only = manipulation_only
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
@@ -67,7 +71,13 @@ class DynamemTaskExecutor:
 
         print("- Start robot agent with data collection")
         self.agent = RobotAgent(
-            self.robot, self.parameters, self.semantic_sensor, log=output_path, server_ip=server_ip
+            self.robot,
+            self.parameters,
+            self.semantic_sensor,
+            log=output_path,
+            server_ip=server_ip,
+            mllm=mllm,
+            manipulation_only=manipulation_only,
         )
         self.agent.start()
 
@@ -219,7 +229,7 @@ class DynamemTaskExecutor:
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
                 if self.skip_confirmations or (
                     not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
                 ):
                     self.robot.move_to_nav_posture()
                     point = self._find(args)
@@ -237,7 +247,7 @@ class DynamemTaskExecutor:
                         self.robot.say("I could not find the " + str(args) + ".")
                         break
                 else:
-                    if input("Do you want to run picking? [Y/N]").upper() != "N":
+                    if input("Do you want to run picking? [Y/n]: ").upper() != "N":
                         self._pickup(target_object, point=point)
                     else:
                         logger.info("Skip picking!")
@@ -253,7 +263,7 @@ class DynamemTaskExecutor:
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
                 if self.skip_confirmations or (
                     not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
                 ):
                     point = self._find(args)
                 # Or the user explicitly tells that he or she does not want to run navigation.
@@ -270,7 +280,7 @@ class DynamemTaskExecutor:
                         self.robot.say("I could not find the " + str(args) + ".")
                         break
                 else:
-                    if input("Do you want to run picking? [Y/N]").upper() != "N":
+                    if input("Do you want to run placement? [Y/n]").upper() != "N":
                         self._place(target_object, point=point)
                     else:
                         logger.info("Skip picking!")

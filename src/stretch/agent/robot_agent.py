@@ -23,7 +23,6 @@ import torch
 from PIL import Image
 
 import stretch.utils.memory as memory
-from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
 from stretch.core.robot import AbstractRobotClient
@@ -41,6 +40,18 @@ from stretch.utils.obj_centric import ObjectCentricObservations, ObjectImage
 from stretch.utils.point_cloud import ransac_transform
 
 logger = Logger(__name__)
+
+
+try:
+    from stretch.audio.text_to_speech import get_text_to_speech
+
+    imported_tts = True
+except ImportError as e:
+    imported_tts = False
+
+    logger.error(str(e))
+    logger.error("Failed to import text to speech")
+    logger.error("Will continue without text to speech capabilities in the robot agent.")
 
 
 class RobotAgent:
@@ -118,7 +129,10 @@ class RobotAgent:
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
-        self.tts = get_text_to_speech(self.parameters["tts_engine"])
+        if imported_tts:
+            self.tts = get_text_to_speech(self.parameters["tts_engine"])
+        else:
+            self.tts = None
         self._use_instance_memory = use_instance_memory
         self._realtime_updates = enable_realtime_updates or self.parameters.get(
             "agent/use_realtime_updates", False
@@ -1375,6 +1389,9 @@ class RobotAgent:
         if not started:
             # update here
             raise RuntimeError("Robot failed to start!")
+
+        if verbose:
+            print("ZMQ connection to robot started.")
 
         if can_move:
             # First, open the gripper...

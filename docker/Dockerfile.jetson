@@ -1,0 +1,76 @@
+FROM dustynv/l4t-text-generation:r35.3.1
+
+# Set up timezone
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Set a DOCKER flag to indicate we are running in a container
+ENV DOCKER 1
+
+# Audio dependencies - for PyAudio
+RUN apt-get update && apt-get install -y \
+    libasound-dev \
+    portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Make sure pip is up to date
+RUN python3 -m pip install --upgrade pip
+
+# Install audio dependencies
+RUN python3 -m pip install --user pyaudio simpleaudio sounddevice google-cloud-texttospeech \
+    overrides pydub gtts
+
+# Other dependencies - networking and visualization
+RUN python3 -m pip install --user pyzmq rerun-sdk pyliblzfse
+
+# Pinocchio IK solver
+RUN python3 -m pip install --user pin
+
+# Install scikit-learn from source
+WORKDIR /deps/
+RUN git clone https://github.com/scikit-learn/scikit-learn.git --branch 1.3.2 && cd scikit-learn && python3 -m pip install -e .
+
+# Open3d and similar
+RUN python3 -m pip install open3d scikit-image trimesh urchin sophuspy
+
+# OpenAI whisper and other ai stuff
+RUN python3 -m pip install whisper openai openai-clip timm opencv-python
+
+# UI stuff and resources
+RUN python3 -m pip install termcolor webp hello-robot-stretch-urdf
+
+# Scikit-FMM
+RUN python3 -m pip install scikit-fmm
+
+# Set the working directory
+WORKDIR /stretch_ai
+
+# Copy the src/stretch directory into /stretch_ai/src/stretch
+COPY ./src/stretch /stretch_ai/src/stretch
+
+# Copy the data directory into /stretch_ai/data
+COPY ./data /stretch_ai/data
+
+# Copy the src/setup.py file into /stretch_ai/src/setup.py
+COPY ./src/setup.py /stretch_ai/src/setup.py
+
+# Other dependencies - detectron2 for example
+WORKDIR /deps/
+COPY ./third_party/detectron2 /deps/detectron2
+RUN cd /deps/detectron2 && python3 -m pip install -e .
+
+# Set /stretch_ai as the working directory
+WORKDIR /stretch_ai
+
+# Ensure trusted host information is set properly
+ENV PIP_TRUSTED_HOST jetson.webredirect.org
+ENV PIP_INDEX_URL http://jetson.webredirect.org/jp6/cu126
+
+# Update transformers
+# Right now this causes issues - I am not sure why
+# RUN python3 -m pip install --upgrade transformers
+
+# Add /stretch_ai/src to PYTHONPATH
+ENV PYTHONPATH="${PYTHONPATH}:/stretch_ai/src:/deps/detectron2"
