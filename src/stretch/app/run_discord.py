@@ -29,7 +29,24 @@ logger = Logger(__name__)
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
     
-    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, kwargs: Dict[str, Any] = None) -> None:
+    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, kwargs: Dict[str, Any] = None) -> None:
+        """
+        Create a new Discord bot that can interact with the robot.
+
+        Args:
+            agent: The robot agent that will be used to control the robot.
+            token: The token for the discord bot. Will be read from env if not available.
+            llm: The language model to use.
+            task: The task to perform. Currently only "pickup" is supported.
+            skip_confirmations: Set to skip confirmations from the user.
+            output_path: The path to save output files.
+            device_id: The ID of the device to use for perception.
+            visual_servo: Set to use visual servoing.
+            kwargs: Additional parameters.
+
+        Returns:
+            None
+        """
         super().__init__(token)
         robot = agent.robot
 
