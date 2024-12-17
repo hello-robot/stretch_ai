@@ -43,6 +43,8 @@ The bot permissions need to include sending files and messages.
 
 Then you can create an install link. This will be the link you use to add the bot to your server. Integration type should be "guild install" -- guild is the internal term for a server in the Discord API.
 
+![Discord Confirmation](images/discord_confirmation.png)
+
 Finally, you'll get a URL you can copy into Discord and use to install your bot in a server. Copy and paste it into Discord (in a normal chat is fine), and click on the link to add the bot to your server.
 
 ## Set the token in the command line
