@@ -231,12 +231,12 @@ class DynamemManipulationWrapper:
                 target1, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
             )
 
-        # self.robot.arm_to(target_state, blocking=True)
-        # self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
+        self.robot.arm_to(target_state, blocking=True)
+        self.robot.head_to(head_tilt=self.tilt, head_pan=self.pan, blocking=True, reliable=False)
 
-        self.robot.arm_to(
-            target_state, blocking=True, head=np.array([self.pan, self.tilt]), reliable=False
-        )
+        # self.robot.arm_to(
+        #     target_state, blocking=True, head=np.array([self.pan, self.tilt]), reliable=True
+        # )
 
         # NOTE: below code is to fix the pitch drift issue in current hello-robot. Remove it if there is no pitch drift issue
         OVERRIDE_STATES["wrist_pitch"] = joints["joint_wrist_pitch"]
