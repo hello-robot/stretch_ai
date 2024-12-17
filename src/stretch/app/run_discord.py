@@ -10,6 +10,7 @@
 # license information maybe found below, if so.
 
 import click
+from typing import Optional, Dict, Any
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
@@ -28,7 +29,7 @@ logger = Logger(__name__)
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
     
-    def __init__(self, agent: RobotAgent, token: Optional[st] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, kwargs: Dict[str, Any] = None) -> None:
+    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, kwargs: Dict[str, Any] = None) -> None:
         super().__init__(token)
         robot = agent.robot
 
