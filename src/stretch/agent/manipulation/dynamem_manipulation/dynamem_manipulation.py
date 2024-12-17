@@ -136,6 +136,9 @@ class DynamemManipulationWrapper:
             target_state, blocking=blocking, head=np.array([self.pan, self.tilt]), reliable=False
         )
 
+        # It is very important to remember head pan and head tilt for inverse kinematics
+        # As we need to transform the gripper pose in robot head coordinate to robot gripper coordinate
+        # So you always need to remember in which pan and tilt the robot generates the gripper pose.
         if head_tilt is not None:
             target_head_tilt = head_tilt
             self.tilt = head_tilt

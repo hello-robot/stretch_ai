@@ -89,11 +89,6 @@ def capture_and_process_image(mode, obj, socket, hello_robot):
     if mode == "place":
         translation = np.array([-translation[1], -translation[0], -translation[2]])
 
-    # It is very important to remember this for inverse kinematics
-    # As we need to transform the gripper pose in robot head coordinate to robot gripper coordinate
-    # So you always need to remember in which pan and tilt the robot generates the gripper pose.
-    hello_robot.pan, hello_robot.tilt = hello_robot.robot.get_pan_tilt()
-
     if mode == "pick":
         print("Pick: Returning translation, rotation, depth, width")
         return rotation, translation, depth, width
