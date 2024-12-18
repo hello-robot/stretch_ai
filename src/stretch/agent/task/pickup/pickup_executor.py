@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask

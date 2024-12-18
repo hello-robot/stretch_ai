@@ -9,8 +9,10 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import threading
+from typing import Any, Dict, Optional
+
 import click
-from typing import Optional, Dict, Any
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
@@ -19,10 +21,10 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
-from stretch.utils.logger import Logger
 from stretch.utils.discord_bot import DiscordBot
 from stretch.utils.logger import Logger
-import threading
+
+import discord
 
 logger = Logger(__name__)
 
@@ -143,6 +145,50 @@ class StretchDiscordBot(DiscordBot):
                 print("Parsed LLM Response:", llm_response)
 
             ok = executor(llm_response)
+
+    def on_message(self, message: discord.Message, verbose: bool = False):
+        """Event listener for whenever a new message is sent to a channel that this bot is in."""
+        if verbose:
+            # Printing some information to learn about what this actually does
+            print(message)
+            print("Content =", message.content)
+            print("Content type =", type(message.content))
+            print("Author name:", message.author.name)
+            print("Author global name:", message.author.global_name)
+
+        # This is your actual username
+        # sender_name = message.author.name
+        sender_name = message.author.display_name
+        # Only necessary once we want multi-server Friends
+        # global_name = message.author.global_name
+
+        # Skip anything that's from this bot
+        if message.author.id == self._user_id:
+            return None
+
+        # TODO: make this a command line parameter for which channel(s) he should be in
+        channel_name = message.channel.name
+        print("Channel name:", channel_name)
+        channel_id = message.channel.id
+        print("Channel ID:", channel_id)
+        # datetime = message.created_at
+
+        timestamp = message.created_at.timestamp()
+        print("Timestamp:", timestamp)
+
+        print(self.allowed_channels)
+        if not message.channel in self.allowed_channels:
+            print(" -> Not in allowed channels. Skipping.")
+            return None
+
+        # Construct the text to prompt the AI
+        text = f"{sender_name} on #{channel_name}: " + message.content
+        self.push_task(channel=message.channel, message=text)
+
+        print("Current task queue: ", self.task_queue.qsize())
+        print("Current history length:", len(self.chat))
+        # print(" -> Response:", response)
+        return None
 
 
 @click.command()

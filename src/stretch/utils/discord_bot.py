@@ -1,3 +1,12 @@
+# Copyright (c) Hello Robot, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the LICENSE file in the root directory
+# of this source tree.
+#
+# Some code may be adapted from other open-source works with their respective licenses. Original
+# license information maybe found below, if so.
+
 # Copyright 2024 Chris Paxton
 # From https://github.com/cpaxton/virgil/blob/main/virgil/io/discord_bot.py
 #
@@ -15,19 +24,19 @@
 
 # (c) 2024 by Chris Paxton
 
+import asyncio
+import io
+import os
+import queue
+import threading
+import timeit
 from dataclasses import dataclass
 from itertools import chain
-from typing import Optional, List, Dict
-import os
-import timeit
+from typing import Dict, List, Optional
+
 import discord
 from discord.ext import commands, tasks
-import asyncio
 from termcolor import colored
-import queue
-import io
-
-import threading
 
 
 def read_discord_token_from_env():
@@ -56,7 +65,9 @@ class ChannelList:
 
     def __init__(self):
         self.home_channels: List[discord.TextChannel] = []
-        self.visiting_channels: Dict[discord.TextChannel, float] = {}  # Maps channel to expiration time
+        self.visiting_channels: Dict[
+            discord.TextChannel, float
+        ] = {}  # Maps channel to expiration time
 
     def add_home(self, channel: discord.TextChannel):
         """Add a channel to the home list."""
@@ -127,16 +138,31 @@ class DiscordBot:
         self.queue_lock = threading.Lock()
         self.allowed_channels = ChannelList()
 
-    def push_task(self, channel, message: Optional[str] = None, content: Optional[str] = None, explicit: bool = False):
+    def push_task(
+        self,
+        channel,
+        message: Optional[str] = None,
+        content: Optional[str] = None,
+        explicit: bool = False,
+    ):
         """Add a message to the queue to send."""
         # print("Adding task to queue:", message, channel.name, content)
-        self.task_queue.put(Task(message, channel, content, explicit=explicit, t=timeit.default_timer()))
+        self.task_queue.put(
+            Task(message, channel, content, explicit=explicit, t=timeit.default_timer())
+        )
         # print( "Queue length after push:", self.task_queue.qsize())
 
     async def handle_task(self, task: Task):
         """Handle a task by sending the message to the channel. This will make the necessary calls in its thread to the different child functions that send messages, for example."""
         print()
-        print("Handling task: message = ", task.message, " channel = ", task.channel.name, " content = ", task.content)
+        print(
+            "Handling task: message = ",
+            task.message,
+            " channel = ",
+            task.channel.name,
+            " content = ",
+            task.content,
+        )
         if task.message is not None:
             print(" - Sending message:", task.message)
             await task.channel.send(task.message)
@@ -170,7 +196,9 @@ class DiscordBot:
                     if channel in self.allowed_channels:
                         print(f"Introducing myself to channel {channel.name}")
                         try:
-                            self.push_task(channel, message=self.greeting(), content=None, explicit=True)
+                            self.push_task(
+                                channel, message=self.greeting(), content=None, explicit=True
+                            )
                         except Exception as e:
                             print(colored("Error in introducing myself: " + str(e), "red"))
             self._started = True
@@ -182,10 +210,18 @@ class DiscordBot:
 
             # Peak at the next task
             if self.task_queue.qsize() > 0:
-                print("Next task:", self.task_queue.queue[0].message, self.task_queue.queue[0].channel.name)
+                print(
+                    "Next task:",
+                    self.task_queue.queue[0].message,
+                    self.task_queue.queue[0].channel.name,
+                )
 
             # While the channel is the same and content is None...
-            while self.task_queue.qsize() > 0 and self.task_queue.queue[0].channel == task.channel and self.task_queue.queue[0].content is None:
+            while (
+                self.task_queue.qsize() > 0
+                and self.task_queue.queue[0].channel == task.channel
+                and self.task_queue.queue[0].content is None
+            ):
                 # Pop the next task
                 extra_task = self.task_queue.get_nowait()
                 print("Popped task:", extra_task.message, extra_task.channel.name)
@@ -229,7 +265,14 @@ class DiscordBot:
             idx1 = message.content.find("@" + self._user_name)
             idx2 = message.content.find("<@" + str(self._user_id) + ">")
             if idx1 >= 0 or idx2 >= 0:
-                print(" ->", self._user_name, " was mentioned in channel", message.channel.name, "with content:", message.content)
+                print(
+                    " ->",
+                    self._user_name,
+                    " was mentioned in channel",
+                    message.channel.name,
+                    "with content:",
+                    message.content,
+                )
                 if message.channel not in self.allowed_channels:
                     self.allowed_channels.visit(message.channel)
 
