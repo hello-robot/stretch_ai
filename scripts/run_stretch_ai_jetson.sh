@@ -56,7 +56,7 @@ echo "Source version: $VERSION"
 VERSION="latest"
 echo "Docker image version: $VERSION"
 
-echo "Running docker image hellorobotinc/stretch-ai_cuda-11.8:$VERSION"
+echo "Running docker image hellorobotinc/stretch-ai_jetson:$VERSION"
 
 # Check dev flag
 if [[ "$*" == *"--dev"* ]]; then
@@ -75,7 +75,7 @@ echo " - mounting data at $DATA_DIR"
 # Make sure the image is up to date
 # Update the Docker image if --update flag is set
 if $update; then
-    run_docker_command pull hellorobotinc/stretch-ai_cuda-11.8:$VERSION
+    run_docker_command pull hellorobotinc/stretch-ai_jetson:$VERSION
 fi
 
 # Run the container
