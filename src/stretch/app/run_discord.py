@@ -186,7 +186,6 @@ class StretchDiscordBot(DiscordBot):
         self.push_task(channel=message.channel, message=text)
 
         print("Current task queue: ", self.task_queue.qsize())
-        print("Current history length:", len(self.chat))
         # print(" -> Response:", response)
         return None
 
