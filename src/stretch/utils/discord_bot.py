@@ -153,20 +153,31 @@ class DiscordBot:
         )
         # print( "Queue length after push:", self.task_queue.qsize())
 
-    def send_message(self, channel, message: Optional[str], content: Optional[str] = None):
+    def send_message(self, channel, message: Optional[str] = None, content: Optional[str] = None):
         """Send a message to a channel.
 
         Args:
             channel: The channel to send the message to.
-            message: The message to send.
-            content: The content to send.
+            message: The message to send (text), if any.
+            content: The image or file to send as a BytesIO object.
         """
-        if message is not None:
-            print("Sending message:", message)
-            channel.send(message)
-        if content is not None:
-            file = discord.File(content)
-            channel.send(file=file)
+
+        async def _send_message():
+            """Send a message to a channel.
+
+            Args:
+                channel: The channel to send the message to.
+                message: The message to send.
+                content: The content to send.
+            """
+            if message is not None:
+                print("Sending message:", message)
+                await channel.send(message)
+            if content is not None:
+                file = discord.File(content)
+                await channel.send(file=file)
+
+        asyncio.run(_send_message)
 
     async def handle_task(self, task: Task):
         """Handle a task by sending the message to the channel. This will make the necessary calls in its thread to the different child functions that send messages, for example."""
@@ -346,7 +357,7 @@ class DiscordBot:
                 await bot.start(self.token)
 
         # self.client.start(self.token)
-        asyncio.run(_main())
+        asyncio.run(_main)
 
     def __del__(self):
         self.running = False
