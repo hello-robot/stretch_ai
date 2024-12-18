@@ -82,7 +82,7 @@ class StretchDiscordBot(DiscordBot):
         # Executor handles outputs from the LLM client and converts them into executable actions
         if self.task == "pickup":
             self.executor = PickupExecutor(
-                robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+                robot, agent, available_actions=prompt.get_available_actions(), dry_run=False, discord_bot=self
             )
         elif self.task == "dynamem":
             executor = DynamemTaskExecutor(
@@ -212,6 +212,9 @@ class StretchDiscordBot(DiscordBot):
         with self._llm_lock:
             response = self.llm_client(text, verbose=True)
             print("Response:", response)
+            parsed_response = self.prompt.parse_response(response)
+            print("Parsed response:", parsed_response)
+            self.executor(parsed_response, channel=task.channel)
 
 
 @click.command()
@@ -234,7 +237,8 @@ class StretchDiscordBot(DiscordBot):
 @click.option(
     "--llm",
     # default="gemma2b",
-    default="qwen25-3B-Instruct",
+    # default="qwen25-3B-Instruct",
+    default="qwen25",
     help="Client to use for language model. Recommended: gemma2b, openai",
     type=click.Choice(get_llm_choices()),
 )

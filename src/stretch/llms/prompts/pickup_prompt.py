@@ -199,9 +199,7 @@ end()
 
 Never return pickup() without a corresponding place() command. You may only use each action once. No duplicate actions.
 
-The arguments to pickup(), place(), and find() must be clear and specific. Do not use pronouns or ambiguous language. If somethng is unclear, ask for clarification. 
-
-Starting dialogue now.
+The arguments to pickup(), place(), and find() must be clear and specific. Do not use pronouns or ambiguous language. If something is unclear, ask for clarification. 
 
 input:
 """

@@ -51,6 +51,9 @@ class PickupExecutor:
         self.agent = agent
         self.available_actions = available_actions
 
+        # Optional discord integration for chatting with the robot
+        self.discord_bot = discord_bot
+
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
             raise TypeError(f"Expected AbstractRobotClient, got {type(self.robot)}")
@@ -187,11 +190,12 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]]) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel = None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
             response: A list of tuples, where the first element is the command and the second is the argument.
+            channel (Optional): The discord channel to send messages to, if using discord bot.
 
         Returns:
             True if we should keep going, False if we should stop.
@@ -215,6 +219,9 @@ class PickupExecutor:
             if command == "say":
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
+                if channel is not None:
+                    print("!!!!!!!!", args, channel)
+                    self.discord_bot.push_task(channel=channel, message=args)
                 self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
