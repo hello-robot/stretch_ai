@@ -21,7 +21,7 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
 from stretch.perception import create_semantic_sensor
-from stretch.utils.discord_bot import DiscordBot
+from stretch.utils.discord_bot import DiscordBot, Task
 from stretch.utils.logger import Logger
 from stretch.utils.image import numpy_image_to_bytes
 
@@ -139,18 +139,16 @@ class StretchDiscordBot(DiscordBot):
         print("Starting the message processing queue.")
         self.process_queue.start()
 
-    def process(self):
-        with self._llm_lock:
-            llm_response = self.chat_wrapper.query(verbose=debug_llm)
-            if debug_llm:
-                print("Parsed LLM Response:", llm_response)
+    def push_task_to_all_channels(self, message: Optional[str] = None, content: Optional[str] = None):
+        """Push a task to all channels. Message will be "as-is" with no processing.
 
-            ok = executor(llm_response)
+        Args:
+            message: The message to send to the channel.
+            content: The content (image string) to send to the channel.
+        """
 
-    def push_task_to_all_channels(self, message: Optional[str], content: Optional[str] = None):
-        """Push a task to all channels."""
         for channel in self.allowed_channels:
-            self.push_task(channel, message=message, content=content)
+            self.push_task(channel, message=message, content=content, explicit=True)
 
     def on_message(self, message: discord.Message, verbose: bool = False):
         """Event listener for whenever a new message is sent to a channel that this bot is in."""
@@ -194,6 +192,26 @@ class StretchDiscordBot(DiscordBot):
         print("Current task queue: ", self.task_queue.qsize())
         # print(" -> Response:", response)
         return None
+
+    async def handle_task(self, task: Task):
+        """Handle a task by sending the message to the channel. This will make the necessary calls in its thread to the different child functions that send messages, for example."""
+        print()
+        print("-" * 40)
+        print("Handling task from channel:", task.channel.name)
+        print("Handling task: message = \n", task.message)
+
+        text = task.message
+        try:
+            if task.explicit:
+                print("This task was explicitly triggered.")
+                await task.channel.send(task.message)
+                return
+        except Exception as e:
+            print(colored("Error in handling task: " + str(e), "red"))
+
+        with self._llm_lock:
+            response = self.llm_client(text, verbose=True)
+            print("Response:", response)
 
 
 @click.command()
