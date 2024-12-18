@@ -104,6 +104,10 @@ setuptools.setup(
             "mypy",
             "lark",
         ],
+        "discord": [
+            "discord.py",
+            "python-dotenv",
+        ],
         "sim": [
             "mujoco",
             "hello-robot-stretch-urdf",

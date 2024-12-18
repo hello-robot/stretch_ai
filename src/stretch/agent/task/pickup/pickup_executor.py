@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
@@ -37,6 +37,7 @@ class PickupExecutor:
         open_loop: bool = False,
         dry_run: bool = False,
         available_actions: List[str] = None,
+        discord_bot: Optional["DiscordBot"] = None,
     ) -> None:
         """Initialize the executor.
 
@@ -44,10 +45,14 @@ class PickupExecutor:
             robot: The robot client.
             agent: The robot agent.
             dry_run: If true, don't actually execute the commands.
+            available_actions: A list of available actions.
         """
         self.robot = robot
         self.agent = agent
         self.available_actions = available_actions
+
+        # Optional discord integration for chatting with the robot
+        self.discord_bot = discord_bot
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
@@ -185,11 +190,12 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]]) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel = None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
             response: A list of tuples, where the first element is the command and the second is the argument.
+            channel (Optional): The discord channel to send messages to, if using discord bot.
 
         Returns:
             True if we should keep going, False if we should stop.
@@ -213,6 +219,9 @@ class PickupExecutor:
             if command == "say":
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
+                if channel is not None:
+                    print("!!!!!!!!", args, channel)
+                    self.discord_bot.send_message(channel=channel, message=args)
                 self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
