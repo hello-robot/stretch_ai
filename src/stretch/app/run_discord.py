@@ -23,6 +23,7 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 from stretch.perception import create_semantic_sensor
 from stretch.utils.discord_bot import DiscordBot
 from stretch.utils.logger import Logger
+from stretch.utils.image import numpy_image_to_bytes
 
 import discord
 
@@ -145,6 +146,11 @@ class StretchDiscordBot(DiscordBot):
                 print("Parsed LLM Response:", llm_response)
 
             ok = executor(llm_response)
+
+    def push_task_to_all_channels(self, message: Optional[str], content: Optional[str] = None):
+        """Push a task to all channels."""
+        for channel in self.allowed_channels:
+            self.push_task(channel, message=message, content=content)
 
     def on_message(self, message: discord.Message, verbose: bool = False):
         """Event listener for whenever a new message is sent to a channel that this bot is in."""
@@ -349,6 +355,8 @@ def main(
         bot.allowed_channels.visit(ctx.channel)
         await ctx.send("Hello! I am here to help you.")
 
+    obs = robot.get_observation()
+    bot.push_task_to_all_channels(content=obs.rgb)
     bot.run()
 
 

@@ -33,6 +33,7 @@ import timeit
 from dataclasses import dataclass
 from itertools import chain
 from typing import Dict, List, Optional
+from PIL import Image
 
 import discord
 from discord.ext import commands, tasks
