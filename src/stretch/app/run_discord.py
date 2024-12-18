@@ -205,6 +205,8 @@ class StretchDiscordBot(DiscordBot):
             if task.explicit:
                 print("This task was explicitly triggered.")
                 await task.channel.send(task.message)
+                if task.content is not None:
+                    await task.channel.send(file=discord.File(task.content))
                 return
         except Exception as e:
             print(colored("Error in handling task: " + str(e), "red"))

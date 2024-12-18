@@ -153,6 +153,21 @@ class DiscordBot:
         )
         # print( "Queue length after push:", self.task_queue.qsize())
 
+    def send_message(self, channel, message: Optional[str], content: Optional[str] = None):
+        """Send a message to a channel.
+
+        Args:
+            channel: The channel to send the message to.
+            message: The message to send.
+            content: The content to send.
+        """
+        if message is not None:
+            print("Sending message:", message)
+            channel.send(message)
+        if content is not None:
+            file = discord.File(content)
+            channel.send(file=file)
+
     async def handle_task(self, task: Task):
         """Handle a task by sending the message to the channel. This will make the necessary calls in its thread to the different child functions that send messages, for example."""
         print()
