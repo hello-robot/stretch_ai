@@ -21,7 +21,6 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 from stretch.perception import create_semantic_sensor
 from stretch.utils.discord_bot import DiscordBot, Task
 from stretch.utils.logger import Logger
-from stretch.utils.image import numpy_image_to_bytes
 
 import discord
 

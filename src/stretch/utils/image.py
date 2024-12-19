@@ -15,6 +15,7 @@ import copy
 import functools
 from typing import List
 import io
+from PIL import Image
 
 import cv2
 import numpy as np

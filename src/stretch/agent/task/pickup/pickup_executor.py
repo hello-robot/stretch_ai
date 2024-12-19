@@ -18,6 +18,7 @@ from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.agent.task.pickup.place_task import PlaceOnReceptacleTask
 from stretch.core import AbstractRobotClient
 from stretch.utils.logger import Logger
+from stretch.utils.image import numpy_image_to_bytes
 
 logger = Logger(__name__)
 # Default to hiding info messages
@@ -220,8 +221,8 @@ class PickupExecutor:
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
                 if channel is not None:
-                    self.discord_bot.send_message(channel=channel, message=args)
-
+                    obs = self.robot.get_observation()
+                    self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
                 self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
