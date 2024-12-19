@@ -158,6 +158,38 @@ class DynamemTaskExecutor:
             self.agent.manipulate(target_object, theta, skip_confirmation=skip_confirmations)
         self.robot.look_front()
 
+    def _take_picture(self, channel=None) -> None:
+        """Take a picture with the head camera. Optionally send it to Discord."""
+
+        obs = self.robot.get_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.rgb).save(filename)
+        else:
+            self.discord_bot.send_message(
+                channel=channel, message="Head camera:", content=numpy_image_to_bytes(obs.rgb)
+            )
+
+    def _take_ee_picture(self, channel=None) -> None:
+        """Take a picture of the end effector."""
+
+        obs = self.robot.get_servo_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.ee_rgb).save(filename)
+        else:
+            self.discord_bot.send_message(
+                channel=channel,
+                message="End effector camera:",
+                content=numpy_image_to_bytes(obs.ee_rgb),
+            )
+
+
+
     def _place(self, target_receptacle: str, point: Optional[np.ndarray]) -> None:
         """Place an object.
 
