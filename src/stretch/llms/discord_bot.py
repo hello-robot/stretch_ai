@@ -107,7 +107,7 @@ class StretchDiscordBot(DiscordBot):
                 discord_bot=self,
             )
         elif self.task == "dynamem":
-            executor = DynamemTaskExecutor(
+            self.executor = DynamemTaskExecutor(
                 robot,
                 agent.parameters,
                 visual_servo=visual_servo,
