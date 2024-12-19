@@ -266,7 +266,7 @@ class StretchDiscordBot(DiscordBot):
                 with self._plan_lock:
                     response, channel = self.next_plan
                     self.next_plan = None
-                self.executor.execute(response, channel=channel)
+                self.executor(response, channel=channel)
             else:
                 time.sleep(0.01)
 
