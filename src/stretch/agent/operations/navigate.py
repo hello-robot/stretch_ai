@@ -21,9 +21,10 @@ class NavigateToObjectOperation(ManagedOperation):
     for_manipulation: bool = True
     be_precise: bool = False
 
-    def __init__(self, *args, to_receptacle=False, **kwargs):
+    def __init__(self, *args, to_receptacle=False, for_manipulation: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
         self.to_receptacle = to_receptacle
+        self.for_manipulation = for_manipulation
 
     def get_target(self):
         if self.to_receptacle:
@@ -50,7 +51,10 @@ class NavigateToObjectOperation(ManagedOperation):
             self.cheer("Already within reach of object!")
 
         # Motion plan to the object
-        plan = self.agent.plan_to_instance_for_manipulation(self.get_target(), start=start)
+        if self.for_manipulation:
+            plan = self.agent.plan_to_instance_for_manipulation(self.get_target(), start=start)
+        else:
+            plan = self.agent.plan_to_instance(self.get_target(), start=start)
 
         if plan.success:
             self.plan = plan

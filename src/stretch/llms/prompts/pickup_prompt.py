@@ -25,6 +25,8 @@ When prompted, you will respond using these actions:
 - avert_gaze() # avert your gaze
 - find(object_name)  # find the object or location by exploring
 - go_home()  # navigate back to where you started
+- take_picture()  # take a picture of the environment
+- take_ee_picture()  # take a picture with the end effector camera
 - quit()  # end the conversation
 
 These functions and their arguments are the only things you will say, and they are your only way to interact with the world. Wave if a person is being nice to you or greeting you. You should always say what you are going to do before you do it.
@@ -74,6 +76,34 @@ input: "Find the remote control."
 output:
 say("Looking for the remote control.")
 find(remote control)
+end()
+
+input: "Can you take a picture?"
+output:
+say("I am taking a picture.")
+take_picture()
+end()
+
+input: "Can you take a picture with the end effector camera?"
+output:
+say("I am taking a picture with the end effector camera.")
+take_ee_picture()
+end()
+
+input: "Find the orange cup and take a picture."
+output:
+say("Looking for the orange cup.")
+find(orange cup)
+say("I am taking a picture of the orange cup.")
+take_picture()
+end()
+
+input: "Take a picture of the stuffed dinosaur."
+output:
+say("Looking for the stuffed dinosaur.")
+find(stuffed dinosaur)
+say("I am taking a picture of the stuffed dinosaur.")
+take_picture()
 end()
 
 If you are asked to give the speaker an object and you have not already picked it up, you will first pick up the object and then hand it to the person.
@@ -199,9 +229,7 @@ end()
 
 Never return pickup() without a corresponding place() command. You may only use each action once. No duplicate actions.
 
-The arguments to pickup(), place(), and find() must be clear and specific. Do not use pronouns or ambiguous language. If somethng is unclear, ask for clarification. 
-
-Starting dialogue now.
+The arguments to pickup(), place(), and find() must be clear and specific. Do not use pronouns or ambiguous language. If something is unclear, ask for clarification. 
 
 input:
 """
@@ -246,6 +274,10 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands.append(line)
             elif line.startswith("find("):
                 commands.append(line)
+            elif line.startswith("take_picture()"):
+                commands.append(line)
+            elif line.startswith("take_ee_picture()"):
+                commands.append(line)
             elif line.startswith("end()"):
                 # Stop parsing if we see the end command
                 break
@@ -273,6 +305,10 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("shake_head", ""))
             elif command.startswith("avert_gaze()"):
                 parsed_commands.append(("avert_gaze", ""))
+            elif command.startswith("take_picture()"):
+                parsed_commands.append(("take_picture", ""))
+            elif command.startswith("take_ee_picture()"):
+                parsed_commands.append(("take_ee_picture", ""))
             elif command.startswith("find("):
                 parsed_commands.append(("find", command[5:-1]))
             elif command.startswith("quit()"):
