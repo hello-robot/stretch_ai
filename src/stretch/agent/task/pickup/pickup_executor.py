@@ -220,8 +220,8 @@ class PickupExecutor:
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
                 if channel is not None:
-                    print("!!!!!!!!", args, channel)
                     self.discord_bot.send_message(channel=channel, message=args)
+
                 self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
