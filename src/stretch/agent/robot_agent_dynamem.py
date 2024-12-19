@@ -257,11 +257,9 @@ class RobotAgent(RobotAgentBase):
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
-            rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters[
-                "dilate_frontier_size"
-            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
-            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            rotation_step_size=parameters.get("motion_planner/rotation_step_size", 0.2),
+            dilate_frontier_size=parameters.get("motion_planner/frontier/dilate_frontier_size", 2),
+            dilate_obstacle_size=parameters.get("motion_planner/frontier/dilate_obstacle_size", 0),
         )
         self.planner = AStar(self.space)
 
