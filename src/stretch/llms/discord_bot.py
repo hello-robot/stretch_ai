@@ -12,7 +12,6 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-import click
 import discord
 from termcolor import colored
 
@@ -20,10 +19,8 @@ from termcolor import colored
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.dynamem import DynamemTaskExecutor
 from stretch.agent.task.pickup import PickupExecutor
-from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
-from stretch.perception import create_semantic_sensor
+from stretch.llms import PickupPromptBuilder, get_llm_client
 from stretch.utils.discord_bot import DiscordBot, Task
 from stretch.utils.logger import Logger
 

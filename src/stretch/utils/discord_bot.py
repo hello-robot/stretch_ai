@@ -36,7 +36,6 @@ from typing import Dict, List, Optional
 
 import discord
 from discord.ext import commands, tasks
-from PIL import Image
 from termcolor import colored
 
 
@@ -135,7 +134,7 @@ class DiscordBot:
         self.token = token
 
         self.running = True
-        self.task_queue: Queue[Task] = queue.Queue()
+        self.task_queue: queue.Queue = queue.Queue()
         self.queue_lock = threading.Lock()
         self.allowed_channels = ChannelList()
 

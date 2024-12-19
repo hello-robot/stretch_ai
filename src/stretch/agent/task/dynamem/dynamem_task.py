@@ -7,10 +7,12 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import datetime
 from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+from PIL import Image
 
 from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
@@ -19,6 +21,7 @@ from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
 from stretch.dynav.utils import compute_tilt
 from stretch.perception import create_semantic_sensor
+from stretch.utils.image import numpy_image_to_bytes
 
 # Mapping and perception
 from stretch.utils.logger import Logger
@@ -40,7 +43,7 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
-        discord_bot = None,
+        discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
@@ -106,7 +109,6 @@ class DynamemTaskExecutor:
         """
         self.robot.switch_to_navigation_mode()
         point = self.agent.navigate(target_object)
-        self.agent.voxel_map.write_to_pickle()
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
             return None
@@ -187,8 +189,6 @@ class DynamemTaskExecutor:
                 message="End effector camera:",
                 content=numpy_image_to_bytes(obs.ee_rgb),
             )
-
-
 
     def _place(self, target_receptacle: str, point: Optional[np.ndarray]) -> None:
         """Place an object.

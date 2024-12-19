@@ -17,7 +17,7 @@ import click
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
-from stretch.llms import LLMChatWrapper, get_llm_choices
+from stretch.llms import get_llm_choices
 from stretch.llms.discord_bot import StretchDiscordBot
 from stretch.perception import create_semantic_sensor
 from stretch.utils.logger import Logger
