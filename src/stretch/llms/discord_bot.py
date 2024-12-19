@@ -9,17 +9,17 @@
 
 import datetime
 import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
 import discord
 from termcolor import colored
-import time
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.pickup import PickupExecutor
 from stretch.agent.task.dynamem import DynamemTaskExecutor
+from stretch.agent.task.pickup import PickupExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
@@ -109,7 +109,7 @@ class StretchDiscordBot(DiscordBot):
         elif self.task == "dynamem":
             executor = DynamemTaskExecutor(
                 robot,
-                parameters,
+                agent.parameters,
                 visual_servo=visual_servo,
                 match_method=kwargs["match_method"],
                 device_id=device_id,

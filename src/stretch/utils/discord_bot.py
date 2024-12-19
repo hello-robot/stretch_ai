@@ -135,7 +135,7 @@ class DiscordBot:
         self.token = token
 
         self.running = True
-        self.task_queue = queue.Queue()
+        self.task_queue: Queue[Task] = queue.Queue()
         self.queue_lock = threading.Lock()
         self.allowed_channels = ChannelList()
 

@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 import datetime
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from PIL import Image
 
@@ -41,7 +41,7 @@ class PickupExecutor:
         open_loop: bool = False,
         dry_run: bool = False,
         available_actions: List[str] = None,
-        discord_bot: Optional["DiscordBot"] = None,
+        discord_bot=None,
     ) -> None:
         """Initialize the executor.
 
