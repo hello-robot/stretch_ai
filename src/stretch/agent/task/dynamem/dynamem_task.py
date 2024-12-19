@@ -189,7 +189,7 @@ class DynamemTaskExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]]) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel: None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
@@ -325,6 +325,10 @@ class DynamemTaskExecutor:
                 logger.info("[Pickup task] Quitting.")
                 self.robot.stop()
                 return False
+            elif command == "take_picture":
+                self._take_picture(channel)
+            elif command == "take_ee_picture":
+                self._take_ee_picture(channel)
             elif command == "end":
                 logger.info("[Pickup task] Ending.")
                 break
