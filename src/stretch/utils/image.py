@@ -13,15 +13,15 @@
 # LICENSE file in the root directory of this source tree.
 import copy
 import functools
-from typing import List
 import io
-from PIL import Image
+from typing import List
 
 import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
 import trimesh.transformations as tra
+from PIL import Image
 from torch import Tensor
 
 
@@ -580,6 +580,7 @@ def scale_camera_matrix(K: np.ndarray, scale_factor: float) -> np.ndarray:
 
     return K_scaled
 
+
 def numpy_image_to_bytes(np_image: np.ndarray) -> io.BytesIO:
     """Convert a numpy image to a byte array."""
     # Create a BytesIO object
@@ -595,5 +596,3 @@ def numpy_image_to_bytes(np_image: np.ndarray) -> io.BytesIO:
     byte_arr.seek(0)
 
     return byte_arr
-
-

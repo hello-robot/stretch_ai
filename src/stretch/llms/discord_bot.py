@@ -7,12 +7,13 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import threading
-from typing import Any, Dict, Optional
-from termcolor import colored
-
 import datetime
+import threading
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
+import discord
+from termcolor import colored
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
@@ -24,15 +25,29 @@ from stretch.perception import create_semantic_sensor
 from stretch.utils.discord_bot import DiscordBot, Task
 from stretch.utils.logger import Logger
 
-import discord
-
 logger = Logger(__name__)
 
 
 class StretchDiscordBot(DiscordBot):
     """Simple stretch discord bot. Connects to Discord via the API."""
-    
-    def __init__(self, agent: RobotAgent, token: Optional[str] = None, llm: str = "qwen25", task: str = "pickup", skip_confirmations: bool = False, output_path: str = ".", device_id: int = 0, visual_servo: bool = True, server_ip: str = "127.0.0.1", use_voice: bool = False, debug_llm: bool = False, manipulation_only: bool = False, kwargs: Dict[str, Any] = None, home_channel: str = "talk-to-stretch") -> None:
+
+    def __init__(
+        self,
+        agent: RobotAgent,
+        token: Optional[str] = None,
+        llm: str = "qwen25",
+        task: str = "pickup",
+        skip_confirmations: bool = False,
+        output_path: str = ".",
+        device_id: int = 0,
+        visual_servo: bool = True,
+        server_ip: str = "127.0.0.1",
+        use_voice: bool = False,
+        debug_llm: bool = False,
+        manipulation_only: bool = False,
+        kwargs: Dict[str, Any] = None,
+        home_channel: str = "talk-to-stretch",
+    ) -> None:
         """
         Create a new Discord bot that can interact with the robot.
 
@@ -75,14 +90,18 @@ class StretchDiscordBot(DiscordBot):
         if kwargs is None:
             # Default parameters
             kwargs = {
-                    "match_method": "feature",
-                    "mllm_for_visual_grounding": False,
-                    }
+                "match_method": "feature",
+                "mllm_for_visual_grounding": False,
+            }
 
         # Executor handles outputs from the LLM client and converts them into executable actions
         if self.task == "pickup":
             self.executor = PickupExecutor(
-                robot, agent, available_actions=prompt.get_available_actions(), dry_run=False, discord_bot=self
+                robot,
+                agent,
+                available_actions=prompt.get_available_actions(),
+                dry_run=False,
+                discord_bot=self,
             )
         elif self.task == "dynamem":
             executor = DynamemTaskExecutor(
@@ -131,6 +150,11 @@ class StretchDiscordBot(DiscordBot):
                     self.allowed_channels.add_home(channel)
                     break
 
+        # Plans list
+        self.next_plan = None
+        self._plan_lock = threading.Lock()
+        self._plan_thread = None
+
         print(self.allowed_channels)
 
         # PRINTS HOW MANY GUILDS / SERVERS THE BOT IS IN.
@@ -139,7 +163,12 @@ class StretchDiscordBot(DiscordBot):
         print("Starting the message processing queue.")
         self.process_queue.start()
 
-    def push_task_to_all_channels(self, message: Optional[str] = None, content: Optional[str] = None):
+        # Start the plan thread
+        self.start_plan_thread()
+
+    def push_task_to_all_channels(
+        self, message: Optional[str] = None, content: Optional[str] = None
+    ):
         """Push a task to all channels. Message will be "as-is" with no processing.
 
         Args:
@@ -220,6 +249,31 @@ class StretchDiscordBot(DiscordBot):
             print("Response:", response)
             parsed_response = self.prompt.parse_response(response)
             print("Parsed response:", parsed_response)
-            self.executor(parsed_response, channel=task.channel)
+            self.add_robot_plan(parsed_response, channel=task.channel)
 
+    def add_robot_plan(self, response: List[Tuple[str, str]], channel: discord.TextChannel):
+        """Add a task to the task queue."""
+        with self._plan_lock:
+            self.next_plan = response, channel
 
+    def plan_thread(self):
+        """Loop. Check to see if next plan received. If so, execute it. Else, sleep. After execution, set next_plan to None."""
+
+        while self.robot.is_running:
+            if self.next_plan is not None:
+                with self._plan_lock:
+                    response, channel = self.next_plan
+                    self.next_plan = None
+                self.executor.execute(response, channel=channel)
+            else:
+                time.sleep(0.1)
+
+    def start_plan_thread(self):
+        """Start the plan thread."""
+        self._plan_thread = threading.Thread(target=self.plan_thread)
+        self._plan_thread.start()
+
+    def __del__(self):
+        """Destructor. Stop the plan thread."""
+        if self._plan_thread is not None:
+            self._plan_thread.join()

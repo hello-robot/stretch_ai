@@ -13,6 +13,7 @@ import threading
 from typing import Any, Dict, Optional
 
 import click
+import discord
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
@@ -20,12 +21,10 @@ from stretch.agent.task.pickup import PickupExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
+from stretch.llms.discord_bot import StretchDiscordBot
 from stretch.perception import create_semantic_sensor
 from stretch.utils.discord_bot import DiscordBot, Task
 from stretch.utils.logger import Logger
-from stretch.llms.discord_bot import StretchDiscordBot
-
-import discord
 
 logger = Logger(__name__)
 
@@ -121,7 +120,11 @@ logger = Logger(__name__)
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
-@click.option("--token", default=None, help="The token for the discord bot. Will be read from env if not available.")
+@click.option(
+    "--token",
+    default=None,
+    help="The token for the discord bot. Will be read from env if not available.",
+)
 def main(
     robot_ip: str = "192.168.1.15",
     token: Optional[str] = None,
@@ -177,7 +180,20 @@ def main(
         agent.load_map(input_path)
 
     # Pass in the information we need to create the task
-    bot = StretchDiscordBot(agent, token, llm=llm, task="pickup", skip_confirmations=True, output_path=".", device_id=device_id, visual_servo=True, kwargs={"match_method": match_method}, server_ip=server_ip, use_voice=use_voice, debug_llm=debug_llm)
+    bot = StretchDiscordBot(
+        agent,
+        token,
+        llm=llm,
+        task="pickup",
+        skip_confirmations=True,
+        output_path=".",
+        device_id=device_id,
+        visual_servo=True,
+        kwargs={"match_method": match_method},
+        server_ip=server_ip,
+        use_voice=use_voice,
+        debug_llm=debug_llm,
+    )
 
     # Start the bot
 
@@ -193,7 +209,6 @@ def main(
     obs = robot.get_observation()
     bot.push_task_to_all_channels(content=obs.rgb)
     bot.run()
-
 
     # At the end, disable everything
     robot.stop()

@@ -9,6 +9,7 @@
 
 import datetime
 from typing import List, Optional, Tuple
+
 from PIL import Image
 
 from stretch.agent.robot_agent import RobotAgent
@@ -19,8 +20,8 @@ from stretch.agent.task.pickup.pick_task import PickObjectTask
 from stretch.agent.task.pickup.pickup_task import PickupTask
 from stretch.agent.task.pickup.place_task import PlaceOnReceptacleTask
 from stretch.core import AbstractRobotClient
-from stretch.utils.logger import Logger
 from stretch.utils.image import numpy_image_to_bytes
+from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
 # Default to hiding info messages
@@ -102,7 +103,7 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
-    def _take_picture(self, channel = None) -> None:
+    def _take_picture(self, channel=None) -> None:
         """Take a picture with the head camera. Optionally send it to Discord."""
 
         obs = self.robot.get_observation()
@@ -112,9 +113,11 @@ class PickupExecutor:
             filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
             Image.fromarray(obs.rgb).save(filename)
         else:
-            self.discord_bot.send_message(channel=channel, message="Head camera:", content=numpy_image_to_bytes(obs.rgb))
+            self.discord_bot.send_message(
+                channel=channel, message="Head camera:", content=numpy_image_to_bytes(obs.rgb)
+            )
 
-    def _take_ee_picture(self, channel = None) -> None:
+    def _take_ee_picture(self, channel=None) -> None:
         """Take a picture of the end effector."""
 
         obs = self.robot.get_servo_observation()
@@ -124,7 +127,11 @@ class PickupExecutor:
             filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
             Image.fromarray(obs.ee_rgb).save(filename)
         else:
-            self.discord_bot.send_message(channel=channel, message="End effector camera:", content=numpy_image_to_bytes(obs.ee_rgb))
+            self.discord_bot.send_message(
+                channel=channel,
+                message="End effector camera:",
+                content=numpy_image_to_bytes(obs.ee_rgb),
+            )
 
     def _pick_only(self, target_object: str) -> None:
         """Create a task to pick up the object and execute it.
@@ -217,7 +224,7 @@ class PickupExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]], channel = None) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel=None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
