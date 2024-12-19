@@ -139,6 +139,7 @@ def main(
     receptacle: str = "",
     match_method: str = "feature",
     llm: str = "gemma",
+    task: str = "pickup",
     use_voice: bool = False,
     open_loop: bool = False,
     debug_llm: bool = False,

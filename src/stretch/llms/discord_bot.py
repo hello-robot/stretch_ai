@@ -19,6 +19,7 @@ import time
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.pickup import PickupExecutor
+from stretch.agent.task.dynamem import DynamemTaskExecutor
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
