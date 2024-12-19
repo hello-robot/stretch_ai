@@ -107,7 +107,7 @@ class StretchDiscordBot(DiscordBot):
                 discord_bot=self,
             )
         elif self.task == "dynamem":
-            self.executor = DynamemTaskExecutor(
+            executor = DynamemTaskExecutor(
                 robot,
                 agent.parameters,
                 visual_servo=visual_servo,
@@ -118,6 +118,7 @@ class StretchDiscordBot(DiscordBot):
                 skip_confirmations=skip_confirmations,
                 mllm=kwargs["mllm_for_visual_grounding"],
                 manipulation_only=manipulation_only,
+                discord_bot=self,
             )
         else:
             raise NotImplementedError(f"Task {task} is not implemented.")

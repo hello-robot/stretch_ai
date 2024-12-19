@@ -40,10 +40,12 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        discord_bot = None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
+        self.discord_bot = discord_bot
 
         # Other parameters
         self.visual_servo = visual_servo
