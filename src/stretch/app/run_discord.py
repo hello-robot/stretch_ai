@@ -120,6 +120,7 @@ logger = Logger(__name__)
     is_flag=True,
     help="Set to print LLM responses to the console, to debug issues when parsing them when trying new LLMs.",
 )
+@click.option("--task", default="pickup", help="Task to perform", type=click.Choice(["pickup", "dynamem"]))
 @click.option(
     "--token",
     default=None,
@@ -184,7 +185,7 @@ def main(
         agent,
         token,
         llm=llm,
-        task="pickup",
+        task=task,
         skip_confirmations=True,
         output_path=".",
         device_id=device_id,
