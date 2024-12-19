@@ -7,7 +7,9 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import datetime
 from typing import List, Optional, Tuple
+from PIL import Image
 
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.emote import EmoteTask
@@ -99,6 +101,30 @@ class PickupExecutor:
 
         # Execute the task
         task.run()
+
+    def _take_picture(self, channel = None) -> None:
+        """Take a picture with the head camera. Optionally send it to Discord."""
+
+        obs = self.robot.get_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.rgb).save(filename)
+        else:
+            self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
+
+    def _take_ee_picture(self, channel = None) -> None:
+        """Take a picture of the end effector."""
+
+        obs = self.robot.get_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.ee_rgb).save(filename)
+        else:
+            self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.ee_rgb))
 
     def _pick_only(self, target_object: str) -> None:
         """Create a task to pick up the object and execute it.
@@ -221,8 +247,9 @@ class PickupExecutor:
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
                 if channel is not None:
-                    obs = self.robot.get_observation()
-                    self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
+                    # obs = self.robot.get_observation()
+                    # self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
+                    self.discord_bot.send_message(channel=channel, message=args)
                 self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
@@ -255,6 +282,10 @@ class PickupExecutor:
                 self._place(args)
             elif command == "hand_over":
                 self._hand_over()
+            elif command == "take_picture":
+                self._take_picture(channel)
+            elif command == "take_ee_picture":
+                self._take_ee_picture(channel)
             elif command == "wave":
                 self.agent.move_to_manip_posture()
                 self.emote_task.get_task("wave").run()

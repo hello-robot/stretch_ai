@@ -78,6 +78,26 @@ say("Looking for the remote control.")
 find(remote control)
 end()
 
+input: "Can you take a picture?"
+output:
+say("I am taking a picture.")
+take_picture()
+end()
+
+input: "Can you take a picture with the end effector camera?"
+output:
+say("I am taking a picture with the end effector camera.")
+take_ee_picture()
+end()
+
+input: "Find the orange cup and take a picture."
+output:
+say("Looking for the orange cup.")
+find(orange cup)
+say("I am taking a picture of the orange cup.")
+take_picture()
+end()
+
 If you are asked to give the speaker an object and you have not already picked it up, you will first pick up the object and then hand it to the person.
 
 Examples:
