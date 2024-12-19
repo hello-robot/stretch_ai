@@ -186,7 +186,8 @@ class StretchDiscordBot(DiscordBot):
             return None
 
         # Construct the text to prompt the AI
-        text = f"{sender_name} on #{channel_name}: " + message.content
+        # text = f"{sender_name} on #{channel_name}: " + message.content
+        text = f"{sender_name}: " + message.content
         self.push_task(channel=message.channel, message=text)
 
         print("Current task queue: ", self.task_queue.qsize())
