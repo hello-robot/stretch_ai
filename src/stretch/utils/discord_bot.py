@@ -250,6 +250,7 @@ class DiscordBot:
             await asyncio.sleep(0.1)  # Wait a bit before checking again
         except Exception as e:
             print(colored("Error in processing queue: " + str(e), "red"))
+            raise e
 
     def greeting(self) -> str:
         """Return a greeting message."""

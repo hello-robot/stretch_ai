@@ -112,7 +112,7 @@ class PickupExecutor:
             filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
             Image.fromarray(obs.rgb).save(filename)
         else:
-            self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
+            self.discord_bot.send_message(channel=channel, message="Head camera:", content=numpy_image_to_bytes(obs.rgb))
 
     def _take_ee_picture(self, channel = None) -> None:
         """Take a picture of the end effector."""
@@ -124,7 +124,7 @@ class PickupExecutor:
             filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
             Image.fromarray(obs.ee_rgb).save(filename)
         else:
-            self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.ee_rgb))
+            self.discord_bot.send_message(channel=channel, message="End effector camera:", content=numpy_image_to_bytes(obs.ee_rgb))
 
     def _pick_only(self, target_object: str) -> None:
         """Create a task to pick up the object and execute it.
