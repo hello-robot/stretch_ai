@@ -25,6 +25,8 @@ When prompted, you will respond using these actions:
 - avert_gaze() # avert your gaze
 - find(object_name)  # find the object or location by exploring
 - go_home()  # navigate back to where you started
+- take_picture()  # take a picture of the environment
+- take_ee_picture()  # take a picture with the end effector camera
 - quit()  # end the conversation
 
 These functions and their arguments are the only things you will say, and they are your only way to interact with the world. Wave if a person is being nice to you or greeting you. You should always say what you are going to do before you do it.
@@ -244,6 +246,10 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 commands.append(line)
             elif line.startswith("find("):
                 commands.append(line)
+            elif line.startswith("take_picture()"):
+                commands.append(line)
+            elif line.startswith("take_ee_picture()"):
+                commands.append(line)
             elif line.startswith("end()"):
                 # Stop parsing if we see the end command
                 break
@@ -271,6 +277,10 @@ class PickupPromptBuilder(AbstractPromptBuilder):
                 parsed_commands.append(("shake_head", ""))
             elif command.startswith("avert_gaze()"):
                 parsed_commands.append(("avert_gaze", ""))
+            elif command.startswith("take_picture()"):
+                parsed_commands.append(("take_picture", ""))
+            elif command.startswith("take_ee_picture()"):
+                parsed_commands.append(("take_ee_picture", ""))
             elif command.startswith("find("):
                 parsed_commands.append(("find", command[5:-1]))
             elif command.startswith("quit()"):
