@@ -9,7 +9,9 @@
 
 import threading
 from typing import Any, Dict, Optional
+from termcolor import colored
 
+import datetime
 import click
 
 # import stretch.utils.logger as logger
@@ -204,7 +206,9 @@ class StretchDiscordBot(DiscordBot):
                 print("This task was explicitly triggered.")
                 await task.channel.send(task.message)
                 if task.content is not None:
-                    await task.channel.send(file=discord.File(task.content))
+                    # Filename is computed from date and time
+                    filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".png"
+                    await task.channel.send(file=discord.File(task.content, filename=filename))
                 return
         except Exception as e:
             print(colored("Error in handling task: " + str(e), "red"))
