@@ -19,7 +19,6 @@ from termcolor import colored
 from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.task.dynamem import DynamemTaskExecutor
 from stretch.agent.task.pickup import PickupExecutor
-from stretch.core import get_parameters
 from stretch.llms import PickupPromptBuilder, get_llm_client
 from stretch.utils.discord_bot import DiscordBot, Task
 from stretch.utils.logger import Logger
