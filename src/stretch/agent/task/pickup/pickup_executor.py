@@ -117,7 +117,7 @@ class PickupExecutor:
     def _take_ee_picture(self, channel = None) -> None:
         """Take a picture of the end effector."""
 
-        obs = self.robot.get_observation()
+        obs = self.robot.get_servo_observation()
         if channel is None:
             # Just save it to the disk
             now = datetime.datetime.now()
@@ -249,6 +249,9 @@ class PickupExecutor:
                 if channel is not None:
                     # obs = self.robot.get_observation()
                     # self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
+                    # Optionally strip quotes from args
+                    if args[0] == '"' and args[-1] == '"':
+                        args = args[1:-1]
                     self.discord_bot.send_message(channel=channel, message=args)
                 self.agent.robot_say(args)
             elif command == "pickup":

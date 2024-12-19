@@ -1,5 +1,7 @@
 # Set up a Discord Bot for Stretch
 
+*WARNING: following this document will let you connect your robot to a website, [Discord](https://discord.com/), that is not under your control. Be very careful with this, and make sure you understand the risks involved.* The robot will only be connected while you are running a specific script.
+
 To create a discord bot to chat with your stretch, you'll need to use the [Discord Developer Portal](https://discord.com/developers/applications) to create a custom application. This document will walk you through the steps to authorize the app in discord and to get the token needed to run the bot. These instructions are based on the [Discord Developer Portal Documentation](https://discord.com/developers/docs/intro) and on [a previous writeup](https://github.com/cpaxton/virgil/blob/main/docs/discord.md).
 
 On your laptop, in your python environment, you will need to install the discord package:

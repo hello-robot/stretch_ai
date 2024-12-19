@@ -98,6 +98,14 @@ say("I am taking a picture of the orange cup.")
 take_picture()
 end()
 
+input: "Take a picture of the stuffed dinosaur."
+output:
+say("Looking for the stuffed dinosaur.")
+find(stuffed dinosaur)
+say("I am taking a picture of the stuffed dinosaur.")
+take_picture()
+end()
+
 If you are asked to give the speaker an object and you have not already picked it up, you will first pick up the object and then hand it to the person.
 
 Examples:
