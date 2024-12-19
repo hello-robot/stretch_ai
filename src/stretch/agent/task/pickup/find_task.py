@@ -107,6 +107,7 @@ class FindObjectTask:
             parent=search_for_object,
             on_cannot_start=search_for_object,
             to_receptacle=False,
+            for_manipulation=False
         )
 
         task = Task()
