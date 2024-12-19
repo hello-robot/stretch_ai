@@ -219,6 +219,11 @@ class DynamemTaskExecutor:
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
                 self.agent.robot_say(args)
+                if channel is not None:
+                    # Optionally strip quotes from args
+                    if args[0] == '"' and args[-1] == '"':
+                        args = args[1:-1]
+                    self.discord_bot.send_message(channel=channel, message=args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
