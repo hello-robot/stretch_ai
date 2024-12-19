@@ -74,6 +74,7 @@ class StretchDiscordBot(DiscordBot):
         # Save the parameters
         self.task = task
         self.agent = agent
+        self.robot = self.agent.robot
         self.parameters = agent.parameters
         self.visual_servo = visual_servo
         self.device_id = device_id
