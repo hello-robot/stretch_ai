@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import click
 import discord
 from termcolor import colored
+import time
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
@@ -267,7 +268,7 @@ class StretchDiscordBot(DiscordBot):
                     self.next_plan = None
                 self.executor.execute(response, channel=channel)
             else:
-                time.sleep(0.1)
+                time.sleep(0.01)
 
     def start_plan_thread(self):
         """Start the plan thread."""
