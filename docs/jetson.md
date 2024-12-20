@@ -30,11 +30,35 @@ You can also download the image [from Docker Hub](https://hub.docker.com/reposit
 
 You can [look at the script](https://github.com/hello-robot/stretch_ai/blob/devel/scripts/run_stretch_ai_jetson.sh) to see how it works.
 
+When you run it, you should see something like this:
+```
+cpaxton@caliban:~/src/stretch_ai$ ./scripts/run_stretch_ai_jetson.sh 
+====================================================
+Running Stretch AI docker container with GPU support
+$DISPLAY was not set. It has been set to :0 -- please verify that this is correct or GUI will not work!
+Reading version from /home/cpaxton/src/stretch_ai/src/stretch/version.py
+Source version: 0.2.6
+Docker image version: latest
+Running docker image hellorobotinc/stretch-ai_cuda-11.8:latest
+Running in non-dev mode, not mounting any directory
+====================================================
+Running docker container with GPU support
+ - mounting data at /home/cpaxton/data
+User is in Docker group. Running command without sudo.
+root@caliban:/stretch_ai#
+```
 
+You can then run Stretch AI commands from the container. For example, you can run the `llm_agent` with:
+
+```
+root@caliban:/stretch_ai# python3 -m stretch.app.llm_agent
+```
+
+Make sure to use the `python3` command instead of `python`.
 
 ## Installing Stretch AI on the Jetson
 
-Work in progress notes that might be useful:
+If you want to manually install things, the process is more difficult. We do not recommend this unless you are comfortable with the process. These instructions are a work in progress and subject to change; you may need to adapt them to your specific setup.
 
 ### Install System dependences
 
@@ -89,4 +113,38 @@ The `jtop` tool requires superuser permissions; don't forget the `-U` flag to ma
 
 Detic is an object-detection library that works fairly fast, and that we've had good luck with in [Stretch AI](https://github.com/hello-robot/stretch_ai/) projects. You can see it in the [llm_agent](llm_agent) docs and code.
 
+For this, it may be useful to install timm from [our timm fork](https://github.com/cpaxton/pytorch-image-models/tree/cpaxton/timm-no-torch) which removes the `pytorch` dependency, so that you don't accidentally override your "good" version of the pytorch library.
 
+```
+git clone https://github.com/cpaxton/pytorch-image-models.git --branch cpaxton/timm-no-torch
+cd pytorch-image-models
+python -m pip install -e .
+```
+
+### Install Stretch AI
+
+To install Stretch AI from source, add it to the `PYTHONPATH`:
+
+```
+git clone git@github.com:hello-robot/stretch_ai.git
+export PYTHONPATH=$PYTHONPATH:/path/to/stretch_ai
+```
+
+This is to make sure that you don't accidentally upgrade one of the very specific versions of the libraries that you need!
+
+After each step, make sure CUDA still works, and that you have the right versions of the libraries installed.
+
+Your torch version will look something like this:
+```
+cpaxton@caliban:~/src/stretch_ai$ pip show torch
+Name: torch
+Version: 2.0.0.nv23.05
+Summary: Tensors and Dynamic neural networks in Python with strong GPU acceleration
+Home-page: https://pytorch.org/
+Author: PyTorch Team
+Author-email: packages@pytorch.org
+License: BSD-3
+Location: /usr/local/lib/python3.8/dist-packages
+Requires: filelock, jinja2, networkx, sympy, typing-extensions
+Required-by: torchaudio, torchvision, virgil
+```

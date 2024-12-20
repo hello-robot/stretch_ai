@@ -81,8 +81,6 @@ python3 -m stretch.app.run_discord --robot_ip $ROBOT_IP --llm openai
 
 Chat with the bot via the `#talk-to-stretch` channel in the discord server. You can ask it to take pictures, move, and more.
 
-Table of two images:
-
 | ![Discord Chat](images/discord1.png) | ![Discord Chat](images/discord2.png) |
 |--------------|------------------|
 
