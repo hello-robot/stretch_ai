@@ -154,9 +154,7 @@ class RobotAgent(RobotAgentBase):
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = parameters["instance_memory"]["matching"][
-            "feature_match_threshold"
-        ]
+        self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
@@ -257,11 +255,9 @@ class RobotAgent(RobotAgentBase):
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
-            rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters[
-                "dilate_frontier_size"
-            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
-            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            rotation_step_size=parameters.get("motion_planner/rotation_step_size", 0.2),
+            dilate_frontier_size=parameters.get("motion_planner/frontier/dilate_frontier_size", 2),
+            dilate_obstacle_size=parameters.get("motion_planner/frontier/dilate_obstacle_size", 0),
         )
         self.planner = AStar(self.space)
 
