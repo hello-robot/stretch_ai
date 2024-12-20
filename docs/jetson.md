@@ -56,6 +56,29 @@ root@caliban:/stretch_ai# python3 -m stretch.app.llm_agent
 
 Make sure to use the `python3` command instead of `python`.
 
+## Building the Docker Image
+
+If you want to build the docker image yourself, you can do so with the following command:
+
+```
+./docker/build-jetson-docker.sh
+```
+
+The Dockerfile is located [here](docker/Dockerfile.jetson), in the `docker` directory.
+
+Of particular note is this section at the beginning:
+```Dockerfile
+FROM dustynv/l4t-text-generation:r35.3.1
+```
+
+You can check your Jetpack version directly with:
+```bash
+cpaxton@caliban:~/src/stretch_ai$ cat /etc/nv_tegra_release
+# R35 (release), REVISION: 4.1, GCID: 33958178, BOARD: t186ref, EABI: aarch64, DATE: Tue Aug  1 19:57:35 UTC 2023
+```
+
+If it does not match, you might need to rebuild the docker image with the correct base image.
+
 ## Installing Stretch AI on the Jetson
 
 If you want to manually install things, the process is more difficult. We do not recommend this unless you are comfortable with the process. These instructions are a work in progress and subject to change; you may need to adapt them to your specific setup.
