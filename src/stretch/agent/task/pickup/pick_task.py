@@ -19,7 +19,7 @@ from stretch.agent.operations import (
     SearchForObjectOnFloorOperation,
 )
 from stretch.agent.robot_agent import RobotAgent
-from stretch.core.task import Task
+from stretch.core.task import Operation, Task
 
 
 class PickObjectTask:
@@ -128,6 +128,7 @@ class PickObjectTask:
 
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
+        grasp_object: Operation = None
         if self.use_visual_servoing_for_grasp:
             grasp_object = GraspObjectOperation(
                 f"grasp_the_{self.target_object}",

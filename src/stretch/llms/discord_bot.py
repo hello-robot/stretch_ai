@@ -94,6 +94,7 @@ class StretchDiscordBot(DiscordBot):
             }
 
         # Executor handles outputs from the LLM client and converts them into executable actions
+        # TODO: we should have an Executor abstract class here!
         if self.task == "pickup":
             self.executor = PickupExecutor(
                 robot,
@@ -101,7 +102,7 @@ class StretchDiscordBot(DiscordBot):
                 available_actions=prompt.get_available_actions(),
                 dry_run=False,
                 discord_bot=self,
-            )
+            )  # type: ignore
         elif self.task == "dynamem":
             self.executor = DynamemTaskExecutor(
                 robot,
@@ -115,7 +116,7 @@ class StretchDiscordBot(DiscordBot):
                 mllm=kwargs["mllm_for_visual_grounding"],
                 manipulation_only=manipulation_only,
                 discord_bot=self,
-            )
+            )  # type: ignore
         else:
             raise NotImplementedError(f"Task {task} is not implemented.")
 
