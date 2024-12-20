@@ -1,4 +1,4 @@
-# Set up a Discord Bot for Stretch
+ Set up a Discord Bot for Stretch
 
 *WARNING: following this document will let you connect your robot to a website, [Discord](https://discord.com/), that is not under your control. Be very careful with this, and make sure you understand the risks involved.* The robot will only be connected while you are running a specific script.
 
@@ -81,9 +81,6 @@ python3 -m stretch.app.run_discord --robot_ip $ROBOT_IP --llm openai
 
 Chat with the bot via the `#talk-to-stretch` channel in the discord server. You can ask it to take pictures, move, and more.
 
-Table of two images:
-
-|--------------|------------------|
 | ![Discord Chat](images/discord1.png) | ![Discord Chat](images/discord2.png) |
 |--------------|------------------|
 
