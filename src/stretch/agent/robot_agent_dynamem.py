@@ -34,6 +34,7 @@ from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
     capture_and_process_image,
     move_to_point,
     pickup,
+    process_image_for_placing,
 )
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
@@ -695,12 +696,13 @@ class RobotAgent(RobotAgentBase):
         self.robot.look_at_ee()
         self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
 
-        rotation, translation = capture_and_process_image(
-            mode="place",
-            obj=text,
-            socket=self.manip_socket,
-            hello_robot=self.manip_wrapper,
-        )
+        # rotation, translation = capture_and_process_image(
+        #     mode="place",
+        #     obj=text,
+        #     socket=self.manip_socket,
+        #     hello_robot=self.manip_wrapper,
+        # )
+        rotation, translation = process_image_for_placing(obj=text, hello_robot=self.manip_wrapper)
         print("Place: ", rotation, translation)
 
         if rotation is None:

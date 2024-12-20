@@ -17,13 +17,26 @@ from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
-from stretch.dynav.utils import compute_tilt
 from stretch.perception import create_semantic_sensor
 
 # Mapping and perception
 from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
+
+
+def compute_tilt(camera_xyz, target_xyz):
+    """
+    a util function for computing robot head tilts so the robot can look at the target object after navigation
+    - camera_xyz: estimated (x, y, z) coordinates of camera
+    - target_xyz: estimated (x, y, z) coordinates of the target object
+    """
+    if not isinstance(camera_xyz, np.ndarray):
+        camera_xyz = np.array(camera_xyz)
+    if not isinstance(target_xyz, np.ndarray):
+        target_xyz = np.array(target_xyz)
+    vector = camera_xyz - target_xyz
+    return -np.arctan2(vector[2], np.linalg.norm(vector[:2]))
 
 
 class DynamemTaskExecutor:
@@ -245,13 +258,15 @@ class DynamemTaskExecutor:
                     else:
                         logger.error("Could not find the object.")
                         self.robot.say("I could not find the " + str(args) + ".")
-                        break
+                        i += 1
+                        continue
                 else:
                     if input("Do you want to run picking? [Y/n]: ").upper() != "N":
                         self._pickup(target_object, point=point)
                     else:
                         logger.info("Skip picking!")
-                        break
+                        i += 1
+                        continue
 
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
@@ -278,13 +293,15 @@ class DynamemTaskExecutor:
                     else:
                         logger.error("Could not find the object.")
                         self.robot.say("I could not find the " + str(args) + ".")
-                        break
+                        i += 1
+                        continue
                 else:
                     if input("Do you want to run placement? [Y/n]").upper() != "N":
                         self._place(target_object, point=point)
                     else:
-                        logger.info("Skip picking!")
-                        break
+                        logger.info("Skip placing!")
+                        i += 1
+                        continue
             elif command == "hand_over":
                 self._hand_over()
             elif command == "wave":

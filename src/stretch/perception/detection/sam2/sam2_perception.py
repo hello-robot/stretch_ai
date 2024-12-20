@@ -7,20 +7,20 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import wget
 from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.perception.detection.utils import filter_depth, overlay_masks
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 PARENT_DIR = Path(__file__).resolve().parent
 # GroundingDINO config and checkpoint
@@ -62,7 +62,8 @@ class SAM2Perception(PerceptionModule):
     def __init__(
         self,
         custom_vocabulary: List[str] = "['', 'dog', 'grass', 'sky']",
-        gpu_device_id=None,
+        gpu_device_id: Optional[int] = None,
+        configuration: str = "l",
         checkpoint_file: str = MOBILE_SAM_CHECKPOINT_PATH,
         verbose=False,
         text_threshold: float = None,
@@ -74,18 +75,54 @@ class SAM2Perception(PerceptionModule):
             config_file: path to model config
             custom_vocabulary: if vocabulary="custom", this should be a comma-separated
              list of classes (as a single string)
-            sem_gpu_id: GPU ID to load the model on, -1 for CPU
+            gpu_device_id: GPU ID to load the model on, None for default
+            configuration: size of SAM2 model, default is t, also supporting s, b+, l
             checkpoint_file: path to model checkpoint
             verbose: whether to print out debug information
         """
         # TODO: set model arg in config
-        # Using the smallest model now.
-        checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_large.pt"
-        model_cfg = "sam2_hiera_l.yaml"
-        self.sam2_predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
+        # You can and are recommended to run `download_ckpts.sh` in "./third_party/segment-anything-2/checkpoints/" folder
+        # to download sam weights.
+        # Here we still provide weight checking and automatic downloading.
+        # By default, we use the largest model now.
+        base_url = "https://dl.fbaipublicfiles.com/segment_anything_2/072824/"
+        if configuration == "t":
+            checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_tiny.pt"
+            model_cfg = "sam2_hiera_t.yaml"
+            url = base_url + "sam2_hiera_tiny.pt"
+        elif configuration == "s":
+            checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_small.pt"
+            model_cfg = "sam2_hiera_s.yaml"
+            url = base_url + "sam2_hiera_small.pt"
+        elif configuration == "b+":
+            checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_base_plus.pt"
+            model_cfg = "sam2_hiera_b+.yaml"
+            url = base_url + "sam2_hiera_base_plus.pt"
+        else:
+            checkpoint = "./third_party/segment-anything-2/checkpoints/sam2_hiera_large.pt"
+            model_cfg = "sam2_hiera_l.yaml"
+            url = base_url + "sam2_hiera_large.pt"
+        if not os.path.exists(checkpoint):
+            wget.download(url, out=checkpoint)
+
+        self.sam_predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
+
+        if not torch.cuda.is_available():
+            if gpu_device_id is not None:
+                print("Warning: CUDA is not available. Falling back to CPU.")
+            device = torch.device("cpu")
+        elif gpu_device_id is None:
+            device = torch.device("cuda")
+        elif gpu_device_id < 0 or gpu_device_id >= torch.cuda.device_count():
+            print(
+                f"Warning: Invalid GPU device ID {gpu_device_id}. Falling back to default CUDA device."
+            )
+            device = torch.device("cuda")
+        else:
+            device = torch.device(f"cuda:{gpu_device_id}")
 
         self.sam2_predictor = build_sam2(
-            model_cfg, checkpoint, device=DEVICE, apply_postprocessing=False
+            model_cfg, checkpoint, device=device, apply_postprocessing=False
         )
         self._verbose = verbose
 

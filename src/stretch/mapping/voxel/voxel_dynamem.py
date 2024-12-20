@@ -25,14 +25,13 @@ from scipy.ndimage import maximum_filter, median_filter
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
-from stretch.dynav.mapping_utils.voxelized_pcd import scatter3d
 from stretch.llms import OpenaiClient
 from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
-from stretch.utils.voxel import VoxelizedPointcloud
+from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
 
 from .voxel import VALID_FRAMES, Frame
 from .voxel import SparseVoxelMap as SparseVoxelMapBase
