@@ -5,7 +5,7 @@ You can install Robocasa by following the instructions below, or you can try the
 ## Install Robosuite
 
 ```bash
-git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1
+git clone https://github.com/ARISE-Initiative/robosuite
 cd robosuite
 pip install -e .
 ```
