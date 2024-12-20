@@ -79,4 +79,12 @@ python3 -m stretch.app.run_discord --robot_ip $ROBOT_IP --llm openai
 
 *BE VERY CAREFUL WITH THIS.* This command can and will send images from your robot to the internet! Know your environment, and make sure that you are using the robot in a safe and secure location. Do not leave the robot unnatended while running this command.
 
+Chat with the bot via the `#talk-to-stretch` channel in the discord server. You can ask it to take pictures, move, and more.
+
+Table of two images:
+
+|--------------|------------------|
+| ![Discord Chat](images/discord1.png) | ![Discord Chat](images/discord2.png) |
+|--------------|------------------|
+
 For more information on the specific usage of the script, you can see the [LLM Agent docs](llm_agent.md) and the [DynaMem docs](dynamem.md).
