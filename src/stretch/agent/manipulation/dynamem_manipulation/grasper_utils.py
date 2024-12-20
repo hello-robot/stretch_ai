@@ -31,8 +31,8 @@ def process_image_for_placing(obj, hello_robot):
         [0.1, 0.1],
     ]
     success = False
-    head_tilt = -0.65
-    head_pan = hello_robot.tilt
+    head_tilt = hello_robot.tilt
+    head_pan = hello_robot.pan
     base_trans = 0
 
     for i in range(9):
@@ -40,12 +40,14 @@ def process_image_for_placing(obj, hello_robot):
         print(f"retry entries : {retries[i]}")
         delta_base, delta_tilt = retries[i]
         hello_robot.move_to_position(
-            base_trans=base_trans + delta_base, head_tilt=head_tilt + delta_tilt
+            base_trans=base_trans + delta_base, head_tilt=head_tilt + delta_tilt, head_pan=head_pan
         )
-        actions = placing.process(obj, 1, head_tilt=head_tilt)
+        actions = placing.process(obj, 1, head_tilt=head_tilt + delta_tilt)
         if actions is not None:
             base_trans, head_tilt = actions
-            hello_robot.move_to_position(base_trans=base_trans, head_tilt=head_tilt)
+            hello_robot.move_to_position(
+                base_trans=base_trans, head_tilt=head_tilt, head_pan=head_pan
+            )
             success = True
             break
 
@@ -54,15 +56,17 @@ def process_image_for_placing(obj, hello_robot):
         return None, None
 
     base_trans = 0
+    head_tilt = hello_robot.tilt
+    head_pan = hello_robot.pan
 
     for i in range(9):
         print("Capturing image: ")
         print(f"retry entries : {retries[i]}")
         delta_base, delta_tilt = retries[i]
         hello_robot.move_to_position(
-            base_trans=base_trans + delta_base, head_tilt=head_tilt + delta_tilt
+            base_trans=base_trans + delta_base, head_tilt=head_tilt + delta_tilt, head_pan=head_pan
         )
-        translation = placing.process(obj, 2, head_tilt=head_tilt)
+        translation = placing.process(obj, 2, head_tilt=head_tilt + delta_tilt)
         if translation is not None:
             return [0], np.array([-translation[1], -translation[0], -translation[2]])
 
@@ -181,6 +185,11 @@ def move_to_point(robot, point, base_node, gripper_node, move_mode=1, pitch_rota
         [1],
         move_mode=move_mode,
     )
+    # state = robot.robot.get_six_joints()
+    # state[1] += 0.02
+    # state[2] += 0.02
+    # # state[0] -= 0.012
+    # robot.robot.arm_to(state, blocking=True)
 
 
 def pickup(

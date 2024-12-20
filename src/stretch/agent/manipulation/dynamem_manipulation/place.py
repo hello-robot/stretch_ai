@@ -12,6 +12,7 @@ import os
 from typing import Tuple
 
 import numpy as np
+import open3d as o3d
 import scipy
 from PIL import Image
 
@@ -79,9 +80,9 @@ class Placing:
         tilt = math.atan((bbox_center[1] - self.cy) / self.fy)
         print(f"Camera Tilt {tilt}")
 
-        return [np.clip(-dis, -0.1, 0.1), self.head_tilt + tilt]
+        return [np.clip(-dis, -0.1, 0.1), self.head_tilt - tilt]
 
-    def place(self, points: np.ndarray, seg_mask: np.ndarray) -> bool:
+    def place(self, points: np.ndarray, seg_mask: np.ndarray, headless: bool = False) -> bool:
         points_x, points_y, points_z = points[:, :, 0], points[:, :, 1], points[:, :, 2]
         flat_x, flat_y, flat_z = (
             points_x.reshape(-1),
@@ -101,6 +102,8 @@ class Placing:
         flat_y = flat_y[zero_depth_seg_mask]
         flat_z = flat_z[zero_depth_seg_mask]
 
+        colors = np.array(self.image).reshape(-1, 3)[zero_depth_seg_mask] / 255.0
+
         # 3d point cloud in camera orientation
         points1 = np.stack([flat_x, flat_y, flat_z], axis=-1)
 
@@ -113,6 +116,10 @@ class Placing:
             ]
         )
 
+        pcd1 = o3d.geometry.PointCloud()
+        pcd1.points = o3d.utility.Vector3dVector(points1)
+        pcd1.colors = o3d.utility.Vector3dVector(colors)
+
         # 3d point cloud with upright camera
         transformed_points = np.dot(points1, cam_to_3d_rot)
 
@@ -122,6 +129,10 @@ class Placing:
         transformed_x = transformed_points[:, 0]
         transformed_y = transformed_points[:, 1]
         transformed_z = transformed_points[:, 2]
+
+        pcd2 = o3d.geometry.PointCloud()
+        pcd2.points = o3d.utility.Vector3dVector(transformed_points)
+        pcd2.colors = o3d.utility.Vector3dVector(colors)
 
         # Projected Median in the xz plane [parallel to floor]
         xz = np.stack([transformed_x * 100, transformed_z * 100], axis=-1).astype(int)
@@ -136,6 +147,24 @@ class Placing:
         mask = x_mask & y_mask & z_mask
         py = np.max(transformed_y[mask])
         point = np.array([px, py, pz])  # Final placing point in upright camera coordinate system
+
+        if not headless:
+            geometries = []
+            cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=0.1, height=0.04)
+            cylinder_rot = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
+            cylinder.rotate(cylinder_rot)
+            cylinder.translate(cam_to_3d_rot @ point)
+            cylinder.rotate(cam_to_3d_rot)
+            cylinder.paint_uniform_color([0, 1, 0])
+            geometries.append(cylinder)
+
+            visualize_cloud_geometries(
+                pcd1,
+                geometries,
+                save_file=self.save_dir + "/placing.jpg",
+                visualize=True,
+                rerun_name="proposed_placing_location",
+            )
 
         point[1] += 0.1
         transformed_point = cam_to_3d_rot @ point
@@ -193,3 +222,45 @@ class Placing:
             points = self.get_3d_points()
             self.tries = 1
             return self.place(points, seg_mask)
+
+
+def visualize_cloud_geometries(
+    cloud,
+    geometries,
+    translation=None,
+    rotation=None,
+    visualize=True,
+    save_file=None,
+    rerun_name=None,
+):
+    """
+    cloud       : Point cloud of points
+    geometries    : list of grippers of form graspnetAPI grasps
+    visualise   : To show windows
+    save_file   : Visualisation file name
+    """
+
+    coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
+    if translation is not None:
+        coordinate_frame1 = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=0.2, origin=[0, 0, 0]
+        )
+        translation[2] = -translation[2]
+        coordinate_frame1.translate(translation)
+        coordinate_frame1.rotate(rotation)
+
+    visualizer = o3d.visualization.Visualizer()
+    visualizer.create_window(visible=visualize)
+    for geometry in geometries:
+        visualizer.add_geometry(geometry)
+    visualizer.add_geometry(cloud)
+    if translation is not None:
+        visualizer.add_geometry(coordinate_frame1)
+    visualizer.poll_events()
+    visualizer.update_renderer()
+
+    if visualize:
+        visualizer.add_geometry(coordinate_frame)
+        visualizer.run()
+    else:
+        visualizer.destroy_window()

@@ -296,7 +296,7 @@ class DynamemTaskExecutor:
                         i += 1
                         continue
                 else:
-                    if input("Do you want to run placement? [Y/n]").upper() != "N":
+                    if input("Do you want to run placement? [Y/n]: ").upper() != "N":
                         self._place(target_object, point=point)
                     else:
                         logger.info("Skip placing!")
