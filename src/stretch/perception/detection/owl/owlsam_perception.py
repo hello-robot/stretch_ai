@@ -31,19 +31,9 @@ class OWLSAMProcessor(OwlPerception):
         Marrying Owlv2 and Samv2 to complete open vocabulary segmentation.
         """
         super().__init__(version=version, device=device, confidence_threshold=confidence_threshold)
-
-        # sam_checkpoint = f"./sam2_hiera_small.pt"
-        # sam_config = "sam2_hiera_s.yaml"
-        # if not os.path.exists(sam_checkpoint):
-        #     wget.download(
-        #         "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt",
-        #         out=sam_checkpoint,
-        #     )
-        # sam2_model = build_sam2(
-        #     sam_config, sam_checkpoint, device=self.device, apply_postprocessing=False
-        # )
-        # self.mask_predictor = SAM2ImagePredictor(sam2_model)
-        self.sam_model = SAM2Perception(configuration="s")
+        # We assume that you use OWLSAM because you want to work on open vocab segmentation,
+        # in this case, open vocab is the concentration
+        self.sam_model = SAM2Perception(configuration="t")
 
     def detect_object(
         self,

@@ -12,13 +12,12 @@ import pinocchio as pin
 
 from stretch.agent.manipulation.dynamem_manipulation.image_publisher import ImagePublisher
 from stretch.agent.manipulation.dynamem_manipulation.place import Placing
-from stretch.perception.detection.owl import OWLSAMProcessor
-
-detection_model = OWLSAMProcessor()
 
 
-def process_image_for_placing(obj, hello_robot):
-    placing = Placing(hello_robot.robot, detection_model)
+def process_image_for_placing(obj, hello_robot, detection_model, save_dir=None):
+    if save_dir is not None:
+        save_dir = save_dir + "/" + obj
+    placing = Placing(hello_robot.robot, detection_model, save_dir=save_dir)
     retries = [
         [0, 0],
         [0, -0.1],

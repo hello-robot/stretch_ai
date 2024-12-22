@@ -48,7 +48,7 @@ from stretch.mapping.voxel import (
 )
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.detection.owl import OwlPerception
+from stretch.perception.detection.owl import OwlPerception, OWLSAMProcessor
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -106,6 +106,8 @@ class RobotAgent(RobotAgentBase):
 
         self.mllm = mllm
         self.manipulation_only = manipulation_only
+        # For placing
+        self.owl_sam_detector = None
 
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
@@ -682,7 +684,13 @@ class RobotAgent(RobotAgentBase):
                 return None
         return end_point
 
-    def place(self, text, init_tilt=INIT_HEAD_TILT, base_node="camera_depth_optical_frame"):
+    def place(
+        self,
+        text,
+        local=True,
+        init_tilt=INIT_HEAD_TILT,
+        base_node="camera_depth_optical_frame",
+    ):
         """
         An API for running placing. By calling this API, human will ask the robot to place whatever it holds
         onto objects specified by text queries A
@@ -696,13 +704,22 @@ class RobotAgent(RobotAgentBase):
         self.robot.look_at_ee()
         self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
 
-        # rotation, translation = capture_and_process_image(
-        #     mode="place",
-        #     obj=text,
-        #     socket=self.manip_socket,
-        #     hello_robot=self.manip_wrapper,
-        # )
-        rotation, translation = process_image_for_placing(obj=text, hello_robot=self.manip_wrapper)
+        if not local:
+            rotation, translation = capture_and_process_image(
+                mode="place",
+                obj=text,
+                socket=self.manip_socket,
+                hello_robot=self.manip_wrapper,
+            )
+        else:
+            if self.owl_sam_detector is None:
+                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+            rotation, translation = process_image_for_placing(
+                obj=text,
+                hello_robot=self.manip_wrapper,
+                detection_model=self.owl_sam_detector,
+                save_dir=self.log,
+            )
         print("Place: ", rotation, translation)
 
         if rotation is None:
