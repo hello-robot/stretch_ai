@@ -885,6 +885,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.semantic_memory._weights = data["combined_weights"]
         self.semantic_memory._rgb = data["combined_rgb"]
         self.semantic_memory._obs_counts = data["obs_id"]
+        self.semantic_memory._mins = self.semantic_memory._points.min(dim=0).values
+        self.semantic_memory._maxs = self.semantic_memory._points.max(dim=0).values
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
 
