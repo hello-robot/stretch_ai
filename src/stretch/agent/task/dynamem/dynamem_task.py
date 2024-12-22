@@ -183,7 +183,8 @@ class DynamemTaskExecutor:
             theta = -0.6
 
         self.robot.say("Placing object on the " + str(target_receptacle) + ".")
-        self.agent.place(target_receptacle, theta)
+        # If you run this stack with visual servo, run it locally
+        self.agent.place(target_receptacle, init_tilt=theta, local=self.visual_servo)
         self.robot.move_to_nav_posture()
 
     def _hand_over(self) -> None:
