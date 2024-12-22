@@ -27,8 +27,8 @@ class Placing:
         self.detection_model = detection_model
         self.fx = self.camera.fx
         self.fy = self.camera.fy
-        self.cx = self.camera.cx
-        self.cy = self.camera.cy
+        self.cx = self.camera.cy
+        self.cy = self.camera.cx
         self.max_depth = 1.5
         self.tries = 1
         if save_dir is None:
@@ -82,7 +82,7 @@ class Placing:
 
         return [np.clip(-dis, -0.1, 0.1), self.head_tilt - tilt]
 
-    def place(self, points: np.ndarray, seg_mask: np.ndarray, headless: bool = False) -> bool:
+    def place(self, points: np.ndarray, seg_mask: np.ndarray, headless: bool = True) -> bool:
         points_x, points_y, points_z = points[:, :, 0], points[:, :, 1], points[:, :, 2]
         flat_x, flat_y, flat_z = (
             points_x.reshape(-1),

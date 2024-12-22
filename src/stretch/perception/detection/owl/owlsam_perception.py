@@ -43,7 +43,7 @@ class OWLSAMProcessor(OwlPerception):
         #     sam_config, sam_checkpoint, device=self.device, apply_postprocessing=False
         # )
         # self.mask_predictor = SAM2ImagePredictor(sam2_model)
-        self.sam_model = SAM2Perception(configuration="t")
+        self.sam_model = SAM2Perception(configuration="s")
 
     def detect_object(
         self,
