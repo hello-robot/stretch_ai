@@ -126,7 +126,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.log = log
         self.mllm = mllm
         if self.mllm:
-            self.gpt_client = OpenaiClient(DYNAMEM_VISUAL_GROUNDING_PROMPT)
+            self.gpt_client = OpenaiClient(
+                DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
+            )
 
     def find_alignment_over_model(self, queries: str):
         clip_text_tokens = self.encoder.encode_text(queries).cpu()
