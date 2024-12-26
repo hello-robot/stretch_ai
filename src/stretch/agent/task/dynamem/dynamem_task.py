@@ -152,6 +152,9 @@ class DynamemTaskExecutor:
             print("Using operation to grasp object:", target_object)
             print(" - Point:", point)
             print(" - Theta:", theta)
+            state = self.robot.get_six_joints()
+            state[1] = 1.0
+            self.robot.arm_to(state, blocking=True)
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
