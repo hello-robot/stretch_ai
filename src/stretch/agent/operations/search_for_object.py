@@ -44,10 +44,11 @@ class ManagedSearchOperation(ManagedOperation):
     def sayable_object_class(self) -> str:
         return self._object_class.replace("_", " ")
 
-    def __init__(self, *args, match_method="feature", **kwargs):
+    def __init__(self, *args, match_method="feature", on_floor_only: bool = False, **kwargs):
         """Search for an object in the environment. By default, we will search for an object by its feature vector."""
         super().__init__(*args, **kwargs)
         self.match_method = match_method
+        self.on_floor_only = on_floor_only
 
     def set_target_object_class(self, object_class: str):
         """Set the target object class for the search operation."""
@@ -295,8 +296,12 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                 self.show_instance(instance, f"Instance {i} with name {name}")
 
             if self.is_match(instance):
-                relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
-                if len(relations) > 0:
+                if self.on_floor_only:
+                    relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
+                    found_match = len(relations) > 0
+                else:
+                    found_match = True
+                if found_match:
                     # We found a matching relation!
                     print(f" - Found a toy on the floor at {instance.get_best_view().get_pose()}.")
 
