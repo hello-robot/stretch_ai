@@ -907,7 +907,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             os.mkdir("debug")
         if filename is None:
             filename = self.log + ".pkl"
-        data = {}
+        data: Dict[str, Any] = {}
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []
