@@ -150,10 +150,10 @@ class RobotAgent:
         # ==============================================
         # Task-level parameters
         # Grasping parameters
-        self.current_receptacle: Instance = None
-        self.current_object: Instance = None
-        self.target_object = None
-        self.target_receptacle = None
+        self.current_receptacle: Optional[Instance] = None
+        self.current_object: Optional[Instance] = None
+        self.target_object: Optional[str] = None
+        self.target_receptacle: Optional[str] = None
         # ==============================================
 
         # Parameters for feature matching and exploration
