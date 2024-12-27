@@ -7,10 +7,12 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import datetime
 from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+from PIL import Image
 
 from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
@@ -18,6 +20,7 @@ from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
 from stretch.perception import create_semantic_sensor
+from stretch.utils.image import numpy_image_to_bytes
 
 # Mapping and perception
 from stretch.utils.logger import Logger
@@ -53,10 +56,12 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
+        self.discord_bot = discord_bot
 
         # Other parameters
         self.visual_servo = visual_servo
@@ -117,7 +122,6 @@ class DynamemTaskExecutor:
         """
         self.robot.switch_to_navigation_mode()
         point = self.agent.navigate(target_object)
-        self.agent.voxel_map.write_to_pickle()
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
             return None
@@ -172,6 +176,36 @@ class DynamemTaskExecutor:
             self.agent.manipulate(target_object, theta, skip_confirmation=skip_confirmations)
         self.robot.look_front()
 
+    def _take_picture(self, channel=None) -> None:
+        """Take a picture with the head camera. Optionally send it to Discord."""
+
+        obs = self.robot.get_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.rgb).save(filename)
+        else:
+            self.discord_bot.send_message(
+                channel=channel, message="Head camera:", content=numpy_image_to_bytes(obs.rgb)
+            )
+
+    def _take_ee_picture(self, channel=None) -> None:
+        """Take a picture of the end effector."""
+
+        obs = self.robot.get_servo_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.ee_rgb).save(filename)
+        else:
+            self.discord_bot.send_message(
+                channel=channel,
+                message="End effector camera:",
+                content=numpy_image_to_bytes(obs.ee_rgb),
+            )
+
     def _place(self, target_receptacle: str, point: Optional[np.ndarray]) -> None:
         """Place an object.
 
@@ -206,7 +240,7 @@ class DynamemTaskExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]]) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel=None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
@@ -236,6 +270,11 @@ class DynamemTaskExecutor:
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
                 self.agent.robot_say(args)
+                if channel is not None:
+                    # Optionally strip quotes from args
+                    if args[0] == '"' and args[-1] == '"':
+                        args = args[1:-1]
+                    self.discord_bot.send_message(channel=channel, message=args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
@@ -316,7 +355,7 @@ class DynamemTaskExecutor:
             elif command == "rotate_in_place":
                 logger.info("Rotate in place to scan environments.")
                 self.agent.rotate_in_place()
-                self.agent.voxel_map.write_to_pickle()
+                self.agent.voxel_map.write_to_pickle("voxel_map.pkl")
             elif command == "read_from_pickle":
                 logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
                 self.agent.voxel_map.read_from_pickle(args)
@@ -346,6 +385,10 @@ class DynamemTaskExecutor:
                 logger.info("[Pickup task] Quitting.")
                 self.robot.stop()
                 return False
+            elif command == "take_picture":
+                self._take_picture(channel)
+            elif command == "take_ee_picture":
+                self._take_ee_picture(channel)
             elif command == "end":
                 logger.info("[Pickup task] Ending.")
                 break
