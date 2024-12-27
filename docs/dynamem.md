@@ -59,6 +59,13 @@ The disadvantages includes:
 # Running Dynamem
 You should follow the these instructions to run Dynamem. SLAM and control codes are supposed to be run on the robot while perception models are supposed to be run on the workstation (e.g. a laptop, a lambda machine; might also be run on the robot but not recommended).
 
+So you should clone stretch ai repo with this command
+```
+git clone https://github.com/hello-robot/stretch_ai.git --recursive
+cd stretch_ai
+```
+On **BOTH** your robot and workstation.
+
 ## On the robot
 ### Startup
 Once you turn on Stretch robot, you should first calibrate it
@@ -75,6 +82,19 @@ To run navigation system of [Dynamem](https://dynamem.github.io), you first need
 bash ./install.sh
 ```
 
+We assume [ROS2](https://docs.ros.org/en/foxy/index.html) has already been installed on your robot and the main directory for ros2 packages is `~/ament_ws`. 
+After you install `stretch_ai`, you need to copy `stretch_ros2_bridge` folder in `stretch_ai/src/` folder into `~/ament_ws/` by
+```
+ln -s src/stretch_ros2_bridge ~/ament_ws/src/stretch_ros2_bridge
+```
+and run 
+```
+cd ~/ament_ws
+colcon build --symlink
+source install/setup.bash
+```
+to install ros2 package.
+
 Then we launch SLAM on the robot
 ```
 ros2 launch stretch_ros2_bridge server.launch.py
@@ -88,7 +108,19 @@ For more information, see the [Stretch AI startup guide](start_with_docker_plus_
 
 ## On the workstation
 
-Most of AI codes (e.g. VLMs, mLLMs) should be run on the workstation.
+Most of AI codes (e.g. VLMs, mLLMs) should be run on the workstation. 
+
+You need to first install the conda environments on the workstation, we recommend you run
+```
+./install.sh --no-version
+mamba activate stretch_ai
+```
+If you use visual servo manipulation, you would need to further install SAM2
+```
+cd third_party/segment-anything-2
+pip install -e .
+```
+If you use AnyGrasp manipulation, please refer to instructions below.
 
 ### Specifying IPs in Dynamem scripts
 
