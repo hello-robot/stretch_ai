@@ -305,8 +305,8 @@ class GraspObjectOperation(ManagedOperation):
                 features = self.agent.encode_image(rgb)
                 score = self.agent.compare_features(text_features, features)
 
-                if self.verbose:
-                    print(f" - Score for {iid} is {score}")
+                # if self.verbose:
+                print(f" - Score for {iid} is {score}")
 
                 # Score is determined based on the feature comparison
                 if score > best_score:
