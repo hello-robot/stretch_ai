@@ -897,11 +897,16 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
 
-    def write_to_pickle(self):
-        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
+    def write_to_pickle(self, filename: Optional[str] = None) -> None:
+        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts.
+
+        Args:
+            filename (Optional[str], optional): Filename to write to. Defaults to None.
+        """
         if not os.path.exists("debug"):
             os.mkdir("debug")
-        filename = self.log + ".pkl"
+        if filename is None:
+            filename = self.log + ".pkl"
         data = {}
         data["camera_poses"] = []
         data["camera_K"] = []
