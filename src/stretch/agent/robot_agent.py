@@ -158,6 +158,7 @@ class RobotAgent:
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
+        self._grasp_match_threshold = parameters.get("encoder_args/grasp_feature_match_threshold", 0.05)
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
@@ -300,6 +301,11 @@ class RobotAgent:
     def feature_match_threshold(self) -> float:
         """Return the feature match threshold"""
         return self._is_match_threshold
+
+    @property
+    def grasp_feature_match_threshold(self) -> float:
+        """Return the feature match threshold for grasping"""
+        return self._grasp_match_threshold
 
     @property
     def voxel_size(self) -> float:
