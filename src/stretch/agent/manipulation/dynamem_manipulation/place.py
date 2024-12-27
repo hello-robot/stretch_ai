@@ -166,7 +166,7 @@ class Placing:
                 rerun_name="proposed_placing_location",
             )
 
-        point[1] += 0.1
+        point[1] += 0.15
         transformed_point = cam_to_3d_rot @ point
         print(f"Placing point of Object relative to camera: {transformed_point}")
 

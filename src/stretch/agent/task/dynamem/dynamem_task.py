@@ -122,6 +122,7 @@ class DynamemTaskExecutor:
         """
         self.robot.switch_to_navigation_mode()
         point = self.agent.navigate(target_object)
+        self.agent.voxel_map.write_to_pickle()
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
             return None
@@ -355,7 +356,8 @@ class DynamemTaskExecutor:
             elif command == "rotate_in_place":
                 logger.info("Rotate in place to scan environments.")
                 self.agent.rotate_in_place()
-                self.agent.voxel_map.write_to_pickle("voxel_map.pkl")
+                # self.agent.voxel_map.write_to_pickle("voxel_map.pkl")
+                self.agent.voxel_map.write_to_pickle()
             elif command == "read_from_pickle":
                 logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
                 self.agent.voxel_map.read_from_pickle(args)

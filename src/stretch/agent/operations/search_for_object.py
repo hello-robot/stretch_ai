@@ -297,7 +297,9 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
 
             if self.is_match(instance):
                 if self.on_floor_only:
-                    relations = scene_graph.get_matching_relations(instance.global_id, "floor", "on")
+                    relations = scene_graph.get_matching_relations(
+                        instance.global_id, "floor", "on"
+                    )
                     found_match = len(relations) > 0
                 else:
                     found_match = True

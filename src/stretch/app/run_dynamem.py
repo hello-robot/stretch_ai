@@ -61,7 +61,15 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place"
 )
-@click.option("--skip_confirmations", "--skip", "-S", "-y", "--yes", is_flag=True, help="Skip many confirmations")
+@click.option(
+    "--skip_confirmations",
+    "--skip",
+    "-S",
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="Skip many confirmations",
+)
 @click.option(
     "--input-path",
     type=click.Path(),
