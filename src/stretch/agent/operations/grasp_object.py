@@ -80,7 +80,8 @@ class GraspObjectOperation(ManagedOperation):
     align_y_threshold: int = 25
 
     # This is the distance before we start servoing to the object
-    pregrasp_distance_from_object: float = 0.3
+    # Standoff distance from actual grasp pose
+    pregrasp_distance_from_object: float = 0.35
 
     # ------------------------
     # Grasping motion planning parameters and offsets
@@ -224,6 +225,7 @@ class GraspObjectOperation(ManagedOperation):
             target_mask (np.ndarray): Target mask
             center_y (int): Center y
             center_x (int): Center x
+            local_region_size (int, optional): Local region size. Defaults to 5.
 
         Returns:
             float: Center depth of the object
