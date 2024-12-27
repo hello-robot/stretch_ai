@@ -17,8 +17,6 @@ from .base_encoder import BaseImageTextEncoder
 from .custom import CustomImageTextEncoder
 from .masksiglip_encoder import MaskSiglipEncoder
 
-# from .maskevaclip_encoder import MaskEvaClipEncoder
-
 encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
 
 
