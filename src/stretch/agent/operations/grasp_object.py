@@ -303,10 +303,10 @@ class GraspObjectOperation(ManagedOperation):
                 rgb = servo.ee_rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
 
                 features = self.agent.encode_image(rgb)
-                score = self.agent.compare_features(text_features, features)
+                score = self.agent.compare_features(text_features, features).item()
 
                 # if self.verbose:
-                print(f" - Score for {iid} is {score} / {self.agent.feature_match_threshold}.")
+                print(f" - Score for {iid} is {score} / {self.agent.grasp_feature_match_threshold}.")
 
                 # Score is determined based on the feature comparison
                 if score > best_score:
