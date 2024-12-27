@@ -353,12 +353,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
         np.save(self.log + "/intrinsics" + str(self.obs_count) + ".npy", intrinsics)
         np.save(self.log + "/pose" + str(self.obs_count) + ".npy", pose)
 
-        self.add(
-            camera_pose=torch.Tensor(pose),
-            rgb=torch.Tensor(rgb),
-            depth=torch.Tensor(depth),
-            camera_K=torch.Tensor(intrinsics),
-        )
+        # self.add(
+        #     camera_pose=torch.Tensor(pose),
+        #     rgb=torch.Tensor(rgb),
+        #     depth=torch.Tensor(depth),
+        #     camera_K=torch.Tensor(intrinsics),
+        # )
 
         rgb, depth = torch.Tensor(rgb), torch.Tensor(depth)
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
@@ -404,17 +404,17 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if len(valid_xyz) != 0:
             self.add_to_semantic_memory(valid_xyz, features, valid_rgb)
 
-        # if self.image_shape is not None:
-        #     rgb = F.interpolate(
-        #         rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-        #     ).squeeze()
+        if self.image_shape is not None:
+            rgb = F.interpolate(
+                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+            ).squeeze()
 
-        # self.add(
-        #     camera_pose=torch.Tensor(pose),
-        #     rgb=torch.Tensor(rgb).permute(1, 2, 0),
-        #     depth=torch.Tensor(depth),
-        #     camera_K=torch.Tensor(intrinsics),
-        # )
+        self.add(
+            camera_pose=torch.Tensor(pose),
+            rgb=torch.Tensor(rgb).permute(1, 2, 0),
+            depth=torch.Tensor(depth),
+            camera_K=torch.Tensor(intrinsics),
+        )
 
     def add_to_semantic_memory(
         self,
