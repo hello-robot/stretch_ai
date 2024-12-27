@@ -306,7 +306,7 @@ class GraspObjectOperation(ManagedOperation):
                 score = self.agent.compare_features(text_features, features)
 
                 # if self.verbose:
-                print(f" - Score for {iid} is {score}")
+                print(f" - Score for {iid} is {score} / {self.agent.feature_match_threshold}.")
 
                 # Score is determined based on the feature comparison
                 if score > best_score:
