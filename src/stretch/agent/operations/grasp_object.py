@@ -81,7 +81,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
-    pregrasp_distance_from_object: float = 0.25
+    pregrasp_distance_from_object: float = 0.3
 
     # ------------------------
     # Grasping motion planning parameters and offsets
