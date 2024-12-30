@@ -735,7 +735,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Erode the target mask to make sure we are not just on the edge
             kernel = np.ones((4, 4), np.uint8)
-            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=5)
+            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=10)
 
             center_in_mask = eroded_target_mask[int(center_y), int(center_x)] > 0
             # TODO: add deadband bubble around this?
@@ -928,6 +928,20 @@ class GraspObjectOperation(ManagedOperation):
             model = self.robot.get_robot_model()
 
             ee_pos, ee_rot = model.manip_fk(joint_state)
+
+            # Convert quaternion to pose
+            pose = np.eye(4)
+            pose[:3, :3] = R.from_quat(ee_rot).as_matrix()
+            pose[:3, 3] = ee_pos
+
+            # Move back 0.3m from grasp coordinate
+            delta = np.eye(4)
+            delta[2, 3] = -0.3
+            pose = np.dot(pose, delta)
+
+            # New ee pose = roughly the end of the arm
+            ee_pos = pose[:3, 3]
+
             # dy = np.abs(head_pos[1] - relative_object_xyz[1])
             # dz = np.abs(head_pos[2] - relative_object_xyz[2])
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
