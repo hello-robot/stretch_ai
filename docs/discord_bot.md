@@ -10,9 +10,13 @@ On your laptop, in your python environment, you will need to install the discord
 python -m pip install discord.py python-dotenv
 ```
 
+![Create a New server](images/discord0.png)
+
+First, if you have not do this, you need to create a Discord server, create a [Discord](https://discord.com/) account and login into it, create a server (with a name you like) and a channel named as `#talk-to-stretch`.
+
 ![Create a New Application](images/discord_create_app.png)
 
-First, you will go into the developer portal and click on the "New Application" button. This will allow you to create a new application that will be your bot.
+Next, you will go into the developer portal and click on the "New Application" button. This will allow you to create a new application that will be your bot.
 
 ![Name your Application](images/discord_name_app.png)
 
@@ -26,10 +30,10 @@ After this, I can see Stretch3005 listed under my applications. Click on it to c
 
 You will need to retrieve the installation link for your bot from the Installation tab.
 ```
-https://discord.com/oauth2/authorize?client_id=$TOKEN
+https://discord.com/oauth2/authorize?client_id=$CLIENT_ID
 ```
 
-where `$TOKEN` is the client ID of your bot.
+where `$CLIENT_ID` is the client ID of your bot.
 
 ## Get OAuth2 Token
 
@@ -53,7 +57,7 @@ Finally, you'll get a URL you can copy into Discord and use to install your bot 
 
 ![Bot Token](images/discord_bot_token.png)
 
-Get the token from the Bot tab.
+Get the token from the Bot tab. If this is the first time you used this discord app, you can just click `Reset Token`
 
 Then set privileged intents to let it send messages, send images, and join the server.
 
@@ -67,7 +71,7 @@ The discord bot will read the token from the command line:
 export DISCORD_TOKEN=$TOKEN
 ```
 
-where, again, `$TOKEN` is the client ID of your bot. You can find this on the Installation page or in the OAuth2 Client Information section.
+where `$TOKEN` is the one you got [here](#set-privileged-intents-and-get-token). You can find this on the Installation page or in the OAuth2 Client Information section.
 
 ## Running the bot
 
