@@ -191,7 +191,7 @@ Dynamem stores the semantic memory as a pickle file after initial rotation-in-pl
 
 You can control memory saving and reading by specifying `input-path` and `output-path`. 
 
-By specifying `output-path`, the semantic memory will be saved to `specified-output-path` + `.pkl`; otherwise, the semantic memory will be saved to pickle file named by the current datetime in `dynamem_log/`.
+By specifying `output-path`, the semantic memory will be saved to `dynamem_log/` + `specified-output-path` + `.pkl`; otherwise, the semantic memory will be saved to pickle file named by the current datetime in `dynamem_log/`.
 
 By specifying `intput-path`, the robot will first read semantic memory from specified pickle file and will skip the rotating in place.
 
