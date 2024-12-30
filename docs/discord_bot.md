@@ -12,7 +12,7 @@ python -m pip install discord.py python-dotenv
 
 ![Create a New server](images/discord0.png)
 
-First, if you have not do this, you need to create a Discord server, create a [Discord](https://discord.com/) account and login into it, create a server (with a name you like) and a channel named as `#talk-to-stretch`.
+First, if you have not done this, you need to create a Discord server, create a [Discord](https://discord.com/) account and login into it, create a server (with a name you like) and a channel named as `#talk-to-stretch`.
 
 ![Create a New Application](images/discord_create_app.png)
 
