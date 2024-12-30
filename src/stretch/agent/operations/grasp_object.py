@@ -60,7 +60,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = False
+    show_servo_gui: bool = True
     show_point_cloud: bool = False
     debug_grasping: bool = False
 
@@ -81,7 +81,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
-    pregrasp_distance_from_object: float = 0.35
+    pregrasp_distance_from_object: float = 0.25
 
     # ------------------------
     # Grasping motion planning parameters and offsets
@@ -125,7 +125,7 @@ class GraspObjectOperation(ManagedOperation):
     max_random_motions: int = 10
 
     # Timing issues
-    expected_network_delay = 0.4
+    expected_network_delay = 0.1
     open_loop: bool = False
 
     # Observation memory
@@ -550,7 +550,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Give a short pause here to make sure ee image is up to date
-        time.sleep(0.5)
+        time.sleep(0.25)
         self.warn("Starting visual servoing.")
 
         if self.debug_grasping:
@@ -852,7 +852,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
