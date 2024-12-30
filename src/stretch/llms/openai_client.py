@@ -24,6 +24,8 @@ class OpenaiClient(AbstractLLMClient):
         "gpt-3.5-turbo",
         "gpt-4o",
         "gpt-4o-mini",
+        "gpt-4o-2024-11-20",
+        "gpt-4o-2024-05-13",
     ]
 
     def __init__(

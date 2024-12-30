@@ -19,7 +19,6 @@ from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
-from stretch.dynav.utils import compute_tilt
 from stretch.perception import create_semantic_sensor
 from stretch.utils.image import numpy_image_to_bytes
 
@@ -27,6 +26,20 @@ from stretch.utils.image import numpy_image_to_bytes
 from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
+
+
+def compute_tilt(camera_xyz, target_xyz):
+    """
+    a util function for computing robot head tilts so the robot can look at the target object after navigation
+    - camera_xyz: estimated (x, y, z) coordinates of camera
+    - target_xyz: estimated (x, y, z) coordinates of the target object
+    """
+    if not isinstance(camera_xyz, np.ndarray):
+        camera_xyz = np.array(camera_xyz)
+    if not isinstance(target_xyz, np.ndarray):
+        target_xyz = np.array(target_xyz)
+    vector = camera_xyz - target_xyz
+    return -np.arctan2(vector[2], np.linalg.norm(vector[:2]))
 
 
 class DynamemTaskExecutor:
@@ -109,6 +122,8 @@ class DynamemTaskExecutor:
         """
         self.robot.switch_to_navigation_mode()
         point = self.agent.navigate(target_object)
+        # `filename` = None means write to default log path (the datetime you started to run the process)
+        self.agent.voxel_map.write_to_pickle(filename=None)
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
             return None
@@ -143,6 +158,9 @@ class DynamemTaskExecutor:
             print("Using operation to grasp object:", target_object)
             print(" - Point:", point)
             print(" - Theta:", theta)
+            state = self.robot.get_six_joints()
+            state[1] = 1.0
+            self.robot.arm_to(state, blocking=True)
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
@@ -204,7 +222,8 @@ class DynamemTaskExecutor:
             theta = -0.6
 
         self.robot.say("Placing object on the " + str(target_receptacle) + ".")
-        self.agent.place(target_receptacle, theta)
+        # If you run this stack with visual servo, run it locally
+        self.agent.place(target_receptacle, init_tilt=theta, local=self.visual_servo)
         self.robot.move_to_nav_posture()
 
     def _hand_over(self) -> None:
@@ -223,7 +242,7 @@ class DynamemTaskExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]], channel: None) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel=None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
@@ -284,13 +303,15 @@ class DynamemTaskExecutor:
                     else:
                         logger.error("Could not find the object.")
                         self.robot.say("I could not find the " + str(args) + ".")
-                        break
+                        i += 1
+                        continue
                 else:
                     if input("Do you want to run picking? [Y/n]: ").upper() != "N":
                         self._pickup(target_object, point=point)
                     else:
                         logger.info("Skip picking!")
-                        break
+                        i += 1
+                        continue
 
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
@@ -317,13 +338,15 @@ class DynamemTaskExecutor:
                     else:
                         logger.error("Could not find the object.")
                         self.robot.say("I could not find the " + str(args) + ".")
-                        break
+                        i += 1
+                        continue
                 else:
-                    if input("Do you want to run placement? [Y/n]").upper() != "N":
+                    if input("Do you want to run placement? [Y/n]: ").upper() != "N":
                         self._place(target_object, point=point)
                     else:
-                        logger.info("Skip picking!")
-                        break
+                        logger.info("Skip placing!")
+                        i += 1
+                        continue
             elif command == "hand_over":
                 self._hand_over()
             elif command == "wave":
@@ -334,7 +357,8 @@ class DynamemTaskExecutor:
             elif command == "rotate_in_place":
                 logger.info("Rotate in place to scan environments.")
                 self.agent.rotate_in_place()
-                self.agent.voxel_map.write_to_pickle("voxel_map.pkl")
+                # `filename` = None means write to default log path (the datetime you started to run the process)
+                self.agent.voxel_map.write_to_pickle(filename=None)
             elif command == "read_from_pickle":
                 logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
                 self.agent.voxel_map.read_from_pickle(args)

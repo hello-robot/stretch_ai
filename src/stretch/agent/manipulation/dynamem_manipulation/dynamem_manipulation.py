@@ -150,10 +150,7 @@ class DynamemManipulationWrapper:
         else:
             target_head_pan = self.pan
 
-        if head_tilt is not None or head_pan is not None:
-            self.robot.head_to(
-                head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking
-            )
+        self.robot.head_to(head_tilt=target_head_tilt, head_pan=target_head_pan, blocking=blocking)
 
     def pickup(self, width):
         """

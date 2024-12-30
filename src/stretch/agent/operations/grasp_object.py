@@ -80,7 +80,8 @@ class GraspObjectOperation(ManagedOperation):
     align_y_threshold: int = 25
 
     # This is the distance before we start servoing to the object
-    pregrasp_distance_from_object: float = 0.3
+    # Standoff distance from actual grasp pose
+    pregrasp_distance_from_object: float = 0.35
 
     # ------------------------
     # Grasping motion planning parameters and offsets
@@ -224,6 +225,7 @@ class GraspObjectOperation(ManagedOperation):
             target_mask (np.ndarray): Target mask
             center_y (int): Center y
             center_x (int): Center x
+            local_region_size (int, optional): Local region size. Defaults to 5.
 
         Returns:
             float: Center depth of the object
@@ -301,10 +303,12 @@ class GraspObjectOperation(ManagedOperation):
                 rgb = servo.ee_rgb * (servo.instance == iid)[:, :, None].repeat(3, axis=-1)
 
                 features = self.agent.encode_image(rgb)
-                score = self.agent.compare_features(text_features, features)
+                score = self.agent.compare_features(text_features, features).item()
 
-                if self.verbose:
-                    print(f" - Score for {iid} is {score}")
+                # if self.verbose:
+                print(
+                    f" - Score for {iid} is {score} / {self.agent.grasp_feature_match_threshold}."
+                )
 
                 # Score is determined based on the feature comparison
                 if score > best_score:
@@ -918,9 +922,16 @@ class GraspObjectOperation(ManagedOperation):
 
         # Compute the angles necessary
         if self.use_pitch_from_vertical:
-            head_pos = obs.camera_pose[:3, 3]
-            dy = np.abs(head_pos[1] - relative_object_xyz[1])
-            dz = np.abs(head_pos[2] - relative_object_xyz[2])
+            # head_pos = obs.camera_pose[:3, 3]
+            obs = self.robot.get_observation()
+            joint_state = obs.joint
+            model = self.robot.get_robot_model()
+
+            ee_pos, ee_rot = model.manip_fk(joint_state)
+            # dy = np.abs(head_pos[1] - relative_object_xyz[1])
+            # dz = np.abs(head_pos[2] - relative_object_xyz[2])
+            dy = np.abs(ee_pos[1] - relative_object_xyz[1])
+            dz = np.abs(ee_pos[2] - relative_object_xyz[2])
             pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
@@ -994,9 +1005,6 @@ class GraspObjectOperation(ManagedOperation):
         target_joint_positions, _, _, success, _ = self.robot_model.manip_ik_for_grasp_frame(
             shifted_object_xyz, ee_rot, q0=joint_state
         )
-
-        # Maybe this helps the success of the model
-        # target_joint_positions[HelloStretchIdx.LIFT] += 0.2
 
         print("Pregrasp joint positions: ")
         print(" - arm: ", target_joint_positions[HelloStretchIdx.ARM])

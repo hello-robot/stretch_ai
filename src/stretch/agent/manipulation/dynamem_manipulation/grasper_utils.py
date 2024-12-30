@@ -11,6 +11,66 @@ import numpy as np
 import pinocchio as pin
 
 from stretch.agent.manipulation.dynamem_manipulation.image_publisher import ImagePublisher
+from stretch.agent.manipulation.dynamem_manipulation.place import Placing
+
+
+def process_image_for_placing(obj, hello_robot, detection_model, save_dir=None):
+    if save_dir is not None:
+        save_dir = save_dir + "/" + obj
+    placing = Placing(hello_robot.robot, detection_model, save_dir=save_dir)
+    retries = [
+        [0, 0],
+        [0, -0.1],
+        [0, 0.1],
+        [-0.1, 0],
+        [-0.1, -0.1],
+        [-0.1, 0.1],
+        [0.1, 0],
+        [0.1, -0.1],
+        [0.1, 0.1],
+    ]
+    success = False
+    head_tilt = hello_robot.tilt
+    head_pan = hello_robot.pan
+    base_trans = 0
+
+    for i in range(9):
+        print("Capturing image: ")
+        print(f"retry entries : {retries[i]}")
+        delta_base, delta_tilt = retries[i]
+        hello_robot.move_to_position(
+            base_trans=base_trans + delta_base, head_tilt=head_tilt + delta_tilt, head_pan=head_pan
+        )
+        actions = placing.process(obj, 1, head_tilt=head_tilt + delta_tilt)
+        if actions is not None:
+            base_trans, head_tilt = actions
+            hello_robot.move_to_position(
+                base_trans=base_trans, head_tilt=head_tilt, head_pan=head_pan
+            )
+            success = True
+            break
+
+    if not success:
+        print("Did not detect object!")
+        return None, None
+
+    base_trans = 0
+    head_tilt = hello_robot.tilt
+    head_pan = hello_robot.pan
+
+    for i in range(9):
+        print("Capturing image: ")
+        print(f"retry entries : {retries[i]}")
+        delta_base, delta_tilt = retries[i]
+        hello_robot.move_to_position(
+            base_trans=base_trans + delta_base, head_tilt=head_tilt + delta_tilt, head_pan=head_pan
+        )
+        translation = placing.process(obj, 2, head_tilt=head_tilt + delta_tilt)
+        if translation is not None:
+            return [0], np.array([-translation[1], -translation[0], -translation[2]])
+
+    print("Did not detect object!")
+    return None, None
 
 
 def apply_se3_transform(se3_obj, point):
@@ -64,7 +124,10 @@ def capture_and_process_image(mode, obj, socket, hello_robot):
 
         elif retry_flag != 0 and side_retries == 3:
             print("Tried in all angles but couldn't succeed")
-            return None, None, None, None
+            if mode == "place":
+                return None, None
+            else:
+                return None, None, None, None
 
         elif side_retries == 2 and tilt_retries == 3:
             hello_robot.move_to_position(base_trans=0.1, head_tilt=head_tilt)
@@ -121,6 +184,11 @@ def move_to_point(robot, point, base_node, gripper_node, move_mode=1, pitch_rota
         [1],
         move_mode=move_mode,
     )
+    # state = robot.robot.get_six_joints()
+    # state[1] += 0.02
+    # state[2] += 0.02
+    # # state[0] -= 0.012
+    # robot.robot.arm_to(state, blocking=True)
 
 
 def pickup(

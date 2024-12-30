@@ -158,6 +158,9 @@ class RobotAgent:
 
         # Parameters for feature matching and exploration
         self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
+        self._grasp_match_threshold = parameters.get(
+            "encoder_args/grasp_feature_match_threshold", 0.05
+        )
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = self.parameters["motion_planner"]["frontier"][
@@ -300,6 +303,11 @@ class RobotAgent:
     def feature_match_threshold(self) -> float:
         """Return the feature match threshold"""
         return self._is_match_threshold
+
+    @property
+    def grasp_feature_match_threshold(self) -> float:
+        """Return the feature match threshold for grasping"""
+        return self._grasp_match_threshold
 
     @property
     def voxel_size(self) -> float:
@@ -1361,7 +1369,15 @@ class RobotAgent:
         """Move the robot to navigation posture."""
         self.robot.move_to_nav_posture()
 
-    def print_found_classes(self, goal: Optional[str] = None):
+    def is_match_by_feature(self, instance, goal):
+        object_class_feature = self.encode_text(goal).cpu()
+        emb = instance.get_image_embedding(aggregation_method="mean", normalize=True).cpu()
+        activation = torch.cosine_similarity(emb, object_class_feature, dim=-1)
+        if activation > self.feature_match_threshold:
+            print(f" - Found instance {instance.global_id} with similarity {activation} to {goal}.")
+        return activation > self.feature_match_threshold
+
+    def print_found_classes(self, goal: Optional[str] = None, verbose: bool = False):
         """Helper. print out what we have found according to detic."""
         if self.semantic_sensor is None:
             logger.warning("Tried to print classes without semantic sensor!")
@@ -1375,6 +1391,13 @@ class RobotAgent:
             oid = int(instance.category_id.item())
             name = self.semantic_sensor.get_class_name_for_id(oid)
             print(i, name, instance.score)
+            if goal is not None:
+                if self.is_match_by_feature(instance, goal):
+                    if verbose:
+                        from matplotlib import pyplot as plt
+
+                        plt.imshow(instance.get_best_view().cropped_image.int())
+                        plt.show()
 
     def start(
         self,

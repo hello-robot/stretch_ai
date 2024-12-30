@@ -25,14 +25,13 @@ from scipy.ndimage import maximum_filter, median_filter
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
-from stretch.dynav.mapping_utils.voxelized_pcd import scatter3d
 from stretch.llms import OpenaiClient
 from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
-from stretch.utils.voxel import VoxelizedPointcloud
+from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
 
 from .voxel import VALID_FRAMES, Frame
 from .voxel import SparseVoxelMap as SparseVoxelMapBase
@@ -127,7 +126,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.log = log
         self.mllm = mllm
         if self.mllm:
-            self.gpt_client = OpenaiClient(DYNAMEM_VISUAL_GROUNDING_PROMPT)
+            self.gpt_client = OpenaiClient(
+                DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
+            )
 
     def find_alignment_over_model(self, queries: str):
         clip_text_tokens = self.encoder.encode_text(queries).cpu()
@@ -352,6 +353,16 @@ class SparseVoxelMap(SparseVoxelMapBase):
         np.save(self.log + "/intrinsics" + str(self.obs_count) + ".npy", intrinsics)
         np.save(self.log + "/pose" + str(self.obs_count) + ".npy", pose)
 
+        self.voxel_pcd.clear_points(
+            torch.from_numpy(depth), torch.from_numpy(intrinsics), torch.from_numpy(pose)
+        )
+        self.add(
+            camera_pose=torch.Tensor(pose),
+            rgb=torch.Tensor(rgb),
+            depth=torch.Tensor(depth),
+            camera_K=torch.Tensor(intrinsics),
+        )
+
         rgb, depth = torch.Tensor(rgb), torch.Tensor(depth)
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
 
@@ -381,7 +392,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         valid_depth = valid_depth & (median_filter_error < 0.01).bool()
         mask = ~valid_depth
 
-        self.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
         self.semantic_memory.clear_points(
             depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear=10
         )
@@ -396,17 +406,17 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if len(valid_xyz) != 0:
             self.add_to_semantic_memory(valid_xyz, features, valid_rgb)
 
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
+        # if self.image_shape is not None:
+        #     rgb = F.interpolate(
+        #         rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+        #     ).squeeze()
 
-        self.add(
-            camera_pose=torch.Tensor(pose),
-            rgb=torch.Tensor(rgb).permute(1, 2, 0),
-            depth=torch.Tensor(depth),
-            camera_K=torch.Tensor(intrinsics),
-        )
+        # self.add(
+        #     camera_pose=torch.Tensor(pose),
+        #     rgb=torch.Tensor(rgb).permute(1, 2, 0),
+        #     depth=torch.Tensor(depth),
+        #     camera_K=torch.Tensor(intrinsics),
+        # )
 
     def add_to_semantic_memory(
         self,
@@ -531,7 +541,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
                     "type": "image_url",
                     "image_url": {
                         "url": f"data:image/png;base64,{base64_encoded}",
-                        "detail": "high",
+                        "detail": "low",
                     },
                 }
             )
@@ -611,9 +621,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             depth = self.observations[image_id - 1].depth
             K = self.observations[image_id - 1].camera_K
 
-            res = self.detection_model.compute_obj_coord(
-                text, rgb, depth, K, pose, confidence_threshold=0.01
-            )
+            res = self.detection_model.compute_obj_coord(text, rgb, depth, K, pose)
             if res is not None:
                 target_point = res
             else:
@@ -652,7 +660,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             )
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
-            cosine_similarity_check = alignments.max().item() > 0.13
+            cosine_similarity_check = alignments.max().item() > 0.14
             if cosine_similarity_check:
                 target_point = point
 
@@ -886,15 +894,22 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.semantic_memory._weights = data["combined_weights"]
         self.semantic_memory._rgb = data["combined_rgb"]
         self.semantic_memory._obs_counts = data["obs_id"]
+        self.semantic_memory._mins = self.semantic_memory._points.min(dim=0).values
+        self.semantic_memory._maxs = self.semantic_memory._points.max(dim=0).values
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
 
-    def write_to_pickle(self):
-        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
+    def write_to_pickle(self, filename: Optional[str] = None) -> None:
+        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts.
+
+        Args:
+            filename (Optional[str], optional): Filename to write to. Defaults to None.
+        """
         if not os.path.exists("debug"):
             os.mkdir("debug")
-        filename = self.log + ".pkl"
-        data = {}
+        if filename is None:
+            filename = self.log + ".pkl"
+        data: Dict[str, Any] = {}
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []
