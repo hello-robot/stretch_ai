@@ -88,7 +88,7 @@ class GraspObjectOperation(ManagedOperation):
     # This is the distance at which we close the gripper when visual servoing
     median_distance_when_grasping: float = 0.18
     lift_min_height: float = 0.1
-    lift_max_height: float = 0.5
+    lift_max_height: float = 1.0
 
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
@@ -917,6 +917,8 @@ class GraspObjectOperation(ManagedOperation):
 
         # Note that these are in the robot's current coordinate frame;
         # they're not global coordinates, so this is ok to use to compute motions.
+
+        # New ee pose = roughly the end of the arm
         object_xyz = self.get_object_xyz()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
