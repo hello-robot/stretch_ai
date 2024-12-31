@@ -2,7 +2,9 @@
 
 *stretch-ai* provides a [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) image and a [Python Virtual Environment](https://sciwiki.fredhutch.org/compdemos/python_virtual_environments/). The docker image is for your [Stretch](https://hello-robot.com/stretch-3-product) robot and the virtual env is for a computer with a GPU that communicates with your robot (*GPU computer*). This setup make it easier to develop on *stretch-ai*.
 
-At the end of this docs, we also had a section describing how to launch your robot with traditional ROS2 installation
+At the end of this docs, we also had a section describing how to launch your robot with traditional ROS2 installation.
+
+Before you start trying docker, unplug the USB dongle on the robot.
 
 ## Install Docker on the Robot
 
