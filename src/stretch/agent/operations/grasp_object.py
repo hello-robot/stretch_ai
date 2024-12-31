@@ -60,7 +60,7 @@ class GraspObjectOperation(ManagedOperation):
 
     # Debugging UI elements
     show_object_to_grasp: bool = False
-    show_servo_gui: bool = False
+    show_servo_gui: bool = True
     show_point_cloud: bool = False
     debug_grasping: bool = False
 
@@ -81,14 +81,14 @@ class GraspObjectOperation(ManagedOperation):
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
-    pregrasp_distance_from_object: float = 0.35
+    pregrasp_distance_from_object: float = 0.3
 
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
     median_distance_when_grasping: float = 0.18
     lift_min_height: float = 0.1
-    lift_max_height: float = 0.5
+    lift_max_height: float = 1.0
 
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
@@ -125,7 +125,7 @@ class GraspObjectOperation(ManagedOperation):
     max_random_motions: int = 10
 
     # Timing issues
-    expected_network_delay = 0.4
+    expected_network_delay = 0.1
     open_loop: bool = False
 
     # Observation memory
@@ -550,7 +550,7 @@ class GraspObjectOperation(ManagedOperation):
         )
 
         # Give a short pause here to make sure ee image is up to date
-        time.sleep(0.5)
+        time.sleep(0.25)
         self.warn("Starting visual servoing.")
 
         if self.debug_grasping:
@@ -735,7 +735,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Erode the target mask to make sure we are not just on the edge
             kernel = np.ones((4, 4), np.uint8)
-            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=5)
+            eroded_target_mask = cv2.erode(target_mask.astype(np.uint8), kernel, iterations=10)
 
             center_in_mask = eroded_target_mask[int(center_y), int(center_x)] > 0
             # TODO: add deadband bubble around this?
@@ -852,7 +852,7 @@ class GraspObjectOperation(ManagedOperation):
             self.robot.arm_to(
                 [base_x, lift, arm, 0, wrist_pitch, 0],
                 head=constants.look_at_ee,
-                blocking=False,
+                blocking=True,
             )
             prev_lift = lift
             time.sleep(self.expected_network_delay)
@@ -917,6 +917,8 @@ class GraspObjectOperation(ManagedOperation):
 
         # Note that these are in the robot's current coordinate frame;
         # they're not global coordinates, so this is ok to use to compute motions.
+
+        # New ee pose = roughly the end of the arm
         object_xyz = self.get_object_xyz()
         relative_object_xyz = point_global_to_base(object_xyz, xyt)
 
@@ -928,6 +930,20 @@ class GraspObjectOperation(ManagedOperation):
             model = self.robot.get_robot_model()
 
             ee_pos, ee_rot = model.manip_fk(joint_state)
+
+            # Convert quaternion to pose
+            pose = np.eye(4)
+            pose[:3, :3] = R.from_quat(ee_rot).as_matrix()
+            pose[:3, 3] = ee_pos
+
+            # Move back 0.3m from grasp coordinate
+            delta = np.eye(4)
+            delta[2, 3] = -0.3
+            pose = np.dot(pose, delta)
+
+            # New ee pose = roughly the end of the arm
+            ee_pos = pose[:3, 3]
+
             # dy = np.abs(head_pos[1] - relative_object_xyz[1])
             # dz = np.abs(head_pos[2] - relative_object_xyz[2])
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
