@@ -62,7 +62,7 @@ python -m stretch.simulation.mujoco_server
 Then run the grasping app:
 
 ```bash
-python -m stretch.app.grasp_object  --robot_ip 192.168.1.10 --target_object "red cylinder" --parameter_file=sim_planner.yam
+python -m stretch.app.grasp_object  --robot_ip 192.168.1.10 --target_object "red cylinder" --parameter_file=sim_planner.yaml
 ```
 
 A few notes:
