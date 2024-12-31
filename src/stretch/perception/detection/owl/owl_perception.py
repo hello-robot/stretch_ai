@@ -26,7 +26,6 @@ class OwlPerception:
         self,
         version="owlv2-L-p14-ensemble",
         device: Optional[str] = None,
-        verbose: bool = False,
         confidence_threshold: Optional[float] = 0.2,
     ):
         """Load trained OWL model for inference.
@@ -34,9 +33,7 @@ class OwlPerception:
         Arguments:
             version: owlv2 version, currently supporting google/owlv2-large-patch14-ensemble and google/owlv2-base-patch16-ensemble
             device: which device you want to run the model,
-            verbose: whether to print out debug information
         """
-        self.verbose = verbose
         self.confidence_threshold = confidence_threshold
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,14 +43,15 @@ class OwlPerception:
             configuration = "google/owlv2-large-patch14-ensemble"
         elif version == "owlv2-B-p16-ensemble":
             configuration = "google/owlv2-base-patch16-ensemble"
+        elif version == "owlv2-B-p16":
+            configuration = "google/owlv2-base-patch16"
         else:
             raise ValueError("Owlv2 version not implemented yet!")
 
         self.processor = AutoProcessor.from_pretrained(configuration)
         self.model = Owlv2ForObjectDetection.from_pretrained(configuration).to(self.device)
 
-        if self.verbose:
-            print(f"Loaded owl model from {configuration}")
+        print(f"Loaded owl model from {configuration}")
 
     def detect_object(
         self,

@@ -2,6 +2,10 @@
 
 *stretch-ai* provides a [Docker](<https://en.wikipedia.org/wiki/Docker_(software)>) image and a [Python Virtual Environment](https://sciwiki.fredhutch.org/compdemos/python_virtual_environments/). The docker image is for your [Stretch](https://hello-robot.com/stretch-3-product) robot and the virtual env is for a computer with a GPU that communicates with your robot (*GPU computer*). This setup make it easier to develop on *stretch-ai*.
 
+At the end of this docs, we also had a section describing how to launch your robot with traditional ROS2 installation.
+
+Before you start trying docker, unplug the USB dongle on the robot.
+
 ## Install Docker on the Robot
 
 Start by installing docker on your robot:
@@ -239,3 +243,28 @@ If the `view_images` app doesn't work, the most common issue is that the GPU com
 If your installation is working, we recommend that you try out [language-directed pick and place](llm_agent.md).
 
 
+# Installing ROS2 packages without docker
+If you do not want to launch your robot with docker, you can also install ROS2 packages from ament workspace.
+You first need to install Stretch AI environment with these commands:
+```
+# Ignore this line if you are already in stretch ai folder
+cd stretch_ai/
+
+bash ./install.sh
+```
+
+We assume [ROS2](https://docs.ros.org/en/foxy/index.html) has already been installed on your robot and the main directory for ros2 packages is `~/ament_ws`. 
+After you install `stretch_ai`, you need to copy `stretch_ros2_bridge` folder in `stretch_ai/src/` folder into `~/ament_ws/` by
+```
+# Ignore this line if you are already in stretch ai folder
+cd stretch_ai/
+
+ln -s src/stretch_ros2_bridge ~/ament_ws/src/stretch_ros2_bridge
+```
+and run 
+```
+cd ~/ament_ws
+colcon build --symlink
+source install/setup.bash
+```
+to install ros2 package.

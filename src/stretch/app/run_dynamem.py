@@ -61,7 +61,15 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place"
 )
-@click.option("--skip_confirmations", "--skip", "-S", is_flag=True, help="Skip many confirmations")
+@click.option(
+    "--skip_confirmations",
+    "--skip",
+    "-S",
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="Skip many confirmations",
+)
 @click.option(
     "--input-path",
     type=click.Path(),
@@ -75,9 +83,23 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     help="Input path with default value None",
 )
 @click.option(
-    "--match-method", "--match_method", type=click.Choice(["class", "feature"]), default="feature"
+    "--match-method",
+    "--match_method",
+    type=click.Choice(["class", "feature"]),
+    default="feature",
+    help="feature for visual servoing",
+)
+@click.option(
+    "--mllm-for-visual-grounding",
+    "--mllm",
+    "-M",
+    is_flag=True,
+    help="Use GPT4o for visual grounding",
 )
 @click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
+@click.option(
+    "--manipulation-only", "--manipulation", is_flag=True, help="For debugging manipulation"
+)
 def main(
     server_ip,
     manual_wait,
@@ -96,6 +118,7 @@ def main(
     use_voice: bool = False,
     debug_llm: bool = False,
     llm: str = "qwen25-3B-Instruct",
+    manipulation_only: bool = False,
     **kwargs,
 ):
     """
@@ -121,13 +144,16 @@ def main(
         output_path=output_path,
         server_ip=server_ip,
         skip_confirmations=skip_confirmations,
+        mllm=kwargs["mllm_for_visual_grounding"],
+        manipulation_only=manipulation_only,
     )
 
-    if input_path is None:
-        start_command = [("rotate_in_place", "")]
-    else:
-        start_command = [("read_from_pickle", input_path)]
-    executor(start_command)
+    if not manipulation_only:
+        if input_path is None:
+            start_command = [("rotate_in_place", "")]
+        else:
+            start_command = [("read_from_pickle", input_path)]
+        executor(start_command)
 
     # Create the prompt we will use to control the robot
     prompt = PickupPromptBuilder()

@@ -71,7 +71,7 @@ class AbstractLLMClient(ABC):
 
     def reset(self) -> None:
         """Reset the client state."""
-        self.conversation_history: List[str | Dict[str, str]] = []
+        self.conversation_history: List[Union[str, Dict[str, str]]] = []
         self._iterations = 0
 
     def is_first_message(self) -> bool:

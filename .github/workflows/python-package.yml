@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "devel"]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "devel" ]
     types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
 
     # Use pre-built container for stretch AI
     container:
-      image: hellorobotinc/stretch-ai_cuda-11.8:0.1.6
+      image: hellorobotinc/stretch-ai_cuda-11.8:0.2.0
 
     steps:
     - uses: actions/checkout@v4
@@ -39,6 +39,7 @@ jobs:
         python --version
         python -m pip install --upgrade pip setuptools packaging build meson ninja wheel
         find /usr -name Python.h
+        export CPPFLAGS="-I/usr/include/python3.10"
         # Install torch
         python -m pip install torch==2.3.1+cpu torchvision==0.18.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
         # Install the core package

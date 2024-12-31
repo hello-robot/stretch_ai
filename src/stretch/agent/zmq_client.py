@@ -584,9 +584,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
             joint_positions = self.get_joint_positions()
             joint_angles = conversions.config_to_manip_command(joint_positions)
         elif len(joint_angles) > 6:
-            print(
-                "[WARNING] arm_to: attempting to convert from full robot state to 6dof manipulation state."
-            )
+            if verbose:
+                print("arm_to: converting from full robot state to 6dof manipulation state.")
             joint_angles = conversions.config_to_manip_command(joint_angles)
         if head is not None:
             assert len(head) == 2, "Head must be a 2D vector of pan and tilt"
@@ -615,8 +614,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             # If head is not specified, we need to set it to the right head position
             # In this case, we assume if moving arm you should look at ee
             _next_action["head_to"] = constants.look_at_ee
-            # cur_pan, cur_tilt = self.get_pan_tilt()
-            # _next_action["head_to"] = np.array([cur_pan, cur_tilt])
         _next_action["manip_blocking"] = blocking
         self.send_action(_next_action, reliable=reliable)
 
@@ -627,7 +624,6 @@ class HomeRobotZmqClient(AbstractRobotClient):
             while not self._finish:
 
                 if steps % 40 == 39:
-                    print("-" * 20, steps, "-" * 20)
                     # Resend the action until we get there
                     self.send_action(_next_action, reliable=reliable)
                     if verbose:
@@ -664,12 +660,16 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     and (wrist_pitch_diff < self._wrist_pitch_joint_tolerance)
                     and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
+                    # sleep to prevent ros2 streaming latency
+                    time.sleep(0.3)
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
                     logger.info("Arm not moving, we are done")
                     logger.info("Arm joint velocities", joint_velocities)
                     logger.info(t1 - t0)
                     # Arm stopped moving but did not reach goal
+                    # sleep to prevent ros2 streaming latency
+                    time.sleep(0.3)
                     return False
                 else:
                     if verbose:
@@ -682,6 +682,8 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     logger.error("Timeout waiting for arm to move")
                     break
                 steps += 1
+            # sleep to prevent ros2 streaming latency
+            time.sleep(0.3)
             return False
         return True
 
@@ -779,7 +781,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if blocking:
             t0 = timeit.default_timer()
             while not self._finish:
-                self.gripper_to(gripper_target, blocking=False)
+                # self.gripper_to(gripper_target, blocking=False)
                 joint_state = self.get_joint_positions()
                 if joint_state is None:
                     continue
@@ -792,7 +794,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for gripper to open")
                     break
-                self.gripper_to(gripper_target, blocking=False)
+                # self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
             return False
         return True
@@ -825,17 +827,17 @@ class HomeRobotZmqClient(AbstractRobotClient):
                 if t1 - t0 > timeout:
                     print("[ZMQ CLIENT] Timeout waiting for gripper to close")
                     break
-                self.gripper_to(gripper_target, blocking=False)
+                # self.gripper_to(gripper_target, blocking=False)
                 time.sleep(0.01)
             return False
         return True
 
-    def gripper_to(self, target: float, blocking: bool = True):
+    def gripper_to(self, target: float, blocking: bool = True, reliable: bool = True):
         """Send the gripper to a target position."""
         next_action = {"gripper": target, "gripper_blocking": blocking}
-        self.send_action(next_action)
+        self.send_action(next_action, reliable=reliable)
         if blocking:
-            time.sleep(2.0)
+            time.sleep(0.5)
 
     def switch_to_navigation_mode(self):
         """Velocity control of the robot base."""

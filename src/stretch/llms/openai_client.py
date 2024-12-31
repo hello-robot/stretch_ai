@@ -24,6 +24,8 @@ class OpenaiClient(AbstractLLMClient):
         "gpt-3.5-turbo",
         "gpt-4o",
         "gpt-4o-mini",
+        "gpt-4o-2024-11-20",
+        "gpt-4o-2024-05-13",
     ]
 
     def __init__(
@@ -39,7 +41,7 @@ class OpenaiClient(AbstractLLMClient):
         ), f"model must be one of {self.model_choices}, got {self.model}"
         self._openai = OpenAI()
 
-    def __call__(self, command: str, verbose: bool = False):
+    def __call__(self, command: Union[str, list], verbose: bool = False):
         # prompt = copy.copy(self.prompt)
         # prompt = prompt.replace("$COMMAND", command)
         if verbose:

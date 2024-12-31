@@ -19,7 +19,7 @@ from stretch.core.task import Task
 from stretch.perception import create_semantic_sensor
 
 
-def get_task(robot, demo, target_object):
+def get_task(robot, demo, target_object, verbose: bool = False, show_gui: bool = True) -> Task:
     """Create a very simple task just to test visual servoing to grasp."""
     print("[GRASP OBJECT APP] Target object is set to", target_object)
     try:
@@ -42,12 +42,13 @@ def get_task(robot, demo, target_object):
             target_object=target_object,
             show_object_to_grasp=False,
             servo_to_grasp=True,
-            show_servo_gui=True,
+            show_servo_gui=show_gui,
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
             match_method="feature",
         )
         grasp_object.set_target_object_class(target_object)
+        grasp_object.verbose = verbose
         task.add_operation(update)
         task.add_operation(grasp_object)
     except Exception as e:
@@ -78,17 +79,21 @@ def get_task(robot, demo, target_object):
     is_flag=True,
     help="Enable real-time updates so that the robot will dynamically update the map as it moves",
 )
+@click.option(
+    "--show_gui", "--show-gui", is_flag=True, help="Show the visual servoing GUI while grasping"
+)
+@click.option("--verbose", is_flag=True, help="Print debug information")
 def main(
     robot_ip: str = "",
     local: bool = False,
-    parameter_file: str = "config/default_planner.yaml",
+    parameter_file: str = "default_planner.yaml",
     device_id: int = 0,
     verbose: bool = False,
-    show_intermediate_maps: bool = False,
     reset: bool = False,
     target_object: str = "toy",
     repeat_count: int = 1,
     enable_realtime_updates: bool = False,
+    show_gui: bool = False,
 ):
     # Create robot
     parameters = get_parameters(parameter_file)
@@ -108,9 +113,11 @@ def main(
     demo = RobotAgent(
         robot, parameters, semantic_sensor, enable_realtime_updates=enable_realtime_updates
     )
-    demo.start(visualize_map_at_start=show_intermediate_maps)
+    print("Start robot agent...")
+    demo.start(visualize_map_at_start=False)
 
-    task = get_task(robot, demo, target_object)
+    print("Create task...")
+    task = get_task(robot, demo, target_object, verbose=verbose, show_gui=show_gui)
     task.run()
     robot.open_gripper()
 

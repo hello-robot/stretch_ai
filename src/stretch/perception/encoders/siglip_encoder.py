@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -114,7 +114,7 @@ class SiglipEncoder(BaseImageTextEncoder):
         probs = torch.sigmoid(logits)
         return probs
 
-    def encode_batch_text(self, texts: list[str]) -> torch.Tensor:
+    def encode_batch_text(self, texts: List[str]) -> torch.Tensor:
         """Return feature vector for text"""
         # inputs = self.processor(text, return_tensors="pt")
         inputs = self.tokenizer(texts, padding="max_length", return_tensors="pt")

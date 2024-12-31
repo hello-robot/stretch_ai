@@ -27,30 +27,20 @@ import rerun.blueprint as rrb
 import torch
 import zmq
 
+from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
+    DynamemManipulationWrapper as ManipulationWrapper,
+)
+from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
+    capture_and_process_image,
+    move_to_point,
+    pickup,
+    process_image_for_placing,
+)
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
-from stretch.dynav.ok_robot_hw.camera import RealSenseCamera
-from stretch.dynav.ok_robot_hw.global_parameters import (
-    INIT_ARM_POS,
-    INIT_HEAD_PAN,
-    INIT_HEAD_TILT,
-    INIT_LIFT_POS,
-    INIT_WRIST_PITCH,
-    INIT_WRIST_ROLL,
-    INIT_WRIST_YAW,
-    TOP_CAMERA_NODE,
-)
-from stretch.dynav.ok_robot_hw.robot import HelloRobot as Manipulation_Wrapper
-from stretch.dynav.ok_robot_hw.utils.grasper_utils import (
-    capture_and_process_image,
-    move_to_point,
-    pickup,
-)
-
-# from stretch.dynav.voxel_map_server import ImageProcessor as VoxelMapImageProcessor
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
@@ -58,11 +48,18 @@ from stretch.mapping.voxel import (
 )
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.detection.owl import OwlPerception
-
-# from stretch.perception.encoders import BaseImageTextEncoder, MaskSiglipEncoder, get_encoder
+from stretch.perception.detection.owl import OwlPerception, OWLSAMProcessor
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
+
+# Manipulation hyperparameters
+INIT_LIFT_POS = 0.45
+INIT_WRIST_PITCH = -1.57
+INIT_ARM_POS = 0
+INIT_WRIST_ROLL = 0
+INIT_WRIST_YAW = 0
+INIT_HEAD_PAN = -1.57
+INIT_HEAD_TILT = -0.65
 
 
 class RobotAgent(RobotAgentBase):
@@ -84,6 +81,8 @@ class RobotAgent(RobotAgentBase):
         manip_port: int = 5557,
         log: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
+        mllm: bool = False,
+        manipulation_only: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -104,6 +103,11 @@ class RobotAgent(RobotAgentBase):
 
         self.rerun_visualizer = self.robot._rerun
         self.setup_custom_blueprint()
+
+        self.mllm = mllm
+        self.manipulation_only = manipulation_only
+        # For placing
+        self.owl_sam_detector = None
 
         # if self.parameters.get("encoder", None) is not None:
         #     self.encoder: BaseImageTextEncoder = get_encoder(
@@ -153,9 +157,10 @@ class RobotAgent(RobotAgentBase):
         # ==============================================
 
         # Parameters for feature matching and exploration
-        self._is_match_threshold = parameters["instance_memory"]["matching"][
-            "feature_match_threshold"
-        ]
+        self._is_match_threshold = parameters.get("encoder_args/feature_match_threshold", 0.05)
+        self._grasp_match_threshold = parameters.get(
+            "encoder_args/grasp_feature_match_threshold", 0.05
+        )
 
         # Expanding frontier - how close to frontier are we allowed to go?
         self._default_expand_frontier_size = parameters["motion_planner"]["frontier"][
@@ -184,7 +189,7 @@ class RobotAgent(RobotAgentBase):
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = Manipulation_Wrapper(
+        self.manip_wrapper = ManipulationWrapper(
             self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
         )
         self.robot.move_to_nav_posture()
@@ -204,10 +209,32 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        self.detection_model = OwlPerception(device=self.device)
+        if self.manipulation_only:
+            self.encoder = None
+        else:
+            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+        # You can see a clear difference in hyperparameter selection in different querying strategies
+        # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
+        # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
+        if self.manipulation_only:
+            self.detection_model = None
+            semantic_memory_resolution = 0.1
+            image_shape = (360, 270)
+        elif self.mllm:
+            self.detection_model = OwlPerception(
+                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
+            )
+            semantic_memory_resolution = 0.1
+            image_shape = (360, 270)
+        else:
+            self.detection_model = OwlPerception(
+                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
+            )
+            semantic_memory_resolution = 0.05
+            image_shape = (480, 360)
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
+            semantic_memory_resolution=semantic_memory_resolution,
             local_radius=parameters["local_radius"],
             obs_min_height=parameters["obs_min_height"],
             obs_max_height=parameters["obs_max_height"],
@@ -228,15 +255,15 @@ class RobotAgent(RobotAgentBase):
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             detection=self.detection_model,
             encoder=self.encoder,
+            image_shape=image_shape,
             log=self.log,
+            mllm=self.mllm,
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
-            rotation_step_size=parameters["rotation_step_size"],
-            dilate_frontier_size=parameters[
-                "dilate_frontier_size"
-            ],  # 0.6 meters back from every edge = 12 * 0.02 = 0.24
-            dilate_obstacle_size=parameters["dilate_obstacle_size"],
+            rotation_step_size=parameters.get("motion_planner/rotation_step_size", 0.2),
+            dilate_frontier_size=parameters.get("motion_planner/frontier/dilate_frontier_size", 2),
+            dilate_obstacle_size=parameters.get("motion_planner/frontier/dilate_obstacle_size", 0),
         )
         self.planner = AStar(self.space)
 
@@ -439,7 +466,7 @@ class RobotAgent(RobotAgentBase):
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.6, -0.2, -1.0, -1.8]:
             # for pan in [0.4, -0.4, -1.2]:
-            for tilt in [-0.65]:
+            for tilt in [-0.7]:
                 self.robot.head_to(pan, tilt, blocking=True)
                 self.update()
 
@@ -541,7 +568,7 @@ class RobotAgent(RobotAgentBase):
                 debug_text,
                 obs,
                 pointcloud,
-            ) = self.voxel_map.localize_A(text, debug=True, return_debug=True)
+            ) = self.voxel_map.localize_text(text, debug=True, return_debug=True)
             print("Target point selected!")
 
         # Do Frontier based exploration
@@ -552,7 +579,7 @@ class RobotAgent(RobotAgentBase):
 
         if obs is not None and mode == "navigation":
             print(obs, len(self.voxel_map.observations))
-            obs = self.voxel_map.find_obs_id_for_A(text)
+            obs = self.voxel_map.find_obs_id_for_text(text)
             rgb = self.voxel_map.observations[obs - 1].rgb
             self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
 
@@ -656,7 +683,13 @@ class RobotAgent(RobotAgentBase):
                 return None
         return end_point
 
-    def place(self, text, init_tilt=INIT_HEAD_TILT, base_node=TOP_CAMERA_NODE):
+    def place(
+        self,
+        text,
+        local=True,
+        init_tilt=INIT_HEAD_TILT,
+        base_node="camera_depth_optical_frame",
+    ):
         """
         An API for running placing. By calling this API, human will ask the robot to place whatever it holds
         onto objects specified by text queries A
@@ -669,15 +702,23 @@ class RobotAgent(RobotAgentBase):
         self.robot.switch_to_manipulation_mode()
         self.robot.look_at_ee()
         self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
-        camera = RealSenseCamera(self.robot)
 
-        rotation, translation = capture_and_process_image(
-            camera=camera,
-            mode="place",
-            obj=text,
-            socket=self.manip_socket,
-            hello_robot=self.manip_wrapper,
-        )
+        if not local:
+            rotation, translation = capture_and_process_image(
+                mode="place",
+                obj=text,
+                socket=self.manip_socket,
+                hello_robot=self.manip_wrapper,
+            )
+        else:
+            if self.owl_sam_detector is None:
+                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+            rotation, translation = process_image_for_placing(
+                obj=text,
+                hello_robot=self.manip_wrapper,
+                detection_model=self.owl_sam_detector,
+                save_dir=self.log,
+            )
         print("Place: ", rotation, translation)
 
         if rotation is None:
@@ -716,7 +757,7 @@ class RobotAgent(RobotAgentBase):
         self,
         text,
         init_tilt=INIT_HEAD_TILT,
-        base_node=TOP_CAMERA_NODE,
+        base_node="camera_depth_optical_frame",
         skip_confirmation: bool = False,
     ):
         """
@@ -745,10 +786,7 @@ class RobotAgent(RobotAgentBase):
             wrist_yaw=INIT_WRIST_YAW,
         )
 
-        camera = RealSenseCamera(self.robot)
-
         rotation, translation, depth, width = capture_and_process_image(
-            camera=camera,
             mode="pick",
             obj=text,
             socket=self.manip_socket,

@@ -7,26 +7,31 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import base64
 import logging
 import os
 import pickle
+import re
+from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
+from PIL import Image
 from scipy.ndimage import maximum_filter, median_filter
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
-from stretch.dynav.mapping_utils.voxelized_pcd import scatter3d
-from stretch.perception.encoders import BaseImageTextEncoder
+from stretch.llms import OpenaiClient
+from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
+from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
-from stretch.utils.voxel import VoxelizedPointcloud
+from stretch.utils.voxel import VoxelizedPointcloud, scatter3d
 
 from .voxel import VALID_FRAMES, Frame
 from .voxel import SparseVoxelMap as SparseVoxelMapBase
@@ -56,7 +61,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder: Optional[BaseImageTextEncoder] = None,
+        encoder: Optional[MaskSiglipEncoder] = None,
         map_2d_device: str = "cpu",
         device: Optional[str] = None,
         use_instance_memory: bool = False,
@@ -71,8 +76,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         use_negative_obstacles: bool = False,
         point_update_threshold: float = 0.9,
         detection=None,
-        image_shape=(360, 270),
+        image_shape=(480, 360),
         log="test",
+        mllm=False,
     ):
         super().__init__(
             resolution=resolution,
@@ -118,8 +124,13 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.obs_count = 0
         self.detection_model = detection
         self.log = log
+        self.mllm = mllm
+        if self.mllm:
+            self.gpt_client = OpenaiClient(
+                DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
+            )
 
-    def find_alignment_over_model(self, queries):
+    def find_alignment_over_model(self, queries: str):
         clip_text_tokens = self.encoder.encode_text(queries).cpu()
         points, features, weights, _ = self.semantic_memory.get_pointcloud()
         if points is None:
@@ -130,17 +141,28 @@ class SparseVoxelMap(SparseVoxelMapBase):
         # print(point_alignments.shape)
         return point_alignments
 
-    def find_alignment_for_A(self, A):
+    def find_alignment_for_text(self, text: str):
         points, features, _, _ = self.semantic_memory.get_pointcloud()
-        alignments = self.find_alignment_over_model(A).cpu()
+        alignments = self.find_alignment_over_model(text).cpu()
         return points[alignments.argmax(dim=-1)].detach().cpu()
 
-    def find_obs_id_for_A(self, A):
+    def find_obs_id_for_text(self, text: str):
         obs_counts = self.semantic_memory._obs_counts
-        alignments = self.find_alignment_over_model(A).cpu()
+        alignments = self.find_alignment_over_model(text).cpu()
         return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
 
-    def verify_point(self, A, point, distance_threshold=0.1, similarity_threshold=0.14):
+    def verify_point(
+        self,
+        text: str,
+        point: Union[torch.Tensor, np.ndarray],
+        distance_threshold: float = 0.1,
+        similarity_threshold: float = 0.14,
+    ):
+        """
+        Running visual grounding is quite time consuming.
+        Thus, sometimes if the point has very high cosine similarity with text query, we might opt not to run visual grounding again.
+        This function evaluates the cosine similarity.
+        """
         if isinstance(point, np.ndarray):
             point = torch.from_numpy(point)
         points, _, _, _ = self.semantic_memory.get_pointcloud()
@@ -148,7 +170,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if torch.min(distances) > distance_threshold:
             print("Points are so far from other points!")
             return False
-        alignments = self.find_alignment_over_model(A).detach().cpu()[0]
+        alignments = self.find_alignment_over_model(text).detach().cpu()[0]
         if torch.max(alignments[distances <= distance_threshold]) < similarity_threshold:
             print("Points close the the point are not similar to the text!")
         return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
@@ -279,7 +301,11 @@ class SparseVoxelMap(SparseVoxelMapBase):
         else:
             return obstacles, explored, history_soft
 
-    def get_2d_alignment_heuristics(self, text, debug: bool = False):
+    def get_2d_alignment_heuristics(self, text: str, debug: bool = False):
+        """
+        Transform the similarity with text into a 2D value map that can be used to evaluate
+        how much exploring to one point can benefit open vocabulary navigation
+        """
         if self.semantic_memory._points is None:
             return None
         # Convert metric measurements to discrete
@@ -311,7 +337,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
         )
         return alignment_heuristics
 
-    def process_rgbd_images(self, rgb, depth, intrinsics, pose):
+    def process_rgbd_images(
+        self, rgb: np.ndarray, depth: np.ndarray, intrinsics: np.ndarray, pose: np.ndarray
+    ):
+        """
+        Process rgbd images for Dynamem
+        """
         if not os.path.exists(self.log):
             os.mkdir(self.log)
         self.obs_count += 1
@@ -321,6 +352,16 @@ class SparseVoxelMap(SparseVoxelMapBase):
         np.save(self.log + "/depth" + str(self.obs_count) + ".npy", depth)
         np.save(self.log + "/intrinsics" + str(self.obs_count) + ".npy", intrinsics)
         np.save(self.log + "/pose" + str(self.obs_count) + ".npy", pose)
+
+        self.voxel_pcd.clear_points(
+            torch.from_numpy(depth), torch.from_numpy(intrinsics), torch.from_numpy(pose)
+        )
+        self.add(
+            camera_pose=torch.Tensor(pose),
+            rgb=torch.Tensor(rgb),
+            depth=torch.Tensor(depth),
+            camera_K=torch.Tensor(intrinsics),
+        )
 
         rgb, depth = torch.Tensor(rgb), torch.Tensor(depth)
         rgb = rgb.permute(2, 0, 1).to(torch.uint8)
@@ -351,13 +392,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
         valid_depth = valid_depth & (median_filter_error < 0.01).bool()
         mask = ~valid_depth
 
-        self.voxel_pcd.clear_points(depth, torch.from_numpy(intrinsics), torch.from_numpy(pose))
         self.semantic_memory.clear_points(
             depth, torch.from_numpy(intrinsics), torch.from_numpy(pose), min_samples_clear=10
         )
 
         with torch.no_grad():
-            rgb, features = self.encoder.run_mask_siglip(rgb, self.image_shape)
+            rgb, features = self.encoder.run_mask_siglip(rgb, self.image_shape)  # type:ignore
             rgb, features = rgb.squeeze(), features.squeeze()
 
         valid_xyz = world_xyz[~mask]
@@ -366,19 +406,29 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if len(valid_xyz) != 0:
             self.add_to_semantic_memory(valid_xyz, features, valid_rgb)
 
-        if self.image_shape is not None:
-            rgb = F.interpolate(
-                rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-            ).squeeze()
+        # if self.image_shape is not None:
+        #     rgb = F.interpolate(
+        #         rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
+        #     ).squeeze()
 
-        self.add(
-            camera_pose=torch.Tensor(pose),
-            rgb=torch.Tensor(rgb).permute(1, 2, 0),
-            depth=torch.Tensor(depth),
-            camera_K=torch.Tensor(intrinsics),
-        )
+        # self.add(
+        #     camera_pose=torch.Tensor(pose),
+        #     rgb=torch.Tensor(rgb).permute(1, 2, 0),
+        #     depth=torch.Tensor(depth),
+        #     camera_K=torch.Tensor(intrinsics),
+        # )
 
-    def add_to_semantic_memory(self, valid_xyz, feature, valid_rgb, weights=None, threshold=0.95):
+    def add_to_semantic_memory(
+        self,
+        valid_xyz: Optional[torch.Tensor],
+        feature: Optional[torch.Tensor],
+        valid_rgb: Optional[torch.Tensor],
+        weights: Optional[torch.Tensor] = None,
+        threshold: float = 0.95,
+    ):
+        """
+        Add pixel points into the semantic memory
+        """
         # Adding all points to voxelizedPointCloud is useless and expensive, we should exclude threshold of all points
         selected_indices = torch.randperm(len(valid_xyz))[: int((1 - threshold) * len(valid_xyz))]
         if len(selected_indices) == 0:
@@ -407,7 +457,184 @@ class SparseVoxelMap(SparseVoxelMapBase):
             obs_count=self.obs_count,
         )
 
-    def localize_A(self, text, debug=True, return_debug=False):
+    def localize_text(self, text, debug=True, return_debug=False):
+        if self.mllm:
+            return self.localize_with_mllm(text, debug=debug, return_debug=return_debug)
+        else:
+            return self.localize_with_feature_similarity(
+                text, debug=debug, return_debug=return_debug
+            )
+
+    def find_all_images(self, text: str):
+        """
+        Select all images with high pixel similarity with text
+        """
+        points, _, _, _ = self.semantic_memory.get_pointcloud()
+        points = points.cpu()
+        alignments = self.find_alignment_over_model(text).cpu().squeeze()
+        obs_counts = self.semantic_memory._obs_counts.cpu()
+
+        turning_point = min(0.12, alignments[torch.argsort(alignments)[-100]])
+        mask = alignments >= turning_point
+        obs_counts = obs_counts[mask]
+        alignments = alignments[mask]
+        points = points[mask]
+
+        unique_obs_counts, inverse_indices = torch.unique(obs_counts, return_inverse=True)
+
+        points_with_max_alignment = torch.zeros((len(unique_obs_counts), points.size(1)))
+        max_alignments = torch.zeros(len(unique_obs_counts))
+
+        for i in range(len(unique_obs_counts)):
+            # Get indices of elements belonging to the current cluster
+            indices_in_cluster = (inverse_indices == i).nonzero(as_tuple=True)[0]
+            if len(indices_in_cluster) <= 2:
+                continue
+
+            # Extract the alignments and points for the current cluster
+            cluster_alignments = alignments[indices_in_cluster].squeeze()
+            cluster_points = points[indices_in_cluster]
+
+            # Find the point with the highest alignment in the cluster
+            max_alignment_idx_in_cluster = cluster_alignments.argmax()
+            point_with_max_alignment = cluster_points[max_alignment_idx_in_cluster]
+
+            # Store the result
+            points_with_max_alignment[i] = point_with_max_alignment
+            max_alignments[i] = cluster_alignments.max()
+
+        top_alignments, top_indices = torch.topk(
+            max_alignments, k=min(3, len(max_alignments)), dim=0, largest=True, sorted=True
+        )
+        top_points = points_with_max_alignment[top_indices]
+        top_obs_counts = unique_obs_counts[top_indices]
+
+        sorted_obs_counts, sorted_indices = torch.sort(top_obs_counts, descending=False)
+        sorted_points = top_points[sorted_indices]
+        top_alignments = top_alignments[sorted_indices]
+
+        return sorted_obs_counts, sorted_points, top_alignments
+
+    def llm_locator(self, image_ids: Union[torch.Tensor, np.ndarray, list], text: str):
+        """
+        Prompting the mLLM to select the images containing objects of interest.
+
+        Input:
+            image_ids: a series of images you want to send to mLLM
+            text: text query
+
+        Return
+        """
+        user_messages = []
+        for obs_id in image_ids:
+            obs_id = int(obs_id) - 1
+            rgb = np.copy(self.observations[obs_id].rgb.numpy())
+            depth = self.observations[obs_id].depth
+            rgb[depth > 2.5] = [0, 0, 0]
+            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            img_bytes = buffered.getvalue()
+            base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
+            user_messages.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{base64_encoded}",
+                        "detail": "low",
+                    },
+                }
+            )
+        user_messages.append(
+            {
+                "type": "text",
+                "text": "The object you need to find is " + text,
+            }
+        )
+
+        response = self.gpt_client(user_messages)
+        return self.process_response(response)
+
+    def process_response(self, response: str):
+        """
+        Process the output of GPT4o to extract the selected image's id
+        """
+        try:
+            # Use regex to locate the 'Images:' section, allowing for varying whitespace and line breaks
+            images_section_match = re.search(r"Images:\s*([\s\S]+)", response, re.IGNORECASE)
+            if not images_section_match:
+                raise ValueError("The 'Images:' section is missing.")
+
+            # Extract the content after 'Images:'
+            images_content = images_section_match.group(1).strip()
+
+            # Check if the content is 'None' (case-insensitive)
+            if images_content.lower() == "none":
+                return None
+
+            # Use regex to find all numbers, regardless of separators like commas, periods, or spaces
+            numbers = re.findall(r"\d+", images_content)
+
+            if not numbers:
+                raise ValueError("No numbers found in the 'Images:' section.")
+
+            # Convert all found numbers to integers
+            numbers = [int(num) for num in numbers]
+
+            # Return all numbers as a list if multiple numbers are found
+            if len(numbers) > 0:
+                return numbers[-1]
+            else:
+                return None
+
+        except Exception as e:
+            # Handle any exceptions and optionally log the error message
+            print(f"Error: {e}")
+            return None
+
+    def localize_with_mllm(self, text: str, debug=True, return_debug=False):
+        points, _, _, _ = self.semantic_memory.get_pointcloud()
+        alignments = self.find_alignment_over_model(text).cpu()
+        point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
+        obs_counts = self.semantic_memory._obs_counts
+        image_id = obs_counts[alignments.argmax(dim=-1)].detach().cpu()
+        debug_text = ""
+        target_point = None
+
+        image_ids, points, alignments = self.find_all_images(text)
+        target_id = self.llm_locator(image_ids, text)
+
+        if target_id is None:
+            debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
+            image_id = None
+            point = None
+        else:
+            target_id -= 1
+            target_point = points[target_id]
+            image_id = image_ids[target_id]
+            point = points[target_id]
+            debug_text += "#### - An image is identified \n"
+
+        if image_id is not None:
+            rgb = self.observations[image_id - 1].rgb
+            pose = self.observations[image_id - 1].camera_pose
+            depth = self.observations[image_id - 1].depth
+            K = self.observations[image_id - 1].camera_K
+
+            res = self.detection_model.compute_obj_coord(text, rgb, depth, K, pose)
+            if res is not None:
+                target_point = res
+            else:
+                target_point = point
+
+        if not debug:
+            return target_point
+        elif not return_debug:
+            return target_point, debug_text
+        else:
+            return target_point, debug_text, image_id, point
+
+    def localize_with_feature_similarity(self, text, debug=True, return_debug=False):
         points, _, _, _ = self.semantic_memory.get_pointcloud()
         alignments = self.find_alignment_over_model(text).cpu()
         point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
@@ -433,7 +660,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             )
         else:
             # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
-            cosine_similarity_check = alignments.max().item() > 0.13
+            cosine_similarity_check = alignments.max().item() > 0.14
             if cosine_similarity_check:
                 target_point = point
 
@@ -667,15 +894,22 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.semantic_memory._weights = data["combined_weights"]
         self.semantic_memory._rgb = data["combined_rgb"]
         self.semantic_memory._obs_counts = data["obs_id"]
+        self.semantic_memory._mins = self.semantic_memory._points.min(dim=0).values
+        self.semantic_memory._maxs = self.semantic_memory._points.max(dim=0).values
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
         self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
 
-    def write_to_pickle(self):
-        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts."""
+    def write_to_pickle(self, filename: Optional[str] = None) -> None:
+        """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts.
+
+        Args:
+            filename (Optional[str], optional): Filename to write to. Defaults to None.
+        """
         if not os.path.exists("debug"):
             os.mkdir("debug")
-        filename = self.log + ".pkl"
-        data = {}
+        if filename is None:
+            filename = self.log + ".pkl"
+        data: Dict[str, Any] = {}
         data["camera_poses"] = []
         data["camera_K"] = []
         data["base_poses"] = []

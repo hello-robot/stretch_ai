@@ -7,23 +7,39 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import datetime
 from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+from PIL import Image
 
 from stretch.agent.operations import GraspObjectOperation
 from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.emote import EmoteTask
 from stretch.agent.task.pickup.hand_over_task import HandOverTask
 from stretch.core import AbstractRobotClient, Parameters
-from stretch.dynav.utils import compute_tilt
 from stretch.perception import create_semantic_sensor
+from stretch.utils.image import numpy_image_to_bytes
 
 # Mapping and perception
 from stretch.utils.logger import Logger
 
 logger = Logger(__name__)
+
+
+def compute_tilt(camera_xyz, target_xyz):
+    """
+    a util function for computing robot head tilts so the robot can look at the target object after navigation
+    - camera_xyz: estimated (x, y, z) coordinates of camera
+    - target_xyz: estimated (x, y, z) coordinates of the target object
+    """
+    if not isinstance(camera_xyz, np.ndarray):
+        camera_xyz = np.array(camera_xyz)
+    if not isinstance(target_xyz, np.ndarray):
+        target_xyz = np.array(target_xyz)
+    vector = camera_xyz - target_xyz
+    return -np.arctan2(vector[2], np.linalg.norm(vector[:2]))
 
 
 class DynamemTaskExecutor:
@@ -38,16 +54,22 @@ class DynamemTaskExecutor:
         server_ip: Optional[str] = "127.0.0.1",
         skip_confirmations: bool = True,
         explore_iter: int = 5,
+        mllm: bool = False,
+        manipulation_only: bool = False,
+        discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
+        self.discord_bot = discord_bot
 
         # Other parameters
         self.visual_servo = visual_servo
         self.match_method = match_method
         self.skip_confirmations = skip_confirmations
         self.explore_iter = explore_iter
+
+        self.manipulation_only = manipulation_only
 
         # Do type checks
         if not isinstance(self.robot, AbstractRobotClient):
@@ -67,7 +89,13 @@ class DynamemTaskExecutor:
 
         print("- Start robot agent with data collection")
         self.agent = RobotAgent(
-            self.robot, self.parameters, self.semantic_sensor, log=output_path, server_ip=server_ip
+            self.robot,
+            self.parameters,
+            self.semantic_sensor,
+            log=output_path,
+            server_ip=server_ip,
+            mllm=mllm,
+            manipulation_only=manipulation_only,
         )
         self.agent.start()
 
@@ -94,7 +122,8 @@ class DynamemTaskExecutor:
         """
         self.robot.switch_to_navigation_mode()
         point = self.agent.navigate(target_object)
-        self.agent.voxel_map.write_to_pickle()
+        # `filename` = None means write to default log path (the datetime you started to run the process)
+        self.agent.voxel_map.write_to_pickle(filename=None)
         if point is None:
             logger.error("Navigation Failure: Could not find the object {}".format(target_object))
             return None
@@ -129,6 +158,9 @@ class DynamemTaskExecutor:
             print("Using operation to grasp object:", target_object)
             print(" - Point:", point)
             print(" - Theta:", theta)
+            state = self.robot.get_six_joints()
+            state[1] = 1.0
+            self.robot.arm_to(state, blocking=True)
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
@@ -146,6 +178,36 @@ class DynamemTaskExecutor:
             self.agent.manipulate(target_object, theta, skip_confirmation=skip_confirmations)
         self.robot.look_front()
 
+    def _take_picture(self, channel=None) -> None:
+        """Take a picture with the head camera. Optionally send it to Discord."""
+
+        obs = self.robot.get_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.rgb).save(filename)
+        else:
+            self.discord_bot.send_message(
+                channel=channel, message="Head camera:", content=numpy_image_to_bytes(obs.rgb)
+            )
+
+    def _take_ee_picture(self, channel=None) -> None:
+        """Take a picture of the end effector."""
+
+        obs = self.robot.get_servo_observation()
+        if channel is None:
+            # Just save it to the disk
+            now = datetime.datetime.now()
+            filename = f"stretch_image_{now.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+            Image.fromarray(obs.ee_rgb).save(filename)
+        else:
+            self.discord_bot.send_message(
+                channel=channel,
+                message="End effector camera:",
+                content=numpy_image_to_bytes(obs.ee_rgb),
+            )
+
     def _place(self, target_receptacle: str, point: Optional[np.ndarray]) -> None:
         """Place an object.
 
@@ -160,7 +222,8 @@ class DynamemTaskExecutor:
             theta = -0.6
 
         self.robot.say("Placing object on the " + str(target_receptacle) + ".")
-        self.agent.place(target_receptacle, theta)
+        # If you run this stack with visual servo, run it locally
+        self.agent.place(target_receptacle, init_tilt=theta, local=self.visual_servo)
         self.robot.move_to_nav_posture()
 
     def _hand_over(self) -> None:
@@ -179,7 +242,7 @@ class DynamemTaskExecutor:
         # Execute the task
         task.run()
 
-    def __call__(self, response: List[Tuple[str, str]]) -> bool:
+    def __call__(self, response: List[Tuple[str, str]], channel=None) -> bool:
         """Execute the list of commands given by the LLM bot.
 
         Args:
@@ -209,6 +272,11 @@ class DynamemTaskExecutor:
                 # Use TTS to say the text
                 logger.info(f"Saying: {args}")
                 self.agent.robot_say(args)
+                if channel is not None:
+                    # Optionally strip quotes from args
+                    if args[0] == '"' and args[-1] == '"':
+                        args = args[1:-1]
+                    self.discord_bot.send_message(channel=channel, message=args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
@@ -219,7 +287,7 @@ class DynamemTaskExecutor:
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
                 if self.skip_confirmations or (
                     not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
                 ):
                     self.robot.move_to_nav_posture()
                     point = self._find(args)
@@ -235,13 +303,15 @@ class DynamemTaskExecutor:
                     else:
                         logger.error("Could not find the object.")
                         self.robot.say("I could not find the " + str(args) + ".")
-                        break
+                        i += 1
+                        continue
                 else:
-                    if input("Do you want to run picking? [Y/N]").upper() != "N":
+                    if input("Do you want to run picking? [Y/n]: ").upper() != "N":
                         self._pickup(target_object, point=point)
                     else:
                         logger.info("Skip picking!")
-                        break
+                        i += 1
+                        continue
 
             elif command == "place":
                 logger.info(f"[Pickup task] Place: {args}")
@@ -253,7 +323,7 @@ class DynamemTaskExecutor:
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
                 if self.skip_confirmations or (
                     not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/N]").upper() == "Y"
+                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
                 ):
                     point = self._find(args)
                 # Or the user explicitly tells that he or she does not want to run navigation.
@@ -268,13 +338,15 @@ class DynamemTaskExecutor:
                     else:
                         logger.error("Could not find the object.")
                         self.robot.say("I could not find the " + str(args) + ".")
-                        break
+                        i += 1
+                        continue
                 else:
-                    if input("Do you want to run picking? [Y/N]").upper() != "N":
+                    if input("Do you want to run placement? [Y/n]: ").upper() != "N":
                         self._place(target_object, point=point)
                     else:
-                        logger.info("Skip picking!")
-                        break
+                        logger.info("Skip placing!")
+                        i += 1
+                        continue
             elif command == "hand_over":
                 self._hand_over()
             elif command == "wave":
@@ -285,7 +357,8 @@ class DynamemTaskExecutor:
             elif command == "rotate_in_place":
                 logger.info("Rotate in place to scan environments.")
                 self.agent.rotate_in_place()
-                self.agent.voxel_map.write_to_pickle()
+                # `filename` = None means write to default log path (the datetime you started to run the process)
+                self.agent.voxel_map.write_to_pickle(filename=None)
             elif command == "read_from_pickle":
                 logger.info(f"Load the semantic memory from past runs, pickle file name: {args}.")
                 self.agent.voxel_map.read_from_pickle(args)
@@ -315,6 +388,10 @@ class DynamemTaskExecutor:
                 logger.info("[Pickup task] Quitting.")
                 self.robot.stop()
                 return False
+            elif command == "take_picture":
+                self._take_picture(channel)
+            elif command == "take_ee_picture":
+                self._take_ee_picture(channel)
             elif command == "end":
                 logger.info("[Pickup task] Ending.")
                 break

@@ -22,7 +22,7 @@ from stretch.agent.operations import (
     SearchForReceptacleOperation,
 )
 from stretch.agent.robot_agent import RobotAgent
-from stretch.core.task import Task
+from stretch.core.task import Operation, Task
 
 
 class PickupTask:
@@ -161,6 +161,7 @@ class PickupTask:
         )
         # If we cannot start, we should go back to the search_for_object operation.
         # To determine if we can start, we look at the end effector camera and see if there's anything detectable.
+        grasp_object: Operation = None
         if self.use_visual_servoing_for_grasp:
             grasp_object = GraspObjectOperation(
                 name=f"grasp_the_{self.target_object}",
@@ -204,7 +205,11 @@ class PickupTask:
         task.add_operation(go_to_receptacle)
         task.add_operation(place_object_on_receptacle)
 
-        task.connect_on_success(go_to_navigation_mode.name, search_for_receptacle.name)
+        if not add_rotate:
+            task.connect_on_success(go_to_navigation_mode.name, search_for_receptacle.name)
+        else:
+            task.connect_on_success(go_to_navigation_mode.name, rotate_in_place.name)
+            task.connect_on_success(rotate_in_place.name, search_for_receptacle.name)
         task.connect_on_success(search_for_receptacle.name, search_for_object.name)
         task.connect_on_success(search_for_object.name, go_to_object.name)
         task.connect_on_success(go_to_object.name, pregrasp_object.name)

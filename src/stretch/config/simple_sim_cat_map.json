@@ -1,0 +1,11 @@
+{
+    "obj_category_to_obj_category_id": {
+	    "blue_box": 0,
+	    "red_cylinder": 1,
+	    "dark_blue_box": 2,
+	    "wood_table": 3
+    },
+    "recep_category_to_recep_category_id": {
+        "table": 0
+    }
+}
