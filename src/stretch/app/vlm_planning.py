@@ -107,7 +107,6 @@ def images_to_video(image_list, output_path, fps=30):
     default="",
     help="Input path. If empty, run on the real robot.",
 )
-@click.option("--local", is_flag=True, help="Run code locally on the robot.")
 @click.option("--robot_ip", default="")
 @click.option("--task", "-t", type=str, default="", help="Task to run with the planner.")
 @click.option(
@@ -145,7 +144,6 @@ def main(
     show_instances: bool = False,
     api_key: str = None,
     task: str = "",
-    local: bool = False,
     robot_ip: str = "",
 ):
     """Simple script to load a voxel map"""
@@ -179,7 +177,7 @@ def main(
         # We will load data from a pickle file
         robot = DummyStretchClient()
     else:
-        robot = HomeRobotZmqClient(robot_ip=robot_ip, local=local)
+        robot = HomeRobotZmqClient(robot_ip=robot_ip)
 
     print("Creating robot agent...")
     agent = RobotAgent(
@@ -190,7 +188,7 @@ def main(
     )
     voxel_map = agent.get_voxel_map()
 
-    if len(input_path) > 0:
+    if input_path is not None:
         # load from pickle
         voxel_map.read_from_pickle(input_path, num_frames=frame, perception=semantic_sensor)
     else:
