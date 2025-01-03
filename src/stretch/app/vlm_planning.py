@@ -26,7 +26,7 @@ import numpy as np
 
 from stretch.agent import RobotAgent
 from stretch.agent.vlm_planner import VLMPlanner
-from stretch.agent.zmq_client import HomeRobotZMQClient
+from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core import get_parameters
 from stretch.core.interfaces import Observations
 from stretch.perception import create_semantic_sensor
@@ -179,7 +179,7 @@ def main(
         # We will load data from a pickle file
         robot = DummyStretchClient()
     else:
-        robot = HomeRobotZMQClient(robot_ip=robot_ip, local=local)
+        robot = HomeRobotZmqClient(robot_ip=robot_ip, local=local)
 
     print("Creating robot agent...")
     agent = RobotAgent(
