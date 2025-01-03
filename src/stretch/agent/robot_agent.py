@@ -269,6 +269,14 @@ class RobotAgent:
             self._update_map_thread = None
             self._get_observations_thread = None
 
+    def get_parameters(self) -> Parameters:
+        """Return the parameters for this model"""
+        return self.parameters
+
+    def get_semantic_sensor(self) -> OvmmPerception:
+        """Return the semantic sensor in use by this model"""
+        return self.semantic_sensor
+
     def get_robot(self) -> AbstractRobotClient:
         """Return the robot in use by this model"""
         return self.robot
