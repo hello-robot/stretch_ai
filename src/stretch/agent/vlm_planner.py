@@ -101,19 +101,25 @@ class VLMPlanner:
         print()
         if output == "explore":
             print(">>>>>> Planner cannot find a plan, the robot should explore more >>>>>>>>>")
+            actions = None
         elif output == "gpt API error":
             print(">>>>>> there is something wrong with the planner api >>>>>>>>>")
-
-        actions = output.split("; ")
+            actions = None
+        else:
+            actions = output.split("; ")
 
         show_plan = True
-        if show_plan:
+        if show_plan and actions is not None:
             import re
             import matplotlib.pyplot as plt
 
             plt.clf()
             for action_id, action in enumerate(actions):
-                crop_id = int(re.search(r"img_(\d+)", action).group(1))
+                res = re.search(r"img_(\d+)", action)
+                if res is None:
+                    print(f"{action_id}: Action {action} does not have a crop id")
+                    continue
+                crop_id = int(res.group(1))
                 global_id = world_representation.object_images[crop_id].instance_id
                 plt.subplot(1, len(actions), action_id + 1)
                 plt.imshow(
