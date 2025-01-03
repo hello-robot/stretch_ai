@@ -104,7 +104,8 @@ class MultiCropOpenAIClient:
         context_messages.append({"type": "text", "text": f"3. Query: {self.goal}\n"})
         context_messages.append({"type": "text", "text": "4. Answer: "})
         chat_input = {
-            "model": "gpt-4-turbo",
+            # "model": "gpt-4-turbo",
+            "model": "gpt-4o",
             "messages": [{"role": "user", "content": context_messages}],
             "max_tokens": self.max_tokens,
         }
