@@ -149,8 +149,11 @@ def main(
     robot_ip: str = "",
 ):
     """Simple script to load a voxel map"""
-    input_path = Path(input_path)
-    print("Loading:", input_path)
+    if len(input_path) > 0:
+        input_path = Path(input_path)
+        print("Loading:", input_path)
+    else:
+        input_path = None
 
     loaded_voxel_map = None
 
@@ -172,7 +175,8 @@ def main(
     print("Creating semantic sensors...")
     semantic_sensor = create_semantic_sensor(parameters=vlm_parameters)
 
-    if len(input_path) > 0:
+    if input_path is not None:
+        # We will load data from a pickle file
         robot = DummyStretchClient()
     else:
         robot = HomeRobotZMQClient(robot_ip=robot_ip, local=local)
