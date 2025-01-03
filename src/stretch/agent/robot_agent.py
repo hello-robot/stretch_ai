@@ -586,7 +586,7 @@ class RobotAgent:
 
     def get_command(self):
         """Get a command from config file or from user input if not specified."""
-        task = self.parameters.get("task").get("command")
+        task = self.parameters.get("task/command")
         if task is not None and len(task) > 0:
             return task
         else:
@@ -2340,12 +2340,12 @@ class RobotAgent:
             scene_graph = self.extract_symbolic_spatial_info(instances)
 
         world_representation = self.get_object_centric_world_representation(
-            instances,
-            self.parameters.get("vlm/vlm_context_length", 20),
-            self.parameters.get("vlm/sample_strategy", "clip"),
-            task,
-            self.encode_text(task),
-            scene_graph,
+            instance_memory=instances,
+            task=task,
+            text_features=self.encode_text(task),
+            max_context_length=self.parameters.get("vlm/vlm_context_length", 20),
+            sample_strategy=self.parameters.get("vlm/sample_strategy", "clip"),
+            scene_graph=scene_graph,
         )
         return world_representation
 
