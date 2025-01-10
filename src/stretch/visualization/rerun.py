@@ -184,14 +184,15 @@ class RerunVisualizer:
 
     camera_point_radius = 0.01
     max_displayed_points_per_camera: int = 10000
+    current_semantic_img = None
 
     def __init__(
         self,
         display_robot_mesh: bool = True,
-        spawn_gui: bool = True,
+        spawn_gui: bool = False,
         open_browser: bool = False,
         server_memory_limit: str = "4GB",
-        collapse_panels: bool = True,
+        collapse_panels: bool = False,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
         output_path = None
@@ -213,7 +214,7 @@ class RerunVisualizer:
         
         rr.init("Stretch_robot", spawn=spawn_gui)
         rr.save(output_path / 'test_stretch_rerun_5nov_vlm.rrd')
-        open_browser = True
+        # open_browser = True
         if open_browser:
             rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit, ws_port=9877)
 
@@ -252,7 +253,11 @@ class RerunVisualizer:
                                     and shows the simplified time panel
         """
         main = rrb.Horizontal(
-            rrb.Spatial3DView(name="3D View", origin="world"),
+            rrb.Vertical(
+                rrb.Spatial3DView(name="3D View", origin="world"),
+                rrb.TextDocumentView(name="PlannerOutput"),
+                ),
+            # rrb.Spatial3DView(name="3D View", origin="world"),
             rrb.Vertical(
                 rrb.Spatial2DView(name="Head RGB", origin="/world/head_camera", contents=["$origin/rgb", "/world/annotations/**"],),
                 rrb.Spatial2DView(name="Head Semantics", origin="/world/head_camera", contents=["$origin/semantic", "/world/annotations/**"],),
@@ -381,7 +386,8 @@ class RerunVisualizer:
             )
         
     def log_semantics(self, obs):
-        rr.log("world/head_camera/semantic", rr.SegmentationImage(obs['semantic']))
+        if (self.current_semantic_img is not None):
+            rr.log("world/head_camera/semantic", rr.SegmentationImage(self.current_semantic_img))
         
     def log_robot_xyt(self, obs: Observations):
         """Log robot world pose"""
@@ -497,9 +503,20 @@ class RerunVisualizer:
         Log robot mesh transforms using urdf visualizer"""
         self.urdf_logger.log_transforms(obs)
 
-    def log_vlm_target(self, vlm_target):
-        vlm_target[2] += 0.02
-        rr.log("world/vlm_target", rr.Points3D(vlm_target, colors=[0,255,0], radii=0.13))
+    def log_vlm_target(self, vlm_target, format='xyt'):
+        if format == 'xyz':
+            vlm_target[2] += 0.02
+            rr.log("world/vlm_node_target", rr.Points3D(vlm_target, colors=[255,20,147], radii=0.1))
+        if format == 'xyt':
+            rr.log(
+                "world/vlm_target",
+                rr.Transform3D(
+                    translation=[vlm_target[0], vlm_target[1], 0],
+                    rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=vlm_target[2]),
+                    axis_length=0.5,
+                ),
+            )
+            rr.log("world/vlm_target_pos", rr.Points3D([vlm_target[0], vlm_target[1], 0.02], colors=[0,255,0], radii=0.1))
 
     def update_voxel_map(
         self,
@@ -578,13 +595,13 @@ class RerunVisualizer:
             print("Time to log points: ", t6 - t5, "% = ", (t6 - t5) / (t6 - t0))
 
     def update_frontier(self, clustered_frontier, frontier_points, outside_frontier_points, frontier_radius=0.05):
-        frontier_points[:, 2] += 0.015
+        frontier_points[:, 2] += 0.02
         rr.log(
             "world/clustered_frontier",
             rr.Points3D(
                 positions=clustered_frontier,
-                radii=np.ones(clustered_frontier.shape[0]) * frontier_radius,
-                colors=[0, 0, 0],
+                radii=np.ones(clustered_frontier.shape[0]) * 0.1,
+                colors=[0, 0, 255],
             ),
         )
         rr.log(
@@ -596,15 +613,15 @@ class RerunVisualizer:
             ),
         )
 
-        outside_frontier_points[:, 2] += 0.015
-        rr.log(
-            "world/outside_frontier_points",
-            rr.Points3D(
-                positions=outside_frontier_points,
-                radii=np.ones(outside_frontier_points.shape[0]) * 0.025,
-                colors=[10, 10, 0],
-            ),
-        )
+        # outside_frontier_points[:, 2] += 0.015
+        # rr.log(
+        #     "world/outside_frontier_points",
+        #     rr.Points3D(
+        #         positions=outside_frontier_points,
+        #         radii=np.ones(outside_frontier_points.shape[0]) * 0.025,
+        #         colors=[10, 10, 0],
+        #     ),
+        # )
 
 
     def update_hydra_mesh(self, hydra_pipeline):
@@ -635,6 +652,14 @@ class RerunVisualizer:
             timeless=False,
         )
 
+    def log_planner_text(self, text):
+        rr.log(
+            "PlannerOutput",
+            rr.TextDocument(
+                text,
+                media_type=rr.MediaType.TEXT,
+            ),
+        )
 
     def update_scene_graph(
         self, scene_graph: SceneGraph, semantic_sensor: Optional[OvmmPerception] = None
@@ -722,7 +747,7 @@ class RerunVisualizer:
 
                 # Cameras use the lower-res servo object
                 self.log_head_camera(servo)
-                # self.log_semantics(obs)
+                self.log_semantics(obs)
                 # self.log_ee_camera(servo)
 
                 self.log_robot_state(obs)
