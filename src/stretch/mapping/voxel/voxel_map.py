@@ -246,7 +246,7 @@ class SparseVoxelMapNavigationSpace(XYT):
     def is_valid(
         self,
         state: torch.Tensor,
-        is_safe_threshold=1.0,
+        is_safe_threshold=0.5,
         debug: bool = False,
         verbose: bool = False,
         obstacles: Optional[torch.Tensor] = None,
