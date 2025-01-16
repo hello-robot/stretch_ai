@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # This script (c) 2024 Hello Robot under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
-export CUDA_VERSION=11.8
+export CUDA_VERSION=12.4
 export PYTHON_VERSION=3.10
 
 script_dir="$(dirname "$0")"
