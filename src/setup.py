@@ -60,7 +60,7 @@ setuptools.setup(
         "pyrealsense2",
         "urchin",
         # Visualization
-        "rerun-sdk",
+        "rerun-sdk>=0.18.0",
         # For siglip encoder
         "sentencepiece",
         # For git tools

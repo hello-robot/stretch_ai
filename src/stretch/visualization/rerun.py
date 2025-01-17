@@ -18,7 +18,9 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 import torch
-from hydra_python.utils import hydra_get_mesh
+
+# from hydra_python.utils import hydra_get_mesh
+from graph_eqa.envs.utils import hydra_get_mesh
 
 from stretch.core.interfaces import Observations
 from stretch.mapping.scene_graph import SceneGraph
@@ -199,10 +201,10 @@ class RerunVisualizer:
     def __init__(
         self,
         display_robot_mesh: bool = True,
-        spawn_gui: bool = False,
+        spawn_gui: bool = True,
         open_browser: bool = False,
         server_memory_limit: str = "4GB",
-        collapse_panels: bool = False,
+        collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
         output_path=None,
