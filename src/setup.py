@@ -40,7 +40,7 @@ setuptools.setup(
         "opencv-python",
         "scipy",
         "matplotlib",
-        "trimesh",
+        "trimesh>=3.10.0",
         "yacs",
         "scikit-image",
         "sophuspy",
@@ -67,16 +67,16 @@ setuptools.setup(
         "gitpython",
         # Configuration tools and neural networks
         "hydra-core",
-        "timm",
+        "timm>1.0.0",
         "huggingface_hub[cli]",
-        "transformers",
+        "transformers>=4.39.2",
         "accelerate",
         "einops",
         # Meta neural nets
         "segment-anything",
         # Compression tools
         "pyliblzfse",
-        "webp",
+        "webp>=0.3.0",
         # UI tools
         "termcolor",
         # Audio
