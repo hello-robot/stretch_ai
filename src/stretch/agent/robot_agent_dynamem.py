@@ -99,7 +99,6 @@ class RobotAgent(RobotAgentBase):
         self.semantic_sensor = semantic_sensor
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
-        self.current_state = "WAITING"
 
         self.rerun_visualizer = self.robot._rerun
         self.setup_custom_blueprint()
