@@ -45,7 +45,7 @@ else
     echo "\$DISPLAY is already set to $DISPLAY"
 fi
 
-xhost si:localuser:root
+# xhost si:localuser:root
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 parent_dir="$(dirname "$script_dir")"
@@ -95,7 +95,6 @@ fi
 # hellorobotinc/stretch-ai_cuda-11.8:$VERSION: the docker image to run
 run_docker_command run \
     -it \
-    --runtime nvidia \
     --gpus all \
     -v /dev:/dev \
     --device /dev/snd \

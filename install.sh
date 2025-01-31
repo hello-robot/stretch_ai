@@ -160,12 +160,10 @@ else
 fi
 
 echo "Activate env $ENV_NAME"
-if [ "$MAMBA" == "conda" ]; then
-    eval "$(conda shell.bash hook)"
-    source activate $ENV_NAME
-else
-    source activate $ENV_NAME
-fi
+
+# If you don't install conda and only have mamba, please don't use this script from here and manually install everything.
+eval "$(conda shell.bash hook)"
+source activate $ENV_NAME
 
 echo "Install a version of setuptools for which clip works."
 python -m pip install setuptools==69.5.1

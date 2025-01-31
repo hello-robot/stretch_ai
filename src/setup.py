@@ -42,7 +42,7 @@ setuptools.setup(
         "matplotlib",
         "trimesh>=3.10.0",
         "yacs",
-        "scikit-image",
+        "scikit-image>=0.21.0",
         "sophuspy",
         "pin",  # Pinocchio IK solver
         "pynput",
