@@ -706,7 +706,6 @@ class RobotAgent:
             t0 = timeit.default_timer()
             self._obs_history_lock.acquire()
 
-            # We get observation per 0.05 seconds, so saving n images = saving images happening n * 0.05 seconds ago
             if len(self.obs_history) > 1000:
                 # Remove 50 oldest observations that are not pose graph nodes
                 del_count = 0
