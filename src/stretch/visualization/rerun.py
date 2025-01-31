@@ -222,7 +222,7 @@ class RerunVisualizer:
         rr.init("Stretch_robot", spawn=spawn_gui)
 
         if output_path is not None:
-            rr.save(output_path / "test_stretch_rerun_5nov_vlm.rrd")
+            rr.save(output_path / "rerun_log.rrd")
         # open_browser = True
         if open_browser:
             rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
