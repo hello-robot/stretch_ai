@@ -95,7 +95,7 @@ def main(
     else:
         agent.voxel_map.read_from_pickle(input_path)
 
-    agent.voxel_map.write_to_pickle(None)
+    # agent.voxel_map.write_to_pickle(None)
 
     while agent.is_running():
 
@@ -104,7 +104,7 @@ def main(
 
         if mode == "s":
             robot.say("Saving data. Goodbye!")
-            agent.image_processor.write_to_pickle(None)
+            # agent.image_processor.write_to_pickle(None)
             break
 
         if mode == "e":
@@ -136,7 +136,7 @@ def main(
                 cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
                 robot.switch_to_navigation_mode()
 
-            agent.voxel_map.write_to_pickle(None)
+            # agent.voxel_map.write_to_pickle(None)
 
         # Clear mode after the first trial - otherwise it will go on forever
         mode = None

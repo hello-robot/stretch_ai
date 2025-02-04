@@ -65,7 +65,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         encoder: Optional[MaskSiglipEncoder] = None,
         map_2d_device: str = "cpu",
         device: Optional[str] = None,
-        use_instance_memory: bool = False,
+        use_instance_memory: bool = True,
         use_median_filter: bool = False,
         median_filter_size: int = 5,
         median_filter_max_error: float = 0.01,
@@ -117,11 +117,17 @@ class SparseVoxelMap(SparseVoxelMapBase):
 
         self.point_update_threshold = point_update_threshold
         self._history_soft: Optional[Tensor] = None
-        self.instances = InstanceMemory(num_envs=1, encoder=self.encoder, du_scale=1000)
         self.encoder = encoder
+        self.instances = InstanceMemory(num_envs=1, encoder=self.encoder, du_scale=1)
         self.obs_count = 0
         self.log = log
+
+        # Voxel map cache
+        self._map2d: Optional[Any] = None
+        self._2d_last_updated: Optional[Any] = -1
+
         self.mllm = mllm
+
         if self.mllm:
             self.gpt_client = OpenaiClient(
                 DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
@@ -860,15 +866,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
             )
 
             self.obs_count += 1
-        self.semantic_memory._points = data["combined_xyz"]
-        self.semantic_memory._features = data["combined_feats"]
-        self.semantic_memory._weights = data["combined_weights"]
-        self.semantic_memory._rgb = data["combined_rgb"]
-        self.semantic_memory._obs_counts = data["obs_id"]
-        self.semantic_memory._mins = self.semantic_memory._points.min(dim=0).values
-        self.semantic_memory._maxs = self.semantic_memory._points.max(dim=0).values
-        self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
-        self.semantic_memory.obs_count = max(self.semantic_memory._obs_counts).item()
 
     def write_to_pickle(self, filename: Optional[str] = None) -> None:
         """Write out to a pickle file. This is a rough, quick-and-easy output for debugging, not intended to replace the scalable data writer in data_tools for bigger efforts.
@@ -904,13 +901,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 if k not in data:
                     data[k] = []
                 data[k].append(v)
-        (
-            data["combined_xyz"],
-            data["combined_feats"],
-            data["combined_weights"],
-            data["combined_rgb"],
-        ) = self.semantic_memory.get_pointcloud()
-        data["obs_id"] = self.semantic_memory._obs_counts
         with open(filename, "wb") as f:
             pickle.dump(data, f)
         print("write all data to", filename)

@@ -1,3 +1,5 @@
+# Hyperparameters for DynaMem
+
 # Encoder setup
 # Encoder is used to compute per-object embeddings.
 encoder: "siglip"

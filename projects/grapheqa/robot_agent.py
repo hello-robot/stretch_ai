@@ -42,6 +42,7 @@ from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
+from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders import MaskSiglipEncoder
@@ -69,7 +70,7 @@ class RobotAgent(RobotAgentBase):
         voxel_map: Optional[SparseVoxelMap] = None,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
-        use_instance_memory: bool = False,
+        use_instance_memory: bool = True,
         realtime_updates: bool = False,
         obs_sub_port: int = 4450,
         re: int = 3,
@@ -121,7 +122,6 @@ class RobotAgent(RobotAgentBase):
         self.obs_history: List[Observations] = []
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
-        self.use_scene_graph = self.parameters["use_scene_graph"]
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
         self._use_instance_memory = use_instance_memory
 
@@ -239,7 +239,6 @@ class RobotAgent(RobotAgentBase):
             median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
-            detection=self.detection_model,
             encoder=self.encoder,
             log=self.log,
             mllm=self.mllm,
@@ -307,9 +306,8 @@ class RobotAgent(RobotAgentBase):
         robot_center = np.zeros(3)
         robot_center[:2] = self.robot.get_base_pose()[:2]
 
-        if self.use_scene_graph:
-            self._update_scene_graph()
-            self.scene_graph.get_relationships()
+        self._update_scene_graph()
+        self.scene_graph.get_relationships()
 
         if len(self.get_voxel_map().observations) > 0:
             self.update_rerun()
@@ -320,6 +318,16 @@ class RobotAgent(RobotAgentBase):
 
         time.sleep(0.3)
 
+    def _update_scene_graph(self):
+        """Update the scene graph with the latest observations."""
+        if self.scene_graph is None:
+            self.scene_graph = SceneGraph(self.parameters, self.get_voxel_map().get_instances())
+        else:
+            self.scene_graph.update(self.get_voxel_map().get_instances())
+        # For debugging - TODO delete this code
+        self.scene_graph.get_relationships(debug=False)
+        # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
+
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         # Sleep some time for the robot camera to focus
@@ -327,9 +335,15 @@ class RobotAgent(RobotAgentBase):
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
+        if self.semantic_sensor is not None:
+            # Semantic prediction
+            obs = self.semantic_sensor.predict(obs)
         self.voxel_map.add_obs(obs)
+        self._update_scene_graph()
+        self.scene_graph.get_relationships()
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
+            self.rerun_visualizer.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
