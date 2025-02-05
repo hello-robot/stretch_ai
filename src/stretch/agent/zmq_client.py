@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 import timeit
+from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -103,6 +104,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         recv_state_port: int = 4403,
         recv_servo_port: int = 4404,
         pub_obs_port: int = 4450,
+        output_path: Path = None,
         parameters: Parameters = None,
         use_remote_computer: bool = True,
         urdf_path: str = "",
@@ -221,7 +223,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if enable_rerun_server:
             from stretch.visualization.rerun import RerunVisualizer
 
-            self._rerun = RerunVisualizer()
+            self._rerun = RerunVisualizer(output_path=output_path)
         else:
             self._rerun = None
             self._rerun_thread = None
