@@ -52,7 +52,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             dilate_obstacle_size=dilate_obstacle_size,
             extend_mode=extend_mode,
         )
-        print("_" * 20, "GraphEQA", "-" * 20)
         self.create_collision_masks(orientation_resolution)
         self.traj = None
 

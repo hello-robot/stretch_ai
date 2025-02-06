@@ -113,8 +113,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
             use_negative_obstacles=use_negative_obstacles,
         )
 
-        print("_" * 20, "GraphEQA", "-" * 20)
-
         self.point_update_threshold = point_update_threshold
         self._history_soft: Optional[Tensor] = None
         self.encoder = encoder
