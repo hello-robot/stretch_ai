@@ -329,6 +329,7 @@ class RobotAgent(RobotAgentBase):
 
         for instance in self.scene_graph.instances:
             instance.name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
+            print(instance.global_id)
             # print(self.semantic_sensor.get_class_name_for_id(instances_map[k].category_id))
             # print(k, instances_map[k].global_id, instances_map[k].category_id)
 
