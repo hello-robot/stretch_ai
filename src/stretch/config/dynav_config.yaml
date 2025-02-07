@@ -30,6 +30,7 @@ detection:
   # module: "yolo"
   category_map_file: example_cat_map.json
   use_detic_viz: False
+  confidence_threshold: 0.3
 
 # Point cloud cleanup
 filters:

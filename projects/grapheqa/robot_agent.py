@@ -326,6 +326,12 @@ class RobotAgent(RobotAgentBase):
             self.scene_graph.update(self.get_voxel_map().get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
+
+        for instance in self.scene_graph.instances:
+            instance.name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
+            # print(self.semantic_sensor.get_class_name_for_id(instances_map[k].category_id))
+            # print(k, instances_map[k].global_id, instances_map[k].category_id)
+
         # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def update(self):
@@ -391,8 +397,6 @@ class RobotAgent(RobotAgentBase):
                     )
                 return True, res[-1]
             else:
-                # print(res)
-                # res[-1][2] += np.pi / 2
                 self.robot.execute_trajectory(
                     res,
                     pos_err_threshold=self.pos_err_threshold,
