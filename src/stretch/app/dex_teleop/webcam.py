@@ -36,7 +36,8 @@ def get_video_devices():
 
     command = "v4l2-ctl --list-devices"
     lines = subprocess.getoutput(command).split("\n")
-    lines = [line.strip() for line in lines if line != ""]
+    # Sometimes it will say "Cannot open /dev/video0"
+    lines = [line.strip() for line in lines if line != "" and "Cannot" not in line]
     cameras = [line for line in lines if not ("/dev/" in line)]
     devices = [line for line in lines if "/dev/" in line]
 
@@ -158,6 +159,28 @@ class Webcam:
             dev = finddev(idVendor=vendor, idProduct=product)
             dev.reset()
             time.sleep(1.0)
+
+            camera_devices = get_video_devices()
+            first_camera_device = None
+            second_camera_device = None
+            self.camera_device = None
+            for k, v in camera_devices.items():
+                if self.camera_name in k:
+                    if first_camera_device is None:
+                        first_camera_device = v[0]
+                    else:
+                        second_camera_device = v[0]
+
+            if use_second_camera:
+                self.camera_device = second_camera_device
+            else:
+                self.camera_device = first_camera_device
+
+            assert self.camera_device is not None, (
+                'ERROR: Webcam did not find the specified camera, self.camera_name = "'
+                + str(self.camera_name)
+                + '" Do you have v4l2-ctl installed? Run "v4l2-ctl --list-devices" to check your devices and if v4l2-ctl is installed.'
+            )
 
         if platform == "linux":
             self.webcam = cv2.VideoCapture(self.camera_device, cv2.CAP_V4L2)
