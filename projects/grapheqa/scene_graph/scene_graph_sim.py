@@ -11,7 +11,7 @@ import json
 import os
 import time
 from enum import Enum
-from itertools import chain
+from typing import List
 
 import cv2
 import imageio
@@ -24,6 +24,9 @@ from openai import OpenAI
 from PIL import Image
 from pydantic import BaseModel
 from transformers import AutoModel, AutoProcessor
+
+# from itertools import chain
+
 
 if "OPENAI_API_KEY" in os.environ:
     client = OpenAI()
@@ -57,13 +60,13 @@ class Room_response(BaseModel):
 class SceneGraphSim:
     def __init__(
         self,
-        output_path,
+        output_path: str,
         scene_graph,
         robot,
         rr_logger=None,
         device="cpu",
         clean_ques_ans=" ",
-        enrich_object_labels=None,
+        enrich_object_labels="table",
     ):
         self.robot = robot
         self.topk = 2
@@ -77,12 +80,8 @@ class SceneGraphSim:
         self.enrich_frontiers = False
 
         self.output_path = output_path
-        self._detector_path = output_path / "detector"
-        self._sg_path = output_path / "filtered_dsg.json"
         self.scene_graph = scene_graph
-        self._room_names = []
-
-        os.makedirs(self._detector_path, exist_ok=True)
+        self._room_names: List[str] = []
 
         self.rr_logger = rr_logger
         self.thresh = 2.0
@@ -170,11 +169,11 @@ class SceneGraphSim:
 
         for instance in self.scene_graph.instances:
             attr = {}
-            attr["position"] = torch.mean(instance.pointcloud, dim=0)
+            attr["position"] = torch.mean(instance.point_cloud, dim=0)
             attr["name"] = instance.name + "_" + str(instance.global_id)
             attr["label"] = instance.name
 
-            # object_node_positions.append(node.attributes.position)
+            # object_node_positions.append(attr["position"])
             # bbox = node.attributes.bounding_box
             # bb_half_sizes.append(0.5 * bbox.dimensions)
             # bb_centroids.append(bbox.world_P_center)
@@ -182,14 +181,14 @@ class SceneGraphSim:
             # bb_labels.append(node.attributes.name)
             # bb_colors.append(node.attributes.color)
 
-            # if node_name in self.filter_out_objects:
-            #     continue
-            # self.filtered_obj_positions.append(node.attributes.position)
-            # self.filtered_obj_ids.append(nodeid)
-            # self._object_node_ids.append(nodeid)
-            # self._object_node_names.append(node_name)
+            if instance.name in self.filter_out_objects:
+                continue
+            self.filtered_obj_positions.append(attr["position"])
+            self.filtered_obj_ids.append(attr["name"])
+            self._object_node_ids.append(attr["name"])
+            self._object_node_names.append(instance.name)
 
-            self.filtered_netx_graph.add_nodes_from([(attr["name"], attr)])
+            self.filtered_netx_graph.add_nodes_from([(instance.global_id, attr)])
 
         attr = {}
         xyt = self.robot.get_base_pose()
@@ -266,59 +265,78 @@ class SceneGraphSim:
         #     self.filtered_netx_graph.add_nodes_from([(nodeid, attr)])
 
         self._room_names = self._room_ids.copy()
-        self.bb_info = {
-            "object_node_positions": object_node_positions,
-            "bb_half_sizes": bb_half_sizes,
-            "bb_centroids": bb_centroids,
-            "bb_mat3x3": bb_mat3x3,
-            "bb_labels": bb_labels,
-            "bb_colors": bb_colors,
-        }
-        if self.rr_logger is not None:
-            self.rr_logger.log_bb_data(self.bb_info)
+        # self.bb_info = {
+        #     "object_node_positions": object_node_positions,
+        #     "bb_half_sizes": bb_half_sizes,
+        #     "bb_centroids": bb_centroids,
+        #     "bb_mat3x3": bb_mat3x3,
+        #     "bb_labels": bb_labels,
+        #     "bb_colors": bb_colors,
+        # }
+        # if self.rr_logger is not None:
+        #     self.rr_logger.log_bb_data(self.bb_info)
+
         ## Adding edges
-        for edge in chain(self.pipeline.graph.edges, self.pipeline.graph.dynamic_interlayer_edges):
-            source_node = self.pipeline.graph.get_node(edge.source)
-            sourceid, source_type, source_name = self._get_node_properties(source_node)
 
-            target_node = self.pipeline.graph.get_node(edge.target)
-            targetid, target_type, target_name = self._get_node_properties(target_node)
-            edge_type = f"{source_type}-to-{target_type}"
-            edgeid = f"{sourceid}-to-{targetid}"
-
-            # Filtering scene graph
-            if source_name in self.filter_out_objects or target_name in self.filter_out_objects:
+        for edge in self.scene_graph.get_relationships():
+            idx_a, idx_b, rel = edge
+            if idx_b == "floor":
                 continue
-
-            # if 'object' in source_type and 'object' in target_type: # Object->Object
-            #     continue
-            if "region" in source_type and "region" in target_type:  # Place->Place
+            instance_a = self.scene_graph.instances[idx_a]
+            instance_b = self.scene_graph.instances[idx_b]
+            if instance_a.name in self.filter_out_objects or instance_b in self.filter_out_objects:
                 continue
-            if (
-                "frontier" in source_type or "frontier" in target_type
-            ):  # ALL FRONTIERS for now, we add frontiers later
-                continue
-            if "agent" in source_type and "agent" in target_type:  # agent->agent
-                continue
-
-            if self.rr_logger is not None:
-                self.rr_logger.log_hydra_graph(
-                    is_node=False,
-                    edge_type=edge_type,
-                    edgeid=edgeid,
-                    node_pos_source=np.array(source_node.attributes.position),
-                    node_pos_target=np.array(target_node.attributes.position),
-                )
-
+            sourceid = instance_a.name + "_" + str(instance_a.global_id)
+            targetid = instance_b.name + "_" + str(instance_b.global_id)
+            edge_type = "object-to-object"
+            edge_id = f"{sourceid}-to-{targetid}"
             self.filtered_netx_graph.add_edges_from(
                 [
                     (
                         sourceid,
                         targetid,
-                        {"source_name": source_name, "target_name": target_name, "type": edge_type},
+                        {
+                            "source_name": instance_a.name,
+                            "target_name": instance_b.name,
+                            "type": edge_type,
+                        },
                     )
                 ]
             )
+
+        # for edge in chain(self.pipeline.graph.edges, self.pipeline.graph.dynamic_interlayer_edges):
+        #     source_node = self.pipeline.graph.get_node(edge.source)
+        #     sourceid, source_type, source_name = self._get_node_properties(source_node)
+
+        #     target_node = self.pipeline.graph.get_node(edge.target)
+        #     targetid, target_type, target_name = self._get_node_properties(target_node)
+        #     edge_type = f"{source_type}-to-{target_type}"
+        #     edgeid = f"{sourceid}-to-{targetid}"
+
+        #     # Filtering scene graph
+        #     if source_name in self.filter_out_objects or target_name in self.filter_out_objects:
+        #         continue
+
+        #     # if 'object' in source_type and 'object' in target_type: # Object->Object
+        #     #     continue
+        #     if "region" in source_type and "region" in target_type:  # Place->Place
+        #         continue
+        #     if (
+        #         "frontier" in source_type or "frontier" in target_type
+        #     ):  # ALL FRONTIERS for now, we add frontiers later
+        #         continue
+        #     if "agent" in source_type and "agent" in target_type:  # agent->agent
+        #         continue
+
+        #     self.filtered_netx_graph.add_edges_from(
+        #         [
+        #             (
+        #                 sourceid,
+        #                 targetid,
+        #                 {"source_name": source_name, "target_name": target_name, "type": edge_type},
+        #             )
+        #         ]
+        #     )
 
     def update_frontier_nodes(self, frontier_nodes):
         if len(frontier_nodes) > 0 and len(self.filtered_obj_positions) > 0:
@@ -496,19 +514,17 @@ class SceneGraphSim:
                 room_str = f" at room node: {room_id[0]} with name {room_name}"
         return f"{agent_loc_str} {room_str}"
 
-    def update(
-        self, imgs_rgb=[], imgs_depth=None, intrinsics=None, extrinsics=None, frontier_nodes=[]
-    ):
+    def update(self, imgs_rgb=[], frontier_nodes=[]):
 
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
         self.save_best_image(imgs_rgb)
 
-        self.add_room_labels_to_sg()
+        # self.add_room_labels_to_sg()
 
-        if not self.include_regions:
-            self.remove_region_nodes()
+        # if not self.include_regions:
+        #     self.remove_region_nodes()
 
     def get_position_from_id(self, nodeid):
         return np.array(self.filtered_netx_graph.nodes[nodeid]["position"])
@@ -516,7 +532,7 @@ class SceneGraphSim:
     def save_best_image(self, imgs_rgb, debug=False):
 
         img_idx = 0
-        while (self.output_path / f"current_img_{img_idx}.png").exists():
+        while os.path.exists(self.output_path + f"/current_img_{img_idx}.png"):
             img_idx += 1
 
         if len(imgs_rgb) > 0 and self.save_image:
@@ -568,7 +584,7 @@ class SceneGraphSim:
                     labeled_frames.append(color_img)
 
                 imageio.mimsave(
-                    self.output_path / f"images_with_clip_probs_{img_idx}.gif",
+                    self.output_path + f"/images_with_clip_probs_{img_idx}.gif",
                     labeled_frames,
                     fps=0.5,
                 )
@@ -605,7 +621,7 @@ class SceneGraphSim:
 
                 final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1))
 
-                final_img.save(self.output_path / f"current_img_{img_idx}.png")
+                final_img.save(self.output_path + f"current_img_{img_idx}.png")
             print(f"===========time taken for CLIP/SigLIP emb: {time.time()-start}")
 
     def remove_close_positions(self, data, threshold):

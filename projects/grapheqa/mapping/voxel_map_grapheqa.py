@@ -88,6 +88,41 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 theta = theta + 2 * np.pi
         return theta
 
+    def occupancy_map_to_3d_points(
+        self,
+        occupancy_map: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Converts a 2D occupancy map to a list of 3D points.
+        Args:
+            occupancy_map: A 2D array boolean map
+
+        Returns:
+            np.ndarray: A array of 3D points representing the occupied cells in the world frame.
+        """
+
+        points = []
+        rows, cols = occupancy_map.shape
+        center_row, center_col, _ = self.voxel_map.grid_origin
+
+        if isinstance(self.voxel_map.grid_origin, torch.Tensor):
+            self.voxel_map.grid_origin = self.voxel_map.grid_origin.cpu().numpy()  # type: ignore
+
+        # Find the indices of occupied cells
+        occupied_indices = np.where(occupancy_map)
+
+        # Create the Nx3 array
+        num_points = len(occupied_indices[0])
+        indices = np.zeros((num_points, 3), dtype=float)
+
+        # Fill in x and y coordinates
+        indices[:, 0] = occupied_indices[0]  # x coordinates
+        indices[:, 1] = occupied_indices[1]  # y coordinates
+        # z coordinates are already 0
+
+        points = (indices - self.voxel_map.grid_origin) * self.voxel_map.grid_resolution
+        return points
+
     def sample_target_point(
         self, start: torch.Tensor, point: torch.Tensor, planner, exploration: bool = False
     ) -> Optional[np.ndarray]:
@@ -183,32 +218,15 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         else:
             expanded_frontier = edges
         outside_frontier = expanded_frontier & ~reachable_map
-        time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
-        alignments_heuristics = None
-        total_heuristics = time_heuristics
+        heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
 
-        rounded_heuristics = np.ceil(total_heuristics * 200) / 200
+        rounded_heuristics = np.ceil(heuristics * 200) / 200
         max_heuristic = rounded_heuristics.max()
         indices = np.column_stack(np.where(rounded_heuristics == max_heuristic))
         closest_index = np.argmin(np.linalg.norm(indices - np.asarray(planner.to_pt(xyt)), axis=-1))
         index = indices[closest_index]
-        # index = np.unravel_index(np.argmax(total_heuristics), total_heuristics.shape)
-        # debug = True
-        if debug:
-            from matplotlib import pyplot as plt
 
-            plt.subplot(221)
-            plt.imshow(obstacles.int() * 5 + outside_frontier.int() * 10)
-            plt.subplot(222)
-            plt.imshow(explored.int() * 5)
-            plt.subplot(223)
-            plt.imshow(total_heuristics)
-            plt.scatter(index[1], index[0], s=15, c="g")
-            plt.subplot(224)
-            plt.imshow(history_soft)
-            plt.scatter(index[1], index[0], s=15, c="g")
-            plt.show()
-        return index, time_heuristics, alignments_heuristics, total_heuristics
+        return index, heuristics
 
     def _alignment_heuristic(
         self,

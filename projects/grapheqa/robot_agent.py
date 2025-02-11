@@ -26,6 +26,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 import torch
 from mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
+from scene_graph import SceneGraphSim
 
 # from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
 #     DynamemManipulationWrapper as ManipulationWrapper,
@@ -79,6 +80,7 @@ class RobotAgent(RobotAgentBase):
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
         manipulation_only: bool = False,
+        output_path: Optional[str] = ".",
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -119,7 +121,9 @@ class RobotAgent(RobotAgentBase):
 
         # ==============================================
         self.obs_count = 0
-        self.obs_history: List[Observations] = []
+        if realtime_updates:
+            self.obs_history: List[Observations] = []
+        self.traj_imgs_rgb: List[Union[np.ndarray, torch.Tensor]] = []
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
@@ -153,6 +157,8 @@ class RobotAgent(RobotAgentBase):
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
+
+        self.output_path = output_path
 
         # self.image_processor = VoxelMapImageProcessor(
         #     rerun=True,
@@ -204,6 +210,7 @@ class RobotAgent(RobotAgentBase):
 
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
+        self.sg_sim = None
 
         # Previously sampled goal during exploration
         self._previous_goal = None
@@ -318,6 +325,30 @@ class RobotAgent(RobotAgentBase):
 
         time.sleep(0.3)
 
+    def update_frontiers(self):
+        # torch.cuda.empty_cache()
+        # gc.collect()
+
+        grid_origin = self.voxel_map.grid_origin
+        grid_resolution = self.voxel_map.grid_resolution
+
+        frontier, outside_frontier, traversible = self.space.get_frontier()
+
+        self.frontier_points = np.array(self.space.occupancy_map_to_3d_points(frontier))
+        self.outside_frontier_points = np.array(
+            self.space.occupancy_map_to_3d_points(outside_frontier)
+        )
+        self.traversible = np.array(self.space.occupancy_map_to_3d_points(traversible))
+
+        # _clustered_frontiers = cluster_frontiers(self.frontier_points)
+        # self.clustered_frontiers = []
+        # print("Checking clustered frontiers")
+        # for frontier in _clustered_frontiers:
+        #     if self.space.is_valid(frontier, verbose=False):
+        #         self.clustered_frontiers.append(frontier)
+        # self.clustered_frontiers = np.stack(self.clustered_frontiers, axis=0)
+        self.clustered_frontiers = cluster_frontiers(self.frontier_points)
+
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
         if self.scene_graph is None:
@@ -329,7 +360,6 @@ class RobotAgent(RobotAgentBase):
 
         for instance in self.scene_graph.instances:
             instance.name = self.semantic_sensor.get_class_name_for_id(instance.category_id)
-            print(instance.global_id)
             # print(self.semantic_sensor.get_class_name_for_id(instances_map[k].category_id))
             # print(k, instances_map[k].global_id, instances_map[k].category_id)
 
@@ -340,6 +370,7 @@ class RobotAgent(RobotAgentBase):
         # Sleep some time for the robot camera to focus
         # time.sleep(0.3)
         obs = self.robot.get_observation()
+        self.traj_imgs_rgb.append(obs.rgb)
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         if self.semantic_sensor is not None:
@@ -348,6 +379,13 @@ class RobotAgent(RobotAgentBase):
         self.voxel_map.add_obs(obs)
         self._update_scene_graph()
         self.scene_graph.get_relationships()
+
+        if self.sg_sim is None:
+            self.sg_sim = SceneGraphSim(
+                output_path=self.output_path, scene_graph=self.scene_graph, robot=self.robot
+            )
+        self.update_frontiers()
+        self.sg_sim.update(frontier_nodes=self.clustered_frontiers, imgs_rgb=self.traj_imgs_rgb)
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
             self.rerun_visualizer.update_scene_graph(self.scene_graph, self.semantic_sensor)
@@ -572,3 +610,77 @@ class RobotAgent(RobotAgentBase):
     def get_voxel_map(self):
         """Return the voxel map"""
         return self.voxel_map
+
+
+def cluster_frontiers(
+    frontier_points, min_points_for_clustering=5, num_clusters=10, cluster_threshold=0.8
+):
+    # # cluster, or return none
+    if len(frontier_points) < min_points_for_clustering:
+        return frontier_points
+
+    clusters = fps(frontier_points, num_clusters)
+
+    # merge clusters if too close to each other
+    clusters_new = np.empty((0, 3))
+    for cluster in clusters:
+        if len(clusters_new) == 0:
+            clusters_new = np.vstack((clusters_new, cluster))
+        else:
+            clusters_array = np.array(clusters_new)
+            dist = np.sqrt(np.sum((clusters_array - cluster) ** 2, axis=1))
+            if np.min(dist) > cluster_threshold:
+                clusters_new = np.vstack((clusters_new, cluster))
+    return clusters_new
+
+
+def fps(points, n_samples):
+    """
+    points: [N, 3] array containing the whole point cloud
+    n_samples: samples you want in the sampled point cloud typically << N
+    """
+    points = np.array(points)
+
+    # Represent the points by their indices in points
+    points_left = np.arange(len(points))  # [P]
+
+    # Initialise an array for the sampled indices
+    sample_inds = np.zeros(n_samples, dtype="int")  # [S]
+
+    # Initialise distances to inf
+    dists = np.ones_like(points_left) * float("inf")  # [P]
+
+    # Select a point from points by its index, save it
+    selected = 0
+    sample_inds[0] = points_left[selected]
+
+    # Delete selected
+    points_left = np.delete(points_left, selected)  # [P - 1]
+
+    # Iteratively select points for a maximum of n_samples
+    for i in range(1, n_samples):
+        # Find the distance to the last added point in selected
+        # and all the others
+        last_added = sample_inds[i - 1]
+
+        dist_to_last_added_point = ((points[last_added] - points[points_left]) ** 2).sum(
+            -1
+        )  # [P - i]
+
+        # If closer, updated distances
+        dists[points_left] = np.minimum(dist_to_last_added_point, dists[points_left])  # [P - i]
+
+        # We want to pick the one that has the largest nearest neighbour
+        # distance to the sampled points
+        try:
+            selected = np.argmax(dists[points_left])
+        except:
+            import ipdb
+
+            ipdb.set_trace()
+        sample_inds[i] = points_left[selected]
+
+        # Update points_left
+        points_left = np.delete(points_left, selected)
+
+    return points[sample_inds]
