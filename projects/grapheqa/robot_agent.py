@@ -123,7 +123,6 @@ class RobotAgent(RobotAgentBase):
         self.obs_count = 0
         if realtime_updates:
             self.obs_history: List[Observations] = []
-        self.traj_imgs_rgb: List[Union[np.ndarray, torch.Tensor]] = []
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.tts = get_text_to_speech(self.parameters["tts_engine"])
@@ -370,7 +369,6 @@ class RobotAgent(RobotAgentBase):
         # Sleep some time for the robot camera to focus
         # time.sleep(0.3)
         obs = self.robot.get_observation()
-        self.traj_imgs_rgb.append(obs.rgb)
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         if self.semantic_sensor is not None:
@@ -385,7 +383,10 @@ class RobotAgent(RobotAgentBase):
                 output_path=self.output_path, scene_graph=self.scene_graph, robot=self.robot
             )
         self.update_frontiers()
-        self.sg_sim.update(frontier_nodes=self.clustered_frontiers, imgs_rgb=self.traj_imgs_rgb)
+        self.sg_sim.update(frontier_nodes=self.clustered_frontiers, img_rgb=obs.rgb)
+        print(self.sg_sim.get_current_semantic_state_str())
+        print("\n")
+        print(self.sg_sim.scene_graph_str)
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
             self.rerun_visualizer.update_scene_graph(self.scene_graph, self.semantic_sensor)

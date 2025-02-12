@@ -107,6 +107,10 @@ class SceneGraphSim:
             (self.question_embed_labels["input_ids"] + self.question_embed_exist["input_ids"]) / 2.0
         ).to(self.question_embed_labels["input_ids"].dtype)
 
+        # For computing img embeds
+        self.cur_img_embed: List[torch.Tensor] = []
+        self.imgs_rgb_list: List[np.ndarray] = []
+
     @property
     def scene_graph_str(self):
         return json.dumps(nx.node_link_data(self.filtered_netx_graph))
@@ -146,7 +150,7 @@ class SceneGraphSim:
         nearby = np.linalg.norm(frontier_node_positions - agent_pos, axis=-1) < 2.0
         return np.logical_and(in_plane, nearby)
 
-    def _build_sg_from_hydra_graph(self):
+    def _build_sg_from_hydra_graph(self, add_object_edges=False):
         self.filtered_netx_graph = nx.DiGraph()
 
         (
@@ -169,7 +173,7 @@ class SceneGraphSim:
 
         for instance in self.scene_graph.instances:
             attr = {}
-            attr["position"] = torch.mean(instance.point_cloud, dim=0)
+            attr["position"] = torch.mean(instance.point_cloud, dim=0).tolist()
             attr["name"] = instance.name + "_" + str(instance.global_id)
             attr["label"] = instance.name
 
@@ -192,153 +196,48 @@ class SceneGraphSim:
 
         attr = {}
         xyt = self.robot.get_base_pose()
-        attr["position"] = xyt
+        attr["position"] = torch.Tensor(xyt).tolist()
         attr["name"] = "Agent pose in (x, y, theta) format"
         self.filtered_netx_graph.add_nodes_from([("agent", attr)])
 
         self.curr_agent_id = "agent"
         self.curr_agent_pos = xyt
-
-        # agent_ids, agent_cat_ids = [], []
-        # for layer in self.pipeline.graph.dynamic_layers:
-        #     for node in layer.nodes:
-        #         if 'a' in node.id.category.lower():
-        #             attr={}
-        #             nodeid, node_type, node_name = self._get_node_properties(node)
-        #             agent_cat_ids.append(int(node.id.category_id))
-        #             agent_ids.append(nodeid)
-
-        #             attr['position'] = list(node.attributes.position)
-        #             attr['name'] = node_name
-        #             attr['layer'] = node.layer
-        #             attr['timestamp'] = float(node.timestamp/1e8)
-        #             self.filtered_netx_graph.add_nodes_from([(nodeid, attr)])
-
-        # if len(agent_cat_ids) > 0:
-        #     self.curr_agent_id = agent_ids[np.argmax(agent_cat_ids)]
-        #     self.curr_agent_pos = self.get_position_from_id(self.curr_agent_id)
-
-        ## Adding other nodes
-
-        # for node in self.pipeline.graph.nodes:
-        #     attr={}
-        #     nodeid, node_type, node_name = self._get_node_properties(node)
-        #     attr['position'] = list(node.attributes.position)
-        #     attr['name'] = node_name
-        #     attr['layer'] = node.layer
-        #     if self.rr_logger is not None:
-        #         self.rr_logger.log_hydra_graph(is_node=True, nodeid=nodeid, node_type=node_type, node_pos_source=np.array(node.attributes.position))
-
-        #     if node.id.category.lower() in ['o', 'r', 'b']:
-        #         attr['label'] = node.attributes.semantic_label
-
-        #     # Filtering
-        #     if 'o' in node.id.category.lower():
-        #         object_node_positions.append(node.attributes.position)
-        #         bbox = node.attributes.bounding_box
-        #         bb_half_sizes.append(0.5 * bbox.dimensions)
-        #         bb_centroids.append(bbox.world_P_center)
-        #         bb_mat3x3.append(bbox.world_R_center)
-        #         bb_labels.append(node.attributes.name)
-        #         bb_colors.append(node.attributes.color)
-
-        #         if node_name in self.filter_out_objects:
-        #             continue
-        #         self.filtered_obj_positions.append(node.attributes.position)
-        #         self.filtered_obj_ids.append(nodeid)
-        #         self._object_node_ids.append(nodeid)
-        #         self._object_node_names.append(node_name)
-
-        #     if 'p' in node.id.category.lower():
-        #         self._region_node_ids.append(nodeid)
-
-        #     # if 'f' in node.id.category.lower():
-        #     #     if self.is_relevant_frontier(np.array(attr['position']), self.curr_agent_pos)[0]:
-        #     #         # self.rr_logger.log_hydra_graph(is_node=True, nodeid=nodeid, node_type='frontier_selected', node_pos_source=node.attributes.position)
-        #     #         self._frontier_node_ids.append(nodeid)
-        #     #         # DONT ADD FRONTIER OR PLACE NODES
-        #     #         continue
-
-        #     if 'r' in node.id.category.lower():
-        #         self._room_ids.append(nodeid)
-
-        #     self.filtered_netx_graph.add_nodes_from([(nodeid, attr)])
-
         self._room_names = self._room_ids.copy()
-        # self.bb_info = {
-        #     "object_node_positions": object_node_positions,
-        #     "bb_half_sizes": bb_half_sizes,
-        #     "bb_centroids": bb_centroids,
-        #     "bb_mat3x3": bb_mat3x3,
-        #     "bb_labels": bb_labels,
-        #     "bb_colors": bb_colors,
-        # }
-        # if self.rr_logger is not None:
-        #     self.rr_logger.log_bb_data(self.bb_info)
 
         ## Adding edges
 
-        for edge in self.scene_graph.get_relationships():
-            idx_a, idx_b, rel = edge
-            if idx_b == "floor":
-                continue
-            instance_a = self.scene_graph.instances[idx_a]
-            instance_b = self.scene_graph.instances[idx_b]
-            if instance_a.name in self.filter_out_objects or instance_b in self.filter_out_objects:
-                continue
-            sourceid = instance_a.name + "_" + str(instance_a.global_id)
-            targetid = instance_b.name + "_" + str(instance_b.global_id)
-            edge_type = "object-to-object"
-            edge_id = f"{sourceid}-to-{targetid}"
-            self.filtered_netx_graph.add_edges_from(
-                [
-                    (
-                        sourceid,
-                        targetid,
-                        {
-                            "source_name": instance_a.name,
-                            "target_name": instance_b.name,
-                            "type": edge_type,
-                        },
-                    )
-                ]
-            )
-
-        # for edge in chain(self.pipeline.graph.edges, self.pipeline.graph.dynamic_interlayer_edges):
-        #     source_node = self.pipeline.graph.get_node(edge.source)
-        #     sourceid, source_type, source_name = self._get_node_properties(source_node)
-
-        #     target_node = self.pipeline.graph.get_node(edge.target)
-        #     targetid, target_type, target_name = self._get_node_properties(target_node)
-        #     edge_type = f"{source_type}-to-{target_type}"
-        #     edgeid = f"{sourceid}-to-{targetid}"
-
-        #     # Filtering scene graph
-        #     if source_name in self.filter_out_objects or target_name in self.filter_out_objects:
-        #         continue
-
-        #     # if 'object' in source_type and 'object' in target_type: # Object->Object
-        #     #     continue
-        #     if "region" in source_type and "region" in target_type:  # Place->Place
-        #         continue
-        #     if (
-        #         "frontier" in source_type or "frontier" in target_type
-        #     ):  # ALL FRONTIERS for now, we add frontiers later
-        #         continue
-        #     if "agent" in source_type and "agent" in target_type:  # agent->agent
-        #         continue
-
-        #     self.filtered_netx_graph.add_edges_from(
-        #         [
-        #             (
-        #                 sourceid,
-        #                 targetid,
-        #                 {"source_name": source_name, "target_name": target_name, "type": edge_type},
-        #             )
-        #         ]
-        #     )
+        if add_object_edges:
+            for edge in self.scene_graph.get_relationships():
+                idx_a, idx_b, rel = edge
+                if idx_b == "floor":
+                    continue
+                instance_a = self.scene_graph.instances[idx_a]
+                instance_b = self.scene_graph.instances[idx_b]
+                if (
+                    instance_a.name in self.filter_out_objects
+                    or instance_b in self.filter_out_objects
+                ):
+                    continue
+                sourceid = instance_a.name + "_" + str(instance_a.global_id)
+                targetid = instance_b.name + "_" + str(instance_b.global_id)
+                edge_type = "object-to-object"
+                edge_id = f"{sourceid}-to-{targetid}"
+                self.filtered_netx_graph.add_edges_from(
+                    [
+                        (
+                            sourceid,
+                            targetid,
+                            {
+                                "source_name": instance_a.name,
+                                "target_name": instance_b.name,
+                                "type": edge_type,
+                            },
+                        )
+                    ]
+                )
 
     def update_frontier_nodes(self, frontier_nodes):
+        print(len(frontier_nodes))
         if len(frontier_nodes) > 0 and len(self.filtered_obj_positions) > 0:
             self.filtered_obj_positions = np.array(self.filtered_obj_positions)
             self.filtered_obj_ids = np.array(self.filtered_obj_ids)
@@ -514,12 +413,12 @@ class SceneGraphSim:
                 room_str = f" at room node: {room_id[0]} with name {room_name}"
         return f"{agent_loc_str} {room_str}"
 
-    def update(self, imgs_rgb=[], frontier_nodes=[]):
+    def update(self, img_rgb, frontier_nodes=[]):
 
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
-        self.save_best_image(imgs_rgb)
+        self.save_best_image(img_rgb)
 
         # self.add_room_labels_to_sg()
 
@@ -529,15 +428,17 @@ class SceneGraphSim:
     def get_position_from_id(self, nodeid):
         return np.array(self.filtered_netx_graph.nodes[nodeid]["position"])
 
-    def save_best_image(self, imgs_rgb, debug=False):
+    def save_best_image(self, img_rgb, debug=False):
 
         img_idx = 0
         while os.path.exists(self.output_path + f"/current_img_{img_idx}.png"):
             img_idx += 1
 
-        if len(imgs_rgb) > 0 and self.save_image:
+        self.imgs_rgb_list.append(img_rgb)
+
+        if len(self.imgs_rgb_list) > 0 and self.save_image:
             start = time.time()
-            imgs_rgb = np.array(imgs_rgb)
+            imgs_rgb = np.array(self.imgs_rgb_list)
             w, h = imgs_rgb[0].shape[0], imgs_rgb[0].shape[1]
             # Remove black images
             black_pixels_mask = np.all(imgs_rgb == 0, axis=-1)
@@ -547,11 +448,15 @@ class SceneGraphSim:
             sampled_images = useful_imgs[:: self.img_subsample_freq]
 
             padding = "max_length"  # HuggingFace says SigLIP was trained on "max_length"
-            imgs_embed = self.processor(
-                images=sampled_images, return_tensors="pt", padding=padding
-            ).to(self.device)
+            if self.cur_img_embed == 0:
+                self.imgs_embed = self.processor(
+                    images=sampled_images, return_tensors="pt", padding=padding
+                ).to(self.device)
+            else:
+                # TODO
+                pass
             with torch.no_grad():
-                outputs = self.model(**self.question_embed_labels, **imgs_embed)
+                outputs = self.model(**self.question_embed_labels, **self.imgs_embed)
             logits_per_text = outputs.logits_per_image  # this is the image-text similarity score
             probs = logits_per_text.softmax(
                 dim=0
@@ -621,7 +526,7 @@ class SceneGraphSim:
 
                 final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1))
 
-                final_img.save(self.output_path + f"current_img_{img_idx}.png")
+                final_img.save(self.output_path + f"/current_img_{img_idx}.png")
             print(f"===========time taken for CLIP/SigLIP emb: {time.time()-start}")
 
     def remove_close_positions(self, data, threshold):
