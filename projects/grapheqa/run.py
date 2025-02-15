@@ -8,7 +8,6 @@
 # license information maybe found below, if so.
 
 import click
-import cv2
 from robot_agent import RobotAgent
 
 from stretch.agent.zmq_client import HomeRobotZmqClient
@@ -100,7 +99,7 @@ def main(
     while agent.is_running():
 
         # If target object and receptacle are provided, set mode to manipulation
-        mode = input("select mode? E/N/S: ").lower()
+        mode = input("select mode? E/S: ").lower()
 
         if mode == "s":
             robot.say("Saving data. Goodbye!")
@@ -116,27 +115,6 @@ def main(
                 if not agent.run_exploration():
                     print("Exploration failed! Quitting!")
                     continue
-        else:
-            # Add some audio to make it easier to tell what's going on.
-            robot.say("Running manipulation.")
-
-            text = None
-            point = None
-
-            if skip_confirmations or input("Do you want to look for an object? (y/n): ") != "n":
-                robot.move_to_nav_posture()
-                robot.switch_to_navigation_mode()
-                if target_object is not None:
-                    text = target_object
-                else:
-                    text = input("Enter object name: ")
-                point = agent.navigate(text)
-                if point is None:
-                    print("Navigation Failure!")
-                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
-                robot.switch_to_navigation_mode()
-
-            # agent.voxel_map.write_to_pickle(None)
 
         # Clear mode after the first trial - otherwise it will go on forever
         mode = None

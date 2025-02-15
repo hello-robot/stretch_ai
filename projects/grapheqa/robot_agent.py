@@ -80,7 +80,6 @@ class RobotAgent(RobotAgentBase):
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
         manipulation_only: bool = False,
-        output_path: Optional[str] = ".",
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -108,14 +107,14 @@ class RobotAgent(RobotAgentBase):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._realtime_updates = realtime_updates
 
-        if not os.path.exists("grapheqa_log"):
-            os.makedirs("grapheqa_log")
-
         if log is None:
             current_datetime = datetime.now()
             self.log = "grapheqa_log/debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         else:
             self.log = "grapheqa_log/" + log
+
+        if not os.path.exists(self.log):
+            os.makedirs(self.log)
 
         self.create_obstacle_map(parameters)
 
@@ -156,8 +155,6 @@ class RobotAgent(RobotAgentBase):
         self._frontier_step_dist = parameters["motion_planner"]["frontier"]["step_dist"]
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
-
-        self.output_path = output_path
 
         # self.image_processor = VoxelMapImageProcessor(
         #     rerun=True,
@@ -380,13 +377,10 @@ class RobotAgent(RobotAgentBase):
 
         if self.sg_sim is None:
             self.sg_sim = SceneGraphSim(
-                output_path=self.output_path, scene_graph=self.scene_graph, robot=self.robot
+                output_path=self.log, scene_graph=self.scene_graph, robot=self.robot
             )
         self.update_frontiers()
-        self.sg_sim.update(frontier_nodes=self.clustered_frontiers, img_rgb=obs.rgb)
-        print(self.sg_sim.get_current_semantic_state_str())
-        print("\n")
-        print(self.sg_sim.scene_graph_str)
+        self.sg_sim.update(frontier_nodes=self.clustered_frontiers, imgs_rgb=[obs.rgb])
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
             self.rerun_visualizer.update_scene_graph(self.scene_graph, self.semantic_sensor)

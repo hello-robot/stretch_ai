@@ -14,7 +14,6 @@ from enum import Enum
 from typing import List
 
 import cv2
-import imageio
 import networkx as nx
 import numpy as np
 import torch
@@ -23,7 +22,9 @@ import torch
 from openai import OpenAI
 from PIL import Image
 from pydantic import BaseModel
-from transformers import AutoModel, AutoProcessor
+
+# from transformers import AutoModel, AutoProcessor
+from stretch.perception.encoders.siglip_encoder import SiglipEncoder
 
 # from itertools import chain
 
@@ -64,9 +65,10 @@ class SceneGraphSim:
         scene_graph,
         robot,
         rr_logger=None,
-        device="cpu",
+        device: str = "cuda",
         clean_ques_ans=" ",
         enrich_object_labels="table",
+        cache_size: int = 100,
     ):
         self.robot = robot
         self.topk = 2
@@ -89,27 +91,33 @@ class SceneGraphSim:
 
         self.filter_out_objects = ["floor", "ceiling", "."]
 
-        self.model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(device)
-        self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
+        # self.model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(device)
+        # self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
+        self.encoder = SiglipEncoder(version="so400m", device=device, normalize=True)
         labels = self.enrich_object_labels.replace(".", "")
         exist = f"There is  {labels} in the scene."
-        self.question_embed = self.processor(
-            text=[clean_ques_ans], padding="max_length", return_tensors="pt"
-        ).to(device)
-        self.question_embed_labels = self.processor(
-            text=[labels], padding="max_length", return_tensors="pt"
-        ).to(device)
-        self.question_embed_exist = self.processor(
-            text=[exist], padding="max_length", return_tensors="pt"
-        ).to(device)
-        self.question_embed = self.question_embed_labels.copy()
-        self.question_embed["input_ids"] = (
-            (self.question_embed_labels["input_ids"] + self.question_embed_exist["input_ids"]) / 2.0
-        ).to(self.question_embed_labels["input_ids"].dtype)
+        with torch.no_grad():
+            self.text_embed = (
+                self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0
+            ).to(device)
+        # self.question_embed = self.processor(
+        #     text=[clean_ques_ans], padding="max_length", return_tensors="pt"
+        # ).to(device)
+        # self.question_embed_labels = self.processor(
+        #     text=[labels], padding="max_length", return_tensors="pt"
+        # ).to(device)
+        # self.question_embed_exist = self.processor(
+        #     text=[exist], padding="max_length", return_tensors="pt"
+        # ).to(device)
+        # self.question_embed = self.question_embed_labels.copy()
+        # self.question_embed["input_ids"] = (
+        #     (self.question_embed_labels["input_ids"] + self.question_embed_exist["input_ids"]) / 2.0
+        # ).to(self.question_embed_labels["input_ids"].dtype)
 
         # For computing img embeds
-        self.cur_img_embed: List[torch.Tensor] = []
-        self.imgs_rgb_list: List[np.ndarray] = []
+        self.imgs_embed = None
+        self.imgs_rgb = None
+        self.cache_size = cache_size
 
     @property
     def scene_graph_str(self):
@@ -237,7 +245,6 @@ class SceneGraphSim:
                 )
 
     def update_frontier_nodes(self, frontier_nodes):
-        print(len(frontier_nodes))
         if len(frontier_nodes) > 0 and len(self.filtered_obj_positions) > 0:
             self.filtered_obj_positions = np.array(self.filtered_obj_positions)
             self.filtered_obj_ids = np.array(self.filtered_obj_ids)
@@ -413,12 +420,12 @@ class SceneGraphSim:
                 room_str = f" at room node: {room_id[0]} with name {room_name}"
         return f"{agent_loc_str} {room_str}"
 
-    def update(self, img_rgb, frontier_nodes=[]):
+    def update(self, imgs_rgb, frontier_nodes=[]):
 
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
-        self.save_best_image(img_rgb)
+        self.save_best_image(imgs_rgb)
 
         # self.add_room_labels_to_sg()
 
@@ -428,17 +435,15 @@ class SceneGraphSim:
     def get_position_from_id(self, nodeid):
         return np.array(self.filtered_netx_graph.nodes[nodeid]["position"])
 
-    def save_best_image(self, img_rgb, debug=False):
+    def save_best_image(self, imgs_rgb):
 
         img_idx = 0
         while os.path.exists(self.output_path + f"/current_img_{img_idx}.png"):
             img_idx += 1
 
-        self.imgs_rgb_list.append(img_rgb)
-
-        if len(self.imgs_rgb_list) > 0 and self.save_image:
+        if len(imgs_rgb) > 0 and self.save_image:
             start = time.time()
-            imgs_rgb = np.array(self.imgs_rgb_list)
+            imgs_rgb = np.array(imgs_rgb)
             w, h = imgs_rgb[0].shape[0], imgs_rgb[0].shape[1]
             # Remove black images
             black_pixels_mask = np.all(imgs_rgb == 0, axis=-1)
@@ -447,86 +452,78 @@ class SceneGraphSim:
             useful_imgs = imgs_rgb[useful_img_idxs]
             sampled_images = useful_imgs[:: self.img_subsample_freq]
 
-            padding = "max_length"  # HuggingFace says SigLIP was trained on "max_length"
-            if self.cur_img_embed == 0:
-                self.imgs_embed = self.processor(
-                    images=sampled_images, return_tensors="pt", padding=padding
-                ).to(self.device)
-            else:
-                # TODO
-                pass
+            # padding = "max_length"  # HuggingFace says SigLIP was trained on "max_length"
+            # imgs_embed = self.processor(
+            #     images=sampled_images, return_tensors="pt", padding=padding
+            # ).to(self.device)
             with torch.no_grad():
-                outputs = self.model(**self.question_embed_labels, **self.imgs_embed)
-            logits_per_text = outputs.logits_per_image  # this is the image-text similarity score
-            probs = logits_per_text.softmax(
-                dim=0
-            ).squeeze()  # we can take the softmax to get the label probabilities
+                imgs_embed = self.encoder.encode_image(sampled_images).to(self.device)
 
-            probs, logits_per_text = (
-                probs.detach().cpu().numpy(),
-                logits_per_text.squeeze().detach().cpu().numpy(),
+            if self.imgs_embed is None:
+                self.imgs_embed = imgs_embed
+            else:
+                self.imgs_embed = torch.cat((self.imgs_embed, imgs_embed), dim=0)
+            if self.imgs_rgb is None:
+                self.imgs_rgb = sampled_images
+            else:
+                self.imgs_rgb = np.concatenate((self.imgs_rgb, sampled_images), axis=0)
+
+            if len(self.imgs_rgb) > self.cache_size:
+                self.imgs_rgb = self.imgs_rgb[-self.cache_size :, :]
+                self.imgs_embed = self.imgs_embed[-self.cache_size :, :]
+
+            # logits = self.encoder.compute_score(self.imgs_embed, self.text_embed)
+            logits = torch.mean(
+                self.imgs_embed @ self.text_embed.reshape(-1, self.imgs_embed.shape[-1]).T, dim=-1
             )
-            best = np.argmax(probs)
-            top_k_indices = np.argsort(probs)[::-1][: self.topk]
+            top_k_indices = torch.argsort(logits, descending=True)[: self.topk]
 
-            if debug:
-                labeled_frames = []
-                for idx in range(len(sampled_images)):
-                    color_img = sampled_images[idx].copy()
-                    label = f"{probs[idx]:.2f}"
-                    if idx in top_k_indices:
-                        label = label + f"_best{np.where(top_k_indices==idx)[0][0]}"
-                    cv2.putText(
-                        color_img,
-                        str(label),
-                        (20, 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        (0, 0, 0),
-                        1,
-                        cv2.LINE_AA,
-                    )
-                    labeled_frames.append(color_img)
+            # with torch.no_grad():
+            #     outputs = self.model(**self.question_embed_labels, **self.imgs_embed)
+            # logits_per_text = outputs.logits_per_image  # this is the image-text similarity score
+            # probs = logits_per_text.softmax(
+            #     dim=0
+            # ).squeeze()  # we can take the softmax to get the label probabilities
 
-                imageio.mimsave(
-                    self.output_path + f"/images_with_clip_probs_{img_idx}.gif",
-                    labeled_frames,
-                    fps=0.5,
+            # probs, logits_per_text = (
+            #     probs.detach().cpu().numpy(),
+            #     logits_per_text.squeeze().detach().cpu().numpy(),
+            # )
+            # best = np.argmax(probs)
+            # top_k_indices = np.argsort(probs)[::-1][: self.topk]
+
+            rel_imgs = []
+            for idx in range(len(top_k_indices)):
+                color_img = np.array(self.imgs_rgb)[top_k_indices[idx]].copy()
+                cv2.putText(
+                    color_img,
+                    str(f"Image {idx+1}"),
+                    (20, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 0, 0),
+                    1,
+                    cv2.LINE_AA,
                 )
-
-            if self.save_image:
-                rel_imgs = []
-                for idx in range(len(top_k_indices)):
-                    color_img = sampled_images[top_k_indices[idx]].copy()
-                    cv2.putText(
-                        color_img,
-                        str(f"Image {idx+1}"),
-                        (20, 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        (0, 0, 0),
-                        1,
-                        cv2.LINE_AA,
-                    )
-                    rel_imgs.append(color_img)
+                rel_imgs.append(color_img)
                 # adding the last image
-                if self.choose_final_image:
-                    color_img = imgs_rgb[-1].copy()
-                    cv2.putText(
-                        color_img,
-                        str(f"Image {len(top_k_indices)+1}"),
-                        (20, 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        (0, 0, 0),
-                        1,
-                        cv2.LINE_AA,
-                    )
-                    rel_imgs.append(color_img)
+            if self.choose_final_image:
+                color_img = imgs_rgb[-1].copy()
+                cv2.putText(
+                    color_img,
+                    str(f"Image {len(top_k_indices)+1}"),
+                    (20, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 0, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
+                rel_imgs.append(color_img)
 
-                final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1))
+            final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1))
 
-                final_img.save(self.output_path + f"/current_img_{img_idx}.png")
+            final_img.save(self.output_path + f"/current_img_{img_idx}.png")
             print(f"===========time taken for CLIP/SigLIP emb: {time.time()-start}")
 
     def remove_close_positions(self, data, threshold):
