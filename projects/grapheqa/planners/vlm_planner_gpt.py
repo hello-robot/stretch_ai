@@ -20,7 +20,8 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 if "OPENAI_API_KEY" in os.environ:
-    client = OpenAI(base_url="http://0.0.0.0:23333/v1")
+    # client = OpenAI(base_url="http://0.0.0.0:23333/v1")
+    client = OpenAI()
 else:
     print("GPT token has not been set up yet!")
 
@@ -233,10 +234,11 @@ class VLMPLannerEQAGPT:
                 f"Goto frontier_id:{step.frontier_id.name} frontier name: {step.frontier_id.value}"
             )
 
+        # Answer(t={self.t}): {answer.answer.name} {answer.answer.value}
         last_step = f"""
             [Agent state(t={self.t}): {agent_state}, 
             Action(t={self.t}): {action}, 
-            Answer(t={self.t}): {answer.answer.name} {answer.answer.value}
+            Answer(t={self.t}): {answer},
             Confidence(t={self.t}):  Confident: {answer.is_confident}, Confidence level:{answer.confidence_level}  \n
         """
         self._history += last_step
@@ -318,9 +320,6 @@ class VLMPLannerEQAGPT:
             self.sg_sim.scene_graph_str, agent_state
         )
 
-        print("\n\n\n")
-        print(current_state_prompt)
-
         sg_desc = ""
         step, answer, img_desc, sg_desc = self.get_gpt_output(current_state_prompt)
 
@@ -340,7 +339,7 @@ class VLMPLannerEQAGPT:
         print(f"At t={self._t}: \n {step} \n {answer}")
 
         if step is None:
-            return None, None, answer.is_confident, answer.confidence_level, answer.answer.name
+            return None, None, answer.is_confident, answer.confidence_level, answer
 
         if step.__class__.__name__ == "Goto_object_node_step":
             target_pose = self.sg_sim.get_position_from_id(step.object_id.name)
@@ -358,5 +357,5 @@ class VLMPLannerEQAGPT:
             target_id,
             answer.is_confident,
             answer.confidence_level,
-            answer.answer.name,
+            answer,
         )

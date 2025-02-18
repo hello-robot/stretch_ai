@@ -74,7 +74,8 @@ class SceneGraphSim:
         self.topk = 2
         self.img_subsample_freq = 1
         self.device = device
-        self.enrich_rooms = True
+        # TODO: remove hard coding
+        self.enrich_rooms = False
         self.enrich_object_labels = enrich_object_labels
 
         self.save_image = True
@@ -121,6 +122,7 @@ class SceneGraphSim:
 
     @property
     def scene_graph_str(self):
+        print(json.dumps(nx.node_link_data(self.filtered_netx_graph)))
         return json.dumps(nx.node_link_data(self.filtered_netx_graph))
 
     @property
@@ -182,8 +184,11 @@ class SceneGraphSim:
         for instance in self.scene_graph.instances:
             attr = {}
             attr["position"] = torch.mean(instance.point_cloud, dim=0).tolist()
+            # round up to prevent the scene graph str from being too long
+            attr["position"] = [round(coord, 3) for coord in attr["position"]]
             attr["name"] = instance.name + "_" + str(instance.global_id)
             attr["label"] = instance.name
+            node_id = instance.name + "_" + str(instance.global_id)
 
             # object_node_positions.append(attr["position"])
             # bbox = node.attributes.bounding_box
@@ -196,11 +201,11 @@ class SceneGraphSim:
             if instance.name in self.filter_out_objects:
                 continue
             self.filtered_obj_positions.append(attr["position"])
-            self.filtered_obj_ids.append(attr["name"])
-            self._object_node_ids.append(attr["name"])
+            self.filtered_obj_ids.append(node_id)
+            self._object_node_ids.append(node_id)
             self._object_node_names.append(instance.name)
 
-            self.filtered_netx_graph.add_nodes_from([(instance.global_id, attr)])
+            self.filtered_netx_graph.add_nodes_from([(node_id, attr)])
 
         attr = {}
         xyt = self.robot.get_base_pose()
@@ -295,7 +300,7 @@ class SceneGraphSim:
 
     def add_room_labels_to_sg(self):
         self._room_names = []
-        if len(self._room_ids) > 0:
+        if len(self._room_ids) > 0 and self.enrich_rooms:
             for room_id in self._room_ids:
                 place_ids = [
                     place_id
@@ -328,7 +333,7 @@ class SceneGraphSim:
                     0
                 ].message.parsed.room.value
                 self._room_names.append(completion.choices[0].message.parsed.room.value)
-        else:
+        elif len(self._room_ids) == 0:
             # If no room nodes exist, add room_0 to graph and edges to regions
             self._room_ids = ["room_0"]
             object_names = np.unique(
@@ -337,23 +342,27 @@ class SceneGraphSim:
                     for object_id in self._object_node_ids
                 ]
             )
-            start = time.time()
-            completion = client.beta.chat.completions.parse(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"Given the list of objects: {object_names}. Which room are these objects most likely found in? Keep explanation very brief.",
-                    }
-                ],
-                response_format=Room_response,
-            )
-            print(f" ======== time for room enrichment: {time.time()-start}")
+            if self.enrich_rooms:
+                start = time.time()
+                completion = client.beta.chat.completions.parse(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": f"Given the list of objects: {object_names}. Which room are these objects most likely found in? Keep explanation very brief.",
+                        }
+                    ],
+                    response_format=Room_response,
+                )
+                print(f" ======== time for room enrichment: {time.time()-start}")
 
-            # Add node to graph
-            attr = {"name": completion.choices[0].message.parsed.room.value, "layer": 4}
+                # Add node to graph
+                attr = {"name": completion.choices[0].message.parsed.room.value, "layer": 4}
+                self._room_names.append(completion.choices[0].message.parsed.room.value)
+            else:
+                attr = {"name": "room_0", "layer": 4}
+                self._room_names.append("room_0")
             self.filtered_netx_graph.add_nodes_from([("room_0", attr)])
-            self._room_names.append(completion.choices[0].message.parsed.room.value)
 
             # Add edges from room to region
             edge_type = "room-to-region"
@@ -427,7 +436,7 @@ class SceneGraphSim:
 
         self.save_best_image(imgs_rgb)
 
-        # self.add_room_labels_to_sg()
+        self.add_room_labels_to_sg()
 
         # if not self.include_regions:
         #     self.remove_region_nodes()

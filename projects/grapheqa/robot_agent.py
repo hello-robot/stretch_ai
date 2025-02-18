@@ -383,12 +383,18 @@ class RobotAgent(RobotAgentBase):
                 output_path=self.log, scene_graph=self.scene_graph, robot=self.robot
             )
             self.vlm_planner = VLMPLannerEQAGPT(
-                vlm_type="OpenGVLab/InternVL2_5-8B-AWQ",
+                # vlm_type="OpenGVLab/InternVL2_5-8B-AWQ",
+                vlm_type="gpt-4o",
                 sg_sim=self.sg_sim,
                 question="Is there a monitor on the white table?",
                 output_path=self.log,
             )
         self.update_frontiers()
+        # If there is no place to explore, set the home point as exploration point
+        # TODO: Maybe set it to the place that has not been visited for a long time
+        print("clustered frontier points", self.clustered_frontiers)
+        if len(self.clustered_frontiers) == 0:
+            self.clustered_frontiers = np.array([[0.0, 0.0, 0.0]])
         self.sg_sim.update(frontier_nodes=self.clustered_frontiers, imgs_rgb=[obs.rgb])
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
@@ -444,10 +450,10 @@ class RobotAgent(RobotAgentBase):
 
             res = None
             if target_pose is not None:
-                self.robot._rerun.log_vlm_target(target_pose, format="xyz")
+                # self.robot._rerun.log_vlm_target(target_pose, format="xyz")
 
-                if self.robot._rerun:
-                    self.robot._rerun.log_vlm_target(target_pose, format="xyt")
+                # if self.robot._rerun:
+                #     self.robot._rerun.log_vlm_target(target_pose, format="xyt")
 
                 res = self.planner.plan(start_pose, target_pose)
 
