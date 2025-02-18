@@ -99,25 +99,20 @@ def main(
     while agent.is_running():
 
         # If target object and receptacle are provided, set mode to manipulation
-        mode = input("select mode? E/S: ").lower()
+        # mode = input("select mode? E/S: ").lower()
 
-        if mode == "s":
-            robot.say("Saving data. Goodbye!")
-            # agent.image_processor.write_to_pickle(None)
-            break
+        # robot.say("Saving data. Goodbye!")
+        # # agent.image_processor.write_to_pickle(None)
+        # break
 
-        if mode == "e":
-            robot.move_to_nav_posture()
-            robot.switch_to_navigation_mode()
-            robot.say("Exploring.")
-            for epoch in range(explore_iter):
-                print("\n", "Exploration epoch ", epoch, "\n")
-                if not agent.run_exploration():
-                    print("Exploration failed! Quitting!")
-                    continue
-
-        # Clear mode after the first trial - otherwise it will go on forever
-        mode = None
+        robot.move_to_nav_posture()
+        robot.switch_to_navigation_mode()
+        robot.say("Running EQA.")
+        for epoch in range(explore_iter):
+            print("\n", "Exploration epoch ", epoch, "\n")
+            if not agent.run_exploration():
+                print("Exploration failed! Quitting!")
+                continue
 
 
 if __name__ == "__main__":

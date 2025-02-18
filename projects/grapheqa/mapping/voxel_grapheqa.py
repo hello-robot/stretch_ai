@@ -7,21 +7,16 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import base64
 import logging
 import os
 import pickle
-import re
 import timeit
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import scipy
 import torch
-import torch.nn.functional as F
-from PIL import Image
 from scipy.ndimage import maximum_filter
 from torch import Tensor
 
@@ -130,27 +125,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
             self.gpt_client = OpenaiClient(
                 DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
             )
-
-    def find_alignment_over_model(self, queries: str):
-        clip_text_tokens = self.encoder.encode_text(queries).cpu()
-        points, features, weights, _ = self.semantic_memory.get_pointcloud()
-        if points is None:
-            return None
-        features = F.normalize(features, p=2, dim=-1).cpu()
-        point_alignments = clip_text_tokens.float() @ features.float().T
-
-        # print(point_alignments.shape)
-        return point_alignments
-
-    def find_alignment_for_text(self, text: str):
-        points, features, _, _ = self.semantic_memory.get_pointcloud()
-        alignments = self.find_alignment_over_model(text).cpu()
-        return points[alignments.argmax(dim=-1)].detach().cpu()
-
-    def find_obs_id_for_text(self, text: str):
-        obs_counts = self.semantic_memory._obs_counts
-        alignments = self.find_alignment_over_model(text).cpu()
-        return obs_counts[alignments.argmax(dim=-1)].detach().cpu()
 
     def verify_point(
         self,
@@ -301,240 +275,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
             return obstacles, explored
         else:
             return obstacles, explored, history_soft
-
-    def get_2d_alignment_heuristics(self, text: str, debug: bool = False):
-        """
-        Transform the similarity with text into a 2D value map that can be used to evaluate
-        how much exploring to one point can benefit open vocabulary navigation
-        """
-        if self.semantic_memory._points is None:
-            return None
-        # Convert metric measurements to discrete
-        # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
-        xyz, _, _, _ = self.semantic_memory.get_pointcloud()
-        xyz = xyz.detach().cpu()
-        if xyz is None:
-            xyz = torch.zeros((0, 3))
-
-        device = xyz.device
-        xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
-        xyz[xyz[:, -1] < 0, -1] = 0
-
-        # Crop to robot height
-        min_height = int(self.obs_min_height / self.grid_resolution)
-        max_height = int(self.obs_max_height / self.grid_resolution)
-        grid_size = self.grid_size + [max_height]
-
-        # Mask out obstacles only above a certain height
-        obs_mask = xyz[:, -1] < max_height
-        xyz = xyz[obs_mask, :]
-        alignments = self.find_alignment_over_model(text)[0].detach().cpu()
-        alignments = alignments[obs_mask][:, None]
-
-        alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
-        alignment_heuristics = torch.max(alignment_heuristics, dim=-1).values
-        alignment_heuristics = torch.from_numpy(
-            maximum_filter(alignment_heuristics.numpy(), size=5)
-        )
-        return alignment_heuristics
-
-    def localize_text(self, text, debug=True, return_debug=False):
-        if self.mllm:
-            return self.localize_with_mllm(text, debug=debug, return_debug=return_debug)
-        else:
-            return self.localize_with_feature_similarity(
-                text, debug=debug, return_debug=return_debug
-            )
-
-    def find_all_images(self, text: str):
-        """
-        Select all images with high pixel similarity with text
-        """
-        points, _, _, _ = self.semantic_memory.get_pointcloud()
-        points = points.cpu()
-        alignments = self.find_alignment_over_model(text).cpu().squeeze()
-        obs_counts = self.semantic_memory._obs_counts.cpu()
-
-        turning_point = min(0.12, alignments[torch.argsort(alignments)[-100]])
-        mask = alignments >= turning_point
-        obs_counts = obs_counts[mask]
-        alignments = alignments[mask]
-        points = points[mask]
-
-        unique_obs_counts, inverse_indices = torch.unique(obs_counts, return_inverse=True)
-
-        points_with_max_alignment = torch.zeros((len(unique_obs_counts), points.size(1)))
-        max_alignments = torch.zeros(len(unique_obs_counts))
-
-        for i in range(len(unique_obs_counts)):
-            # Get indices of elements belonging to the current cluster
-            indices_in_cluster = (inverse_indices == i).nonzero(as_tuple=True)[0]
-            if len(indices_in_cluster) <= 2:
-                continue
-
-            # Extract the alignments and points for the current cluster
-            cluster_alignments = alignments[indices_in_cluster].squeeze()
-            cluster_points = points[indices_in_cluster]
-
-            # Find the point with the highest alignment in the cluster
-            max_alignment_idx_in_cluster = cluster_alignments.argmax()
-            point_with_max_alignment = cluster_points[max_alignment_idx_in_cluster]
-
-            # Store the result
-            points_with_max_alignment[i] = point_with_max_alignment
-            max_alignments[i] = cluster_alignments.max()
-
-        top_alignments, top_indices = torch.topk(
-            max_alignments, k=min(3, len(max_alignments)), dim=0, largest=True, sorted=True
-        )
-        top_points = points_with_max_alignment[top_indices]
-        top_obs_counts = unique_obs_counts[top_indices]
-
-        sorted_obs_counts, sorted_indices = torch.sort(top_obs_counts, descending=False)
-        sorted_points = top_points[sorted_indices]
-        top_alignments = top_alignments[sorted_indices]
-
-        return sorted_obs_counts, sorted_points, top_alignments
-
-    def llm_locator(self, image_ids: Union[torch.Tensor, np.ndarray, list], text: str):
-        """
-        Prompting the mLLM to select the images containing objects of interest.
-
-        Input:
-            image_ids: a series of images you want to send to mLLM
-            text: text query
-
-        Return
-        """
-        user_messages = []
-        for obs_id in image_ids:
-            obs_id = int(obs_id) - 1
-            rgb = np.copy(self.observations[obs_id].rgb.numpy())
-            depth = self.observations[obs_id].depth
-            rgb[depth > 2.5] = [0, 0, 0]
-            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            img_bytes = buffered.getvalue()
-            base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
-            user_messages.append(
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{base64_encoded}",
-                        "detail": "low",
-                    },
-                }
-            )
-        user_messages.append(
-            {
-                "type": "text",
-                "text": "The object you need to find is " + text,
-            }
-        )
-
-        response = self.gpt_client(user_messages)
-        return self.process_response(response)
-
-    def process_response(self, response: str):
-        """
-        Process the output of GPT4o to extract the selected image's id
-        """
-        try:
-            # Use regex to locate the 'Images:' section, allowing for varying whitespace and line breaks
-            images_section_match = re.search(r"Images:\s*([\s\S]+)", response, re.IGNORECASE)
-            if not images_section_match:
-                raise ValueError("The 'Images:' section is missing.")
-
-            # Extract the content after 'Images:'
-            images_content = images_section_match.group(1).strip()
-
-            # Check if the content is 'None' (case-insensitive)
-            if images_content.lower() == "none":
-                return None
-
-            # Use regex to find all numbers, regardless of separators like commas, periods, or spaces
-            numbers = re.findall(r"\d+", images_content)
-
-            if not numbers:
-                raise ValueError("No numbers found in the 'Images:' section.")
-
-            # Convert all found numbers to integers
-            numbers = [int(num) for num in numbers]
-
-            # Return all numbers as a list if multiple numbers are found
-            if len(numbers) > 0:
-                return numbers[-1]
-            else:
-                return None
-
-        except Exception as e:
-            # Handle any exceptions and optionally log the error message
-            print(f"Error: {e}")
-            return None
-
-    def localize_with_mllm(self, text: str, debug=True, return_debug=False):
-        points, _, _, _ = self.semantic_memory.get_pointcloud()
-        alignments = self.find_alignment_over_model(text).cpu()
-        point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
-        obs_counts = self.semantic_memory._obs_counts
-        image_id = obs_counts[alignments.argmax(dim=-1)].detach().cpu()
-        debug_text = ""
-        target_point = None
-
-        image_ids, points, alignments = self.find_all_images(text)
-        target_id = self.llm_locator(image_ids, text)
-
-        if target_id is None:
-            debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
-            image_id = None
-            point = None
-        else:
-            target_id -= 1
-            target_point = points[target_id]
-            image_id = image_ids[target_id]
-            point = points[target_id]
-            debug_text += "#### - An image is identified \n"
-
-        target_point = point
-
-        if not debug:
-            return target_point
-        elif not return_debug:
-            return target_point, debug_text
-        else:
-            return target_point, debug_text, image_id, point
-
-    def localize_with_feature_similarity(self, text, debug=True, return_debug=False):
-        points, _, _, _ = self.semantic_memory.get_pointcloud()
-        alignments = self.find_alignment_over_model(text).cpu()
-        point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
-        res = point
-        debug_text = ""
-
-        if res is not None:
-            target_point = res
-            debug_text += (
-                "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
-            )
-        else:
-            # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
-            cosine_similarity_check = alignments.max().item() > 0.14
-            if cosine_similarity_check:
-                target_point = point
-
-                debug_text += (
-                    "#### - The point has high cosine similarity. **😃** Directly navigate to it.\n"
-                )
-            else:
-                debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
-        # print('target_point', target_point)
-        if not debug:
-            return target_point
-        elif not return_debug:
-            return target_point, debug_text
-        else:
-            return target_point, debug_text, None, point
 
     def add_obs(
         self,
@@ -802,6 +542,18 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 weights=None,
                 min_weight_per_voxel=self._min_points_per_voxel,
             )
+
+        if self._add_local_radius_points and (
+            len(self.observations) < 2 or self._add_local_radius_every_step
+        ):
+            # Only do this at the first step, never after it.
+            # TODO: just get this from camera_pose?
+            # Add local radius points to the map around base
+            if base_pose is not None:
+                self._update_visited(base_pose.to(self.map_2d_device))
+            else:
+                # Camera only
+                self._update_visited(camera_pose[:3, 3].to(self.map_2d_device))
 
         # Increment sequence counter
         self._seq += 1

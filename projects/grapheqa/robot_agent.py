@@ -51,15 +51,6 @@ from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
-# Manipulation hyperparameters
-INIT_LIFT_POS = 0.45
-INIT_WRIST_PITCH = -1.57
-INIT_ARM_POS = 0
-INIT_WRIST_ROLL = 0
-INIT_WRIST_YAW = 0
-INIT_HEAD_PAN = -1.57
-INIT_HEAD_TILT = -0.65
-
 
 class RobotAgent(RobotAgentBase):
     """Basic demo code. Collects everything that we need to make this work."""
@@ -158,30 +149,6 @@ class RobotAgent(RobotAgentBase):
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
 
-        # self.image_processor = VoxelMapImageProcessor(
-        #     rerun=True,
-        #     rerun_visualizer=self.robot._rerun,
-        #     log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-        #     robot=self.robot,
-        # )  # type: ignore
-        # self.encoder = self.image_processor.get_encoder()
-
-        # For manipulation
-        # context = zmq.Context()
-        # self.manip_socket = context.socket(zmq.REQ)
-        # self.manip_socket.connect("tcp://" + server_ip + ":" + str(manip_port))
-
-        # if re == 1 or re == 2:
-        #     stretch_gripper_max = 0.3
-        #     end_link = "link_straight_gripper"
-        # else:
-        #     stretch_gripper_max = 0.64
-        #     end_link = "link_gripper_s3_body"
-        # self.transform_node = end_link
-        # self.manip_wrapper = ManipulationWrapper(
-        #     self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
-        # )
-
         if self._realtime_updates:
             self.obs_count = 0
             self._matched_vertices_obs_count: Dict[float, int] = dict()
@@ -203,8 +170,6 @@ class RobotAgent(RobotAgentBase):
             )
 
         self.robot.move_to_nav_posture()
-
-        self.re = re
 
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
@@ -380,19 +345,21 @@ class RobotAgent(RobotAgentBase):
 
         if self.sg_sim is None:
             self.sg_sim = SceneGraphSim(
-                output_path=self.log, scene_graph=self.scene_graph, robot=self.robot
+                output_path=self.log,
+                scene_graph=self.scene_graph,
+                robot=self.robot,
+                enrich_object_labels="cardboard box",
             )
             self.vlm_planner = VLMPLannerEQAGPT(
                 # vlm_type="OpenGVLab/InternVL2_5-8B-AWQ",
                 vlm_type="gpt-4o",
                 sg_sim=self.sg_sim,
-                question="Is there a monitor on the white table?",
+                question="Is there a monitor on the table?",
                 output_path=self.log,
             )
         self.update_frontiers()
         # If there is no place to explore, set the home point as exploration point
         # TODO: Maybe set it to the place that has not been visited for a long time
-        print("clustered frontier points", self.clustered_frontiers)
         if len(self.clustered_frontiers) == 0:
             self.clustered_frontiers = np.array([[0.0, 0.0, 0.0]])
         self.sg_sim.update(frontier_nodes=self.clustered_frontiers, imgs_rgb=[obs.rgb])
@@ -455,6 +422,8 @@ class RobotAgent(RobotAgentBase):
                 # if self.robot._rerun:
                 #     self.robot._rerun.log_vlm_target(target_pose, format="xyt")
 
+                target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
+
                 res = self.planner.plan(start_pose, target_pose)
 
             if res is not None and res.success:
@@ -475,10 +444,13 @@ class RobotAgent(RobotAgentBase):
                     0.1,
                 )
 
-            if not len(waypoints) <= 8:
-                waypoints = waypoints[:8]
-            traj = self.planner.clean_path_for_xy(waypoints)
-            print("Planned trajectory:", traj)
+            if waypoints is not None:
+                if not len(waypoints) <= 8:
+                    waypoints = waypoints[:8]
+                traj = self.planner.clean_path_for_xy(waypoints)
+                print("Planned trajectory:", traj)
+            else:
+                traj = None
 
             if traj is not None:
                 origins = []

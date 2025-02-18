@@ -67,7 +67,7 @@ class SceneGraphSim:
         rr_logger=None,
         device: str = "cuda",
         clean_ques_ans=" ",
-        enrich_object_labels="table",
+        enrich_object_labels="object",
         cache_size: int = 100,
     ):
         self.robot = robot
@@ -80,7 +80,7 @@ class SceneGraphSim:
 
         self.save_image = True
         self.include_regions = False
-        self.enrich_frontiers = False
+        self.enrich_frontiers = True
 
         self.output_path = output_path
         self.scene_graph = scene_graph
@@ -122,7 +122,6 @@ class SceneGraphSim:
 
     @property
     def scene_graph_str(self):
-        print(json.dumps(nx.node_link_data(self.filtered_netx_graph)))
         return json.dumps(nx.node_link_data(self.filtered_netx_graph))
 
     @property
@@ -289,14 +288,6 @@ class SceneGraphSim:
                                 )
                             ]
                         )
-                        if self.rr_logger is not None:
-                            self.rr_logger.log_hydra_graph(
-                                is_node=False,
-                                edge_type=edge_type,
-                                edgeid=edgeid,
-                                node_pos_source=frontier_nodes[i],
-                                node_pos_target=obj_pos,
-                            )
 
     def add_room_labels_to_sg(self):
         self._room_names = []
