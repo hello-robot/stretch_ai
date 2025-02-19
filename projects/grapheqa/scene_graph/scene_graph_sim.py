@@ -148,6 +148,21 @@ class SceneGraphSim:
     def object_node_names(self):
         return self._object_node_names
 
+    def update_language_embedding(self, text: str):
+        """
+        When we update self.enrich_object_labels, we call this function to update the corresponding embedding
+
+        Args:
+            - text: the new labels text
+        """
+        self.enrich_object_labels = text
+        labels = self.enrich_object_labels.replace(".", "")
+        exist = f"There is  {labels} in the scene."
+        with torch.no_grad():
+            self.text_embed = (
+                self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0
+            ).to(self.device)
+
     def is_relevant_frontier(self, frontier_node_positions, agent_pos):
         frontier_node_positions = frontier_node_positions.reshape(-1, 3)
         thresh_low = agent_pos[2] - 0.75
@@ -368,34 +383,6 @@ class SceneGraphSim:
                     ]
                 )
 
-    # def _get_node_properties(self, node):
-    #     # print(f"layer: {node.layer}. Category: {node.id.category.lower()}{node.id.category_id}. Active Frontier: {node.attributes.active_frontier}")
-    #     if 'p' in node.id.category.lower():
-    #         nodeid = f'region_{node.id.category_id}'
-    #         node_type = 'region'
-    #         node_name = 'region'
-    #     if 'f' in node.id.category.lower():
-    #         nodeid = f'frontier_{node.id.category_id}'
-    #         node_type = 'frontier'
-    #         node_name = 'frontier'
-    #     if 'o' in node.id.category.lower():
-    #         nodeid = f'object_{node.id.category_id}'
-    #         node_type = 'object'
-    #         node_name = node.attributes.name
-    #     if 'r' in node.id.category.lower():
-    #         nodeid = f'room_{node.id.category_id}'
-    #         node_type = 'room'
-    #         node_name = 'room'
-    #     if 'b' in node.id.category.lower():
-    #         nodeid = f'building_{node.id.category_id}'
-    #         node_type = 'building'
-    #         node_name = 'building'
-    #     if 'a' in node.id.category.lower():
-    #         nodeid = f'agent_{node.id.category_id}'
-    #         node_type = 'agent'
-    #         node_name = 'agent'
-    #     return nodeid, node_type, node_name
-
     def get_current_semantic_state_str(self):
         agent_pos = self.filtered_netx_graph.nodes[self.curr_agent_id]["position"]
         agent_loc_str = (
@@ -477,20 +464,6 @@ class SceneGraphSim:
                 self.imgs_embed @ self.text_embed.reshape(-1, self.imgs_embed.shape[-1]).T, dim=-1
             )
             top_k_indices = torch.argsort(logits, descending=True)[: self.topk]
-
-            # with torch.no_grad():
-            #     outputs = self.model(**self.question_embed_labels, **self.imgs_embed)
-            # logits_per_text = outputs.logits_per_image  # this is the image-text similarity score
-            # probs = logits_per_text.softmax(
-            #     dim=0
-            # ).squeeze()  # we can take the softmax to get the label probabilities
-
-            # probs, logits_per_text = (
-            #     probs.detach().cpu().numpy(),
-            #     logits_per_text.squeeze().detach().cpu().numpy(),
-            # )
-            # best = np.argmax(probs)
-            # top_k_indices = np.argsort(probs)[::-1][: self.topk]
 
             rel_imgs = []
             for idx in range(len(top_k_indices)):

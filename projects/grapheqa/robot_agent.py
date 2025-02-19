@@ -30,20 +30,13 @@ from mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from planners import VLMPLannerEQAGPT
 from scene_graph import SceneGraphSim
 
-# from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
-#     DynamemManipulationWrapper as ManipulationWrapper,
-# )
-# from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
-#     capture_and_process_image,
-#     move_to_point,
-#     pickup,
-#     process_image_for_placing,
 # )
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
-from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
+from stretch.core.robot import AbstractRobotClient
+from stretch.llms import OpenaiClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
@@ -60,7 +53,6 @@ class RobotAgent(RobotAgentBase):
         robot: AbstractRobotClient,
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
-        grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
@@ -81,7 +73,6 @@ class RobotAgent(RobotAgentBase):
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.grasp_client = grasp_client
         self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
 
@@ -172,9 +163,27 @@ class RobotAgent(RobotAgentBase):
         self.robot.move_to_nav_posture()
 
         # Store the current scene graph computed from detected objects
-        self.scene_graph = None
-        self.sg_sim = None
-        self.vlm_planner = None
+        self.scene_graph = SceneGraph(self.parameters, [])
+        self.sg_sim = SceneGraphSim(
+            output_path=self.log,
+            scene_graph=self.scene_graph,
+            robot=self.robot,
+            enrich_object_labels="object",
+        )
+        self.vlm_planner = VLMPLannerEQAGPT(
+            vlm_type="gpt-4o",
+            sg_sim=self.sg_sim,
+            question="",
+            output_path=self.log,
+        )
+        PROMPT = """
+            Assume there is an agent doing Question Answering in an environment.
+            When it receives a question, you need to tell the agent which object it needs to pay special attention to.
+            Example:
+                Input: Where is the pen?
+                Output: pen
+        """
+        self.llm_client = OpenaiClient(PROMPT, model="gpt-4o-mini")
 
         # Previously sampled goal during exploration
         self._previous_goal = None
@@ -232,8 +241,8 @@ class RobotAgent(RobotAgentBase):
         main = rrb.Horizontal(
             rrb.Spatial3DView(name="3D View", origin="world"),
             rrb.Vertical(
-                rrb.TextDocumentView(name="text", origin="robot_monologue"),
-                rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+                rrb.TextDocumentView(name="text", origin="QA"),
+                # rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
             ),
             rrb.Vertical(
                 rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
@@ -315,10 +324,7 @@ class RobotAgent(RobotAgentBase):
 
     def _update_scene_graph(self):
         """Update the scene graph with the latest observations."""
-        if self.scene_graph is None:
-            self.scene_graph = SceneGraph(self.parameters, self.get_voxel_map().get_instances())
-        else:
-            self.scene_graph.update(self.get_voxel_map().get_instances())
+        self.scene_graph.update(self.get_voxel_map().get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
 
@@ -343,20 +349,6 @@ class RobotAgent(RobotAgentBase):
         self._update_scene_graph()
         self.scene_graph.get_relationships()
 
-        if self.sg_sim is None:
-            self.sg_sim = SceneGraphSim(
-                output_path=self.log,
-                scene_graph=self.scene_graph,
-                robot=self.robot,
-                enrich_object_labels="cardboard box",
-            )
-            self.vlm_planner = VLMPLannerEQAGPT(
-                # vlm_type="OpenGVLab/InternVL2_5-8B-AWQ",
-                vlm_type="gpt-4o",
-                sg_sim=self.sg_sim,
-                question="Is there a monitor on the table?",
-                output_path=self.log,
-            )
         self.update_frontiers()
         # If there is no place to explore, set the home point as exploration point
         # TODO: Maybe set it to the place that has not been visited for a long time
@@ -386,14 +378,18 @@ class RobotAgent(RobotAgentBase):
                 self.update()
 
     def run_eqa_vlm_planner(self, max_planning_steps: int = 3):
-        if self.vlm_planner is None:
-            return
         start_pose = self.robot.get_base_pose()
         for cnt_step in range(max_planning_steps):
             click.secho(
                 f"Overall step {cnt_step}",
                 fg="blue",
             )
+
+            if not self._realtime_updates:
+                self.robot.look_front()
+                self.look_around()
+                self.robot.look_front()
+                self.robot.switch_to_navigation_mode()
 
             (
                 target_pose,
@@ -402,6 +398,8 @@ class RobotAgent(RobotAgentBase):
                 confidence_level,
                 answer_output,
             ) = self.vlm_planner.get_next_action()
+
+            self.rerun_visualizer.log_text("QA", answer_output)
 
             if is_confident or (confidence_level > 0.85):
                 result = f"Success"
@@ -478,25 +476,19 @@ class RobotAgent(RobotAgentBase):
                     blocking=True,
                 )
 
-    def execute_action(self):
-        if not self._realtime_updates:
-            self.robot.look_front()
-            self.look_around()
-            self.robot.look_front()
-            self.robot.switch_to_navigation_mode()
+    def run_eqa(self, question):
+        rr.init("Stretch Robot", recording_id=uuid4(), spawn=True)
 
         self.robot.switch_to_navigation_mode()
 
-        self.run_eqa_vlm_planner()
+        enrich_object = self.llm_client(question)
 
-    def run_exploration(self):
-        """Go through exploration. We use the voxel_grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0)."""
-        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
-        status, _ = self.execute_action()
-        if status is None:
-            print("Exploration failed! Perhaps nowhere to explore!")
-            return False
-        return True
+        print("Enrich Object name:", enrich_object)
+
+        self.vlm_planner._question = question
+        self.sg_sim.update_language_embedding(enrich_object)
+
+        self.run_eqa_vlm_planner()
 
     def get_voxel_map(self):
         """Return the voxel map"""
