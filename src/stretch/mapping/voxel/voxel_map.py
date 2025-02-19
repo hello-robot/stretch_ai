@@ -329,13 +329,15 @@ class SparseVoxelMapNavigationSpace(XYT):
     def _get_conservative_2d_map(self, obstacles, explored):
         """Get a conservative 2d map from the voxel map"""
         # Extract edges from our explored mask
-        obstacles = binary_dilation(
-            obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
-        )[0, 0].bool()
-        less_explored = binary_erosion(
-            explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
-        )[0, 0]
-        return obstacles, less_explored
+        if self.dilate_obstacles_kernel is not None:
+            obstacles = binary_dilation(
+                obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
+            )[0, 0].bool()
+        if self.dilate_explored_kernel is not None:
+            explored = binary_erosion(
+                explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
+            )[0, 0]
+        return obstacles, explored
 
     def sample_near_mask(
         self,
