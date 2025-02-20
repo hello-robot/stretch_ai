@@ -379,6 +379,7 @@ class RobotAgent(RobotAgentBase):
 
     def run_eqa_vlm_planner(self, max_planning_steps: int = 3):
         start_pose = self.robot.get_base_pose()
+        answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
                 f"Overall step {cnt_step}",
@@ -476,6 +477,8 @@ class RobotAgent(RobotAgentBase):
                     blocking=True,
                 )
 
+        return answer_output
+
     def run_eqa(self, question):
         rr.init("Stretch Robot", recording_id=uuid4(), spawn=True)
 
@@ -488,7 +491,7 @@ class RobotAgent(RobotAgentBase):
         self.vlm_planner._question = question
         self.sg_sim.update_language_embedding(enrich_object)
 
-        self.run_eqa_vlm_planner()
+        return self.run_eqa_vlm_planner()
 
     def get_voxel_map(self):
         """Return the voxel map"""
