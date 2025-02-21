@@ -25,6 +25,7 @@ from torch import Tensor
 
 from stretch.mapping.instance import Instance, InstanceView
 from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
+from stretch.perception.captioners import BaseCaptioner
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
@@ -97,6 +98,7 @@ class InstanceMemory:
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
+        captioner: Optional[BaseCaptioner] = None,
     ):
         """See class definition for information about InstanceMemory
 
@@ -125,6 +127,7 @@ class InstanceMemory:
         self.instance_box_compression_drop_prop = instance_box_compression_drop_prop
         self.instance_box_compression_resolution = instance_box_compression_resolution
         self.encoder = encoder
+        self.captioner = captioner
 
         self.min_instance_vol = min_instance_vol
         self.max_instance_vol = max_instance_vol
@@ -796,6 +799,14 @@ class InstanceMemory:
                         )
                 else:
                     # get instance view
+                    if self.captioner is not None:
+                        # ViT_GPT2, Moondream, and GiT captioners take image of shape (H, W, C)
+                        # They also require the image to be scaled up cropped_image's pixel values within [0, 256)
+                        text_description = self.captioner.caption_image(
+                            cropped_image.to(dtype=torch.uint8)
+                        )
+                    else:
+                        text_description = None
                     instance_view = InstanceView(
                         bbox=bbox,
                         timestep=self.timesteps[env_id],
@@ -810,6 +821,7 @@ class InstanceMemory:
                         score=score,
                         bounds=bounds,  # .cpu().numpy(),
                         pose=pose,
+                        text_description=text_description
                         # open_vocab_label=open_vocab_label,
                     )
                     # append instance view to list of instance views

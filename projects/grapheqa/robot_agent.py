@@ -41,6 +41,9 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
+
+# from stretch.perception.captioners import VitGPT2Captioner
+from stretch.perception.captioners import GitCaptioner
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -64,7 +67,6 @@ class RobotAgent(RobotAgentBase):
         log: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
-        manipulation_only: bool = False,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -84,7 +86,6 @@ class RobotAgent(RobotAgentBase):
         self.setup_custom_blueprint()
 
         self.mllm = mllm
-        self.manipulation_only = manipulation_only
         # For placing
         # self.owl_sam_detector = none
 
@@ -163,7 +164,7 @@ class RobotAgent(RobotAgentBase):
         self.robot.move_to_nav_posture()
 
         # Store the current scene graph computed from detected objects
-        self.scene_graph = SceneGraph(self.parameters, [])
+        self.scene_graph = SceneGraph(self.parameters, [])  # type: ignore
         self.sg_sim = SceneGraphSim(
             output_path=self.log,
             scene_graph=self.scene_graph,
@@ -193,11 +194,8 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        if self.manipulation_only:
-            self.encoder = None
-        else:
-            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        print("Encoder loaded!")
+        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+        self.captioner = GitCaptioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
@@ -220,6 +218,7 @@ class RobotAgent(RobotAgentBase):
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             encoder=self.encoder,
+            captioner=self.captioner,
             log=self.log,
             mllm=self.mllm,
         )
@@ -397,8 +396,11 @@ class RobotAgent(RobotAgentBase):
                 target_id,
                 is_confident,
                 confidence_level,
-                answer_output,
+                answer,
+                explanation_ans,
             ) = self.vlm_planner.get_next_action()
+
+            answer_output = answer + "\n" + explanation_ans
 
             self.rerun_visualizer.log_text("QA", answer_output)
 

@@ -27,7 +27,8 @@ from stretch.mapping.instance import InstanceMemory
 from stretch.mapping.voxel import SparseVoxelMap as SparseVoxelMapBase
 from stretch.mapping.voxel.voxel import VALID_FRAMES, Frame
 from stretch.motion import HelloStretchIdx
-from stretch.perception.encoders import MaskSiglipEncoder
+from stretch.perception.captioners import BaseCaptioner
+from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud import points_in_mesh
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
@@ -57,7 +58,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder: Optional[MaskSiglipEncoder] = None,
+        encoder: Optional[BaseImageTextEncoder] = None,
+        captioner: Optional[BaseCaptioner] = None,
         map_2d_device: str = "cpu",
         device: Optional[str] = None,
         use_instance_memory: bool = True,
@@ -111,7 +113,14 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.point_update_threshold = point_update_threshold
         self._history_soft: Optional[Tensor] = None
         self.encoder = encoder
-        self.instances = InstanceMemory(num_envs=1, encoder=self.encoder, du_scale=1)
+        self.captioner = captioner
+        self.instances = InstanceMemory(
+            num_envs=1,
+            encoder=self.encoder,
+            captioner=self.captioner,
+            mask_cropped_instances=False,
+            du_scale=1,
+        )
         self.obs_count = 0
         self.log = log
 
@@ -308,6 +317,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         else:
             instance_image, instance_classes, instance_scores = None, None, None
 
+        t0 = timeit.default_timer()
+
         self.add(
             camera_pose=camera_pose,
             xyz=xyz,
@@ -322,6 +333,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
             *args,
             **kwargs,
         )  # type: ignore
+
+        t1 = timeit.default_timer()
+        print("Image processing takes", t1 - t0, "seconds")
 
     def add(
         self,

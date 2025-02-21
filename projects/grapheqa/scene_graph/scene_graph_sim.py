@@ -87,7 +87,9 @@ class SceneGraphSim:
         self._room_names: List[str] = []
 
         self.rr_logger = rr_logger
+        # For constructing frontier nodes and connecting them with object nodes
         self.thresh = 2.0
+        self.size_thresh = 0.3
         self.choose_final_image = True
 
         self.filter_out_objects = ["floor", "ceiling", "."]
@@ -193,15 +195,20 @@ class SceneGraphSim:
             [],
             [],
         )
-        self.filtered_obj_positions, self.filtered_obj_ids = [], []
+        self.filtered_obj_positions, self.filtered_obj_ids, self.filtered_obj_sizes = [], [], []
 
         for instance in self.scene_graph.instances:
             attr = {}
             attr["position"] = torch.mean(instance.point_cloud, dim=0).tolist()
             # round up to prevent the scene graph str from being too long
             attr["position"] = [round(coord, 3) for coord in attr["position"]]
-            attr["name"] = instance.name + "_" + str(instance.global_id)
-            attr["label"] = instance.name
+            attr["name"] = instance.get_best_view().text_description
+            attr["label"] = instance.name + "_" + str(instance.global_id)
+            # bounds is a (3 x 2) mins and max
+            attr["bbox"] = instance.bounds.tolist()
+            attr["size"] = torch.prod(
+                torch.abs(instance.bounds[:, 0] - instance.bounds[:, 1])
+            ).item()
             node_id = instance.name + "_" + str(instance.global_id)
 
             # object_node_positions.append(attr["position"])
@@ -215,6 +222,7 @@ class SceneGraphSim:
             if instance.name in self.filter_out_objects:
                 continue
             self.filtered_obj_positions.append(attr["position"])
+            self.filtered_obj_sizes.append(attr["size"])
             self.filtered_obj_ids.append(node_id)
             self._object_node_ids.append(node_id)
             self._object_node_names.append(instance.name)
@@ -280,7 +288,9 @@ class SceneGraphSim:
                 dist = np.linalg.norm(
                     (np.array(frontier_nodes[i]) - self.filtered_obj_positions), axis=1
                 )
-                relevant_objs = dist < self.thresh
+                relevant_objs = (dist < self.thresh) & (
+                    np.array(self.filtered_obj_sizes) > self.size_thresh
+                )
                 relevent_node_ids = self.filtered_obj_ids[relevant_objs]
                 relevant_obj_pos = self.filtered_obj_positions[relevant_objs]
 

@@ -101,7 +101,6 @@ class VLMPLannerEQAGPT:
         self._vlm_type = vlm_type
         self._use_image = use_image
 
-        self._example_plan = ""  # TODO(saumya)
         self._history = ""
         self.full_plan = ""
         self._t = 0
@@ -249,7 +248,6 @@ class VLMPLannerEQAGPT:
             {"role": "system", "content": f"AGENT ROLE: {self.agent_role_prompt}"},
             {"role": "system", "content": f"QUESTION: {self._question}"},
             {"role": "user", "content": f"CURRENT STATE: {current_state_prompt}."},
-            # {"role": "user", "content": f"EXAMPLE PLAN: {self._example_plan}"} # TODO(saumya)
         ]
 
         if self._use_image:
@@ -357,5 +355,6 @@ class VLMPLannerEQAGPT:
             target_id,
             answer.is_confident,
             answer.confidence_level,
-            answer,
+            answer.answer,
+            answer.explanation_ans,
         )
