@@ -7,18 +7,18 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import torch
 import timeit
 from typing import Any, Dict, Optional, Union
 
+import torch
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
-
 qwen_fine_tuning_options = ["Instruct", "Coder", "Math", "Deepseek"]
 qwen_sizes = ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]
+
 
 class Qwen25Client(AbstractLLMClient):
     def __init__(
@@ -51,28 +51,22 @@ class Qwen25Client(AbstractLLMClient):
             # Note: there were supposed to be other options but this is the only one that worked this way
             if quantization == "awq":
                 model_kwargs["torch_dtype"] = torch.float16
-                try:
-                    import awq
-                except ImportError:
-                    logger.error("To use quantization, please install the autoawq package.")
-                    quantization = ""
-                if quantization == "awq":
-                    model_name += "-AWQ"
-                elif len(quantization) > 0:
-                    raise ValueError(f"Unknown quantization method: {quantization}")
+                model_name += "-AWQ"
             elif quantization in ["int8", "int4"]:
                 try:
                     import bitsandbytes  # noqa: F401
-                    from transformers import pipeline, BitsAndBytesConfig
+                    from transformers import BitsAndBytesConfig, pipeline
                 except ImportError:
-                    raise ImportError("bitsandbytes required for int4/int8 quantization: pip install bitsandbytes")
+                    raise ImportError(
+                        "bitsandbytes required for int4/int8 quantization: pip install bitsandbytes"
+                    )
 
                 quantization_config = BitsAndBytesConfig(
                     load_in_4bit=(quantization == "int4"),
                     load_in_8bit=(quantization == "int8"),
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4",
-                    bnb_4bit_compute_dtype=torch.bfloat16
+                    bnb_4bit_compute_dtype=torch.bfloat16,
                 )
                 model_kwargs["quantization_config"] = quantization_config
             else:
@@ -87,7 +81,11 @@ class Qwen25Client(AbstractLLMClient):
             torch_dtype="auto",
         )
         self.pipe = pipeline(
-            "text-generation", model=self.model, tokenizer=self.tokenizer, device=device, model_kwargs=model_kwargs,
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            device=device,
+            model_kwargs=model_kwargs,
         )
 
     def __call__(self, command: str, verbose: bool = False):

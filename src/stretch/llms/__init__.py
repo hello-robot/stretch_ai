@@ -17,7 +17,7 @@ from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .prompts.ok_robot_prompt import OkRobotPromptBuilder
 from .prompts.pickup_prompt import PickupPromptBuilder
 from .prompts.simple_prompt import SimpleStretchPromptBuilder
-from .qwen_client import Qwen25Client, qwen_sizes, qwen_fine_tuning_options
+from .qwen_client import Qwen25Client, qwen_fine_tuning_options, qwen_sizes
 
 # This is a list of all the modules that are imported when you use the import * syntax.
 # The __all__ variable is used to define what symbols get exported when from a module when you use the import * syntax.
