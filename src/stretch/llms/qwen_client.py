@@ -16,6 +16,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
 
+qwen_fine_tuning_options = ["Instruct", "Coder", "Math", "Deepseek"]
+qwen_sizes = ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]
+
 class Qwen25Client(AbstractLLMClient):
     def __init__(
         self,
@@ -28,19 +31,14 @@ class Qwen25Client(AbstractLLMClient):
     ):
         super().__init__(prompt, prompt_kwargs)
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
-        assert model_size in [
-            "0.5B",
-            "1.5B",
-            "3B",
-            "7B",
-            "14B",
-            "32B",
-            "72B",
-        ], f"Invalid model size: {model_size}"
-        assert fine_tuning in ["Instruct", "Coder", "Math"], f"Invalid fine-tuning: {fine_tuning}"
+        assert model_size in qwen_sizes, f"Invalid model size: {model_size}"
+        assert fine_tuning in qwen_fine_tuning_options f"Invalid fine-tuning: {fine_tuning}"
 
         self.max_tokens = max_tokens
-        model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
+        if fine_tuning == "Deepseek":
+            model_name = f"deepseek-ai/DeepSeek-R1-Distill-Qwen-{size}"
+        else:
+            model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
