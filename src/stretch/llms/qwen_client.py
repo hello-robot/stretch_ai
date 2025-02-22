@@ -32,7 +32,7 @@ class Qwen25Client(AbstractLLMClient):
         super().__init__(prompt, prompt_kwargs)
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
         assert model_size in qwen_sizes, f"Invalid model size: {model_size}"
-        assert fine_tuning in qwen_fine_tuning_options f"Invalid fine-tuning: {fine_tuning}"
+        assert fine_tuning in qwen_fine_tuning_options, f"Invalid fine-tuning: {fine_tuning}"
 
         self.max_tokens = max_tokens
         if fine_tuning == "Deepseek":

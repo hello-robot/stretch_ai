@@ -17,7 +17,7 @@ from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .prompts.ok_robot_prompt import OkRobotPromptBuilder
 from .prompts.pickup_prompt import PickupPromptBuilder
 from .prompts.simple_prompt import SimpleStretchPromptBuilder
-from .qwen_client import Qwen25Client
+from .qwen_client import Qwen25Client, qwen_sizes, qwen_fine_tuning_options
 
 # This is a list of all the modules that are imported when you use the import * syntax.
 # The __all__ variable is used to define what symbols get exported when from a module when you use the import * syntax.
@@ -45,8 +45,8 @@ llms = {
 
 # Add all the various Qwen25 variants
 qwen_variants = []
-for model_size in ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]:
-    for fine_tuning in ["Instruct", "Coder", "Math"]:
+for model_size in qwen_sizes:
+    for fine_tuning in qwen_fine_tuning_options:
         qwen_variants.append(f"qwen25-{model_size}-{fine_tuning}")
         llms.update({variant: Qwen25Client for variant in qwen_variants})
 
