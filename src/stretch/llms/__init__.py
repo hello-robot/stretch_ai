@@ -103,10 +103,11 @@ def get_llm_client(
     elif "qwen" in client_type:
         # Parse model size and fine-tuning from client_type
         terms = client_type.split("-")
+        print(terms)
         if len(terms) == 3:
             model_size, fine_tuning = terms[1], terms[2]
         else:
             model_size, fine_tuning = "3B", "Instruct"
-        return Qwen25Client(prompt, **kwargs)
+        return Qwen25Client(prompt, model_size=model_size, fine_tuning=fine_tuning, **kwargs)
     else:
         raise ValueError(f"Invalid client type: {client_type}")

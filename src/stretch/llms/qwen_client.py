@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import torch
 import timeit
 from typing import Any, Dict, Optional, Union
 
@@ -28,6 +29,7 @@ class Qwen25Client(AbstractLLMClient):
         fine_tuning: str = "Instruct",
         max_tokens: int = 4096,
         device: str = "cuda",
+        quantization: Optional[str] = "int4",
     ):
         super().__init__(prompt, prompt_kwargs)
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
@@ -36,9 +38,48 @@ class Qwen25Client(AbstractLLMClient):
 
         self.max_tokens = max_tokens
         if fine_tuning == "Deepseek":
-            model_name = f"deepseek-ai/DeepSeek-R1-Distill-Qwen-{size}"
+            model_name = f"deepseek-ai/DeepSeek-R1-Distill-Qwen-{model_size}"
         else:
             model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
+
+        print(f"Loading model: {model_name}")
+        model_kwargs = {"torch_dtype": "auto"}
+
+        quantization_config = None
+        if quantization is not None:
+            quantization = quantization.lower()
+            # Note: there were supposed to be other options but this is the only one that worked this way
+            if quantization == "awq":
+                model_kwargs["torch_dtype"] = torch.float16
+                try:
+                    import awq
+                except ImportError:
+                    logger.error("To use quantization, please install the autoawq package.")
+                    quantization = ""
+                if quantization == "awq":
+                    model_name += "-AWQ"
+                elif len(quantization) > 0:
+                    raise ValueError(f"Unknown quantization method: {quantization}")
+            elif quantization in ["int8", "int4"]:
+                try:
+                    import bitsandbytes  # noqa: F401
+                    from transformers import pipeline, BitsAndBytesConfig
+                except ImportError:
+                    raise ImportError("bitsandbytes required for int4/int8 quantization: pip install bitsandbytes")
+
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=(quantization == "int4"),
+                    load_in_8bit=(quantization == "int8"),
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16
+                )
+                model_kwargs["quantization_config"] = quantization_config
+            else:
+                raise ValueError(f"Unknown quantization method: {quantization}")
+
+        if quantization_config is not None:
+            model_kwargs["quantization_config"] = quantization_config
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -46,7 +87,7 @@ class Qwen25Client(AbstractLLMClient):
             torch_dtype="auto",
         )
         self.pipe = pipeline(
-            "text-generation", model=self.model, tokenizer=self.tokenizer, device=device
+            "text-generation", model=self.model, tokenizer=self.tokenizer, device=device, model_kwargs=model_kwargs,
         )
 
     def __call__(self, command: str, verbose: bool = False):
