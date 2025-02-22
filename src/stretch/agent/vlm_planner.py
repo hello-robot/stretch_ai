@@ -108,7 +108,6 @@ class VLMPlanner:
         else:
             actions = output.split("; ")
 
-        show_plan = True
         if show_plan and actions is not None:
             import re
             import matplotlib.pyplot as plt

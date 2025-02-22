@@ -352,6 +352,8 @@ def run_vlm_planner(
         print(preconditions)
         for action, crop_id in preconditions.items():
             task += f" Before {action}, relocate img_{crop_id} to another instance."
+
+        # Run the planner
         vlm_planner.plan(
             current_pose=x0,
             show_plan=True,
