@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 from termcolor import colored
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
