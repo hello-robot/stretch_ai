@@ -70,6 +70,7 @@ setuptools.setup(
         "timm>1.0.0",
         "huggingface_hub[cli]",
         "transformers>=4.39.2",
+        "bitsandbytes",
         "accelerate",
         "einops",
         # Meta neural nets
