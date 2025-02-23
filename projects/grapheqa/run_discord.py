@@ -144,6 +144,7 @@ def main(
     # Agents wrap the robot high level planning interface for now
     agent = RobotAgent(robot, parameters, semantic_sensor)
     agent.rotate_in_place()
+
     # print("Starting robot agent: initializing...")
     # agent.start(visualize_map_at_start=show_intermediate_maps)
     # if reset:

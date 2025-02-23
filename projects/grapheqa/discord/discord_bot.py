@@ -269,11 +269,17 @@ class GraphEQADiscordBot(DiscordBot):
                 with self._plan_lock:
                     response, channel = self.next_question
                     self.next_question = None
-                answer = self.agent.run_eqa(response)
+                answer, debug_image = self.agent.run_eqa(response)
+                # from PIL import Image
+                # from io import BytesIO
+                # debug_image = Image.open(debug_image)
+                # buffer = BytesIO()
+                # debug_image.save(buffer, format='PNG')
+                # image_bytes = buffer.getvalue()
                 self.send_message(
                     channel=channel,
                     message=answer,
-                    # content=numpy_image_to_bytes(obs.rgb)
+                    # content=image_bytes
                 )
                 # self.push_task(channel = channel, message = answer)
             else:

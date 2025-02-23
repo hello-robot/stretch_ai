@@ -64,6 +64,7 @@ class SceneGraphSim:
         output_path: str,
         scene_graph,
         robot,
+        # captioner = None,
         rr_logger=None,
         device: str = "cuda",
         clean_ques_ans=" ",
@@ -103,6 +104,8 @@ class SceneGraphSim:
             self.text_embed = (
                 self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0
             ).to(device)
+        # self.captioner = captioner
+
         # self.question_embed = self.processor(
         #     text=[clean_ques_ans], padding="max_length", return_tensors="pt"
         # ).to(device)
@@ -202,7 +205,12 @@ class SceneGraphSim:
             attr["position"] = torch.mean(instance.point_cloud, dim=0).tolist()
             # round up to prevent the scene graph str from being too long
             attr["position"] = [round(coord, 3) for coord in attr["position"]]
+            # best_view = instance.get_best_view()
+            # if best_view.text_description is None:
+            #     best_view.text_description = self.captioner.caption_image(best_view.cropped_image.to(dtype=torch.uint8))
+
             attr["name"] = instance.get_best_view().text_description
+            # attr["name"] = instance.name + "_" + str(instance.global_id)
             attr["label"] = instance.name + "_" + str(instance.global_id)
             # bounds is a (3 x 2) mins and max
             attr["bbox"] = instance.bounds.tolist()

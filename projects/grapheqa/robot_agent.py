@@ -41,9 +41,9 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
+from stretch.perception.captioners import VitGPT2Captioner
 
-# from stretch.perception.captioners import VitGPT2Captioner
-from stretch.perception.captioners import GitCaptioner
+# from stretch.perception.captioners import GitCaptioner
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -170,6 +170,7 @@ class RobotAgent(RobotAgentBase):
             scene_graph=self.scene_graph,
             robot=self.robot,
             enrich_object_labels="object",
+            # captioner = self.captioner
         )
         self.vlm_planner = VLMPLannerEQAGPT(
             vlm_type="gpt-4o",
@@ -195,7 +196,7 @@ class RobotAgent(RobotAgentBase):
 
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        self.captioner = GitCaptioner(device=self.device)
+        self.captioner = VitGPT2Captioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
@@ -398,7 +399,10 @@ class RobotAgent(RobotAgentBase):
                 confidence_level,
                 answer,
                 explanation_ans,
+                debug_image,
             ) = self.vlm_planner.get_next_action()
+
+            print(debug_image)
 
             answer_output = answer + "\n" + explanation_ans
 
@@ -479,6 +483,7 @@ class RobotAgent(RobotAgentBase):
                     blocking=True,
                 )
 
+        answer_output = (answer_output, debug_image)
         return answer_output
 
     def run_eqa(self, question):

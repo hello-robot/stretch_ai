@@ -337,7 +337,15 @@ class VLMPLannerEQAGPT:
         print(f"At t={self._t}: \n {step} \n {answer}")
 
         if step is None:
-            return None, None, answer.is_confident, answer.confidence_level, answer
+            return (
+                None,
+                None,
+                answer.is_confident,
+                answer.confidence_level,
+                answer.answer,
+                answer.explanation_ans,
+                get_latest_image(self._output_path),
+            )
 
         if step.__class__.__name__ == "Goto_object_node_step":
             target_pose = self.sg_sim.get_position_from_id(step.object_id.name)
@@ -357,4 +365,5 @@ class VLMPLannerEQAGPT:
             answer.confidence_level,
             answer.answer,
             answer.explanation_ans,
+            get_latest_image(self._output_path),
         )
