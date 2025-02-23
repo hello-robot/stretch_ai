@@ -15,8 +15,6 @@ import numpy as np
 import torch
 from PIL import Image, ImageDraw
 
-from stretch.perception.detection.sam2 import SAM2Perception
-
 from .owl_perception import OwlPerception
 
 
@@ -33,6 +31,10 @@ class OWLSAMProcessor(OwlPerception):
         super().__init__(version=version, device=device, confidence_threshold=confidence_threshold)
         # We assume that you use OWLSAM because you want to work on open vocab segmentation,
         # in this case, open vocab is the concentration
+
+        # Considering SAM2 is not installed by default, we would not import it unless we need to use it.
+        from stretch.perception.detection.sam2 import SAM2Perception
+
         self.sam_model = SAM2Perception(configuration="t")
 
     def detect_object(
