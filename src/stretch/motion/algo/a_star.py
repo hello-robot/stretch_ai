@@ -68,12 +68,8 @@ class AStar(Planner):
         return theta
 
     def reset(self):
-        # print('loading the up to date navigable map')
-        # print('Wait')
         obs, exp = self.space.voxel_map.get_2d_map()
-        # print('up to date navigable map loaded')
         self._navigable = ~obs & exp
-        # self._navigable = ~obs
         self.start_time = time.time()
 
     def point_is_occupied(self, x: int, y: int) -> bool:
@@ -293,7 +289,6 @@ class AStar(Planner):
         start_pt, end_pt = self.to_pt(start_xy), self.to_pt(end_xy)
 
         # Checks that both points are unoccupied.
-        # start_pt = self.get_unoccupied_neighbor(start_pt, end_pt)
         start_pt = self.get_unoccupied_neighbor(start_pt)
         end_pt = self.get_unoccupied_neighbor(end_pt, start_pt)
         # print('A* formally starts ', time.time() - self.start_time, ' seconds after path planning starts')

@@ -69,10 +69,15 @@ class SiglipEncoder(BaseImageTextEncoder):
         if isinstance(image, torch.Tensor):
             image = image.cpu().numpy()
         image = image.astype(np.uint8)
-        pil_image = Image.fromarray(image)
-        if verbose:
-            logger.info("Encoding image", pil_image.size)
-        inputs = self.processor(images=pil_image, return_tensors="pt")
+
+        # We should avoid using PIL image to allow parrelism
+
+        # pil_image = Image.fromarray(image)
+        # if verbose:
+        #     logger.info("Encoding image", pil_image.size)
+        # inputs = self.processor(images=pil_image, return_tensors="pt")
+
+        inputs = self.processor(images=image, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             image_features = self.model.get_image_features(**inputs)

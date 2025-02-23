@@ -40,6 +40,8 @@ class InstanceView:
     timestep: int
     """ timestep: timestep at which the current view was recorded """
 
+    text_description: str = None
+    """text description about the instance"""
     # View info
     cropped_image: Optional[Tensor] = None
     """ cropped_image: cropped image of instance in the current image"""
