@@ -160,6 +160,7 @@ class Webcam:
             dev.reset()
             time.sleep(1.0)
 
+            # Sometimes dev.reset() will rearrange the USB port, so it might be necessary to recheck logitech camera's USB port.
             camera_devices = get_video_devices()
             first_camera_device = None
             second_camera_device = None

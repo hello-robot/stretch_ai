@@ -4,6 +4,8 @@
 
 Our data collection system is based on a low-cost teleoperation framework called [Dex Teleop](https://github.com/hello-robot/stretch_dex_teleop). You use a webcam to track a unique tool with AR markers, and the robot follows the tool. This system is designed to be easy to use and it allows us to collect high-quality data for training robot learning algorithms.
 
+To start with, we recommend you using our [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit). To collect data, connect the logitech C930 camera with the machine where you want to run data collection script and save the collected data. 
+
 ## Prerequisites:
 
 Follow the [instructions](../README.md#Installation) for installation of `stretch_ai` with Python 3.10 for both PC and robot.
@@ -12,6 +14,18 @@ Make sure you have the optional dependencies installed for Dex Teleop:
 
 ```bash
 python -m pip install webcam mediapipe
+```
+
+Realizing that Dex teleop scripts might be unstable on some machine, it is also a good idea to use the docker for it. 
+
+To build docker image, run
+```bash
+./docker/build-dex-teleop.sh
+```
+
+To run terminal command in your docker image
+```bash
+./scripts/run_stretch_ai_dex_teleop.sh
 ```
 
 ### On PC:
@@ -86,13 +100,13 @@ If you have already ran an app with `--robot-ip` flag, such as the `view_images`
 # The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
 
 TASK_NAME=<name-of-task>
-python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --s --clutch
+python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --clutch
 ```
 
 For example:
 
 ```bash
-python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --s --clutch
+python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --clutch
 ```
 
 The optional `--clutch` flag enables the clutch. While your hand is over the dex teleop webcam, the robot will not move. This makes it easier to operate the robot and to collect data.
