@@ -497,8 +497,14 @@ class WebcamArucoDetector:
 
         color_image, color_camera_info = self.webcam.get_next_frame()
 
+        if color_image is None:
+            return None, None
+
         self.aruco_detector.update(color_image, color_camera_info)
         markers = self.aruco_detector.get_detected_markers()
+
+        if markers is None:
+            return None, color_image
 
         virtual_tongs_marker = self.process_tongs(markers)
         if virtual_tongs_marker is not None:
