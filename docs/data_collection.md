@@ -16,18 +16,6 @@ Make sure you have the optional dependencies installed for Dex Teleop:
 python -m pip install webcam mediapipe
 ```
 
-Realizing that Dex teleop scripts might be unstable on some machine, it is also a good idea to use the docker for it. 
-
-To build docker image, run
-```bash
-./docker/build-dex-teleop.sh
-```
-
-To run terminal command in your docker image
-```bash
-./scripts/run_stretch_ai_dex_teleop.sh
-```
-
 ### On PC:
 
 - Linux instructions: if using a Linux PC, run `install_dex_teleop.sh` to update `udev` rules
@@ -38,6 +26,18 @@ To run terminal command in your docker image
   ```
 
 - [Camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
+
+We recommend running all data collection commands without using docker, but we also realize that Dex teleop scripts might be unstable on some machine, it is also a good idea to use the docker for it. You should first make sure you understand how we use [Docker](./docker.md) in this repo. Then, follow these commands to open docker terminal. 
+
+To build docker image, run
+```bash
+./docker/build-dex-teleop-docker.sh
+```
+
+To run terminal command in your docker image. The `src` argument allows you to link the stretch ai in your PC with the stretch ai folder in the docker image. So the data you collected will automatically appear on your local machine after data collection finishes.
+```bash
+./scripts/run_stretch_ai_dex_teleop.sh --src $STRETCH_AI_FOLDER
+```
 
 ### On Robot:
 
