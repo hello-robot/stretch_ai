@@ -26,5 +26,5 @@ vlm:
   replanning: False
   sample_strategy: "clip"
 
-task:
-  command: "Pick up a basket."
+# task:
+#  command: "Pick up a basket."
