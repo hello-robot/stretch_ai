@@ -48,7 +48,7 @@ from stretch.mapping.voxel import (
 )
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.detection.owl import OwlPerception, OWLSAMProcessor
+from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -99,7 +99,6 @@ class RobotAgent(RobotAgentBase):
         self.semantic_sensor = semantic_sensor
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
-        self.current_state = "WAITING"
 
         self.rerun_visualizer = self.robot._rerun
         self.setup_custom_blueprint()
@@ -465,10 +464,9 @@ class RobotAgent(RobotAgentBase):
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.6, -0.2, -1.0, -1.8]:
-            # for pan in [0.4, -0.4, -1.2]:
-            for tilt in [-0.7]:
-                self.robot.head_to(pan, tilt, blocking=True)
-                self.update()
+            tilt = -0.6
+            self.robot.head_to(pan, tilt, blocking=True)
+            self.update()
 
     def rotate_in_place(self):
         print("*" * 10, "Rotate in place", "*" * 10)
@@ -712,6 +710,8 @@ class RobotAgent(RobotAgentBase):
             )
         else:
             if self.owl_sam_detector is None:
+                from stretch.perception.detection.owl import OWLSAMProcessor
+
                 self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
             rotation, translation = process_image_for_placing(
                 obj=text,

@@ -203,6 +203,7 @@ class RerunVisualizer:
         collapse_panels: bool = True,
         show_cameras_in_3d_view: bool = False,
         show_camera_point_clouds: bool = True,
+        output_path=None,
     ):
         """Rerun visualizer class
         Args:
@@ -220,6 +221,9 @@ class RerunVisualizer:
                 logger.warning("Docker environment detected. Disabling GUI.")
         rr.init("Stretch_robot", spawn=spawn_gui)
 
+        if output_path is not None:
+            rr.save(output_path / "rerun_log.rrd")
+        # open_browser = True
         if open_browser:
             rr.serve(open_browser=open_browser, server_memory_limit=server_memory_limit)
 

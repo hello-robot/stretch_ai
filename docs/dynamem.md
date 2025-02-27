@@ -130,6 +130,10 @@ python src/stretch/config/dynamem_urdf.py --urdf-path src/stretch/config/urdf/st
 
 Note that while URDF calibration is important for both manipulation systems, AnyGrasp manipulation has much higher requirement on robot calibration. On the other hand, even though the calibration is not perfect in visual servo manipulation, in most cases the robot is still going to complete the task.
 
+You might want to check your calibration if the following things happen:
+- Floor in the navigation pointcloud does not fall on `z=0` plane.
+- Manipulation does not follow AnyGrasp predictions.
+
 ### Specifying IPs in Dynamem scripts
 
 Firstly you should know the ip address of your robot and workstation by running `ifconfig` on these two machines. Continuously tracking ips of different machines is an annoying task. We recommend using [Tailscale](https://tailscale.com) to manage a series of virtual ip addresses. Run following command on the workstation to run dynamem

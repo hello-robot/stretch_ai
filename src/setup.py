@@ -40,9 +40,9 @@ setuptools.setup(
         "opencv-python",
         "scipy",
         "matplotlib",
-        "trimesh",
+        "trimesh>=3.10.0",
         "yacs",
-        "scikit-image",
+        "scikit-image>=0.21.0",
         "sophuspy",
         "pin",  # Pinocchio IK solver
         "pynput",
@@ -60,23 +60,23 @@ setuptools.setup(
         "pyrealsense2",
         "urchin",
         # Visualization
-        "rerun-sdk",
+        "rerun-sdk>=0.18.0",
         # For siglip encoder
         "sentencepiece",
         # For git tools
         "gitpython",
         # Configuration tools and neural networks
         "hydra-core",
-        "timm",
+        "timm>1.0.0",
         "huggingface_hub[cli]",
-        "transformers",
+        "transformers>=4.39.2",
         "accelerate",
         "einops",
         # Meta neural nets
         "segment-anything",
         # Compression tools
         "pyliblzfse",
-        "webp",
+        "webp>=0.3.0",
         # UI tools
         "termcolor",
         # Audio
