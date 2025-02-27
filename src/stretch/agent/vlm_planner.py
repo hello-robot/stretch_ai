@@ -94,7 +94,7 @@ class VLMPlanner:
             plan_with_scene_graph=plan_with_scene_graph,
         )
         output = self.get_output_from_gpt(world_representation, task=query)
-        
+
         print()
         print("Plan from VLMs:")
         print(output)
@@ -110,6 +110,7 @@ class VLMPlanner:
 
         if show_plan and actions is not None:
             import re
+
             import matplotlib.pyplot as plt
 
             plt.clf()
@@ -121,9 +122,7 @@ class VLMPlanner:
                 crop_id = int(res.group(1))
                 global_id = world_representation.object_images[crop_id].instance_id
                 plt.subplot(1, len(actions), action_id + 1)
-                plt.imshow(
-                    self.voxel_map.get_instances()[global_id].get_best_view().get_image()
-                )
+                plt.imshow(self.voxel_map.get_instances()[global_id].get_best_view().get_image())
                 plt.title(action.split("(")[0] + f" instance {global_id}")
                 plt.axis("off")
             plt.suptitle(f"Task: {query}")
