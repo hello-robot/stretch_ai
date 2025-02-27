@@ -68,7 +68,7 @@ python -m stretch.app.print_joint_states --joint arm
 
 #### Visualization and Streaming Video
 
-Visualize output from the caneras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
+Visualize output from the cameras and other sensors on the robot. This will open multiple windows with wrist camera and both low and high resolution head camera feeds.
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP
