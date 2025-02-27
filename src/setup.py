@@ -71,6 +71,8 @@ setuptools.setup(
         "huggingface_hub[cli]",
         "transformers>=4.39.2",
         "bitsandbytes",
+        "autoawq",
+        "triton >= 3.0.0",
         "accelerate",
         "einops",
         # Meta neural nets

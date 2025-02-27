@@ -12,12 +12,46 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 from termcolor import colored
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
-qwen_fine_tuning_options = ["Instruct", "Coder", "Math", "Deepseek"]
-qwen_sizes = ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]
+# Coder: 32B, 14B, 7B, 3B, 1.5B, 0.5B, (None, Instruct, Instruct-AWQ, Instruct-GGUF, Instruct-GPTQ-Int4, Instruct-GPTQ-Int8)
+# Math: 72B, 7B, 1.5B (None, Instruct)
+# VL: 72B, 7B, 3B (Instruct, Instruct-AWQ)
+# "0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"
+# Deepseek: 1.5B, 7B, 14B, 32B
+
+qwen_typing_options = ["Math", "Coder", "VL", "Deepseek", None]
+qwen_quantization_options = {
+    "VL": [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    None: [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Coder": [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Math": [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Deepseek": [None, "Int4", "Int8"],
+}
+qwen_sizes = {
+    "VL": ["3B", "7B", "72B"],
+    None: ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"],
+    "Coder": ["0.5B", "1.5B", "3B", "7B", "14B", "32B"],
+    "Math": ["1.5B", "7B", "72B"],
+    "Deepseek": ["1.5B", "7B", "14B", "72B"],
+}
+
+
+def get_qwen_variants():
+    qwen_variants = []
+    for qwen_typing_option in qwen_typing_options:
+        for qwen_quantization_option in qwen_quantization_options[qwen_typing_option]:
+            for qwen_size in qwen_sizes[qwen_typing_option]:
+                qwen_type = "qwen25"
+                if qwen_typing_option is not None:
+                    qwen_type += "-" + qwen_typing_option
+                qwen_type += "-" + qwen_size
+                if qwen_quantization_option is not None:
+                    qwen_type += "-" + qwen_quantization_option
+                qwen_variants.append(qwen_type)
+    return qwen_variants
 
 
 class Qwen25Client(AbstractLLMClient):
@@ -26,21 +60,32 @@ class Qwen25Client(AbstractLLMClient):
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
         model_size: str = "3B",
-        fine_tuning: str = "Instruct",
+        fine_tuning: Optional[str] = "Instruct",
+        model_type: Optional[str] = None,
         max_tokens: int = 4096,
         device: str = "cuda",
         quantization: Optional[str] = "int4",
     ):
         super().__init__(prompt, prompt_kwargs)
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
-        assert model_size in qwen_sizes, f"Invalid model size: {model_size}"
-        assert fine_tuning in qwen_fine_tuning_options, f"Invalid fine-tuning: {fine_tuning}"
+        assert model_type in qwen_typing_options, f"Invalid model type: {model_type}"
+        assert model_size in qwen_sizes[model_type], f"Invalid model size: {model_size}"
+        assert fine_tuning in [None, "Instruct"], f"Invalid fine-tuning: {fine_tuning}"
 
         self.max_tokens = max_tokens
-        if fine_tuning == "Deepseek":
+
+        if model_type == "Deepseek":
             model_name = f"deepseek-ai/DeepSeek-R1-Distill-Qwen-{model_size}"
+        elif model_type is None:
+            if fine_tuning is None:
+                model_name = f"Qwen/Qwen2.5-{model_size}"
+            else:
+                model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
         else:
-            model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
+            if fine_tuning is None:
+                model_name = f"Qwen/Qwen2.5-{model_type}-{model_size}"
+            else:
+                model_name = f"Qwen/Qwen2.5-{model_type}-{model_size}-{fine_tuning}"
 
         print(f"Loading model: {model_name}")
         model_kwargs = {"torch_dtype": "auto"}
@@ -55,7 +100,7 @@ class Qwen25Client(AbstractLLMClient):
             elif quantization in ["int8", "int4"]:
                 try:
                     import bitsandbytes  # noqa: F401
-                    from transformers import BitsAndBytesConfig, pipeline
+                    from transformers import BitsAndBytesConfig
                 except ImportError:
                     raise ImportError(
                         "bitsandbytes required for int4/int8 quantization: pip install bitsandbytes"
