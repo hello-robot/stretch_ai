@@ -71,7 +71,7 @@ setuptools.setup(
         "huggingface_hub[cli]==0.24.7",
         "transformers>=4.39.2",
         "qwen_vl_utils",
-        "flash-attn==2.7.3",
+        "flash-attn>=2.7.3",
         "bitsandbytes",
         "autoawq",
         "triton >= 3.0.0",
