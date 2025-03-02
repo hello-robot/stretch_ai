@@ -120,6 +120,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             captioner=self.captioner,
             mask_cropped_instances=False,
             du_scale=1,
+            save_original_image=True,
         )
         self.obs_count = 0
         self.log = log

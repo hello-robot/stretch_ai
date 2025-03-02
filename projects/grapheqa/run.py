@@ -61,10 +61,10 @@ def main(
     agent = RobotAgent(robot, parameters, semantic_sensor)
     agent.start()
 
-    # if input_path is None:
-    #     agent.rotate_in_place()
-    # else:
-    #     agent.voxel_map.read_from_pickle(input_path)
+    if input_path is None:
+        agent.rotate_in_place()
+    else:
+        agent.voxel_map.read_from_pickle(input_path)
 
     # agent.voxel_map.write_to_pickle(None)
 

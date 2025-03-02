@@ -41,9 +41,9 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.captioners import VitGPT2Captioner
 
-# from stretch.perception.captioners import GitCaptioner
+# from stretch.perception.captioners import VitGPT2Captioner
+from stretch.perception.captioners import QwenCaptioner
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -170,7 +170,7 @@ class RobotAgent(RobotAgentBase):
             scene_graph=self.scene_graph,
             robot=self.robot,
             enrich_object_labels="object",
-            # captioner = self.captioner
+            captioner=self.captioner,
         )
         self.vlm_planner = VLMPLannerEQAGPT(
             vlm_type="gpt-4o",
@@ -196,7 +196,8 @@ class RobotAgent(RobotAgentBase):
 
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        self.captioner = VitGPT2Captioner(device=self.device)
+        # self.captioner = VitGPT2Captioner(device=self.device)
+        self.captioner = QwenCaptioner(device=self.device, image_shape=(360, 480))
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
@@ -219,7 +220,7 @@ class RobotAgent(RobotAgentBase):
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             encoder=self.encoder,
-            captioner=self.captioner,
+            # captioner=self.captioner,
             log=self.log,
             mllm=self.mllm,
         )
@@ -401,8 +402,6 @@ class RobotAgent(RobotAgentBase):
                 explanation_ans,
                 debug_image,
             ) = self.vlm_planner.get_next_action()
-
-            print(debug_image)
 
             answer_output = answer + "\n" + explanation_ans
 

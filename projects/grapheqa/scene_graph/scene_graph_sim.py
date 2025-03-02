@@ -64,7 +64,7 @@ class SceneGraphSim:
         output_path: str,
         scene_graph,
         robot,
-        # captioner = None,
+        captioner=None,
         rr_logger=None,
         device: str = "cuda",
         clean_ques_ans=" ",
@@ -104,7 +104,7 @@ class SceneGraphSim:
             self.text_embed = (
                 self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0
             ).to(device)
-        # self.captioner = captioner
+        self.captioner = captioner
 
         # self.question_embed = self.processor(
         #     text=[clean_ques_ans], padding="max_length", return_tensors="pt"
@@ -205,19 +205,28 @@ class SceneGraphSim:
             attr["position"] = torch.mean(instance.point_cloud, dim=0).tolist()
             # round up to prevent the scene graph str from being too long
             attr["position"] = [round(coord, 3) for coord in attr["position"]]
-            # best_view = instance.get_best_view()
-            # if best_view.text_description is None:
-            #     best_view.text_description = self.captioner.caption_image(best_view.cropped_image.to(dtype=torch.uint8))
+            best_view = instance.get_best_view()
+            if best_view.text_description is None:
+                bbox = []
+                bbox.append(int(best_view.bbox[0, 1].item()) - 10)
+                bbox.append(int(best_view.bbox[0, 0].item()) - 10)
+                bbox.append(int(best_view.bbox[1, 1].item()) + 10)
+                bbox.append(int(best_view.bbox[1, 0].item()) + 10)
+                best_view.text_description = self.captioner.caption_image(
+                    best_view.cropped_image.to(dtype=torch.uint8), bbox
+                )
 
             attr["name"] = instance.get_best_view().text_description
             # attr["name"] = instance.name + "_" + str(instance.global_id)
-            attr["label"] = instance.name + "_" + str(instance.global_id)
+            attr["label"] = "object_" + str(instance.global_id)
+            # attr["label"] = instance.name + "_" + str(instance.global_id)
             # bounds is a (3 x 2) mins and max
             attr["bbox"] = instance.bounds.tolist()
             attr["size"] = torch.prod(
                 torch.abs(instance.bounds[:, 0] - instance.bounds[:, 1])
             ).item()
-            node_id = instance.name + "_" + str(instance.global_id)
+            # node_id = instance.name + "_" + str(instance.global_id)
+            node_id = "object_" + str(instance.global_id)
 
             # object_node_positions.append(attr["position"])
             # bbox = node.attributes.bounding_box

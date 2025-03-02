@@ -12,7 +12,9 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+import cv2
 import discord
+import numpy as np
 from termcolor import colored
 
 # import stretch.utils.logger as logger
@@ -21,6 +23,7 @@ from stretch.agent.robot_agent import RobotAgent
 # from stretch.agent.task.pickup import PickupExecutor
 # from stretch.llms import PickupPromptBuilder, get_llm_client
 from stretch.utils.discord_bot import DiscordBot, Task
+from stretch.utils.image import numpy_image_to_bytes
 from stretch.utils.logger import Logger
 
 # from stretch.llms.discord_bot import StretchDiscordBot
@@ -270,16 +273,12 @@ class GraphEQADiscordBot(DiscordBot):
                     response, channel = self.next_question
                     self.next_question = None
                 answer, debug_image = self.agent.run_eqa(response)
-                # from PIL import Image
-                # from io import BytesIO
-                # debug_image = Image.open(debug_image)
-                # buffer = BytesIO()
-                # debug_image.save(buffer, format='PNG')
-                # image_bytes = buffer.getvalue()
                 self.send_message(
                     channel=channel,
                     message=answer,
-                    # content=image_bytes
+                    content=numpy_image_to_bytes(
+                        np.asarray(cv2.imread(debug_image))[:, :, [2, 1, 0]]
+                    ),
                 )
                 # self.push_task(channel = channel, message = answer)
             else:

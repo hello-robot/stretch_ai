@@ -99,6 +99,7 @@ class InstanceMemory:
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
         captioner: Optional[BaseCaptioner] = None,
+        save_original_image: bool = False,
     ):
         """See class definition for information about InstanceMemory
 
@@ -113,8 +114,10 @@ class InstanceMemory:
             erode_mask_num_iter (int, optional): If erode_mask_num_pix is nonzero, how times to iterate erode instance masks. Defaults to 1.
             instance_view_score_aggregation_mode (str): When adding views to an instance, how to update instance scores. Defaults to 'max'
             mask_cropped_instances (bool): true if we want to save crops of just objects on black background; false otherwise
+            save_original_image (bool): Set to True if you want to associate the original image with each instance view or the cropped image will associate with the instance
         """
         self.mask_cropped_instances = mask_cropped_instances
+        self.save_original_image = save_original_image
         self.num_envs = num_envs
         self.du_scale = du_scale
         self.debug_visualize = debug_visualize
@@ -807,6 +810,9 @@ class InstanceMemory:
                         )
                     else:
                         text_description = None
+                    if self.save_original_image:
+                        cropped_image = image_downsampled.permute(1, 2, 0)
+                        instance_mask = instance_mask_downsampled
                     instance_view = InstanceView(
                         bbox=bbox,
                         timestep=self.timesteps[env_id],
