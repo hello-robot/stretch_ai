@@ -69,7 +69,7 @@ setuptools.setup(
         "hydra-core",
         "timm>1.0.0",
         "huggingface_hub[cli]==0.24.7",
-        "transformers>=4.39.2",
+        "transformers>=4.49.0",
         "qwen_vl_utils",
         "bitsandbytes",
         "autoawq",

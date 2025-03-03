@@ -180,12 +180,14 @@ class RobotAgent(RobotAgentBase):
         )
         PROMPT = """
             Assume there is an agent doing Question Answering in an environment.
-            When it receives a question, you need to tell the agent which object it needs to pay special attention to.
+            When it receives a question, you need to tell the agent the object it needs to pay special attention to.
             Example:
                 Input: Where is the pen?
                 Output: pen
         """
         self.llm_client = OpenaiClient(PROMPT, model="gpt-4o-mini")
+        self.current_rgb_list: List[Union[torch.Tensor, np.ndarray]] = []
+        self.max_rgb_number = 10
 
         # Previously sampled goal during exploration
         self._previous_goal = None
@@ -355,7 +357,12 @@ class RobotAgent(RobotAgentBase):
         # TODO: Maybe set it to the place that has not been visited for a long time
         if len(self.clustered_frontiers) == 0:
             self.clustered_frontiers = np.array([[0.0, 0.0, 0.0]])
-        self.sg_sim.update(frontier_nodes=self.clustered_frontiers, imgs_rgb=[obs.rgb])
+        self.current_rgb_list.append(rgb)
+        if len(self.current_rgb_list) >= self.max_rgb_number:
+            self.sg_sim.update(
+                frontier_nodes=self.clustered_frontiers, imgs_rgb=self.current_rgb_list
+            )
+            self.current_rgb_list = []
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
             self.rerun_visualizer.update_scene_graph(self.scene_graph, self.semantic_sensor)
@@ -379,7 +386,6 @@ class RobotAgent(RobotAgentBase):
                 self.update()
 
     def run_eqa_vlm_planner(self, max_planning_steps: int = 3):
-        start_pose = self.robot.get_base_pose()
         answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
@@ -392,6 +398,11 @@ class RobotAgent(RobotAgentBase):
                 self.look_around()
                 self.robot.look_front()
                 self.robot.switch_to_navigation_mode()
+
+            self.sg_sim.update(
+                frontier_nodes=self.clustered_frontiers, imgs_rgb=self.current_rgb_list
+            )
+            self.current_rgb_list = []
 
             (
                 target_pose,
@@ -419,71 +430,84 @@ class RobotAgent(RobotAgentBase):
                 )
                 break
 
-            res = None
-            if target_pose is not None:
-                # self.robot._rerun.log_vlm_target(target_pose, format="xyz")
-
-                # if self.robot._rerun:
-                #     self.robot._rerun.log_vlm_target(target_pose, format="xyt")
-
-                target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
-
-                res = self.planner.plan(start_pose, target_pose)
-
-            if res is not None and res.success:
-                waypoints = [pt.state for pt in res.trajectory]
-            elif res is not None:
-                waypoints = None
-                print("[FAILURE]", res.reason)
-
-            # If we are navigating to some object of interest, send (x, y, z) of
-            # the object so that we can make sure the robot looks at the object after navigation
-            traj = []
-            if waypoints is not None:
-
-                self.rerun_visualizer.log_custom_pointcloud(
-                    "world/target_pose",
-                    [target_pose[0], target_pose[1], 1.5],
-                    torch.Tensor([1, 0, 0]),
-                    0.1,
-                )
-
-            if waypoints is not None:
-                if not len(waypoints) <= 8:
-                    waypoints = waypoints[:8]
-                traj = self.planner.clean_path_for_xy(waypoints)
-                print("Planned trajectory:", traj)
-            else:
-                traj = None
-
-            if traj is not None:
-                origins = []
-                vectors = []
-                for idx in range(len(traj)):
-                    if idx != len(traj) - 1:
-                        origins.append([traj[idx][0], traj[idx][1], 1.5])
-                        vectors.append(
-                            [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
-                        )
-                self.rerun_visualizer.log_arrow3D(
-                    "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
-                )
-                self.rerun_visualizer.log_custom_pointcloud(
-                    "world/robot_start_pose",
-                    [start_pose[0], start_pose[1], 1.5],
-                    torch.Tensor([0, 0, 1]),
-                    0.1,
-                )
-
-                self.robot.execute_trajectory(
-                    traj,
-                    pos_err_threshold=self.pos_err_threshold,
-                    rot_err_threshold=self.rot_err_threshold,
-                    blocking=True,
-                )
+            movement_step = 0
+            while movement_step < self.max_rgb_number:
+                start_pose = self.robot.get_base_pose()
+                movement_step += 1
+                self.update()
+                if self.navigate_to_target_pose(target_pose, start_pose):
+                    break
 
         answer_output = (answer_output, debug_image)
         return answer_output
+
+    def navigate_to_target_pose(
+        self,
+        target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+    ):
+        res = None
+        if target_pose is not None:
+            # target_pose originally represents the place where the object of interest is.
+            # This line finds the pose where the robot should stop
+            target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
+
+            # A* planning
+            res = self.planner.plan(start_pose, target_pose)
+
+        # Parse A* results into traj
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
+
+        if waypoints is not None:
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/target_pose",
+                [target_pose[0], target_pose[1], 1.5],
+                torch.Tensor([1, 0, 0]),
+                0.1,
+            )
+
+        finished = True
+        if waypoints is not None:
+            if not len(waypoints) <= 8:
+                waypoints = waypoints[:8]
+                finished = False
+            traj = self.planner.clean_path_for_xy(waypoints)
+            print("Planned trajectory:", traj)
+        else:
+            traj = None
+
+        # draw traj on rerun and execute it
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            self.rerun_visualizer.log_arrow3D(
+                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+            )
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/robot_start_pose",
+                [start_pose[0], start_pose[1], 1.5],
+                torch.Tensor([0, 0, 1]),
+                0.1,
+            )
+
+            self.robot.execute_trajectory(
+                traj,
+                pos_err_threshold=self.pos_err_threshold,
+                rot_err_threshold=self.rot_err_threshold,
+                blocking=True,
+            )
+
+        return finished
 
     def run_eqa(self, question):
         rr.init("Stretch Robot", recording_id=uuid4(), spawn=True)

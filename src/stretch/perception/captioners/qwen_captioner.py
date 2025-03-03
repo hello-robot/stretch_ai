@@ -16,7 +16,7 @@ from numpy import ndarray
 from PIL import Image, ImageDraw
 from qwen_vl_utils import process_vision_info
 from torch import Tensor
-from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
 
 class QwenCaptioner:
@@ -27,7 +27,7 @@ class QwenCaptioner:
         max_length: int = 500,
         num_beams: int = 1,
         device: Optional[str] = None,
-        image_shape=(360, 480),
+        image_shape=None,
     ):
         """Initialize the BLIP image captioner.
 
@@ -45,15 +45,14 @@ class QwenCaptioner:
             self._device = torch.device(device)
 
         # Create models
-        self.model = Qwen2VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2-VL-2B-Instruct-AWQ",
-            torch_dtype=torch.float16,
+        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
             attn_implementation="flash_attention_2",
-            device_map=self._device,
+            device_map="auto",
         )
 
         # default processor
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-2B-Instruct-AWQ")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
 
     def caption_image(
         self, image: Union[ndarray, Tensor, Image.Image], bbox: Union[list, Tensor, ndarray]
@@ -79,8 +78,8 @@ class QwenCaptioner:
         buffered = BytesIO()
 
         draw.rectangle(bbox, outline="red", width=1)
-        pil_image = pil_image.resize(self.image_shape)
-        pil_image.save("test/save.png")
+        if self.image_shape is not None:
+            pil_image = pil_image.resize(self.image_shape)
         pil_image.save(buffered, format="PNG")
         img_bytes = buffered.getvalue()
         base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
