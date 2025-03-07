@@ -142,25 +142,20 @@ class VLMPLannerEQAGPT:
 
     @property
     def agent_role_prompt(self):
-        scene_graph_desc = "A scene graph represents an indoor environment in a hierarchical tree structure consisting of nodes and edges/links. There are six types of nodes: building, rooms, visited areas, frontiers, objects, and agent in the environment. \n \
-            The tree structure is as follows: At the highest level 5 is a 'building' node. \n \
-            At level 4 are room nodes. There are links connecting the building node to each room node. \n \
-            At the lower level 3, are region and frontier nodes. 'region' node represent region of room that is already explored. Frontier nodes represent areas that are at the boundary of visited and unexplored areas. There are links from room nodes to corresponding region and frontier nodes depicted which room they are located in. \n \
-            At the lowest level 2 are object nodes and agent nodes. There is an edge from region node to each object node depicting which visited area of which room the object is located in. \
-            There are also links between frontier nodes and objects nodes, depicting the objects in the vicinity of a frontier node. \n \
-            Finally the agent node is where you are located in the environment. There is an edge between a region node and the agent node, depicting which visited area of which room the agent is located in."
-        current_state_des = "'CURRENT STATE' will give you the exact location of the agent in the scene graph by giving you the agent node id, location, room_id and room name. "
+        scene_graph_desc = "A scene graph represents an indoor environment in node list.\n \
+         Each node can represent an object, an unexplored frontier, or the agent current position \n"
+        current_state_des = "'CURRENT AGENT STATE' will give you the exact location of the agent in the scene graph by giving you the agent node id, location. "
 
         if self._use_image:
-            current_state_des += (
-                " Additionally, you will also be given the current view of the agent as an image. "
-            )
+            current_state_des += "Additionally, you will also be given the current view of the agent as an image.\n \
+                The information in the image is very useful and should be prioritized when answering the question! \n"
 
         prompt = f"""You are an excellent hierarchical graph planning agent. 
             Your goal is to navigate an unseen environment to confidently answer a multiple-choice question about the environment.
             As you explore the environment, your sensors are building a scene graph representation (in json format) and you have access to that scene graph.  
             {scene_graph_desc}. {current_state_des} 
-            Given the current state information, try to answer the question. Explain the reasoning for selecting the answer.
+            Given the current state information, try to answer the question. 
+            Explain the reasoning for selecting the answer.
             Finally, report whether you are confident in answering the question. 
             Explain the reasoning behind the confidence level of your answer. Rate your level of confidence. 
             Provide a value between 0 and 1; 0 for not confident at all and 1 for absolutely certain.
@@ -183,7 +178,7 @@ class VLMPLannerEQAGPT:
             Describe the CURRENT IMAGE. Pay special attention to features that can help answer the question or select future actions.
             Describe the SCENE GRAPH. Pay special attention to features that can help answer the question or select future actions.
             """
-        prompt += "You should go near the blue couch before answering the question with confidence. You should see a full image of the couch before answering with confidence"
+        # prompt += "You should go near the blue couch before answering the question with confidence. You should see a full image of the couch before answering with confidence"
         prompt_no_image = f"""You are an excellent hierarchical graph planning agent. 
             Your goal is to navigate an unseen environment to confidently answer a multiple-choice question about the environment.
             As you explore the environment, your sensors are building a scene graph representation (in json format) and you have access to that scene graph.  

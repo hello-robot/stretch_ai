@@ -29,6 +29,7 @@ import torch
 from mapping import SparseVoxelMap, SparseVoxelMapNavigationSpace
 from planners import VLMPLannerEQAGPT
 from scene_graph import SceneGraphSim
+from sklearn.cluster import DBSCAN
 
 # )
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
@@ -199,7 +200,7 @@ class RobotAgent(RobotAgentBase):
     def create_obstacle_map(self, parameters):
         self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
         # self.captioner = VitGPT2Captioner(device=self.device)
-        self.captioner = QwenCaptioner(device=self.device, image_shape=(360, 480))
+        self.captioner = QwenCaptioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
@@ -316,13 +317,6 @@ class RobotAgent(RobotAgentBase):
         )
         self.traversible = np.array(self.space.occupancy_map_to_3d_points(traversible))
 
-        # _clustered_frontiers = cluster_frontiers(self.frontier_points)
-        # self.clustered_frontiers = []
-        # print("Checking clustered frontiers")
-        # for frontier in _clustered_frontiers:
-        #     if self.space.is_valid(frontier, verbose=False):
-        #         self.clustered_frontiers.append(frontier)
-        # self.clustered_frontiers = np.stack(self.clustered_frontiers, axis=0)
         self.clustered_frontiers = cluster_frontiers(self.frontier_points)
 
     def _update_scene_graph(self):
@@ -353,10 +347,11 @@ class RobotAgent(RobotAgentBase):
         self.scene_graph.get_relationships()
 
         self.update_frontiers()
-        # If there is no place to explore, set the home point as exploration point
-        # TODO: Maybe set it to the place that has not been visited for a long time
-        if len(self.clustered_frontiers) == 0:
-            self.clustered_frontiers = np.array([[0.0, 0.0, 0.0]])
+        # If there is no place to explore, set to the place that has not been visited for a long time
+        if self.clustered_frontiers is None or len(self.clustered_frontiers) == 0:
+            self.clustered_frontiers = np.array(
+                [self.space.sample_frontier(self.planner, self.robot.get_base_pose())]
+            ).astype(np.float64)
         self.current_rgb_list.append(rgb)
         if len(self.current_rgb_list) >= self.max_rgb_number:
             self.sg_sim.update(
@@ -385,7 +380,7 @@ class RobotAgent(RobotAgentBase):
             if not self._realtime_updates:
                 self.update()
 
-    def run_eqa_vlm_planner(self, max_planning_steps: int = 3):
+    def run_eqa_vlm_planner(self, max_planning_steps: int = 5):
         answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
@@ -414,7 +409,7 @@ class RobotAgent(RobotAgentBase):
                 debug_image,
             ) = self.vlm_planner.get_next_action()
 
-            answer_output = answer + "\n" + explanation_ans
+            answer_output = "# " + answer + "\n# " + explanation_ans
 
             self.rerun_visualizer.log_text("QA", answer_output)
 
@@ -435,7 +430,8 @@ class RobotAgent(RobotAgentBase):
                 start_pose = self.robot.get_base_pose()
                 movement_step += 1
                 self.update()
-                if self.navigate_to_target_pose(target_pose, start_pose):
+                finished = self.navigate_to_target_pose(target_pose, start_pose)
+                if finished:
                     break
 
         answer_output = (answer_output, debug_image)
@@ -447,13 +443,15 @@ class RobotAgent(RobotAgentBase):
         start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
     ):
         res = None
+        original_target_pose = target_pose
         if target_pose is not None:
             # target_pose originally represents the place where the object of interest is.
             # This line finds the pose where the robot should stop
             target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
 
             # A* planning
-            res = self.planner.plan(start_pose, target_pose)
+            if target_pose is not None:
+                res = self.planner.plan(start_pose, target_pose)
 
         # Parse A* results into traj
         if res is not None and res.success:
@@ -461,11 +459,13 @@ class RobotAgent(RobotAgentBase):
         elif res is not None:
             waypoints = None
             print("[FAILURE]", res.reason)
+        else:
+            waypoints = None
 
         if waypoints is not None:
             self.rerun_visualizer.log_custom_pointcloud(
                 "world/target_pose",
-                [target_pose[0], target_pose[1], 1.5],
+                [original_target_pose[0], original_target_pose[1], 1.5],
                 torch.Tensor([1, 0, 0]),
                 0.1,
             )
@@ -510,7 +510,7 @@ class RobotAgent(RobotAgentBase):
         return finished
 
     def run_eqa(self, question):
-        rr.init("Stretch Robot", recording_id=uuid4(), spawn=True)
+        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
 
         self.robot.switch_to_navigation_mode()
 
@@ -528,75 +528,16 @@ class RobotAgent(RobotAgentBase):
         return self.voxel_map
 
 
-def cluster_frontiers(
-    frontier_points, min_points_for_clustering=5, num_clusters=10, cluster_threshold=0.8
-):
-    # # cluster, or return none
-    if len(frontier_points) < min_points_for_clustering:
-        return frontier_points
-
-    clusters = fps(frontier_points, num_clusters)
-
-    # merge clusters if too close to each other
-    clusters_new = np.empty((0, 3))
-    for cluster in clusters:
-        if len(clusters_new) == 0:
-            clusters_new = np.vstack((clusters_new, cluster))
-        else:
-            clusters_array = np.array(clusters_new)
-            dist = np.sqrt(np.sum((clusters_array - cluster) ** 2, axis=1))
-            if np.min(dist) > cluster_threshold:
-                clusters_new = np.vstack((clusters_new, cluster))
-    return clusters_new
-
-
-def fps(points, n_samples):
-    """
-    points: [N, 3] array containing the whole point cloud
-    n_samples: samples you want in the sampled point cloud typically << N
-    """
-    points = np.array(points)
-
-    # Represent the points by their indices in points
-    points_left = np.arange(len(points))  # [P]
-
-    # Initialise an array for the sampled indices
-    sample_inds = np.zeros(n_samples, dtype="int")  # [S]
-
-    # Initialise distances to inf
-    dists = np.ones_like(points_left) * float("inf")  # [P]
-
-    # Select a point from points by its index, save it
-    selected = 0
-    sample_inds[0] = points_left[selected]
-
-    # Delete selected
-    points_left = np.delete(points_left, selected)  # [P - 1]
-
-    # Iteratively select points for a maximum of n_samples
-    for i in range(1, n_samples):
-        # Find the distance to the last added point in selected
-        # and all the others
-        last_added = sample_inds[i - 1]
-
-        dist_to_last_added_point = ((points[last_added] - points[points_left]) ** 2).sum(
-            -1
-        )  # [P - i]
-
-        # If closer, updated distances
-        dists[points_left] = np.minimum(dist_to_last_added_point, dists[points_left])  # [P - i]
-
-        # We want to pick the one that has the largest nearest neighbour
-        # distance to the sampled points
-        try:
-            selected = np.argmax(dists[points_left])
-        except:
-            import ipdb
-
-            ipdb.set_trace()
-        sample_inds[i] = points_left[selected]
-
-        # Update points_left
-        points_left = np.delete(points_left, selected)
-
-    return points[sample_inds]
+def cluster_frontiers(frontier_nodes, eps=0.25, min_samples=1):
+    if len(frontier_nodes) == 0:
+        return None
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+    dbscan.fit(frontier_nodes)
+    labels = dbscan.labels_
+    unique_labels = set(labels) - {-1}
+    centroids = {}
+    for label in unique_labels:
+        cluster_points = frontier_nodes[labels == label]
+        centroid = cluster_points.mean(axis=0)
+        centroids[label] = centroid
+    return np.array(list(centroids.values()))

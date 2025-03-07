@@ -72,7 +72,7 @@ class SceneGraphSim:
         cache_size: int = 100,
     ):
         self.robot = robot
-        self.topk = 2
+        self.topk = 3
         self.img_subsample_freq = 1
         self.device = device
         # TODO: remove hard coding
@@ -81,7 +81,7 @@ class SceneGraphSim:
 
         self.save_image = True
         self.include_regions = False
-        self.enrich_frontiers = True
+        # self.enrich_frontiers = True
 
         self.output_path = output_path
         self.scene_graph = scene_graph
@@ -89,9 +89,9 @@ class SceneGraphSim:
 
         self.rr_logger = rr_logger
         # For constructing frontier nodes and connecting them with object nodes
-        self.thresh = 2.0
-        self.size_thresh = 0.3
-        self.choose_final_image = True
+        self.thresh = 1.5
+        self.size_thresh = 0.1
+        self.choose_final_image = False
 
         self.filter_out_objects = ["floor", "ceiling", "."]
 
@@ -127,6 +127,7 @@ class SceneGraphSim:
 
     @property
     def scene_graph_str(self):
+        print(json.dumps(nx.node_link_data(self.filtered_netx_graph)))
         return json.dumps(nx.node_link_data(self.filtered_netx_graph))
 
     @property
@@ -180,6 +181,7 @@ class SceneGraphSim:
         return np.logical_and(in_plane, nearby)
 
     def _build_sg_from_hydra_graph(self, add_object_edges=False):
+        start = time.time()
         self.filtered_netx_graph = nx.DiGraph()
 
         (
@@ -218,13 +220,13 @@ class SceneGraphSim:
 
             attr["name"] = instance.get_best_view().text_description
             # attr["name"] = instance.name + "_" + str(instance.global_id)
-            attr["label"] = "object_" + str(instance.global_id)
-            # attr["label"] = instance.name + "_" + str(instance.global_id)
+            # attr["label"] = "object_" + str(instance.global_id)
             # bounds is a (3 x 2) mins and max
-            attr["bbox"] = instance.bounds.tolist()
-            attr["size"] = torch.prod(
-                torch.abs(instance.bounds[:, 0] - instance.bounds[:, 1])
-            ).item()
+            # attr["bbox"] = instance.bounds.tolist()
+            size = round(
+                torch.prod(torch.abs(instance.bounds[:, 0] - instance.bounds[:, 1])).item(), 4
+            )
+            # attr["size"] = size
             # node_id = instance.name + "_" + str(instance.global_id)
             node_id = "object_" + str(instance.global_id)
 
@@ -239,7 +241,7 @@ class SceneGraphSim:
             if instance.name in self.filter_out_objects:
                 continue
             self.filtered_obj_positions.append(attr["position"])
-            self.filtered_obj_sizes.append(attr["size"])
+            self.filtered_obj_sizes.append(size)
             self.filtered_obj_ids.append(node_id)
             self._object_node_ids.append(node_id)
             self._object_node_names.append(instance.name)
@@ -248,7 +250,7 @@ class SceneGraphSim:
 
         attr = {}
         xyt = self.robot.get_base_pose()
-        attr["position"] = torch.Tensor(xyt).tolist()
+        attr["position"] = [round(coord, 3) for coord in torch.Tensor(xyt).tolist()]
         attr["name"] = "Agent pose in (x, y, theta) format"
         self.filtered_netx_graph.add_nodes_from([("agent", attr)])
 
@@ -288,6 +290,8 @@ class SceneGraphSim:
                     ]
                 )
 
+        print(f"===========time taken for Captioning and SG building: {time.time()-start}")
+
     def update_frontier_nodes(self, frontier_nodes):
         if len(frontier_nodes) > 0 and len(self.filtered_obj_positions) > 0:
             self.filtered_obj_positions = np.array(self.filtered_obj_positions)
@@ -297,10 +301,8 @@ class SceneGraphSim:
                 attr = {}
                 attr["position"] = list(frontier_nodes[i])
                 attr["name"] = "frontier"
-                attr["layer"] = 2
+                # attr["layer"] = 2
                 nodeid = f"frontier_{i}"
-                self._frontier_node_ids.append(nodeid)
-                self.filtered_netx_graph.add_nodes_from([(nodeid, attr)])
 
                 dist = np.linalg.norm(
                     (np.array(frontier_nodes[i]) - self.filtered_obj_positions), axis=1
@@ -311,25 +313,33 @@ class SceneGraphSim:
                 relevent_node_ids = self.filtered_obj_ids[relevant_objs]
                 relevant_obj_pos = self.filtered_obj_positions[relevant_objs]
 
-                if self.enrich_frontiers:
-                    edge_type = "frontier-to-object"
+                description = "Nearby objects: "
+                for nearby_object_id in relevent_node_ids:
+                    description += nearby_object_id + "; "
+                attr["name"] = description
 
-                    for obj_id, obj_pos in zip(relevent_node_ids, relevant_obj_pos):
-                        edgeid = f"{nodeid}-to-{obj_id}"
+                self._frontier_node_ids.append(nodeid)
+                self.filtered_netx_graph.add_nodes_from([(nodeid, attr)])
 
-                        self.filtered_netx_graph.add_edges_from(
-                            [
-                                (
-                                    nodeid,
-                                    obj_id,
-                                    {
-                                        "source_name": "frontier",
-                                        "target_name": "object",
-                                        "type": edge_type,
-                                    },
-                                )
-                            ]
-                        )
+                # if self.enrich_frontiers:
+                #     edge_type = "frontier-to-object"
+
+                #     for obj_id, obj_pos in zip(relevent_node_ids, relevant_obj_pos):
+                #         edgeid = f"{nodeid}-to-{obj_id}"
+
+                #         self.filtered_netx_graph.add_edges_from(
+                #             [
+                #                 (
+                #                     nodeid,
+                #                     obj_id,
+                #                     {
+                #                         "source_name": "frontier",
+                #                         "target_name": "object",
+                #                         "type": edge_type,
+                #                     },
+                #                 )
+                #             ]
+                #         )
 
     def add_room_labels_to_sg(self):
         self._room_names = []

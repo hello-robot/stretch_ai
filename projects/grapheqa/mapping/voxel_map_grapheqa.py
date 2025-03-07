@@ -124,7 +124,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return points
 
     def sample_target_point(
-        self, start: torch.Tensor, point: torch.Tensor, planner, exploration: bool = False
+        self, start: torch.Tensor, point: torch.Tensor, planner
     ) -> Optional[np.ndarray]:
         """Sample a position near the mask and return.
 
@@ -171,18 +171,18 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             target_is_valid = self.is_valid(np.array([selected_x, selected_y, theta]))
             if not target_is_valid:
                 continue
-            if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.35:
-                continue
-            elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
-                i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])
-                j = (point[1] - selected_target[1]) // abs(point[1] - selected_target[1])
-                index_i = int(selected_target[0].int() + i)
-                index_j = int(selected_target[1].int() + j)
-                if obstacles[index_i][index_j]:
-                    target_is_valid = False
+            # if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.35:
+            #     continue
+            # elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
+            #     i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])
+            #     j = (point[1] - selected_target[1]) // abs(point[1] - selected_target[1])
+            #     index_i = int(selected_target[0].int() + i)
+            #     index_j = int(selected_target[1].int() + j)
+            #     if obstacles[index_i][index_j]:
+            #         target_is_valid = False
 
-            if not target_is_valid:
-                continue
+            # if not target_is_valid:
+            #     continue
 
             return np.array([selected_x, selected_y, theta])
 
@@ -192,8 +192,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         self,
         xyt,
         planner,
-        use_alignment_heuristics=True,
-        text=None,
         debug=False,
     ):
         obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
@@ -295,12 +293,12 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         xy = self.voxel_map.grid_coords_to_xy(pt)  # type: ignore
         return float(xy[0]), float(xy[1])
 
-    def sample_navigation(self, start, planner, point, mode="navigation"):
+    def sample_navigation(self, start, planner, point):
         plt.clf()
         if point is None:
             start_pt = self.to_pt(start)
             return None
-        goal = self.sample_target_point(start, point, planner, exploration=mode != "navigation")
+        goal = self.sample_target_point(start, point, planner)
         print("point:", point, "goal:", goal)
         obstacles, explored = self.voxel_map.get_2d_map()
         plt.imshow(obstacles)
@@ -314,29 +312,10 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         # plt.show()
         return goal
 
-    def sample_frontier(self, planner, start_pose=[0, 0, 0], text=None):
-        if text is not None and text != "":
-            (
-                index,
-                time_heuristics,
-                alignments_heuristics,
-                total_heuristics,
-            ) = self.sample_exploration(
-                start_pose,
-                planner,
-                use_alignment_heuristics=True,
-                text=text,
-                debug=False,
-            )
-        else:
-            index, time_heuristics, _, total_heuristics = self.sample_exploration(
-                start_pose,
-                planner,
-                use_alignment_heuristics=False,
-                text=None,
-                debug=False,
-            )
-            alignments_heuristics = time_heuristics
-
-        obstacles, explored = self.voxel_map.get_2d_map()
+    def sample_frontier(self, planner, start_pose=[0, 0, 0]):
+        index, total_heuristics = self.sample_exploration(
+            start_pose,
+            planner,
+            debug=False,
+        )
         return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))

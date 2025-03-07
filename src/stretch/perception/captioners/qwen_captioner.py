@@ -24,7 +24,7 @@ class QwenCaptioner:
 
     def __init__(
         self,
-        max_length: int = 500,
+        max_length: int = 100,
         num_beams: int = 1,
         device: Optional[str] = None,
         image_shape=None,
@@ -48,7 +48,7 @@ class QwenCaptioner:
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
             attn_implementation="flash_attention_2",
-            device_map="auto",
+            device_map=self._device,
         )
 
         # default processor
@@ -96,7 +96,7 @@ class QwenCaptioner:
                     # {"type": "text", "text": "Include as many details as possible, such as the color, texture."},
                     {
                         "type": "text",
-                        "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
+                        "text": "Be concise and don't be conservative about your answers. E.G. a yellow banana; a white hand sanitizer",
                     },
                 ],
             }

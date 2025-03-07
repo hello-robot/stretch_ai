@@ -24,6 +24,7 @@ from stretch.core.interfaces import Observations
 from stretch.llms import OpenaiClient
 from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from stretch.mapping.instance import InstanceMemory
+from stretch.mapping.instance.matching import ViewMatchingConfig
 from stretch.mapping.voxel import SparseVoxelMap as SparseVoxelMapBase
 from stretch.mapping.voxel.voxel import VALID_FRAMES, Frame
 from stretch.motion import HelloStretchIdx
@@ -114,13 +115,21 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self._history_soft: Optional[Tensor] = None
         self.encoder = encoder
         self.captioner = captioner
+        matching_config = ViewMatchingConfig(
+            box_overlap_weight=0.5,
+            visual_similarity_weight=0.5,
+            box_min_iou_thresh=0.05,
+            min_similarity_thresh=0.25,
+        )
         self.instances = InstanceMemory(
             num_envs=1,
             encoder=self.encoder,
             captioner=self.captioner,
             mask_cropped_instances=False,
             du_scale=1,
+            min_instance_points=500,
             save_original_image=True,
+            view_matching_config=matching_config,
         )
         self.obs_count = 0
         self.log = log
@@ -469,6 +478,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         )
 
         valid_depth = torch.full_like(rgb[:, 0], fill_value=True, dtype=torch.bool)
+        # Apply a median filter to remove bad depth values when mapping and exploring
+        # This is not strictly necessary but the idea is to clean up bad pixels
         if depth is not None:
             valid_depth = (depth > self.min_depth) & (depth < self.max_depth)
 
@@ -549,6 +560,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 feats = feats[selected_indices]
 
             rgb = rgb[selected_indices]
+
+            self.voxel_pcd.clear_points(depth, camera_K, camera_pose)
 
             self.voxel_pcd.add(
                 world_xyz,
