@@ -18,6 +18,8 @@ from qwen_vl_utils import process_vision_info
 from torch import Tensor
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
+# pip install flash-attn
+
 
 class QwenCaptioner:
     """Image captioner using Qwen2 model."""
