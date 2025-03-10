@@ -96,7 +96,7 @@ class QwenCaptioner:
                     # {"type": "text", "text": "Include as many details as possible, such as the color, texture."},
                     {
                         "type": "text",
-                        "text": "Be concise and don't be conservative about your answers. E.G. a yellow banana; a white hand sanitizer",
+                        "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
                     },
                 ],
             }

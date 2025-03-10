@@ -68,7 +68,8 @@ setuptools.setup(
         # Configuration tools and neural networks
         "hydra-core",
         "timm>1.0.0",
-        "huggingface_hub[cli]==0.24.7",
+        "huggingface_hub[cli]>=0.24.7",
+        "flash-attn",
         "transformers>=4.49.0",
         "qwen_vl_utils",
         "bitsandbytes",
