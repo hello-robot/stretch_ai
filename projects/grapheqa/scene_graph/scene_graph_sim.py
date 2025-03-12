@@ -11,7 +11,7 @@ import json
 import os
 import time
 from enum import Enum
-from typing import List
+from typing import List, Union
 
 import cv2
 import networkx as nx
@@ -22,6 +22,8 @@ import torch
 from openai import OpenAI
 from PIL import Image
 from pydantic import BaseModel
+
+from stretch.perception.captioners import QwenCaptioner
 
 # from transformers import AutoModel, AutoProcessor
 from stretch.perception.encoders.siglip_encoder import SiglipEncoder
@@ -68,7 +70,6 @@ class SceneGraphSim:
         rr_logger=None,
         device: str = "cuda",
         clean_ques_ans=" ",
-        enrich_object_labels="object",
         cache_size: int = 100,
     ):
         self.robot = robot
@@ -77,7 +78,6 @@ class SceneGraphSim:
         self.device = device
         # TODO: remove hard coding
         self.enrich_rooms = False
-        self.enrich_object_labels = enrich_object_labels
 
         self.save_image = True
         self.include_regions = False
@@ -93,17 +93,24 @@ class SceneGraphSim:
         self.size_thresh = 0.1
         self.choose_final_image = False
 
-        self.filter_out_objects = ["floor", "ceiling", "."]
+        self.filter_out_objects = ["floor", "ceiling", "wall", "."]
+
+        # minimum size of bounding boxes for the instance to be added on the scene graph string
+        self.min_area = 4000
 
         # self.model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(device)
         # self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
         self.encoder = SiglipEncoder(version="so400m", device=device, normalize=True)
+        # by default is "object", will be updated later
+        self.enrich_object_labels: Union[List[str], str] = "object"
         labels = self.enrich_object_labels.replace(".", "")
         exist = f"There is  {labels} in the scene."
         with torch.no_grad():
-            self.text_embed = (
-                self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0
-            ).to(device)
+            self.text_embeds = (
+                (self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0)
+                .to(device)
+                .unsqueeze(0)
+            )
         self.captioner = captioner
 
         # self.question_embed = self.processor(
@@ -154,20 +161,26 @@ class SceneGraphSim:
     def object_node_names(self):
         return self._object_node_names
 
-    def update_language_embedding(self, text: str):
+    def update_language_embedding(self, texts: Union[List[str], str]):
         """
         When we update self.enrich_object_labels, we call this function to update the corresponding embedding
 
         Args:
             - text: the new labels text
         """
-        self.enrich_object_labels = text
-        labels = self.enrich_object_labels.replace(".", "")
-        exist = f"There is  {labels} in the scene."
-        with torch.no_grad():
-            self.text_embed = (
-                self.encoder.encode_text(labels) + self.encoder.encode_text(exist) / 2.0
-            ).to(self.device)
+        self.enrich_object_labels = [texts] if isinstance(texts, str) else texts
+        assert len(self.enrich_object_labels) > 0, "enrich_object_labels cannot be none"
+        self.text_embeds = []
+        for enrich_object_label in self.enrich_object_labels:
+            label = enrich_object_label.replace(".", "")
+            exist = f"There is  {label} in the scene."
+            with torch.no_grad():
+                self.text_embeds.append(
+                    (self.encoder.encode_text(label) + self.encoder.encode_text(exist) / 2.0).to(
+                        self.device
+                    )
+                )
+        self.text_embeds = torch.stack(self.text_embeds)
 
     def is_relevant_frontier(self, frontier_node_positions, agent_pos):
         frontier_node_positions = frontier_node_positions.reshape(-1, 3)
@@ -208,15 +221,26 @@ class SceneGraphSim:
             # round up to prevent the scene graph str from being too long
             attr["position"] = [round(coord, 3) for coord in attr["position"]]
             best_view = instance.get_best_view()
+            area = (best_view.bbox[1, 1] - best_view.bbox[0, 1]) * (
+                best_view.bbox[1, 0] - best_view.bbox[0, 0]
+            )
+            if area < self.min_area:
+                continue
             if best_view.text_description is None:
-                bbox = []
-                bbox.append(int(best_view.bbox[0, 1].item()) - 10)
-                bbox.append(int(best_view.bbox[0, 0].item()) - 10)
-                bbox.append(int(best_view.bbox[1, 1].item()) + 10)
-                bbox.append(int(best_view.bbox[1, 0].item()) + 10)
-                best_view.text_description = self.captioner.caption_image(
-                    best_view.cropped_image.to(dtype=torch.uint8), bbox
-                )
+                # Qwen captioner takes a complete image plus a bounding box
+                if isinstance(self.captioner, QwenCaptioner):
+                    bbox = []
+                    bbox.append(int(best_view.bbox[0, 1].item()) - 10)
+                    bbox.append(int(best_view.bbox[0, 0].item()) - 10)
+                    bbox.append(int(best_view.bbox[1, 1].item()) + 10)
+                    bbox.append(int(best_view.bbox[1, 0].item()) + 10)
+                    best_view.text_description = self.captioner.caption_image(
+                        best_view.cropped_image.to(dtype=torch.uint8), bbox
+                    )
+                else:
+                    best_view.text_description = self.captioner.caption_image(
+                        best_view.cropped_image.to(dtype=torch.uint8)
+                    )
 
             attr["name"] = instance.get_best_view().text_description
             # attr["name"] = instance.name + "_" + str(instance.global_id)
@@ -496,9 +520,8 @@ class SceneGraphSim:
                 self.imgs_rgb = self.imgs_rgb[-self.cache_size :, :]
                 self.imgs_embed = self.imgs_embed[-self.cache_size :, :]
 
-            # logits = self.encoder.compute_score(self.imgs_embed, self.text_embed)
             logits = torch.mean(
-                self.imgs_embed @ self.text_embed.reshape(-1, self.imgs_embed.shape[-1]).T, dim=-1
+                self.imgs_embed @ self.text_embeds.reshape(-1, self.imgs_embed.shape[-1]).T, dim=-1
             )
             top_k_indices = torch.argsort(logits, descending=True)[: self.topk]
 

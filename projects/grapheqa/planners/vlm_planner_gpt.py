@@ -20,7 +20,6 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 if "OPENAI_API_KEY" in os.environ:
-    # client = OpenAI(base_url="http://0.0.0.0:23333/v1")
     client = OpenAI()
 else:
     print("GPT token has not been set up yet!")

@@ -21,10 +21,8 @@ from scipy.ndimage import maximum_filter
 from torch import Tensor
 
 from stretch.core.interfaces import Observations
-from stretch.llms import OpenaiClient
-from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from stretch.mapping.instance import InstanceMemory
-from stretch.mapping.instance.matching import ViewMatchingConfig
+from stretch.mapping.instance.matching import Bbox3dOverlapMethodEnum, ViewMatchingConfig
 from stretch.mapping.voxel import SparseVoxelMap as SparseVoxelMapBase
 from stretch.mapping.voxel.voxel import VALID_FRAMES, Frame
 from stretch.motion import HelloStretchIdx
@@ -75,7 +73,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         use_negative_obstacles: bool = False,
         point_update_threshold: float = 0.9,
         log="test",
-        mllm=False,
     ):
         super().__init__(
             resolution=resolution,
@@ -116,10 +113,11 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.encoder = encoder
         self.captioner = captioner
         matching_config = ViewMatchingConfig(
-            box_overlap_weight=0.5,
-            visual_similarity_weight=0.5,
-            box_min_iou_thresh=0.05,
-            min_similarity_thresh=0.25,
+            box_overlap_weight=0.4,
+            visual_similarity_weight=0.6,
+            box_min_iou_thresh=0.005,
+            min_similarity_thresh=0.03,
+            box_match_mode=Bbox3dOverlapMethodEnum.NN_RATIO,
         )
         self.instances = InstanceMemory(
             num_envs=1,
@@ -127,7 +125,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             captioner=self.captioner,
             mask_cropped_instances=False,
             du_scale=1,
-            min_instance_points=500,
+            min_instance_points=1000,
             save_original_image=True,
             view_matching_config=matching_config,
         )
@@ -137,13 +135,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         # Voxel map cache
         self._map2d: Optional[Any] = None
         self._2d_last_updated: Optional[Any] = -1
-
-        self.mllm = mllm
-
-        if self.mllm:
-            self.gpt_client = OpenaiClient(
-                DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
-            )
 
     def verify_point(
         self,

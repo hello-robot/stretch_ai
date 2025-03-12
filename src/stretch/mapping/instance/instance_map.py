@@ -24,7 +24,11 @@ import torch
 from torch import Tensor
 
 from stretch.mapping.instance import Instance, InstanceView
-from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
+from stretch.mapping.instance.matching import (
+    Bbox3dOverlapMethodEnum,
+    ViewMatchingConfig,
+    get_similarity,
+)
 from stretch.perception.captioners import BaseCaptioner
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
@@ -344,17 +348,36 @@ class InstanceMemory:
                 )
 
                 # Similarity config
-                similarity = get_similarity(
-                    instance_bounds1=instance_view.bounds.unsqueeze(0),
-                    instance_bounds2=global_bounds,
-                    visual_embedding1=instance_view.visual_feat
-                    if self.use_visual_feat
-                    else instance_view.embedding,
-                    visual_embedding2=global_embedding,
-                    text_embedding1=None,
-                    text_embedding2=None,
-                    view_matching_config=self.view_matching_config,
-                )
+                if self.view_matching_config.box_match_mode == Bbox3dOverlapMethodEnum.NN_RATIO:
+                    # To avoid having too many arguments, here we directly send pointcloud through instance bounds attr to get_similarity
+                    # So this setting is following the idea of concept graphs (https://concept-graphs.github.io) to compute nn ratio as overlap similarity
+                    point_clouds = [
+                        instance.point_cloud
+                        for inst_id, instance in global_ids_to_instances.items()
+                    ]
+                    similarity = get_similarity(
+                        instance_bounds1=instance_view.point_cloud,
+                        instance_bounds2=point_clouds,
+                        visual_embedding1=instance_view.visual_feat
+                        if self.use_visual_feat
+                        else instance_view.embedding,
+                        visual_embedding2=global_embedding,
+                        text_embedding1=None,
+                        text_embedding2=None,
+                        view_matching_config=self.view_matching_config,
+                    )
+                else:
+                    similarity = get_similarity(
+                        instance_bounds1=instance_view.bounds.unsqueeze(0),
+                        instance_bounds2=global_bounds,
+                        visual_embedding1=instance_view.visual_feat
+                        if self.use_visual_feat
+                        else instance_view.embedding,
+                        visual_embedding2=global_embedding,
+                        text_embedding1=None,
+                        text_embedding2=None,
+                        view_matching_config=self.view_matching_config,
+                    )
                 max_similarity, matched_idx = similarity.max(dim=1)
                 total_weight = (
                     self.view_matching_config.visual_similarity_weight

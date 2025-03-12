@@ -79,8 +79,6 @@ class GitCaptioner(BaseCaptioner):
         # Decode the output ids to text
         caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
-        pil_image.save("test/" + caption + ".jpg")
-
         return caption
 
 

@@ -186,10 +186,14 @@ class Instance:
         if metric == "area":
             best_area = 0
             for view in self.instance_views:
-                if view.cropped_image is None:
+                # Sometimes we use the cropped image field to store the raw image, so bbox is always more reliable and should be considered first when computing the bbox area
+                if view.bbox is not None and len(view.bbox.shape) == 2:
+                    area = (view.bbox[1, 1] - view.bbox[0, 1]) * (view.bbox[1, 0] - view.bbox[0, 0])
+                elif view.cropped_image is None:
                     continue
-                h, w = view.cropped_image.shape[:2]
-                area = h * w
+                else:
+                    h, w = view.cropped_image.shape[:2]
+                    area = h * w
                 if area > best_area:
                     best_area = area
                     best_view = view

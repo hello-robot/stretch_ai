@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List, Optional, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -20,11 +21,13 @@ from stretch.utils.bboxes_3d import (
     box3d_overlap_from_bounds,
     box3d_volume_from_bounds,
 )
+from stretch.utils.voxel import VoxelizedPointcloud
 
 
 class Bbox3dOverlapMethodEnum(Enum):
     IOU = "IOU"
     ONE_SIDED_IOU = "ONE_SIDED_IOU"
+    NN_RATIO = "NN_RATIO"
 
 
 @dataclass
@@ -38,6 +41,30 @@ class ViewMatchingConfig:
 
     visual_similarity_weight: float = 0.5
     min_similarity_thresh: float = 0.5  # TODO: pass it using a config file
+
+
+def get_nn_ratio_similarity(points1, points2, delta_nn):
+    voxel1 = VoxelizedPointcloud(voxel_size=delta_nn)
+    voxel2 = VoxelizedPointcloud(voxel_size=delta_nn)
+    voxel1.add(points1, features=None, rgb=None)
+    voxel2.add(points2, features=None, rgb=None)
+    voxel1 = voxel1.get_pointcloud()[0]
+    voxel2 = voxel2.get_pointcloud()[0]
+
+    from scipy.spatial import KDTree
+
+    tree = KDTree(voxel2)
+    # Query the nearest neighbors for each point in voxel1
+    distances, _ = tree.query(
+        voxel1, k=1
+    )  # Find the closest point in voxel2 for each point in voxel1
+    # Count how many points in voxel1 have a nearest neighbor within delta_nn
+    valid_points = np.sum(distances <= delta_nn * 2)
+    # Compute the geometric similarity
+    n1 = voxel1.shape[0]  # Total number of points in voxel1
+    nn_ratio_similarity = valid_points / n1
+
+    return nn_ratio_similarity
 
 
 def get_bbox_similarity(
@@ -175,12 +202,20 @@ def get_similarity(
 ):
     """Compute similarity based on bounding boxes for now"""
     # BBox similarity
-    overlap_similarity = get_bbox_similarity(
-        instance_bounds1,
-        instance_bounds2,
-        overlap_eps=view_matching_config.box_overlap_eps,
-        mode=view_matching_config.box_match_mode,
-    )
+    if view_matching_config.box_match_mode == Bbox3dOverlapMethodEnum.NN_RATIO:
+        # In this case, instead of instance_bounds, instance pointcloud will be passed
+        overlap_similarity: Union[List[float], Tensor] = []
+        for pointcloud2 in instance_bounds2:
+            nn_ratio_similarity = get_nn_ratio_similarity(instance_bounds1, pointcloud2, 0.03)
+            overlap_similarity.append(nn_ratio_similarity)
+        overlap_similarity = torch.Tensor(overlap_similarity).unsqueeze(0)
+    else:
+        overlap_similarity = get_bbox_similarity(
+            instance_bounds1,
+            instance_bounds2,
+            overlap_eps=view_matching_config.box_overlap_eps,
+            mode=view_matching_config.box_match_mode,
+        )
     if verbose:
         print(f"geometric similarity score: {overlap_similarity}")
     similarity = overlap_similarity * view_matching_config.box_overlap_weight

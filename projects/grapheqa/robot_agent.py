@@ -67,7 +67,6 @@ class RobotAgent(RobotAgentBase):
         manip_port: int = 5557,
         log: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
-        mllm: bool = False,
     ):
         if isinstance(parameters, Dict):
             self.parameters = Parameters(**parameters)
@@ -86,7 +85,6 @@ class RobotAgent(RobotAgentBase):
         self.rerun_visualizer = self.robot._rerun
         self.setup_custom_blueprint()
 
-        self.mllm = mllm
         # For placing
         # self.owl_sam_detector = none
 
@@ -170,7 +168,6 @@ class RobotAgent(RobotAgentBase):
             output_path=self.log,
             scene_graph=self.scene_graph,
             robot=self.robot,
-            enrich_object_labels="object",
             captioner=self.captioner,
         )
         self.vlm_planner = VLMPLannerEQAGPT(
@@ -181,10 +178,13 @@ class RobotAgent(RobotAgentBase):
         )
         PROMPT = """
             Assume there is an agent doing Question Answering in an environment.
-            When it receives a question, you need to tell the agent the object it needs to pay special attention to.
+            When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
             Example:
                 Input: Where is the pen?
-                Output: pen
+                Output: pen,table
+
+                Input: Is there grey cloth on cloth hanger?
+                Output: gery cloth,cloth hanger
         """
         self.llm_client = OpenaiClient(PROMPT, model="gpt-4o-mini")
         self.current_rgb_list: List[Union[torch.Tensor, np.ndarray]] = []
@@ -225,7 +225,6 @@ class RobotAgent(RobotAgentBase):
             encoder=self.encoder,
             # captioner=self.captioner,
             log=self.log,
-            mllm=self.mllm,
         )
 
         # Create voxel map information for multithreaded access
@@ -516,10 +515,10 @@ class RobotAgent(RobotAgentBase):
 
         enrich_object = self.llm_client(question)
 
-        print("Enrich Object name:", enrich_object)
+        print("Enrich Object name:", enrich_object.split(","))
 
         self.vlm_planner._question = question
-        self.sg_sim.update_language_embedding(enrich_object)
+        self.sg_sim.update_language_embedding(enrich_object.split(",")[:3])
 
         return self.run_eqa_vlm_planner()
 

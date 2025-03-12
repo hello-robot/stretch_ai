@@ -127,6 +127,4 @@ class QwenCaptioner:
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
 
-        pil_image.save("test/" + output_text + ".png")
-
         return output_text
