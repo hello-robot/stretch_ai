@@ -17,7 +17,7 @@ from .base_encoder import BaseImageTextEncoder
 from .custom import CustomImageTextEncoder
 from .masksiglip_encoder import MaskSiglipEncoder
 
-encoders = ["clip", "normalized_clip", "siglip", "siglip2", "dinov2siglip"]
+encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
 
 
 def get_encoder(encoder_name, args: Any):
