@@ -25,9 +25,6 @@ from pydantic import BaseModel
 
 from stretch.perception.captioners import QwenCaptioner
 
-# from transformers import AutoModel, AutoProcessor
-from stretch.perception.encoders.siglip_encoder import SiglipEncoder
-
 # from itertools import chain
 
 
@@ -71,6 +68,7 @@ class SceneGraphSim:
         device: str = "cuda",
         clean_ques_ans=" ",
         cache_size: int = 100,
+        encoder=None,
     ):
         self.robot = robot
         self.topk = 3
@@ -98,9 +96,9 @@ class SceneGraphSim:
         # minimum size of bounding boxes for the instance to be added on the scene graph string
         self.min_area = 4000
 
-        # self.model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384").to(device)
-        # self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
-        self.encoder = SiglipEncoder(version="so400m", device=device, normalize=True)
+        self.encoder = encoder
+        if self.encoder is None:
+            self.save_image = False
         # by default is "object", will be updated later
         self.enrich_object_labels: Union[List[str], str] = "object"
         labels = self.enrich_object_labels.replace(".", "")
@@ -234,9 +232,13 @@ class SceneGraphSim:
                     bbox.append(int(best_view.bbox[0, 0].item()) - 10)
                     bbox.append(int(best_view.bbox[1, 1].item()) + 10)
                     bbox.append(int(best_view.bbox[1, 0].item()) + 10)
-                    best_view.text_description = self.captioner.caption_image(
-                        best_view.cropped_image.to(dtype=torch.uint8), bbox
-                    )
+                    try:
+                        best_view.text_description = self.captioner.caption_image(
+                            best_view.cropped_image.to(dtype=torch.uint8), bbox
+                        )
+                    except:
+                        print("Caption cannot be generated!")
+                        continue
                 else:
                     best_view.text_description = self.captioner.caption_image(
                         best_view.cropped_image.to(dtype=torch.uint8)

@@ -45,7 +45,7 @@ from stretch.motion.algo.a_star import AStar
 
 # from stretch.perception.captioners import VitGPT2Captioner
 from stretch.perception.captioners import QwenCaptioner
-from stretch.perception.encoders import MaskSiglipEncoder
+from stretch.perception.encoders.siglip_encoder import SiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 
@@ -169,6 +169,7 @@ class RobotAgent(RobotAgentBase):
             scene_graph=self.scene_graph,
             robot=self.robot,
             captioner=self.captioner,
+            encoder=self.encoder,
         )
         self.vlm_planner = VLMPLannerEQAGPT(
             vlm_type="gpt-4o",
@@ -198,9 +199,9 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+        self.encoder = SiglipEncoder(device=self.device, version="so400m")
         # self.captioner = VitGPT2Captioner(device=self.device)
-        self.captioner = QwenCaptioner(device=self.device)
+        self.captioner = QwenCaptioner(device=self.device, image_shape=(360, 480))
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],

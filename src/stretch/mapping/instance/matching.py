@@ -43,9 +43,9 @@ class ViewMatchingConfig:
     min_similarity_thresh: float = 0.5  # TODO: pass it using a config file
 
 
-def get_nn_ratio_similarity(points1, points2, delta_nn):
-    voxel1 = VoxelizedPointcloud(voxel_size=delta_nn)
-    voxel2 = VoxelizedPointcloud(voxel_size=delta_nn)
+def get_nn_ratio_similarity(points1, points2, voxel_size=0.05, delta_nn=0.1):
+    voxel1 = VoxelizedPointcloud(voxel_size=voxel_size)
+    voxel2 = VoxelizedPointcloud(voxel_size=voxel_size)
     voxel1.add(points1, features=None, rgb=None)
     voxel2.add(points2, features=None, rgb=None)
     voxel1 = voxel1.get_pointcloud()[0]
@@ -59,7 +59,7 @@ def get_nn_ratio_similarity(points1, points2, delta_nn):
         voxel1, k=1
     )  # Find the closest point in voxel2 for each point in voxel1
     # Count how many points in voxel1 have a nearest neighbor within delta_nn
-    valid_points = np.sum(distances <= delta_nn * 2)
+    valid_points = np.sum(distances <= delta_nn)
     # Compute the geometric similarity
     n1 = voxel1.shape[0]  # Total number of points in voxel1
     nn_ratio_similarity = valid_points / n1
@@ -206,7 +206,7 @@ def get_similarity(
         # In this case, instead of instance_bounds, instance pointcloud will be passed
         overlap_similarity: Union[List[float], Tensor] = []
         for pointcloud2 in instance_bounds2:
-            nn_ratio_similarity = get_nn_ratio_similarity(instance_bounds1, pointcloud2, 0.03)
+            nn_ratio_similarity = get_nn_ratio_similarity(instance_bounds1, pointcloud2)
             overlap_similarity.append(nn_ratio_similarity)
         overlap_similarity = torch.Tensor(overlap_similarity).unsqueeze(0)
     else:

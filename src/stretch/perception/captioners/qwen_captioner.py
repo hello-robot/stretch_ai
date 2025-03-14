@@ -50,6 +50,7 @@ class QwenCaptioner:
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
             attn_implementation="flash_attention_2",
+            torch_dtype=torch.float16,
             device_map=self._device,
         )
 
