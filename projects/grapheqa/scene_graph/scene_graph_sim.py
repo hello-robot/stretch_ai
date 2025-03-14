@@ -69,6 +69,7 @@ class SceneGraphSim:
         clean_ques_ans=" ",
         cache_size: int = 100,
         encoder=None,
+        use_class_labels: bool = False,
     ):
         self.robot = robot
         self.topk = 3
@@ -90,6 +91,7 @@ class SceneGraphSim:
         self.thresh = 1.5
         self.size_thresh = 0.1
         self.choose_final_image = False
+        self.use_class_labels = use_class_labels
 
         self.filter_out_objects = ["floor", "ceiling", "wall", "."]
 
