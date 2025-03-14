@@ -44,6 +44,7 @@ class OWLSAMProcessor(OwlPerception):
         box_filename: str = None,
         visualize_mask: bool = False,
         mask_filename: str = None,
+        threshold: Optional[float] = 0.05,
     ) -> Tuple[np.ndarray, List[int]]:
         print("OWLSAM detection !!!")
         inputs = self.processor(text=[["a photo of a " + text]], images=image, return_tensors="pt")
@@ -54,8 +55,10 @@ class OWLSAMProcessor(OwlPerception):
             outputs = self.model(**inputs)
 
         target_sizes = torch.Tensor([image.size[::-1]]).to("cuda")
+        if threshold is None:
+            threshold = self.confidence_threshold
         results = self.processor.image_processor.post_process_object_detection(
-            outputs, threshold=0.05, target_sizes=target_sizes
+            outputs, threshold=threshold, target_sizes=target_sizes
         )[0]
 
         if len(results["boxes"]) == 0:

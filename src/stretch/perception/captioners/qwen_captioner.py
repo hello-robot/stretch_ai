@@ -58,7 +58,9 @@ class QwenCaptioner:
         self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
 
     def caption_image(
-        self, image: Union[ndarray, Tensor, Image.Image], bbox: Union[list, Tensor, ndarray]
+        self,
+        image: Union[ndarray, Tensor, Image.Image],
+        bbox: Optional[Union[list, Tensor, ndarray]] = None,
     ) -> str:
         """Generate a caption for the given image.
 
@@ -77,15 +79,26 @@ class QwenCaptioner:
                 _image = image
             pil_image = Image.fromarray(_image)
 
-        draw = ImageDraw.Draw(pil_image)
         buffered = BytesIO()
 
-        draw.rectangle(bbox, outline="red", width=1)
+        if bbox is not None:
+            h, w = pil_image.shape
+            bbox[0] = max(0, bbox[0])
+            bbox[1] = max(0, bbox[1])
+            bbox[2] = max(h, bbox[2])
+            bbox[3] = max(w, bbox[3])
+            draw = ImageDraw.Draw(pil_image)
+            draw.rectangle(bbox, outline="red", width=1)
         if self.image_shape is not None:
             pil_image = pil_image.resize(self.image_shape)
         pil_image.save(buffered, format="PNG")
         img_bytes = buffered.getvalue()
         base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
+
+        if bbox is None:
+            prompt = "Describe the image."
+        else:
+            prompt = "Describe the object in the red box."
 
         messages = [
             {
@@ -95,8 +108,7 @@ class QwenCaptioner:
                         "type": "image",
                         "image": f"data:image;base64,{base64_encoded}",
                     },
-                    {"type": "text", "text": "Describe the object in the red box."},
-                    # {"type": "text", "text": "Include as many details as possible, such as the color, texture."},
+                    {"type": "text", "text": prompt},
                     {
                         "type": "text",
                         "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",

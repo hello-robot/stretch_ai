@@ -201,7 +201,7 @@ class RobotAgent(RobotAgentBase):
     def create_obstacle_map(self, parameters):
         self.encoder = SiglipEncoder(device=self.device, version="so400m")
         # self.captioner = VitGPT2Captioner(device=self.device)
-        self.captioner = QwenCaptioner(device=self.device, image_shape=(360, 480))
+        self.captioner = QwenCaptioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
