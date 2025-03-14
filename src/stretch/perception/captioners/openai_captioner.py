@@ -74,7 +74,7 @@ class OpenaiCaptioner:
         buffered = BytesIO()
 
         if bbox is not None:
-            h, w = pil_image.shape
+            h, w = pil_image.size
             bbox[0] = max(0, bbox[0])
             bbox[1] = max(0, bbox[1])
             bbox[2] = max(h, bbox[2])
