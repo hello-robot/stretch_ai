@@ -20,8 +20,10 @@ from .base_encoder import BaseImageTextEncoder
 
 logger = Logger(__name__)
 
+# pip install git+https://github.com/huggingface/transformers.git
 
-class SiglipEncoder(BaseImageTextEncoder):
+
+class Siglip2Encoder(BaseImageTextEncoder):
     """Image/text feature encoder using SIGLip model.
 
     Referencing the following paper: https://arxiv.org/abs/2303.15343
@@ -39,6 +41,7 @@ class SiglipEncoder(BaseImageTextEncoder):
         feature_matching_threshold: float = 0.05,
         **kwargs,
     ) -> None:
+        # version: base -> b-16-512, large -> l-16-512, so400m -> so-16-512, giant -> g-16-384
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
@@ -46,12 +49,16 @@ class SiglipEncoder(BaseImageTextEncoder):
         self.feature_matching_threshold = feature_matching_threshold
 
         if version is None:
-            version = "base"
+            version = "so400m"
 
         if version == "base":
-            model_name = "google/siglip-base-patch16-224"
+            model_name = "google/siglip2-base-patch16-512"
+        elif version == "large":
+            model_name = "google/siglip2-large-patch16-512"
         elif version == "so400m":
-            model_name = "google/siglip-so400m-patch14-384"
+            model_name = "google/siglip2-so400m-patch16-512"
+        elif version == "giant":
+            model_name = "google/siglip2-giant-opt-patch16-384"
         else:
             raise ValueError(f"Invalid version {version}: must be one of 'base', 'so400m'")
 
