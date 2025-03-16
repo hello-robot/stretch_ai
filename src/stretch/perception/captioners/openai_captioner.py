@@ -28,11 +28,9 @@ class OpenaiCaptioner:
         image_shape=None,
         model_type: Optional[str] = "gpt-4o-mini",
     ):
-        """Initialize the BLIP image captioner.
+        """Initialize the GPT image captioner.
 
         Args:
-            max_length (int, optional): Maximum length of the generated caption. Defaults to 30.
-            num_beams (int, optional): Number of beams for beam search. Defaults to 4.
             device (str, optional): Device to run the model on. Defaults to None (auto-detect).
         """
         self.image_shape = image_shape
@@ -58,6 +56,7 @@ class OpenaiCaptioner:
 
         Args:
             image (Union[ndarray, Tensor, Image.Image]): The input image.
+            bbox: Provide a bounding box if you just want to model to tell what is inside the box
 
         Returns:
             str: The generated caption.
@@ -75,10 +74,10 @@ class OpenaiCaptioner:
 
         if bbox is not None:
             h, w = pil_image.size
-            bbox[0] = max(0, bbox[0])
-            bbox[1] = max(0, bbox[1])
-            bbox[2] = max(h, bbox[2])
-            bbox[3] = max(w, bbox[3])
+            bbox[0] = max(1, bbox[0])
+            bbox[1] = max(1, bbox[1])
+            bbox[2] = max(h - 2, bbox[2])
+            bbox[3] = max(w - 2, bbox[3])
             draw = ImageDraw.Draw(pil_image)
             draw.rectangle(bbox, outline="red", width=1)
         if self.image_shape is not None:

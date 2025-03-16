@@ -22,7 +22,7 @@ from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
 
 class QwenCaptioner:
-    """Image captioner using Qwen2 model."""
+    """Image captioner using Qwen2.5 model."""
 
     def __init__(
         self,
@@ -31,12 +31,14 @@ class QwenCaptioner:
         device: Optional[str] = None,
         image_shape=None,
     ):
-        """Initialize the BLIP image captioner.
+        """Initialize the Qwen2.5 image captioner.
 
         Args:
-            max_length (int, optional): Maximum length of the generated caption. Defaults to 30.
-            num_beams (int, optional): Number of beams for beam search. Defaults to 4.
+            max_length (int, optional): Maximum length of the generated caption. Defaults to 100.
+            num_beams (int, optional): Number of beams for beam search. Defaults to 1.
             device (str, optional): Device to run the model on. Defaults to None (auto-detect).
+
+        TODO: Integrate other QwenVL2.5 versions, for now it supports 7B so that the model is good enough while not too large.
         """
         self.max_length = max_length
         self.num_beams = num_beams
@@ -66,6 +68,7 @@ class QwenCaptioner:
 
         Args:
             image (Union[ndarray, Tensor, Image.Image]): The input image.
+            bbox: Provide a bounding box if you just want to model to tell what is inside the box
 
         Returns:
             str: The generated caption.
@@ -83,10 +86,10 @@ class QwenCaptioner:
 
         if bbox is not None:
             h, w = pil_image.size
-            bbox[0] = max(0, bbox[0])
-            bbox[1] = max(0, bbox[1])
-            bbox[2] = max(h, bbox[2])
-            bbox[3] = max(w, bbox[3])
+            bbox[0] = max(1, bbox[0])
+            bbox[1] = max(1, bbox[1])
+            bbox[2] = max(h - 2, bbox[2])
+            bbox[3] = max(w - 2, bbox[3])
             draw = ImageDraw.Draw(pil_image)
             draw.rectangle(bbox, outline="red", width=1)
         if self.image_shape is not None:

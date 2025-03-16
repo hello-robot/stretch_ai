@@ -45,7 +45,7 @@ from stretch.motion.algo.a_star import AStar
 
 # from stretch.perception.captioners import VitGPT2Captioner
 from stretch.perception.captioners import QwenCaptioner
-from stretch.perception.encoders.siglip_encoder import SiglipEncoder
+from stretch.perception.encoders.siglip_encoder import Siglip2Encoder
 from stretch.perception.wrapper import OvmmPerception
 
 
@@ -199,7 +199,7 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = SiglipEncoder(device=self.device, version="so400m")
+        self.encoder = Siglip2Encoder(device=self.device, version="giant")
         # self.captioner = VitGPT2Captioner(device=self.device)
         self.captioner = QwenCaptioner(device=self.device)
 
