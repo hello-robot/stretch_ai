@@ -14,15 +14,12 @@ from typing import Optional, Union
 import torch
 from numpy import ndarray
 from PIL import Image, ImageDraw
-from qwen_vl_utils import process_vision_info
 from torch import Tensor
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
-
-# pip install flash-attn
+from transformers import PaliGemmaForConditionalGeneration, PaliGemmaProcessor
 
 
-class QwenCaptioner:
-    """Image captioner using Qwen2.5 model."""
+class PaligemmaCaptioner:
+    """Image captioner using Paligemma2 model."""
 
     def __init__(
         self,
@@ -31,14 +28,14 @@ class QwenCaptioner:
         device: Optional[str] = None,
         image_shape=None,
     ):
-        """Initialize the Qwen2.5 image captioner.
+        """Initialize the Paligemma2 image captioner.
 
         Args:
             max_length (int, optional): Maximum length of the generated caption. Defaults to 100.
             num_beams (int, optional): Number of beams for beam search. Defaults to 1.
             device (str, optional): Device to run the model on. Defaults to None (auto-detect).
 
-        TODO: Integrate other QwenVL2.5 versions, for now it supports 7B so that the model is good enough while not too large.
+        TODO: Integrate other Paligemma2 versions, for now it supports 7B so that the model is good enough while not too large.
         """
         self.max_length = max_length
         self.num_beams = num_beams
@@ -48,16 +45,11 @@ class QwenCaptioner:
         else:
             self._device = torch.device(device)
 
-        # Create models
-        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
-            attn_implementation="flash_attention_2",
-            torch_dtype=torch.float16,
-            device_map=self._device,
-        )
-
-        # default processor
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
+        model_id = "google/paligemma2-3b-pt-448"
+        self.model = PaliGemmaForConditionalGeneration.from_pretrained(
+            model_id, torch_dtype=torch.bfloat16, device_map=self._device
+        ).eval()
+        self.processor = PaliGemmaProcessor.from_pretrained(model_id)
 
     def caption_image(
         self,
@@ -101,46 +93,21 @@ class QwenCaptioner:
         if bbox is None:
             prompt = "Describe the image."
         else:
-            prompt = "Describe the object in the red box."
+            prompt = "Describe the object in the red bounding box."
+        prompt = "<image>" + prompt + "Include as many details as possible!"
 
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "image": f"data:image;base64,{base64_encoded}",
-                    },
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "text",
-                        "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
-                    },
-                ],
-            }
-        ]
+        model_inputs = (
+            self.processor(text=prompt, images=pil_image, return_tensors="pt")
+            .to(torch.bfloat16)
+            .to(self.model.device)
+        )
+        input_len = model_inputs["input_ids"].shape[-1]
 
-        text = self.processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        image_inputs, video_inputs = process_vision_info(messages)
-        inputs = self.processor(
-            text=[text],
-            images=image_inputs,
-            videos=video_inputs,
-            padding=True,
-            return_tensors="pt",
-        )
-        inputs = inputs.to(self._device)
-
-        generated_ids = self.model.generate(
-            **inputs, max_new_tokens=self.max_length, num_beams=self.num_beams
-        )
-        generated_ids_trimmed = [
-            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = self.processor.batch_decode(
-            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )[0]
+        with torch.inference_mode():
+            generation = self.model.generate(
+                **model_inputs, max_new_tokens=self.max_length, do_sample=False
+            )
+            generation = generation[0][input_len:]
+            output_text = self.processor.decode(generation, skip_special_tokens=True)
 
         return output_text
