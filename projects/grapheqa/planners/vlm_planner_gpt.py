@@ -13,6 +13,7 @@ import base64
 import os
 import time
 from enum import Enum
+from io import BytesIO
 from typing import List, Union
 
 import numpy as np
@@ -244,24 +245,31 @@ class VLMPLannerEQAGPT:
             {"role": "user", "content": f"CURRENT STATE: {current_state_prompt}."},
         ]
 
+        images = self.sg_sim.images
+
         if self._use_image:
 
-            base64_image = encode_image(get_latest_image(self._output_path))
-            messages.append(
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "CURRENT IMAGE: This image represents the current view of the agent. Use this as additional information to answer the question.",
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-                        },
-                    ],
-                }
-            )
+            for image in images:
+                buffered = BytesIO()
+                image.save(buffered, format="PNG")
+                img_bytes = buffered.getvalue()
+                base64_image = base64.b64encode(img_bytes).decode("utf-8")
+                # base64_image = encode_image(get_latest_image(self._output_path))
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "CURRENT IMAGE: This image represents the current view of the agent. Use this as additional information to answer the question.",
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                            },
+                        ],
+                    }
+                )
 
         frontier_node_list, room_node_list, region_node_list, object_node_list = self.get_actions()
 
@@ -338,7 +346,8 @@ class VLMPLannerEQAGPT:
                 answer.confidence_level,
                 answer.answer,
                 answer.explanation_ans,
-                get_latest_image(self._output_path),
+                # get_latest_image(self._output_path),
+                self.sg_sim.images,
             )
 
         if step.__class__.__name__ == "Goto_object_node_step":
@@ -359,5 +368,6 @@ class VLMPLannerEQAGPT:
             answer.confidence_level,
             answer.answer,
             answer.explanation_ans,
-            get_latest_image(self._output_path),
+            # get_latest_image(self._output_path),
+            self.sg_sim.images,
         )

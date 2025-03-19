@@ -43,8 +43,8 @@ from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 
-# from stretch.perception.captioners import VitGPT2Captioner
-from stretch.perception.captioners import QwenCaptioner
+# from stretch.perception.captioners import QwenCaptioner
+from stretch.perception.captioners.gemma_captioner import GemmaCaptioner
 from stretch.perception.encoders.siglip2_encoder import Siglip2Encoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -182,7 +182,7 @@ class RobotAgent(RobotAgentBase):
             When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
             Example:
                 Input: Where is the pen?
-                Output: pen,table
+                Output: pen
 
                 Input: Is there grey cloth on cloth hanger?
                 Output: gery cloth,cloth hanger
@@ -199,9 +199,8 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = Siglip2Encoder(device=self.device, version="giant")
-        # self.captioner = VitGPT2Captioner(device=self.device)
-        self.captioner = QwenCaptioner(device=self.device)
+        self.encoder = Siglip2Encoder(device=self.device, version="so400m")
+        self.captioner = GemmaCaptioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
@@ -354,9 +353,7 @@ class RobotAgent(RobotAgentBase):
             ).astype(np.float64)
         self.current_rgb_list.append(rgb)
         if len(self.current_rgb_list) >= self.max_rgb_number:
-            self.sg_sim.update(
-                frontier_nodes=self.clustered_frontiers, imgs_rgb=self.current_rgb_list
-            )
+            self.sg_sim.update(frontier_nodes=self.clustered_frontiers)
             self.current_rgb_list = []
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)
@@ -394,9 +391,7 @@ class RobotAgent(RobotAgentBase):
                 self.robot.look_front()
                 self.robot.switch_to_navigation_mode()
 
-            self.sg_sim.update(
-                frontier_nodes=self.clustered_frontiers, imgs_rgb=self.current_rgb_list
-            )
+            self.sg_sim.update(frontier_nodes=self.clustered_frontiers)
             self.current_rgb_list = []
 
             (

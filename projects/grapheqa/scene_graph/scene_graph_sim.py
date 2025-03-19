@@ -113,24 +113,14 @@ class SceneGraphSim:
             )
         self.captioner = captioner
 
-        # self.question_embed = self.processor(
-        #     text=[clean_ques_ans], padding="max_length", return_tensors="pt"
-        # ).to(device)
-        # self.question_embed_labels = self.processor(
-        #     text=[labels], padding="max_length", return_tensors="pt"
-        # ).to(device)
-        # self.question_embed_exist = self.processor(
-        #     text=[exist], padding="max_length", return_tensors="pt"
-        # ).to(device)
-        # self.question_embed = self.question_embed_labels.copy()
-        # self.question_embed["input_ids"] = (
-        #     (self.question_embed_labels["input_ids"] + self.question_embed_exist["input_ids"]) / 2.0
-        # ).to(self.question_embed_labels["input_ids"].dtype)
-
         # For computing img embeds
         self.imgs_embed = None
         self.imgs_rgb = None
         self.cache_size = cache_size
+
+        # For saving image
+        self.current_step = 0
+        self.images = None
 
     @property
     def scene_graph_str(self):
@@ -472,12 +462,12 @@ class SceneGraphSim:
                 room_str = f" at room node: {room_id[0]} with name {room_name}"
         return f"{agent_loc_str} {room_str}"
 
-    def update(self, imgs_rgb, frontier_nodes=[]):
+    def update(self, frontier_nodes=[]):
 
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
-        self.save_best_image(imgs_rgb)
+        self.save_best_images_with_scene_graph()
 
         self.add_room_labels_to_sg()
 
@@ -486,6 +476,63 @@ class SceneGraphSim:
 
     def get_position_from_id(self, nodeid):
         return np.array(self.filtered_netx_graph.nodes[nodeid]["position"])
+
+    def save_best_images_with_scene_graph(self):
+        """
+        Given smenatic features stored, return most relevant images
+        """
+        start = time.time()
+        image_embedding_list = []
+        image_list = []
+        bbox_list = []
+
+        # Gather all image list
+        for instance in self.scene_graph.instances:
+            image_embedding = instance.get_image_embedding(aggregation_method="mean").reshape(-1)
+            instance_view = instance.get_best_view()
+            image_embedding_list.append(image_embedding)
+            image_list.append(instance_view.cropped_image)
+            bbox_list.append(instance_view.bbox)
+        image_embeddings = torch.stack(image_embedding_list).to(self.device)
+
+        similarity_matrix = (
+            image_embeddings @ self.text_embeds.reshape(-1, image_embeddings.shape[-1]).T
+        )
+        top_k_indices = torch.argsort(similarity_matrix, dim=0, descending=True)
+
+        self.images = []
+        for (i, img_indices) in enumerate(top_k_indices.transpose(1, 0)):
+            rel_imgs = []
+            label = self.enrich_object_labels[i]
+            # For each text query, find the most relevant topk images
+            for idx in range(len(img_indices)):
+                color_img = np.array(image_list[img_indices[idx].item()]).copy()
+                cv2.putText(
+                    color_img,
+                    str(f"Image {idx+1}"),
+                    (20, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 0, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
+
+                # check whether this image has already been added. This process forces different images will be added.
+                added = False
+                for i in rel_imgs:
+                    if np.array_equal(i, color_img):
+                        added = True
+                if not added:
+                    rel_imgs.append(color_img)
+                if len(rel_imgs) >= self.topk:
+                    break
+
+            final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1).astype(np.uint8))
+            final_img.save(self.output_path + f"/current_img_{self.current_step}_{label}.png")
+            self.images.append(final_img)
+        self.current_step += 1
+        print(f"===========time taken for SigLIP emb: {time.time()-start}")
 
     def save_best_image(self, imgs_rgb):
 
