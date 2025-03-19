@@ -23,9 +23,19 @@ from openai import OpenAI
 from PIL import Image
 from pydantic import BaseModel
 
-from stretch.perception.captioners import QwenCaptioner
+from stretch.perception.captioners.gemma_captioner import GemmaCaptioner
+from stretch.perception.captioners.internvl_captioner import InternvlCaptioner
+from stretch.perception.captioners.openai_captioner import OpenaiCaptioner
+from stretch.perception.captioners.paligemma_captioner_captioner import PaligemmaCaptioner
+from stretch.perception.captioners.qwen_captioner import QwenCaptioner
 
-# from itertools import chain
+Grounded_Captioner = [
+    QwenCaptioner,
+    PaligemmaCaptioner,
+    GemmaCaptioner,
+    InternvlCaptioner,
+    OpenaiCaptioner,
+]
 
 
 if "OPENAI_API_KEY" in os.environ:
@@ -216,9 +226,11 @@ class SceneGraphSim:
             )
             if area < self.min_area:
                 continue
-            if best_view.text_description is None:
+            if self.captioner is None:
+                attr["name"] = instance.name + "_" + str(instance.global_id)
+            elif best_view.text_description is None:
                 # Qwen captioner takes a complete image plus a bounding box
-                if isinstance(self.captioner, QwenCaptioner):
+                if type(self.captioner) in Grounded_Captioner:
                     bbox = []
                     bbox.append(int(best_view.bbox[0, 1].item()) - 10)
                     bbox.append(int(best_view.bbox[0, 0].item()) - 10)
@@ -235,9 +247,10 @@ class SceneGraphSim:
                     best_view.text_description = self.captioner.caption_image(
                         best_view.cropped_image.to(dtype=torch.uint8)
                     )
+                attr["name"] = best_view.text_description
+            else:
+                attr["name"] = best_view.text_description
 
-            attr["name"] = instance.get_best_view().text_description
-            # attr["name"] = instance.name + "_" + str(instance.global_id)
             # attr["label"] = "object_" + str(instance.global_id)
             # bounds is a (3 x 2) mins and max
             # attr["bbox"] = instance.bounds.tolist()
@@ -462,12 +475,13 @@ class SceneGraphSim:
                 room_str = f" at room node: {room_id[0]} with name {room_name}"
         return f"{agent_loc_str} {room_str}"
 
-    def update(self, frontier_nodes=[]):
+    def update(self, frontier_nodes=[], imgs_rgb=[]):
 
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
-        self.save_best_images_with_scene_graph()
+        # self.save_best_images_with_scene_graph()
+        self.save_best_image(imgs_rgb=imgs_rgb)
 
         self.add_room_labels_to_sg()
 
@@ -521,7 +535,7 @@ class SceneGraphSim:
                 # check whether this image has already been added. This process forces different images will be added.
                 added = False
                 for i in rel_imgs:
-                    if np.array_equal(i, color_img):
+                    if np.array_equal(i.astype(np.uint8), color_img.astype(np.uint8)):
                         added = True
                 if not added:
                     rel_imgs.append(color_img)
