@@ -109,6 +109,10 @@ class OvmmPerception:
                 confidence_threshold=yolo_threshold,
                 **module_kwargs,
             )
+        elif self._detection_module == "owlsam":
+            from stretch.perception.detection.owl import OWLSAMProcessor
+
+            self._segmentation = OWLSAMProcessor()
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
 
