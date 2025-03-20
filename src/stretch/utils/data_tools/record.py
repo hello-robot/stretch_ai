@@ -303,9 +303,15 @@ class FileDataRecorder:
 
     def process_depth_to_bin(self, episode_dir: Path, head: bool = False) -> None:
         if head:
+            if len(self.head_depths) == 0:
+                print("You might have not yet collected any data!")
+                return
             all_depth_data = np.stack(self.head_depths, axis=0)
             target_depth_filename = episode_dir / COMPLETED_HEAD_DEPTH_FILENAME
         else:
+            if len(self.depths) == 0:
+                print("You might have not yet collected any data!")
+                return
             all_depth_data = np.stack(self.depths, axis=0)
             target_depth_filename = episode_dir / COMPLETED_DEPTH_FILENAME
         # Now zip and save this depth data.
