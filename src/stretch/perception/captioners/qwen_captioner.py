@@ -50,14 +50,14 @@ class QwenCaptioner:
 
         # Create models
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
+            "Qwen/Qwen2.5-VL-3B-Instruct-AWQ",
             attn_implementation="flash_attention_2",
             torch_dtype=torch.float16,
             device_map=self._device,
         )
 
         # default processor
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct-AWQ")
 
     def caption_image(
         self,
@@ -84,16 +84,15 @@ class QwenCaptioner:
 
         buffered = BytesIO()
 
-        if bbox is not None:
-            h, w = pil_image.size
-            bbox[0] = max(1, bbox[0])
-            bbox[1] = max(1, bbox[1])
-            bbox[2] = max(h - 2, bbox[2])
-            bbox[3] = max(w - 2, bbox[3])
-            draw = ImageDraw.Draw(pil_image)
-            draw.rectangle(bbox, outline="red", width=2)
         if self.image_shape is not None:
+            h, w = pil_image.size
             pil_image = pil_image.resize(self.image_shape)
+            if bbox is not None:
+                h1, w1 = self.image_shape
+                bbox[0] = bbox[0] * h1 // h
+                bbox[1] = bbox[1] * w1 // w
+                bbox[2] = bbox[2] * h1 // h
+                bbox[3] = bbox[3] * w1 // w
         pil_image.save(buffered, format="PNG")
         img_bytes = buffered.getvalue()
         base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
@@ -101,7 +100,7 @@ class QwenCaptioner:
         if bbox is None:
             prompt = "Describe the image."
         else:
-            prompt = "Describe the object in the red box."
+            prompt = "Describe the object in the box " + str(bbox)
 
         messages = [
             {
@@ -142,5 +141,10 @@ class QwenCaptioner:
         output_text = self.processor.batch_decode(
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
+
+        if bbox is not None:
+            draw = ImageDraw.Draw(pil_image)
+            draw.rectangle(bbox, outline="red", width=2)
+            pil_image.save("test/" + output_text + ".jpg")
 
         return output_text

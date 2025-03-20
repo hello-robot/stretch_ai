@@ -199,7 +199,7 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = Siglip2Encoder(device=self.device, version="so400m")
+        self.encoder = Siglip2Encoder(device=self.device, version="giant")
         self.captioner = QwenCaptioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(

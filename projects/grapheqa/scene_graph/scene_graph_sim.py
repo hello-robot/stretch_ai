@@ -26,7 +26,7 @@ from pydantic import BaseModel
 from stretch.perception.captioners.gemma_captioner import GemmaCaptioner
 from stretch.perception.captioners.internvl_captioner import InternvlCaptioner
 from stretch.perception.captioners.openai_captioner import OpenaiCaptioner
-from stretch.perception.captioners.paligemma_captioner_captioner import PaligemmaCaptioner
+from stretch.perception.captioners.paligemma_captioner import PaligemmaCaptioner
 from stretch.perception.captioners.qwen_captioner import QwenCaptioner
 
 Grounded_Captioner = [
@@ -480,8 +480,8 @@ class SceneGraphSim:
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
-        # self.save_best_images_with_scene_graph()
-        self.save_best_image(imgs_rgb=imgs_rgb)
+        self.save_best_images_with_scene_graph()
+        # self.save_best_image(imgs_rgb=imgs_rgb)
 
         self.add_room_labels_to_sg()
 

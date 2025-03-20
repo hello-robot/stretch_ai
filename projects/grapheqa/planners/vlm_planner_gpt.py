@@ -13,8 +13,7 @@ import base64
 import os
 import time
 from enum import Enum
-
-# from io import BytesIO
+from io import BytesIO
 from typing import List, Union
 
 import numpy as np
@@ -179,7 +178,7 @@ class VLMPLannerEQAGPT:
             Describe the CURRENT IMAGE. Pay special attention to features that can help answer the question or select future actions.
             Describe the SCENE GRAPH. Pay special attention to features that can help answer the question or select future actions.
             """
-        # prompt += "You should go near the blue couch before answering the question with confidence. You should see a full image of the couch before answering with confidence"
+        prompt += "You should go near the blue couch before answering the question with confidence. You should see a full image of the couch before answering with confidence"
         prompt_no_image = f"""You are an excellent hierarchical graph planning agent. 
             Your goal is to navigate an unseen environment to confidently answer a multiple-choice question about the environment.
             As you explore the environment, your sensors are building a scene graph representation (in json format) and you have access to that scene graph.  
@@ -246,48 +245,48 @@ class VLMPLannerEQAGPT:
             {"role": "user", "content": f"CURRENT STATE: {current_state_prompt}."},
         ]
 
-        # images = self.sg_sim.images
+        images = self.sg_sim.images
 
         if self._use_image:
 
-            base64_image = encode_image(get_latest_image(self._output_path))
-            messages.append(
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "CURRENT IMAGE: This image represents the current view of the agent. Use this as additional information to answer the question.",
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-                        },
-                    ],
-                }
-            )
+            # base64_image = encode_image(get_latest_image(self._output_path))
+            # messages.append(
+            #     {
+            #         "role": "user",
+            #         "content": [
+            #             {
+            #                 "type": "text",
+            #                 "text": "CURRENT IMAGE: This image represents the current view of the agent. Use this as additional information to answer the question.",
+            #             },
+            #             {
+            #                 "type": "image_url",
+            #                 "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+            #             },
+            #         ],
+            #     }
+            # )
 
-            # for image in images:
-            #     buffered = BytesIO()
-            #     image.save(buffered, format="PNG")
-            #     img_bytes = buffered.getvalue()
-            #     base64_image = base64.b64encode(img_bytes).decode("utf-8")
-            #     # base64_image = encode_image(get_latest_image(self._output_path))
-            #     messages.append(
-            #         {
-            #             "role": "user",
-            #             "content": [
-            #                 {
-            #                     "type": "text",
-            #                     "text": "CURRENT IMAGE: This image represents the current view of the agent. Use this as additional information to answer the question.",
-            #                 },
-            #                 {
-            #                     "type": "image_url",
-            #                     "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-            #                 },
-            #             ],
-            #         }
-            #     )
+            for image in images:
+                buffered = BytesIO()
+                image.save(buffered, format="PNG")
+                img_bytes = buffered.getvalue()
+                base64_image = base64.b64encode(img_bytes).decode("utf-8")
+                # base64_image = encode_image(get_latest_image(self._output_path))
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "CURRENT IMAGE: This image represents the current view of the agent. Use this as additional information to answer the question.",
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                            },
+                        ],
+                    }
+                )
 
         frontier_node_list, room_node_list, region_node_list, object_node_list = self.get_actions()
 
