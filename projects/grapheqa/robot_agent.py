@@ -32,7 +32,6 @@ from planners import VLMPLannerEQAGPT
 from scene_graph import SceneGraphSim
 from sklearn.cluster import DBSCAN
 
-# )
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -43,11 +42,11 @@ from stretch.mapping.instance import Instance
 from stretch.mapping.scene_graph import SceneGraph
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.captioners import QwenCaptioner
-
-# from stretch.perception.captioners.gemma_captioner import GemmaCaptioner
+from stretch.perception.captioners.gemma_captioner import GemmaCaptioner
 from stretch.perception.encoders.siglip2_encoder import Siglip2Encoder
 from stretch.perception.wrapper import OvmmPerception
+
+# from stretch.perception.captioners import QwenCaptioner
 
 
 class RobotAgent(RobotAgentBase):
@@ -200,8 +199,8 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
-        self.encoder = Siglip2Encoder(device=self.device, version="giant")
-        self.captioner = QwenCaptioner(device=self.device)
+        self.encoder = Siglip2Encoder(device=self.device, version="so400m")
+        self.captioner = GemmaCaptioner(device=self.device)
 
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],

@@ -76,8 +76,8 @@ class OpenaiCaptioner:
             h, w = pil_image.size
             bbox[0] = max(1, bbox[0])
             bbox[1] = max(1, bbox[1])
-            bbox[2] = max(h - 2, bbox[2])
-            bbox[3] = max(w - 2, bbox[3])
+            bbox[2] = min(h - 2, bbox[2])
+            bbox[3] = min(w - 2, bbox[3])
             draw = ImageDraw.Draw(pil_image)
             draw.rectangle(bbox, outline="red", width=2)
         if self.image_shape is not None:

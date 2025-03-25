@@ -113,11 +113,11 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self.encoder = encoder
         self.captioner = captioner
         matching_config = ViewMatchingConfig(
-            box_overlap_weight=0.2,
-            visual_similarity_weight=0.8,
+            box_overlap_weight=0.1,
+            visual_similarity_weight=0.9,
             box_min_iou_thresh=0.005,
-            min_similarity_thresh=0.05,
-            box_match_mode=Bbox3dOverlapMethodEnum.NN_RATIO,
+            min_similarity_thresh=0.01,
+            box_match_mode=Bbox3dOverlapMethodEnum.ONE_SIDED_IOU,
         )
         self.instances = InstanceMemory(
             num_envs=1,

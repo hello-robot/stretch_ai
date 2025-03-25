@@ -146,17 +146,17 @@ class VLMPLannerEQAGPT:
 
     @property
     def agent_role_prompt(self):
-        scene_graph_desc = "A scene graph represents an indoor environment in node list.\n \
-         Each node can represent an object, an unexplored frontier, or the agent current position \n"
+        scene_graph_desc = "A scene graph represents an indoor environment in node list. \
+         Each node can represent an object, an unexplored frontier, or the agent current position \
+         There will be links between two object or an object and a frontier point if these two objects are close to each other."
         current_state_des = "'CURRENT AGENT STATE' will give you the exact location of the agent in the scene graph by giving you the agent node id, location. "
 
         if self._use_image:
-            current_state_des += "Additionally, you will also be given the current view of the agent as an image.\n \
-                The information in the image is very useful and should be prioritized when answering the question! \n \
+            current_state_des += "Additionally, you will also be given the current view of the agent as an image.\
+                The information in the image is very useful and should be prioritized when answering the question! \
                 Moreover, I will also provide you objects associated in each image, you can use that for planning your next action."
 
-        prompt = f"""You are an excellent hierarchical graph planning agent. 
-            Your goal is to navigate an unseen environment to confidently answer a multiple-choice question about the environment.
+        prompt = f"""Your goal is to navigate an unseen environment to confidently answer a question about the environment.
             As you explore the environment, your sensors are building a scene graph representation (in json format) and you have access to that scene graph.  
             {scene_graph_desc}. {current_state_des} 
             Given the current state information, try to answer the question. 

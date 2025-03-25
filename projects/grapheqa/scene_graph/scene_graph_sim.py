@@ -475,8 +475,8 @@ class SceneGraphSim:
         self._build_sg_from_hydra_graph()
         self.update_frontier_nodes(frontier_nodes)
 
-        self.save_best_images_with_scene_graph()
-        # self.save_best_image(imgs_rgb=imgs_rgb)
+        # self.save_best_images_with_scene_graph()
+        self.save_best_image(imgs_rgb=imgs_rgb)
 
         self.add_room_labels_to_sg()
 
@@ -498,7 +498,7 @@ class SceneGraphSim:
         # Gather all image list
         for instance in self.scene_graph.instances:
             image_embedding = instance.get_image_embedding(aggregation_method="mean").reshape(-1)
-            instance_view = instance.get_best_view()
+            instance_view = instance.get_best_view(metric="update_time")
             image_embedding_list.append(image_embedding)
             image_list.append(instance_view.cropped_image)
             instance_id_list.append(instance.global_id)
@@ -583,14 +583,21 @@ class SceneGraphSim:
                 self.imgs_rgb = self.imgs_rgb[-self.cache_size :, :]
                 self.imgs_embed = self.imgs_embed[-self.cache_size :, :]
 
-            logits = torch.mean(
-                self.imgs_embed @ self.text_embeds.reshape(-1, self.imgs_embed.shape[-1]).T, dim=-1
-            )
-            top_k_indices = torch.argsort(logits, descending=True)[: self.topk]
+            # logits = torch.mean(
+            #     self.imgs_embed @ self.text_embeds.reshape(-1, self.imgs_embed.shape[-1]).T, dim=-1
+            # )
+            logits = self.imgs_embed @ self.text_embeds.reshape(-1, self.imgs_embed.shape[-1]).T
 
+            top_k_indices = torch.argsort(logits, dim=0, descending=True)[: self.topk]
+
+        self.images = {}
+        for (i, img_indices) in enumerate(top_k_indices.transpose(1, 0)):
             rel_imgs = []
-            for idx in range(len(top_k_indices)):
-                color_img = np.array(self.imgs_rgb)[top_k_indices[idx]].copy()
+            label = self.enrich_object_labels[i]
+            object_ids = ""
+            # For each text query, find the most relevant topk images
+            for idx in range(len(img_indices)):
+                color_img = np.array(self.imgs_rgb[img_indices[idx].item()]).copy()
                 cv2.putText(
                     color_img,
                     str(f"Image {idx+1}"),
@@ -601,26 +608,14 @@ class SceneGraphSim:
                     1,
                     cv2.LINE_AA,
                 )
-                rel_imgs.append(color_img)
-                # adding the last image
-            if self.choose_final_image:
-                color_img = imgs_rgb[-1].copy()
-                cv2.putText(
-                    color_img,
-                    str(f"Image {len(top_k_indices)+1}"),
-                    (20, 20),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 0, 0),
-                    1,
-                    cv2.LINE_AA,
-                )
+
                 rel_imgs.append(color_img)
 
-            final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1))
-
-            final_img.save(self.output_path + f"/current_img_{img_idx}.png")
-            print(f"===========time taken for CLIP/SigLIP emb: {time.time()-start}")
+            final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1).astype(np.uint8))
+            final_img.save(self.output_path + f"/current_img_{self.current_step}_{label}.png")
+            self.images["image_" + str(img_indices[idx].item())] = final_img
+        self.current_step += 1
+        print(f"===========time taken for SigLIP emb: {time.time()-start}")
 
     def remove_close_positions(self, data, threshold):
         # Sort the list by confidence in descending order

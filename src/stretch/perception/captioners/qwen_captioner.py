@@ -52,14 +52,14 @@ class QwenCaptioner:
 
         # Create models
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
+            "Qwen/Qwen2.5-VL-3B-Instruct-AWQ",
             attn_implementation="flash_attention_2",
             torch_dtype=torch.float16,
             device_map=self._device,
         )
 
         # default processor
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct-AWQ")
 
         self.draw_on_image = draw_on_image
 
@@ -98,6 +98,11 @@ class QwenCaptioner:
                 bbox[2] = bbox[2] * h1 // h
                 bbox[3] = bbox[3] * w1 // w
         if self.draw_on_image:
+            h, w = pil_image.size
+            bbox[0] = max(1, bbox[0])
+            bbox[1] = max(1, bbox[1])
+            bbox[2] = min(h - 2, bbox[2])
+            bbox[3] = min(w - 2, bbox[3])
             draw = ImageDraw.Draw(pil_image)
             draw.rectangle(bbox, outline="red", width=1)
         pil_image.save(buffered, format="PNG")

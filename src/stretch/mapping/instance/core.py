@@ -197,6 +197,8 @@ class Instance:
                 if area > best_area:
                     best_area = area
                     best_view = view
+        elif metric == "update_time":
+            best_view = self.instance_views[-1]
         else:
             raise NotImplementedError(f"metric {metric} not supported")
         return best_view

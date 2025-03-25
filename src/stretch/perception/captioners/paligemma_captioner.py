@@ -46,7 +46,7 @@ class PaligemmaCaptioner:
         else:
             self._device = torch.device(device)
 
-        model_id = "google/paligemma2-3b-pt-448"
+        model_id = "google/paligemma2-3b-mix-448"
         self.model = PaliGemmaForConditionalGeneration.from_pretrained(
             model_id, torch_dtype=torch.bfloat16, device_map=self._device
         ).eval()
@@ -81,8 +81,8 @@ class PaligemmaCaptioner:
             h, w = pil_image.size
             bbox[0] = max(1, bbox[0])
             bbox[1] = max(1, bbox[1])
-            bbox[2] = max(h - 2, bbox[2])
-            bbox[3] = max(w - 2, bbox[3])
+            bbox[2] = min(h - 2, bbox[2])
+            bbox[3] = min(w - 2, bbox[3])
             draw = ImageDraw.Draw(pil_image)
             draw.rectangle(bbox, outline="red", width=2)
         if self.image_shape is not None:
@@ -95,7 +95,7 @@ class PaligemmaCaptioner:
             prompt = "Describe the image."
         else:
             prompt = "Describe the object in the red bounding box."
-        prompt = "<image>" + prompt + "Include as many details as possible!"
+        prompt = "<image>" + prompt + "E.G. a yellow box; a ceramic cup"
 
         model_inputs = (
             self.processor(text=prompt, images=pil_image, return_tensors="pt")
