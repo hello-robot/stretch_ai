@@ -117,8 +117,12 @@ class VLMPLannerEQAGPT:
         object_node_list = Enum(
             "object_node_list",
             {
-                id: name
-                for id, name in zip(self.sg_sim.object_node_ids, self.sg_sim.object_node_names)
+                id: name + " at " + str(position)
+                for id, name, position in zip(
+                    self.sg_sim.object_node_ids,
+                    self.sg_sim.object_node_names,
+                    self.sg_sim.filtered_obj_positions,
+                )
             },
             type=str,
         )
@@ -168,7 +172,7 @@ class VLMPLannerEQAGPT:
             You also have to choose the next action, one which will enable you to answer the question better. 
             Goto_object_node_step: Navigates near a certain object in the scene graph. Choose this action to get a good view of the region around this object, if you think going near this object will help you answer the question better.
             Important to note, the scene contains incomplete information about the environment (objects maybe missing, relationships might be unclear), so it is useful to go near relevant objects to get a better view to answer the question. 
-            Use a scene graph as an imperfect guide to lead you to relevant regions to inspect. \n
+            Use a scene graph as an imperfect guide to lead you to relevant regions to inspect.
             Goto_frontier_node_step: If you think that using action "Goto_object_node_step" is not useful, in other words, if you think that going near any of the object nodes in the current scene graph will not provide you with any useful information to answer the question better, then choose this action.
             This action will navigate you to a frontier (unexplored) region of the environment and will provide you information about new objects/rooms not yet in the scene graph. It will expand the scene graph. 
             Choose this frontier based on the objects connected this frontier, in other words, Goto the frontier near which you see objects that are useful for answering the question or seem useful as a good exploration direction. Explain reasoning for choosing this frontier, by listing the list of objects (<id> and <name>) connected to this frontier node via a link (refer to scene graph) \n \

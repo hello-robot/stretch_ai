@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import click
+import cv2
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
@@ -338,6 +339,13 @@ class RobotAgent(RobotAgentBase):
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
+
+        cv2.imwrite(self.log + "/rgb" + str(self.obs_count) + ".jpg", rgb[:, :, [2, 1, 0]])
+        np.save(self.log + "/rgb" + str(self.obs_count) + ".npy", rgb)
+        np.save(self.log + "/depth" + str(self.obs_count) + ".npy", depth)
+        np.save(self.log + "/intrinsics" + str(self.obs_count) + ".npy", K)
+        np.save(self.log + "/pose" + str(self.obs_count) + ".npy", camera_pose)
+
         if self.semantic_sensor is not None:
             # Semantic prediction
             obs = self.semantic_sensor.predict(obs)

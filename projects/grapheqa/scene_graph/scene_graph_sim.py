@@ -82,7 +82,7 @@ class SceneGraphSim:
         use_class_labels: bool = False,
     ):
         self.robot = robot
-        self.topk = 2
+        self.topk = 3
         self.img_subsample_freq = 1
         self.device = device
         # TODO: remove hard coding
@@ -90,7 +90,7 @@ class SceneGraphSim:
 
         self.save_image = True
         self.include_regions = False
-        # self.enrich_frontiers = True
+        self.enrich_frontiers = True
 
         self.output_path = output_path
         self.scene_graph = scene_graph
@@ -188,7 +188,7 @@ class SceneGraphSim:
         nearby = np.linalg.norm(frontier_node_positions - agent_pos, axis=-1) < 2.0
         return np.logical_and(in_plane, nearby)
 
-    def _build_sg_from_hydra_graph(self, add_object_edges=False):
+    def _build_sg_from_hydra_graph(self, add_object_edges=True):
         start = time.time()
         self.filtered_netx_graph = nx.DiGraph()
 
@@ -270,7 +270,7 @@ class SceneGraphSim:
             self.filtered_obj_sizes.append(size)
             self.filtered_obj_ids.append(node_id)
             self._object_node_ids.append(node_id)
-            self._object_node_names.append(instance.name)
+            self._object_node_names.append(attr["name"])
 
             self.filtered_netx_graph.add_nodes_from([(node_id, attr)])
 
@@ -294,12 +294,12 @@ class SceneGraphSim:
                 instance_a = self.scene_graph.instances[idx_a]
                 instance_b = self.scene_graph.instances[idx_b]
                 if (
-                    instance_a.name in self.filter_out_objects
-                    or instance_b in self.filter_out_objects
+                    "object_" + str(instance_a.global_id) not in self._object_node_ids
+                    or "object_" + str(instance_b.global_id) not in self._object_node_ids
                 ):
                     continue
-                sourceid = instance_a.name + "_" + str(instance_a.global_id)
-                targetid = instance_b.name + "_" + str(instance_b.global_id)
+                sourceid = "object_" + str(instance_a.global_id)
+                targetid = "object_" + str(instance_b.global_id)
                 edge_type = "object-to-object"
                 edge_id = f"{sourceid}-to-{targetid}"
                 self.filtered_netx_graph.add_edges_from(
@@ -308,8 +308,8 @@ class SceneGraphSim:
                             sourceid,
                             targetid,
                             {
-                                "source_name": instance_a.name,
-                                "target_name": instance_b.name,
+                                # "source_name": instance_a.name,
+                                # "target_name": instance_b.name,
                                 "type": edge_type,
                             },
                         )
@@ -339,33 +339,33 @@ class SceneGraphSim:
                 relevent_node_ids = self.filtered_obj_ids[relevant_objs]
                 relevant_obj_pos = self.filtered_obj_positions[relevant_objs]
 
-                description = "Nearby objects: "
-                for nearby_object_id in relevent_node_ids:
-                    description += nearby_object_id + "; "
-                attr["name"] = description
+                # description = "Nearby objects: "
+                # for nearby_object_id in relevent_node_ids:
+                #     description += nearby_object_id + "; "
+                # attr["name"] = description
 
                 self._frontier_node_ids.append(nodeid)
                 self.filtered_netx_graph.add_nodes_from([(nodeid, attr)])
 
-                # if self.enrich_frontiers:
-                #     edge_type = "frontier-to-object"
+                if self.enrich_frontiers:
+                    edge_type = "frontier-to-object"
 
-                #     for obj_id, obj_pos in zip(relevent_node_ids, relevant_obj_pos):
-                #         edgeid = f"{nodeid}-to-{obj_id}"
+                    for obj_id, obj_pos in zip(relevent_node_ids, relevant_obj_pos):
+                        edgeid = f"{nodeid}-to-{obj_id}"
 
-                #         self.filtered_netx_graph.add_edges_from(
-                #             [
-                #                 (
-                #                     nodeid,
-                #                     obj_id,
-                #                     {
-                #                         "source_name": "frontier",
-                #                         "target_name": "object",
-                #                         "type": edge_type,
-                #                     },
-                #                 )
-                #             ]
-                #         )
+                        self.filtered_netx_graph.add_edges_from(
+                            [
+                                (
+                                    nodeid,
+                                    obj_id,
+                                    {
+                                        # "source_name": "frontier",
+                                        # "target_name": "object",
+                                        "type": edge_type,
+                                    },
+                                )
+                            ]
+                        )
 
     def add_room_labels_to_sg(self):
         self._room_names = []
