@@ -223,8 +223,10 @@ class AStar(Planner):
             else:
                 j = i + 1
             # Include the mid waypoint to avoid the collision
-            # if j - i >= 2:
-            #     cleaned_path.append(path[(i + j) // 2])
+            if j - i >= 2 and self.point_is_occupied(
+                (path[i][0] + path[j][0]) // 2, (path[i][1] + path[j][1]) // 2
+            ):
+                cleaned_path.append(path[(i + j) // 2])
             cleaned_path.append(path[j])
             i = j
         return cleaned_path

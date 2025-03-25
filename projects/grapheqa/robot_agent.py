@@ -44,7 +44,7 @@ from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.captioners import QwenCaptioner
 
-# from stretch.perception.captioners.paligemma_captioner import PaligemmaCaptioner
+# from stretch.perception.captioners.gemma_captioner import GemmaCaptioner
 from stretch.perception.encoders.siglip2_encoder import Siglip2Encoder
 from stretch.perception.wrapper import OvmmPerception
 

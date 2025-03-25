@@ -7,6 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+import os
 from typing import Optional, Union
 
 import torch
@@ -126,7 +127,7 @@ class InternvlCaptioner:
             self._device = torch.device(device)
 
         # Create models
-        path = "OpenGVLab/InternVL2_5-8B"
+        path = "OpenGVLab/InternVL2_5-4B"
         self.model = AutoModel.from_pretrained(
             path,
             torch_dtype=torch.bfloat16,
@@ -183,5 +184,10 @@ class InternvlCaptioner:
         pixel_values = load_image(pil_image, max_num=12).to(torch.bfloat16).to(self._device)
         generation_config = dict(max_new_tokens=100, do_sample=True)
         output_text = self.model.chat(self.tokenizer, pixel_values, question, generation_config)
+
+        if bbox is not None:
+            if not os.path.exists("test_caption/"):
+                os.makedirs("test_caption")
+            pil_image.save("test_caption/" + output_text + ".jpg")
 
         return output_text

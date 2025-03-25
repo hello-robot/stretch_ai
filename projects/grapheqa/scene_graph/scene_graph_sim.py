@@ -82,7 +82,7 @@ class SceneGraphSim:
         use_class_labels: bool = False,
     ):
         self.robot = robot
-        self.topk = 3
+        self.topk = 2
         self.img_subsample_freq = 1
         self.device = device
         # TODO: remove hard coding
@@ -173,13 +173,8 @@ class SceneGraphSim:
         self.text_embeds = []
         for enrich_object_label in self.enrich_object_labels:
             label = enrich_object_label.replace(".", "")
-            exist = f"There is  {label} in the scene."
             with torch.no_grad():
-                self.text_embeds.append(
-                    (self.encoder.encode_text(label) + self.encoder.encode_text(exist) / 2.0).to(
-                        self.device
-                    )
-                )
+                self.text_embeds.append(self.encoder.encode_text(label).to(self.device))
         self.text_embeds = torch.stack(self.text_embeds)
 
     def is_relevant_frontier(self, frontier_node_positions, agent_pos):
@@ -216,6 +211,8 @@ class SceneGraphSim:
         self.filtered_obj_positions, self.filtered_obj_ids, self.filtered_obj_sizes = [], [], []
 
         for instance in self.scene_graph.instances:
+            if instance.name in self.filter_out_objects:
+                continue
             attr = {}
             attr["position"] = torch.mean(instance.point_cloud, dim=0).tolist()
             # round up to prevent the scene graph str from being too long
@@ -269,8 +266,6 @@ class SceneGraphSim:
             # bb_labels.append(node.attributes.name)
             # bb_colors.append(node.attributes.color)
 
-            if instance.name in self.filter_out_objects:
-                continue
             self.filtered_obj_positions.append(attr["position"])
             self.filtered_obj_sizes.append(size)
             self.filtered_obj_ids.append(node_id)
@@ -498,7 +493,7 @@ class SceneGraphSim:
         start = time.time()
         image_embedding_list = []
         image_list = []
-        bbox_list = []
+        instance_id_list = []
 
         # Gather all image list
         for instance in self.scene_graph.instances:
@@ -506,7 +501,7 @@ class SceneGraphSim:
             instance_view = instance.get_best_view()
             image_embedding_list.append(image_embedding)
             image_list.append(instance_view.cropped_image)
-            bbox_list.append(instance_view.bbox)
+            instance_id_list.append(instance.global_id)
         image_embeddings = torch.stack(image_embedding_list).to(self.device)
 
         similarity_matrix = (
@@ -514,10 +509,11 @@ class SceneGraphSim:
         )
         top_k_indices = torch.argsort(similarity_matrix, dim=0, descending=True)
 
-        self.images = []
+        self.images = {}
         for (i, img_indices) in enumerate(top_k_indices.transpose(1, 0)):
             rel_imgs = []
             label = self.enrich_object_labels[i]
+            object_ids = ""
             # For each text query, find the most relevant topk images
             for idx in range(len(img_indices)):
                 color_img = np.array(image_list[img_indices[idx].item()]).copy()
@@ -535,16 +531,18 @@ class SceneGraphSim:
                 # check whether this image has already been added. This process forces different images will be added.
                 added = False
                 for i in rel_imgs:
-                    if np.array_equal(i.astype(np.uint8), color_img.astype(np.uint8)):
+                    if np.all((np.abs(i - color_img) <= 10).reshape(-1)):
                         added = True
                 if not added:
                     rel_imgs.append(color_img)
+                    # if "object_" + str(instance_id_list[img_indices[idx].item()]) in self._object_node_ids:
+                    object_ids += "object_" + str(instance_id_list[img_indices[idx].item()]) + ","
                 if len(rel_imgs) >= self.topk:
                     break
 
             final_img = Image.fromarray(np.concatenate(rel_imgs, axis=1).astype(np.uint8))
             final_img.save(self.output_path + f"/current_img_{self.current_step}_{label}.png")
-            self.images.append(final_img)
+            self.images[object_ids] = final_img
         self.current_step += 1
         print(f"===========time taken for SigLIP emb: {time.time()-start}")
 

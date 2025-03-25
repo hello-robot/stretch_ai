@@ -171,18 +171,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             target_is_valid = self.is_valid(np.array([selected_x, selected_y, theta]))
             if not target_is_valid:
                 continue
-            # if np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.35:
-            #     continue
-            # elif np.linalg.norm([selected_x - point[0], selected_y - point[1]]) <= 0.5:
-            #     i = (point[0] - selected_target[0]) // abs(point[0] - selected_target[0])
-            #     j = (point[1] - selected_target[1]) // abs(point[1] - selected_target[1])
-            #     index_i = int(selected_target[0].int() + i)
-            #     index_j = int(selected_target[1].int() + j)
-            #     if obstacles[index_i][index_j]:
-            #         target_is_valid = False
-
-            # if not target_is_valid:
-            #     continue
 
             return np.array([selected_x, selected_y, theta])
 

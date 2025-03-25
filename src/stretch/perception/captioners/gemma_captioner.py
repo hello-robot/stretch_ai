@@ -8,6 +8,7 @@
 # license information maybe found below, if so.
 
 import base64
+import os
 from io import BytesIO
 from typing import Optional, Union
 
@@ -98,5 +99,10 @@ class GemmaCaptioner:
 
         output = self.pipe(text=messages, max_new_tokens=self.max_length)
         output_text = output[0]["generated_text"][-1]["content"]
+
+        if bbox is not None:
+            if not os.path.exists("test_caption/"):
+                os.makedirs("test_caption")
+            pil_image.save("test_caption/" + output_text + ".jpg")
 
         return output_text

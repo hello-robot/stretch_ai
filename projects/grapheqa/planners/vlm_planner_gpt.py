@@ -148,7 +148,8 @@ class VLMPLannerEQAGPT:
 
         if self._use_image:
             current_state_des += "Additionally, you will also be given the current view of the agent as an image.\n \
-                The information in the image is very useful and should be prioritized when answering the question! \n"
+                The information in the image is very useful and should be prioritized when answering the question! \n \
+                Moreover, I will also provide you objects associated in each image, you can use that for planning your next action."
 
         prompt = f"""You are an excellent hierarchical graph planning agent. 
             Your goal is to navigate an unseen environment to confidently answer a multiple-choice question about the environment.
@@ -167,8 +168,7 @@ class VLMPLannerEQAGPT:
             You also have to choose the next action, one which will enable you to answer the question better. 
             Goto_object_node_step: Navigates near a certain object in the scene graph. Choose this action to get a good view of the region around this object, if you think going near this object will help you answer the question better.
             Important to note, the scene contains incomplete information about the environment (objects maybe missing, relationships might be unclear), so it is useful to go near relevant objects to get a better view to answer the question. 
-            Use a scene graph as an imperfect guide to lead you to relevant regions to inspect.
-            Choose the object in a hierarchical manner by first reasoning about which room you should goto to best answer the question, and then choose the specific object. \n
+            Use a scene graph as an imperfect guide to lead you to relevant regions to inspect. \n
             Goto_frontier_node_step: If you think that using action "Goto_object_node_step" is not useful, in other words, if you think that going near any of the object nodes in the current scene graph will not provide you with any useful information to answer the question better, then choose this action.
             This action will navigate you to a frontier (unexplored) region of the environment and will provide you information about new objects/rooms not yet in the scene graph. It will expand the scene graph. 
             Choose this frontier based on the objects connected this frontier, in other words, Goto the frontier near which you see objects that are useful for answering the question or seem useful as a good exploration direction. Explain reasoning for choosing this frontier, by listing the list of objects (<id> and <name>) connected to this frontier node via a link (refer to scene graph) \n \
@@ -266,8 +266,10 @@ class VLMPLannerEQAGPT:
             #     }
             # )
 
-            for image in images:
+            for object_ids in images.keys():
                 buffered = BytesIO()
+                image = images[object_ids]
+                object_ids = object_ids.split(",")[:-1]
                 image.save(buffered, format="PNG")
                 img_bytes = buffered.getvalue()
                 base64_image = base64.b64encode(img_bytes).decode("utf-8")
@@ -287,8 +289,25 @@ class VLMPLannerEQAGPT:
                         ],
                     }
                 )
+                if object_ids is not None and len(object_ids) > 0:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "You should use this information planning for exploration: this image is associated with these objects: "
+                                    + str(object_ids),
+                                },
+                            ],
+                        }
+                    )
 
         frontier_node_list, room_node_list, region_node_list, object_node_list = self.get_actions()
+
+        with open(self._output_path + "/llm_inputs.json", "w") as text_file:
+            for message in messages:
+                text_file.write(str(message["content"]))
 
         succ = False
         while not succ:

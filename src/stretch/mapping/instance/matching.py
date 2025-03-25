@@ -43,7 +43,7 @@ class ViewMatchingConfig:
     min_similarity_thresh: float = 0.5  # TODO: pass it using a config file
 
 
-def get_nn_ratio_similarity(points1, points2, voxel_size=0.05, delta_nn=0.1):
+def get_nn_ratio_similarity(points1, points2, voxel_size=0.05, delta_nn=0.15):
     voxel1 = VoxelizedPointcloud(voxel_size=voxel_size)
     voxel2 = VoxelizedPointcloud(voxel_size=voxel_size)
     voxel1.add(points1, features=None, rgb=None)

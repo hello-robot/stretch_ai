@@ -8,6 +8,7 @@
 # license information maybe found below, if so.
 
 import base64
+import os
 from io import BytesIO
 from typing import Optional, Union
 
@@ -30,6 +31,7 @@ class QwenCaptioner:
         num_beams: int = 1,
         device: Optional[str] = None,
         image_shape=None,
+        draw_on_image=True,
     ):
         """Initialize the Qwen2.5 image captioner.
 
@@ -50,14 +52,16 @@ class QwenCaptioner:
 
         # Create models
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-3B-Instruct-AWQ",
+            "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
             attn_implementation="flash_attention_2",
             torch_dtype=torch.float16,
             device_map=self._device,
         )
 
         # default processor
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct-AWQ")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
+
+        self.draw_on_image = draw_on_image
 
     def caption_image(
         self,
@@ -93,12 +97,17 @@ class QwenCaptioner:
                 bbox[1] = bbox[1] * w1 // w
                 bbox[2] = bbox[2] * h1 // h
                 bbox[3] = bbox[3] * w1 // w
+        if self.draw_on_image:
+            draw = ImageDraw.Draw(pil_image)
+            draw.rectangle(bbox, outline="red", width=1)
         pil_image.save(buffered, format="PNG")
         img_bytes = buffered.getvalue()
         base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
 
         if bbox is None:
             prompt = "Describe the image."
+        elif self.draw_on_image:
+            prompt = "Describe the object in the red bounding box."
         else:
             prompt = "Describe the object in the box " + str(bbox)
 
@@ -143,8 +152,11 @@ class QwenCaptioner:
         )[0]
 
         if bbox is not None:
-            draw = ImageDraw.Draw(pil_image)
-            draw.rectangle(bbox, outline="red", width=2)
-            pil_image.save("test/" + output_text + ".jpg")
+            if not self.draw_on_image:
+                draw = ImageDraw.Draw(pil_image)
+                draw.rectangle(bbox, outline="red", width=2)
+            if not os.path.exists("test_caption/"):
+                os.makedirs("test_caption")
+            pil_image.save("test_caption/" + output_text + ".jpg")
 
         return output_text
