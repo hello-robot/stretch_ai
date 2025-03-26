@@ -27,7 +27,7 @@ class QwenCaptioner:
 
     def __init__(
         self,
-        max_length: int = 100,
+        max_length: int = 200,
         num_beams: int = 1,
         device: Optional[str] = None,
         image_shape=None,
@@ -97,7 +97,7 @@ class QwenCaptioner:
                 bbox[1] = bbox[1] * w1 // w
                 bbox[2] = bbox[2] * h1 // h
                 bbox[3] = bbox[3] * w1 // w
-        if self.draw_on_image:
+        if self.draw_on_image and bbox is not None:
             h, w = pil_image.size
             bbox[0] = max(1, bbox[0])
             bbox[1] = max(1, bbox[1])
