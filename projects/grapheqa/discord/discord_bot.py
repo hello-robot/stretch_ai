@@ -273,12 +273,14 @@ class GraphEQADiscordBot(DiscordBot):
                     response, channel = self.next_question
                     self.next_question = None
                 answer, debug_image = self.agent.run_eqa(response)
+                if isinstance(debug_image, str):
+                    numpy_image = np.asarray(cv2.imread(debug_image))[:, :, [2, 1, 0]]
+                else:
+                    numpy_image = np.array(debug_image)
                 self.send_message(
                     channel=channel,
                     message=answer,
-                    content=numpy_image_to_bytes(
-                        np.asarray(cv2.imread(debug_image))[:, :, [2, 1, 0]]
-                    ),
+                    content=numpy_image_to_bytes(numpy_image),
                 )
                 # self.push_task(channel = channel, message = answer)
             else:
