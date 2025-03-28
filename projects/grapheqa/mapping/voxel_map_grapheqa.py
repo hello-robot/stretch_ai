@@ -283,19 +283,24 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
 
     def sample_navigation(self, start, planner, point):
         plt.clf()
+
         if point is None:
             start_pt = self.to_pt(start)
             return None
+
         goal = self.sample_target_point(start, point, planner)
         print("point:", point, "goal:", goal)
         obstacles, explored = self.voxel_map.get_2d_map()
+
         plt.imshow(obstacles)
         start_pt = self.to_pt(start)
         plt.scatter(start_pt[1], start_pt[0], s=15, c="b")
         point_pt = self.to_pt(point)
         plt.scatter(point_pt[1], point_pt[0], s=15, c="r")
+
         if goal is not None:
             goal_pt = self.to_pt(goal)
+
             plt.scatter(goal_pt[1], goal_pt[0], s=10, c="g")
         # plt.show()
         return goal
