@@ -173,6 +173,12 @@ class Qwen25VLClient:
         device: str = "cuda",
         quantization: Optional[str] = "int4",
     ):
+        """
+        A simple API for Qwen2.5-VL models
+
+        Parameters:
+            quantization: we support no quatization, AWQ, and bitsandbytes int4 and int8
+        """
         self.system_prompt = prompt
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
         assert model_size in ["3B", "7B", "72B"], f"Invalid model size: {model_size}"
@@ -193,7 +199,7 @@ class Qwen25VLClient:
         quantization_config = None
         if quantization is not None:
             quantization = quantization.lower()
-            # Note: there were supposed to be other options but this is the only one that worked this way
+            # Note: we only support AWQ and bitsandbytes here
             if quantization == "awq":
                 model_kwargs["torch_dtype"] = torch.float16
                 model_name += "-AWQ"
@@ -224,8 +230,8 @@ class Qwen25VLClient:
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_name,
             attn_implementation="flash_attention_2",
-            torch_dtype=torch.float16,
             device_map=device,
+            **model_kwargs,
         )
 
     def __call__(self, command: Union[str, List[Dict[str, Any]]], verbose: bool = False):
