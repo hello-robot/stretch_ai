@@ -8,6 +8,7 @@
 # license information maybe found below, if so.
 
 import pprint as pp
+import time
 
 import cv2
 import numpy as np
@@ -505,6 +506,10 @@ class ZmqRos2Leader:
 
                 # Raw input from teleop
                 markers, color_image = self.webcam_aruco_detector.process_next_frame()
+                if color_image is None:
+                    "Waiting for webcam images!"
+                    time.sleep(0.1)
+                    continue
 
                 # Set up commands to be sent to the robot
                 goal_dict = self.goal_from_markers.get_goal_dict(markers)
