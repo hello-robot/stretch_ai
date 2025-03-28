@@ -174,7 +174,15 @@ class SceneGraphSim:
         for enrich_object_label in self.enrich_object_labels:
             label = enrich_object_label.replace(".", "")
             with torch.no_grad():
-                self.text_embeds.append(self.encoder.encode_text(label).to(self.device))
+                self.text_embeds.append(
+                    (
+                        self.encoder.encode_text(label).to(self.device)
+                        + self.encoder.encode_text("There exists " + label + " in the image").to(
+                            self.device
+                        )
+                    )
+                    / 2
+                )
         self.text_embeds = torch.stack(self.text_embeds)
 
     def is_relevant_frontier(self, frontier_node_positions, agent_pos):
