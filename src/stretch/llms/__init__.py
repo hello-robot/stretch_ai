@@ -17,7 +17,7 @@ from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
 from .prompts.ok_robot_prompt import OkRobotPromptBuilder
 from .prompts.pickup_prompt import PickupPromptBuilder
 from .prompts.simple_prompt import SimpleStretchPromptBuilder
-from .qwen_client import Qwen25Client
+from .qwen_client import Qwen25Client, get_qwen_variants
 
 # This is a list of all the modules that are imported when you use the import * syntax.
 # The __all__ variable is used to define what symbols get exported when from a module when you use the import * syntax.
@@ -44,11 +44,47 @@ llms = {
 
 
 # Add all the various Qwen25 variants
-qwen_variants = []
-for model_size in ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"]:
-    for fine_tuning in ["Instruct", "Coder", "Math"]:
-        qwen_variants.append(f"qwen25-{model_size}-{fine_tuning}")
-        llms.update({variant: Qwen25Client for variant in qwen_variants})
+qwen_variants = get_qwen_variants()
+llms.update({variant: Qwen25Client for variant in qwen_variants})
+
+
+def process_incoming_qwen_types(qwen_type: str):
+    terms = qwen_type.split("-")
+    print(terms)
+    if len(terms) == 1:
+        # default configuration
+        model_size, typing_option, finetuning_option, quantization_option = (
+            "3B",
+            None,
+            "Instruct",
+            "int4",
+        )
+    else:
+        # model type is None = using LM chat
+        if terms[1] not in ["Math", "Coder", "VL", "Deepseek"]:
+            typing_option = None
+        else:
+            typing_option = terms[1]
+            terms.remove(terms[1])
+        # the next item is model size
+        model_size = terms[1]
+        # if the quantization is None, meaning no quantization shall be applied
+        if len(terms) < 3:
+            finetuning_option, quantization_option = "Instruct", None
+        # This means finetune with Instruct and using quantization "Instruct-Int4"
+        elif len(terms) >= 4:
+            finetuning_option, quantization_option = terms[2], terms[3].lower()
+        # "AWQ"
+        elif "awq" in terms[2].lower():
+            finetuning_option, quantization_option = "Instruct", "awq"
+        # "Int4"
+        elif "Instruct" in terms[2]:
+            finetuning_option, quantization_option = "Instruct", None
+        else:
+            finetuning_option, quantization_option = None, terms[2].lower()
+
+        return model_size, typing_option, finetuning_option, quantization_option
+
 
 prompts = {
     "simple": SimpleStretchPromptBuilder,
@@ -102,11 +138,16 @@ def get_llm_client(
         return OpenaiClient(prompt, **kwargs)
     elif "qwen" in client_type:
         # Parse model size and fine-tuning from client_type
-        terms = client_type.split("-")
-        if len(terms) == 3:
-            model_size, fine_tuning = terms[1], terms[2]
-        else:
-            model_size, fine_tuning = "3B", "Instruct"
-        return Qwen25Client(prompt, **kwargs)
+        model_size, typing_option, fine_tuning, quantization_option = process_incoming_qwen_types(
+            client_type
+        )
+        return Qwen25Client(
+            prompt,
+            model_size=model_size,
+            fine_tuning=fine_tuning,
+            model_type=typing_option,
+            quantization=quantization_option,
+            **kwargs,
+        )
     else:
         raise ValueError(f"Invalid client type: {client_type}")

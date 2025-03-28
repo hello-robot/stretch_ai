@@ -663,7 +663,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     and (wrist_yaw_diff < self._wrist_yaw_joint_tolerance)
                 ):
                     # sleep to prevent ros2 streaming latency
-                    time.sleep(0.3)
+                    time.sleep(0.5)
                     return True
                 elif t1 - t0 > min_time and np.linalg.norm(joint_velocities) < 0.01:
                     logger.info("Arm not moving, we are done")
@@ -671,7 +671,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     logger.info(t1 - t0)
                     # Arm stopped moving but did not reach goal
                     # sleep to prevent ros2 streaming latency
-                    time.sleep(0.3)
+                    time.sleep(0.5)
                     return False
                 else:
                     if verbose:
@@ -685,7 +685,7 @@ class HomeRobotZmqClient(AbstractRobotClient):
                     break
                 steps += 1
             # sleep to prevent ros2 streaming latency
-            time.sleep(0.3)
+            time.sleep(0.5)
             return False
         return True
 
