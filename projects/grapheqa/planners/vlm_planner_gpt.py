@@ -175,14 +175,13 @@ class VLMPLannerEQAGPT:
             Use a scene graph as an imperfect guide to lead you to relevant regions to inspect.
             Goto_frontier_node_step: If you think that using action "Goto_object_node_step" is not useful, in other words, if you think that going near any of the object nodes in the current scene graph will not provide you with any useful information to answer the question better, then choose this action.
             This action will navigate you to a frontier (unexplored) region of the environment and will provide you information about new objects/rooms not yet in the scene graph. It will expand the scene graph. 
-            Choose this frontier based on the objects connected this frontier, in other words, Goto the frontier near which you see objects that are useful for answering the question or seem useful as a good exploration direction. Explain reasoning for choosing this frontier, by listing the list of objects (<id> and <name>) connected to this frontier node via a link (refer to scene graph) \n \
+            Choose this frontier based on the objects connected this frontier, in other words, Goto the frontier near which you see objects that are useful for answering the question or seem useful as a good exploration direction. Explain reasoning for choosing this frontier, by listing the list of objects (<id> and <name>) connected to this frontier node via a link (refer to scene graph) \
             
             While choosing either of the above actions, play close attention to 'HISTORY' especially the previous 'Action's to see if you have taken the same action at previous timesteps. 
             Avoid taking the same actions you have taken before.
             Describe the CURRENT IMAGE. Pay special attention to features that can help answer the question or select future actions.
             Describe the SCENE GRAPH. Pay special attention to features that can help answer the question or select future actions.
             """
-        prompt += "You should go near the blue couch before answering the question with confidence. You should see a full image of the couch before answering with confidence"
         prompt_no_image = f"""You are an excellent hierarchical graph planning agent. 
             Your goal is to navigate an unseen environment to confidently answer a multiple-choice question about the environment.
             As you explore the environment, your sensors are building a scene graph representation (in json format) and you have access to that scene graph.  
@@ -198,10 +197,10 @@ class VLMPLannerEQAGPT:
             If you are unable to answer the question with high confidence, and need more information to answer the question, then you can take two kinds of steps in the environment: Goto_object_node_step or Goto_frontier_node_step 
             You also have to choose the next action, one which will enable you to answer the question better. 
             Goto_object_node_step: Navigates near a certain object in the scene graph. Choose this action to go to the region around this object, if you think going near this object will help you answer the question better.
-            Choose the object in a hierarchical manner by first reasoning about which room you should goto to best answer the question, and then choose the specific object. \n
+            Choose the object in a hierarchical manner by first reasoning about which room you should goto to best answer the question, and then choose the specific object.
             Goto_frontier_node_step: If you think that using action "Goto_object_node_step" is not useful, in other words, if you think that going near any of the object nodes in the current scene graph will not provide you with any useful information to answer the question better, then choose this action.
             This action will navigate you to a frontier (unexplored) region of the environment and will provide you information about new objects/rooms not yet in the scene graph. It will expand the scene graph. 
-            Choose this frontier based on the objects connected this frontier, in other words, Goto the frontier near which there are objects useful for answering the question or seem useful as a good exploration direction. Explain reasoning for choosing this frontier, by listing the list of objects (<id> and <name>) connected to this frontier node via a link (refer to scene graph) \n \
+            Choose this frontier based on the objects connected this frontier, in other words, Goto the frontier near which there are objects useful for answering the question or seem useful as a good exploration direction. Explain reasoning for choosing this frontier, by listing the list of objects (<id> and <name>) connected to this frontier node via a link (refer to scene graph) \
             
             While choosing either of the above actions, play close attention to 'HISTORY' especially the previous 'Action's to see if you have taken the same action at previous timesteps. 
             Avoid taking the same actions you have taken before.
