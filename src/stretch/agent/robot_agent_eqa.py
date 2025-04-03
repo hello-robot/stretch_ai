@@ -31,12 +31,6 @@ import zmq
 from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
     DynamemManipulationWrapper as ManipulationWrapper,
 )
-from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
-    capture_and_process_image,
-    move_to_point,
-    pickup,
-    process_image_for_placing,
-)
 from stretch.agent.robot_agent_dynamem import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -468,7 +462,7 @@ class RobotAgent(RobotAgentBase):
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.6, -0.2, -1.0, -1.8]:
+        for pan in [0]:
             tilt = -0.6
             self.robot.head_to(pan, tilt, blocking=True)
             self.update()
@@ -679,9 +673,9 @@ class RobotAgent(RobotAgentBase):
 
         enrich_object = self.llm_client(question)
 
-        return self.run_eqa_vlm_planner()
+        return self.run_eqa_vlm_planner(question, enrich_object)
 
-    def run_eqa_vlm_planner(self, max_planning_steps: int = 5):
+    def run_eqa_vlm_planner(self, question, enrich_object, max_planning_steps: int = 5):
         answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
@@ -695,199 +689,102 @@ class RobotAgent(RobotAgentBase):
                 self.robot.look_front()
                 self.robot.switch_to_navigation_mode()
 
-            self.sg_sim.update(
-                frontier_nodes=self.clustered_frontiers, imgs_rgb=self.current_rgb_list
-            )
-            self.current_rgb_list = []
+            self.voxel_map.query_answer(question, enrich_object)
 
-            (
-                target_pose,
-                target_id,
-                is_confident,
-                confidence_level,
-                answer,
-                explanation_ans,
-                debug_image,
-            ) = self.vlm_planner.get_next_action()
+        #     self.rerun_visualizer.log_text("QA", answer_output)
 
-            answer_output = "# " + answer + "\n# " + explanation_ans
+        #     if is_confident or (confidence_level > 0.85):
+        #         result = f"Success"
+        #         click.secho(
+        #             result,
+        #             fg="blue",
+        #         )
+        #         click.secho(
+        #             f"VLM Planner answer: {answer_output}",
+        #             fg="green",
+        #         )
+        #         break
 
-            self.rerun_visualizer.log_text("QA", answer_output)
+        #     movement_step = 0
+        #     while movement_step < self.max_rgb_number:
+        #         start_pose = self.robot.get_base_pose()
+        #         movement_step += 1
+        #         self.update()
+        #         finished = self.navigate_to_target_pose(target_pose, start_pose)
+        #         if finished:
+        #             break
 
-            if is_confident or (confidence_level > 0.85):
-                result = f"Success"
-                click.secho(
-                    result,
-                    fg="blue",
-                )
-                click.secho(
-                    f"VLM Planner answer: {answer_output}",
-                    fg="green",
-                )
-                break
+        # answer_output = (answer_output, debug_image)
+        # return answer_output
 
-            movement_step = 0
-            while movement_step < self.max_rgb_number:
-                start_pose = self.robot.get_base_pose()
-                movement_step += 1
-                self.update()
-                finished = self.navigate_to_target_pose(target_pose, start_pose)
-                if finished:
-                    break
-
-        answer_output = (answer_output, debug_image)
-        return answer_output
-
-    def navigate(self, text, max_step=10):
-        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
-        finished = False
-        step = 0
-        end_point = None
-        while not finished and step < max_step:
-            print("*" * 20, step, "*" * 20)
-            step += 1
-            finished, end_point = self.execute_action(text)
-            if finished is None:
-                print("Navigation failed! The path might be blocked!")
-                return None
-        return end_point
-
-    def place(
+    def navigate_to_target_pose(
         self,
-        text,
-        local=True,
-        init_tilt=INIT_HEAD_TILT,
-        base_node="camera_depth_optical_frame",
+        target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
     ):
-        """
-        An API for running placing. By calling this API, human will ask the robot to place whatever it holds
-        onto objects specified by text queries A
-        - hello_robot: a wrapper for home-robot StretchClient controller
-        - socoket: we use this to communicate with workstation to get estimated gripper pose
-        - text: queries specifying target object
-        - transform node: node name for coordinate systems of target gripper pose (usually the coordinate system on the robot gripper)
-        - base node: node name for coordinate systems of estimated gipper poses given by anygrasp
-        """
-        self.robot.switch_to_manipulation_mode()
-        self.robot.look_at_ee()
-        self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
+        res = None
+        original_target_pose = target_pose
+        if target_pose is not None:
+            # target_pose originally represents the place where the object of interest is.
+            # This line finds the pose where the robot should stop
+            target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
 
-        if not local:
-            rotation, translation = capture_and_process_image(
-                mode="place",
-                obj=text,
-                socket=self.manip_socket,
-                hello_robot=self.manip_wrapper,
-            )
+            # A* planning
+            if target_pose is not None:
+                res = self.planner.plan(start_pose, target_pose)
+
+        # Parse A* results into traj
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
         else:
-            if self.owl_sam_detector is None:
-                from stretch.perception.detection.owl import OWLSAMProcessor
+            waypoints = None
 
-                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
-            rotation, translation = process_image_for_placing(
-                obj=text,
-                hello_robot=self.manip_wrapper,
-                detection_model=self.owl_sam_detector,
-                save_dir=self.log,
+        if waypoints is not None:
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/target_pose",
+                [original_target_pose[0], original_target_pose[1], 1.5],
+                torch.Tensor([1, 0, 0]),
+                0.1,
             )
-        print("Place: ", rotation, translation)
 
-        if rotation is None:
-            return False
-
-        # lift arm to the top before the robot extends the arm, prepare the pre-placing gripper pose
-        self.manip_wrapper.move_to_position(lift_pos=1.05)
-        self.manip_wrapper.move_to_position(wrist_yaw=0, wrist_pitch=0)
-
-        # Placing the object
-        move_to_point(self.manip_wrapper, translation, base_node, self.transform_node, move_mode=0)
-        self.manip_wrapper.move_to_position(gripper_pos=1, blocking=True)
-
-        # Lift the arm a little bit, and rotate the wrist roll of the robot in case the object attached on the gripper
-        self.manip_wrapper.move_to_position(
-            lift_pos=min(self.manip_wrapper.robot.get_six_joints()[1] + 0.3, 1.1)
-        )
-        self.manip_wrapper.move_to_position(wrist_roll=2.5, blocking=True)
-        self.manip_wrapper.move_to_position(wrist_roll=-2.5, blocking=True)
-
-        # Wait for some time and shrink the arm back
-        self.manip_wrapper.move_to_position(gripper_pos=1, lift_pos=1.05, arm_pos=0)
-        self.manip_wrapper.move_to_position(wrist_pitch=-1.57)
-
-        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
-        self.manip_wrapper.move_to_position(
-            base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
-        )
-        return True
-
-    def get_voxel_map(self):
-        """Return the voxel map"""
-        return self.voxel_map
-
-    def manipulate(
-        self,
-        text,
-        init_tilt=INIT_HEAD_TILT,
-        base_node="camera_depth_optical_frame",
-        skip_confirmation: bool = False,
-    ):
-        """
-        An API for running manipulation. By calling this API, human will ask the robot to pick up objects
-        specified by text queries A
-        - hello_robot: a wrapper for home-robot StretchClient controller
-        - socoket: we use this to communicate with workstation to get estimated gripper pose
-        - text: queries specifying target object
-        - transform node: node name for coordinate systems of target gripper pose (usually the coordinate system on the robot gripper)
-        - base node: node name for coordinate systems of estimated gipper poses given by anygrasp
-        """
-
-        self.robot.switch_to_manipulation_mode()
-        self.robot.look_at_ee()
-
-        gripper_pos = 1
-
-        self.manip_wrapper.move_to_position(
-            arm_pos=INIT_ARM_POS,
-            head_pan=INIT_HEAD_PAN,
-            head_tilt=init_tilt,
-            gripper_pos=gripper_pos,
-            lift_pos=INIT_LIFT_POS,
-            wrist_pitch=INIT_WRIST_PITCH,
-            wrist_roll=INIT_WRIST_ROLL,
-            wrist_yaw=INIT_WRIST_YAW,
-        )
-
-        rotation, translation, depth, width = capture_and_process_image(
-            mode="pick",
-            obj=text,
-            socket=self.manip_socket,
-            hello_robot=self.manip_wrapper,
-        )
-
-        if rotation is None:
-            return False
-
-        if width < 0.05 and self.re == 3:
-            gripper_width = 0.45
-        elif width < 0.075 and self.re == 3:
-            gripper_width = 0.6
+        finished = True
+        if waypoints is not None:
+            if not len(waypoints) <= 8:
+                waypoints = waypoints[:8]
+                finished = False
+            traj = self.planner.clean_path_for_xy(waypoints)
+            print("Planned trajectory:", traj)
         else:
-            gripper_width = 1
+            traj = None
 
-        if skip_confirmation or input("Do you want to do this manipulation? Y or N ") != "N":
-            pickup(
-                self.manip_wrapper,
-                rotation,
-                translation,
-                base_node,
-                self.transform_node,
-                gripper_depth=depth,
-                gripper_width=gripper_width,
+        # draw traj on rerun and execute it
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            self.rerun_visualizer.log_arrow3D(
+                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+            )
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/robot_start_pose",
+                [start_pose[0], start_pose[1], 1.5],
+                torch.Tensor([0, 0, 1]),
+                0.1,
             )
 
-        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
-        self.manip_wrapper.move_to_position(
-            base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
-        )
+            self.robot.execute_trajectory(
+                traj,
+                pos_err_threshold=self.pos_err_threshold,
+                rot_err_threshold=self.rot_err_threshold,
+                blocking=True,
+            )
 
-        return True
+        return finished

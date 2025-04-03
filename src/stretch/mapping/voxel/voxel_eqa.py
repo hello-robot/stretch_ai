@@ -49,11 +49,34 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o-mini")
 
-    def query_answer(self, question: str):
+    def query_answer(self, question: str, relevant_objects: List[str]):
         messages = [{"role": "user", "content": question}]
         for (i, history_output) in enumerate(self.history_outputs):
             messages.append({"role": "assistant", "content": history_output})
         messages.append({"role": "user", "content": "Question: " + question})
+        for relevant_object in relevant_objects:
+            image_ids, _, _ = self.find_all_images(relevant_object)
+            for obs_id in image_ids:
+                obs_id = int(obs_id) - 1
+                rgb = np.copy(self.observations[obs_id].rgb.numpy())
+                image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+                buffered = BytesIO()
+                image.save(buffered, format="PNG")
+                img_bytes = buffered.getvalue()
+                base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
+                messages.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {  # type: ignore
+                            "url": f"data:image/png;base64,{base64_encoded}",
+                            "detail": "low",
+                        },
+                    }
+                )
+        answer = self.eqa_gpt_client(messages)
+        print("=" * 30)
+        print(answer)
+        self.history_outputs.append(answer)
 
     def get_2d_alignment_heuristics_mllm(self, task: str, debug: bool = False):
         """
