@@ -9,7 +9,7 @@
 
 import base64
 from io import BytesIO
-from typing import List, Union
+from typing import Any, Dict, List, Union
 
 import numpy as np
 import retry
@@ -50,7 +50,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o-mini")
 
     def query_answer(self, question: str, relevant_objects: List[str]):
-        messages = [{"type": "text", "text": question}]
+        messages: List[Dict[str, Any]] = [{"type": "text", "text": question}]
         messages.append({"type": "text", "text": "HISTORY"})
         for (i, history_output) in enumerate(self.history_outputs):
             messages.append({"type": "text", "text": history_output})
@@ -68,10 +68,10 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 messages.append(
                     {
                         "type": "image_url",
-                        "image_url": {
+                        "image_url": {  # type:ignore
                             "url": f"data:image/png;base64,{base64_encoded}",
-                            "detail": "low"
-                        }
+                            "detail": "low",
+                        },
                     }
                 )
         answer = self.eqa_gpt_client(messages)

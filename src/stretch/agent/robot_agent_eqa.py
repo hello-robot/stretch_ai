@@ -693,7 +693,9 @@ class RobotAgent(RobotAgentBase):
             self.voxel_map.query_answer(question, enrich_object)
 
             start_pose = self.robot.get_base_pose()
-            target_point = self.space.sample_frontier(self.planner, start_pose, text = "answering the question \'" + question + "\'")
+            target_point = self.space.sample_frontier(
+                self.planner, start_pose, text="answering the question '" + question + "'"
+            )
             self.navigate_to_target_pose(target_point, start_pose)
 
         #     self.rerun_visualizer.log_text("QA", answer_output)
