@@ -74,9 +74,9 @@ setuptools.setup(
         "retry",
         "qwen_vl_utils",
         "bitsandbytes",
-        "autoawq",
+        "autoawq>=0.1.5",
         "triton >= 3.0.0",
-        "accelerate",
+        "accelerate >= 1.5.0",
         "einops",
         # Meta neural nets
         "segment-anything",

@@ -71,7 +71,8 @@ def main(
     while agent.is_running():
 
         # If target object and receptacle are provided, set mode to manipulation
-        question = input("Question:").lower()
+        # question = input("Question:").lower()
+        question = "What is the color of the table?"
 
         robot.move_to_nav_posture()
         robot.switch_to_navigation_mode()

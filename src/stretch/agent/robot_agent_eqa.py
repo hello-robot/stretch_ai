@@ -39,7 +39,7 @@ from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.llms import OpenaiClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMapProxy
-from stretch.mapping.voxel.voxel_eqa import SparseVoxelMap
+from stretch.mapping.voxel.voxel_eqa import SparseVoxelMapEQA as SparseVoxelMap
 from stretch.mapping.voxel.voxel_map_eqa import SparseVoxelMapNavigationSpace
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
@@ -463,19 +463,20 @@ class RobotAgent(RobotAgentBase):
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0]:
-            tilt = -0.6
+            tilt = -0.3
             self.robot.head_to(pan, tilt, blocking=True)
             self.update()
 
     def rotate_in_place(self):
-        print("*" * 10, "Rotate in place", "*" * 10)
-        xyt = self.robot.get_base_pose()
-        self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
-        for i in range(8):
-            xyt[2] += 2 * np.pi / 8
-            self.robot.move_base_to(xyt, blocking=True)
-            if not self._realtime_updates:
-                self.update()
+        pass
+        # print("*" * 10, "Rotate in place", "*" * 10)
+        # xyt = self.robot.get_base_pose()
+        # self.robot.head_to(head_pan=0, head_tilt=-0.3, blocking=True)
+        # for i in range(8):
+        #     xyt[2] += 2 * np.pi / 8
+        #     self.robot.move_base_to(xyt, blocking=True)
+        #     if not self._realtime_updates:
+        #         self.update()
 
     def execute_action(
         self,
@@ -690,6 +691,10 @@ class RobotAgent(RobotAgentBase):
                 self.robot.switch_to_navigation_mode()
 
             self.voxel_map.query_answer(question, enrich_object)
+
+            start_pose = self.robot.get_base_pose()
+            target_point = self.space.sample_frontier(self.planner, start_pose, text = "answering the question \'" + question + "\'")
+            self.navigate_to_target_pose(target_point, start_pose)
 
         #     self.rerun_visualizer.log_text("QA", answer_output)
 

@@ -39,7 +39,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
         )
 
-        self.image_descriptions: List[List[str]] = {}
+        self.image_descriptions: List[List[str]] = []
 
         self.history_outputs: List[str] = []
 
@@ -50,10 +50,11 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o-mini")
 
     def query_answer(self, question: str, relevant_objects: List[str]):
-        messages = [{"role": "user", "content": question}]
+        messages = [{"type": "text", "text": question}]
+        messages.append({"type": "text", "text": "HISTORY"})
         for (i, history_output) in enumerate(self.history_outputs):
-            messages.append({"role": "assistant", "content": history_output})
-        messages.append({"role": "user", "content": "Question: " + question})
+            messages.append({"type": "text", "text": history_output})
+        # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
         for relevant_object in relevant_objects:
             image_ids, _, _ = self.find_all_images(relevant_object)
             for obs_id in image_ids:
@@ -67,10 +68,10 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 messages.append(
                     {
                         "type": "image_url",
-                        "image_url": {  # type: ignore
+                        "image_url": {
                             "url": f"data:image/png;base64,{base64_encoded}",
-                            "detail": "low",
-                        },
+                            "detail": "low"
+                        }
                     }
                 )
         answer = self.eqa_gpt_client(messages)
@@ -78,7 +79,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         print(answer)
         self.history_outputs.append(answer)
 
-    def get_2d_alignment_heuristics_mllm(self, task: str, debug: bool = False):
+    def get_2d_alignment_heuristics_mllm(self, task: str):
         """
         Transform the similarity with text into a 2D value map that can be used to evaluate
         how much exploring to one point can benefit open vocabulary navigation
@@ -89,10 +90,10 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             return None
         scores = np.array(self.compute_image_heuristic(task))
         _, _, history = self.get_2d_map(return_history_id=True)
-        return torch.Tensor(scores[np.array(history)])
+        return torch.Tensor(scores[np.array(history).astype(np.int32) - 1])
 
     def compute_image_heuristic(
-        self, task, num_samples=5, positive_weight=2.0, negative_weight=1.0
+        self, task, num_samples=5, positive_weight=1.0, negative_weight=0.5
     ):
         try:
             positive_scores, _ = self.score_images(task, num_samples=num_samples, positive=True)
@@ -110,8 +111,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
     @retry.retry(tries=5)
     def score_images(self, task, num_samples=5, positive=True):
 
+        options = ""
+
         if len(self.image_descriptions) > 0:
-            options = ""
             for i, cluster in enumerate(self.image_descriptions):
                 cluser_string = ""
                 for ob in cluster:
@@ -122,7 +124,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             messages = [
                 {
                     "type": "text",
-                    "content": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?",
+                    "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?",
                 }
             ]
             choices = self.positive_score_client.sample(messages, n_samples=num_samples)
@@ -130,11 +132,10 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             messages = [
                 {
                     "type": "text",
-                    "content": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?",
+                    "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?",
                 }
             ]
             choices = self.negative_score_client.sample(messages, n_samples=num_samples)
-
         answers = []
         reasonings = []
         for choice in choices:
@@ -225,3 +226,5 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             self.image_descriptions.append(["object"])
         else:
             self.image_descriptions.append(objects)
+
+        print(self.image_descriptions)
