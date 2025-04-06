@@ -269,8 +269,8 @@ class RobotAgent(RobotAgentBase):
         main = rrb.Horizontal(
             rrb.Spatial3DView(name="3D View", origin="world"),
             rrb.Vertical(
-                rrb.TextDocumentView(name="text", origin="robot_monologue"),
-                rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+                rrb.TextDocumentView(name="text", origin="QA"),
+                # rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
             ),
             rrb.Vertical(
                 rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
@@ -462,21 +462,21 @@ class RobotAgent(RobotAgentBase):
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
+        # for pan in [0.6, -0.3, -1.2, -2.1]:
         for pan in [0]:
-            tilt = -0.3
+            tilt = -0.6
             self.robot.head_to(pan, tilt, blocking=True)
             self.update()
 
     def rotate_in_place(self):
-        pass
-        # print("*" * 10, "Rotate in place", "*" * 10)
-        # xyt = self.robot.get_base_pose()
-        # self.robot.head_to(head_pan=0, head_tilt=-0.3, blocking=True)
-        # for i in range(8):
-        #     xyt[2] += 2 * np.pi / 8
-        #     self.robot.move_base_to(xyt, blocking=True)
-        #     if not self._realtime_updates:
-        #         self.update()
+        print("*" * 10, "Rotate in place", "*" * 10)
+        xyt = self.robot.get_base_pose()
+        self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
+        for i in range(8):
+            xyt[2] += 2 * np.pi / 8
+            self.robot.move_base_to(xyt, blocking=True)
+            if not self._realtime_updates:
+                self.update()
 
     def execute_action(
         self,
@@ -672,11 +672,13 @@ class RobotAgent(RobotAgentBase):
 
         self.robot.switch_to_navigation_mode()
 
-        enrich_object = self.llm_client(question)
+        relevant_objects = self.llm_client(question)
 
-        return self.run_eqa_vlm_planner(question, enrich_object)
+        relevant_objects = relevant_objects.split(",")
 
-    def run_eqa_vlm_planner(self, question, enrich_object, max_planning_steps: int = 5):
+        return self.run_eqa_vlm_planner(question, relevant_objects)
+
+    def run_eqa_vlm_planner(self, question, relevant_objects, max_planning_steps: int = 5):
         answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
@@ -690,39 +692,28 @@ class RobotAgent(RobotAgentBase):
                 self.robot.look_front()
                 self.robot.switch_to_navigation_mode()
 
-            self.voxel_map.query_answer(question, enrich_object)
+            reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
+                question, relevant_objects
+            )
+            answer_output = "# " + answer + "\n# " + reasoning + "\n# " + confidence_reasoning
+
+            self.rerun_visualizer.log_text("QA", answer_output)
+
+            if confidence:
+                break
 
             start_pose = self.robot.get_base_pose()
             target_point = self.space.sample_frontier(
                 self.planner, start_pose, text="answering the question '" + question + "'"
             )
-            self.navigate_to_target_pose(target_point, start_pose)
-
-        #     self.rerun_visualizer.log_text("QA", answer_output)
-
-        #     if is_confident or (confidence_level > 0.85):
-        #         result = f"Success"
-        #         click.secho(
-        #             result,
-        #             fg="blue",
-        #         )
-        #         click.secho(
-        #             f"VLM Planner answer: {answer_output}",
-        #             fg="green",
-        #         )
-        #         break
-
-        #     movement_step = 0
-        #     while movement_step < self.max_rgb_number:
-        #         start_pose = self.robot.get_base_pose()
-        #         movement_step += 1
-        #         self.update()
-        #         finished = self.navigate_to_target_pose(target_pose, start_pose)
-        #         if finished:
-        #             break
-
-        # answer_output = (answer_output, debug_image)
-        # return answer_output
+            movement_step = 0
+            while movement_step < 5:
+                start_pose = self.robot.get_base_pose()
+                movement_step += 1
+                self.update()
+                finished = self.navigate_to_target_pose(target_point, start_pose)
+                if finished:
+                    break
 
     def navigate_to_target_pose(
         self,

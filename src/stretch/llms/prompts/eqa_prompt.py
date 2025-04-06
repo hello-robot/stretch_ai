@@ -212,7 +212,12 @@ Other considerations
 IMAGE_DESCRIPTION_PROMPT = """
     Given an image, list featured objects inside the image.
     Example answer: 
-        black table, two chairs, cloth hangers.
-        lamp, washing machine, toilets.
-    Limit your answer in 10 object items, but include objects that can best describe the regions.
+        example 1: black table,two chairs,cloth hangers.
+        example 2: lamp,washing machine,toilets.
+
+    Other requirements:
+    
+    1. Limit your answer in 5 object items and include only objects that can best describe the regions such as dinning table, microwave, and toilet.
+    2. Do not include some useless background objects such as wall, foor, window etc.
+    3. Do not include '\\n' or '-' in your answer.
 """

@@ -11,6 +11,7 @@ import timeit
 from typing import Any, Dict, List, Optional, Union
 
 import torch
+from PIL import Image
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -172,6 +173,7 @@ class Qwen25VLClient:
         num_beams: int = 1,
         device: str = "cuda",
         quantization: Optional[str] = "int4",
+        use_fast_attn: bool = False,
     ):
         """
         A simple API for Qwen2.5-VL models
@@ -187,6 +189,7 @@ class Qwen25VLClient:
         self._device = device
         self.max_tokens = max_tokens
         self.num_beams = num_beams
+        self.use_fast_attn = use_fast_attn
 
         if fine_tuning is None:
             model_name = f"Qwen/Qwen2.5-VL-{model_size}"
@@ -227,24 +230,31 @@ class Qwen25VLClient:
             model_kwargs["quantization_config"] = quantization_config
 
         self.processor = AutoProcessor.from_pretrained(model_name)
+        if self.use_fast_attn:
+            attn_implementaion = "flash_attention_2"
+        else:
+            attn_implementaion = None
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_name,
-            attn_implementation="flash_attention_2",
+            attn_implementation=attn_implementaion,
             device_map=device,
             **model_kwargs,
         )
 
-    def __call__(self, command: Union[str, List[Dict[str, Any]]], verbose: bool = False):
+    def __call__(
+        self, command: Union[str, List[Dict[str, Any]], Image.Image], verbose: bool = False
+    ):
         if self.system_prompt is not None:
             messages = [{"role": "system", "content": self.system_prompt}]
         else:
             messages = []
 
         # Prepare the messages
-        if isinstance(command, str):
+        if not isinstance(command, List):
             messages.append({"role": "user", "content": command})
         else:
             messages += command
+        print(messages)
 
         t0 = timeit.default_timer()
 

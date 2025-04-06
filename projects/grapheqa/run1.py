@@ -14,7 +14,8 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 
 # Mapping and perception
 from stretch.core.parameters import get_parameters
-from stretch.perception import create_semantic_sensor
+
+# from stretch.perception import create_semantic_sensor
 
 
 @click.command()
@@ -50,15 +51,15 @@ def main(
     robot.set_velocity(v=30.0, w=15.0)
 
     print("- Create semantic sensor")
-    semantic_sensor = create_semantic_sensor(
-        parameters=parameters,
-        device_id=device_id,
-        verbose=False,
-    )
+    # semantic_sensor = create_semantic_sensor(
+    #     parameters=parameters,
+    #     device_id=device_id,
+    #     verbose=False,
+    # )
     parameters["encoder"] = None
 
     print("- Start robot agent with data collection")
-    agent = RobotAgent(robot, parameters, semantic_sensor)
+    agent = RobotAgent(robot, parameters)
     agent.start()
 
     if input_path is None:
@@ -72,12 +73,13 @@ def main(
 
         # If target object and receptacle are provided, set mode to manipulation
         # question = input("Question:").lower()
-        question = "What is the color of the table?"
+        question = "What is the color of the washing machine?"
 
         robot.move_to_nav_posture()
         robot.switch_to_navigation_mode()
         robot.say("Running EQA.")
         agent.run_eqa(question)
+        break
 
 
 if __name__ == "__main__":

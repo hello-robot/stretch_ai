@@ -9,7 +9,7 @@
 
 import base64
 from io import BytesIO
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import retry
@@ -19,7 +19,7 @@ from torch import Tensor
 
 from stretch.llms.openai_client import OpenaiClient
 
-# from stretch.llms.qwen_client import Qwen25VLClient
+# from stretch.llms.qwen_client import Qwen25VLClient, Qwen25Client
 from stretch.llms.prompts.eqa_prompt import (
     EQA_PROMPT,
     EQA_SYSTEM_PROMPT_NEGATIVE,
@@ -38,6 +38,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self.image_description_client = OpenaiClient(
             prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
         )
+        # self.image_description_client = Qwen25VLClient(
+        #     prompt=None, model_size="3B", quantization = "awq"
+        # )
 
         self.image_descriptions: List[List[str]] = []
 
@@ -45,9 +48,13 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         self.eqa_gpt_client = OpenaiClient(EQA_PROMPT, model="gpt-4o")
 
-        self.positive_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o-mini")
+        self.positive_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o")
 
-        self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o-mini")
+        self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o")
+
+        # self.positive_score_client = Qwen25Client(EQA_SYSTEM_PROMPT_POSITIVE, model_type = "Deepseek", model_size = "1.5B")
+
+        # self.negative_score_client = Qwen25Client(EQA_SYSTEM_PROMPT_NEGATIVE, model_type = "Deepseek", model_size = "1.5B")
 
     def query_answer(self, question: str, relevant_objects: List[str]):
         messages: List[Dict[str, Any]] = [{"type": "text", "text": question}]
@@ -74,10 +81,22 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                         },
                     }
                 )
-        answer = self.eqa_gpt_client(messages)
-        print("=" * 30)
-        print(answer)
-        self.history_outputs.append(answer)
+        answer_outputs = self.eqa_gpt_client(messages)
+        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Confidence_reasoning:"
+        reasoning = answer_outputs.split("Reasoning:")[-1].split("Answer:")[0]
+        answer = answer_outputs.split("Answer:")[-1].split("Confidence:")[0]
+        confidence = (
+            answer_outputs.split("Confidence:")[-1]
+            .split("Confidence_reasoning:")[0]
+            .replace(" ", "")
+            == "True"
+        )
+        confidence_reasoning = answer_outputs.split("Confidence_reasoning:")[-1]
+
+        print("Answer:", answer)
+        print("Confidence:", confidence)
+
+        return reasoning, answer, confidence, confidence_reasoning
 
     def get_2d_alignment_heuristics_mllm(self, task: str):
         """
@@ -88,33 +107,77 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         """
         if self.voxel_pcd._points is None:
             return None
-        scores = np.array(self.compute_image_heuristic(task))
         _, _, history = self.get_2d_map(return_history_id=True)
-        return torch.Tensor(scores[np.array(history).astype(np.int32) - 1])
+        selected_images = torch.unique(history).int()
+        # history image id is 1-indexed, so we need to subtract 1 from scores
+        image_descriptions = [
+            self.image_descriptions[selected_image.item() - 1] for selected_image in selected_images
+        ]
+        scores = self.compute_image_heuristic(task, image_descriptions=image_descriptions)
+        final_scores = torch.zeros(len(self.image_descriptions))
+        # history image id is 1-indexed, so we need to subtract 1 from scores
+        final_scores[selected_images - 1] = torch.Tensor(scores)
+        # for s, d in zip(final_scores, self.image_descriptions):
+        #     print(s.item(), d)
+        # history image id is 1-indexed, so we need to subtract 1 from scores
+        return torch.Tensor(final_scores[history.int() - 1])
 
     def compute_image_heuristic(
-        self, task, num_samples=5, positive_weight=1.0, negative_weight=0.5
+        self,
+        task,
+        image_descriptions: Optional[List[List[str]]] = None,
+        num_samples=5,
+        positive_weight=0.4,
+        negative_weight=0.2,
     ):
+        if image_descriptions is None:
+            image_descriptions = self.image_descriptions
         try:
-            positive_scores, _ = self.score_images(task, num_samples=num_samples, positive=True)
-            negative_scores, _ = self.score_images(task, num_samples=num_samples, positive=False)
+            positive_scores, _ = self.score_images(
+                task, num_samples=num_samples, positive=True, image_descriptions=image_descriptions
+            )
+            negative_scores, _ = self.score_images(
+                task, num_samples=num_samples, positive=False, image_descriptions=image_descriptions
+            )
         except Exception as excptn:
             positive_scores, negative_scores = {}, {}
             print("GPTs failed:", excptn)
-        language_scores = [0] * len(self.image_descriptions)
+        language_scores = [0] * len(image_descriptions)
+        # key - 1 because the image id output by GPT is 1-indexed
         for key, value in positive_scores.items():
-            language_scores[key] += value * positive_weight
+            language_scores[key - 1] += value * positive_weight
         for key, value in negative_scores.items():
-            language_scores[key] -= value * negative_weight
+            language_scores[key - 1] -= value * negative_weight
+        # for i, language_score in enumerate(language_scores):
+        #     print(i, language_score)
         return language_scores
 
     @retry.retry(tries=5)
-    def score_images(self, task, num_samples=5, positive=True):
+    def score_images(
+        self,
+        task: str,
+        num_samples=5,
+        positive=True,
+        image_descriptions: Optional[List[List[str]]] = None,
+        verbose: bool = False,
+    ):
 
         options = ""
 
-        if len(self.image_descriptions) > 0:
-            for i, cluster in enumerate(self.image_descriptions):
+        if image_descriptions is None:
+            image_descriptions = self.image_descriptions
+
+        if verbose:
+            print(
+                "Querying",
+                len(image_descriptions),
+                "images.",
+                len(self.image_descriptions),
+                "images in total.",
+            )
+
+        if len(image_descriptions) > 0:
+            for i, cluster in enumerate(image_descriptions):
                 cluser_string = ""
                 for ob in cluster:
                     cluser_string += ob + ", "
@@ -136,11 +199,12 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 }
             ]
             choices = self.negative_score_client.sample(messages, n_samples=num_samples)
+
         answers = []
         reasonings = []
         for choice in choices:
             try:
-                complete_response = choice.message["content"]
+                complete_response = choice.message.content
                 # Make the response all lowercase
                 complete_response = complete_response.lower()
                 reasoning = complete_response.split("reasoning: ")[1].split("\n")[0]
@@ -159,13 +223,19 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         flattened_answers = [item for sublist in answers for item in sublist]
         # It is possible GPT gives an invalid answer less than 1 or greater than 1 plus the number of object clusters. Remove invalid answers
         filtered_flattened_answers = [
-            x for x in flattened_answers if x >= 1 and x <= len(self.image_descriptions)
+            x for x in flattened_answers if x >= 1 and x <= len(image_descriptions)
         ]
         # Aggregate into counts and normalize to probabilities
         answer_counts = {
             x: filtered_flattened_answers.count(x) / len(answers)
             for x in set(filtered_flattened_answers)
         }
+
+        if verbose:
+            print("Task:", task, "Score type:", positive)
+            print(answer_counts, image_descriptions, answers, reasonings)
+            for a in answer_counts.keys():
+                print(a, answer_counts[a], image_descriptions[a - 1])
 
         return answer_counts, reasonings
 
@@ -194,7 +264,6 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             else:
                 _image = image
             pil_image = Image.fromarray(_image)
-        prompt = "List as many objects as possible in the image, but limit your answer in 10 objects. You can repeat the object name if it appears for multiple times. E.G. a yellow banana,a purple bottle,a table,a chair"
         buffered = BytesIO()
         pil_image.save(buffered, format="PNG")
         img_bytes = buffered.getvalue()
@@ -207,8 +276,25 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                     "detail": "low",
                 },
             },
-            {"type": "text", "text": prompt},
+            # {"type": "text", "text": prompt},
         ]
+
+        # prompt = "List as many objects as possible in the image, but limit your answer in 5 objects. E.G. a yellow banana,some purple bottles,a table,3 chairs"
+        # messages = [
+        #     {
+        #         "role": "user",
+        #         "content": [
+        #             {
+        #                 "type": "image",
+        #                 "image": pil_image,
+        #             },
+        #             {
+        #                 "type": "text",
+        #                 "image": prompt,
+        #             },
+        #         ]
+        #     }
+        # ]
 
         # self.obs_count inherited from voxel_dynamem
         objects = []
@@ -227,4 +313,4 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         else:
             self.image_descriptions.append(objects)
 
-        print(self.image_descriptions)
+        print(objects)

@@ -103,10 +103,17 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             elif self.alignment_heuristics_type == "mllm":
                 alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics_mllm(text)
                 alignments_heuristics = np.ma.masked_array(alignments_heuristics, ~outside_frontier)
+                total_heuristics = time_heuristics + alignments_heuristics
                 # from matplotlib import pyplot as plt
+                # plt.clf()
+                # plt.imshow(obstacles)
+                # plt.show()
                 # plt.imshow(alignments_heuristics)
                 # plt.show()
-                total_heuristics = time_heuristics + alignments_heuristics
+                # plt.imshow(time_heuristics)
+                # plt.show()
+                # plt.imshow(total_heuristics)
+                # plt.show()
             else:
                 raise ValueError(
                     f"Invalid alignment heuristics type: {self.alignment_heuristics_type}"
