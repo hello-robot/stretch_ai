@@ -250,7 +250,7 @@ class Qwen25VLClient:
             messages = []
 
         # Prepare the messages
-        if not isinstance(command, List):
+        if not isinstance(command, list):
             messages.append({"role": "user", "content": command})
         else:
             messages += command
