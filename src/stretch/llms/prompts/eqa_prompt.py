@@ -19,6 +19,7 @@ EQA_PROMPT = f"""
         Do not use just commensense knowledge to decide confidence. 
         Choose TRUE, if you have explored enough and are certain about answering the question correctly and no further exploration will help you answer the question better. 
         Choose FALSE, if you are uncertain of the answer and should explore more to ground your answer in the current environment. 
+        Do not be overly cautious about your answer! Keeping hesitated about your confidence level will be considered as failure and facing the same punishmest as answering the question incorrectly.
 
         Example #1:
             Input:
