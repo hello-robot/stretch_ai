@@ -158,6 +158,16 @@ class Qwen25Client(AbstractLLMClient):
             print(f"Time taken: {t1 - t0:.2f}s")
         return assistant_response
 
+    def sample(self, command: str, n_samples: int = 5, verbose: bool = False):
+        if verbose:
+            print(f"{self.system_prompt=}")
+        plan = []
+        for i in range(n_samples):
+            plan.append(self.__call__(command, verbose))
+        if verbose:
+            print(f"plan={plan}")
+        return plan
+
 
 from qwen_vl_utils import process_vision_info
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
@@ -250,7 +260,7 @@ class Qwen25VLClient:
             messages = []
 
         # Prepare the messages
-        if not isinstance(command, List):
+        if not isinstance(command, list):
             messages.append({"role": "user", "content": command})
         else:
             messages += command

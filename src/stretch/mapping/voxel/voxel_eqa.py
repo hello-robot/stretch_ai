@@ -19,14 +19,13 @@ from PIL import Image
 from torch import Tensor
 
 from stretch.llms.openai_client import OpenaiClient
-
-# from stretch.llms.qwen_client import Qwen25VLClient, Qwen25Client
 from stretch.llms.prompts.eqa_prompt import (
     EQA_PROMPT,
     EQA_SYSTEM_PROMPT_NEGATIVE,
     EQA_SYSTEM_PROMPT_POSITIVE,
     IMAGE_DESCRIPTION_PROMPT,
 )
+from stretch.llms.qwen_client import Qwen25VLClient
 from stretch.mapping.voxel.voxel_map_dynamem import SparseVoxelMap
 
 
@@ -36,12 +35,12 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         # To avoid using too much GPT, we use Qwen2.5-3b-vl-instruct-awq for image description.
         # self.image_description_client = Qwen25VLClient(prompt = None, model_size = "3B",)
-        self.image_description_client = OpenaiClient(
-            prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
-        )
-        # self.image_description_client = Qwen25VLClient(
-        #     prompt=None, model_size="3B", quantization = "awq"
+        # self.image_description_client = OpenaiClient(
+        #     prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
         # )
+        self.image_description_client = Qwen25VLClient(
+            prompt=IMAGE_DESCRIPTION_PROMPT, model_size="3B", quantization="awq"
+        )
 
         self.image_descriptions: List[List[str]] = []
 
@@ -279,37 +278,36 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             else:
                 _image = image
             pil_image = Image.fromarray(_image)
-        buffered = BytesIO()
-        pil_image.save(buffered, format="PNG")
-        img_bytes = buffered.getvalue()
-        base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
-        messages = [
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/png;base64,{base64_encoded}",
-                    "detail": "low",
-                },
-            },
-            # {"type": "text", "text": prompt},
-        ]
-
-        # prompt = "List as many objects as possible in the image, but limit your answer in 5 objects. E.G. a yellow banana,some purple bottles,a table,3 chairs"
+        # buffered = BytesIO()
+        # pil_image.save(buffered, format="PNG")
+        # img_bytes = buffered.getvalue()
+        # base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
         # messages = [
         #     {
-        #         "role": "user",
-        #         "content": [
-        #             {
-        #                 "type": "image",
-        #                 "image": pil_image,
-        #             },
-        #             {
-        #                 "type": "text",
-        #                 "image": prompt,
-        #             },
-        #         ]
+        #         "type": "image_url",
+        #         "image_url": {
+        #             "url": f"data:image/png;base64,{base64_encoded}",
+        #             "detail": "low",
+        #         },
         #     }
         # ]
+
+        prompt = "List as many objects as possible in the image, but limit your answer in 5 objects. E.G. a yellow banana,some purple bottles,a table,3 chairs"
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "image": pil_image,
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt,
+                    },
+                ],
+            }
+        ]
 
         # self.obs_count inherited from voxel_dynamem
         objects = []
