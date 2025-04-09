@@ -8,6 +8,7 @@
 # license information maybe found below, if so.
 
 import base64
+import os
 from io import BytesIO
 from typing import Any, Dict, List, Optional, Union
 
@@ -62,12 +63,26 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         for (i, history_output) in enumerate(self.history_outputs):
             messages.append({"type": "text", "text": history_output})
         # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
+        img_idx = 0
+        if not os.path.exists(self.log + "/" + str(len(self.image_descriptions))):
+            os.makedirs(self.log + "/" + str(len(self.image_descriptions)))
         for relevant_object in relevant_objects:
-            image_ids, _, _ = self.find_all_images(relevant_object)
+            # Limit the total number of images to 30
+            image_ids, _, _ = self.find_all_images(
+                relevant_object,
+                min_similarity_threshold=0.1,
+                max_img_num=30 // len(relevant_objects),
+            )
             for obs_id in image_ids:
                 obs_id = int(obs_id) - 1
                 rgb = np.copy(self.observations[obs_id].rgb.numpy())
                 image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+
+                image.save(
+                    self.log + "/" + str(len(self.image_descriptions)) + "/" + str(img_idx) + ".jpg"
+                )
+                img_idx += 1
+
                 buffered = BytesIO()
                 image.save(buffered, format="PNG")
                 img_bytes = buffered.getvalue()

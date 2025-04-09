@@ -458,7 +458,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 text, debug=debug, return_debug=return_debug
             )
 
-    def find_all_images(self, text: str):
+    def find_all_images(
+        self,
+        text: str,
+        min_similarity_threshold: Optional[float] = None,
+        max_img_num: int = 3,
+    ):
         """
         Select all images with high pixel similarity with text
         """
@@ -467,7 +472,11 @@ class SparseVoxelMap(SparseVoxelMapBase):
         alignments = self.find_alignment_over_model(text).cpu().squeeze()
         obs_counts = self.semantic_memory._obs_counts.cpu()
 
-        turning_point = min(0.12, alignments[torch.argsort(alignments)[-100]])
+        turning_point = (
+            min(min_similarity_threshold, alignments[torch.argsort(alignments)[-100]])
+            if min_similarity_threshold is not None
+            else alignments[torch.argsort(alignments)[-100]]
+        )
         mask = alignments >= turning_point
         obs_counts = obs_counts[mask]
         alignments = alignments[mask]
@@ -496,8 +505,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
             points_with_max_alignment[i] = point_with_max_alignment
             max_alignments[i] = cluster_alignments.max()
 
+        top_k = min(max_img_num, len(max_alignments))
         top_alignments, top_indices = torch.topk(
-            max_alignments, k=min(3, len(max_alignments)), dim=0, largest=True, sorted=True
+            max_alignments, k=top_k, dim=0, largest=True, sorted=True
         )
         top_points = points_with_max_alignment[top_indices]
         top_obs_counts = unique_obs_counts[top_indices]
@@ -594,7 +604,11 @@ class SparseVoxelMap(SparseVoxelMapBase):
         debug_text = ""
         target_point = None
 
-        image_ids, points, alignments = self.find_all_images(text)
+        image_ids, points, alignments = self.find_all_images(
+            # text, min_similarity_threshold=0.12, max_img_num=3
+            text,
+            max_img_num=3,
+        )
         target_id = self.llm_locator(image_ids, text)
 
         if target_id is None:
