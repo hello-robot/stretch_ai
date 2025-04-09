@@ -178,7 +178,10 @@ class SparseVoxelMap(SparseVoxelMapBase):
     def get_2d_map(
         self, debug: bool = False, return_history_id: bool = False
     ) -> Tuple[Tensor, ...]:
-        """Get 2d map with explored area and frontiers."""
+        """
+        Get 2d map with explored area and frontiers.
+        return_history_id: if True, return when each voxel was recently updated
+        """
 
         # Is this already cached? If so we don't need to go to all this work
         if (
@@ -305,6 +308,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         """
         Transform the similarity with text into a 2D value map that can be used to evaluate
         how much exploring to one point can benefit open vocabulary navigation
+
+        Similarity is computed naviely by CLIP/Siglip encoder
         """
         if self.semantic_memory._points is None:
             return None
@@ -405,18 +410,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         valid_rgb = rgb.permute(1, 2, 0)[~mask]
         if len(valid_xyz) != 0:
             self.add_to_semantic_memory(valid_xyz, features, valid_rgb)
-
-        # if self.image_shape is not None:
-        #     rgb = F.interpolate(
-        #         rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-        #     ).squeeze()
-
-        # self.add(
-        #     camera_pose=torch.Tensor(pose),
-        #     rgb=torch.Tensor(rgb).permute(1, 2, 0),
-        #     depth=torch.Tensor(depth),
-        #     camera_K=torch.Tensor(intrinsics),
-        # )
 
     def add_to_semantic_memory(
         self,
