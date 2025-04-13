@@ -14,7 +14,7 @@ import torch
 from torch import Tensor
 
 # This is how much memory we allocate
-DEFAULT_GRID_SIZE = [150, 150]
+DEFAULT_GRID_SIZE = [250, 250]
 
 
 class GridParams:

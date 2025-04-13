@@ -79,11 +79,11 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         all_obs_ids = set()
 
         for relevant_object in relevant_objects:
-            # Limit the total number of images to 30
+            # Limit the total number of images to 5
             image_ids, _, _ = self.find_all_images(
                 relevant_object,
                 min_similarity_threshold=0.1,
-                max_img_num=6 // len(relevant_objects),
+                max_img_num=5 // len(relevant_objects),
                 min_point_num=40,
             )
             for obs_id in image_ids:
@@ -128,14 +128,12 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         reasoning = (
             answer_outputs.split("reasoning:")[-1]
             .split("answer:")[0]
-            .replace(" ", "")
             .replace("\n", "")
             .replace("\t", "")
         )
         answer = (
             answer_outputs.split("answer:")[-1]
             .split("confidence:")[0]
-            .replace(" ", "")
             .replace("\n", "")
             .replace("\t", "")
         )
@@ -143,10 +141,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             "confidence_reasoning:"
         )[0].replace(" ", "").replace("\n", "").replace("\t", "")
         confidence_reasoning = (
-            answer_outputs.split("confidence_reasoning:")[-1]
-            .replace(" ", "")
-            .replace("\n", "")
-            .replace("\t", "")
+            answer_outputs.split("confidence_reasoning:")[-1].replace("\n", "").replace("\t", "")
         )
 
         self.history_outputs.append(
@@ -214,8 +209,8 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         task,
         image_descriptions: Optional[List[List[str]]] = None,
         num_samples=5,
-        positive_weight=0.3,
-        negative_weight=0.15,
+        positive_weight=0.2,
+        negative_weight=0.1,
     ):
         """
         Compute an exploration heuristic score to determine how valuable it is to explore the contents inside the image.

@@ -677,10 +677,10 @@ class RobotAgent(RobotAgentBase):
                 self.robot.switch_to_navigation_mode()
 
             try:
-                # reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
-                #     question, relevant_objects
-                # )
-                reasoning, answer, confidence, confidence_reasoning = "", "Unknown", False, ""
+                reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
+                    question, relevant_objects
+                )
+                # reasoning, answer, confidence, confidence_reasoning = "", "Unknown", False, ""
             except:
                 reasoning, answer, confidence, confidence_reasoning = (
                     "Exception happens in LLM querying",

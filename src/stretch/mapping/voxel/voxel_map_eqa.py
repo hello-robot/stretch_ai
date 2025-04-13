@@ -96,35 +96,41 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 )
                 total_heuristics = time_heuristics + 0.3 * alignments_heuristics
             elif self.alignment_heuristics_type == "mllm":
-                # alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics_mllm(text)
-                # alignments_heuristics = np.ma.masked_array(alignments_heuristics, ~outside_frontier)
-                # total_heuristics = time_heuristics + alignments_heuristics
+                alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics_mllm(text)
+                alignments_heuristics = np.ma.masked_array(alignments_heuristics, ~outside_frontier)
+                total_heuristics = time_heuristics + alignments_heuristics
                 if verbose:
                     from matplotlib import pyplot as plt
 
-                    # plt.close('all')
-                    # fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-                    # axs[0, 0].imshow(obstacles)
-                    # axs[0, 0].set_title('obstacle map')
-                    # axs[0, 1].imshow(alignments_heuristics)
-                    # axs[0, 1].set_title('exploration alignment heuristics')
-                    # axs[1, 0].imshow(time_heuristics)
-                    # axs[1, 0].set_title('time heuristics')
-                    # axs[1, 1].imshow(total_heuristics)
-                    # axs[1, 1].set_title('total heuristics')
-                    # for ax in axs.flat:
-                    #     ax.axis('off')
-                    # plt.tight_layout()
-                    # plt.savefig(self.voxel_map.log + "/exploration" + str(len(self.voxel_map.image_descriptions)) + ".jpg", dpi=300)
+                    plt.close("all")
+                    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+                    axs[0, 0].imshow(obstacles)
+                    axs[0, 0].set_title("obstacle map")
+                    axs[0, 1].imshow(alignments_heuristics)
+                    axs[0, 1].set_title("exploration alignment heuristics")
+                    axs[1, 0].imshow(time_heuristics)
+                    axs[1, 0].set_title("time heuristics")
+                    axs[1, 1].imshow(total_heuristics)
+                    axs[1, 1].set_title("total heuristics")
+                    for ax in axs.flat:
+                        ax.axis("off")
+                    plt.tight_layout()
+                    plt.savefig(
+                        self.voxel_map.log
+                        + "/exploration"
+                        + str(len(self.voxel_map.image_descriptions))
+                        + ".jpg",
+                        dpi=300,
+                    )
                     plt.close("all")
                     plt.imshow(obstacles)
-                    # plt.show()
-                    # plt.imshow(alignments_heuristics)
+                    plt.show()
+                    plt.imshow(alignments_heuristics)
                     plt.show()
                     plt.imshow(time_heuristics)
                     plt.show()
-                    # plt.imshow(total_heuristics)
-                    # plt.show()
+                    plt.imshow(total_heuristics)
+                    plt.show()
             else:
                 raise ValueError(
                     f"Invalid alignment heuristics type: {self.alignment_heuristics_type}"
