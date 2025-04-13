@@ -72,14 +72,12 @@ def main(
     while agent.is_running():
 
         # If target object and receptacle are provided, set mode to manipulation
-        # question = input("Question:").lower()
-        question = "What is the color of the washing machine?"
+        question = input("Question:").lower()
 
         robot.move_to_nav_posture()
         robot.switch_to_navigation_mode()
         robot.say("Running EQA.")
         agent.run_eqa(question)
-        break
 
 
 if __name__ == "__main__":

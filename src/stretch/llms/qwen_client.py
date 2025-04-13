@@ -264,7 +264,6 @@ class Qwen25VLClient:
             messages.append({"role": "user", "content": command})
         else:
             messages += command
-        print(messages)
 
         t0 = timeit.default_timer()
 

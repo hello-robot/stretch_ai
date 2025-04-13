@@ -16,17 +16,18 @@ import numpy as np
 import retry
 import torch
 from PIL import Image
+from scipy.ndimage import maximum_filter
 from torch import Tensor
 
 from stretch.llms.openai_client import OpenaiClient
-from stretch.llms.prompts.eqa_prompt import (
+from stretch.llms.prompts.eqa_prompt import (  # IMAGE_DESCRIPTION_PROMPT,
     EQA_PROMPT,
     EQA_SYSTEM_PROMPT_NEGATIVE,
     EQA_SYSTEM_PROMPT_POSITIVE,
-    IMAGE_DESCRIPTION_PROMPT,
 )
 from stretch.llms.qwen_client import Qwen25VLClient
 from stretch.mapping.voxel.voxel_map_dynamem import SparseVoxelMap
+from stretch.utils.voxel import scatter3d
 
 
 class SparseVoxelMapEQA(SparseVoxelMap):
@@ -39,14 +40,14 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         #     prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
         # )
         self.image_description_client = Qwen25VLClient(
-            prompt=IMAGE_DESCRIPTION_PROMPT, model_size="3B", quantization="awq"
+            model_size="3B", quantization="int4", max_tokens=20
         )
 
         self.image_descriptions: List[List[str]] = []
 
         self.history_outputs: List[str] = []
 
-        self.eqa_gpt_client = OpenaiClient(EQA_PROMPT, model="gpt-4o")
+        self.eqa_gpt_client = OpenaiClient(EQA_PROMPT, model="gpt-4o-2024-05-13")
 
         self.positive_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o")
 
@@ -57,58 +58,112 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         # self.negative_score_client = Qwen25Client(EQA_SYSTEM_PROMPT_NEGATIVE, model_type = "Deepseek", model_size = "1.5B")
 
     def query_answer(self, question: str, relevant_objects: List[str]):
-        messages: List[Dict[str, Any]] = [{"type": "text", "text": question}]
-        messages.append({"type": "text", "text": "HISTORY"})
+        messages: List[Dict[str, Any]] = [{"type": "text", "text": "Question: " + question}]
+        messages.append({"type": "text", "text": "HISTORY: "})
         for (i, history_output) in enumerate(self.history_outputs):
-            messages.append({"type": "text", "text": history_output})
+            messages.append({"type": "text", "text": "Iteration_" + str(i) + ":" + history_output})
         # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
         img_idx = 0
+
+        # Log the text input and image input
         if not os.path.exists(self.log + "/" + str(len(self.image_descriptions))):
             os.makedirs(self.log + "/" + str(len(self.image_descriptions)))
+            input_texts = ""
+            for message in messages:
+                input_texts += message["text"] + "\n"
+            with open(
+                self.log + "/" + str(len(self.image_descriptions)) + "/input.txt", "w"
+            ) as file:
+                file.write(input_texts)
+
+        all_obs_ids = set()
+
         for relevant_object in relevant_objects:
             # Limit the total number of images to 30
             image_ids, _, _ = self.find_all_images(
                 relevant_object,
                 min_similarity_threshold=0.1,
-                max_img_num=30 // len(relevant_objects),
+                max_img_num=6 // len(relevant_objects),
+                min_point_num=40,
             )
             for obs_id in image_ids:
                 obs_id = int(obs_id) - 1
-                rgb = np.copy(self.observations[obs_id].rgb.numpy())
-                image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+                all_obs_ids.add(obs_id)
 
-                image.save(
-                    self.log + "/" + str(len(self.image_descriptions)) + "/" + str(img_idx) + ".jpg"
-                )
-                img_idx += 1
+        for obs_id in all_obs_ids:
+            rgb = np.copy(self.observations[obs_id].rgb.numpy())
+            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
 
-                buffered = BytesIO()
-                image.save(buffered, format="PNG")
-                img_bytes = buffered.getvalue()
-                base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
-                messages.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {  # type:ignore
-                            "url": f"data:image/png;base64,{base64_encoded}",
-                            "detail": "low",
-                        },
-                    }
-                )
-        answer_outputs = self.eqa_gpt_client(messages)
-        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Confidence_reasoning:"
-        reasoning = answer_outputs.split("Reasoning:")[-1].split("Answer:")[0]
-        answer = answer_outputs.split("Answer:")[-1].split("Confidence:")[0]
-        confidence = (
-            answer_outputs.split("Confidence:")[-1]
-            .split("Confidence_reasoning:")[0]
-            .replace(" ", "")
-            == "True"
+            # Save the input images
+            image.save(
+                self.log + "/" + str(len(self.image_descriptions)) + "/" + str(img_idx) + ".jpg"
+            )
+            img_idx += 1
+
+            # Transform the images into base64
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            img_bytes = buffered.getvalue()
+            base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
+            messages.append(
+                {
+                    "type": "image_url",
+                    "image_url": {  # type:ignore
+                        "url": f"data:image/png;base64,{base64_encoded}",
+                        "detail": "high",
+                    },
+                }
+            )
+
+        # Extract answers
+        answer_outputs = (
+            self.eqa_gpt_client(messages).replace("*", "").replace("/", "").replace("#", "").lower()
         )
-        confidence_reasoning = answer_outputs.split("Confidence_reasoning:")[-1]
 
+        # Log LLM output
+        with open(self.log + "/" + str(len(self.image_descriptions)) + "/output.txt", "w") as file:
+            file.write(answer_outputs)
+
+        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Confidence_reasoning:"
+        reasoning = (
+            answer_outputs.split("reasoning:")[-1]
+            .split("answer:")[0]
+            .replace(" ", "")
+            .replace("\n", "")
+            .replace("\t", "")
+        )
+        answer = (
+            answer_outputs.split("answer:")[-1]
+            .split("confidence:")[0]
+            .replace(" ", "")
+            .replace("\n", "")
+            .replace("\t", "")
+        )
+        confidence = "true" in answer_outputs.split("confidence:")[-1].split(
+            "confidence_reasoning:"
+        )[0].replace(" ", "").replace("\n", "").replace("\t", "")
+        confidence_reasoning = (
+            answer_outputs.split("confidence_reasoning:")[-1]
+            .replace(" ", "")
+            .replace("\n", "")
+            .replace("\t", "")
+        )
+
+        self.history_outputs.append(
+            "Answer:"
+            + answer
+            + "\nReasoning:"
+            + reasoning
+            + "\nConfidence:"
+            + str(confidence)
+            + "\nReasoning:"
+            + confidence_reasoning
+        )
+
+        # Debug answer and confidence
         print("Answer:", answer)
         print("Confidence:", confidence)
+        print("Answer outputs:", answer_outputs)
 
         return reasoning, answer, confidence, confidence_reasoning
 
@@ -121,7 +176,25 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         """
         if self.voxel_pcd._points is None:
             return None
-        _, _, history = self.get_2d_map(return_history_id=True)
+
+        # Extract image id for each 2d grid points
+        obs_ids = self.voxel_pcd._obs_counts
+        xyz, _, _, _ = self.voxel_pcd.get_pointcloud()
+        xyz = ((xyz / self.grid_resolution) + self.grid_origin + 0.5).long()
+        xyz[xyz[:, -1] < 0, -1] = 0
+
+        max_height = int(self.obs_max_height / self.grid_resolution)
+        grid_size = self.grid_size + [max_height]
+        obs_ids = obs_ids[:, None]
+
+        history_ids = scatter3d(xyz, obs_ids, grid_size, "max")
+        history = torch.max(history_ids, dim=-1).values
+        history = torch.from_numpy(maximum_filter(history.float().numpy(), size=7))
+        history[0:35, :] = history.max().item()
+        history[-35:, :] = history.max().item()
+        history[:, 0:35] = history.max().item()
+        history[:, -35:] = history.max().item()
+
         selected_images = torch.unique(history).int()
         # history image id is 1-indexed, so we need to subtract 1 from scores
         image_descriptions = [
@@ -141,9 +214,16 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         task,
         image_descriptions: Optional[List[List[str]]] = None,
         num_samples=5,
-        positive_weight=0.4,
-        negative_weight=0.2,
+        positive_weight=0.3,
+        negative_weight=0.15,
     ):
+        """
+        Compute an exploration heuristic score to determine how valuable it is to explore the contents inside the image.
+
+        Args:
+            task: things you want the robot to do, e.g. "find a blue bottle", "Answer the question 'What is the color of the washing machine'"
+            positive_weight / negative_weight: scores = positive_weight * positive_scores + negative_weight * negative_scores
+        """
         if image_descriptions is None:
             image_descriptions = self.image_descriptions
         try:
@@ -173,7 +253,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         num_samples=5,
         positive=True,
         image_descriptions: Optional[List[List[str]]] = None,
-        verbose: bool = False,
+        verbose: bool = True,
     ):
 
         options = ""
@@ -247,9 +327,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         if verbose:
             print("Task:", task, "Score type:", positive)
-            print(answer_counts, image_descriptions, answers, reasonings)
-            for a in answer_counts.keys():
-                print(a, answer_counts[a], image_descriptions[a - 1])
+            for image_id in answer_counts.keys():
+                print("Image_id:", image_id, "scores:", answer_counts[image_id])
+                print("Image descriptions:", image_descriptions[image_id - 1])
 
         return answer_counts, reasonings
 
@@ -292,7 +372,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         #     }
         # ]
 
-        prompt = "List as many objects as possible in the image, but limit your answer in 5 objects. E.G. a yellow banana,some purple bottles,a table,3 chairs"
+        prompt = "List representative objects in the image. Limit your answer in 10 words. E.G.: a table,chairs,doors"
         messages = [
             {
                 "role": "user",
@@ -314,7 +394,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         for _ in range(max_tries):
             try:
                 object_names = self.image_description_client(messages)
-                objects = object_names.split(",")
+                objects = object_names.split(",")[:5]
             except:
                 objects = []
                 continue

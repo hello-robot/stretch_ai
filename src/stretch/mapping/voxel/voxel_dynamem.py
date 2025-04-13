@@ -462,10 +462,16 @@ class SparseVoxelMap(SparseVoxelMapBase):
         self,
         text: str,
         min_similarity_threshold: Optional[float] = None,
-        max_img_num: int = 3,
+        min_point_num: int = 100,
+        max_img_num: Optional[int] = 3,
     ):
         """
-        Select all images with high pixel similarity with text
+        Select all images with high pixel similarity with text (by identifying whether points in this image are relevant objects)
+
+        Args:
+            min_similarity_threshold: Make sure every point with similarity greater than this value would be considered as the relevant objects
+            min_point_num: Make sure we select at least these many points as relevant images.
+            max_img_num: The maximum number of images we want to identify as relevant objects.
         """
         points, _, _, _ = self.semantic_memory.get_pointcloud()
         points = points.cpu()
@@ -473,9 +479,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         obs_counts = self.semantic_memory._obs_counts.cpu()
 
         turning_point = (
-            min(min_similarity_threshold, alignments[torch.argsort(alignments)[-100]])
+            min(min_similarity_threshold, alignments[torch.argsort(alignments)[-min_point_num]])
             if min_similarity_threshold is not None
-            else alignments[torch.argsort(alignments)[-100]]
+            else alignments[torch.argsort(alignments)[-min_point_num]]
         )
         mask = alignments >= turning_point
         obs_counts = obs_counts[mask]
@@ -505,7 +511,10 @@ class SparseVoxelMap(SparseVoxelMapBase):
             points_with_max_alignment[i] = point_with_max_alignment
             max_alignments[i] = cluster_alignments.max()
 
-        top_k = min(max_img_num, len(max_alignments))
+        if max_img_num is not None:
+            top_k = min(max_img_num, len(max_alignments))
+        else:
+            top_k = len(max_alignments)
         top_alignments, top_indices = torch.topk(
             max_alignments, k=top_k, dim=0, largest=True, sorted=True
         )

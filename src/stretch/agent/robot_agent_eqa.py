@@ -42,7 +42,8 @@ from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.mapping.voxel.voxel_eqa import SparseVoxelMapEQA as SparseVoxelMap
 from stretch.mapping.voxel.voxel_map_eqa import SparseVoxelMapNavigationSpace
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.detection.owl import OwlPerception
+
+# from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -211,25 +212,8 @@ class RobotAgent(RobotAgentBase):
             self.encoder = None
         else:
             self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        # You can see a clear difference in hyperparameter selection in different querying strategies
-        # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
-        # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
-        if self.manipulation_only:
-            self.detection_model = None
-            semantic_memory_resolution = 0.1
-            image_shape = (360, 270)
-        elif self.mllm:
-            self.detection_model = OwlPerception(
-                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
-            )
-            semantic_memory_resolution = 0.1
-            image_shape = (360, 270)
-        else:
-            self.detection_model = OwlPerception(
-                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
-            )
-            semantic_memory_resolution = 0.05
-            image_shape = (480, 360)
+        semantic_memory_resolution = 0.1
+        image_shape = (360, 270)
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             semantic_memory_resolution=semantic_memory_resolution,
@@ -251,7 +235,7 @@ class RobotAgent(RobotAgentBase):
             median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
-            detection=self.detection_model,
+            detection=None,
             encoder=self.encoder,
             image_shape=image_shape,
             log=self.log,
@@ -692,9 +676,18 @@ class RobotAgent(RobotAgentBase):
                 self.robot.look_front()
                 self.robot.switch_to_navigation_mode()
 
-            reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
-                question, relevant_objects
-            )
+            try:
+                # reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
+                #     question, relevant_objects
+                # )
+                reasoning, answer, confidence, confidence_reasoning = "", "Unknown", False, ""
+            except:
+                reasoning, answer, confidence, confidence_reasoning = (
+                    "Exception happens in LLM querying",
+                    "Unknown",
+                    False,
+                    "",
+                )
             answer_output = "# " + answer + "\n# " + reasoning + "\n# " + confidence_reasoning
 
             self.rerun_visualizer.log_text("QA", answer_output)
