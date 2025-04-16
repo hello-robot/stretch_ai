@@ -122,15 +122,15 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                         + ".jpg",
                         dpi=300,
                     )
-                    plt.close("all")
-                    plt.imshow(obstacles)
-                    plt.show()
-                    plt.imshow(alignments_heuristics)
-                    plt.show()
-                    plt.imshow(time_heuristics)
-                    plt.show()
-                    plt.imshow(total_heuristics)
-                    plt.show()
+                    # plt.close("all")
+                    # plt.imshow(obstacles)
+                    # plt.show()
+                    # plt.imshow(alignments_heuristics)
+                    # plt.show()
+                    # plt.imshow(time_heuristics)
+                    # plt.show()
+                    # plt.imshow(total_heuristics)
+                    # plt.show()
             else:
                 raise ValueError(
                     f"Invalid alignment heuristics type: {self.alignment_heuristics_type}"

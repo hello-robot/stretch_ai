@@ -19,7 +19,8 @@ from PIL import Image
 from scipy.ndimage import maximum_filter
 from torch import Tensor
 
-from stretch.llms.openai_client import OpenaiClient
+# from stretch.llms.openai_client import OpenaiClient
+from stretch.llms.gemini_client import GeminiClient
 from stretch.llms.prompts.eqa_prompt import (  # IMAGE_DESCRIPTION_PROMPT,
     EQA_PROMPT,
     EQA_SYSTEM_PROMPT_NEGATIVE,
@@ -34,8 +35,12 @@ class SparseVoxelMapEQA(SparseVoxelMap):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # To avoid using too much GPT, we use Qwen2.5-3b-vl-instruct-awq for image description.
-        # self.image_description_client = Qwen25VLClient(prompt = None, model_size = "3B",)
+        # Cached question
+        self._question: Optional[str] = None
+        self.relevant_objects: Optional[list] = None
+
+        # To avoid using too much GPT, we use Qwen2.5-3b-vl-instruct for image description.
+
         # self.image_description_client = OpenaiClient(
         #     prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
         # )
@@ -47,21 +52,62 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         self.history_outputs: List[str] = []
 
-        self.eqa_gpt_client = OpenaiClient(EQA_PROMPT, model="gpt-4o-2024-05-13")
+        # self.eqa_gpt_client = OpenaiClient(EQA_PROMPT, model="gpt-4o-2024-05-13")
 
-        self.positive_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o")
+        # self.positive_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o")
 
-        self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o")
+        # self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o")
 
-        # self.positive_score_client = Qwen25Client(EQA_SYSTEM_PROMPT_POSITIVE, model_type = "Deepseek", model_size = "1.5B")
+        self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.0-flash")
 
-        # self.negative_score_client = Qwen25Client(EQA_SYSTEM_PROMPT_NEGATIVE, model_type = "Deepseek", model_size = "1.5B")
+        self.positive_score_client = GeminiClient(
+            EQA_SYSTEM_PROMPT_POSITIVE, model="gemini-2.0-flash-lite"
+        )
 
-    def query_answer(self, question: str, relevant_objects: List[str]):
-        messages: List[Dict[str, Any]] = [{"type": "text", "text": "Question: " + question}]
+        self.negative_score_client = GeminiClient(
+            EQA_SYSTEM_PROMPT_NEGATIVE, model="gemini-2.0-flash-lite"
+        )
+
+    def query_answer(self, question: str):
+        if self._question != question:
+            self._question = question
+            # The cached question is not the same as the question provided
+            prompt = """
+                Assume there is an agent doing Question Answering in an environment.
+                When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
+                Example:
+                    Where is the pen?
+                    pen
+
+                    Is there grey cloth on cloth hanger?
+                    gery cloth,cloth hanger
+            """
+            messages: List[Dict[str, Any]] = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                        {
+                            "type": "text",
+                            "text": self._question,
+                        },
+                    ],
+                }
+            ]
+            # To avoid initializing too many clients and using up too much memory, I reused the client generating the image descriptions even though it is a VL model
+            self.relevant_objects = self.image_description_client(messages).split(",")
+            print("relevant objects to look at", self.relevant_objects)
+            self.history_outputs = []
+        messages = [{"type": "text", "text": "Question: " + question}]
+        commands: List[Any] = ["Question: " + question]
         messages.append({"type": "text", "text": "HISTORY: "})
+        commands.append("HISTORY: ")
         for (i, history_output) in enumerate(self.history_outputs):
             messages.append({"type": "text", "text": "Iteration_" + str(i) + ":" + history_output})
+            commands.append("Iteration_" + str(i) + ":" + history_output)
         # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
         img_idx = 0
 
@@ -78,12 +124,12 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         all_obs_ids = set()
 
-        for relevant_object in relevant_objects:
-            # Limit the total number of images to 5
+        for relevant_object in self.relevant_objects:
+            # Limit the total number of images to 10
             image_ids, _, _ = self.find_all_images(
                 relevant_object,
                 min_similarity_threshold=0.1,
-                max_img_num=5 // len(relevant_objects),
+                max_img_num=10 // len(self.relevant_objects),
                 min_point_num=40,
             )
             for obs_id in image_ids:
@@ -115,9 +161,15 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 }
             )
 
+            commands.append(image)
+
         # Extract answers
+        # answer_outputs = (
+        #     self.eqa_gpt_client(messages).replace("*", "").replace("/", "").replace("#", "").lower()
+        # )
+        print(commands)
         answer_outputs = (
-            self.eqa_gpt_client(messages).replace("*", "").replace("/", "").replace("#", "").lower()
+            self.eqa_client(commands).replace("*", "").replace("/", "").replace("#", "").lower()
         )
 
         # Log LLM output
@@ -208,7 +260,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self,
         task,
         image_descriptions: Optional[List[List[str]]] = None,
-        num_samples=5,
+        num_samples=3,
         positive_weight=0.2,
         negative_weight=0.1,
     ):
@@ -245,7 +297,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
     def score_images(
         self,
         task: str,
-        num_samples=5,
+        num_samples=4,
         positive=True,
         image_descriptions: Optional[List[List[str]]] = None,
         verbose: bool = True,
@@ -273,29 +325,31 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 options += f"{i+1}. {cluser_string[:-2]}\n"
 
         if positive:
-            messages = [
-                {
-                    "type": "text",
-                    "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?",
-                }
-            ]
+            # messages = [
+            #     {
+            #         "type": "text",
+            #         "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?",
+            #     }
+            # ]
+            messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?"
             choices = self.positive_score_client.sample(messages, n_samples=num_samples)
         else:
-            messages = [
-                {
-                    "type": "text",
-                    "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?",
-                }
-            ]
+            # messages = [
+            #     {
+            #         "type": "text",
+            #         "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?",
+            #     }
+            # ]
+            messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?"
             choices = self.negative_score_client.sample(messages, n_samples=num_samples)
 
         answers = []
         reasonings = []
         for choice in choices:
             try:
-                complete_response = choice.message.content
-                # Make the response all lowercase
-                complete_response = complete_response.lower()
+                # complete_response = choice.message.content
+                # complete_response = complete_response.lower()
+                complete_response = choice.lower()
                 reasoning = complete_response.split("reasoning: ")[1].split("\n")[0]
                 # Parse out the first complete integer from the substring after  the text "Answer: ". use regex
                 if len(complete_response.split("answer:")) > 1:

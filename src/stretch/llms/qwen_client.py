@@ -163,6 +163,7 @@ class Qwen25Client(AbstractLLMClient):
             print(f"{self.system_prompt=}")
         plan = []
         for i in range(n_samples):
+            self.reset()
             plan.append(self.__call__(command, verbose))
         if verbose:
             print(f"plan={plan}")

@@ -14,14 +14,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import timeit
 from datetime import datetime
 from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import click
-import cv2
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
@@ -36,7 +34,8 @@ from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
-from stretch.llms import OpenaiClient
+
+# from stretch.llms import OpenaiClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.mapping.voxel.voxel_eqa import SparseVoxelMapEQA as SparseVoxelMap
@@ -193,17 +192,17 @@ class RobotAgent(RobotAgentBase):
 
         self._running = True
 
-        PROMPT = """
-            Assume there is an agent doing Question Answering in an environment.
-            When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
-            Example:
-                Input: Where is the pen?
-                Output: pen
+        # PROMPT = """
+        #     Assume there is an agent doing Question Answering in an environment.
+        #     When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
+        #     Example:
+        #         Input: Where is the pen?
+        #         Output: pen
 
-                Input: Is there grey cloth on cloth hanger?
-                Output: gery cloth,cloth hanger
-        """
-        self.llm_client = OpenaiClient(PROMPT, model="gpt-4o-mini")
+        #         Input: Is there grey cloth on cloth hanger?
+        #         Output: gery cloth,cloth hanger
+        # """
+        # self.llm_client = OpenaiClient(PROMPT, model="gpt-4o-mini")
 
         self._start_threads()
 
@@ -268,164 +267,6 @@ class RobotAgent(RobotAgentBase):
         )
         rr.send_blueprint(my_blueprint)
 
-    def compute_blur_metric(self, image):
-        """
-        Computes a blurriness metric for an image tensor using gradient magnitudes.
-
-        Parameters:
-        - image (torch.Tensor): The input image tensor. Shape is [H, W, C].
-
-        Returns:
-        - blur_metric (float): The computed blurriness metric.
-        """
-
-        # Convert the image to grayscale
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Compute gradients using the Sobel operator
-        Gx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
-        Gy = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
-
-        # Compute gradient magnitude
-        G = cv2.magnitude(Gx, Gy)
-
-        # Compute the mean of gradient magnitudes
-        blur_metric = G.mean()
-
-        return blur_metric
-
-    def update_map_with_pose_graph(self):
-        """Update our voxel map using a pose graph"""
-
-        t0 = timeit.default_timer()
-        self.pose_graph = self.robot.get_pose_graph()
-
-        t1 = timeit.default_timer()
-
-        # Update past observations based on our new pose graph
-        # print("Updating past observations")
-        self._obs_history_lock.acquire()
-        for idx in range(len(self.obs_history)):
-            lidar_timestamp = self.obs_history[idx].lidar_timestamp
-            gps_past = self.obs_history[idx].gps
-
-            for vertex in self.pose_graph:
-                if abs(vertex[0] - lidar_timestamp) < 0.05:
-                    # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    # print(
-                    #     f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                    # )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-                # check if the gps is close to the gps of the pose graph node
-                elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.3
-                    and self.obs_history[idx].pose_graph_timestamp is None
-                ):
-                    # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].pose_graph_timestamp = vertex[0]
-                    self.obs_history[idx].initial_pose_graph_gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].initial_pose_graph_compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-
-                elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
-                    # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
-                    delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
-                    delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
-
-                    # Calculate new gps and compass
-                    new_gps = self.obs_history[idx].gps + delta_gps
-                    new_compass = self.obs_history[idx].compass + delta_compass
-
-                    # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
-                    self.obs_history[idx].gps = new_gps
-                    self.obs_history[idx].compass = new_compass
-
-        t2 = timeit.default_timer()
-        # print(f"Done updating past observations. Time: {t2- t1}")
-
-        # print("Updating voxel map")
-        t3 = timeit.default_timer()
-        # self.voxel_map.reset()
-        # for obs in self.obs_history:
-        #     if obs.is_pose_graph_node:
-        #         self.voxel_map.add_obs(obs)
-        if len(self.obs_history) > 0:
-            obs_history = self.obs_history[-5:]
-            blurness = [self.compute_blur_metric(obs.rgb) for obs in obs_history]
-            obs = obs_history[blurness.index(max(blurness))]
-            # obs = self.obs_history[-1]
-        else:
-            obs = None
-
-        self._obs_history_lock.release()
-
-        if obs is not None and self.robot.in_navigation_mode():
-            self.voxel_map.process_rgbd_images(obs.rgb, obs.depth, obs.camera_K, obs.camera_pose)
-
-        robot_center = np.zeros(3)
-        robot_center[:2] = self.robot.get_base_pose()[:2]
-
-        t4 = timeit.default_timer()
-        # print(f"Done updating voxel map. Time: {t4 - t3}")
-
-        if self.use_scene_graph:
-            self._update_scene_graph()
-            self.scene_graph.get_relationships()
-
-        t5 = timeit.default_timer()
-        # print(f"Done updating scene graph. Time: {t5 - t4}")
-
-        self._obs_history_lock.acquire()
-
-        # print(f"Total observation count: {len(self.obs_history)}")
-
-        # Clear out observations that are too old and are not pose graph nodes
-        if len(self.obs_history) > 500:
-            # print("Clearing out old observations")
-            # Remove 10 oldest observations that are not pose graph nodes
-            del_count = 0
-            del_idx = 0
-            while del_count < 15 and len(self.obs_history) > 0 and del_idx < len(self.obs_history):
-                # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
-                if not self.obs_history[del_idx].is_pose_graph_node:
-                    # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
-                    del self.obs_history[del_idx]
-                    del_count += 1
-                else:
-                    del_idx += 1
-
-                    if del_idx >= len(self.obs_history):
-                        break
-
-        t6 = timeit.default_timer()
-        # print(f"Done clearing out old observations. Time: {t6 - t5}")
-        self._obs_history_lock.release()
-
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         # Sleep some time for the robot camera to focus
@@ -446,11 +287,15 @@ class RobotAgent(RobotAgentBase):
 
     def look_around(self):
         print("*" * 10, "Look around to check", "*" * 10)
-        # for pan in [0.6, -0.3, -1.2, -2.1]:
-        for pan in [0]:
+        for pan in [0.6, -0.2, -1.0, -1.8]:
             tilt = -0.6
             self.robot.head_to(pan, tilt, blocking=True)
             self.update()
+
+    def look_and_update(self):
+        print("*" * 10, "Look around to check", "*" * 10)
+        self.robot.head_to(0, -0.3, blocking=True)
+        self.update()
 
     def rotate_in_place(self):
         print("*" * 10, "Rotate in place", "*" * 10)
@@ -656,13 +501,9 @@ class RobotAgent(RobotAgentBase):
 
         self.robot.switch_to_navigation_mode()
 
-        relevant_objects = self.llm_client(question)
+        return self.run_eqa_vlm_planner(question)
 
-        relevant_objects = relevant_objects.split(",")
-
-        return self.run_eqa_vlm_planner(question, relevant_objects)
-
-    def run_eqa_vlm_planner(self, question, relevant_objects, max_planning_steps: int = 5):
+    def run_eqa_vlm_planner(self, question, max_planning_steps: int = 5):
         answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
@@ -678,9 +519,8 @@ class RobotAgent(RobotAgentBase):
 
             try:
                 reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
-                    question, relevant_objects
+                    question
                 )
-                # reasoning, answer, confidence, confidence_reasoning = "", "Unknown", False, ""
             except:
                 reasoning, answer, confidence, confidence_reasoning = (
                     "Exception happens in LLM querying",
@@ -688,7 +528,16 @@ class RobotAgent(RobotAgentBase):
                     False,
                     "",
                 )
-            answer_output = "# " + answer + "\n# " + reasoning + "\n# " + confidence_reasoning
+            answer_output = (
+                "## Question: "
+                + question
+                + "\n## Answer: "
+                + answer
+                + "\n## Reasoning for the answer: "
+                + reasoning
+                + "\n## Reasoning for the confidence: "
+                + confidence_reasoning
+            )
 
             self.rerun_visualizer.log_text("QA", answer_output)
 
