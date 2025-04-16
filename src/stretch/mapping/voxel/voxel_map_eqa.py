@@ -100,8 +100,10 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 alignments_heuristics = np.ma.masked_array(alignments_heuristics, ~outside_frontier)
                 total_heuristics = time_heuristics + alignments_heuristics
                 if verbose:
+                    import matplotlib
                     from matplotlib import pyplot as plt
 
+                    matplotlib.use("Agg")
                     plt.close("all")
                     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
                     axs[0, 0].imshow(obstacles)

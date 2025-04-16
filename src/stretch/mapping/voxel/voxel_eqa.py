@@ -236,11 +236,14 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         history_ids = scatter3d(xyz, obs_ids, grid_size, "max")
         history = torch.max(history_ids, dim=-1).values
-        history = torch.from_numpy(maximum_filter(history.float().numpy(), size=7))
+        history = torch.from_numpy(maximum_filter(history.float().numpy(), size=5))
         history[0:35, :] = history.max().item()
         history[-35:, :] = history.max().item()
         history[:, 0:35] = history.max().item()
         history[:, -35:] = history.max().item()
+        # from matplotlib import pyplot as plt
+        # plt.imshow(history)
+        # plt.show()
 
         selected_images = torch.unique(history).int()
         # history image id is 1-indexed, so we need to subtract 1 from scores
@@ -260,7 +263,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self,
         task,
         image_descriptions: Optional[List[List[str]]] = None,
-        num_samples=3,
+        num_samples=4,
         positive_weight=0.2,
         negative_weight=0.1,
     ):

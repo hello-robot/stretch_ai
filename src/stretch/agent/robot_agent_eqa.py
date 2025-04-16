@@ -548,12 +548,14 @@ class RobotAgent(RobotAgentBase):
             target_point = self.space.sample_frontier(
                 self.planner, start_pose, text="answering the question '" + question + "'"
             )
+            target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
+            print(target_theta)
             movement_step = 0
             while movement_step < 5:
                 start_pose = self.robot.get_base_pose()
                 movement_step += 1
                 self.update()
-                finished = self.navigate_to_target_pose(target_point, start_pose)
+                finished = self.navigate_to_target_pose(target_point, start_pose, target_theta)
                 if finished:
                     break
 
@@ -561,6 +563,7 @@ class RobotAgent(RobotAgentBase):
         self,
         target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
         start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        target_theta: Optional[float] = None,
     ):
         res = None
         original_target_pose = target_pose
@@ -596,6 +599,8 @@ class RobotAgent(RobotAgentBase):
                 waypoints = waypoints[:8]
                 finished = False
             traj = self.planner.clean_path_for_xy(waypoints)
+            if finished and target_theta is not None:
+                traj[-1][2] = target_theta
             print("Planned trajectory:", traj)
         else:
             traj = None
