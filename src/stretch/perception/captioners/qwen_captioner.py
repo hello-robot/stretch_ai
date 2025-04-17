@@ -7,17 +7,15 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import base64
 import os
-from io import BytesIO
 from typing import Optional, Union
 
 import torch
 from numpy import ndarray
 from PIL import Image, ImageDraw
-from qwen_vl_utils import process_vision_info
 from torch import Tensor
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
+from stretch.llms.qwen_client import Qwen25VLClient
 
 # pip install flash-attn
 
@@ -27,6 +25,7 @@ class QwenCaptioner:
 
     def __init__(
         self,
+        model_size: str = "3B",
         max_length: int = 200,
         num_beams: int = 1,
         device: Optional[str] = None,
@@ -50,16 +49,9 @@ class QwenCaptioner:
         else:
             self._device = torch.device(device)
 
-        # Create models
-        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-3B-Instruct-AWQ",
-            attn_implementation="flash_attention_2",
-            torch_dtype=torch.float16,
-            device_map=self._device,
+        self.client = Qwen25VLClient(
+            model_size=model_size, max_tokens=self.max_length, num_beams=self.num_beams
         )
-
-        # default processor
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct-AWQ")
 
         self.draw_on_image = draw_on_image
 
@@ -86,8 +78,6 @@ class QwenCaptioner:
                 _image = image
             pil_image = Image.fromarray(_image)
 
-        buffered = BytesIO()
-
         if self.image_shape is not None:
             h, w = pil_image.size
             pil_image = pil_image.resize(self.image_shape)
@@ -105,9 +95,6 @@ class QwenCaptioner:
             bbox[3] = min(w - 2, bbox[3])
             draw = ImageDraw.Draw(pil_image)
             draw.rectangle(bbox, outline="red", width=1)
-        pil_image.save(buffered, format="PNG")
-        img_bytes = buffered.getvalue()
-        base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
 
         if bbox is None:
             prompt = "Describe the image."
@@ -122,7 +109,7 @@ class QwenCaptioner:
                 "content": [
                     {
                         "type": "image",
-                        "image": f"data:image;base64,{base64_encoded}",
+                        "image": pil_image,
                     },
                     {"type": "text", "text": prompt},
                     {
@@ -133,28 +120,7 @@ class QwenCaptioner:
             }
         ]
 
-        text = self.processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        image_inputs, video_inputs = process_vision_info(messages)
-        inputs = self.processor(
-            text=[text],
-            images=image_inputs,
-            videos=video_inputs,
-            padding=True,
-            return_tensors="pt",
-        )
-        inputs = inputs.to(self._device)
-
-        generated_ids = self.model.generate(
-            **inputs, max_new_tokens=self.max_length, num_beams=self.num_beams
-        )
-        generated_ids_trimmed = [
-            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = self.processor.batch_decode(
-            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )[0]
+        output_text = self.client(messages)
 
         if bbox is not None:
             if not self.draw_on_image:

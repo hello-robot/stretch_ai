@@ -58,6 +58,23 @@ class OpenaiClient(AbstractLLMClient):
             print(f"plan={plan}")
         return plan
 
+    def sample(self, command: Union[str, list], n_samples: int, verbose: bool = False):
+        if verbose:
+            print(f"{self.system_prompt=}")
+        completion = self._openai.chat.completions.create(
+            model=self.model,
+            temperature=1,
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": command},
+            ],
+            n=n_samples,
+        )
+        plan = completion.choices
+        if verbose:
+            print(f"plan={plan}")
+        return plan
+
 
 if __name__ == "__main__":
     from stretch.llms.prompts.ok_robot_prompt import OkRobotPromptBuilder
