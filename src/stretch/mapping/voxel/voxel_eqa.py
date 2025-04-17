@@ -59,14 +59,21 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         # self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o")
 
         self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.0-flash")
+        # self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
 
         self.positive_score_client = GeminiClient(
             EQA_SYSTEM_PROMPT_POSITIVE, model="gemini-2.0-flash-lite"
         )
+        # self.positive_score_client = GeminiClient(
+        #     EQA_SYSTEM_PROMPT_POSITIVE, model="gemini-2.0-flash"
+        # )
 
         self.negative_score_client = GeminiClient(
             EQA_SYSTEM_PROMPT_NEGATIVE, model="gemini-2.0-flash-lite"
         )
+        # self.negative_score_client = GeminiClient(
+        #     EQA_SYSTEM_PROMPT_NEGATIVE, model="gemini-2.0-flash"
+        # )
 
     def query_answer(self, question: str):
         if self._question != question:
@@ -128,7 +135,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             # Limit the total number of images to 10
             image_ids, _, _ = self.find_all_images(
                 relevant_object,
-                min_similarity_threshold=0.1,
+                min_similarity_threshold=0.01,
                 max_img_num=10 // len(self.relevant_objects),
                 min_point_num=40,
             )

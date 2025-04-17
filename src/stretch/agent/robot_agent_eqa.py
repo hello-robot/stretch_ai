@@ -43,7 +43,7 @@ from stretch.mapping.voxel.voxel_map_eqa import SparseVoxelMapNavigationSpace
 from stretch.motion.algo.a_star import AStar
 
 # from stretch.perception.detection.owl import OwlPerception
-from stretch.perception.encoders import MaskSiglipEncoder
+from stretch.perception.encoders.masksiglip2_encoder import MaskSiglip2Encoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -210,7 +210,7 @@ class RobotAgent(RobotAgentBase):
         if self.manipulation_only:
             self.encoder = None
         else:
-            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+            self.encoder = MaskSiglip2Encoder(device=self.device, version="giant")
         semantic_memory_resolution = 0.1
         image_shape = (360, 270)
         self.voxel_map = SparseVoxelMap(
