@@ -126,7 +126,7 @@ goal_min_position_z = 0.07
 # are reserved for changing the range over which the lift is
 # operating. This sliding region enables a user to use the
 # lift's full range without restarting the code.
-lift_sliding_region_height = 0.3
+lift_sliding_region_height = 0.5
 
 
 # Set how fast the lift will be translated when being slid.
