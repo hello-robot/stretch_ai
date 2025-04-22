@@ -29,10 +29,18 @@ EQA_PROMPT = f"""
         You also have to choose the next action, one which will enable you to answer the question better.
         The answer should be made in the form of identifying which image should we navigate to and the image should be selected from the list of image descriptions.
         Please identify the image id number only as it will be transformed into an integer!
-        Each image description, if applicable, will be associated with the image observations provided and will be pointed out if this image contains a space where the robot has never explored before.
-        You should check your confidence reasoning to make the decision. For example if your confidence reasoning believes that some image observations are not clear enough, then you should navigate there to figure out;
-        if your confidence reasoning believes that you have not seen the object of interest, then you should explore unexplored area and in this case, the image descriptions will be able to help you determine which frontier is the most valuable to be explored.
-        Again you should give the reasoning for choosing the action.
+        
+        Other considerations:
+            1. Each image description, if applicable, will be associated with the image observations provided and will be pointed out if this image contains a space where the robot has never explored before.
+            You should check your reasoning to make the decision. 
+            If your reasoning believes that some image observations are not clear enough, then you should navigate there to figure out (e.g. cluttered table);
+            on the other hand, if your reasoning believes that you have not seen the object of interest, then you should explore unexplored area.
+            Note that if this image descriptions are not tagged with "unexplored areas", there is no reachable frontier to exlore, at least at the time of observation.
+            2. The image description will also be associated with a grid coordinate. Considering all your past actions will be included in the history, you can know whether you have already explored this area and you
+            should use this information to avoid redundant exploration of the same place.
+            3. When there are multiple frontiers, you should prioritize those more likely to help you answer the question. 
+            e.g. if you try to answer "Where is my laptop", you should search frontier with "table, monitor" instead of the one with "bathtub, sink".
+        
 
         Example #1:
             Input:

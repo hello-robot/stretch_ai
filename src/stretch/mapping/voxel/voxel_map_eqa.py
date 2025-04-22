@@ -77,7 +77,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             # messages.append({"type": "text", "text": "Iteration_" + str(i) + ":" + history_output})
             commands.append("Iteration_" + str(i) + ":" + history_output)
         # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
-        self.voxel_map.log_text(commands)
 
         img_idx = 0
         all_obs_ids = set()
@@ -98,6 +97,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             xyt, planner, list(all_obs_ids)
         )
         commands.append(action_prompt)
+        self.voxel_map.log_text(commands)
 
         for obs_id in all_obs_ids:
             rgb = np.copy(self.voxel_map.observations[obs_id].rgb.numpy())
@@ -149,7 +149,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 + confidence_reasoning
                 + "\nAction:"
                 + "Navigate to Image with objects "
-                + str(self.voxel_map.image_descriptions[action - 1])
+                + str(self.voxel_map.image_descriptions[action - 1][0])
+                + "with grid coord "
+                + str(self.voxel_map.image_descriptions[action - 1][1])
                 + "\nAction Reasoning:"
                 + action_reasoning
             )
@@ -181,21 +183,22 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         frontier_ids = list(self.get_frontier_ids(xyt, planner))
         options = ""
         if len(image_descriptions) > 0:
-            for i, cluster in enumerate(image_descriptions):
+            for i, (cluster, grid_coord) in enumerate(image_descriptions):
                 index = selected_images[i]
                 cluster_string = ""
                 for ob in cluster:
                     cluster_string += ob + ", "
-                cluster_string = cluster_string[:-2]
+                cluster_string = cluster_string[:-2] + ";"
+                cluster_string += "This image is taken at grid coords " + str(grid_coord)
                 if index in obs_ids:
                     cluster_string += (
-                        "(This observation description is associated with image observation "
-                        + str(obs_ids.index(index))
-                        + ")"
+                        "\tthis observation description is associated with Image "
+                        + str(obs_ids.index(index) + 1)
+                        + ";"
                     )
                 if index in frontier_ids:
                     cluster_string += (
-                        "(This observation description corresponds to unexplored space)"
+                        "\tthis observation description corresponds to unexplored space;"
                     )
                 options += f"{i+1}. {cluster_string}\n"
         return selected_images, "IMAGE_DESCRIPTIONS: " + options

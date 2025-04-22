@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import retry
@@ -46,7 +46,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             model_size="3B", quantization="int4", max_tokens=20
         )
 
-        self.image_descriptions: List[List[str]] = []
+        self.image_descriptions: List[Tuple[List[str], List[int]]] = []
 
         self.history_outputs: List[str] = []
 
@@ -218,7 +218,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
     def compute_image_heuristic(
         self,
         task,
-        image_descriptions: Optional[List[List[str]]] = None,
+        image_descriptions: Optional[List[Tuple[List[str], List[int]]]] = None,
         num_samples=4,
         positive_weight=0.2,
         negative_weight=0.1,
@@ -258,7 +258,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         task: str,
         num_samples=4,
         positive=True,
-        image_descriptions: Optional[List[List[str]]] = None,
+        image_descriptions: Optional[List[Tuple[List[str], List[int]]]] = None,
         verbose: bool = True,
     ):
 
@@ -277,7 +277,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             )
 
         if len(image_descriptions) > 0:
-            for i, cluster in enumerate(image_descriptions):
+            for i, (cluster, _) in enumerate(image_descriptions):
                 cluser_string = ""
                 for ob in cluster:
                     cluser_string += ob + ", "
@@ -380,7 +380,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         #     }
         # ]
 
-        prompt = "List representative objects in the image. Limit your answer in 10 words. E.G.: a table,chairs,doors"
+        prompt = "List representative objects in the image (excluding floor and wall) Limit your answer in 10 words. E.G.: a table,chairs,doors"
         messages = [
             {
                 "role": "user",
@@ -409,9 +409,19 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             else:
                 break
 
+        obs_ids = self.voxel_pcd._obs_counts
+        xyz, _, _, _ = self.voxel_pcd.get_pointcloud()
+        grid_coord = list(
+            self.xy_to_grid_coords(
+                torch.mean(xyz[obs_ids == obs_ids.max()], dim=0)[:2].int().cpu().numpy()
+            )
+        )
+        for i in range(len(grid_coord)):
+            grid_coord[i] = int(grid_coord[i])
+
         if len(objects) == 0:
-            self.image_descriptions.append(["object"])
+            self.image_descriptions.append((["object"], grid_coord))
         else:
-            self.image_descriptions.append(objects)
+            self.image_descriptions.append((objects, grid_coord))
 
         print(objects)
