@@ -43,7 +43,7 @@ from stretch.mapping.voxel.voxel_map_eqa import SparseVoxelMapNavigationSpace
 from stretch.motion.algo.a_star import AStar
 
 # from stretch.perception.detection.owl import OwlPerception
-from stretch.perception.encoders.masksiglip2_encoder import MaskSiglip2Encoder
+from stretch.perception.encoders.masksiglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -210,7 +210,7 @@ class RobotAgent(RobotAgentBase):
         if self.manipulation_only:
             self.encoder = None
         else:
-            self.encoder = MaskSiglip2Encoder(device=self.device, version="giant")
+            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
         semantic_memory_resolution = 0.1
         image_shape = (360, 270)
         self.voxel_map = SparseVoxelMap(
@@ -517,17 +517,24 @@ class RobotAgent(RobotAgentBase):
                 self.robot.look_front()
                 self.robot.switch_to_navigation_mode()
 
-            try:
-                reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
-                    question
-                )
-            except:
-                reasoning, answer, confidence, confidence_reasoning = (
-                    "Exception happens in LLM querying",
-                    "Unknown",
-                    False,
-                    "",
-                )
+            # try:
+            #     reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
+            #         question
+            #     )
+            # except:
+            #     reasoning, answer, confidence, confidence_reasoning = (
+            #         "Exception happens in LLM querying",
+            #         "Unknown",
+            #         False,
+            #         "",
+            #     )
+            (
+                reasoning,
+                answer,
+                confidence,
+                confidence_reasoning,
+                target_point,
+            ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
             answer_output = (
                 "## Question: "
                 + question
@@ -545,9 +552,9 @@ class RobotAgent(RobotAgentBase):
                 break
 
             start_pose = self.robot.get_base_pose()
-            target_point = self.space.sample_frontier(
-                self.planner, start_pose, text="answering the question '" + question + "'"
-            )
+            # target_point = self.space.sample_frontier(
+            #     self.planner, start_pose, text="answering the question '" + question + "'"
+            # )
             target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
             print(target_theta)
             movement_step = 0

@@ -73,6 +73,7 @@ def main(
 
         # If target object and receptacle are provided, set mode to manipulation
         question = input("Question:").lower()
+        # question = "how many webcams are there in the room?"
 
         robot.move_to_nav_posture()
         robot.switch_to_navigation_mode()

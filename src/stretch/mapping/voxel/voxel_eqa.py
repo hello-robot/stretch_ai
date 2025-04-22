@@ -7,9 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import base64
 import os
-from io import BytesIO
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -75,7 +73,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         #     EQA_SYSTEM_PROMPT_NEGATIVE, model="gemini-2.0-flash"
         # )
 
-    def query_answer(self, question: str):
+    def extract_relevant_objects(self, question: str):
         if self._question != question:
             self._question = question
             # The cached question is not the same as the question provided
@@ -108,82 +106,26 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             self.relevant_objects = self.image_description_client(messages).split(",")
             print("relevant objects to look at", self.relevant_objects)
             self.history_outputs = []
-        messages = [{"type": "text", "text": "Question: " + question}]
-        commands: List[Any] = ["Question: " + question]
-        messages.append({"type": "text", "text": "HISTORY: "})
-        commands.append("HISTORY: ")
-        for (i, history_output) in enumerate(self.history_outputs):
-            messages.append({"type": "text", "text": "Iteration_" + str(i) + ":" + history_output})
-            commands.append("Iteration_" + str(i) + ":" + history_output)
-        # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
-        img_idx = 0
 
+    def log_text(self, commands):
         # Log the text input and image input
         if not os.path.exists(self.log + "/" + str(len(self.image_descriptions))):
             os.makedirs(self.log + "/" + str(len(self.image_descriptions)))
             input_texts = ""
-            for message in messages:
-                input_texts += message["text"] + "\n"
+            for command in commands:
+                input_texts += command + "\n"
             with open(
                 self.log + "/" + str(len(self.image_descriptions)) + "/input.txt", "w"
             ) as file:
                 file.write(input_texts)
 
-        all_obs_ids = set()
-
-        for relevant_object in self.relevant_objects:
-            # Limit the total number of images to 10
-            image_ids, _, _ = self.find_all_images(
-                relevant_object,
-                min_similarity_threshold=0.01,
-                max_img_num=10 // len(self.relevant_objects),
-                min_point_num=40,
-            )
-            for obs_id in image_ids:
-                obs_id = int(obs_id) - 1
-                all_obs_ids.add(obs_id)
-
-        for obs_id in all_obs_ids:
-            rgb = np.copy(self.observations[obs_id].rgb.numpy())
-            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-
-            # Save the input images
-            image.save(
-                self.log + "/" + str(len(self.image_descriptions)) + "/" + str(img_idx) + ".jpg"
-            )
-            img_idx += 1
-
-            # Transform the images into base64
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            img_bytes = buffered.getvalue()
-            base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
-            messages.append(
-                {
-                    "type": "image_url",
-                    "image_url": {  # type:ignore
-                        "url": f"data:image/png;base64,{base64_encoded}",
-                        "detail": "high",
-                    },
-                }
-            )
-
-            commands.append(image)
-
-        # Extract answers
-        # answer_outputs = (
-        #     self.eqa_gpt_client(messages).replace("*", "").replace("/", "").replace("#", "").lower()
-        # )
-        print(commands)
-        answer_outputs = (
-            self.eqa_client(commands).replace("*", "").replace("/", "").replace("#", "").lower()
-        )
+    def parse_answer(self, answer_outputs: str):
 
         # Log LLM output
         with open(self.log + "/" + str(len(self.image_descriptions)) + "/output.txt", "w") as file:
             file.write(answer_outputs)
 
-        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Confidence_reasoning:"
+        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Confidence_reasoning: Action: Action_reasoning:"
         reasoning = (
             answer_outputs.split("reasoning:")[-1]
             .split("answer:")[0]
@@ -200,33 +142,26 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             "confidence_reasoning:"
         )[0].replace(" ", "").replace("\n", "").replace("\t", "")
         confidence_reasoning = (
-            answer_outputs.split("confidence_reasoning:")[-1].replace("\n", "").replace("\t", "")
+            answer_outputs.split("confidence_reasoning:")[-1]
+            .split("action")[0]
+            .replace("\n", "")
+            .replace("\t", "")
+        )
+        action = (
+            answer_outputs.split("action:")[-1]
+            .split("action_reasoning:")[0]
+            .replace("\n", "")
+            .replace("\t", "")
+        )
+        action_reasoning = (
+            answer_outputs.split("action_reasoning:")[-1].replace("\n", "").replace("\t", "")
         )
 
-        self.history_outputs.append(
-            "Answer:"
-            + answer
-            + "\nReasoning:"
-            + reasoning
-            + "\nConfidence:"
-            + str(confidence)
-            + "\nReasoning:"
-            + confidence_reasoning
-        )
+        return reasoning, answer, confidence, confidence_reasoning, action, action_reasoning
 
-        # Debug answer and confidence
-        print("Answer:", answer)
-        print("Confidence:", confidence)
-        print("Answer outputs:", answer_outputs)
-
-        return reasoning, answer, confidence, confidence_reasoning
-
-    def get_2d_alignment_heuristics_mllm(self, task: str):
+    def get_active_image_descriptions(self):
         """
-        Transform the similarity with text into a 2D value map that can be used to evaluate
-        how much exploring to one point can benefit open vocabulary navigation
-
-        Similarity is computed by mLLM
+        Return a list of image descriptions that are still active. By active it means there is still some voxel in voxel map associated with it.
         """
         if self.voxel_pcd._points is None:
             return None
@@ -254,9 +189,23 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         selected_images = torch.unique(history).int()
         # history image id is 1-indexed, so we need to subtract 1 from scores
-        image_descriptions = [
-            self.image_descriptions[selected_image.item() - 1] for selected_image in selected_images
-        ]
+        return (
+            history,
+            selected_images,
+            [
+                self.image_descriptions[selected_image.item() - 1]
+                for selected_image in selected_images
+            ],
+        )
+
+    def get_2d_alignment_heuristics_mllm(self, task: str):
+        """
+        Transform the similarity with text into a 2D value map that can be used to evaluate
+        how much exploring to one point can benefit open vocabulary navigation
+
+        Similarity is computed by mLLM
+        """
+        history, selected_images, image_descriptions = self.get_active_image_descriptions()
         scores = self.compute_image_heuristic(task, image_descriptions=image_descriptions)
         final_scores = torch.zeros(len(self.image_descriptions))
         # history image id is 1-indexed, so we need to subtract 1 from scores

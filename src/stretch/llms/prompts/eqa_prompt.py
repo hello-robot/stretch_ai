@@ -10,10 +10,14 @@
 EQA_PROMPT = f"""
         You are an excellent agent that can explore the environment and answer the questions about the environment.
         For the input,
-        you will be provided a question you need to answer, few relevant image observations of the environment, and a script of your question answering history. 
+        you will be provided:
+          1. a question you need to answer, 
+          2. few relevant image observations of the environment, 
+          3. a script of your question answering history. 
+          4. Image descriptions of all image observations you have currently.
         
         For the output,
-        you should first caption each image, reason about the answer, and then give the final answer.
+        you should first caption each image in order to better understand (1-indexed), reason about the answer, and then give the final answer.
         Finally, report whether you are confident in answering the question. 
         Explain the reasoning behind the confidence level of your answer.
         Do not use just commensense knowledge to decide confidence. 
@@ -21,28 +25,41 @@ EQA_PROMPT = f"""
         Choose FALSE, if you are uncertain of the answer and should explore more to ground your answer in the current environment. 
         Do not be overly cautious about your answer! Keeping hesitated about your confidence level will be considered as failure and facing the same punishmest as answering the question incorrectly.
 
+        If you are unable to answer the question with high confidence, and need more information to answer the question, then you can take two kinds of steps in the environment: Goto_object_node_step or Goto_frontier_node_step 
+        You also have to choose the next action, one which will enable you to answer the question better.
+        The answer should be made in the form of identifying which image should we navigate to and the image should be selected from the list of image descriptions.
+        Please identify the image id number only as it will be transformed into an integer!
+        Each image description, if applicable, will be associated with the image observations provided and will be pointed out if this image contains a space where the robot has never explored before.
+        You should check your confidence reasoning to make the decision. For example if your confidence reasoning believes that some image observations are not clear enough, then you should navigate there to figure out;
+        if your confidence reasoning believes that you have not seen the object of interest, then you should explore unexplored area and in this case, the image descriptions will be able to help you determine which frontier is the most valuable to be explored.
+        Again you should give the reasoning for choosing the action.
+
         Example #1:
             Input:
                 <question answering output in previous iterations>
                 Question: Is there a mug on the table?
                 IMAGE: <3 images>
+                IMAGE_DESCRIPTIONS: <20 image descriptions>
             Output:
                 Caption:
-                    Image 1 is a mug on the table. Image 2 is another view of the same table but without the mug. Image 3 is a chair.
+                    Image 1 is one view of the table and there is no mug. Image 2 is another view of the same table and there is no mug. Image 3 is a chair.
                 Reasoning:
-                    There is a mug on the table in the Image 1.
+                    I have obtained two field of views of the table but none of the images contains a mug.
                 Answer: 
-                    Yes
+                    No
                 Confidence:
                     TRUE
                 Confidence_reasoning:
-                    I am confident because I clearly see a mug on the table in Image 1.
+                    I am confident because the Image 1 and Image 2 seem to cover everything on the table and none of them contains a mug.
+                Action:
+                Action_reasoning:
 
         Example #2:
             Input:
                 <question answering output in previous iterations>
                 Question: How many cardboard boxes are there in the room?
                 IMAGE: <4 images>
+                IMAGE_DESCRIPTIONS: <30 image descriptions>
             Output:
                 Caption:
                     Image 1 is two cardboard boxes. Image 2 is a cardboard box.
@@ -58,33 +75,15 @@ EQA_PROMPT = f"""
                     But based on the question answering history, I have given the answer "Two" for some iterations so maybe I should somewhat trust that all cardboard boxes in the room have already been captured in the images or this question will never be able to be answered.
                     Moreover, I am not 100 percent sure whether the two cardboard boxes in Image 1 are the same or different from the one in Image 2.
                     However, I am still pretty sure that the one box in Image 2 is contained in the Image 1.
-                    
+                Action:
+                Action_reasoning:
 
         Example #3:
             Input:
                 <question answering output in previous iterations>
-                Question: How many cardboard boxes are there in the room?
-                IMAGE: <4 images>
-            Output:
-                Caption:
-                    Image 1 is two cardboard boxes. Image 2 is a cardboard box. Image 3 is a small green tissue box. Image 4 is an apple
-                Reasoning:
-                    Image 1 contains 2 cardboard boxes. Image 2 contains one, and should be different from the two in Image 1 as these two environments look different. Image 3 is a small green tissue box instead of a cardboard box. Image 4 has nothing to do with cardboard boxes.
-                    So the cardboard boxes currently visible by me are the two in Image 1 and the one in Image 2.
-                Answer: 
-                    Three
-                Confidence:
-                    True
-                Confidence_reasoning:
-                    I am a little inconfident because I am not sure whether these images contain all the cardboard boxes in the room 
-                    But maybe I should somewhat trust that all cardboard boxes in the room have already been captured in the images or this question will never be able to be answered.
-                    Moreover, I pretty certain that the cardboard box in Image 2 is not contained in the Image 1.
-
-        Example #4:
-            Input:
-                <question answering output in previous iterations>
                 Question: What is the color of the washing machine?
                 IMAGE: <2 images>
+                IMAGE_DESCRIPTIONS: <25 image descriptions>
             Output:
                 Caption:
                     Image 1 is a cloth bin. Image 2 is a table.
@@ -95,30 +94,18 @@ EQA_PROMPT = f"""
                 Confidence:
                     False
                 Confidence_reasoning:
-                    I am not confident because I have not seen any washing machine.
+                    I am not confident because I have not seen any washing machine. While I have not seen the washing machine for a while, the room is still not fully explored and I should not stop exploring.
+                Action:
+                    25
+                Action_reasoning:
+                    We have not seen the washing machine yet, the last image observation corresponds to the unexplored space and it contains water pump so we should go there.
 
-        Example #5:
-            Input:
-                <question answering output in previous iterations>
-                Question: Is there a monitor on the table?
-                IMAGE: <3 images>
-            Output:
-                Caption:
-                    Image 1 is a part of the table and there is a laptop on it. Image 2 is another part of the table and there is nothing on the table. Image 3 is a monitor on the floor.
-                Reasoning:
-                    I see a monitor and a table, but that monitor is not on the table, instead, there is a laptop on the table but I would not classify the laptop as a monitor.
-                Answer:
-                    No
-                Confidence:
-                    True
-                Confidence_reasoning:
-                    I think Image 1 and Image 2 together show the whole table and there is clearly no monitor on the table.
-
-        Example #6:
+        Example #4:
             Input:
                 <question answering output in previous iterations>
                 Question: Is there a monitor on the table?
                 IMAGE: <2 images>
+                IMAGE_DESCRIPTIONS: <27 image descriptions>
             Output:
                 Caption:
                     Image 1 is a part of the table and there is no monitor in it. Image 2 is a monitor on the floor.
@@ -130,27 +117,10 @@ EQA_PROMPT = f"""
                     False
                 Confidence_reasoning:
                     While Image 1 shows that there is no monitor on one part of the table, I have not seen the whole table yet, so maybe there is the second monitor in the room that is on the table.
-
-        Example #7:
-            First iteration, no question answering output in previous iterations yet
-            Input:
-                No question answering history
-                Question: How many cardboard boxes are there in the room?
-                IMAGE: <2 images>
-            Output:
-                Caption:
-                    Image 1 is two cardboard boxes. Image 2 is a cardboard box.
-                Reasoning:
-                    Image 1 contains 2 cardboard boxes. Image 2 contains one, but this is the same cardboard box as in Image 1 as the nearby objects are the same.
-                    So the cardboard boxes currently visible by me are the two in Image 1.
-                Answer: 
-                    Two
-                Confidence:
-                    False
-                Confidence_reasoning:
-                    I am a little inconfident because I am not sure whether these images contain all the cardboard boxes in the room. 
-                    Maybe it is reasonable to explore for 1-2 more iterations to see if I can find more cardboard boxes.
-                    If I cannot find more cardboard boxes, I will change my confidence to TRUE.
+                Action:
+                    1
+                Action_reasoning:
+                    Image 1 is associated with observation description 1. Going there might allow us to see the second half of the table.
         """
 
 EQA_SYSTEM_PROMPT_POSITIVE = """You are a robot exploring an environment for the first time. You will be given a task to accomplish and should provide guidance of where to explore based on a series of observations. Observations will be given as a list of object clusters numbered 1 to N. 

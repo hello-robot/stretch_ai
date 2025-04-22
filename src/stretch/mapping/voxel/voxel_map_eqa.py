@@ -12,13 +12,18 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import Any, List
+
 import numpy as np
 import torch
+from PIL import Image
 
-from stretch.utils.morphology import binary_dilation, get_edges
+from stretch.llms.gemini_client import GeminiClient
+from stretch.llms.prompts.eqa_prompt import EQA_PROMPT
+from stretch.utils.morphology import get_edges
 
 from .voxel import SparseVoxelMapProxy
-from .voxel_eqa import SparseVoxelMap
+from .voxel_eqa import SparseVoxelMapEQA
 from .voxel_map_dynamem import SparseVoxelMapNavigationSpace as SparseVoxelMapNavigationSpaceBase
 
 
@@ -29,7 +34,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
 
     def __init__(
         self,
-        voxel_map: SparseVoxelMap | SparseVoxelMapProxy,
+        voxel_map: SparseVoxelMapEQA | SparseVoxelMapProxy,
         step_size: float = 0.1,
         rotation_step_size: float = 0.5,
         use_orientation: bool = False,
@@ -53,14 +58,162 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             dilate_obstacle_size=dilate_obstacle_size,
             extend_mode=extend_mode,
         )
+        # This assignment has already happened in extended class, but assigning it again can allow VSCode align field of "self.voxel_map" with SparseVoxelMapEQA
+        self.voxel_map: SparseVoxelMapEQA | SparseVoxelMapProxy = voxel_map
+
         self.alignment_heuristics_type = alignment_heuristics_type
         self.create_collision_masks(orientation_resolution)
         self.traj = None
+        self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
 
-    def sample_exploration(
-        self, xyt, planner, use_alignment_heuristics=True, text=None, debug=False, verbose=True
-    ):
+    def query_answer(self, question: str, xyt, planner):
+        self.voxel_map.extract_relevant_objects(question)
+
+        # messages = [{"type": "text", "text": "Question: " + question}]
+        commands: List[Any] = ["Question: " + question]
+        # messages.append({"type": "text", "text": "HISTORY: "})
+        commands.append("HISTORY: ")
+        for (i, history_output) in enumerate(self.voxel_map.history_outputs):
+            # messages.append({"type": "text", "text": "Iteration_" + str(i) + ":" + history_output})
+            commands.append("Iteration_" + str(i) + ":" + history_output)
+        # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
+        self.voxel_map.log_text(commands)
+
+        img_idx = 0
+        all_obs_ids = set()
+
+        for relevant_object in self.voxel_map.relevant_objects:
+            # Limit the total number of images to 6
+            image_ids, _, _ = self.voxel_map.find_all_images(
+                relevant_object,
+                min_similarity_threshold=0.12,
+                max_img_num=6 // len(self.voxel_map.relevant_objects),
+                min_point_num=40,
+            )
+            for obs_id in image_ids:
+                obs_id = int(obs_id) - 1
+                all_obs_ids.add(obs_id)
+
+        selected_images, action_prompt = self.get_image_descriptions(
+            xyt, planner, list(all_obs_ids)
+        )
+        commands.append(action_prompt)
+
+        for obs_id in all_obs_ids:
+            rgb = np.copy(self.voxel_map.observations[obs_id].rgb.numpy())
+            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+
+            # Save the input images
+            image.save(
+                self.voxel_map.log
+                + "/"
+                + str(len(self.voxel_map.image_descriptions))
+                + "/"
+                + str(img_idx)
+                + ".jpg"
+            )
+            img_idx += 1
+
+            commands.append(image)
+
+        # Extract answers
+        answer_outputs = (
+            self.eqa_client(commands).replace("*", "").replace("/", "").replace("#", "").lower()
+        )
+
+        print(commands)
+        print(answer_outputs)
+
+        (
+            reasoning,
+            answer,
+            confidence,
+            confidence_reasoning,
+            action,
+            action_reasoning,
+        ) = self.voxel_map.parse_answer(answer_outputs)
+        if not confidence:
+            action = selected_images[int(action) - 1]
+            rgb = np.copy(self.voxel_map.observations[action - 1].rgb.numpy())
+            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+            image.show()
+
+            self.voxel_map.history_outputs.append(
+                "Answer:"
+                + answer
+                + "\nReasoning:"
+                + reasoning
+                + "\nConfidence:"
+                + str(confidence)
+                + "\nReasoning:"
+                + confidence_reasoning
+                + "\nAction:"
+                + "Navigate to Image with objects "
+                + str(self.voxel_map.image_descriptions[action - 1])
+                + "\nAction Reasoning:"
+                + action_reasoning
+            )
+        else:
+            action = None
+
+        obs_ids = self.voxel_map.voxel_pcd._obs_counts
+        xyz, _, _, _ = self.voxel_map.voxel_pcd.get_pointcloud()
+
+        # Debug answer and confidence
+        print("Answer:", answer)
+        print("Confidence:", confidence)
+        print("Answer outputs:", answer_outputs)
+
+        return (
+            reasoning,
+            answer,
+            confidence,
+            confidence_reasoning,
+            torch.mean(xyz[obs_ids == action], dim=0) if action is not None else None,
+        )
+
+    def get_image_descriptions(self, xyt, planner, obs_ids):
+        (
+            history,
+            selected_images,
+            image_descriptions,
+        ) = self.voxel_map.get_active_image_descriptions()
+        frontier_ids = list(self.get_frontier_ids(xyt, planner))
+        options = ""
+        if len(image_descriptions) > 0:
+            for i, cluster in enumerate(image_descriptions):
+                index = selected_images[i]
+                cluster_string = ""
+                for ob in cluster:
+                    cluster_string += ob + ", "
+                cluster_string = cluster_string[:-2]
+                if index in obs_ids:
+                    cluster_string += (
+                        "(This observation description is associated with image observation "
+                        + str(obs_ids.index(index))
+                        + ")"
+                    )
+                if index in frontier_ids:
+                    cluster_string += (
+                        "(This observation description corresponds to unexplored space)"
+                    )
+                options += f"{i+1}. {cluster_string}\n"
+        return selected_images, "IMAGE_DESCRIPTIONS: " + options
+
+    def get_frontier_ids(self, xyt, planner):
+        (
+            history,
+            selected_images,
+            image_descriptions,
+        ) = self.voxel_map.get_active_image_descriptions()
+        outside_frontier = self.get_outside_frontier(xyt, planner)
         obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
+        history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
+        history = np.ma.masked_array(history, ~outside_frontier)
+        return np.unique(history[history_soft < 1])
+
+    def get_outside_frontier(self, xyt, planner):
+        obstacles, _, _ = self.voxel_map.get_2d_map(return_history_id=True)
         if len(xyt) == 3:
             xyt = xyt[:2]
         reachable_points = planner.get_reachable_points(planner.to_pt(xyt))
@@ -72,16 +225,15 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         reachable_map[reachable_xs, reachable_ys] = 1
         reachable_map = reachable_map.to(torch.bool)
         edges = get_edges(reachable_map)
-        # kernel = self._get_kernel(expand_size)
-        kernel = None
-        if kernel is not None:
-            expanded_frontier = binary_dilation(
-                edges.float().unsqueeze(0).unsqueeze(0),
-                kernel,
-            )[0, 0].bool()
-        else:
-            expanded_frontier = edges
-        outside_frontier = expanded_frontier & ~reachable_map
+        expanded_frontier = edges
+        return expanded_frontier & ~reachable_map
+
+    def sample_exploration(
+        self, xyt, planner, use_alignment_heuristics=True, text=None, debug=False, verbose=True
+    ):
+        obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
+        outside_frontier = self.get_outside_frontier(xyt, planner)
+
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
         if (
             use_alignment_heuristics
