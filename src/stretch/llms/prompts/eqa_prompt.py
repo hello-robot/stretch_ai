@@ -14,7 +14,7 @@ EQA_PROMPT = f"""
           1. a question you need to answer, 
           2. few relevant image observations of the environment, 
           3. a script of your question answering history. 
-          4. Image descriptions of all image observations you have currently.
+          4. Image descriptions of all image observations you have currently (1-indexed).
         
         For the output,
         you should first caption each image in order to better understand (1-indexed), reason about the answer, and then give the final answer.
@@ -40,6 +40,8 @@ EQA_PROMPT = f"""
             should use this information to avoid redundant exploration of the same place.
             3. When there are multiple frontiers, you should prioritize those more likely to help you answer the question. 
             e.g. if you try to answer "Where is my laptop", you should search frontier with "table, monitor" instead of the one with "bathtub, sink".
+
+        Please provide confidence reasoning to explain why you are confident or why you are not confident about your answer. If you are not confident, also imply how your actions can improve your confidence.
         
 
         Example #1:
@@ -57,10 +59,9 @@ EQA_PROMPT = f"""
                     No
                 Confidence:
                     TRUE
+                Action:
                 Confidence_reasoning:
                     I am confident because the Image 1 and Image 2 seem to cover everything on the table and none of them contains a mug.
-                Action:
-                Action_reasoning:
 
         Example #2:
             Input:
@@ -78,13 +79,12 @@ EQA_PROMPT = f"""
                     Two
                 Confidence:
                     True
+                Action:
                 Confidence_reasoning:
                     I am a little inconfident because I am not sure whether these images contain all the cardboard boxes in the room. 
                     But based on the question answering history, I have given the answer "Two" for some iterations so maybe I should somewhat trust that all cardboard boxes in the room have already been captured in the images or this question will never be able to be answered.
                     Moreover, I am not 100 percent sure whether the two cardboard boxes in Image 1 are the same or different from the one in Image 2.
                     However, I am still pretty sure that the one box in Image 2 is contained in the Image 1.
-                Action:
-                Action_reasoning:
 
         Example #3:
             Input:
@@ -101,12 +101,13 @@ EQA_PROMPT = f"""
                     Unknown
                 Confidence:
                     False
-                Confidence_reasoning:
-                    I am not confident because I have not seen any washing machine. While I have not seen the washing machine for a while, the room is still not fully explored and I should not stop exploring.
                 Action:
                     25
-                Action_reasoning:
-                    We have not seen the washing machine yet, the last image observation corresponds to the unexplored space and it contains water pump so we should go there.
+                Confidence_reasoning:
+                    I am not confident because I have not seen any washing machine. 
+                    While I have not seen the washing machine for a while, the room is still not fully explored and I should not stop exploring.
+                    The 25th image corresponds to the unexplored space.
+                    It contains a water pump, which is usually associated with the washing machine, so we should go there.
 
         Example #4:
             Input:
@@ -123,12 +124,11 @@ EQA_PROMPT = f"""
                     No
                 Confidence:
                     False
-                Confidence_reasoning:
-                    While Image 1 shows that there is no monitor on one part of the table, I have not seen the whole table yet, so maybe there is the second monitor in the room that is on the table.
                 Action:
                     1
-                Action_reasoning:
-                    Image 1 is associated with observation description 1. Going there might allow us to see the second half of the table.
+                Confidence_reasoning:
+                    While Image 1 shows that there is no monitor on one part of the table, I have not seen the whole table yet, so maybe there is a monitor on the table.
+                    Image 1 is associated with observation description 1.Since we observed the table there, going there again might allow us to see the second half of the table.
         """
 
 EQA_SYSTEM_PROMPT_POSITIVE = """You are a robot exploring an environment for the first time. You will be given a task to accomplish and should provide guidance of where to explore based on a series of observations. Observations will be given as a list of object clusters numbered 1 to N. 

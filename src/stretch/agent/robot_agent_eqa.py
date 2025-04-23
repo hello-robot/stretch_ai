@@ -518,15 +518,18 @@ class RobotAgent(RobotAgentBase):
                 self.robot.switch_to_navigation_mode()
 
             # try:
-            #     reasoning, answer, confidence, confidence_reasoning = self.voxel_map.query_answer(
-            #         question
+            #     reasoning, answer, confidence, confidence_reasoning, target_point = self.space.query_answer(
+            #         question, self.robot.get_base_pose(), self.planner
             #     )
             # except:
-            #     reasoning, answer, confidence, confidence_reasoning = (
+            #     reasoning, answer, confidence, confidence_reasoning, target_point = (
             #         "Exception happens in LLM querying",
             #         "Unknown",
             #         False,
             #         "",
+            #         self.space.sample_frontier(
+            #             self.planner, self.robot.get_base_pose(), text=None
+            #         ),
             #     )
             (
                 reasoning,
@@ -555,8 +558,9 @@ class RobotAgent(RobotAgentBase):
             # target_point = self.space.sample_frontier(
             #     self.planner, start_pose, text="answering the question '" + question + "'"
             # )
+            print("Target point", target_point)
             target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
-            print(target_theta)
+            print("Target theta", target_theta)
             movement_step = 0
             while movement_step < 5:
                 start_pose = self.robot.get_base_pose()

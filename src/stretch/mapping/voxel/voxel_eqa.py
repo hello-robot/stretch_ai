@@ -125,9 +125,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         with open(self.log + "/" + str(len(self.image_descriptions)) + "/output.txt", "w") as file:
             file.write(answer_outputs)
 
-        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Confidence_reasoning: Action: Action_reasoning:"
+        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Action: Confidence_reasoning:"
         reasoning = (
-            answer_outputs.split("reasoning:")[-1]
+            answer_outputs.split("reasoning:")[1]
             .split("answer:")[0]
             .replace("\n", "")
             .replace("\t", "")
@@ -141,23 +141,17 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         confidence = "true" in answer_outputs.split("confidence:")[-1].split(
             "confidence_reasoning:"
         )[0].replace(" ", "").replace("\n", "").replace("\t", "")
-        confidence_reasoning = (
-            answer_outputs.split("confidence_reasoning:")[-1]
-            .split("action")[0]
-            .replace("\n", "")
-            .replace("\t", "")
-        )
         action = (
             answer_outputs.split("action:")[-1]
-            .split("action_reasoning:")[0]
+            .split("confidence_reasoning:")[0]
             .replace("\n", "")
             .replace("\t", "")
         )
-        action_reasoning = (
-            answer_outputs.split("action_reasoning:")[-1].replace("\n", "").replace("\t", "")
+        confidence_reasoning = (
+            answer_outputs.split("confidence_reasoning:")[-1].replace("\n", "").replace("\t", "")
         )
 
-        return reasoning, answer, confidence, confidence_reasoning, action, action_reasoning
+        return reasoning, answer, confidence, action, confidence_reasoning
 
     def get_active_image_descriptions(self):
         """

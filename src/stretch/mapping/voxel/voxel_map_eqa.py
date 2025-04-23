@@ -93,9 +93,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 obs_id = int(obs_id) - 1
                 all_obs_ids.add(obs_id)
 
-        selected_images, action_prompt = self.get_image_descriptions(
-            xyt, planner, list(all_obs_ids)
-        )
+        all_obs_ids = list(all_obs_ids)  # type: ignore
+
+        selected_images, action_prompt = self.get_image_descriptions(xyt, planner, all_obs_ids)
         commands.append(action_prompt)
         self.voxel_map.log_text(commands)
 
@@ -128,10 +128,10 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             reasoning,
             answer,
             confidence,
-            confidence_reasoning,
             action,
-            action_reasoning,
+            confidence_reasoning,
         ) = self.voxel_map.parse_answer(answer_outputs)
+
         if not confidence:
             action = selected_images[int(action) - 1]
             rgb = np.copy(self.voxel_map.observations[action - 1].rgb.numpy())
@@ -145,33 +145,28 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 + reasoning
                 + "\nConfidence:"
                 + str(confidence)
-                + "\nReasoning:"
-                + confidence_reasoning
                 + "\nAction:"
                 + "Navigate to Image with objects "
                 + str(self.voxel_map.image_descriptions[action - 1][0])
-                + "with grid coord "
+                + " with grid coord "
                 + str(self.voxel_map.image_descriptions[action - 1][1])
-                + "\nAction Reasoning:"
-                + action_reasoning
+                + "\nConfidence reasoning:"
+                + confidence_reasoning
             )
         else:
             action = None
 
-        obs_ids = self.voxel_map.voxel_pcd._obs_counts
-        xyz, _, _, _ = self.voxel_map.voxel_pcd.get_pointcloud()
-
         # Debug answer and confidence
-        print("Answer:", answer)
-        print("Confidence:", confidence)
-        print("Answer outputs:", answer_outputs)
+        # print("Answer:", answer)
+        # print("Confidence:", confidence)
+        # print("Answer outputs:", answer_outputs)
 
         return (
             reasoning,
             answer,
             confidence,
             confidence_reasoning,
-            torch.mean(xyz[obs_ids == action], dim=0) if action is not None else None,
+            self.get_target_point_from_image_id(action) if action is not None else None,
         )
 
     def get_image_descriptions(self, xyt, planner, obs_ids):
@@ -189,28 +184,52 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 for ob in cluster:
                     cluster_string += ob + ", "
                 cluster_string = cluster_string[:-2] + ";"
-                cluster_string += "This image is taken at grid coords " + str(grid_coord)
+                # Indicate the grid coord this image describes to avoid redundant exploration.
+                cluster_string += " This image is taken at grid coords " + str(grid_coord)
+                # If we have already send the raw image observation to LLM.
                 if index in obs_ids:
                     cluster_string += (
-                        "\tthis observation description is associated with Image "
+                        " This observation description is associated with Image "
                         + str(obs_ids.index(index) + 1)
                         + ";"
                     )
+                # If this image corresponds to an unexplored frontier
                 if index in frontier_ids:
                     cluster_string += (
-                        "\tthis observation description corresponds to unexplored space;"
+                        " This observation description corresponds to unexplored space;"
                     )
                 options += f"{i+1}. {cluster_string}\n"
         return selected_images, "IMAGE_DESCRIPTIONS: " + options
 
-    def get_frontier_ids(self, xyt, planner):
+    def get_target_point_from_image_id(self, image_id: int):
         (
             history,
-            selected_images,
-            image_descriptions,
+            _,
+            _,
+        ) = self.voxel_map.get_active_image_descriptions()
+        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True, kernel=5)
+        id_max = history_soft[history == image_id].max().item()
+        image_coord = (
+            torch.logical_and(history == image_id, history_soft == id_max)
+            .nonzero(as_tuple=False)
+            .float()
+            .mean(dim=0)
+            .int()
+        )
+        xy = self.voxel_map.grid_coords_to_xy(image_coord)
+        return torch.Tensor([xy[0], xy[1], 1])
+
+    def get_frontier_ids(self, xyt, planner):
+        # history outpyt by get_active_descriptions output a history id map considering history id of the floor point
+        # history_soft output by get_2d_map output a history id map excluding history id of the floor point
+        # Therefore, history is generally used to select active image observations while history_soft is generally used to determine unexplored frontier
+        (
+            history,
+            _,
+            _,
         ) = self.voxel_map.get_active_image_descriptions()
         outside_frontier = self.get_outside_frontier(xyt, planner)
-        obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
+        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True, kernel=5)
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         history = np.ma.masked_array(history, ~outside_frontier)
         return np.unique(history[history_soft < 1])
@@ -234,7 +253,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
     def sample_exploration(
         self, xyt, planner, use_alignment_heuristics=True, text=None, debug=False, verbose=True
     ):
-        obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
+        obstacles, explored, history_soft = self.voxel_map.get_2d_map(
+            return_history_id=True, kernel=5
+        )
         outside_frontier = self.get_outside_frontier(xyt, planner)
 
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)

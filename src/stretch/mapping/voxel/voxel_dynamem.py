@@ -176,7 +176,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
 
     def get_2d_map(
-        self, debug: bool = False, return_history_id: bool = False
+        self, debug: bool = False, return_history_id: bool = False, kernel: int = 7
     ) -> Tuple[Tensor, ...]:
         """
         Get 2d map with explored area and frontiers.
@@ -232,7 +232,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
 
         history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
-        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=7))
+        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=kernel))
 
         if self._remove_visited_from_obstacles:
             # Remove "visited" points containing observations of the robot
