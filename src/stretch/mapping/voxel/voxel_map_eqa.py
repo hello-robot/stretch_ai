@@ -207,7 +207,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             _,
             _,
         ) = self.voxel_map.get_active_image_descriptions()
-        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True, kernel=5)
+        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
         id_max = history_soft[history == image_id].max().item()
         image_coord = (
             torch.logical_and(history == image_id, history_soft == id_max)
@@ -229,7 +229,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             _,
         ) = self.voxel_map.get_active_image_descriptions()
         outside_frontier = self.get_outside_frontier(xyt, planner)
-        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True, kernel=5)
+        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         history = np.ma.masked_array(history, ~outside_frontier)
         return np.unique(history[history_soft < 1])
