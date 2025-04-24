@@ -614,7 +614,7 @@ class RerunVisualizer:
             "world/clustered_frontier",
             rr.Points3D(
                 positions=clustered_frontier,
-                radii=np.ones(clustered_frontier.shape[0]) * 0.1,
+                radii=np.ones(len(clustered_frontier)) * 0.1,
                 colors=[0, 0, 255],
             ),
         )
@@ -622,7 +622,7 @@ class RerunVisualizer:
             "world/frontier",
             rr.Points3D(
                 positions=frontier_points,
-                radii=np.ones(frontier_points.shape[0]) * 0.025,
+                radii=np.ones(len(frontier_points)) * 0.025,
                 colors=[255, 255, 0],
             ),
         )
@@ -646,7 +646,6 @@ class RerunVisualizer:
                 vertex_colors=mesh_colors,
                 triangle_indices=mesh_triangles,
             ),
-            timeless=False,
         )
 
     def update_scene_graph_hydra(self, sg_sim):
