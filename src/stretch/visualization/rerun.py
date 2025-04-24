@@ -16,7 +16,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 import torch
-from hydra_python.utils import hydra_get_mesh
+from graph_eqa.envs.utils import hydra_get_mesh
 
 from stretch.core.interfaces import Observations
 from stretch.mapping.scene_graph import SceneGraph
