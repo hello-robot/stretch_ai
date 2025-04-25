@@ -243,7 +243,7 @@ class RerunVisualizer:
 
         self.bbox_colors_memory = {}
         self.step_delay_s = 0.3
-        self.setup_blueprint(collapse_panels)
+        # self.setup_blueprint(collapse_panels)
 
     def setup_blueprint(self, collapse_panels: bool):
         """Setup the blueprint for the visualizer
