@@ -166,7 +166,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             answer,
             confidence,
             confidence_reasoning,
-            self.get_target_point_from_image_id(action) if action is not None else None,
+            self.get_target_point_from_image_id(action, xyt, planner)
+            if action is not None
+            else None,
         )
 
     def get_image_descriptions(self, xyt, planner, obs_ids):
@@ -201,25 +203,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 options += f"{i+1}. {cluster_string}\n"
         return selected_images, "IMAGE_DESCRIPTIONS: " + options
 
-    def get_target_point_from_image_id(self, image_id: int):
-        (
-            history,
-            _,
-            _,
-        ) = self.voxel_map.get_active_image_descriptions()
-        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
-        id_max = history_soft[history == image_id].max().item()
-        image_coord = (
-            torch.logical_and(history == image_id, history_soft == id_max)
-            .nonzero(as_tuple=False)
-            .float()
-            .mean(dim=0)
-            .int()
-        )
-        xy = self.voxel_map.grid_coords_to_xy(image_coord)
-        return torch.Tensor([xy[0], xy[1], 1])
-
-    def get_frontier_ids(self, xyt, planner):
+    def get_target_point_from_image_id(self, image_id: int, xyt, planner):
         # history outpyt by get_active_descriptions output a history id map considering history id of the floor point
         # history_soft output by get_2d_map output a history id map excluding history id of the floor point
         # Therefore, history is generally used to select active image observations while history_soft is generally used to determine unexplored frontier
@@ -228,14 +212,68 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             _,
             _,
         ) = self.voxel_map.get_active_image_descriptions()
+        obstacles, explored = self.voxel_map.get_2d_map()
         outside_frontier = self.get_outside_frontier(xyt, planner)
-        _, _, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
-        history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
-        history = np.ma.masked_array(history, ~outside_frontier)
-        return np.unique(history[history_soft < 1])
+        unexplored_frontier = outside_frontier & ~explored
+        explored_frontier = outside_frontier & explored
+        # Navigation priority: unexplored frontier > obstalces > explored frontier > others
+        # from matplotlib import pyplot as plt
+        # plt.clf()
+        if torch.sum((history == image_id) & unexplored_frontier) > 0:
+            print("unexplored frontier")
+            # plt.imshow(history == image_id)
+            # plt.show()
+            # plt.imshow((history == image_id) & unexplored_frontier)
+            # plt.show()
+            image_coord = (
+                ((history == image_id) & unexplored_frontier)
+                .nonzero(as_tuple=False)
+                .median(dim=0)
+                .values.int()
+            )
+        elif torch.sum((history == image_id) & obstacles) > 0:
+            print("obstacles")
+            # plt.imshow(history == image_id)
+            # plt.show()
+            # plt.imshow((history == image_id) & obstacles)
+            # plt.show()
+            image_coord = (
+                (history == image_id & obstacles).nonzero(as_tuple=False).median(dim=0).values.int()
+            )
+        elif torch.sum((history == image_id) & explored_frontier) > 0:
+            print("explored frontier")
+            # plt.imshow(history == image_id)
+            # plt.show()
+            # plt.imshow((history == image_id) & explored_frontier)
+            # plt.show()
+            image_coord = (
+                (history == image_id & explored_frontier)
+                .nonzero(as_tuple=False)
+                .median(dim=0)
+                .values.int()
+            )
+        else:
+            print("others")
+            # plt.imshow(history == image_id)
+            # plt.show()
+            image_coord = (history == image_id).nonzero(as_tuple=False).median(dim=0).values.int()
+        xy = self.voxel_map.grid_coords_to_xy(image_coord)
+        return torch.Tensor([xy[0], xy[1], 1])
+
+    def get_frontier_ids(self, xyt, planner):
+        (
+            history,
+            _,
+            _,
+        ) = self.voxel_map.get_active_image_descriptions()
+        outside_frontier = self.get_outside_frontier(xyt, planner)
+        _, explored = self.voxel_map.get_2d_map()
+        unexplored_frontier = outside_frontier & ~explored
+        history = np.ma.masked_array(history, ~unexplored_frontier)
+        return np.unique(history)
 
     def get_outside_frontier(self, xyt, planner):
-        obstacles, _, _ = self.voxel_map.get_2d_map(return_history_id=True)
+        obstacles, _ = self.voxel_map.get_2d_map()
         if len(xyt) == 3:
             xyt = xyt[:2]
         reachable_points = planner.get_reachable_points(planner.to_pt(xyt))

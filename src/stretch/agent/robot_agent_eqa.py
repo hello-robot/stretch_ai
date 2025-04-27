@@ -538,14 +538,21 @@ class RobotAgent(RobotAgentBase):
                 confidence_reasoning,
                 target_point,
             ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
+            confidence_text = (
+                "I am confident with the answer"
+                if confidence
+                else "I am NOT confident with the answer"
+            )
             answer_output = (
-                "## Question: "
+                "#### **Question:** "
                 + question
-                + "\n## Answer: "
+                + "\n#### **Answer:** "
                 + answer
-                + "\n## Reasoning for the answer: "
+                + "\n#### **Confidence:** "
+                + confidence_text
+                + "\n#### **Reasoning for the answer:** "
                 + reasoning
-                + "\n## Reasoning for the confidence: "
+                + "\n#### **Reasoning for the confidence:** "
                 + confidence_reasoning
             )
 
@@ -558,9 +565,19 @@ class RobotAgent(RobotAgentBase):
             # target_point = self.space.sample_frontier(
             #     self.planner, start_pose, text="answering the question '" + question + "'"
             # )
+
             print("Target point", target_point)
-            target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
+            # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
+            obstacles, _ = self.voxel_map.get_2d_map()
+            target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
+            if not obstacles[int(target_grid[0]), int(target_grid[1])]:
+                target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[
+                    -1
+                ]
+            else:
+                target_theta = None
             print("Target theta", target_theta)
+
             movement_step = 0
             while movement_step < 5:
                 start_pose = self.robot.get_base_pose()
