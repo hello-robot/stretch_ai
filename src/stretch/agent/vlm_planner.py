@@ -94,35 +94,46 @@ class VLMPlanner:
             plan_with_scene_graph=plan_with_scene_graph,
         )
         output = self.get_output_from_gpt(world_representation, task=query)
-        if show_plan:
+
+        print()
+        print("Plan from VLMs:")
+        print(output)
+        print()
+        if output == "explore":
+            print(">>>>>> Planner cannot find a plan, the robot should explore more >>>>>>>>>")
+            actions = None
+        elif output == "gpt API error":
+            print(">>>>>> there is something wrong with the planner api >>>>>>>>>")
+            actions = None
+        else:
+            actions = output.split("; ")
+
+        if show_plan and actions is not None:
             import re
 
             import matplotlib.pyplot as plt
 
-            if output == "explore":
-                print(">>>>>> Planner cannot find a plan, the robot should explore more >>>>>>>>>")
-            elif output == "gpt API error":
-                print(">>>>>> there is something wrong with the planner api >>>>>>>>>")
-            else:
-                actions = output.split("; ")
-                plt.clf()
-                for action_id, action in enumerate(actions):
-                    crop_id = int(re.search(r"img_(\d+)", action).group(1))
-                    global_id = world_representation.object_images[crop_id].instance_id
-                    plt.subplot(1, len(actions), action_id + 1)
-                    plt.imshow(
-                        self.voxel_map.get_instances()[global_id].get_best_view().get_image()
-                    )
-                    plt.title(action.split("(")[0] + f" instance {global_id}")
-                    plt.axis("off")
-                plt.suptitle(f"Task: {query}")
-                plt.show()
-                plt.savefig("plan.png")
+            plt.clf()
+            for action_id, action in enumerate(actions):
+                res = re.search(r"img_(\d+)", action)
+                if res is None:
+                    print(f"{action_id}: Action {action} does not have a crop id")
+                    continue
+                crop_id = int(res.group(1))
+                global_id = world_representation.object_images[crop_id].instance_id
+                plt.subplot(1, len(actions), action_id + 1)
+                plt.imshow(self.voxel_map.get_instances()[global_id].get_best_view().get_image())
+                plt.title(action.split("(")[0] + f" instance {global_id}")
+                plt.axis("off")
+            plt.suptitle(f"Task: {query}")
+            plt.show()
+            plt.savefig("plan.png")
 
         if self.parameters.get("save_vlm_plan", True):
             with open(plan_file, "w") as f:
                 f.write(output)
             print(f"Task plan generated from VLMs has been written to {plan_file}")
+
         return actions, world_representation
 
     def get_output_from_gpt(self, world_rep, task: str):
