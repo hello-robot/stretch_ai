@@ -401,3 +401,37 @@ class DynamemTaskExecutor:
             i += 1
         # If we did not explicitly receive a quit command, we are not yet done.
         return True
+
+
+from stretch.agent.robot_agent_eqa import RobotAgent as RobotAgentEQA
+
+
+class EQAExecuter:
+    def __init__(self, agent: RobotAgentEQA, discord_bot=None) -> None:
+        """
+        Initialize the executor. Make sure EQA module can be used in the same way as DynaMem module
+        TODO: Itegrate this module with DynaMem
+        """
+
+        self.agent = agent
+        self.discord_bot = discord_bot
+
+    def rotate_in_place(self):
+        self.agent.rotate_in_place()
+
+    def __call__(self, response: List[Tuple[str, str]], channel=None):
+        """Answer the question given by the LLM bot.
+
+        Args:
+            response: A question
+
+        Returns:
+            Answer
+        """
+        discord_text, relevant_images = self.agent.run_eqa(response)
+        if channel is not None:
+            self.discord_bot.send_message(
+                channel=channel,
+                message=discord_text,
+                content=numpy_image_to_bytes(relevant_images),
+            )

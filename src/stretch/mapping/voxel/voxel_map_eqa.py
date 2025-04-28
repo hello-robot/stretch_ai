@@ -98,6 +98,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         selected_images, action_prompt = self.get_image_descriptions(xyt, planner, all_obs_ids)
         commands.append(action_prompt)
         self.voxel_map.log_text(commands)
+        relevant_images = []
 
         for obs_id in all_obs_ids:
             rgb = np.copy(self.voxel_map.observations[obs_id].rgb.numpy())
@@ -115,6 +116,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             img_idx += 1
 
             commands.append(image)
+            relevant_images.append(image)
 
         # Extract answers
         answer_outputs = (
@@ -136,7 +138,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             action = selected_images[int(action) - 1]
             rgb = np.copy(self.voxel_map.observations[action - 1].rgb.numpy())
             image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-            image.show()
+            # image.show()
 
             self.voxel_map.history_outputs.append(
                 "Answer:"
@@ -169,6 +171,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             self.get_target_point_from_image_id(action, xyt, planner)
             if action is not None
             else None,
+            relevant_images,
         )
 
     def get_image_descriptions(self, xyt, planner, obs_ids):
@@ -215,8 +218,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         obstacles, explored = self.voxel_map.get_2d_map()
         outside_frontier = self.get_outside_frontier(xyt, planner)
         unexplored_frontier = outside_frontier & ~explored
-        explored_frontier = outside_frontier & explored
-        # Navigation priority: unexplored frontier > obstalces > explored frontier > others
+        # Navigation priority: unexplored frontier > obstalces > others
         # from matplotlib import pyplot as plt
         # plt.clf()
         if torch.sum((history == image_id) & unexplored_frontier) > 0:
@@ -239,18 +241,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             # plt.show()
             image_coord = (
                 (history == image_id & obstacles).nonzero(as_tuple=False).median(dim=0).values.int()
-            )
-        elif torch.sum((history == image_id) & explored_frontier) > 0:
-            print("explored frontier")
-            # plt.imshow(history == image_id)
-            # plt.show()
-            # plt.imshow((history == image_id) & explored_frontier)
-            # plt.show()
-            image_coord = (
-                (history == image_id & explored_frontier)
-                .nonzero(as_tuple=False)
-                .median(dim=0)
-                .values.int()
             )
         else:
             print("others")

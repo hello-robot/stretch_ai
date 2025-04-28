@@ -25,6 +25,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 import torch
 import zmq
+from PIL import Image
 
 from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
     DynamemManipulationWrapper as ManipulationWrapper,
@@ -496,96 +497,131 @@ class RobotAgent(RobotAgentBase):
 
         return traj
 
-    def run_eqa(self, question):
+    def patch_images(self, images: List[Image.Image], patch_size=(270, 360), gap=5):
+        """
+        Patch a list of PIL Images into a numpy array, used for dicrod bot
+        """
+        # Resize all images to the same patch size
+        images = [img.resize(patch_size) for img in images]
+
+        # Calculate total width and height
+        n_images = len(images)
+        total_width = patch_size[0] * n_images + gap * (n_images - 1)
+        total_height = patch_size[1]
+
+        # Create a blank canvas
+        canvas = Image.new("RGB", (total_width, total_height))
+
+        # Paste images side-by-side
+        for idx, img in enumerate(images):
+            x = idx * (patch_size[0] + gap)
+            canvas.paste(img, (x, 0))
+
+        # Convert to numpy array
+        return np.array(canvas)
+
+    def run_eqa(self, question, max_planning_steps: int = 5):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
 
         self.robot.switch_to_navigation_mode()
 
-        return self.run_eqa_vlm_planner(question)
+        discord_text, relevant_images = "", []
 
-    def run_eqa_vlm_planner(self, question, max_planning_steps: int = 5):
-        answer_output = None
         for cnt_step in range(max_planning_steps):
             click.secho(
                 f"Overall step {cnt_step}",
                 fg="blue",
             )
+            answer, discord_text, relevant_images, confidence = self.run_eqa_one_iter(question)
+            if confidence:
+                self.robot.say("The answer to " + question + " is " + answer)
+                break
 
-            if not self._realtime_updates:
-                self.robot.look_front()
-                self.look_around()
-                self.robot.look_front()
-                self.robot.switch_to_navigation_mode()
+        return discord_text, self.patch_images(relevant_images)
 
-            # try:
-            #     reasoning, answer, confidence, confidence_reasoning, target_point = self.space.query_answer(
-            #         question, self.robot.get_base_pose(), self.planner
-            #     )
-            # except:
-            #     reasoning, answer, confidence, confidence_reasoning, target_point = (
-            #         "Exception happens in LLM querying",
-            #         "Unknown",
-            #         False,
-            #         "",
-            #         self.space.sample_frontier(
-            #             self.planner, self.robot.get_base_pose(), text=None
-            #         ),
-            #     )
+    def run_eqa_one_iter(self, question, max_movement_step: int = 5):
+        answer_output = None
+
+        if not self._realtime_updates:
+            self.robot.look_front()
+            self.look_around()
+            self.robot.look_front()
+            self.robot.switch_to_navigation_mode()
+
+        try:
             (
                 reasoning,
                 answer,
                 confidence,
                 confidence_reasoning,
                 target_point,
+                relevant_images,
             ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
-            confidence_text = (
-                "I am confident with the answer"
-                if confidence
-                else "I am NOT confident with the answer"
-            )
-            answer_output = (
-                "#### **Question:** "
-                + question
-                + "\n#### **Answer:** "
-                + answer
-                + "\n#### **Confidence:** "
-                + confidence_text
-                + "\n#### **Reasoning for the answer:** "
-                + reasoning
-                + "\n#### **Reasoning for the confidence:** "
-                + confidence_reasoning
+        except:
+            reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
+                "Exception happens in LLM querying",
+                "Unknown",
+                False,
+                "",
+                self.space.sample_frontier(self.planner, self.robot.get_base_pose(), text=None),
+                [],
             )
 
-            self.rerun_visualizer.log_text("QA", answer_output)
+        # Log the texts to rerun visualizer
+        confidence_text = (
+            "I am confident with the answer" if confidence else "I am NOT confident with the answer"
+        )
 
-            if confidence:
+        answer_output = (
+            "#### **Question:** "
+            + question
+            + "\n#### **Answer:** "
+            + answer
+            + "\n#### **Confidence:** "
+            + confidence_text
+            + "\n#### **Reasoning for the answer:** "
+            + reasoning
+            + "\n#### **Reasoning for the confidence:** "
+            + confidence_reasoning
+        )
+
+        self.rerun_visualizer.log_text("QA", answer_output)
+
+        # chat with user in the rerun
+        if confidence:
+            discord_text = answer + ". I believe this answer is correct because " + reasoning
+        else:
+            discord_text = (
+                "I am not confident to answer the question because " + confidence_reasoning
+            )
+
+        discord_text += "\nI also provide relevant images here."
+
+        if confidence:
+            return answer, discord_text, relevant_images, confidence
+
+        start_pose = self.robot.get_base_pose()
+
+        print("Target point", target_point)
+        # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
+        obstacles, _ = self.voxel_map.get_2d_map()
+        target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
+        if not obstacles[int(target_grid[0]), int(target_grid[1])]:
+            target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
+            print("Target theta", target_theta)
+        else:
+            target_theta = None
+
+        movement_step = 0
+        while movement_step < max_movement_step:
+            start_pose = self.robot.get_base_pose()
+            movement_step += 1
+            self.update()
+            finished = self.navigate_to_target_pose(target_point, start_pose, target_theta)
+            if finished:
                 break
 
-            start_pose = self.robot.get_base_pose()
-            # target_point = self.space.sample_frontier(
-            #     self.planner, start_pose, text="answering the question '" + question + "'"
-            # )
-
-            print("Target point", target_point)
-            # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
-            obstacles, _ = self.voxel_map.get_2d_map()
-            target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
-            if not obstacles[int(target_grid[0]), int(target_grid[1])]:
-                target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[
-                    -1
-                ]
-            else:
-                target_theta = None
-            print("Target theta", target_theta)
-
-            movement_step = 0
-            while movement_step < 5:
-                start_pose = self.robot.get_base_pose()
-                movement_step += 1
-                self.update()
-                finished = self.navigate_to_target_pose(target_point, start_pose, target_theta)
-                if finished:
-                    break
+        return answer, discord_text, relevant_images, confidence
 
     def navigate_to_target_pose(
         self,

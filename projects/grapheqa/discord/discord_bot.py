@@ -252,11 +252,6 @@ class GraphEQADiscordBot(DiscordBot):
         except Exception as e:
             print(colored("Error in handling task: " + str(e), "red"))
 
-        # with self._llm_lock:
-        #     response = self.llm_client(text, verbose=True)
-        #     print("Response:", response)
-        #     parsed_response = self.prompt.parse_response(response)
-        #     print("Parsed response:", parsed_response)
         self.add_robot_QA(text, channel=task.channel)
 
     def add_robot_QA(self, response: List[Tuple[str, str]], channel: discord.TextChannel):

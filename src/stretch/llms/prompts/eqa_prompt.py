@@ -89,14 +89,14 @@ EQA_PROMPT = f"""
         Example #3:
             Input:
                 <question answering output in previous iterations>
-                Question: What is the color of the washing machine?
+                Question: What is the color of the dish washer?
                 IMAGE: <2 images>
                 IMAGE_DESCRIPTIONS: <25 image descriptions>
             Output:
                 Caption:
                     Image 1 is a cloth bin. Image 2 is a table.
                 Reasoning:
-                    I have not seen any washing machine in the images.
+                    I have not seen any dish washer in the images.
                 Answer:
                     Unknown
                 Confidence:
@@ -104,10 +104,11 @@ EQA_PROMPT = f"""
                 Action:
                     25
                 Confidence_reasoning:
-                    I am not confident because I have not seen any washing machine. 
-                    While I have not seen the washing machine for a while, the room is still not fully explored and I should not stop exploring.
-                    The 25th image corresponds to the unexplored space.
-                    It contains a water pump, which is usually associated with the washing machine, so we should go there.
+                    I am not confident because I have not seen any dish washer. 
+                    While I have not seen the dish washer for a while, the room is still not fully explored and I should not stop exploring.
+                    Both the 10th and the 25th image corresponds to the unexplored space.
+                    25th image contains a sink while the 10th image contains a laptop and a table.
+                    Sink is usually associated with the dish washer while a laptop and a table usually means the bedroom, so we should go to image 25.
 
         Example #4:
             Input:
