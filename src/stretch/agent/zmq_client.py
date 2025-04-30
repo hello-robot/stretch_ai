@@ -223,6 +223,9 @@ class HomeRobotZmqClient(AbstractRobotClient):
         if enable_rerun_server:
             from stretch.visualization.rerun import RerunVisualizer
 
+            if output_path is not None and not output_path.exists():
+                output_path.mkdir(parents=True, exist_ok=True)
+
             self._rerun = RerunVisualizer(output_path=output_path)
         else:
             self._rerun = None

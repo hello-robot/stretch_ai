@@ -65,6 +65,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         self.create_collision_masks(orientation_resolution)
         self.traj = None
         self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
+        # self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-flash-preview-04-17")
 
     def query_answer(self, question: str, xyt, planner):
         self.voxel_map.extract_relevant_objects(question)
@@ -138,7 +139,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             action = selected_images[int(action) - 1]
             rgb = np.copy(self.voxel_map.observations[action - 1].rgb.numpy())
             image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-            # image.show()
+            image.show()
 
             self.voxel_map.history_outputs.append(
                 "Answer:"

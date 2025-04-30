@@ -50,28 +50,16 @@ class SparseVoxelMapEQA(SparseVoxelMap):
 
         self.history_outputs: List[str] = []
 
-        # self.eqa_gpt_client = OpenaiClient(EQA_PROMPT, model="gpt-4o-2024-05-13")
-
-        # self.positive_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o")
-
-        # self.negative_score_client = OpenaiClient(EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o")
-
         self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.0-flash")
         # self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
 
         self.positive_score_client = GeminiClient(
             EQA_SYSTEM_PROMPT_POSITIVE, model="gemini-2.0-flash-lite"
         )
-        # self.positive_score_client = GeminiClient(
-        #     EQA_SYSTEM_PROMPT_POSITIVE, model="gemini-2.0-flash"
-        # )
 
         self.negative_score_client = GeminiClient(
             EQA_SYSTEM_PROMPT_NEGATIVE, model="gemini-2.0-flash-lite"
         )
-        # self.negative_score_client = GeminiClient(
-        #     EQA_SYSTEM_PROMPT_NEGATIVE, model="gemini-2.0-flash"
-        # )
 
     def extract_relevant_objects(self, question: str):
         if self._question != question:
@@ -126,30 +114,31 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             file.write(answer_outputs)
 
         # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Action: Confidence_reasoning:"
-        reasoning = (
-            answer_outputs.split("reasoning:")[1]
-            .split("answer:")[0]
-            .replace("\n", "")
-            .replace("\t", "")
-        )
-        answer = (
-            answer_outputs.split("answer:")[-1]
-            .split("confidence:")[0]
-            .replace("\n", "")
-            .replace("\t", "")
-        )
-        confidence = "true" in answer_outputs.split("confidence:")[-1].split(
-            "confidence_reasoning:"
-        )[0].replace(" ", "").replace("\n", "").replace("\t", "")
-        action = (
-            answer_outputs.split("action:")[-1]
-            .split("confidence_reasoning:")[0]
-            .replace("\n", "")
-            .replace("\t", "")
-        )
-        confidence_reasoning = (
-            answer_outputs.split("confidence_reasoning:")[-1].replace("\n", "").replace("\t", "")
-        )
+
+        def extract_between(text, start, end):
+            try:
+                return (
+                    text.split(start, 1)[1]
+                    .split(end, 1)[0]
+                    .strip()
+                    .replace("\n", "")
+                    .replace("\t", "")
+                )
+            except IndexError:
+                return ""
+
+        def extract_after(text, start):
+            try:
+                return text.split(start, 1)[1].strip().replace("\n", "").replace("\t", "")
+            except IndexError:
+                return ""
+
+        reasoning = extract_between(answer_outputs, "reasoning:", "answer:")
+        answer = extract_between(answer_outputs, "answer:", "confidence:")
+        confidence_text = extract_between(answer_outputs, "confidence:", "action:")
+        confidence = "true" in confidence_text.strip()
+        action = extract_between(answer_outputs, "action:", "confidence_reasoning:")
+        confidence_reasoning = extract_after(answer_outputs, "confidence_reasoning:")
 
         return reasoning, answer, confidence, action, confidence_reasoning
 

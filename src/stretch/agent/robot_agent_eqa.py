@@ -193,17 +193,7 @@ class RobotAgent(RobotAgentBase):
 
         self._running = True
 
-        # PROMPT = """
-        #     Assume there is an agent doing Question Answering in an environment.
-        #     When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
-        #     Example:
-        #         Input: Where is the pen?
-        #         Output: pen
-
-        #         Input: Is there grey cloth on cloth hanger?
-        #         Output: gery cloth,cloth hanger
-        # """
-        # self.llm_client = OpenaiClient(PROMPT, model="gpt-4o-mini")
+        self.rerun_iter = 0
 
         self._start_threads()
 
@@ -307,6 +297,8 @@ class RobotAgent(RobotAgentBase):
             self.robot.move_base_to(xyt, blocking=True)
             if not self._realtime_updates:
                 self.update()
+        rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
+        self.rerun_iter += 1
 
     def execute_action(
         self,
@@ -537,6 +529,9 @@ class RobotAgent(RobotAgentBase):
                 self.robot.say("The answer to " + question + " is " + answer)
                 break
 
+        rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
+        self.rerun_iter += 1
+
         return discord_text, self.patch_images(relevant_images)
 
     def run_eqa_one_iter(self, question, max_movement_step: int = 5):
@@ -572,6 +567,12 @@ class RobotAgent(RobotAgentBase):
             "I am confident with the answer" if confidence else "I am NOT confident with the answer"
         )
 
+        reasoning_output = (
+            "\n#### **Reasoning for the answer:** " + reasoning
+            if confidence
+            else "\n#### **Reasoning for the confidence:** " + confidence_reasoning
+        )
+
         answer_output = (
             "#### **Question:** "
             + question
@@ -579,10 +580,7 @@ class RobotAgent(RobotAgentBase):
             + answer
             + "\n#### **Confidence:** "
             + confidence_text
-            + "\n#### **Reasoning for the answer:** "
-            + reasoning
-            + "\n#### **Reasoning for the confidence:** "
-            + confidence_reasoning
+            + reasoning_output
         )
 
         self.rerun_visualizer.log_text("QA", answer_output)

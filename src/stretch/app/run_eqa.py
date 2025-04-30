@@ -7,6 +7,9 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
+from pathlib import Path
+from typing import Optional
+
 import click
 
 from stretch.agent.robot_agent_eqa import RobotAgent
@@ -15,8 +18,6 @@ from stretch.agent.zmq_client import HomeRobotZmqClient
 
 # Mapping and perception
 from stretch.core.parameters import get_parameters
-
-# from stretch.perception import create_semantic_sensor
 
 
 @click.command()
@@ -38,19 +39,28 @@ from stretch.core.parameters import get_parameters
     "--discord",
     "-D",
     is_flag=True,
-    help="Whether the robot rotates in place at the beginning",
+    help="Whether we would launch discord bot",
+)
+@click.option(
+    "--output",
+    "-O",
+    default=None,
+    type=str,
+    help="Where we should save rerun rrd",
 )
 def main(
     robot_ip,
     discord: bool = False,
     not_rotate_in_place: bool = False,
+    output: Optional[str] = None,
     **kwargs,
 ):
     """
     Including only some selected arguments here.
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    robot = HomeRobotZmqClient(robot_ip=robot_ip)
+    output_path = Path(output) if output is not None else None
+    robot = HomeRobotZmqClient(robot_ip=robot_ip, output_path=output_path)
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
@@ -68,6 +78,8 @@ def main(
         from stretch.llms.discord_bot import StretchDiscordBot
 
         bot = StretchDiscordBot(agent, task="eqa")
+        if not not_rotate_in_place:
+            bot.executor.rotate_in_place()
 
         @bot.client.command(name="summon", help="Summon the bot to a channel.")
         async def summon(ctx):

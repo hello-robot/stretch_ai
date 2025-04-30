@@ -274,6 +274,8 @@ class StretchDiscordBot(DiscordBot):
                 with self._plan_lock:
                     response, channel = self.next_plan
                     self.next_plan = None
+                # response is in the form of "User: ******"
+                response = response.split(":", 1)[1]
                 self.executor(response, channel=channel)
             else:
                 time.sleep(0.01)
