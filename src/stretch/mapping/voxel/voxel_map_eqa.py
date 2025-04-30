@@ -132,6 +132,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             answer,
             confidence,
             action,
+            action_type,
             confidence_reasoning,
         ) = self.voxel_map.parse_answer(answer_outputs)
 
@@ -139,7 +140,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             action = selected_images[int(action) - 1]
             rgb = np.copy(self.voxel_map.observations[action - 1].rgb.numpy())
             image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-            image.show()
 
             self.voxel_map.history_outputs.append(
                 "Answer:"
@@ -153,6 +153,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 + str(self.voxel_map.image_descriptions[action - 1][0])
                 + " with grid coord "
                 + str(self.voxel_map.image_descriptions[action - 1][1])
+                + "to explore the "
+                + action_type
+                + " in the image"
                 + "\nConfidence reasoning:"
                 + confidence_reasoning
             )
@@ -163,15 +166,17 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         # print("Answer:", answer)
         # print("Confidence:", confidence)
         # print("Answer outputs:", answer_outputs)
+        if action is not None:
+            action_output = self.get_target_point_from_image_id(action, action_type, xyt, planner)
+        else:
+            action_output = None
 
         return (
             reasoning,
             answer,
             confidence,
             confidence_reasoning,
-            self.get_target_point_from_image_id(action, xyt, planner)
-            if action is not None
-            else None,
+            action_output,
             relevant_images,
         )
 
@@ -207,7 +212,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
                 options += f"{i+1}. {cluster_string}\n"
         return selected_images, "IMAGE_DESCRIPTIONS: " + options
 
-    def get_target_point_from_image_id(self, image_id: int, xyt, planner):
+    def get_target_point_from_image_id(self, image_id: int, action_type: str, xyt, planner):
         # history outpyt by get_active_descriptions output a history id map considering history id of the floor point
         # history_soft output by get_2d_map output a history id map excluding history id of the floor point
         # Therefore, history is generally used to select active image observations while history_soft is generally used to determine unexplored frontier
@@ -222,31 +227,29 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         # Navigation priority: unexplored frontier > obstalces > others
         # from matplotlib import pyplot as plt
         # plt.clf()
-        if torch.sum((history == image_id) & unexplored_frontier) > 0:
+        if "f" in action_type and torch.sum((history == image_id) & unexplored_frontier) > 0:
             print("unexplored frontier")
-            # plt.imshow(history == image_id)
-            # plt.show()
-            # plt.imshow((history == image_id) & unexplored_frontier)
-            # plt.show()
             image_coord = (
                 ((history == image_id) & unexplored_frontier)
                 .nonzero(as_tuple=False)
                 .median(dim=0)
                 .values.int()
             )
-        elif torch.sum((history == image_id) & obstacles) > 0:
+        elif "o" in action_type and torch.sum((history == image_id) & obstacles) > 0:
             print("obstacles")
-            # plt.imshow(history == image_id)
-            # plt.show()
-            # plt.imshow((history == image_id) & obstacles)
-            # plt.show()
             image_coord = (
                 (history == image_id & obstacles).nonzero(as_tuple=False).median(dim=0).values.int()
             )
+        elif torch.sum((history == image_id) & unexplored_frontier) > 0:
+            print("unexplored frontier")
+            image_coord = (
+                ((history == image_id) & unexplored_frontier)
+                .nonzero(as_tuple=False)
+                .median(dim=0)
+                .values.int()
+            )
         else:
             print("others")
-            # plt.imshow(history == image_id)
-            # plt.show()
             image_coord = (history == image_id).nonzero(as_tuple=False).median(dim=0).values.int()
         xy = self.voxel_map.grid_coords_to_xy(image_coord)
         return torch.Tensor([xy[0], xy[1], 1])

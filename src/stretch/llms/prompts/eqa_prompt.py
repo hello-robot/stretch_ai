@@ -28,7 +28,8 @@ EQA_PROMPT = f"""
         If you are unable to answer the question with high confidence, and need more information to answer the question, then you can take two kinds of steps in the environment: Goto_object_node_step or Goto_frontier_node_step 
         You also have to choose the next action, one which will enable you to answer the question better.
         The answer should be made in the form of identifying which image should we navigate to and the image should be selected from the list of image descriptions.
-        Please identify the image id number only as it will be transformed into an integer!
+        Moreover you should clearly mention whether this is exploring unexplored frontiers or the contents of the images to better answer the question
+        Please identify the image id number along with action type (either frontier or object)!
         
         Other considerations:
             1. Each image description, if applicable, will be associated with the image observations provided and will be pointed out if this image contains a space where the robot has never explored before.
@@ -57,11 +58,12 @@ EQA_PROMPT = f"""
                     I have obtained two field of views of the table but none of the images contains a mug.
                 Answer: 
                     No
+                Confidence_reasoning:
+                    I am confident because the Image 1 and Image 2 seem to cover everything on the table and none of them contains a mug.
                 Confidence:
                     TRUE
                 Action:
-                Confidence_reasoning:
-                    I am confident because the Image 1 and Image 2 seem to cover everything on the table and none of them contains a mug.
+                Action_type:
 
         Example #2:
             Input:
@@ -77,14 +79,15 @@ EQA_PROMPT = f"""
                     So the cardboard boxes currently visible by me are the two in Image 1.
                 Answer: 
                     Two
-                Confidence:
-                    True
-                Action:
                 Confidence_reasoning:
                     I am a little inconfident because I am not sure whether these images contain all the cardboard boxes in the room. 
                     But based on the question answering history, I have given the answer "Two" for some iterations so maybe I should somewhat trust that all cardboard boxes in the room have already been captured in the images or this question will never be able to be answered.
                     Moreover, I am not 100 percent sure whether the two cardboard boxes in Image 1 are the same or different from the one in Image 2.
                     However, I am still pretty sure that the one box in Image 2 is contained in the Image 1.
+                Confidence:
+                    True
+                Action:
+                Action_type:
 
         Example #3:
             Input:
@@ -99,16 +102,17 @@ EQA_PROMPT = f"""
                     I have not seen any dish washer in the images.
                 Answer:
                     Unknown
-                Confidence:
-                    False
-                Action:
-                    25
                 Confidence_reasoning:
                     I am not confident because I have not seen any dish washer. 
                     While I have not seen the dish washer for a while, the room is still not fully explored and I should not stop exploring.
                     Both the 10th and the 25th image corresponds to the unexplored space.
                     25th image contains a sink while the 10th image contains a laptop and a table.
                     Sink is usually associated with the dish washer while a laptop and a table usually means the bedroom, so we should go to image 25.
+                Confidence:
+                    False
+                Action:
+                    25
+                Action_type: frontier
 
         Example #4:
             Input:
@@ -123,13 +127,36 @@ EQA_PROMPT = f"""
                     I see a monitor and a table, but that monitor is not on the table, instead, there is a laptop on the table but I would not classify the laptop as a monitor.
                 Answer:
                     No
+                Confidence_reasoning:
+                    While Image 1 shows that there is no monitor on one part of the table, I have not seen the whole table yet, so maybe there is a monitor on the table.
+                    Image 1 is associated with observation description 1. Since we observed the table there, going there again might allow us to see the second half of the table.
                 Confidence:
                     False
                 Action:
                     1
+                Action_type: object
+
+        Example #5:
+            Input:
+                <question answering output in previous iterations>
+                Question: What texts are written on the cardboard box
+                IMAGE: <2 images>
+                IMAGE_DESCRIPTIONS: <50 image descriptions>
+            Output:
+                Caption:
+                    Image 1 is a table. Image 2 might be a cardboard box but it is quite unclear.
+                Reasoning:
+                    I have not confirmed whether there is a cardboard box
+                Answer:
+                    Unknown
                 Confidence_reasoning:
-                    While Image 1 shows that there is no monitor on one part of the table, I have not seen the whole table yet, so maybe there is a monitor on the table.
-                    Image 1 is associated with observation description 1.Since we observed the table there, going there again might allow us to see the second half of the table.
+                    I want to explored the object in Image 2. Image 2 is associated with text description 30.
+                    While image 2 is associated with frontier, the action type should be object as we want to take a look at the cardboard box instead of the frontier
+                Confidence:
+                    False
+                Action:
+                    30
+                Action_type: object
         """
 
 EQA_SYSTEM_PROMPT_POSITIVE = """You are a robot exploring an environment for the first time. You will be given a task to accomplish and should provide guidance of where to explore based on a series of observations. Observations will be given as a list of object clusters numbered 1 to N. 

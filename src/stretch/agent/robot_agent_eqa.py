@@ -568,9 +568,9 @@ class RobotAgent(RobotAgentBase):
         )
 
         reasoning_output = (
-            "\n#### **Reasoning for the answer:** " + reasoning
+            "\n#### Reasoning for the answer: " + reasoning
             if confidence
-            else "\n#### **Reasoning for the confidence:** " + confidence_reasoning
+            else "\n#### Reasoning for the confidence: " + confidence_reasoning
         )
 
         answer_output = (

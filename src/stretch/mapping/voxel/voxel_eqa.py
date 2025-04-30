@@ -113,7 +113,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         with open(self.log + "/" + str(len(self.image_descriptions)) + "/output.txt", "w") as file:
             file.write(answer_outputs)
 
-        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Action: Confidence_reasoning:"
+        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence_reasoning: Confidence: Action: Action_type"
 
         def extract_between(text, start, end):
             try:
@@ -134,13 +134,16 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 return ""
 
         reasoning = extract_between(answer_outputs, "reasoning:", "answer:")
-        answer = extract_between(answer_outputs, "answer:", "confidence:")
+        answer = extract_between(answer_outputs, "answer:", "confidence_reasoning:")
+        confidence_reasoning = extract_between(
+            answer_outputs, "confidence_reasoning:", "confidence:"
+        )
         confidence_text = extract_between(answer_outputs, "confidence:", "action:")
         confidence = "true" in confidence_text.strip()
-        action = extract_between(answer_outputs, "action:", "confidence_reasoning:")
-        confidence_reasoning = extract_after(answer_outputs, "confidence_reasoning:")
+        action = extract_between(answer_outputs, "action:", "action_type:")
+        action_type = extract_after(answer_outputs, "action_type:")
 
-        return reasoning, answer, confidence, action, confidence_reasoning
+        return reasoning, answer, confidence, action, action_type, confidence_reasoning
 
     def get_active_image_descriptions(self):
         """
