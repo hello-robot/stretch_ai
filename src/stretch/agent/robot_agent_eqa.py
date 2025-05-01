@@ -543,24 +543,33 @@ class RobotAgent(RobotAgentBase):
             self.robot.look_front()
             self.robot.switch_to_navigation_mode()
 
-        try:
-            (
-                reasoning,
-                answer,
-                confidence,
-                confidence_reasoning,
-                target_point,
-                relevant_images,
-            ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
-        except:
-            reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
-                "Exception happens in LLM querying",
-                "Unknown",
-                False,
-                "",
-                self.space.sample_frontier(self.planner, self.robot.get_base_pose(), text=None),
-                [],
-            )
+        # try:
+        #     (
+        #         reasoning,
+        #         answer,
+        #         confidence,
+        #         confidence_reasoning,
+        #         target_point,
+        #         relevant_images,
+        #     ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
+        # except:
+        #     reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
+        #         "Exception happens in LLM querying",
+        #         "Unknown",
+        #         False,
+        #         "",
+        #         self.space.sample_frontier(self.planner, self.robot.get_base_pose(), text=None),
+        #         [],
+        #     )
+
+        (
+            reasoning,
+            answer,
+            confidence,
+            confidence_reasoning,
+            target_point,
+            relevant_images,
+        ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
 
         # Log the texts to rerun visualizer
         confidence_text = (
