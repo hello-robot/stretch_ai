@@ -256,7 +256,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         if debug:
             # plt.clf()
             plt.title("time")
-            plt.imshow(time_heuristics)
+            plt.imshow(history_soft)
             plt.scatter(index[1], index[0], s=15, c="r")
             plt.show()
         return time_heuristics

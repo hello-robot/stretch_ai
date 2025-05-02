@@ -8,9 +8,10 @@
 # license information maybe found below, if so.
 
 import timeit
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import torch
+from PIL import Image
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -18,20 +19,17 @@ from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
 # Coder: 32B, 14B, 7B, 3B, 1.5B, 0.5B, (None, Instruct, Instruct-AWQ, Instruct-GGUF, Instruct-GPTQ-Int4, Instruct-GPTQ-Int8)
 # Math: 72B, 7B, 1.5B (None, Instruct)
-# VL: 72B, 7B, 3B (Instruct, Instruct-AWQ)
 # "0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"
 # Deepseek: 1.5B, 7B, 14B, 32B
 
-qwen_typing_options = ["Math", "Coder", "VL", "Deepseek", None]
+qwen_typing_options = ["Math", "Coder", "Deepseek", None]
 qwen_quantization_options = {
-    "VL": [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
     None: [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
     "Coder": [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
     "Math": [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
     "Deepseek": [None, "Int4", "Int8"],
 }
 qwen_sizes = {
-    "VL": ["3B", "7B", "72B"],
     None: ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"],
     "Coder": ["0.5B", "1.5B", "3B", "7B", "14B", "32B"],
     "Math": ["1.5B", "7B", "72B"],
@@ -159,6 +157,147 @@ class Qwen25Client(AbstractLLMClient):
             print(f"Assistant response: {assistant_response}")
             print(f"Time taken: {t1 - t0:.2f}s")
         return assistant_response
+
+    def sample(self, command: str, n_samples: int = 5, verbose: bool = False):
+        if verbose:
+            print(f"{self.system_prompt=}")
+        plan = []
+        for i in range(n_samples):
+            self.reset()
+            plan.append(self.__call__(command, verbose))
+        if verbose:
+            print(f"plan={plan}")
+        return plan
+
+
+from qwen_vl_utils import process_vision_info
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
+
+class Qwen25VLClient:
+    def __init__(
+        self,
+        prompt: Optional[str] = None,
+        model_size: str = "3B",
+        fine_tuning: Optional[str] = "Instruct",
+        max_tokens: int = 4096,
+        num_beams: int = 1,
+        device: str = "cuda",
+        quantization: Optional[str] = "int4",
+        use_fast_attn: bool = False,
+    ):
+        """
+        A simple API for Qwen2.5-VL models
+
+        Parameters:
+            quantization: we support no quatization, AWQ, and bitsandbytes int4 and int8
+        """
+        self.system_prompt = prompt
+        assert device in ["cuda", "mps"], f"Invalid device: {device}"
+        assert model_size in ["3B", "7B", "72B"], f"Invalid model size: {model_size}"
+        assert fine_tuning in [None, "Instruct"], f"Invalid fine-tuning: {fine_tuning}"
+
+        self._device = device
+        self.max_tokens = max_tokens
+        self.num_beams = num_beams
+        self.use_fast_attn = use_fast_attn
+
+        if fine_tuning is None:
+            model_name = f"Qwen/Qwen2.5-VL-{model_size}"
+        else:
+            model_name = f"Qwen/Qwen2.5-VL-{model_size}-{fine_tuning}"
+
+        print(f"Loading model: {model_name}")
+        model_kwargs = {"torch_dtype": "auto"}
+
+        quantization_config = None
+        if quantization is not None:
+            quantization = quantization.lower()
+            # Note: we only support AWQ and bitsandbytes here
+            if quantization == "awq":
+                model_kwargs["torch_dtype"] = torch.float16
+                model_name += "-AWQ"
+            elif quantization in ["int8", "int4"]:
+                try:
+                    import bitsandbytes  # noqa: F401
+                    from transformers import BitsAndBytesConfig
+                except ImportError:
+                    raise ImportError(
+                        "bitsandbytes required for int4/int8 quantization: pip install bitsandbytes"
+                    )
+
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=(quantization == "int4"),
+                    load_in_8bit=(quantization == "int8"),
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                )
+                model_kwargs["quantization_config"] = quantization_config
+            else:
+                raise ValueError(f"Unknown quantization method: {quantization}")
+
+        if quantization_config is not None:
+            model_kwargs["quantization_config"] = quantization_config
+
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        if self.use_fast_attn:
+            attn_implementaion = "flash_attention_2"
+        else:
+            attn_implementaion = None
+        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model_name,
+            attn_implementation=attn_implementaion,
+            device_map=device,
+            **model_kwargs,
+        )
+
+    def __call__(
+        self, command: Union[str, List[Dict[str, Any]], Image.Image], verbose: bool = False
+    ):
+        if self.system_prompt is not None:
+            messages = [{"role": "system", "content": self.system_prompt}]
+        else:
+            messages = []
+
+        # Prepare the messages
+        if not isinstance(command, list):
+            messages.append({"role": "user", "content": command})
+        else:
+            messages += command
+
+        t0 = timeit.default_timer()
+
+        text = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        image_inputs, video_inputs = process_vision_info(messages)
+        inputs = self.processor(
+            text=[text],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt",
+        )
+        inputs = inputs.to(self._device)
+
+        generated_ids = self.model.generate(
+            **inputs, max_new_tokens=self.max_tokens, num_beams=self.num_beams
+        )
+        generated_ids_trimmed = [
+            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        ]
+        output_text = self.processor.batch_decode(
+            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )[0]
+
+        t1 = timeit.default_timer()
+
+        if verbose:
+            print(f"Assistant response: {output_text}")
+            print(f"Time taken: {t1 - t0:.2f}s")
+
+        return output_text
 
 
 if __name__ == "__main__":

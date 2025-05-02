@@ -176,9 +176,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
         return torch.max(alignments[distances < distance_threshold]) >= similarity_threshold
 
     def get_2d_map(
-        self, debug: bool = False, return_history_id: bool = False
+        self, debug: bool = False, return_history_id: bool = False, kernel: int = 7
     ) -> Tuple[Tensor, ...]:
-        """Get 2d map with explored area and frontiers."""
+        """
+        Get 2d map with explored area and frontiers.
+        return_history_id: if True, return when each voxel was recently updated
+        """
 
         # Is this already cached? If so we don't need to go to all this work
         if (
@@ -229,7 +232,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
 
         history_ids = history_ids[:, :, min_height:max_height]
         history_soft = torch.max(history_ids, dim=-1).values
-        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=7))
+        history_soft = torch.from_numpy(maximum_filter(history_soft.float().numpy(), size=kernel))
 
         if self._remove_visited_from_obstacles:
             # Remove "visited" points containing observations of the robot
@@ -305,6 +308,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
         """
         Transform the similarity with text into a 2D value map that can be used to evaluate
         how much exploring to one point can benefit open vocabulary navigation
+
+        Similarity is computed naviely by CLIP/Siglip encoder
         """
         if self.semantic_memory._points is None:
             return None
@@ -406,18 +411,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         if len(valid_xyz) != 0:
             self.add_to_semantic_memory(valid_xyz, features, valid_rgb)
 
-        # if self.image_shape is not None:
-        #     rgb = F.interpolate(
-        #         rgb.unsqueeze(0), size=self.image_shape, mode="bilinear", align_corners=False
-        #     ).squeeze()
-
-        # self.add(
-        #     camera_pose=torch.Tensor(pose),
-        #     rgb=torch.Tensor(rgb).permute(1, 2, 0),
-        #     depth=torch.Tensor(depth),
-        #     camera_K=torch.Tensor(intrinsics),
-        # )
-
     def add_to_semantic_memory(
         self,
         valid_xyz: Optional[torch.Tensor],
@@ -465,16 +458,31 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 text, debug=debug, return_debug=return_debug
             )
 
-    def find_all_images(self, text: str):
+    def find_all_images(
+        self,
+        text: str,
+        min_similarity_threshold: Optional[float] = None,
+        min_point_num: int = 100,
+        max_img_num: Optional[int] = 3,
+    ):
         """
-        Select all images with high pixel similarity with text
+        Select all images with high pixel similarity with text (by identifying whether points in this image are relevant objects)
+
+        Args:
+            min_similarity_threshold: Make sure every point with similarity greater than this value would be considered as the relevant objects
+            min_point_num: Make sure we select at least these many points as relevant images.
+            max_img_num: The maximum number of images we want to identify as relevant objects.
         """
         points, _, _, _ = self.semantic_memory.get_pointcloud()
         points = points.cpu()
         alignments = self.find_alignment_over_model(text).cpu().squeeze()
         obs_counts = self.semantic_memory._obs_counts.cpu()
 
-        turning_point = min(0.12, alignments[torch.argsort(alignments)[-100]])
+        turning_point = (
+            min(min_similarity_threshold, alignments[torch.argsort(alignments)[-min_point_num]])
+            if min_similarity_threshold is not None
+            else alignments[torch.argsort(alignments)[-min_point_num]]
+        )
         mask = alignments >= turning_point
         obs_counts = obs_counts[mask]
         alignments = alignments[mask]
@@ -503,8 +511,12 @@ class SparseVoxelMap(SparseVoxelMapBase):
             points_with_max_alignment[i] = point_with_max_alignment
             max_alignments[i] = cluster_alignments.max()
 
+        if max_img_num is not None:
+            top_k = min(max_img_num, len(max_alignments))
+        else:
+            top_k = len(max_alignments)
         top_alignments, top_indices = torch.topk(
-            max_alignments, k=min(3, len(max_alignments)), dim=0, largest=True, sorted=True
+            max_alignments, k=top_k, dim=0, largest=True, sorted=True
         )
         top_points = points_with_max_alignment[top_indices]
         top_obs_counts = unique_obs_counts[top_indices]
@@ -601,7 +613,11 @@ class SparseVoxelMap(SparseVoxelMapBase):
         debug_text = ""
         target_point = None
 
-        image_ids, points, alignments = self.find_all_images(text)
+        image_ids, points, alignments = self.find_all_images(
+            # text, min_similarity_threshold=0.12, max_img_num=3
+            text,
+            max_img_num=3,
+        )
         target_id = self.llm_locator(image_ids, text)
 
         if target_id is None:
