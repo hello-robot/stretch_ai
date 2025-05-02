@@ -67,6 +67,7 @@ class RobotAgent(RobotAgentBase):
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
         voxel_map: Optional[SparseVoxelMap] = None,
+        save_rerun: bool = False,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
@@ -185,6 +186,8 @@ class RobotAgent(RobotAgentBase):
 
         self.re = re
 
+        self.save_rerun = save_rerun
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -241,10 +244,10 @@ class RobotAgent(RobotAgentBase):
 
     def setup_custom_blueprint(self):
         main = rrb.Horizontal(
-            rrb.Spatial3DView(name="3D View", origin="world"),
+            rrb.Spatial3DView(name="Semantic memory", origin="world"),
             rrb.Vertical(
-                rrb.TextDocumentView(name="text", origin="QA"),
-                # rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+                rrb.TextDocumentView(name="QA", origin="QA"),
+                rrb.Spatial2DView(name="images relevant to QA", origin="relevant_images"),
             ),
             rrb.Vertical(
                 rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
@@ -290,6 +293,10 @@ class RobotAgent(RobotAgentBase):
 
     def rotate_in_place(self):
         print("*" * 10, "Rotate in place", "*" * 10)
+        if self.save_rerun:
+            if not os.path.exists(self.log):
+                os.makedirs(self.log)
+            rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
         xyt = self.robot.get_base_pose()
         self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
         for i in range(8):
@@ -297,7 +304,6 @@ class RobotAgent(RobotAgentBase):
             self.robot.move_base_to(xyt, blocking=True)
             if not self._realtime_updates:
                 self.update()
-        rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
         self.rerun_iter += 1
 
     def execute_action(
@@ -489,7 +495,7 @@ class RobotAgent(RobotAgentBase):
 
         return traj
 
-    def patch_images(self, images: List[Image.Image], patch_size=(270, 360), gap=5):
+    def patch_images(self, images: List[Image.Image], patch_size=(480, 640), gap=5):
         """
         Patch a list of PIL Images into a numpy array, used for dicrod bot
         """
@@ -514,6 +520,10 @@ class RobotAgent(RobotAgentBase):
 
     def run_eqa(self, question, max_planning_steps: int = 5):
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
+        if self.save_rerun:
+            if not os.path.exists(self.log):
+                os.makedirs(self.log)
+            rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
 
         self.robot.switch_to_navigation_mode()
 
@@ -529,10 +539,10 @@ class RobotAgent(RobotAgentBase):
                 self.robot.say("The answer to " + question + " is " + answer)
                 break
 
-        rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
+        relevant_image = self.patch_images(relevant_images, patch_size=(270, 360))
         self.rerun_iter += 1
 
-        return discord_text, self.patch_images(relevant_images)
+        return discord_text, relevant_image
 
     def run_eqa_one_iter(self, question, max_movement_step: int = 5):
         answer_output = None
@@ -593,6 +603,9 @@ class RobotAgent(RobotAgentBase):
         )
 
         self.rerun_visualizer.log_text("QA", answer_output)
+        self.rerun_visualizer.log_custom_2d_image(
+            "relevant_images", self.patch_images(relevant_images)
+        )
 
         # chat with user in the rerun
         if confidence:

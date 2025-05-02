@@ -232,7 +232,10 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         elif torch.sum((history == image_id) & obstacles) > 0:
             print("obstacles")
             image_coord = (
-                (history == image_id & obstacles).nonzero(as_tuple=False).median(dim=0).values.int()
+                ((history == image_id) & obstacles)
+                .nonzero(as_tuple=False)
+                .median(dim=0)
+                .values.int()
             )
         else:
             print("others")

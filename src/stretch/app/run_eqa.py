@@ -7,9 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from pathlib import Path
-from typing import Optional
-
 import click
 
 from stretch.agent.robot_agent_eqa import RobotAgent
@@ -42,25 +39,23 @@ from stretch.core.parameters import get_parameters
     help="Whether we would launch discord bot",
 )
 @click.option(
-    "--output",
-    "-O",
-    default=None,
-    type=str,
-    help="Where we should save rerun rrd",
+    "--save_rerun",
+    "--SR",
+    is_flag=True,
+    help="Whether we should save rerun rrd",
 )
 def main(
     robot_ip,
     discord: bool = False,
     not_rotate_in_place: bool = False,
-    output: Optional[str] = None,
+    save_rerun: bool = False,
     **kwargs,
 ):
     """
     Including only some selected arguments here.
     """
     click.echo("Will connect to a Stretch robot and collect a short trajectory.")
-    output_path = Path(output) if output is not None else None
-    robot = HomeRobotZmqClient(robot_ip=robot_ip, output_path=output_path)
+    robot = HomeRobotZmqClient(robot_ip=robot_ip)
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
@@ -70,7 +65,7 @@ def main(
     parameters["encoder"] = None
 
     print("- Start robot agent with data collection")
-    agent = RobotAgent(robot, parameters)
+    agent = RobotAgent(robot, parameters, save_rerun=save_rerun)
     agent.start()
 
     if discord:
