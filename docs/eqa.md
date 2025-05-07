@@ -67,17 +67,17 @@ You need to know the ip address of your robot to send commands to your robot. On
 You also need to set up your Gemini key before running EQA scripts by
 
 ```bash
-export GOOGLE_API_KEY=<YOUR_GEMINI_TOKEN>
+export GOOGLE_API_KEY=$YOUR_GEMINI_TOKEN
 ```
 
 If you also want to try discord bot, you need to set up discord token as well
 
 ```bash
-export DISCORD_TOKEN=<YOUR_DICORD_TOKEN>
+export DISCORD_TOKEN=$YOUR_DICORD_TOKEN
 ```
 
 ```bash
-python -m stretch.app.run_eqa --robot_ip <ROBOT_IP>
+python -m stretch.app.run_eqa --robot_ip $ROBOT_IP
 ```
 
 Other options
