@@ -1,6 +1,6 @@
 # The Stretch AI EQA Module
 
-An **Embodied Question Answering (EQA) Module** enabling a robot to actively explore its environment, gather visual and spatial data, and answer user queries about what it sees. The EQA module requires robots to master multiple abilities, including  efficiently exploring the environment to acquire useful information to answer the question, extracting an informative semantic representation of the environment, and processing questions from the user. A good EQA system can potentially assist visually impaired users by describing surrounding environments or help people track the status of their houses when they are not home.
+The **Embodied Question Answering (EQA) Module** enables a robot to actively explore its environment, gather visual and spatial data, and answer user queries about what it sees. The EQA module requires robots to master multiple abilities, including  efficiently exploring the environment to acquire useful information to answer the question, extracting an informative semantic representation of the environment, and processing questions from the user. A good EQA system can potentially assist visually impaired users by describing surrounding environments or help people track the status of their houses when they are not home.
 
 ## Demo Video
 
