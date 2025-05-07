@@ -53,6 +53,8 @@ setuptools.setup(
         # From openai
         "openai",
         "openai-clip",
+        # For gemini
+        "google-genai",
         # For Yolo
         # "ultralytics",
         # Hardware dependencies

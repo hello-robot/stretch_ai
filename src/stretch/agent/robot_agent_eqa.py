@@ -35,15 +35,11 @@ from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
-
-# from stretch.llms import OpenaiClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.mapping.voxel.voxel_eqa import SparseVoxelMapEQA as SparseVoxelMap
 from stretch.mapping.voxel.voxel_map_eqa import SparseVoxelMapNavigationSpace
 from stretch.motion.algo.a_star import AStar
-
-# from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.encoders.masksiglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 

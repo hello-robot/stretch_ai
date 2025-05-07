@@ -19,11 +19,7 @@ from torch import Tensor
 
 # from stretch.llms.openai_client import OpenaiClient
 from stretch.llms.gemini_client import GeminiClient
-from stretch.llms.prompts.eqa_prompt import (  # IMAGE_DESCRIPTION_PROMPT,
-    EQA_PROMPT,
-    EQA_SYSTEM_PROMPT_NEGATIVE,
-    EQA_SYSTEM_PROMPT_POSITIVE,
-)
+from stretch.llms.prompts.eqa_prompt import EQA_SYSTEM_PROMPT_NEGATIVE, EQA_SYSTEM_PROMPT_POSITIVE
 from stretch.llms.qwen_client import Qwen25VLClient
 from stretch.mapping.voxel.voxel_map_dynamem import SparseVoxelMap
 from stretch.utils.voxel import scatter3d
@@ -38,10 +34,6 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self.relevant_objects: Optional[list] = None
 
         # To avoid using too much GPT, we use Qwen2.5-3b-vl-instruct for image description.
-
-        # self.image_description_client = OpenaiClient(
-        #     prompt=IMAGE_DESCRIPTION_PROMPT, model="gpt-4o-mini"
-        # )
         self.image_description_client = Qwen25VLClient(
             model_size="3B", quantization="int4", max_tokens=20
         )
@@ -49,9 +41,6 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self.image_descriptions: List[Tuple[List[str], List[int]]] = []
 
         self.history_outputs: List[str] = []
-
-        self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.0-flash")
-        # self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
 
         self.positive_score_client = GeminiClient(
             EQA_SYSTEM_PROMPT_POSITIVE, model="gemini-2.0-flash-lite"
