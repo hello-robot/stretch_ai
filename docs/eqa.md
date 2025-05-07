@@ -6,7 +6,7 @@ An **Embodied Question Answering (EQA) Module** enabling a robot to actively exp
 
 [The following](https://www.youtube.com/watch?v=MZq1BcG9stQ) shows Stretch AI EQA running in one of our developers' homes.
 
-_Click to follow the link to YouTube:_
+_Click this large image to follow the link to YouTube:_
 
 [![A demonstration of the EQA module in action](images/eqa.png)](https://www.youtube.com/watch?v=MZq1BcG9stQ)
 
