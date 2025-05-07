@@ -4,15 +4,15 @@ The **Embodied Question Answering (EQA) Module** enables a robot to actively exp
 
 ## Demo Video
 
-[The following](https://www.youtube.com/watch?v=iZDlwcrf7ck) shows Stretch AI EQA running in one of our developers' homes.
+[The following](https://youtu.be/38Hs5wk7_3s) shows Stretch AI EQA running in one of our developers' homes.
 
 _Click this large image to follow the link to YouTube:_
 
-[![A demonstration of the EQA module in action](images/eqa.png)](https://www.youtube.com/watch?v=iZDlwcrf7ck)
+[![A demonstration of the EQA module in action](images/eqa.png)](https://youtu.be/38Hs5wk7_3s)
 
 # Motivation and Methodology
 
-In previous EQA work [GraphEQA](https://arxiv.org/abs/2412.14480), researchers provided a multimodal large language models (mLLMs), such as Google's Gemini and OpenAI's GPT, with a prompt that includes a object-centric semantic scene graph and task-relevant robot image observations. GraphEQA utilizes third party scene graph modules [Hydra](https://arxiv.org/abs/2201.13360) for ROS Noetic. Installing this module can be difficult due to OS and software version compatibility. To provide a more user friendly alternative, we adapted the methods of [GraphEQA](https://arxiv.org/abs/2412.14480) for use with existing code in the Stretch AI repo.
+In previous EQA work [GraphEQA](https://arxiv.org/abs/2412.14480), researchers provided a multimodal large language models (mLLMs), such as Google's Gemini and OpenAI's GPT, with a prompt that includes a object-centric semantic scene graph and task-relevant robot image observations. GraphEQA utilizes third party scene graph modules [Hydra](https://arxiv.org/abs/2201.13360) based on ROS Noetic. Installing this module can be difficult due to OS and software version compatibility. To provide a more user friendly alternative, we adapted the methods of [GraphEQA](https://arxiv.org/abs/2412.14480) for use with existing code in the Stretch AI repo.
 
 In GraphEQA, mLLMs are expected to answer the question based on task-relevant image observations and plan exploration based on a scene graph string. Stretch AI has useful capabilities that can serve similar roles. For example, [DynaMem system](dynamem.md) finds task-relevant images and VLM models, such as [Qwen](../src/stretch/llms/qwen_client.py) and [OpenAI GPT](../src/stretch/llms/openai_client.py), extract visual clues from image observations by listing featured objects in the images such as beds, tables, etc. 
 
