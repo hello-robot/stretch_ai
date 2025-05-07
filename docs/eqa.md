@@ -1,18 +1,18 @@
 # The Stretch AI EQA Module
 
-An **Embodied Question Answering (EQA) Module** enabling a robot to actively explore its environment, gather visual and spatial data, and answer user queries about what it sees. The EQA module requires robots to master multiple abilities, including  efficiently exploring the environment to acquire useful information to answer the question, extracting an informative semantic representation of the environment, and processing questions from the user. A good EQA system can potentially assist visually impaired users by describing surrounding environments or help people track the status of their houses when they are not home.
+This **Embodied Question Answering (EQA) Module** enables a robot to actively explore its environment, gather visual and spatial data, and answer user queries about what it sees. The EQA module requires robots to master multiple abilities, including  efficiently exploring the environment to acquire useful information to answer the question, extracting an informative semantic representation of the environment, and processing questions from the user. A good EQA system might help people help the objects at their homes.
 
 ## Demo Video
 
-[The following](https://www.youtube.com/watch?v=MZq1BcG9stQ) shows Stretch AI EQA running in one of our developers' homes.
+[The following](https://www.youtube.com/watch?v=iZDlwcrf7ck) shows Stretch AI EQA running in one of our developers' homes.
 
 _Click this large image to follow the link to YouTube:_
 
-[![A demonstration of the EQA module in action](images/eqa.png)](https://www.youtube.com/watch?v=MZq1BcG9stQ)
+[![A demonstration of the EQA module in action](images/eqa.png)](https://www.youtube.com/watch?v=iZDlwcrf7ck)
 
 # Motivation and Methodology
 
-In prervious EQA work [GraphEQA](https://arxiv.org/abs/2412.14480), researchers attempt to prompt multimodal large language models (mLLMs) such as Google's Gemini and OpenAI's GPT with an object centric semantic scene graph along with task relevant robot image observations. However, GraphEQA utilizes third party scene graph modules [Hydra](https://arxiv.org/abs/2201.13360), a ROS Noetic based module. Installing this module creates hugh installation obstacles for many users. To provide a more user friendly alternatives, we borrow the idea of [GraphEQA](https://arxiv.org/abs/2412.14480) to build this EQA module with existing codes in the Stretch AI repo.
+In prervious EQA work [GraphEQA](https://arxiv.org/abs/2412.14480), researchers attempt to prompt multimodal large language models (mLLMs) such as Google's Gemini and OpenAI's GPT with an object centric semantic scene graph along with task relevant robot image observations. However, GraphEQA utilizes third party scene graph modules, such as [Hydra](https://arxiv.org/abs/2201.13360), a ROS Noetic based module. Installing this module creates huge installation obstacles for many users. To provide a more user friendly alternative, we borrow the idea of [GraphEQA](https://arxiv.org/abs/2412.14480) to build this EQA module with existing codes in the Stretch AI repo.
 
 In GraphEQA, mLLMs are expected to answer the question based on task relevant image observations and to plan exploration based on scene graph string. In Stretch AI, [DynaMem system](dynamem.md) is good at finding task relevant images and many VLM models such as [Qwen](../src/stretch/llms/qwen_client.py), [OpenAI GPT](../src/stretch/llms/openai_client.py) can extratct important visual clues from each image observation by listing featured objects in the image such as beds, tables, etc. 
 
@@ -41,8 +41,8 @@ This module shares or extends core dependencies (mapping, perception, llms) with
 | [`src/stretch/app/run_eqa.py`](../src/stretch/app/run_eqa.py)       |       Entry point for EQA module                       |
 | [`src/stretch/agent/task/dynamem/dynamem_task.py`](../src/stretch/agent/task/dynamem/dynamem_task.py?plain=1#L409)  | An executor wrapper for EQA module |
 | [`src/stretch/agent/robot_agent_eqa.py`](../src/stretch/agent/robot_agent_eqa.py)             | Robot agent class containing all useful APIs for question answering  |
-| [`src/stretch/mapping/voxel/voxel_eqa.py`](../src/stretch/mapping/voxel/voxel_eqa.py)         | Robot mapping utilities class extending from [DynaMem voxel.py](../src/stretch/mapping/voxel/voxel_dynamem.py)            |
-| [`src/stretch/mapping/voxel/voxel_map_eqa.py`](../src/stretch/mapping/voxel/voxel_map_eqa.py)         | Implement `query answer` functions based on semantic memory  extending from [DynaMem voxel_map.py](../src/stretch/mapping/voxel/voxel_map_dynamem.py) |
+| [`src/stretch/mapping/voxel/voxel_eqa.py`](../src/stretch/mapping/voxel/voxel_eqa.py)         | Robot mapping utilities class,extending from [DynaMem voxel.py](../src/stretch/mapping/voxel/voxel_dynamem.py)            |
+| [`src/stretch/mapping/voxel/voxel_map_eqa.py`](../src/stretch/mapping/voxel/voxel_map_eqa.py)         | Implement `query answer` functions based on semantic memory,  extending from [DynaMem voxel_map.py](../src/stretch/mapping/voxel/voxel_map_dynamem.py) |
 
 ## Instructions
 
