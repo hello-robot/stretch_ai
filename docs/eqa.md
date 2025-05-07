@@ -14,27 +14,27 @@ _Click this large image to follow the link to YouTube:_
 
 In previous EQA work [GraphEQA](https://arxiv.org/abs/2412.14480), researchers provided a multimodal large language models (mLLMs), such as Google's Gemini and OpenAI's GPT, with a prompt that includes a object-centric semantic scene graph and task-relevant robot image observations. GraphEQA utilizes third party scene graph modules [Hydra](https://arxiv.org/abs/2201.13360) for ROS Noetic. Installing this module can be difficult due to OS and software version compatibility. To provide a more user friendly alternative, we adapted the methods of [GraphEQA](https://arxiv.org/abs/2412.14480) for use with existing code in the Stretch AI repo.
 
-In GraphEQA, mLLMs are expected to answer the question based on task-relevant image observations and plan exploration based on a scene graph string. For the Stretch AI EQA Module, [DynaMem system](dynamem.md) finds task-relevant images and VLM models, such as [Qwen](../src/stretch/llms/qwen_client.py) and [OpenAI GPT](../src/stretch/llms/openai_client.py), extract visual clues from each image observations by listing featured objects in the images such as beds, tables, etc. 
+In GraphEQA, mLLMs are expected to answer the question based on task-relevant image observations and plan exploration based on a scene graph string. Stretch AI has useful capabilities that can serve similar roles. For example, [DynaMem system](dynamem.md) finds task-relevant images and VLM models, such as [Qwen](../src/stretch/llms/qwen_client.py) and [OpenAI GPT](../src/stretch/llms/openai_client.py), extract visual clues from image observations by listing featured objects in the images such as beds, tables, etc. 
 
-Following this idea, we have designed an EQA pipeline requiring only `a Stretch robot`, `a GPU machine with 12GB VRAM`, and `Internet connection`. Following models (including Cloud API) will be called:
-- A light weighted VLM running on the local worstation. We use `Qwen-VL-2.5-3B` here.
+The Stretch AI EQA module builds on these existing capabilities resulting in a pipeline that only requires a Stretch robot, a GPU machine with 12GB VRAM, and Internet connection to the following cloud-based AI models:
+- A lightweight VLM running on the local worstation. We use `Qwen-VL-2.5-3B` here.
 - A vision language encoder trained in contrastive manner. We use `SigLip-v1-so400m` here
 - A powerful mLLM. We use `gemini-2.5-pro-preview-03-25` here.
 
-When receiving a new question, we will follow this recipe to find out the answer:
-- Extract few keywords from the question using the light weighted VLM. For example, `is there a hand sanitizer near sink?` will result in keywords `hand sanitizer` and `sink`.
-- Rotate the head pan to look around, follow DynaMem pipeline to add images into voxel-based semantic memory (extract pixel level vision language features with vision language encoder, then project 2D pixels into 3D points to add to the voxel map).
-- Use the light weighted VLM to identify featured object names from imagte observation and add these visual clues into a list.
+When receiving a new question, the robot follows a recipe to find the answer:
+- Extract keywords from the question using the light weighted VLM. For example, `is there a hand sanitizer near sink?` will result in keywords `hand sanitizer` and `sink`.
+- Rotate the head pan to look around and use DynaMem to add images into a voxel-based semantic memory, which extracts pixel level vision language features with a vision language encoder and then projects 2D pixels into the 3D points to add to the voxel map.
+- Use the lightweight VLM to identify featured object names from image observations and add these visual clues to a list.
 - Query DynaMem to identify few task relevant images.
-- Identify image observations selected as task relevant images and image observations corresponding to unexplored frontiers. Add this information to augment visual clues.
-- Prompt mLLM with relevant images along with augmented visual clues to answer questions. Following GraphEQA, we also ask mLLM to provide confidence with the answers. If mLLM is not confident with the answers, it should also output an image id indicating areas that should be explored. 
-- If no certain answer can be provided, the robot should navigate to the selected image id.
-- Iterate the above process until a certain answer can be provided.
+- Identify image observations selected as task-relevant images and image observations corresponding to unexplored frontiers. Add this information to augment visual clues.
+- Prompt mLLM with relevant images along with augmented visual clues to answer questions. Following GraphEQA, we also ask an mLLM to provide confidence with the answers. If the mLLM is not confident with the answers, it should also output an image ID indicating areas that should be explored. 
+- If no certain answer can be provided, the robot should navigate to the selected image ID.
+- Iterate the above process until an answer can be provided.
 
 
 ## Understanding EQA's code structure
 
-This module shares or extends core dependencies (mapping, perception, llms) with other Stretch AI modules like AI Pickup and DynaMem. Following codes are relevant to this module: 
+This module shares or extends core dependencies (mapping, perception, llms) with other Stretch AI modules like AI Pickup and DynaMem. The following code is relevant to this module: 
 
 | File locations                  | Purpose                                                     |
 | ----------------------- | ---------------------------------------------------------------- |
@@ -62,7 +62,7 @@ If you also want to try Discord bot, which is a more beautiful, user friendly co
 
 Launch the EQA agent via the `run_eqa` entry-point. By default, the robot will first rotate in place to scan its surroundings, pop out a rerun window (but the rerun contents will not be automatically saved, once you close the rerun window, you lose all visualization data), and you will be asked to enter your questions in the terminal.
 
-You need to know the ip address of your robot to send commands to your robot. Once you know your `ROBOT_IP`, you can start running the following commands to try this EQA module. 
+You need to know the IP address of your robot to send commands to your robot. Once you know your `ROBOT_IP`, you can start running the following commands to try this EQA module. 
 
 You also need to set up your Gemini key before running EQA scripts by
 
