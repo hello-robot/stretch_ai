@@ -51,6 +51,12 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         )
 
     def extract_relevant_objects(self, question: str):
+        """
+        Parsed the question and extract few keywords for DynaMem voxel map to select relevant images
+        Example:
+                Is there grey cloth on cloth hanger?
+                gery cloth,cloth hanger
+        """
         if self._question != question:
             self._question = question
             # The cached question is not the same as the question provided
@@ -99,6 +105,10 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 file.write(input_texts)
 
     def parse_answer(self, answer_outputs: str):
+
+        """
+        Parse the output of LLM text into reasoning, answer, confidence, action, confidence_reasoning
+        """
 
         # Log LLM output
         with open(self.log + "/" + str(len(self.image_descriptions)) + "/output.txt", "w") as file:
