@@ -63,7 +63,10 @@ INIT_HEAD_TILT = -0.65
 
 
 class RobotAgent(RobotAgentBase):
-    """Basic demo code. Collects everything that we need to make this work."""
+    """
+    Extending from Basic demo code robot_agent.py. Adds new functionality that implements DynaMem.
+    https://dynamem.github.io
+    """
 
     def __init__(
         self,
@@ -76,7 +79,6 @@ class RobotAgent(RobotAgentBase):
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
         realtime_updates: bool = False,
-        obs_sub_port: int = 4450,
         re: int = 3,
         manip_port: int = 5557,
         log: Optional[str] = None,
@@ -108,12 +110,6 @@ class RobotAgent(RobotAgentBase):
         # For placing
         self.owl_sam_detector = None
 
-        # if self.parameters.get("encoder", None) is not None:
-        #     self.encoder: BaseImageTextEncoder = get_encoder(
-        #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
-        #     )
-        # else:
-        #     self.encoder: BaseImageTextEncoder = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if not os.path.exists("dynamem_log"):
@@ -170,13 +166,6 @@ class RobotAgent(RobotAgentBase):
         self._manipulation_radius = parameters["motion_planner"]["goals"]["manipulation_radius"]
         self._voxel_size = parameters["voxel_size"]
 
-        # self.image_processor = VoxelMapImageProcessor(
-        #     rerun=True,
-        #     rerun_visualizer=self.robot._rerun,
-        #     log="dynamem_log/" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-        #     robot=self.robot,
-        # )  # type: ignore
-        # self.encoder = self.image_processor.get_encoder()
         context = zmq.Context()
         self.manip_socket = context.socket(zmq.REQ)
         self.manip_socket.connect("tcp://" + server_ip + ":" + str(manip_port))
@@ -208,6 +197,9 @@ class RobotAgent(RobotAgentBase):
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
+        """
+        This function creates the MaskSiglipEncoder, Owlv2 detector, voxel map util class and voxel map navigation space util class
+        """
         if self.manipulation_only:
             self.encoder = None
         else:
@@ -267,6 +259,9 @@ class RobotAgent(RobotAgentBase):
         self.planner = AStar(self.space)
 
     def setup_custom_blueprint(self):
+        """
+        This function define rerun blueprint of DynaMem module.
+        """
         main = rrb.Horizontal(
             rrb.Spatial3DView(name="3D View", origin="world"),
             rrb.Vertical(
@@ -312,7 +307,12 @@ class RobotAgent(RobotAgentBase):
         return blur_metric
 
     def update_map_with_pose_graph(self):
-        """Update our voxel map using a pose graph"""
+        """
+
+        Update our voxel map using a pose graph. Used for realtime update.
+        By default DynaMem will ask the robot stop to take new observations so this function will not be called.
+
+        """
 
         t0 = timeit.default_timer()
         self.pose_graph = self.robot.get_pose_graph()
@@ -462,6 +462,10 @@ class RobotAgent(RobotAgentBase):
             )
 
     def look_around(self):
+        """
+        Let the robot look around to check its surroudings.
+        Rotating the robot head to compensate for the narrow field of view of realsense head camera
+        """
         print("*" * 10, "Look around to check", "*" * 10)
         for pan in [0.6, -0.2, -1.0, -1.8]:
             tilt = -0.6
@@ -482,6 +486,7 @@ class RobotAgent(RobotAgentBase):
         self,
         text: str,
     ):
+        """ """
         if not self._realtime_updates:
             self.robot.look_front()
             self.look_around()
@@ -497,6 +502,8 @@ class RobotAgent(RobotAgentBase):
 
         if len(res) > 0:
             print("Plan successful!")
+            # This means that the robot has already finished all of its trajectories and should stop to manipulate the object.
+            # We will append two nan on the trajectory to denote that the robot is reaching the target point
             if len(res) >= 2 and np.isnan(res[-2]).all():
                 if len(res) > 2:
                     self.robot.execute_trajectory(
@@ -507,9 +514,8 @@ class RobotAgent(RobotAgentBase):
                     )
 
                 return True, res[-1]
+            # The robot has not reached the object. Next it should look around and continue navigation
             else:
-                # print(res)
-                # res[-1][2] += np.pi / 2
                 self.robot.execute_trajectory(
                     res,
                     pos_err_threshold=self.pos_err_threshold,
@@ -522,10 +528,12 @@ class RobotAgent(RobotAgentBase):
             return None, None
 
     def run_exploration(self):
-        """Go through exploration. We use the voxel_grid map created by our collector to sample free space, and then use our motion planner (RRT for now) to get there. At the end, we plan back to (0,0,0).
+        """
+        Go through exploration when the robot has not received any text query from the user.
+        We use the voxel_grid map created by our collector to sample free space, and then use A* planner to get there.
+        """
 
-        Args:
-            visualize(bool): true if we should do intermediate debug visualizations"""
+        # "" means the robot has not received any text query from the user and should conduct exploration just to better know the environment
         status, _ = self.execute_action("")
         if status is None:
             print("Exploration failed! Perhaps nowhere to explore!")
@@ -668,6 +676,11 @@ class RobotAgent(RobotAgentBase):
         return traj
 
     def navigate(self, text, max_step=10):
+        """
+        The robot calls this function to navigate to the object.
+        It will call execute_action function until it is ready for manipulation
+        """
+        # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         finished = False
         step = 0

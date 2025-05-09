@@ -27,9 +27,6 @@ import torch
 import zmq
 from PIL import Image
 
-from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
-    DynamemManipulationWrapper as ManipulationWrapper,
-)
 from stretch.agent.robot_agent_dynamem import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -43,15 +40,6 @@ from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders.masksiglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
-# Manipulation hyperparameters
-INIT_LIFT_POS = 0.45
-INIT_WRIST_PITCH = -1.57
-INIT_ARM_POS = 0
-INIT_WRIST_ROLL = 0
-INIT_WRIST_YAW = 0
-INIT_HEAD_PAN = -1.57
-INIT_HEAD_TILT = -0.65
-
 
 class RobotAgent(RobotAgentBase):
     """Basic demo code. Collects everything that we need to make this work."""
@@ -62,13 +50,11 @@ class RobotAgent(RobotAgentBase):
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
-        voxel_map: Optional[SparseVoxelMap] = None,
         save_rerun: bool = False,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
         realtime_updates: bool = False,
-        obs_sub_port: int = 4450,
         re: int = 3,
         manip_port: int = 5557,
         log: Optional[str] = None,
@@ -97,15 +83,7 @@ class RobotAgent(RobotAgentBase):
 
         self.mllm = mllm
         self.manipulation_only = manipulation_only
-        # For placing
-        self.owl_sam_detector = None
 
-        # if self.parameters.get("encoder", None) is not None:
-        #     self.encoder: BaseImageTextEncoder = get_encoder(
-        #         self.parameters["encoder"], self.parameters.get("encoder_args", {})
-        #     )
-        # else:
-        #     self.encoder: BaseImageTextEncoder = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if not os.path.exists("dynamem_log"):
@@ -173,9 +151,6 @@ class RobotAgent(RobotAgentBase):
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = ManipulationWrapper(
-            self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
-        )
         self.robot.move_to_nav_posture()
 
         self.reset_object_plans()
