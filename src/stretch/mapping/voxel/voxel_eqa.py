@@ -85,7 +85,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             self.history_outputs = []
 
     def log_text(self, commands):
-        # Log the text input and image input
+        """
+        Log the text input and image input into some files for debugging and visualization
+        """
         if not os.path.exists(self.log + "/" + str(len(self.image_descriptions))):
             os.makedirs(self.log + "/" + str(len(self.image_descriptions)))
             input_texts = ""
@@ -219,8 +221,6 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             language_scores[key - 1] += value * positive_weight
         for key, value in negative_scores.items():
             language_scores[key - 1] -= value * negative_weight
-        # for i, language_score in enumerate(language_scores):
-        #     print(i, language_score)
         return language_scores
 
     @retry.retry(tries=5)
@@ -255,21 +255,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                 options += f"{i+1}. {cluser_string[:-2]}\n"
 
         if positive:
-            # messages = [
-            #     {
-            #         "type": "text",
-            #         "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?",
-            #     }
-            # ]
             messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?"
             choices = self.positive_score_client.sample(messages, n_samples=num_samples)
         else:
-            # messages = [
-            #     {
-            #         "type": "text",
-            #         "text": f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?",
-            #     }
-            # ]
             messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?"
             choices = self.negative_score_client.sample(messages, n_samples=num_samples)
 
@@ -277,8 +265,6 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         reasonings = []
         for choice in choices:
             try:
-                # complete_response = choice.message.content
-                # complete_response = complete_response.lower()
                 complete_response = choice.lower()
                 reasoning = complete_response.split("reasoning: ")[1].split("\n")[0]
                 # Parse out the first complete integer from the substring after  the text "Answer: ". use regex
@@ -327,7 +313,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         self, image: Union[torch.Tensor, Image.Image, np.ndarray], max_tries: int = 3
     ):
         """
-        Process each image to name the object in the image for exploration purpose.
+        Extract visual clues (a list of featured objects) from the image observation and add the clues to a list
         """
         if isinstance(image, Image.Image):
             pil_image = image
@@ -337,19 +323,6 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             else:
                 _image = image
             pil_image = Image.fromarray(_image)
-        # buffered = BytesIO()
-        # pil_image.save(buffered, format="PNG")
-        # img_bytes = buffered.getvalue()
-        # base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
-        # messages = [
-        #     {
-        #         "type": "image_url",
-        #         "image_url": {
-        #             "url": f"data:image/png;base64,{base64_encoded}",
-        #             "detail": "low",
-        #         },
-        #     }
-        # ]
 
         prompt = "List representative objects in the image (excluding floor and wall) Limit your answer in 10 words. E.G.: a table,chairs,doors"
         messages = [
