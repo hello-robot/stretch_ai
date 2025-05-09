@@ -4,11 +4,11 @@ The **Embodied Question Answering (EQA) Module** enables a robot to actively exp
 
 ## Demo Video
 
-[The following](https://youtu.be/38Hs5wk7_3s) shows Stretch AI EQA running in one of our developers' homes.
+[The following](https://youtu.be/6tHGBYFkyMU) shows Stretch AI EQA running in one of our developers' homes.
 
 _Click this large image to follow the link to YouTube:_
 
-[![A demonstration of the EQA module in action](images/eqa.png)](https://youtu.be/38Hs5wk7_3s)
+[![A demonstration of the EQA module in action](images/eqa.png)](https://youtu.be/6tHGBYFkyMU)
 
 # Motivation and Methodology
 
@@ -60,7 +60,7 @@ If you also want to try Discord bot, which is a more beautiful, user friendly co
 
 ### Run EQA module
 
-Launch the EQA agent via the `run_eqa` entry-point. By default, the robot will first rotate in place to scan its surroundings, pop out a rerun window (but the rerun contents will not be automatically saved, once you close the rerun window, you lose all visualization data), and you will be asked to enter your questions in the terminal.
+Launch the EQA agent via the `run_eqa` entry-point. By default, the robot will first rotate in place to scan its surroundings, pop out a rerun window (but by default the rerun contents will not be automatically saved, once you close the rerun window, you lose all visualization data), and you will be asked to enter your questions in the terminal.
 
 You need to know the IP address of your robot to send commands to your robot. Once you know your `ROBOT_IP`, you can start running the following commands to try this EQA module. 
 
