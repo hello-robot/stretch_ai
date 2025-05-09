@@ -185,8 +185,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         """
         Transform the similarity with text into a 2D value map that can be used to evaluate
         how much exploring to one point can benefit open vocabulary navigation
-
         Similarity is computed by mLLM
+
+        TODO: Since this codes are no longer related to EQA anymore, we should move it to DynaMem and replace get_2d_alignment_heuristics there
         """
         history, selected_images, image_descriptions = self.get_active_image_descriptions()
         scores = self.compute_image_heuristic(task, image_descriptions=image_descriptions)
@@ -242,6 +243,9 @@ class SparseVoxelMapEQA(SparseVoxelMap):
         image_descriptions: Optional[List[Tuple[List[str], List[int]]]] = None,
         verbose: bool = True,
     ):
+        """
+        Score images heuristic with mLLM
+        """
 
         options = ""
 

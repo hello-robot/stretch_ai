@@ -67,6 +67,11 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
 
     def query_answer(self, question: str, xyt, planner):
+        """
+        Util function to prompt mLLM to provide answer output, and process the raw answer output into robot's next step.
+        """
+
+        # Extract keywords from the question
         self.voxel_map.extract_relevant_objects(question)
 
         # messages = [{"type": "text", "text": "Question: " + question}]
@@ -78,6 +83,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             commands.append("Iteration_" + str(i) + ":" + history_output)
         # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
 
+        # Select the task relevant images with DynaMem
         img_idx = 0
         all_obs_ids = set()
 
@@ -95,6 +101,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
 
         all_obs_ids = list(all_obs_ids)  # type: ignore
 
+        # Prepare the visual clues (image descriptions)
         selected_images, action_prompt = self.get_image_descriptions(xyt, planner, all_obs_ids)
         commands.append(action_prompt)
         self.voxel_map.log_text(commands)
@@ -104,7 +111,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             rgb = np.copy(self.voxel_map.observations[obs_id].rgb.numpy())
             image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
 
-            # Save the input images
+            # Log the input images
             image.save(
                 self.voxel_map.log
                 + "/"
@@ -134,12 +141,13 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             confidence_reasoning,
         ) = self.voxel_map.parse_answer(answer_outputs)
 
+        # If the robot is not confident, it should plan exploration
         if not confidence:
             action = selected_images[int(action) - 1]
             rgb = np.copy(self.voxel_map.observations[action - 1].rgb.numpy())
             image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-            # image.show()
 
+            # Cache conversations between the robot and the mLLM for the next iteration of question answering planning
             self.voxel_map.history_outputs.append(
                 "Answer:"
                 + answer
@@ -158,11 +166,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         else:
             action = None
 
-        # Debug answer and confidence
-        # print("Answer:", answer)
-        # print("Confidence:", confidence)
-        # print("Answer outputs:", answer_outputs)
-
         return (
             reasoning,
             answer,
@@ -175,8 +178,11 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         )
 
     def get_image_descriptions(self, xyt, planner, obs_ids):
+        """
+        Select visual clues of all active images (images still associated with some voxel points in the voxel map)
+        """
         (
-            history,
+            _,
             selected_images,
             image_descriptions,
         ) = self.voxel_map.get_active_image_descriptions()
@@ -207,7 +213,12 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return selected_images, "IMAGE_DESCRIPTIONS: " + options
 
     def get_target_point_from_image_id(self, image_id: int, xyt, planner):
-        # history outpyt by get_active_descriptions output a history id map considering history id of the floor point
+        """
+        When the robot is not confident with the answer, mLLM will output an image id indicating a rough direction for the robot to take the next step.
+        This function selects the target point's xy coordinate based on the image id provided.
+        """
+
+        # history output by get_active_descriptions output a history id map considering history id of the floor point
         # history_soft output by get_2d_map output a history id map excluding history id of the floor point
         # Therefore, history is generally used to select active image observations while history_soft is generally used to determine unexplored frontier
         (
@@ -219,8 +230,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         outside_frontier = self.get_outside_frontier(xyt, planner)
         unexplored_frontier = outside_frontier & ~explored
         # Navigation priority: unexplored frontier > obstalces > others
-        # from matplotlib import pyplot as plt
-        # plt.clf()
         if torch.sum((history == image_id) & unexplored_frontier) > 0:
             print("unexplored frontier")
             image_coord = (
@@ -244,6 +253,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return torch.Tensor([xy[0], xy[1], 1])
 
     def get_frontier_ids(self, xyt, planner):
+        """
+        This function figures out which of images correspond to an unexplored frontier.
+        """
         (
             history,
             _,
@@ -256,6 +268,9 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return np.unique(history)
 
     def get_outside_frontier(self, xyt, planner):
+        """
+        This function selects the edges of currently reachable space.
+        """
         obstacles, _ = self.voxel_map.get_2d_map()
         if len(xyt) == 3:
             xyt = xyt[:2]
@@ -268,12 +283,14 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         reachable_map[reachable_xs, reachable_ys] = 1
         reachable_map = reachable_map.to(torch.bool)
         edges = get_edges(reachable_map)
-        expanded_frontier = edges
-        return expanded_frontier & ~reachable_map
+        return edges & ~reachable_map
 
     def sample_exploration(
         self, xyt, planner, use_alignment_heuristics=True, text=None, debug=False, verbose=True
     ):
+        """
+        TODO: This function is no longer useful for EQA system, we should move it to DynaMem codes replace sample exploration there
+        """
         obstacles, explored, history_soft = self.voxel_map.get_2d_map(
             return_history_id=True, kernel=5
         )
