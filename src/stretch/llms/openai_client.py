@@ -44,18 +44,18 @@ class OpenaiClient(AbstractLLMClient):
                 print(model_choice)
         self._openai = OpenAI()
 
-    def __call__(self, command: Union[str, list], verbose: bool = False):
-        if verbose:
-            print(f"{self.system_prompt=}")
+    def _process_input(self, command, verbose=False):
+        """
+        Transform command sent from the user to the command query OpenAI GPT
 
-        # Transform command sent from the user to the command query OpenAI GPT
+        TODO: Add audio support
+        """
         if isinstance(command, str):
             user_commands = command
         else:
             user_commands = []  # type:ignore
             for c in command:
                 # If this is a dict, then we assume it has already been formtted in the form of {"type": ""}
-                # TODO: Add audio support
                 if isinstance(c, dict):
                     user_commands.append(c)
                 # If this is a strungm then we assume it is a text message from the user
@@ -93,12 +93,19 @@ class OpenaiClient(AbstractLLMClient):
                         print(idx, ".", user_command["type"])
                     else:
                         print(idx, ".", user_command["type"], user_command["text"])
+        return user_commands
+
+    def __call__(self, command: Union[str, list], verbose: bool = False):
+        if verbose:
+            print(f"{self.system_prompt=}")
+
+        command = self._process_input(command, verbose=verbose)  # type:ignore
 
         completion = self._openai.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_commands},
+                {"role": "user", "content": command},
             ],
         )
         output_text = completion.choices[0].message.content
@@ -109,6 +116,9 @@ class OpenaiClient(AbstractLLMClient):
     def sample(self, command: Union[str, list], n_samples: int, verbose: bool = False):
         if verbose:
             print(f"{self.system_prompt=}")
+
+        command = self._process_input(command, verbose=verbose)  # type:ignore
+
         completion = self._openai.chat.completions.create(
             model=self.model,
             temperature=1,
@@ -132,3 +142,7 @@ if __name__ == "__main__":
     plan = client("this room is a mess, could you put away the dirty towel?", verbose=True)
     print("\n\n")
     print("OpenAI client returned this plan:", plan)
+
+    choices = client.sample(
+        "this room is a mess, could you put away the dirty towel?", n_samples=2, verbose=True
+    )
