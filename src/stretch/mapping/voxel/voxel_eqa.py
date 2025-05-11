@@ -17,7 +17,6 @@ from PIL import Image
 from scipy.ndimage import maximum_filter
 from torch import Tensor
 
-# from stretch.llms.openai_client import OpenaiClient
 from stretch.llms.gemini_client import GeminiClient
 from stretch.llms.prompts.eqa_prompt import EQA_SYSTEM_PROMPT_NEGATIVE, EQA_SYSTEM_PROMPT_POSITIVE
 from stretch.llms.qwen_client import Qwen25VLClient

@@ -50,8 +50,6 @@ class GeminiClient(AbstractLLMClient):
     def __call__(
         self, command: Union[str, list], model: Optional[str] = None, verbose: bool = False
     ):
-        # prompt = copy.copy(self.prompt)
-        # prompt = prompt.replace("$COMMAND", command)
         if verbose:
             print(f"{self.system_prompt=}")
         if model is None:

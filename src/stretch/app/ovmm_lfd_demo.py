@@ -131,7 +131,6 @@ def main(
     agent.get_voxel_map().read_from_pickle(input_path, num_frames=-1)
 
     prompt = ObjectManipNavPromptBuilder()
-    # client = OpenaiClient(prompt)
     client = Gemma2bClient(prompt)
 
     pos_err_threshold = parameters["trajectory_pos_err_threshold"]
