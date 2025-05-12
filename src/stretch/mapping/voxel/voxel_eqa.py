@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 import os
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import retry
@@ -17,7 +17,6 @@ from PIL import Image
 from scipy.ndimage import maximum_filter
 from torch import Tensor
 
-# from stretch.llms.openai_client import OpenaiClient
 from stretch.llms.gemini_client import GeminiClient
 from stretch.llms.prompts.eqa_prompt import EQA_SYSTEM_PROMPT_NEGATIVE, EQA_SYSTEM_PROMPT_POSITIVE
 from stretch.llms.qwen_client import Qwen25VLClient
@@ -70,21 +69,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
                     Is there grey cloth on cloth hanger?
                     gery cloth,cloth hanger
             """
-            messages: List[Dict[str, Any]] = [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "text",
-                            "text": self._question,
-                        },
-                    ],
-                }
-            ]
+            messages = [prompt, self._question]
             # To avoid initializing too many clients and using up too much memory, I reused the client generating the image descriptions even though it is a VL model
             self.relevant_objects = self.image_description_client(messages).split(",")
             print("relevant objects to look at", self.relevant_objects)
@@ -339,21 +324,7 @@ class SparseVoxelMapEQA(SparseVoxelMap):
             pil_image = Image.fromarray(_image)
 
         prompt = "List representative objects in the image (excluding floor and wall) Limit your answer in 10 words. E.G.: a table,chairs,doors"
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "image": pil_image,
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    },
-                ],
-            }
-        ]
+        messages = [pil_image, prompt]
 
         # self.obs_count inherited from voxel_dynamem
         objects = []

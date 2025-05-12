@@ -7,8 +7,6 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import base64
-from io import BytesIO
 from typing import Optional, Union
 
 import torch
@@ -51,6 +49,7 @@ class OpenaiCaptioner:
         self,
         image: Union[ndarray, Tensor, Image.Image],
         bbox: Optional[Union[list, Tensor, ndarray]] = None,
+        verbose: bool = False,
     ) -> str:
         """Generate a caption for the given image.
 
@@ -70,8 +69,6 @@ class OpenaiCaptioner:
                 _image = image
             pil_image = Image.fromarray(_image)
 
-        buffered = BytesIO()
-
         if bbox is not None:
             h, w = pil_image.size
             bbox[0] = max(1, bbox[0])
@@ -82,25 +79,20 @@ class OpenaiCaptioner:
             draw.rectangle(bbox, outline="red", width=2)
         if self.image_shape is not None:
             pil_image = pil_image.resize(self.image_shape)
-        pil_image.save(buffered, format="PNG")
-        img_bytes = buffered.getvalue()
-        base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
 
         if bbox is None:
             prompt = "Describe the image."
         else:
             prompt = "Describe the object in the red box."
 
-        command = [
-            {"type": "text", "text": prompt},
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_encoded}",
-                },
-            },
-        ]
+        command = [prompt, pil_image]
 
-        output_text = self.client(command)
+        output_text = self.client(command, verbose=verbose)
 
         return output_text
+
+
+if __name__ == "__main__":
+    captioner = OpenaiCaptioner()
+    caption = captioner.caption_image(Image.open("example.jpg"), verbose=True)
+    print("caption for the image:", caption)

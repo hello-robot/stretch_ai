@@ -10,6 +10,7 @@
 import timeit
 from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
 import torch
 from PIL import Image
 from termcolor import colored
@@ -252,6 +253,38 @@ class Qwen25VLClient:
             **model_kwargs,
         )
 
+    def _process_input(self, command):
+        """
+        Transform command sent from the user to the command query OpenAI GPT
+
+        TODO: Add this function to Qwen25Client as well
+        """
+        if isinstance(command, str):
+            user_commands = command
+        else:
+            user_commands = []  # type:ignore
+            for c in command:
+                # If this is a strungm then we assume it is a text message from the user
+                if isinstance(c, str):
+                    user_commands.append({"type": "text", "text": c})
+                # For now, the only remaining option is image
+                elif isinstance(c, Image.Image) or isinstance(c, np.ndarray):
+                    if isinstance(c, np.ndarray):
+                        image = Image.fromarray(c.astype(np.uint8), mode="RGB")
+                    else:
+                        image = c
+
+                    user_commands.append(
+                        {
+                            "type": "image",
+                            "image": image,
+                        }
+                    )
+                else:
+                    raise NotImplementedError("We only support text and image for now!")
+
+        return user_commands
+
     def __call__(
         self, command: Union[str, List[Dict[str, Any]], Image.Image], verbose: bool = False
     ):
@@ -261,10 +294,15 @@ class Qwen25VLClient:
             messages = []
 
         # Prepare the messages
-        if not isinstance(command, list):
-            messages.append({"role": "user", "content": command})
-        else:
-            messages += command
+        inputs = (
+            [{"role": "user", "content": self._process_input(command=command)}]
+            if not isinstance(command[0], dict)
+            else command
+        )
+        messages += inputs  # type:ignore
+
+        if verbose:
+            print("input", messages)
 
         t0 = timeit.default_timer()
 

@@ -59,12 +59,14 @@ class QwenCaptioner:
         self,
         image: Union[ndarray, Tensor, Image.Image],
         bbox: Optional[Union[list, Tensor, ndarray]] = None,
+        verbose: bool = False,
     ) -> str:
         """Generate a caption for the given image.
 
         Args:
             image (Union[ndarray, Tensor, Image.Image]): The input image.
             bbox: Provide a bounding box if you just want to model to tell what is inside the box
+            verbose: Set to True if you want to print some debug log
 
         Returns:
             str: The generated caption.
@@ -103,24 +105,30 @@ class QwenCaptioner:
         else:
             prompt = "Describe the object in the box " + str(bbox)
 
+        # messages = [
+        #     {
+        #         "role": "user",
+        #         "content": [
+        #             {
+        #                 "type": "image",
+        #                 "image": pil_image,
+        #             },
+        #             {"type": "text", "text": prompt},
+        #             {
+        #                 "type": "text",
+        #                 "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
+        #             },
+        #         ],
+        #     }
+        # ]
+
         messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "image": pil_image,
-                    },
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "text",
-                        "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
-                    },
-                ],
-            }
+            pil_image,
+            prompt,
+            "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
         ]
 
-        output_text = self.client(messages)
+        output_text = self.client(messages, verbose=verbose)
 
         if bbox is not None:
             if not self.draw_on_image:
@@ -131,3 +139,9 @@ class QwenCaptioner:
             pil_image.save("test_caption/" + output_text + ".jpg")
 
         return output_text
+
+
+if __name__ == "__main__":
+    captioner = QwenCaptioner()
+    caption = captioner.caption_image(Image.open("example.jpg"), verbose=True)
+    print("caption for the image:", caption)

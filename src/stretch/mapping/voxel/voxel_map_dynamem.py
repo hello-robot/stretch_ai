@@ -204,8 +204,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         indices = np.column_stack(np.where(rounded_heuristics == max_heuristic))
         closest_index = np.argmin(np.linalg.norm(indices - np.asarray(planner.to_pt(xyt)), axis=-1))
         index = indices[closest_index]
-        # index = np.unravel_index(np.argmax(total_heuristics), total_heuristics.shape)
-        # debug = True
         if debug:
             from matplotlib import pyplot as plt
 
