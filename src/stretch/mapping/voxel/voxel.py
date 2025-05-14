@@ -1036,7 +1036,6 @@ class SparseVoxelMap(object):
         if self.allowed_map is not None:
             obstacles = obstacles | ~self.allowed_map.bool()
 
-        debug = True
         if debug:
             import matplotlib.pyplot as plt
 

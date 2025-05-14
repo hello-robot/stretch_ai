@@ -18,7 +18,6 @@ import numpy as np
 import torch
 
 from stretch.motion import Footprint
-from stretch.utils.morphology import binary_dilation, get_edges
 
 from .voxel import SparseVoxelMapProxy
 from .voxel_dynamem import SparseVoxelMap
@@ -153,48 +152,48 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
 
         return None
 
-    def sample_exploration(
-        self,
-        xyt,
-        planner,
-        use_alignment_heuristics=True,
-        text=None,
-        debug=False,
-    ):
-        obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
-        if len(xyt) == 3:
-            xyt = xyt[:2]
-        reachable_points = planner.get_reachable_points(planner.to_pt(xyt))
-        reachable_xs, reachable_ys = zip(*reachable_points)
-        reachable_xs = torch.tensor(reachable_xs)
-        reachable_ys = torch.tensor(reachable_ys)
+    def sample_exploration(self, xyt, planner, text=None, debug=False):
+        """
+        Sample
 
-        reachable_map = torch.zeros_like(obstacles)
-        reachable_map[reachable_xs, reachable_ys] = 1
-        reachable_map = reachable_map.to(torch.bool)
-        edges = get_edges(reachable_map)
-        # kernel = self._get_kernel(expand_size)
-        kernel = None
-        if kernel is not None:
-            expanded_frontier = binary_dilation(
-                edges.float().unsqueeze(0).unsqueeze(0),
-                kernel,
-            )[0, 0].bool()
-        else:
-            expanded_frontier = edges
-        outside_frontier = expanded_frontier & ~reachable_map
+        TODO: Should we make it even simpler? I am not sure whether alignment heuristic is useful or not
+        Note that this alignment heuristic is inspired from this paper https://arxiv.org/abs/2310.10103
+        """
+        obstacles, explored, history_soft = self.voxel_map.get_2d_map(
+            return_history_id=True, kernel=5
+        )
+        outside_frontier = self.voxel_map.get_outside_frontier(xyt, planner)
+
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
-        if (
-            use_alignment_heuristics
-            and len(self.voxel_map.semantic_memory._points) > 0
-            and text != ""
-            and text is not None
-        ):
+        if text != "" and text is not None and self.voxel_map.intelligent_exploration:
             alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics(text)
-            alignments_heuristics = self._alignment_heuristic(
-                alignments_heuristics, outside_frontier, debug=debug
-            )
-            total_heuristics = time_heuristics + 0.3 * alignments_heuristics
+            alignments_heuristics = np.ma.masked_array(alignments_heuristics, ~outside_frontier)
+            total_heuristics = time_heuristics + alignments_heuristics
+            if debug:
+                import matplotlib
+                from matplotlib import pyplot as plt
+
+                matplotlib.use("Agg")
+                plt.close("all")
+                fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+                axs[0, 0].imshow(obstacles)
+                axs[0, 0].set_title("obstacle map")
+                axs[0, 1].imshow(alignments_heuristics)
+                axs[0, 1].set_title("exploration alignment heuristics")
+                axs[1, 0].imshow(time_heuristics)
+                axs[1, 0].set_title("time heuristics")
+                axs[1, 1].imshow(total_heuristics)
+                axs[1, 1].set_title("total heuristics")
+                for ax in axs.flat:
+                    ax.axis("off")
+                plt.tight_layout()
+                plt.savefig(
+                    self.voxel_map.log
+                    + "/exploration"
+                    + str(len(self.voxel_map.image_descriptions))
+                    + ".jpg",
+                    dpi=300,
+                )
         else:
             alignments_heuristics = None
             total_heuristics = time_heuristics
@@ -219,27 +218,6 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             plt.scatter(index[1], index[0], s=15, c="g")
             plt.show()
         return index, time_heuristics, alignments_heuristics, total_heuristics
-
-    def _alignment_heuristic(
-        self,
-        alignments,
-        outside_frontier,
-        alignment_smooth=15,
-        alignment_threshold=0.13,
-        debug=False,
-    ):
-        alignments = np.ma.masked_array(alignments, ~outside_frontier)
-        alignment_heuristics = 1 / (
-            1 + np.exp(-alignment_smooth * (alignments - alignment_threshold))
-        )
-        index = np.unravel_index(np.argmax(alignment_heuristics), alignments.shape)
-        if debug:
-            plt.clf()
-            plt.title("alignment")
-            plt.imshow(alignment_heuristics)
-            plt.scatter(index[1], index[0], s=15, c="g")
-            plt.show()
-        return alignment_heuristics
 
     def _time_heuristic(
         self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=50, debug=False
@@ -307,28 +285,17 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return goal
 
     def sample_frontier(self, planner, start_pose=[0, 0, 0], text=None):
-        if text is not None and text != "":
-            (
-                index,
-                time_heuristics,
-                alignments_heuristics,
-                total_heuristics,
-            ) = self.sample_exploration(
-                start_pose,
-                planner,
-                use_alignment_heuristics=True,
-                text=text,
-                debug=False,
-            )
-        else:
-            index, time_heuristics, _, total_heuristics = self.sample_exploration(
-                start_pose,
-                planner,
-                use_alignment_heuristics=False,
-                text=None,
-                debug=False,
-            )
-            alignments_heuristics = time_heuristics
+        (
+            index,
+            time_heuristics,
+            alignments_heuristics,
+            total_heuristics,
+        ) = self.sample_exploration(
+            start_pose,
+            planner,
+            text=text,
+            debug=False,
+        )
 
         obstacles, explored = self.voxel_map.get_2d_map()
         return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))
