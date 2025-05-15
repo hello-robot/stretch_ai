@@ -33,9 +33,11 @@ from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
 from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
 from stretch.mapping.instance import Instance
+from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
+from stretch.mapping.voxel import (
+    SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
+)
 from stretch.mapping.voxel import SparseVoxelMapProxy
-from stretch.mapping.voxel.voxel_eqa import SparseVoxelMapEQA as SparseVoxelMap
-from stretch.mapping.voxel.voxel_map_eqa import SparseVoxelMapNavigationSpace
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders.masksiglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
@@ -204,6 +206,8 @@ class RobotAgent(RobotAgentBase):
             image_shape=image_shape,
             log=self.log,
             mllm=self.mllm,
+            # Important as we want to generate visual clues
+            run_eqa=True,
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
@@ -490,6 +494,9 @@ class RobotAgent(RobotAgentBase):
         return np.array(canvas)
 
     def run_eqa(self, question, max_planning_steps: int = 5):
+        """
+        API for calling EQA module
+        """
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
         if self.save_rerun:
             if not os.path.exists(self.log):
@@ -524,33 +531,24 @@ class RobotAgent(RobotAgentBase):
             self.robot.look_front()
             self.robot.switch_to_navigation_mode()
 
-        # try:
-        #     (
-        #         reasoning,
-        #         answer,
-        #         confidence,
-        #         confidence_reasoning,
-        #         target_point,
-        #         relevant_images,
-        #     ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
-        # except:
-        #     reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
-        #         "Exception happens in LLM querying",
-        #         "Unknown",
-        #         False,
-        #         "",
-        #         self.space.sample_frontier(self.planner, self.robot.get_base_pose(), text=None),
-        #         [],
-        #     )
-
-        (
-            reasoning,
-            answer,
-            confidence,
-            confidence_reasoning,
-            target_point,
-            relevant_images,
-        ) = self.space.query_answer(question, self.robot.get_base_pose(), self.planner)
+        try:
+            (
+                reasoning,
+                answer,
+                confidence,
+                confidence_reasoning,
+                target_point,
+                relevant_images,
+            ) = self.voxel_map.query_answer(question, self.robot.get_base_pose(), self.planner)
+        except:
+            reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
+                "Exception happens in LLM querying",
+                "Unknown",
+                False,
+                "",
+                self.space.sample_frontier(self.planner, self.robot.get_base_pose(), text=None),
+                [],
+            )
 
         # Log the texts to rerun visualizer
         confidence_text = (
@@ -574,9 +572,10 @@ class RobotAgent(RobotAgentBase):
         )
 
         self.rerun_visualizer.log_text("QA", answer_output)
-        self.rerun_visualizer.log_custom_2d_image(
-            "relevant_images", self.patch_images(relevant_images)
-        )
+        if len(relevant_images) != 0:
+            self.rerun_visualizer.log_custom_2d_image(
+                "relevant_images", self.patch_images(relevant_images)
+            )
 
         # chat with user in the rerun
         if confidence:

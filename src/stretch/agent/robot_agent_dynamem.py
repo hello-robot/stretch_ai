@@ -20,7 +20,6 @@ from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
-import cv2
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
@@ -241,7 +240,6 @@ class RobotAgent(RobotAgentBase):
             smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
             use_median_filter=parameters.get("filters/use_median_filter", False),
             median_filter_size=parameters.get("filters/median_filter_size", 5),
-            median_filter_max_error=parameters.get("filters/median_filter_max_error", 0.01),
             use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
             derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
             detection=self.detection_model,
@@ -279,32 +277,6 @@ class RobotAgent(RobotAgentBase):
             collapse_panels=True,
         )
         rr.send_blueprint(my_blueprint)
-
-    def compute_blur_metric(self, image):
-        """
-        Computes a blurriness metric for an image tensor using gradient magnitudes.
-
-        Parameters:
-        - image (torch.Tensor): The input image tensor. Shape is [H, W, C].
-
-        Returns:
-        - blur_metric (float): The computed blurriness metric.
-        """
-
-        # Convert the image to grayscale
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Compute gradients using the Sobel operator
-        Gx = cv2.Sobel(gray_image, cv2.CV_64F, 1, 0, ksize=3)
-        Gy = cv2.Sobel(gray_image, cv2.CV_64F, 0, 1, ksize=3)
-
-        # Compute gradient magnitude
-        G = cv2.magnitude(Gx, Gy)
-
-        # Compute the mean of gradient magnitudes
-        blur_metric = G.mean()
-
-        return blur_metric
 
     def update_map_with_pose_graph(self):
         """
@@ -392,10 +364,7 @@ class RobotAgent(RobotAgentBase):
         #     if obs.is_pose_graph_node:
         #         self.voxel_map.add_obs(obs)
         if len(self.obs_history) > 0:
-            obs_history = self.obs_history[-5:]
-            blurness = [self.compute_blur_metric(obs.rgb) for obs in obs_history]
-            obs = obs_history[blurness.index(max(blurness))]
-            # obs = self.obs_history[-1]
+            obs = self.obs_history[-1]
         else:
             obs = None
 
