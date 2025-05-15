@@ -164,6 +164,79 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
 
         # TODO: Find good alignment heuristic, we have found few candidates but none of them has satisfactory performance
+
+        ######################################
+        # Candidate 1: Borrow the idea from https://arxiv.org/abs/2310.10103
+        # for i, (cluster, _) in enumerate(image_descriptions):
+        #   cluser_string = ""
+        #   for ob in cluster:
+        #       cluser_string += ob + ", "
+        #   options += f"{i+1}. {cluser_string[:-2]}\n"
+
+        # if positive:
+        #     messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?"
+        #     choices = self.positive_score_client.sample(messages, n_samples=num_samples)
+        # else:
+        #     messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?"
+        #     choices = self.negative_score_client.sample(messages, n_samples=num_samples)
+
+        # answers = []
+        # reasonings = []
+        # for choice in choices:
+        #     complete_response = choice.lower()
+        #     reasoning = complete_response.split("reasoning: ")[1].split("\n")[0]
+        #     # Parse out the first complete integer from the substring after  the text "Answer: ". use regex
+        #     if len(complete_response.split("answer:")) > 1:
+        #          answer = complete_response.split("answer:")[1].split("\n")[0]
+        #          # Separate the answers by commas
+        #          answers.append([int(x) for x in answer.split(",")])
+        #      else:
+        #          answers.append([])
+        #      reasonings.append(reasoning)
+
+        # # Flatten answers
+        # flattened_answers = [item for sublist in answers for item in sublist]
+        # filtered_flattened_answers = [
+        #     x for x in flattened_answers if x >= 1 and x <= len(image_descriptions)
+        # ]
+        # # Aggregate into counts and normalize to probabilities
+        # answer_counts = {
+        #     x: filtered_flattened_answers.count(x) / len(answers)
+        #     for x in set(filtered_flattened_answers)
+        # }
+        ######################################
+        # Candidate 2: Naively use semantic feature alignment
+        # def get_2d_alignment_heuristics(self, text: str, debug: bool = False):
+        # if self.semantic_memory._points is None:
+        #     return None
+        # # Convert metric measurements to discrete
+        # # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
+        # xyz, _, _, _ = self.semantic_memory.get_pointcloud()
+        # xyz = xyz.detach().cpu()
+        # if xyz is None:
+        #     xyz = torch.zeros((0, 3))
+
+        # device = xyz.device
+        # xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
+        # xyz[xyz[:, -1] < 0, -1] = 0
+
+        # # Crop to robot height
+        # min_height = int(self.obs_min_height / self.grid_resolution)
+        # max_height = int(self.obs_max_height / self.grid_resolution)
+        # grid_size = self.grid_size + [max_height]
+
+        # # Mask out obstacles only above a certain height
+        # obs_mask = xyz[:, -1] < max_height
+        # xyz = xyz[obs_mask, :]
+        # alignments = self.find_alignment_over_model(text)[0].detach().cpu()
+        # alignments = alignments[obs_mask][:, None]
+
+        # alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
+        # alignment_heuristics = torch.max(alignment_heuristics, dim=-1).values
+        # alignment_heuristics = torch.from_numpy(
+        #     maximum_filter(alignment_heuristics.numpy(), size=5)
+        # )
+
         alignments_heuristics = None
         total_heuristics = time_heuristics
 

@@ -41,8 +41,7 @@ This module shares or extends core dependencies (mapping, perception, llms) with
 | [`src/stretch/app/run_eqa.py`](../src/stretch/app/run_eqa.py)       |       Entry point for EQA module                       |
 | [`src/stretch/agent/task/dynamem/dynamem_task.py`](../src/stretch/agent/task/dynamem/dynamem_task.py?plain=1#L409)  | An executor wrapper for EQA module |
 | [`src/stretch/agent/robot_agent_eqa.py`](../src/stretch/agent/robot_agent_eqa.py)             | Robot agent class containing all useful APIs for question answering  |
-| [`src/stretch/mapping/voxel/voxel_eqa.py`](../src/stretch/mapping/voxel/voxel_eqa.py)         | Robot mapping utilities class,extending from [DynaMem voxel.py](../src/stretch/mapping/voxel/voxel_dynamem.py)            |
-| [`src/stretch/mapping/voxel/voxel_map_eqa.py`](../src/stretch/mapping/voxel/voxel_map_eqa.py)         | Implement `query answer` functions based on semantic memory,  extending from [DynaMem voxel_map.py](../src/stretch/mapping/voxel/voxel_map_dynamem.py) |
+| [`src/stretch/mapping/voxel/voxel_dynamem.py`](../src/stretch/mapping/voxel/voxel_dynamem.py#928)         | We added EQA utilities to [DynaMem voxel.py](../src/stretch/mapping/voxel/voxel_dynamem.py)            |
 
 ## Instructions
 
