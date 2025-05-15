@@ -247,7 +247,6 @@ class RobotAgent(RobotAgentBase):
             image_shape=image_shape,
             log=self.log,
             mllm=self.mllm,
-            intelligent_exploration=True,
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,

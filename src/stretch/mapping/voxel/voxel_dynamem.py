@@ -7,28 +7,23 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-import base64
 import logging
 import os
 import pickle
 import re
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-import retry
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from scipy.ndimage import maximum_filter, median_filter
 from torch import Tensor
 
-from stretch.core.interfaces import Observations
 from stretch.llms import OpenaiClient
 from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
-from stretch.llms.prompts.eqa_prompt import EQA_SYSTEM_PROMPT_NEGATIVE, EQA_SYSTEM_PROMPT_POSITIVE
 from stretch.llms.qwen_client import Qwen25VLClient
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
@@ -70,6 +65,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         use_instance_memory: bool = False,
         use_median_filter: bool = False,
         median_filter_size: int = 5,
+        median_filter_max_error: float = 0.01,
         use_derivative_filter: bool = False,
         derivative_filter_threshold: float = 0.5,
         prune_detected_objects: bool = False,
@@ -81,7 +77,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         image_shape=(480, 360),
         log="test",
         mllm=False,
-        intelligent_exploration=False,
+        run_eqa=False,
     ):
         super().__init__(
             resolution=resolution,
@@ -108,7 +104,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             use_instance_memory=use_instance_memory,
             use_median_filter=use_median_filter,
             median_filter_size=median_filter_size,
-            median_filter_max_error=median_filter_size,
+            median_filter_max_error=median_filter_max_error,
             use_derivative_filter=use_derivative_filter,
             derivative_filter_threshold=derivative_filter_threshold,
             prune_detected_objects=prune_detected_objects,
@@ -134,8 +130,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 DYNAMEM_VISUAL_GROUNDING_PROMPT, model="gpt-4o-2024-05-13"
             )
 
-        self.intelligent_exploration = intelligent_exploration
-        if self.intelligent_exploration:
+        self.run_eqa = run_eqa
+        if self.run_eqa:
             # To avoid using too much closed source VLMs, we use Qwen2.5-3b-vl-instruct for image description.
             self.image_description_client = Qwen25VLClient(
                 model_size="3B", quantization="int4", max_tokens=20
@@ -143,13 +139,16 @@ class SparseVoxelMap(SparseVoxelMapBase):
 
             self.image_descriptions: List[Tuple[List[str], List[int]]] = []
 
-            self.positive_score_client = OpenaiClient(
-                EQA_SYSTEM_PROMPT_POSITIVE, model="gpt-4o-mini"
-            )
+            from stretch.llms.gemini_client import GeminiClient
+            from stretch.llms.prompts.eqa_prompt import EQA_PROMPT
 
-            self.negative_score_client = OpenaiClient(
-                EQA_SYSTEM_PROMPT_NEGATIVE, model="gpt-4o-mini"
-            )
+            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
+
+        # Attributes for EQA, If you are not running EQA module, this will stay the same.
+        self._question: Optional[str] = None
+        self.relevant_objects: Optional[list] = None
+
+        self.history_outputs: List[str] = []
 
     def find_alignment_over_model(self, queries: str):
         clip_text_tokens = self.encoder.encode_text(queries).cpu()
@@ -354,7 +353,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         )
 
         # Add image descriptions if we want to explore intelligently
-        if self.intelligent_exploration:
+        if self.run_eqa:
             self.list_objects_in_an_image(rgb)
 
         # Process data: reshaping images, computing xyz coordinate, depth filtering
@@ -535,267 +534,15 @@ class SparseVoxelMap(SparseVoxelMapBase):
             depth = self.observations[obs_id].depth
             rgb[depth > 2.5] = [0, 0, 0]
             image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            img_bytes = buffered.getvalue()
-            base64_encoded = base64.b64encode(img_bytes).decode("utf-8")
-            user_messages.append(
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{base64_encoded}",
-                        "detail": "low",
-                    },
-                }
-            )
-        user_messages.append(
-            {
-                "type": "text",
-                "text": "The object you need to find is " + text,
-            }
-        )
+            user_messages.append(image)
+        user_messages.append("The object you need to find is " + text)
 
         response = self.gpt_client(user_messages)
-        return self.process_response(response)
+        return self.parse_localization_response(response)
 
-    def get_active_image_descriptions(self):
+    def parse_localization_response(self, response: str):
         """
-        Return a list of image descriptions that are still active. By active it means there is still some voxel in voxel map associated with it.
-        """
-        if self.voxel_pcd._points is None:
-            return None
-
-        # Extract image id for each 2d grid points
-        obs_ids = self.voxel_pcd._obs_counts
-        xyz, _, _, _ = self.voxel_pcd.get_pointcloud()
-        xyz = ((xyz / self.grid_resolution) + self.grid_origin + 0.5).long()
-        xyz[xyz[:, -1] < 0, -1] = 0
-
-        max_height = int(self.obs_max_height / self.grid_resolution)
-        grid_size = self.grid_size + [max_height]
-        obs_ids = obs_ids[:, None]
-
-        history_ids = scatter3d(xyz, obs_ids, grid_size, "max")
-        history = torch.max(history_ids, dim=-1).values
-        history = torch.from_numpy(maximum_filter(history.float().numpy(), size=5))
-        history[0:35, :] = history.max().item()
-        history[-35:, :] = history.max().item()
-        history[:, 0:35] = history.max().item()
-        history[:, -35:] = history.max().item()
-        # from matplotlib import pyplot as plt
-        # plt.imshow(history)
-        # plt.show()
-
-        selected_images = torch.unique(history).int()
-        # history image id is 1-indexed, so we need to subtract 1 from scores
-        return (
-            history,
-            selected_images,
-            [
-                self.image_descriptions[selected_image.item() - 1]
-                for selected_image in selected_images
-            ],
-        )
-
-    def get_2d_alignment_heuristics(self, task: str):
-        """
-        Transform the similarity with text into a 2D value map that can be used to evaluate
-        how much exploring to one point can benefit open vocabulary navigation
-        Similarity is computed by mLLM
-
-        TODO: Since this codes are no longer related to EQA anymore, we should move it to DynaMem and replace get_2d_alignment_heuristics there
-        """
-        history, selected_images, image_descriptions = self.get_active_image_descriptions()
-        scores = self.compute_image_heuristic(task, image_descriptions=image_descriptions)
-        final_scores = torch.zeros(len(self.image_descriptions))
-        # history image id is 1-indexed, so we need to subtract 1 from scores
-        final_scores[selected_images - 1] = torch.Tensor(scores)
-        # for s, d in zip(final_scores, self.image_descriptions):
-        #     print(s.item(), d)
-        # history image id is 1-indexed, so we need to subtract 1 from scores
-        return torch.Tensor(final_scores[history.int() - 1])
-
-    def compute_image_heuristic(
-        self,
-        task,
-        image_descriptions: Optional[List[Tuple[List[str], List[int]]]] = None,
-        num_samples=4,
-        positive_weight=0.2,
-        negative_weight=0.1,
-    ):
-        """
-        Compute an exploration heuristic score to determine how valuable it is to explore the contents inside the image.
-
-        Args:
-            task: things you want the robot to do, e.g. "find a blue bottle", "Answer the question 'What is the color of the washing machine'"
-            positive_weight / negative_weight: scores = positive_weight * positive_scores + negative_weight * negative_scores
-        """
-        if image_descriptions is None:
-            image_descriptions = self.image_descriptions
-        try:
-            positive_scores, _ = self.score_images(
-                task, num_samples=num_samples, positive=True, image_descriptions=image_descriptions
-            )
-            negative_scores, _ = self.score_images(
-                task, num_samples=num_samples, positive=False, image_descriptions=image_descriptions
-            )
-        except Exception as excptn:
-            positive_scores, negative_scores = {}, {}
-            print("GPTs failed:", excptn)
-        language_scores = [0] * len(image_descriptions)
-        # key - 1 because the image id output by GPT is 1-indexed
-        for key, value in positive_scores.items():
-            language_scores[key - 1] += value * positive_weight
-        for key, value in negative_scores.items():
-            language_scores[key - 1] -= value * negative_weight
-        return language_scores
-
-    @retry.retry(tries=5)
-    def score_images(
-        self,
-        task: str,
-        num_samples=4,
-        positive=True,
-        image_descriptions: Optional[List[Tuple[List[str], List[int]]]] = None,
-        verbose: bool = True,
-    ):
-        """
-        Score images heuristic with mLLM
-        """
-
-        options = ""
-
-        if image_descriptions is None:
-            image_descriptions = self.image_descriptions
-
-        if verbose:
-            print(
-                "Querying",
-                len(image_descriptions),
-                "images.",
-                len(self.image_descriptions),
-                "images in total.",
-            )
-
-        if len(image_descriptions) > 0:
-            for i, (cluster, _) in enumerate(image_descriptions):
-                cluser_string = ""
-                for ob in cluster:
-                    cluser_string += ob + ", "
-                options += f"{i+1}. {cluser_string[:-2]}\n"
-
-        if positive:
-            messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?"
-            choices = self.positive_score_client.sample(messages, n_samples=num_samples)
-        else:
-            messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?"
-            choices = self.negative_score_client.sample(messages, n_samples=num_samples)
-
-        answers = []
-        reasonings = []
-        for choice in choices:
-            try:
-                complete_response = choice.lower()
-                reasoning = complete_response.split("reasoning: ")[1].split("\n")[0]
-                # Parse out the first complete integer from the substring after  the text "Answer: ". use regex
-                if len(complete_response.split("answer:")) > 1:
-                    answer = complete_response.split("answer:")[1].split("\n")[0]
-                    # Separate the answers by commas
-                    answers.append([int(x) for x in answer.split(",")])
-                else:
-                    answers.append([])
-                reasonings.append(reasoning)
-            except:
-                answers.append([])
-
-        # Flatten answers
-        flattened_answers = [item for sublist in answers for item in sublist]
-        # It is possible GPT gives an invalid answer less than 1 or greater than 1 plus the number of object clusters. Remove invalid answers
-        filtered_flattened_answers = [
-            x for x in flattened_answers if x >= 1 and x <= len(image_descriptions)
-        ]
-        # Aggregate into counts and normalize to probabilities
-        answer_counts = {
-            x: filtered_flattened_answers.count(x) / len(answers)
-            for x in set(filtered_flattened_answers)
-        }
-
-        if verbose:
-            print("Task:", task, "Score type:", positive)
-            for image_id in answer_counts.keys():
-                print("Image_id:", image_id, "scores:", answer_counts[image_id])
-                print("Image descriptions:", image_descriptions[image_id - 1])
-
-        return answer_counts, reasonings
-
-    def list_objects_in_an_image(
-        self, image: Union[torch.Tensor, Image.Image, np.ndarray], max_tries: int = 3
-    ):
-        """
-        Extract visual clues (a list of featured objects) from the image observation and add the clues to a list
-        """
-        if isinstance(image, Image.Image):
-            pil_image = image
-        else:
-            if isinstance(image, Tensor):
-                _image = image.cpu().numpy()
-            else:
-                _image = image
-            pil_image = Image.fromarray(_image)
-
-        prompt = "List representative objects in the image (excluding floor and wall) Limit your answer in 10 words. E.G.: a table,chairs,doors"
-        messages = [pil_image, prompt]
-
-        # self.obs_count inherited from voxel_dynamem
-        objects = []
-        for _ in range(max_tries):
-            try:
-                object_names = self.image_description_client(messages)
-                objects = object_names.split(",")[:5]
-            except:
-                objects = []
-                continue
-            else:
-                break
-
-        obs_ids = self.voxel_pcd._obs_counts
-        xyz, _, _, _ = self.voxel_pcd.get_pointcloud()
-        grid_coord = list(
-            self.xy_to_grid_coords(
-                torch.mean(xyz[obs_ids == obs_ids.max()], dim=0)[:2].int().cpu().numpy()
-            )
-        )
-        for i in range(len(grid_coord)):
-            grid_coord[i] = int(grid_coord[i])
-
-        if len(objects) == 0:
-            self.image_descriptions.append((["object"], grid_coord))
-        else:
-            self.image_descriptions.append((objects, grid_coord))
-
-        print(objects)
-
-    def get_outside_frontier(self, xyt, planner):
-        """
-        This function selects the edges of currently reachable space.
-        """
-        obstacles, _ = self.get_2d_map()
-        if len(xyt) == 3:
-            xyt = xyt[:2]
-        reachable_points = planner.get_reachable_points(planner.to_pt(xyt))
-        reachable_xs, reachable_ys = zip(*reachable_points)
-        reachable_xs = torch.tensor(reachable_xs)
-        reachable_ys = torch.tensor(reachable_ys)
-
-        reachable_map = torch.zeros_like(obstacles)
-        reachable_map[reachable_xs, reachable_ys] = 1
-        reachable_map = reachable_map.to(torch.bool)
-        edges = get_edges(reachable_map)
-        return edges & ~reachable_map
-
-    def process_response(self, response: str):
-        """
-        Process the output of GPT4o to extract the selected image's id
+        Parse the output of GPT4o to extract the selected image's id
         """
         try:
             # Use regex to locate the 'Images:' section, allowing for varying whitespace and line breaks
@@ -928,10 +675,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
         feats: Optional[Tensor] = None,
         depth: Optional[Tensor] = None,
         base_pose: Optional[Tensor] = None,
-        instance_image: Optional[Tensor] = None,
-        instance_classes: Optional[Tensor] = None,
-        instance_scores: Optional[Tensor] = None,
-        obs: Optional[Observations] = None,
         xyz_frame: str = "camera",
         **info,
     ):
@@ -944,10 +687,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
             xyz(Tensor): N x 3 point cloud points in camera coordinates
             feats(Tensor): N x D point cloud features; D == 3 for RGB is most common
             base_pose(Tensor): optional location of robot base
-            instance_image(Tensor): [H,W] image of ints where values at a pixel correspond to instance_id
-            instance_classes(Tensor): [K] tensor of ints where class = instance_classes[instance_id]
-            instance_scores: [K] of detection confidence score = instance_scores[instance_id]
-            # obs: observations
         """
         # TODO: we should remove the xyz/feats maybe? just use observations as input?
         # TODO: switch to using just Obs struct?
@@ -1185,3 +924,384 @@ class SparseVoxelMap(SparseVoxelMapBase):
         with open(filename, "wb") as f:
             pickle.dump(data, f)
         print("write all data to", filename)
+
+    ##################################################
+    #
+    # Most EQA module codes start from here
+    #
+    ###################################################
+
+    def get_active_image_descriptions(self):
+        """
+        Return a list of image descriptions that are still active. By active it means there is still some voxel in voxel map associated with it.
+        """
+        if self.voxel_pcd._points is None:
+            return None
+
+        # Extract image id for each 2d grid points
+        obs_ids = self.voxel_pcd._obs_counts
+        xyz, _, _, _ = self.voxel_pcd.get_pointcloud()
+        xyz = ((xyz / self.grid_resolution) + self.grid_origin + 0.5).long()
+        xyz[xyz[:, -1] < 0, -1] = 0
+
+        max_height = int(self.obs_max_height / self.grid_resolution)
+        grid_size = self.grid_size + [max_height]
+        obs_ids = obs_ids[:, None]
+
+        history_ids = scatter3d(xyz, obs_ids, grid_size, "max")
+        history = torch.max(history_ids, dim=-1).values
+        history = torch.from_numpy(maximum_filter(history.float().numpy(), size=5))
+        history[0:35, :] = history.max().item()
+        history[-35:, :] = history.max().item()
+        history[:, 0:35] = history.max().item()
+        history[:, -35:] = history.max().item()
+        # from matplotlib import pyplot as plt
+        # plt.imshow(history)
+        # plt.show()
+
+        selected_images = torch.unique(history).int()
+        # history image id is 1-indexed, so we need to subtract 1 from scores
+        return (
+            history,
+            selected_images,
+            [
+                self.image_descriptions[selected_image.item() - 1]
+                for selected_image in selected_images
+            ],
+        )
+
+    def extract_relevant_objects(self, question: str):
+        """
+        Parsed the question and extract few keywords for DynaMem voxel map to select relevant images
+        """
+        if self._question != question:
+            self._question = question
+            # The cached question is not the same as the question provided
+            prompt = """
+                Assume there is an agent doing Question Answering in an environment.
+                When it receives a question, you need to tell the agent few objects (preferably 1-3) it needs to pay special attention to.
+                Example:
+                    Where is the pen?
+                    pen
+
+                    Is there grey cloth on cloth hanger?
+                    gery cloth,cloth hanger
+            """
+            messages = [prompt, self._question]
+            # To avoid initializing too many clients and using up too much memory, I reused the client generating the image descriptions even though it is a VL model
+            self.relevant_objects = self.image_description_client(messages).split(",")
+            print("relevant objects to look at", self.relevant_objects)
+            self.history_outputs = []
+
+    def log_text(self, commands):
+        """
+        Log the text input and image input into some files for debugging and visualization
+        """
+        if not os.path.exists(self.log + "/" + str(len(self.image_descriptions))):
+            os.makedirs(self.log + "/" + str(len(self.image_descriptions)))
+            input_texts = ""
+            for command in commands:
+                input_texts += command + "\n"
+            with open(
+                self.log + "/" + str(len(self.image_descriptions)) + "/input.txt", "w"
+            ) as file:
+                file.write(input_texts)
+
+    def parse_answer(self, answer_outputs: str):
+
+        """
+        Parse the output of LLM text into reasoning, answer, confidence, action, confidence_reasoning
+        """
+
+        # Log LLM output
+        with open(self.log + "/" + str(len(self.image_descriptions)) + "/output.txt", "w") as file:
+            file.write(answer_outputs)
+
+        # Answer outputs in the format "Caption: Reasoning: Answer: Confidence: Action: Confidence_reasoning:"
+        def extract_between(text, start, end):
+            try:
+                return (
+                    text.split(start, 1)[1]
+                    .split(end, 1)[0]
+                    .strip()
+                    .replace("\n", "")
+                    .replace("\t", "")
+                )
+            except IndexError:
+                return ""
+
+        def extract_after(text, start):
+            try:
+                return text.split(start, 1)[1].strip().replace("\n", "").replace("\t", "")
+            except IndexError:
+                return ""
+
+        reasoning = extract_between(answer_outputs, "reasoning:", "answer:")
+        answer = extract_between(answer_outputs, "answer:", "confidence:")
+        confidence_text = extract_between(answer_outputs, "confidence:", "action:")
+        confidence = "true" in confidence_text.replace(" ", "")
+        action = extract_between(answer_outputs, "action:", "confidence_reasoning:")
+        confidence_reasoning = extract_after(answer_outputs, "confidence_reasoning:")
+
+        return reasoning, answer, confidence, action, confidence_reasoning
+
+    def query_answer(self, question: str, xyt, planner):
+        """
+        Util function to prompt mLLM to provide answer output, and process the raw answer output into robot's next step.
+        """
+
+        # Extract keywords from the question
+        self.extract_relevant_objects(question)
+
+        # messages = [{"type": "text", "text": "Question: " + question}]
+        commands: List[Any] = ["Question: " + question]
+        # messages.append({"type": "text", "text": "HISTORY: "})
+        commands.append("HISTORY: ")
+        for (i, history_output) in enumerate(self.history_outputs):
+            # messages.append({"type": "text", "text": "Iteration_" + str(i) + ":" + history_output})
+            commands.append("Iteration_" + str(i) + ":" + history_output)
+        # messages.append({"role": "user", "content": [{"type": "input_text", "text": question}]})
+
+        # Select the task relevant images with DynaMem
+        img_idx = 0
+        all_obs_ids = set()
+
+        for relevant_object in self.relevant_objects:
+            # Limit the total number of images to 6
+            image_ids, _, _ = self.find_all_images(
+                relevant_object,
+                min_similarity_threshold=0.12,
+                max_img_num=6 // len(self.relevant_objects),
+                min_point_num=40,
+            )
+            for obs_id in image_ids:
+                obs_id = int(obs_id) - 1
+                all_obs_ids.add(obs_id)
+
+        all_obs_ids = list(all_obs_ids)  # type: ignore
+
+        # Prepare the visual clues (image descriptions)
+        selected_images, action_prompt = self.get_image_descriptions_str(xyt, planner, all_obs_ids)
+        commands.append(action_prompt)
+        self.log_text(commands)
+        relevant_images = []
+
+        for obs_id in all_obs_ids:
+            rgb = np.copy(self.observations[obs_id].rgb.numpy())
+            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+
+            # Log the input images
+            image.save(
+                self.log + "/" + str(len(self.image_descriptions)) + "/" + str(img_idx) + ".jpg"
+            )
+            img_idx += 1
+
+            commands.append(image)
+            relevant_images.append(image)
+
+        # Extract answers
+        answer_outputs = (
+            self.eqa_client(commands).replace("*", "").replace("/", "").replace("#", "").lower()
+        )
+
+        print(commands)
+        print(answer_outputs)
+
+        (
+            reasoning,
+            answer,
+            confidence,
+            action,
+            confidence_reasoning,
+        ) = self.parse_answer(answer_outputs)
+
+        # If the robot is not confident, it should plan exploration
+        if not confidence:
+            action = selected_images[int(action) - 1]
+            rgb = np.copy(self.observations[action - 1].rgb.numpy())
+            image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")
+
+            # Cache conversations between the robot and the mLLM for the next iteration of question answering planning
+            self.history_outputs.append(
+                "Answer:"
+                + answer
+                + "\nReasoning:"
+                + reasoning
+                + "\nConfidence:"
+                + str(confidence)
+                + "\nAction:"
+                + "Navigate to Image with objects "
+                + str(self.image_descriptions[action - 1][0])
+                + " with grid coord "
+                + str(self.image_descriptions[action - 1][1])
+                + "\nConfidence reasoning:"
+                + confidence_reasoning
+            )
+        else:
+            action = None
+
+        return (
+            reasoning,
+            answer,
+            confidence,
+            confidence_reasoning,
+            self.get_target_point_from_image_id(action, xyt, planner)
+            if action is not None
+            else None,
+            relevant_images,
+        )
+
+    def get_image_descriptions_str(self, xyt, planner, obs_ids):
+        """
+        Select visual clues of all active images (images still associated with some voxel points in the voxel map)
+        """
+        (
+            _,
+            selected_images,
+            image_descriptions,
+        ) = self.get_active_image_descriptions()
+        frontier_ids = list(self.get_frontier_ids(xyt, planner))
+        options = ""
+        if len(image_descriptions) > 0:
+            for i, (cluster, grid_coord) in enumerate(image_descriptions):
+                index = selected_images[i]
+                cluster_string = ""
+                for ob in cluster:
+                    cluster_string += ob + ", "
+                cluster_string = cluster_string[:-2] + ";"
+                # Indicate the grid coord this image describes to avoid redundant exploration.
+                cluster_string += " This image is taken at grid coords " + str(grid_coord)
+                # If we have already send the raw image observation to LLM.
+                if index in obs_ids:
+                    cluster_string += (
+                        " This observation description is associated with Image "
+                        + str(obs_ids.index(index) + 1)
+                        + ";"
+                    )
+                # If this image corresponds to an unexplored frontier
+                if index in frontier_ids:
+                    cluster_string += (
+                        " This observation description corresponds to unexplored space;"
+                    )
+                options += f"{i+1}. {cluster_string}\n"
+        return selected_images, "IMAGE_DESCRIPTIONS: " + options
+
+    def get_target_point_from_image_id(self, image_id: int, xyt, planner):
+        """
+        When the robot is not confident with the answer, mLLM will output an image id indicating a rough direction for the robot to take the next step.
+        This function selects the target point's xy coordinate based on the image id provided.
+        """
+
+        # history output by get_active_descriptions output a history id map considering history id of the floor point
+        # history_soft output by get_2d_map output a history id map excluding history id of the floor point
+        # Therefore, history is generally used to select active image observations while history_soft is generally used to determine unexplored frontier
+        (
+            history,
+            _,
+            _,
+        ) = self.get_active_image_descriptions()
+        obstacles, explored = self.get_2d_map()
+        outside_frontier = self.get_outside_frontier(xyt, planner)
+        unexplored_frontier = outside_frontier & ~explored
+        # Navigation priority: unexplored frontier > obstalces > others
+        if torch.sum((history == image_id) & unexplored_frontier) > 0:
+            print("unexplored frontier")
+            image_coord = (
+                ((history == image_id) & unexplored_frontier)
+                .nonzero(as_tuple=False)
+                .median(dim=0)
+                .values.int()
+            )
+        elif torch.sum((history == image_id) & obstacles) > 0:
+            print("obstacles")
+            image_coord = (
+                ((history == image_id) & obstacles)
+                .nonzero(as_tuple=False)
+                .median(dim=0)
+                .values.int()
+            )
+        else:
+            print("others")
+            image_coord = (history == image_id).nonzero(as_tuple=False).median(dim=0).values.int()
+        xy = self.grid_coords_to_xy(image_coord)
+        return torch.Tensor([xy[0], xy[1], 1])
+
+    def get_frontier_ids(self, xyt, planner):
+        """
+        This function figures out which of images correspond to an unexplored frontier.
+        """
+        (
+            history,
+            _,
+            _,
+        ) = self.get_active_image_descriptions()
+        outside_frontier = self.get_outside_frontier(xyt, planner)
+        _, explored = self.get_2d_map()
+        unexplored_frontier = outside_frontier & ~explored
+        history = np.ma.masked_array(history, ~unexplored_frontier)
+        return np.unique(history)
+
+    def list_objects_in_an_image(
+        self, image: Union[torch.Tensor, Image.Image, np.ndarray], max_tries: int = 3
+    ):
+        """
+        Extract visual clues (a list of featured objects) from the image observation and add the clues to a list
+        """
+        if isinstance(image, Image.Image):
+            pil_image = image
+        else:
+            if isinstance(image, Tensor):
+                _image = image.cpu().numpy()
+            else:
+                _image = image
+            pil_image = Image.fromarray(_image)
+
+        prompt = "List representative objects in the image (excluding floor and wall) Limit your answer in 10 words. E.G.: a table,chairs,doors"
+        messages = [pil_image, prompt]
+
+        # self.obs_count inherited from voxel_dynamem
+        objects = []
+        for _ in range(max_tries):
+            try:
+                object_names = self.image_description_client(messages)
+                objects = object_names.split(",")[:5]
+            except:
+                objects = []
+                continue
+            else:
+                break
+
+        obs_ids = self.voxel_pcd._obs_counts
+        xyz, _, _, _ = self.voxel_pcd.get_pointcloud()
+        grid_coord = list(
+            self.xy_to_grid_coords(
+                torch.mean(xyz[obs_ids == obs_ids.max()], dim=0)[:2].int().cpu().numpy()
+            )
+        )
+        for i in range(len(grid_coord)):
+            grid_coord[i] = int(grid_coord[i])
+
+        if len(objects) == 0:
+            self.image_descriptions.append((["object"], grid_coord))
+        else:
+            self.image_descriptions.append((objects, grid_coord))
+
+        print(objects)
+
+    def get_outside_frontier(self, xyt, planner):
+        """
+        This function selects the edges of currently reachable space.
+        """
+        obstacles, _ = self.get_2d_map()
+        if len(xyt) == 3:
+            xyt = xyt[:2]
+        reachable_points = planner.get_reachable_points(planner.to_pt(xyt))
+        reachable_xs, reachable_ys = zip(*reachable_points)
+        reachable_xs = torch.tensor(reachable_xs)
+        reachable_ys = torch.tensor(reachable_ys)
+
+        reachable_map = torch.zeros_like(obstacles)
+        reachable_map[reachable_xs, reachable_ys] = 1
+        reachable_map = reachable_map.to(torch.bool)
+        edges = get_edges(reachable_map)
+        return edges & ~reachable_map

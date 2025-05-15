@@ -154,10 +154,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
 
     def sample_exploration(self, xyt, planner, text=None, debug=False):
         """
-        Sample
-
-        TODO: Should we make it even simpler? I am not sure whether alignment heuristic is useful or not
-        Note that this alignment heuristic is inspired from this paper https://arxiv.org/abs/2310.10103
+        Sample an exploration target
         """
         obstacles, explored, history_soft = self.voxel_map.get_2d_map(
             return_history_id=True, kernel=5
@@ -165,38 +162,10 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         outside_frontier = self.voxel_map.get_outside_frontier(xyt, planner)
 
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
-        if text != "" and text is not None and self.voxel_map.intelligent_exploration:
-            alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics(text)
-            alignments_heuristics = np.ma.masked_array(alignments_heuristics, ~outside_frontier)
-            total_heuristics = time_heuristics + alignments_heuristics
-            if debug:
-                import matplotlib
-                from matplotlib import pyplot as plt
 
-                matplotlib.use("Agg")
-                plt.close("all")
-                fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-                axs[0, 0].imshow(obstacles)
-                axs[0, 0].set_title("obstacle map")
-                axs[0, 1].imshow(alignments_heuristics)
-                axs[0, 1].set_title("exploration alignment heuristics")
-                axs[1, 0].imshow(time_heuristics)
-                axs[1, 0].set_title("time heuristics")
-                axs[1, 1].imshow(total_heuristics)
-                axs[1, 1].set_title("total heuristics")
-                for ax in axs.flat:
-                    ax.axis("off")
-                plt.tight_layout()
-                plt.savefig(
-                    self.voxel_map.log
-                    + "/exploration"
-                    + str(len(self.voxel_map.image_descriptions))
-                    + ".jpg",
-                    dpi=300,
-                )
-        else:
-            alignments_heuristics = None
-            total_heuristics = time_heuristics
+        # TODO: Find good alignment heuristic, we have found few candidates but none of them has satisfactory performance
+        alignments_heuristics = None
+        total_heuristics = time_heuristics
 
         rounded_heuristics = np.ceil(total_heuristics * 200) / 200
         max_heuristic = rounded_heuristics.max()
