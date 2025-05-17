@@ -92,6 +92,8 @@ class RobotAgent(RobotAgentBase):
         self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(5555))
         self.text_socket = context.socket(zmq.REQ)
         self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(5556))
+        self.pose_socket = context.socket(zmq.REQ)
+        self.pose_socket.connect("tcp://" + str(server_ip) + ":" + str(5554))
         self.manip_socket = context.socket(zmq.REQ)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -269,11 +271,11 @@ class RobotAgent(RobotAgentBase):
         target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
         start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]]
     ):
-        send_array(self.text_socket, start_pose)
-        self.text_socket.recv_string()
-        send_array(self.text_socket, target_pose)
+        send_array(self.pose_socket, start_pose)
+        self.pose_socket.recv_string()
+        send_array(self.pose_socket, target_pose)
         
-        traj = recv_array(self.text_socket)
+        traj = recv_array(self.pose_socket)
 
         self.robot.execute_trajectory(
                 traj,
@@ -282,5 +284,5 @@ class RobotAgent(RobotAgentBase):
                 blocking=True,
         )
 
-        self.text_socket.send_string("")
-        return self.text_socket.recv_string().lower() == 'true'
+        self.pose_socket.send_string("")
+        return self.pose_socket.recv_string().lower() == 'true'

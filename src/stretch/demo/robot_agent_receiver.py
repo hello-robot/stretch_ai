@@ -42,7 +42,7 @@ from stretch.motion.algo.a_star import AStar
 from stretch.perception.encoders.masksiglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
-from stretch.demo.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everyting, recv_everything
+from stretch.demo.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
 import threading
 
 
@@ -149,16 +149,13 @@ class RobotAgent(RobotAgentBase):
         
         self.img_socket = load_socket(5555)
         self.text_socket = load_socket(5556)
+        self.pose_socket = load_socket(5554)
 
         self.img_thread = threading.Thread(target=self._recv_image)
         self.img_thread.daemon = True
         self.img_thread.start()
 
-        self.question_thread = threading.Thread(target=self.recv_text)
-        self.question_thread.daemon = True
-        self.question_thread.start()
-
-        self.navigation_thread = threading.Thread(target=self.navigate_to_target_pose)
+        self.navigation_thread = threading.Thread(target=self._pose_server)
         self.navigation_thread.daemon = True
         self.navigation_thread.start()
 
@@ -285,6 +282,7 @@ class RobotAgent(RobotAgentBase):
 
     def recv_text(self):
         question = self.text_socket.recv_string()
+        print('fuck', question, '\n\n')
         self.text_socket.send_string('Text recevied, waiting for robot pose')
         start_pose = recv_array(self.text_socket)
         answer, discord_text, relevant_images, confidence, target_point = self.query(question, start_pose)
@@ -355,7 +353,7 @@ class RobotAgent(RobotAgentBase):
         discord_text += "\nI also provide relevant images here."
 
         if confidence:
-            return answer, discord_text, relevant_images, confidence, None, None
+            return answer, discord_text, relevant_images, confidence, None
 
         print("Target point", target_point)
         # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
@@ -363,13 +361,15 @@ class RobotAgent(RobotAgentBase):
         target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
 
         return answer, discord_text, relevant_images, confidence, target_point
+    
+    def _pose_server(self):
+        while True:
+            self.navigate_to_target_pose()
 
-    def navigate_to_target_pose(
-        self
-    ):
-        start_pose = recv_array(self.text_socket)
-        self.text_socket.send_string("")
-        target_pose = recv_array(self.text_socket)
+    def navigate_to_target_pose(self):
+        start_pose = recv_array(self.pose_socket)
+        self.pose_socket.send_string("")
+        target_pose = recv_array(self.pose_socket)
         res = None
         original_target_pose = target_pose
         if target_pose is not None:
@@ -428,10 +428,12 @@ class RobotAgent(RobotAgentBase):
                 0.1,
             )
 
-        send_array(self.text_socket, traj)
+        send_array(self.pose_socket, traj)
 
         return finished
     
 from stretch.core.parameters import get_parameters
 parameters = get_parameters("dynav_config.yaml")
-agent = RobotAgent()
+agent = RobotAgent(parameters=parameters)
+while True:
+    agent.recv_text()
