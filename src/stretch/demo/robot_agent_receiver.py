@@ -432,4 +432,6 @@ class RobotAgent(RobotAgentBase):
 
         return finished
     
+from stretch.core.parameters import get_parameters
+parameters = get_parameters("dynav_config.yaml")
 agent = RobotAgent()
