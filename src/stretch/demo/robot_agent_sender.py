@@ -87,8 +87,12 @@ class RobotAgent(RobotAgentBase):
         self.mllm = mllm
         self.manipulation_only = manipulation_only
 
-        self.img_socket = load_socket(5555)
-        self.text_socket = load_socket(5556)
+        context = zmq.Context()
+        self.img_socket = context.socket(zmq.REQ)
+        self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(5555))
+        self.text_socket = context.socket(zmq.REQ)
+        self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(5556))
+        self.manip_socket = context.socket(zmq.REQ)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 

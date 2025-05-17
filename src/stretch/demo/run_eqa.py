@@ -27,6 +27,13 @@ from stretch.core.parameters import get_parameters
     help="Robot IP address (leave empty for saved default)",
 )
 @click.option(
+    "--server_ip",
+    "--server_ip",
+    default="100.67.242.90",
+    type=str,
+    help="Robot IP address (leave empty for saved default)",
+)
+@click.option(
     "--not_rotate_in_place",
     "-N",
     is_flag=True,
@@ -46,6 +53,7 @@ from stretch.core.parameters import get_parameters
 )
 def main(
     robot_ip,
+    server_ip,
     discord: bool = False,
     not_rotate_in_place: bool = False,
     save_rerun: bool = False,
@@ -65,7 +73,7 @@ def main(
     parameters["encoder"] = None
 
     print("- Start robot agent with data collection")
-    agent = RobotAgent(robot, parameters, save_rerun=save_rerun)
+    agent = RobotAgent(robot, parameters, save_rerun=save_rerun, server_ip = server_ip)
     agent.start()
 
     if discord:
