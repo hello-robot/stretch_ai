@@ -233,6 +233,8 @@ class RobotAgent(RobotAgentBase):
                 self.robot.say("The answer to " + question + " is " + answer)
                 break
 
+        return None, None
+
     def run_eqa_one_iter(self, question, max_movement_step: int = 5):
         answer_output = None
 

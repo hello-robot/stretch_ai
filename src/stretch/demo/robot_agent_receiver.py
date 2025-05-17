@@ -430,7 +430,8 @@ class RobotAgent(RobotAgentBase):
 
         send_array(self.pose_socket, traj)
 
-        return finished
+        self.pose_socket.recv_string()
+        self.pose_socket.send_string(str(finished))
     
 from stretch.core.parameters import get_parameters
 parameters = get_parameters("dynav_config.yaml")
