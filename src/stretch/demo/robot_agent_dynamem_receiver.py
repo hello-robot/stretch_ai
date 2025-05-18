@@ -291,27 +291,6 @@ class RobotAgent(RobotAgentBase):
                 0.03,
             )
 
-    def look_around(self):
-        """
-        Let the robot look around to check its surroudings.
-        Rotating the robot head to compensate for the narrow field of view of realsense head camera
-        """
-        print("*" * 10, "Look around to check", "*" * 10)
-        for pan in [0.6, -0.2, -1.0, -1.8]:
-            tilt = -0.6
-            self.robot.head_to(pan, tilt, blocking=True)
-            self.update()
-
-    def rotate_in_place(self):
-        print("*" * 10, "Rotate in place", "*" * 10)
-        xyt = self.robot.get_base_pose()
-        self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
-        for i in range(8):
-            xyt[2] += 2 * np.pi / 8
-            self.robot.move_base_to(xyt, blocking=True)
-            if not self._realtime_updates:
-                self.update()
-
     def execute_action(
         self,
         text: str,
