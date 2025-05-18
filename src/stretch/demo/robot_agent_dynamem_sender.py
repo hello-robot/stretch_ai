@@ -127,8 +127,6 @@ class RobotAgent(RobotAgentBase):
         else:
             self.log = "dynamem_log/" + log
 
-        self.create_obstacle_map(parameters)
-
         # ==============================================
         self.obs_count = 0
         self.obs_history: List[Observations] = []
@@ -195,69 +193,6 @@ class RobotAgent(RobotAgentBase):
         self._previous_goal = None
 
         self._running = True
-
-        self._start_threads()
-
-    def create_obstacle_map(self, parameters):
-        """
-        This function creates the MaskSiglipEncoder, Owlv2 detector, voxel map util class and voxel map navigation space util class
-        """
-        if self.manipulation_only:
-            self.encoder = None
-        else:
-            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
-        # You can see a clear difference in hyperparameter selection in different querying strategies
-        # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
-        # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
-        if self.manipulation_only:
-            self.detection_model = None
-            semantic_memory_resolution = 0.1
-            image_shape = (360, 270)
-        elif self.mllm:
-            self.detection_model = OwlPerception(
-                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
-            )
-            semantic_memory_resolution = 0.1
-            image_shape = (360, 270)
-        else:
-            self.detection_model = OwlPerception(
-                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
-            )
-            semantic_memory_resolution = 0.05
-            image_shape = (480, 360)
-        self.voxel_map = SparseVoxelMap(
-            resolution=parameters["voxel_size"],
-            semantic_memory_resolution=semantic_memory_resolution,
-            local_radius=parameters["local_radius"],
-            obs_min_height=parameters["obs_min_height"],
-            obs_max_height=parameters["obs_max_height"],
-            obs_min_density=parameters["obs_min_density"],
-            grid_resolution=0.1,
-            min_depth=parameters["min_depth"],
-            max_depth=parameters["max_depth"],
-            pad_obstacles=parameters["pad_obstacles"],
-            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
-            remove_visited_from_obstacles=parameters.get(
-                "remove_visited_from_obstacles", default=False
-            ),
-            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
-            use_median_filter=parameters.get("filters/use_median_filter", False),
-            median_filter_size=parameters.get("filters/median_filter_size", 5),
-            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
-            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
-            detection=self.detection_model,
-            encoder=self.encoder,
-            image_shape=image_shape,
-            log=self.log,
-            mllm=self.mllm,
-        )
-        self.space = SparseVoxelMapNavigationSpace(
-            self.voxel_map,
-            rotation_step_size=parameters.get("motion_planner/rotation_step_size", 0.2),
-            dilate_frontier_size=parameters.get("motion_planner/frontier/dilate_frontier_size", 2),
-            dilate_obstacle_size=parameters.get("motion_planner/frontier/dilate_obstacle_size", 0),
-        )
-        self.planner = AStar(self.space)
 
     def setup_custom_blueprint(self):
         """
