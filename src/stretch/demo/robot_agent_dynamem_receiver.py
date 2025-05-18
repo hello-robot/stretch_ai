@@ -50,6 +50,8 @@ from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
+from stretch.demo.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
+
 
 # Manipulation hyperparameters
 INIT_LIFT_POS = 0.45
@@ -273,13 +275,16 @@ class RobotAgent(RobotAgentBase):
         )
         rr.send_blueprint(my_blueprint)
 
-    def update(self):
+    def _recv_image(self):
+        while True:
+            rgb, depth, intrinsics, pose = recv_everything(self.img_socket)
+            print("Image received")
+            self.update(rgb, depth, intrinsics, pose)
+
+    def update(self, rgb, depth, K, camera_pose):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
-        # Sleep some time for the robot camera to focus
-        # time.sleep(0.3)
-        obs = self.robot.get_observation()
+
         self.obs_count += 1
-        rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
         self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
         if self.voxel_map.voxel_pcd._points is not None:
             self.rerun_visualizer.update_voxel_map(space=self.space)

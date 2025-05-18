@@ -35,6 +35,8 @@ from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
     pickup,
     process_image_for_placing,
 )
+from stretch.demo.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
+
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -109,6 +111,12 @@ class RobotAgent(RobotAgentBase):
         self.owl_sam_detector = None
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        context = zmq.Context()
+        self.img_socket = context.socket(zmq.REQ)
+        self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(5555))
+        self.text_socket = context.socket(zmq.REQ)
+        self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(5556))
 
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")

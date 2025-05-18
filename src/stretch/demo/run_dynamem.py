@@ -7,118 +7,57 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from typing import Optional
-
 import click
+import cv2
+import numpy as np
 
-from stretch.agent.task.dynamem import DynamemTaskExecutor
+from stretch.demo.robot_agent_dynamem_sender import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.core.parameters import get_parameters
 from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, get_llm_client
-
+def compute_tilt(camera_xyz, target_xyz):
+    """
+    a util function for computing robot head tilts so the robot can look at the target object after navigation
+    - camera_xyz: estimated (x, y, z) coordinates of camera
+    - target_xyz: estimated (x, y, z) coordinates of the target object
+    """
+    if not isinstance(camera_xyz, np.ndarray):
+        camera_xyz = np.array(camera_xyz)
+    if not isinstance(target_xyz, np.ndarray):
+        target_xyz = np.array(target_xyz)
+    vector = camera_xyz - target_xyz
+    return -np.arctan2(vector[2], np.linalg.norm(vector[:2]))
 
 @click.command()
 # by default you are running these codes on your workstation, not on your robot.
-@click.option("--server_ip", "--server-ip", default="127.0.0.1", type=str)
+@click.option("--server_ip", default="", type=str, help="IP address for the MDP agent")
 @click.option("--manual-wait", default=False, is_flag=True)
 @click.option("--random-goals", default=False, is_flag=True)
-@click.option("--explore-iter", default=3)
+@click.option("--explore-iter", default=-1)
+@click.option("--re", default=3, type=int, help="Choose between stretch RE1, RE2, RE3")
 @click.option("--method", default="dynamem", type=str)
-@click.option("--mode", default="", type=click.Choice(["navigation", "manipulation", "save", ""]))
-@click.option(
-    "--use_llm",
-    "--use-llm",
-    is_flag=True,
-    help="Set to use the language model",
-)
-@click.option(
-    "--llm",
-    # default="gemma2b",
-    default="qwen25-3B-Instruct",
-    help="Client to use for language model. Recommended: gemma2b, openai",
-    type=click.Choice(get_llm_choices()),
-)
-@click.option("--debug_llm", "--debug-llm", is_flag=True, help="Set to debug the language model")
-@click.option(
-    "--use_voice",
-    "--use-voice",
-    is_flag=True,
-    help="Set to use voice input",
-)
-@click.option(
-    "--visual_servo",
-    "--vs",
-    "-V",
-    "--visual-servo",
-    default=False,
-    is_flag=True,
-    help="Use visual servoing grasp",
-)
+@click.option("--env", default=1, type=int)
+@click.option("--test", default=1, type=int)
 @click.option(
     "--robot_ip", type=str, default="", help="Robot IP address (leave empty for saved default)"
-)
-@click.option("--target_object", type=str, default=None, help="Target object to grasp")
-@click.option(
-    "--target_receptacle", "--receptacle", type=str, default=None, help="Target receptacle to place"
-)
-@click.option(
-    "--skip_confirmations",
-    "--skip",
-    "-S",
-    "-y",
-    "--yes",
-    is_flag=True,
-    help="Skip many confirmations",
 )
 @click.option(
     "--input-path",
     type=click.Path(),
     default=None,
-    help="Input path with default value None",
-)
-@click.option(
-    "--output-path",
-    type=click.Path(),
-    default=None,
-    help="Input path with default value None",
-)
-@click.option(
-    "--match-method",
-    "--match_method",
-    type=click.Choice(["class", "feature"]),
-    default="feature",
-    help="feature for visual servoing",
-)
-@click.option(
-    "--mllm-for-visual-grounding",
-    "--mllm",
-    "-M",
-    is_flag=True,
-    help="Use GPT4o for visual grounding",
-)
-@click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
-@click.option(
-    "--manipulation-only", "--manipulation", is_flag=True, help="For debugging manipulation"
+    help="Input path with default value 'output.npy'",
 )
 def main(
     server_ip,
     manual_wait,
-    explore_iter: int = 3,
-    mode: str = "navigation",
+    navigate_home: bool = False,
+    explore_iter: int = 5,
+    re: int = 1,
     method: str = "dynamem",
-    input_path: Optional[str] = None,
-    output_path: Optional[str] = None,
+    env: int = 1,
+    test: int = 1,
+    input_path: str = None,
     robot_ip: str = "",
-    visual_servo: bool = False,
-    skip_confirmations: bool = True,
-    device_id: int = 0,
-    target_object: str = None,
-    target_receptacle: str = None,
-    use_llm: bool = False,
-    use_voice: bool = False,
-    debug_llm: bool = False,
-    llm: str = "qwen25-3B-Instruct",
-    manipulation_only: bool = False,
     **kwargs,
 ):
     """
@@ -127,71 +66,100 @@ def main(
     Args:
         random_goals(bool): randomly sample frontier goals instead of looking for closest
     """
+    click.echo("Will connect to a Stretch robot and collect a short trajectory.")
+    robot = HomeRobotZmqClient()
+    robot.move_to_nav_posture()
 
     print("- Load parameters")
     parameters = get_parameters("dynav_config.yaml")
+    # print(parameters)
+    if explore_iter >= 0:
+        parameters["exploration_steps"] = explore_iter
+    object_to_find, location_to_place = None, None
+    robot.move_to_nav_posture()
+    robot.set_velocity(v=30.0, w=15.0)
 
-    print("- Create robot client")
-    robot = HomeRobotZmqClient(robot_ip=robot_ip)
-
-    print("- Create task executor")
-    executor = DynamemTaskExecutor(
-        robot,
-        parameters,
-        visual_servo=visual_servo,
-        match_method=kwargs["match_method"],
-        device_id=device_id,
-        output_path=output_path,
-        server_ip=server_ip,
-        skip_confirmations=skip_confirmations,
-        mllm=kwargs["mllm_for_visual_grounding"],
-        manipulation_only=manipulation_only,
+    print("- Start robot agent with data collection")
+    demo = RobotAgent(
+        robot, parameters, server_ip=server_ip, re=re, env_num=env, test_num=test, method=method
     )
 
-    if not manipulation_only:
-        if input_path is None:
-            start_command = [("rotate_in_place", "")]
+    if input_path is None:
+        demo.rotate_in_place()
+    else:
+        demo.voxel_map.read_from_pickle(input_path)
+
+    demo.save()
+
+    while True:
+        print("Select mode: E for exploration, N for open-vocabulary navigation, S for save.")
+        mode = input("select mode? E/N/S: ")
+        mode = mode.upper()
+        if mode == "S":
+            demo.voxel_map.write_to_pickle()
+            break
+        if mode == "E":
+            robot.switch_to_navigation_mode()
+            for epoch in range(explore_iter):
+                print("\n", "Exploration epoch ", epoch, "\n")
+                if not demo.run_exploration():
+                    print("Exploration failed! Quitting!")
+                    continue
         else:
-            start_command = [("read_from_pickle", input_path)]
-        executor(start_command)
+            text = None
+            point = None
+            if input("You want to run manipulation: y/n") != "n":
+                robot.move_to_nav_posture()
+                robot.switch_to_navigation_mode()
+                text = input("Enter object name: ")
+                point = demo.navigate(text)
+                if point is None:
+                    print("Navigation Failure!")
+                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
+                robot.switch_to_navigation_mode()
+                xyt = robot.get_base_pose()
+                xyt[2] = xyt[2] + np.pi / 2
+                robot.move_base_to(xyt, blocking=True)
 
-    # Create the prompt we will use to control the robot
-    prompt = PickupPromptBuilder()
+            if input("You want to run manipulation: y/n") != "n":
+                robot.switch_to_manipulation_mode()
+                if text is None:
+                    text = input("Enter object name: ")
+                camera_xyz = robot.get_head_pose()[:3, 3]
+                if point is not None:
+                    theta = compute_tilt(camera_xyz, point)
+                else:
+                    theta = -0.6
+                demo.manipulate(text, theta)
+                robot.look_front()
 
-    # Get the LLM client
-    llm_client = None
-    if use_llm:
-        llm_client = get_llm_client(llm, prompt=prompt)
-        chat_wrapper = LLMChatWrapper(llm_client, prompt=prompt, voice=use_voice)
+            text = None
+            point = None
+            if input("You want to run placing: y/n") != "n":
+                robot.switch_to_navigation_mode()
+                text = input("Enter receptacle name: ")
+                point = demo.navigate(text)
+                if point is None:
+                    print("Navigation Failure")
+                cv2.imwrite(text + ".jpg", robot.get_observation().rgb[:, :, [2, 1, 0]])
+                robot.switch_to_navigation_mode()
+                xyt = robot.get_base_pose()
+                xyt[2] = xyt[2] + np.pi / 2
+                robot.navigate_to(xyt, blocking=True)
 
-    # Parse things and listen to the user
-    ok = True
-    while ok:
-        if llm_client is None:
-            # Call the LLM client and parse
-            explore = input(
-                "Enter desired mode [E (explore and mapping) / M (Open vocabulary pick and place)]: "
-            )
-            if explore.upper() == "E":
-                llm_response = [("explore", None)]
-            else:
-                if target_object is None or len(target_object) == 0:
-                    target_object = input("Enter the target object: ")
-                if target_receptacle is None or len(target_receptacle) == 0:
-                    target_receptacle = input("Enter the target receptacle: ")
-                llm_response = [("pickup", target_object), ("place", target_receptacle)]
-        else:
-            # Call the LLM client and parse
-            llm_response = chat_wrapper.query(verbose=debug_llm)
-            if debug_llm:
-                print("Parsed LLM Response:", llm_response)
+            if input("You want to run placing: y/n") != "n":
+                robot.switch_to_manipulation_mode()
+                if text is None:
+                    text = input("Enter receptacle name: ")
+                camera_xyz = robot.get_head_pose()[:3, 3]
+                if point is not None:
+                    theta = compute_tilt(camera_xyz, point)
+                else:
+                    theta = -0.6
+                demo.place(text, theta)
+                robot.move_to_nav_posture()
 
-        ok = executor(llm_response)
-        target_object = None
-        target_receptacle = None
-
-    # At the end, disable everything
-    robot.stop()
+            demo.save()
 
 
 if __name__ == "__main__":
