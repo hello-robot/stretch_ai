@@ -282,7 +282,6 @@ class RobotAgent(RobotAgentBase):
 
     def recv_text(self):
         question = self.text_socket.recv_string()
-        print('fuck', question, '\n\n')
         self.text_socket.send_string('Text recevied, waiting for robot pose')
         start_pose = recv_array(self.text_socket)
         answer, discord_text, relevant_images, confidence, target_point = self.query(question, start_pose)

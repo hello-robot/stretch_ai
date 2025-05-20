@@ -188,7 +188,6 @@ class RobotAgent(RobotAgentBase):
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
         # Sleep some time for the robot camera to focus
-        # time.sleep(0.3)
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose

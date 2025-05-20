@@ -105,6 +105,8 @@ def main(
                 if not demo.run_exploration():
                     print("Exploration failed! Quitting!")
                     continue
+        if mode == "Q":
+            demo
         else:
             text = None
             point = None
@@ -156,7 +158,7 @@ def main(
                     theta = compute_tilt(camera_xyz, point)
                 else:
                     theta = -0.6
-                demo.place(text, theta)
+                demo.place(text, theta, local = False)
                 robot.move_to_nav_posture()
 
             demo.save()

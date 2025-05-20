@@ -29,6 +29,8 @@ import zmq
 from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
     DynamemManipulationWrapper as ManipulationWrapper,
 )
+from PIL import Image
+import threading
 from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
     capture_and_process_image,
     move_to_point,
@@ -71,7 +73,6 @@ class RobotAgent(RobotAgentBase):
 
     def __init__(
         self,
-        robot: AbstractRobotClient,
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
@@ -93,7 +94,6 @@ class RobotAgent(RobotAgentBase):
             self.parameters = parameters
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
-        self.robot = robot
         self.grasp_client = grasp_client
         self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
@@ -102,7 +102,9 @@ class RobotAgent(RobotAgentBase):
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
         self.rot_err_threshold = parameters["trajectory_rot_err_threshold"]
 
-        self.rerun_visualizer = self.robot._rerun
+        from stretch.visualization.rerun import RerunVisualizer
+
+        self.rerun_visualizer = RerunVisualizer()
         self.setup_custom_blueprint()
 
         self.mllm = mllm
@@ -166,6 +168,23 @@ class RobotAgent(RobotAgentBase):
         self.manip_socket = context.socket(zmq.REQ)
         self.manip_socket.connect("tcp://" + server_ip + ":" + str(manip_port))
 
+        self.img_socket = load_socket(5555)
+        self.text_socket = load_socket(5556)
+        self.pose_socket = load_socket(5554)
+        self.question_socket = load_socket(5558)
+
+        self.img_thread = threading.Thread(target=self._recv_image)
+        self.img_thread.daemon = True
+        self.img_thread.start()
+
+        self.navigation_thread = threading.Thread(target=self._pose_server)
+        self.navigation_thread.daemon = True
+        self.navigation_thread.start()
+
+        self.question_thread = threading.Thread(target=self._recv_question)
+        self.question_thread.daemon = True
+        self.question_thread.start()
+
         if re == 1 or re == 2:
             stretch_gripper_max = 0.3
             end_link = "link_straight_gripper"
@@ -173,10 +192,6 @@ class RobotAgent(RobotAgentBase):
             stretch_gripper_max = 0.64
             end_link = "link_gripper_s3_body"
         self.transform_node = end_link
-        self.manip_wrapper = ManipulationWrapper(
-            self.robot, stretch_gripper_max=stretch_gripper_max, end_link=end_link
-        )
-        self.robot.move_to_nav_posture()
 
         self.reset_object_plans()
 
@@ -244,6 +259,7 @@ class RobotAgent(RobotAgentBase):
             image_shape=image_shape,
             log=self.log,
             mllm=self.mllm,
+            run_eqa=True
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
@@ -295,64 +311,192 @@ class RobotAgent(RobotAgentBase):
                 self.voxel_map.semantic_memory._rgb.detach().cpu() / 255.0,
                 0.03,
             )
+    
+    def recv_text(self):
+        text = self.text_socket.recv_string()
+        self.text_socket.send_string('Text recevied, waiting for robot pose')
+        start_pose = recv_array(self.text_socket)
+        traj = self.process_text(text, start_pose)
+        send_array(self.text_socket, traj)
 
-    def execute_action(
-        self,
-        text: str,
-    ):
-        """ """
-        if not self._realtime_updates:
-            self.robot.look_front()
-            self.look_around()
-            self.robot.look_front()
-            self.robot.switch_to_navigation_mode()
+    def patch_images(self, images: List[Image.Image], patch_size=(480, 640), gap=5):
+        """
+        Patch a list of PIL Images into a numpy array, used for dicrod bot
+        """
+        # Resize all images to the same patch size
+        images = [img.resize(patch_size) for img in images]
 
-        self.robot.switch_to_navigation_mode()
+        # Calculate total width and height
+        n_images = len(images)
+        total_width = patch_size[0] * n_images + gap * (n_images - 1)
+        total_height = patch_size[1]
 
-        start = self.robot.get_base_pose()
-        res = self.process_text(text, start)
-        if len(res) == 0 and text != "" and text is not None:
-            res = self.process_text("", start)
+        # Create a blank canvas
+        canvas = Image.new("RGB", (total_width, total_height))
 
-        if len(res) > 0:
-            print("Plan successful!")
-            # This means that the robot has already finished all of its trajectories and should stop to manipulate the object.
-            # We will append two nan on the trajectory to denote that the robot is reaching the target point
-            if len(res) >= 2 and np.isnan(res[-2]).all():
-                if len(res) > 2:
-                    self.robot.execute_trajectory(
-                        res[:-2],
-                        pos_err_threshold=self.pos_err_threshold,
-                        rot_err_threshold=self.rot_err_threshold,
-                        blocking=True,
-                    )
+        # Paste images side-by-side
+        for idx, img in enumerate(images):
+            x = idx * (patch_size[0] + gap)
+            canvas.paste(img, (x, 0))
 
-                return True, res[-1]
-            # The robot has not reached the object. Next it should look around and continue navigation
-            else:
-                self.robot.execute_trajectory(
-                    res,
-                    pos_err_threshold=self.pos_err_threshold,
-                    rot_err_threshold=self.rot_err_threshold,
-                    blocking=True,
-                )
-                return False, None
+        # Convert to numpy array
+        return np.array(canvas)
+
+    def _recv_question(self):
+        question = self.question_socket.recv_string()
+        self.question_socket.send_string('Text recevied, waiting for robot pose')
+        start_pose = recv_array(self.question_socket)
+        answer, discord_text, relevant_images, confidence, target_point = self.query(question, start_pose)
+        self.question_socket.send_string(answer)
+        self.question_socket.recv_string()
+        self.question_socket.send_string(str(confidence))
+        if not confidence:
+            self.question_socket.recv_string()
+            send_array(self.question_socket, target_point)
+
+    def query(self, question, start_pose):
+        answer_output = None
+
+        try:
+            (
+                reasoning,
+                answer,
+                confidence,
+                confidence_reasoning,
+                target_point,
+                relevant_images,
+            ) = self.voxel_map.query_answer(question, start_pose, self.planner)
+        except:
+            reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
+                "Exception happens in LLM querying",
+                "Unknown",
+                False,
+                "",
+                self.space.sample_frontier(self.planner, start_pose, text=None),
+                [],
+            )
+
+        # Log the texts to rerun visualizer
+        confidence_text = (
+            "I am confident with the answer" if confidence else "I am NOT confident with the answer"
+        )
+
+        reasoning_output = (
+            "\n#### Reasoning for the answer: " + reasoning
+            if confidence
+            else "\n#### Reasoning for the confidence: " + confidence_reasoning
+        )
+
+        answer_output = (
+            "#### **Question:** "
+            + question
+            + "\n#### **Answer:** "
+            + answer
+            + "\n#### **Confidence:** "
+            + confidence_text
+            + reasoning_output
+        )
+
+        self.rerun_visualizer.log_text("QA", answer_output)
+        if len(relevant_images) != 0:
+            self.rerun_visualizer.log_custom_2d_image(
+                "relevant_images", self.patch_images(relevant_images)
+            )
+
+        # chat with user in the rerun
+        if confidence:
+            discord_text = answer + ". I believe this answer is correct because " + reasoning
         else:
-            print("Failed. Try again!")
-            return None, None
+            discord_text = (
+                "I am not confident to answer the question because " + confidence_reasoning
+            )
 
-    def run_exploration(self):
-        """
-        Go through exploration when the robot has not received any text query from the user.
-        We use the voxel_grid map created by our collector to sample free space, and then use A* planner to get there.
-        """
+        discord_text += "\nI also provide relevant images here."
 
-        # "" means the robot has not received any text query from the user and should conduct exploration just to better know the environment
-        status, _ = self.execute_action("")
-        if status is None:
-            print("Exploration failed! Perhaps nowhere to explore!")
-            return False
-        return True
+        if confidence:
+            return answer, discord_text, relevant_images, confidence, None
+
+        print("Target point", target_point)
+        # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
+        obstacles, _ = self.voxel_map.get_2d_map()
+        target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
+
+        return answer, discord_text, relevant_images, confidence, target_point
+    
+    def _pose_server(self):
+        while True:
+            self.navigate_to_target_pose()
+
+    def navigate_to_target_pose(self):
+        start_pose = recv_array(self.pose_socket)
+        self.pose_socket.send_string("")
+        target_pose = recv_array(self.pose_socket)
+        self.pose_socket.send_string("")
+        target_theta = recv_array(self.pose_socket)[0]
+        res = None
+        original_target_pose = target_pose
+        if target_pose is not None:
+            # target_pose originally represents the place where the object of interest is.
+            # This line finds the pose where the robot should stop
+            target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
+
+            # A* planning
+            if target_pose is not None:
+                res = self.planner.plan(start_pose, target_pose)
+
+        # Parse A* results into traj
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
+        else:
+            waypoints = None
+
+        if waypoints is not None:
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/target_pose",
+                [original_target_pose[0], original_target_pose[1], 1.5],
+                torch.Tensor([1, 0, 0]),
+                0.1,
+            )
+
+        finished = True
+        if waypoints is not None:
+            if not len(waypoints) <= 8:
+                waypoints = waypoints[:8]
+                finished = False
+                if finished and target_theta != 10:
+                    traj[-1][2] = target_theta
+            traj = self.planner.clean_path_for_xy(waypoints)
+            print("Planned trajectory:", traj)
+        else:
+            traj = None
+
+        # draw traj on rerun and execute it
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            self.rerun_visualizer.log_arrow3D(
+                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+            )
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/robot_start_pose",
+                [start_pose[0], start_pose[1], 1.5],
+                torch.Tensor([0, 0, 1]),
+                0.1,
+            )
+
+        send_array(self.pose_socket, traj)
+
+        self.pose_socket.recv_string()
+        self.pose_socket.send_string(str(finished))
 
     def process_text(self, text, start_pose):
         """
@@ -453,13 +597,6 @@ class RobotAgent(RobotAgentBase):
                 traj.append(localized_point)
             print("Planned trajectory:", traj)
 
-        # Talk about what you are doing, as the robot.
-        if self.robot is not None:
-            if text is not None and text != "":
-                self.robot.say("I am looking for a " + text + ".")
-            else:
-                self.robot.say("I am exploring the environment.")
-
         if text is not None and text != "":
             debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text
         else:
@@ -488,161 +625,9 @@ class RobotAgent(RobotAgentBase):
 
         return traj
 
-    def navigate(self, text, max_step=10):
-        """
-        The robot calls this function to navigate to the object.
-        It will call execute_action function until it is ready for manipulation
-        """
-        # Start a new rerun recording to avoid an overly large rerun video.
-        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
-        finished = False
-        step = 0
-        end_point = None
-        while not finished and step < max_step:
-            print("*" * 20, step, "*" * 20)
-            step += 1
-            finished, end_point = self.execute_action(text)
-            if finished is None:
-                print("Navigation failed! The path might be blocked!")
-                return None
-        return end_point
 
-    def place(
-        self,
-        text,
-        local=True,
-        init_tilt=INIT_HEAD_TILT,
-        base_node="camera_depth_optical_frame",
-    ):
-        """
-        An API for running placing. By calling this API, human will ask the robot to place whatever it holds
-        onto objects specified by text queries A
-        - hello_robot: a wrapper for home-robot StretchClient controller
-        - socoket: we use this to communicate with workstation to get estimated gripper pose
-        - text: queries specifying target object
-        - transform node: node name for coordinate systems of target gripper pose (usually the coordinate system on the robot gripper)
-        - base node: node name for coordinate systems of estimated gipper poses given by anygrasp
-        """
-        self.robot.switch_to_manipulation_mode()
-        self.robot.look_at_ee()
-        self.manip_wrapper.move_to_position(head_pan=INIT_HEAD_PAN, head_tilt=init_tilt)
-
-        if not local:
-            rotation, translation = capture_and_process_image(
-                mode="place",
-                obj=text,
-                socket=self.manip_socket,
-                hello_robot=self.manip_wrapper,
-            )
-        else:
-            if self.owl_sam_detector is None:
-                from stretch.perception.detection.owl import OWLSAMProcessor
-
-                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
-            rotation, translation = process_image_for_placing(
-                obj=text,
-                hello_robot=self.manip_wrapper,
-                detection_model=self.owl_sam_detector,
-                save_dir=self.log,
-            )
-        print("Place: ", rotation, translation)
-
-        if rotation is None:
-            return False
-
-        # lift arm to the top before the robot extends the arm, prepare the pre-placing gripper pose
-        self.manip_wrapper.move_to_position(lift_pos=1.05)
-        self.manip_wrapper.move_to_position(wrist_yaw=0, wrist_pitch=0)
-
-        # Placing the object
-        move_to_point(self.manip_wrapper, translation, base_node, self.transform_node, move_mode=0)
-        self.manip_wrapper.move_to_position(gripper_pos=1, blocking=True)
-
-        # Lift the arm a little bit, and rotate the wrist roll of the robot in case the object attached on the gripper
-        self.manip_wrapper.move_to_position(
-            lift_pos=min(self.manip_wrapper.robot.get_six_joints()[1] + 0.3, 1.1)
-        )
-        self.manip_wrapper.move_to_position(wrist_roll=2.5, blocking=True)
-        self.manip_wrapper.move_to_position(wrist_roll=-2.5, blocking=True)
-
-        # Wait for some time and shrink the arm back
-        self.manip_wrapper.move_to_position(gripper_pos=1, lift_pos=1.05, arm_pos=0)
-        self.manip_wrapper.move_to_position(wrist_pitch=-1.57)
-
-        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
-        self.manip_wrapper.move_to_position(
-            base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
-        )
-        return True
-
-    def get_voxel_map(self):
-        """Return the voxel map"""
-        return self.voxel_map
-
-    def manipulate(
-        self,
-        text,
-        init_tilt=INIT_HEAD_TILT,
-        base_node="camera_depth_optical_frame",
-        skip_confirmation: bool = False,
-    ):
-        """
-        An API for running manipulation. By calling this API, human will ask the robot to pick up objects
-        specified by text queries A
-        - hello_robot: a wrapper for home-robot StretchClient controller
-        - socoket: we use this to communicate with workstation to get estimated gripper pose
-        - text: queries specifying target object
-        - transform node: node name for coordinate systems of target gripper pose (usually the coordinate system on the robot gripper)
-        - base node: node name for coordinate systems of estimated gipper poses given by anygrasp
-        """
-
-        self.robot.switch_to_manipulation_mode()
-        self.robot.look_at_ee()
-
-        gripper_pos = 1
-
-        self.manip_wrapper.move_to_position(
-            arm_pos=INIT_ARM_POS,
-            head_pan=INIT_HEAD_PAN,
-            head_tilt=init_tilt,
-            gripper_pos=gripper_pos,
-            lift_pos=INIT_LIFT_POS,
-            wrist_pitch=INIT_WRIST_PITCH,
-            wrist_roll=INIT_WRIST_ROLL,
-            wrist_yaw=INIT_WRIST_YAW,
-        )
-
-        rotation, translation, depth, width = capture_and_process_image(
-            mode="pick",
-            obj=text,
-            socket=self.manip_socket,
-            hello_robot=self.manip_wrapper,
-        )
-
-        if rotation is None:
-            return False
-
-        if width < 0.05 and self.re == 3:
-            gripper_width = 0.45
-        elif width < 0.075 and self.re == 3:
-            gripper_width = 0.6
-        else:
-            gripper_width = 1
-
-        if skip_confirmation or input("Do you want to do this manipulation? Y or N ") != "N":
-            pickup(
-                self.manip_wrapper,
-                rotation,
-                translation,
-                base_node,
-                self.transform_node,
-                gripper_depth=depth,
-                gripper_width=gripper_width,
-            )
-
-        # Shift the base back to the original point as we are certain that original point is navigable in navigation obstacle map
-        self.manip_wrapper.move_to_position(
-            base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
-        )
-
-        return True
+from stretch.core.parameters import get_parameters
+parameters = get_parameters("dynav_config.yaml")
+agent = RobotAgent(parameters=parameters)
+while True:
+    agent.recv_text()

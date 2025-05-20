@@ -94,7 +94,6 @@ class RobotAgent(RobotAgentBase):
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.grasp_client = grasp_client
         self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
 
@@ -117,6 +116,10 @@ class RobotAgent(RobotAgentBase):
         self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(5555))
         self.text_socket = context.socket(zmq.REQ)
         self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(5556))
+        self.question_socket = context.socket(zmq.REQ)
+        self.question_socket.connect("tcp://" + str(server_ip) + ":" + str(5558))
+        self.pose_socket = context.socket(zmq.REQ)
+        self.pose_socket.connect("tcp://" + str(server_ip) + ":" + str(5554))
 
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
@@ -223,16 +226,7 @@ class RobotAgent(RobotAgentBase):
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
-        if self.voxel_map.voxel_pcd._points is not None:
-            self.rerun_visualizer.update_voxel_map(space=self.space)
-        if self.voxel_map.semantic_memory._points is not None:
-            self.rerun_visualizer.log_custom_pointcloud(
-                "world/semantic_memory/pointcloud",
-                self.voxel_map.semantic_memory._points.detach().cpu(),
-                self.voxel_map.semantic_memory._rgb.detach().cpu() / 255.0,
-                0.03,
-            )
+        send_everything(self.img_socket, rgb, depth, K, camera_pose)
 
     def look_around(self):
         """
@@ -317,135 +311,16 @@ class RobotAgent(RobotAgentBase):
         """
         Process the text query and return the trajectory for the robot to follow.
         """
-
-        print("Processing", text, "starts")
-
-        self.rerun_visualizer.clear_identity("world/object")
-        self.rerun_visualizer.clear_identity("world/robot_start_pose")
-        self.rerun_visualizer.clear_identity("world/direction")
-        self.rerun_visualizer.clear_identity("robot_monologue")
-        self.rerun_visualizer.clear_identity("/observation_similar_to_text")
-
-        debug_text = ""
-        mode = "navigation"
-        obs = None
-        localized_point = None
-        waypoints = None
-
-        if text is not None and text != "" and self.space.traj is not None:
-            print("saved traj", self.space.traj)
-            traj_target_point = self.space.traj[-1]
-            if self.voxel_map.verify_point(text, traj_target_point):
-                localized_point = traj_target_point
-                debug_text += "## Last visual grounding results looks fine so directly use it.\n"
-
-        print("Target verification finished")
-
-        if text is not None and text != "" and localized_point is None:
-            (
-                localized_point,
-                debug_text,
-                obs,
-                pointcloud,
-            ) = self.voxel_map.localize_text(text, debug=True, return_debug=True)
-            print("Target point selected!")
-
-        # Do Frontier based exploration
-        if text is None or text == "" or localized_point is None:
-            debug_text += "## Navigation fails, so robot starts exploring environments.\n"
-            localized_point = self.space.sample_frontier(self.planner, start_pose, text)
-            mode = "exploration"
-
-        if obs is not None and mode == "navigation":
-            obs = self.voxel_map.find_obs_id_for_text(text)
-            rgb = self.voxel_map.observations[obs - 1].rgb
-            self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
-
-        if localized_point is None:
-            return []
-
-        # TODO: Do we really need this line?
-        if len(localized_point) == 2:
-            localized_point = np.array([localized_point[0], localized_point[1], 0])
-
-        point = self.space.sample_navigation(start_pose, self.planner, localized_point)
-
-        print("Navigation endpoint selected")
-
-        waypoints = None
-
-        if point is None:
-            res = None
-            print("Unable to find any target point, some exception might happen")
-        else:
-            res = self.planner.plan(start_pose, point)
-
-        if res is not None and res.success:
-            waypoints = [pt.state for pt in res.trajectory]
-        elif res is not None:
-            waypoints = None
-            print("[FAILURE]", res.reason)
-        # If we are navigating to some object of interest, send (x, y, z) of
-        # the object so that we can make sure the robot looks at the object after navigation
-        traj = []
-        if waypoints is not None:
-
-            self.rerun_visualizer.log_custom_pointcloud(
-                "world/object",
-                [localized_point[0], localized_point[1], 1.5],
-                torch.Tensor([1, 0, 0]),
-                0.1,
-            )
-
-            finished = len(waypoints) <= 8 and mode == "navigation"
-            if finished:
-                self.space.traj = None
-            else:
-                self.space.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
-            if not finished:
-                waypoints = waypoints[:8]
-            traj = self.planner.clean_path_for_xy(waypoints)
-            if finished:
-                traj.append([np.nan, np.nan, np.nan])
-                if isinstance(localized_point, torch.Tensor):
-                    localized_point = localized_point.tolist()
-                traj.append(localized_point)
-            print("Planned trajectory:", traj)
-
         # Talk about what you are doing, as the robot.
         if self.robot is not None:
             if text is not None and text != "":
                 self.robot.say("I am looking for a " + text + ".")
             else:
                 self.robot.say("I am exploring the environment.")
-
-        if text is not None and text != "":
-            debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text
-        else:
-            debug_text = "### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n"
-        debug_text = "# Robot's monologue: \n" + debug_text
-        self.rerun_visualizer.log_text("robot_monologue", debug_text)
-
-        if traj is not None:
-            origins = []
-            vectors = []
-            for idx in range(len(traj)):
-                if idx != len(traj) - 1:
-                    origins.append([traj[idx][0], traj[idx][1], 1.5])
-                    vectors.append(
-                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
-                    )
-            self.rerun_visualizer.log_arrow3D(
-                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
-            )
-            self.rerun_visualizer.log_custom_pointcloud(
-                "world/robot_start_pose",
-                [start_pose[0], start_pose[1], 1.5],
-                torch.Tensor([0, 0, 1]),
-                0.1,
-            )
-
-        return traj
+        self.text_socket.send_string(text)
+        self.text_socket.recv_string()
+        send_array(self.text_socket, start_pose)
+        return recv_array(self.text_socket)
 
     def navigate(self, text, max_step=10):
         """
@@ -465,6 +340,91 @@ class RobotAgent(RobotAgentBase):
                 print("Navigation failed! The path might be blocked!")
                 return None
         return end_point
+
+    def run_eqa(self, question, max_planning_steps: int = 5):
+        """
+        API for calling EQA module
+        """
+
+        self.robot.switch_to_navigation_mode()
+
+        for _ in range(max_planning_steps):
+            answer, confidence = self.run_eqa_one_iter(question)
+            if confidence:
+                self.robot.say("The answer to " + question + " is " + answer)
+                break
+
+        return None, None
+
+    def run_eqa_one_iter(self, question, max_movement_step: int = 5):
+
+        if not self._realtime_updates:
+            self.robot.look_front()
+            self.look_around()
+            self.robot.look_front()
+            self.robot.switch_to_navigation_mode()
+
+        self.question_socket.send_string(question)
+        self.question_socket.recv_string()
+        send_array(self.question_socket, self.robot.get_base_pose())
+        answer = self.question_socket.recv_string()
+        self.question_socket.send_string("")
+        confidence = self.question_socket.recv_string().lower() == "true"
+
+        if confidence:
+            return answer, confidence
+        else:
+            self.question_socket.send_string("")
+            target_point = recv_array(self.question_socket) 
+
+        start_pose = self.robot.get_base_pose()
+
+        print("Target point", target_point)
+        # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
+        obstacles, _ = self.voxel_map.get_2d_map()
+        target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
+        if not obstacles[int(target_grid[0]), int(target_grid[1])]:
+            target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
+            print("Target theta", target_theta)
+        else:
+            target_theta = None
+
+        movement_step = 0
+        while movement_step < max_movement_step:
+            start_pose = self.robot.get_base_pose()
+            movement_step += 1
+            self.update()
+            finished = self.navigate_to_target_pose(target_point, start_pose, target_theta)
+            if finished:
+                break
+
+        return answer, confidence
+    
+    def navigate_to_target_pose(
+        self,
+        target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        target_theta = None
+    ):
+        send_array(self.pose_socket, start_pose)
+        self.pose_socket.recv_string()
+        send_array(self.pose_socket, target_pose)
+        self.pose_socket.recv_string()
+        if target_theta is None:
+            target_theta = 10
+        send_array(self.pose_socket, target_theta)
+        
+        traj = recv_array(self.pose_socket)
+
+        self.robot.execute_trajectory(
+                traj,
+                pos_err_threshold=self.pos_err_threshold,
+                rot_err_threshold=self.rot_err_threshold,
+                blocking=True,
+        )
+
+        self.pose_socket.send_string("")
+        return self.pose_socket.recv_string().lower() == 'true'
 
     def place(
         self,
@@ -533,10 +493,6 @@ class RobotAgent(RobotAgentBase):
             base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
         )
         return True
-
-    def get_voxel_map(self):
-        """Return the voxel map"""
-        return self.voxel_map
 
     def manipulate(
         self,
