@@ -45,10 +45,11 @@ from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
-from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.detection.owl import OwlPerception
-from stretch.perception.encoders import MaskSiglipEncoder
+# from stretch.perception.detection.owl import OwlPerception
+from stretch.perception.detection.yoloe import YoloEPerception
+# from stretch.perception.encoders import MaskSiglipEncoder
+from stretch.perception.encoders.clip_encoder import MaskClipEncoder as MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -206,14 +207,24 @@ class RobotAgent(RobotAgentBase):
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
         elif self.mllm:
-            self.detection_model = OwlPerception(
-                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
+            # self.detection_model = OwlPerception(
+            #     version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
+            # )
+            self.detection_model = YoloEPerception(
+                device=self.device,
+                confidence_threshold=0.01,
+                size='s'
             )
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
         else:
-            self.detection_model = OwlPerception(
-                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
+            # self.detection_model = OwlPerception(
+            #     version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
+            # )
+            self.detection_model = YoloEPerception(
+                device=self.device,
+                confidence_threshold=0.1,
+                size='s'
             )
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)
