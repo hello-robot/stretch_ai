@@ -109,6 +109,19 @@ class OvmmPerception:
                 confidence_threshold=yolo_threshold,
                 **module_kwargs,
             )
+        elif self._detection_module == "yoloe":
+            from stretch.perception.detection.yoloe import YoloEPerception
+
+            yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "s")
+            yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.1)
+
+            self._segmentation = YoloEPerception(
+                device=gpu_device_id,
+                verbose=verbose,
+                size=yolo_world_model_size,
+                confidence_threshold=yolo_threshold,
+                **module_kwargs,
+            )
         elif self._detection_module == "owlsam":
             from stretch.perception.detection.owl import OWLSAMProcessor
 
