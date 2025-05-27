@@ -48,7 +48,7 @@ from stretch.motion.algo.a_star import AStar
 # from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.detection.yoloe import YoloEPerception
 
-# from stretch.perception.encoders import MaskSiglipEncoder
+# from stretch.perception.encoders.masksiglip2_encoder import MaskSiglip2Encoder as MaskSiglipEncoder
 from stretch.perception.encoders.clip_encoder import MaskClipEncoder as MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -198,7 +198,8 @@ class RobotAgent(RobotAgentBase):
         if self.manipulation_only:
             self.encoder = None
         else:
-            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+            # self.encoder = MaskSiglipEncoder(device=self.device, version="base")
+            self.encoder = MaskSiglipEncoder(device=self.device)
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
@@ -211,7 +212,7 @@ class RobotAgent(RobotAgentBase):
             #     version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
             # )
             self.detection_model = YoloEPerception(
-                device=self.device, confidence_threshold=0.01, size="s"
+                confidence_threshold=0.01, size="s"
             )
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
@@ -220,7 +221,7 @@ class RobotAgent(RobotAgentBase):
             #     version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
             # )
             self.detection_model = YoloEPerception(
-                device=self.device, confidence_threshold=0.1, size="s"
+                confidence_threshold=0.1, size="s"
             )
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)

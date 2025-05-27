@@ -640,6 +640,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
             depth = self.observations[obs_id - 1].depth
             K = self.observations[obs_id - 1].camera_K
 
+            rgb = cv2.cvtColor(rgb.numpy(), cv2.COLOR_RGB2BGR)
+            cv2.imwrite(self.log + "/rgb" + text + "_" + str(obs_id.item() - 1) + ".png", rgb)
+
             res = self.detection_model.compute_obj_coord(text, rgb, depth, K, pose)
 
         if res is not None:
@@ -648,7 +651,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
             )
         else:
-            # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
             cosine_similarity_check = alignments.max().item() > 0.14
             if cosine_similarity_check:
                 target_point = point
@@ -658,7 +660,6 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 )
             else:
                 debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
-        # print('target_point', target_point)
         if not debug:
             return target_point
         elif not return_debug:

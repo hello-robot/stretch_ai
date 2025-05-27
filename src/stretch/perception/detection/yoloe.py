@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
-from ultralytics import YOLO
+from ultralytics import YOLOE
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
@@ -81,10 +81,9 @@ class YoloEPerception(PerceptionModule):
         config_file=None,
         vocabulary="coco",
         class_list: Optional[Union[List[str], Tuple[str]]] = None,
-        checkpoint_file=None,
         sem_gpu_id=0,
         verbose: bool = False,
-        size: str = "m",
+        size: str = "s",
         confidence_threshold: Optional[float] = None,
     ):
         """Load trained YOLO model for inference.
@@ -95,7 +94,6 @@ class YoloEPerception(PerceptionModule):
              for a custom set of categories
             custom_vocabulary: if vocabulary="custom", this should be a comma-separated
              list of classes (as a single string)
-            checkpoint_file: path to model checkpoint
             sem_gpu_id: GPU ID to load the model on, -1 for CPU
             verbose: whether to print out debug information
         """
@@ -104,21 +102,9 @@ class YoloEPerception(PerceptionModule):
 
         if class_list is None:
             self.class_list = CLASS_LABELS_200
-
-        if checkpoint_file is None:
-            checkpoint_file = get_full_config_path(f"perception/yolo_world/yolov8{size}-world.pt")
-
-        # Check if checkpoint file exists
-        if not Path(checkpoint_file).exists():
-            # Make parent directory
-            Path(checkpoint_file).parent.mkdir(parents=True, exist_ok=True)
-            # Download the model
-            os.system(
-                f"wget -O {checkpoint_file} "
-                f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
-            )
-
-        self.model = YOLO(checkpoint_file)
+            
+        checkpoint_file = f"yoloe-11{size}-seg.pt"
+        self.model = YOLOE(checkpoint_file)
         self.model.to("cuda" if torch.cuda.is_available() else "cpu")
 
         if self.verbose:
@@ -167,8 +153,7 @@ class YoloEPerception(PerceptionModule):
             rgb = rgb.numpy()
         else:
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
-        # image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        image = Image.fromarray(rgb)
+        image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
         if confidence_threshold is None:
             pred = self.model(image, verbose=self.verbose, conf=self.confidence)
@@ -228,8 +213,8 @@ class YoloEPerception(PerceptionModule):
         """
         if isinstance(rgb, torch.Tensor):
             rgb = rgb.numpy()
-        image = Image.fromarray(rgb)
-        self.model.get_text_pe([text], self.model.get_text_pe([text]))
+        image = Image.fromarray(rgb.astype(np.uint8))
+        self.model.set_classes([text], self.model.get_text_pe([text]))
         results = self.model.predict(image, conf=self.confidence)
 
         return results[0].boxes.conf.cpu().numpy(), results[0].boxes.xyxy.cpu().numpy()
