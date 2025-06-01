@@ -211,18 +211,14 @@ class RobotAgent(RobotAgentBase):
             # self.detection_model = OwlPerception(
             #     version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
             # )
-            self.detection_model = YoloEPerception(
-                confidence_threshold=0.01, size="s"
-            )
+            self.detection_model = YoloEPerception(confidence_threshold=0.01, size="s")
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
         else:
             # self.detection_model = OwlPerception(
             #     version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
             # )
-            self.detection_model = YoloEPerception(
-                confidence_threshold=0.1, size="s"
-            )
+            self.detection_model = YoloEPerception(confidence_threshold=0.1, size="s")
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)
         self.voxel_map = SparseVoxelMap(
@@ -560,9 +556,10 @@ class RobotAgent(RobotAgentBase):
             )
         else:
             if self.owl_sam_detector is None:
-                from stretch.perception.detection.owl import OWLSAMProcessor
+                # from stretch.perception.detection.owl import OWLSAMProcessor
 
-                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+                # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+                self.owl_sam_detector = YoloEPerception(confidence_threshold=0.05)
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,

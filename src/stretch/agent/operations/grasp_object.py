@@ -801,8 +801,8 @@ class GraspObjectOperation(ManagedOperation):
                 lift += lift_component
 
             # Add these to do some really hacky proportionate control
-            px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
-            py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+            px = max(0.5, np.abs(2 * dx / target_mask.shape[1]))
+            py = max(0.5, np.abs(2 * dy / target_mask.shape[0]))
 
             # Move the base and modify the wrist pitch
             # TODO: remove debug code

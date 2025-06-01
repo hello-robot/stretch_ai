@@ -116,7 +116,6 @@ class OvmmPerception:
             yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.1)
 
             self._segmentation = YoloEPerception(
-                device=gpu_device_id,
                 verbose=verbose,
                 size=yolo_world_model_size,
                 confidence_threshold=yolo_threshold,

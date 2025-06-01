@@ -164,7 +164,7 @@ class DynamemTaskExecutor:
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
-                match_method="feature",
+                match_method="class",
                 show_object_to_grasp=False,
                 show_servo_gui=True,
                 delete_object_after_grasp=False,

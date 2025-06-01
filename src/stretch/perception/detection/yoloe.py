@@ -14,8 +14,6 @@
 
 
 import argparse
-import os
-from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import cv2
@@ -28,7 +26,6 @@ from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
 from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
 from stretch.perception.detection.utils import filter_depth, overlay_masks
-from stretch.utils.config import get_full_config_path
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 
 
@@ -70,7 +67,7 @@ def draw_masks(masks, height, width):
         cv2.fillPoly(panotic_mask, [xy_coords], color=1)
 
         # Add to list
-        panoptic_masks.append(panotic_mask)
+        panoptic_masks.append(panotic_mask.astype(bool))
 
     return panoptic_masks
 
@@ -102,7 +99,7 @@ class YoloEPerception(PerceptionModule):
 
         if class_list is None:
             self.class_list = CLASS_LABELS_200
-            
+
         checkpoint_file = f"yoloe-11{size}-seg.pt"
         self.model = YOLOE(checkpoint_file)
         self.model.to("cuda" if torch.cuda.is_available() else "cpu")
@@ -203,21 +200,41 @@ class YoloEPerception(PerceptionModule):
 
     def detect_object(
         self,
-        rgb: Union[np.ndarray, torch.Tensor],
+        rgb: Union[np.ndarray, torch.Tensor, Image.Image],
         text: Union[str, List[str]],
         confidence_threshold: Optional[float] = None,
+        output_mask: Optional[bool] = True,
+        visualize_mask: bool = False,
+        mask_filename: Optional[str] = None,
+        box_filename: Optional[str] = None,
     ):
         """Try to find target objects given one or many text queries.
         Arguments:
             rgb: ideally of shape (C, H, W), the pixel value should be integer between [0, 255]
         """
+        if confidence_threshold is None:
+            confidence_threshold = self.confidence
         if isinstance(rgb, torch.Tensor):
             rgb = rgb.numpy()
-        image = Image.fromarray(rgb.astype(np.uint8))
-        self.model.set_classes([text], self.model.get_text_pe([text]))
-        results = self.model.predict(image, conf=self.confidence)
+        if not isinstance(rgb, Image.Image):
+            height, width, _ = rgb.shape
+            image = Image.fromarray(rgb.astype(np.uint8))
+        else:
+            width, height = rgb.size
+            image = rgb
+        if not isinstance(text, list):
+            text = [text]
+        self.model.set_classes(text, self.model.get_text_pe(text))
+        results = self.model.predict(image, conf=confidence_threshold)
 
-        return results[0].boxes.conf.cpu().numpy(), results[0].boxes.xyxy.cpu().numpy()
+        if output_mask:
+            if results[0].masks is None or len(results[0].masks) == 0:
+                return None, None
+            else:
+                masks = draw_masks(results[0].masks.xyn, height, width)
+                return masks[0], results[0].boxes.xyxy.cpu().numpy()[0]
+        else:
+            return results[0].boxes.conf.cpu().numpy(), results[0].boxes.xyxy.cpu().numpy()
 
     def compute_obj_coord(
         self,
@@ -235,7 +252,7 @@ class YoloEPerception(PerceptionModule):
         xyz = torch.Tensor(camera_xyz_to_global_xyz(camera_xyz, np.array(camera_pose)))
 
         scores, boxes = self.detect_object(
-            rgb=rgb, text=text, confidence_threshold=confidence_threshold
+            rgb=rgb, text=text, confidence_threshold=confidence_threshold, output_mask=False
         )
         for idx, (score, bbox) in enumerate(
             sorted(zip(scores, boxes), key=lambda x: x[0], reverse=True)

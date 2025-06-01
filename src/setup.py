@@ -56,7 +56,7 @@ setuptools.setup(
         # For gemini
         "google-genai",
         # For Yolo
-        # "ultralytics",
+        "ultralytics>=8.3.146",
         # Hardware dependencies
         "hello-robot-stretch-urdf",
         "pyrealsense2",
