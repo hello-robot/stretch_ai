@@ -73,7 +73,7 @@ from torchvision import transforms
 
 
 class MaskClipEncoder(NormalizedClipEncoder):
-    def __init__(self, version="ViT-B/32", device: Optional[str] = None) -> None:
+    def __init__(self, version="ViT-B/16", device: Optional[str] = None) -> None:
         super().__init__(
             device=device,
             version=version,

@@ -13,9 +13,10 @@
 # LICENSE file in the root directory of this source tree.
 from typing import Optional, Union
 
-import mobileclip
 import numpy as np
+import open_clip
 import torch
+from mobileclip.modules.common.mobileone import reparameterize_model
 from PIL import Image
 
 from .base_encoder import BaseImageTextEncoder
@@ -24,18 +25,20 @@ from .base_encoder import BaseImageTextEncoder
 class MobileClipEncoder(BaseImageTextEncoder):
     """Simple wrapper for encoding different things as text."""
 
-    def __init__(self, version="s0", device: Optional[str] = None):
+    def __init__(self, version="S2", device: Optional[str] = None):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
 
-        assert version in ["s0", "s1", "s2", "b", "blt"]
-        self.version = "mobileclip_" + version
+        assert version in ["S1", "S2", "B"]
+        self.version = "MobileCLIP-" + version
 
-        self.model, _, self.preprocess = mobileclip.create_model_and_transforms(
-            self.version, device=self.device
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+            self.version, device=self.device, pretrained="datacompdr"
         )
-        self.tokenizer = mobileclip.get_tokenizer(self.version)
+        self.tokenizer = open_clip.get_tokenizer(self.version)
+        self.model.eval()
+        self.model = reparameterize_model(self.model)
 
     def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
         """Encode this input image to a CLIP vector"""
@@ -67,23 +70,28 @@ from torchvision import transforms
 
 
 class MaskMobileClipEncoder(MobileClipEncoder):
-    def __init__(self, version="s0", device: Optional[str] = None) -> None:
+    def __init__(self, version="S2", device: Optional[str] = None) -> None:
         super().__init__(
             device=device,
             version=version,
         )
         self.clip_model, self.clip_preprocess = self.model, self.preprocess
+        if version != "B":
+            # Instead of global pool all patch level features and project them with head
+            self.clip_head = self.clip_model.visual.trunk.head
+            self.clip_model.visual.trunk.head = torch.nn.Identity()
 
     def extract_mask_siglip_features(self, x, image_shape):
         with torch.no_grad():
-            N, L, H, W = x.shape
-            x = self.clip_model.image_encoder.model.forward_embeddings(x)
-            x = self.clip_model.image_encoder.model.forward_tokens(x)
-            x = self.clip_model.image_encoder.model.conv_exp(x)
-            x = (
-                x.permute(0, 2, 3, 1)
-                @ self.clip_model.image_encoder.model.head.state_dict()["proj"]
-            )
+            if self.version != "MobileCLIP-B":
+                x = self.clip_model.visual(x)
+                x = self.clip_head.fc(x.permute(0, 2, 3, 1))
+            else:
+                x = self.clip_model.visual.trunk.forward_features(x)[:, 1:]
+                x = self.clip_model.visual.trunk.head(x)
+                N, P, L = x.shape
+                assert P == 196
+                x = x.reshape(N, 14, 14, L)
             feat = x.permute(0, 3, 1, 2)
         feat = F.interpolate(feat, image_shape, mode="bilinear", align_corners=True)
         feat = F.normalize(feat, dim=1)
@@ -95,6 +103,8 @@ class MaskMobileClipEncoder(MobileClipEncoder):
         Input:
             image: RGB image, shape [3, H, W]
         """
+        if not isinstance(image, torch.Tensor):
+            image = torch.Tensor(image)
         if self.device == "cpu":
             input = (
                 self.clip_preprocess(transforms.ToPILImage()(image)).unsqueeze(0).to(self.device)
