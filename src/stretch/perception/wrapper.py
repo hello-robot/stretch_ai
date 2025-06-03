@@ -112,8 +112,8 @@ class OvmmPerception:
         elif self._detection_module == "yoloe":
             from stretch.perception.detection.yoloe import YoloEPerception
 
-            yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "s")
-            yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.1)
+            yolo_world_model_size = self.parameters.get("detection/model_size", "l")
+            yolo_threshold = self.parameters.get("detection/confidence_threshold", 0.05)
 
             self._segmentation = YoloEPerception(
                 verbose=verbose,

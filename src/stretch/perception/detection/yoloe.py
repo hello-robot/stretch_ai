@@ -79,7 +79,7 @@ class YoloEPerception(PerceptionModule):
         vocabulary="coco",
         class_list: Optional[Union[List[str], Tuple[str]]] = None,
         verbose: bool = False,
-        size: str = "s",
+        size: str = "l",
         confidence_threshold: Optional[float] = None,
     ):
         """Load trained YOLO model for inference.
@@ -98,9 +98,12 @@ class YoloEPerception(PerceptionModule):
         if class_list is None:
             self.class_list = CLASS_LABELS_200
 
-        checkpoint_file = f"yoloe-11{size}-seg.pt"
+        checkpoint_file = f"yoloe-v8{size}-seg.pt"
         self.model = YOLOE(checkpoint_file)
         self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
+        self._current_vocabulary = {i: self.class_list[i] for i in range(len(self.class_list))}
 
         if self.verbose:
             print(f"Loaded YOLO model from {checkpoint_file}")
@@ -108,7 +111,8 @@ class YoloEPerception(PerceptionModule):
         self.num_sem_categories = 80
 
     def reset_vocab(self, new_vocab: List[str], vocab_type="custom"):
-        print("Resetting vocabulary not supported for YOLO")
+        self.class_list = new_vocab
+        self._current_vocabulary = {i: self.class_list[i] for i in range(len(self.class_list))}
 
     def predict(
         self,
@@ -117,7 +121,6 @@ class YoloEPerception(PerceptionModule):
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = True,
         confidence_threshold: Optional[float] = None,
-        texts: Optional[Union[str, List[str]]] = None,
     ) -> Observations:
         """
         Arguments:
@@ -132,13 +135,7 @@ class YoloEPerception(PerceptionModule):
              image of shape (H, W, 3)
         """
 
-        if isinstance(texts, str):
-            texts = [texts]
-
-        if texts is not None:
-            self.model.set_classes(texts, self.model.get_text_pe(texts))
-        else:
-            self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
+        self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
 
         if isinstance(rgb, np.ndarray):
             # This is expected

@@ -49,7 +49,9 @@ from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.yoloe import YoloEPerception
 
 # from stretch.perception.encoders.masksiglip2_encoder import MaskSiglip2Encoder as MaskSiglipEncoder
-from stretch.perception.encoders.clip_encoder import MaskClipEncoder as MaskSiglipEncoder
+from stretch.perception.encoders.mobile_clip_encoder import (
+    MaskMobileClipEncoder as MaskSiglipEncoder,
+)
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -199,7 +201,7 @@ class RobotAgent(RobotAgentBase):
             self.encoder = None
         else:
             # self.encoder = MaskSiglipEncoder(device=self.device, version="base")
-            self.encoder = MaskSiglipEncoder(device=self.device)
+            self.encoder = MaskSiglipEncoder()
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
@@ -218,7 +220,7 @@ class RobotAgent(RobotAgentBase):
             # self.detection_model = OwlPerception(
             #     version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
             # )
-            self.detection_model = YoloEPerception(confidence_threshold=0.1, size="s")
+            self.detection_model = YoloEPerception(confidence_threshold=0.05, size="l")
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)
         self.voxel_map = SparseVoxelMap(
@@ -559,7 +561,7 @@ class RobotAgent(RobotAgentBase):
                 # from stretch.perception.detection.owl import OWLSAMProcessor
 
                 # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
-                self.owl_sam_detector = YoloEPerception(confidence_threshold=0.05)
+                self.owl_sam_detector = YoloEPerception(confidence_threshold=0.05, size="l")
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,

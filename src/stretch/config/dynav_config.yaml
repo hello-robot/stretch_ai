@@ -29,7 +29,7 @@ detection:
   module: "yoloe"
   category_map_file: example_cat_map.json
   use_detic_viz: False
-  confidence_threshold: 0.2
+  confidence_threshold: 0.05
 
 # Point cloud cleanup
 filters:

@@ -97,6 +97,18 @@ class MaskMobileClipEncoder(MobileClipEncoder):
         feat = F.normalize(feat, dim=1)
         return feat.permute(0, 2, 3, 1)
 
+    def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
+        """Encode this input image to a CLIP vector"""
+        if isinstance(image, torch.Tensor):
+            image = image.cpu().numpy() * 255
+        image = image.astype(np.uint8)
+        pil_image = Image.fromarray(image)
+        processed_image = self.preprocess(pil_image).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            image_features = self.clip_head(self.model.encode_image(processed_image))
+        image_features / image_features.norm(dim=-1, keepdim=True)
+        return image_features.float()
+
     def run_mask_siglip(self, image, image_shape):
         """
         Run mask siglip

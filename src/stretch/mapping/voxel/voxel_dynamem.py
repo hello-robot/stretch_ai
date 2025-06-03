@@ -176,7 +176,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         text: str,
         point: Union[torch.Tensor, np.ndarray],
         distance_threshold: float = 0.1,
-        similarity_threshold: float = 0.33,
+        similarity_threshold: float = 0.2,
     ):
         """
         Running visual grounding is quite time consuming.
@@ -651,7 +651,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
             )
         else:
-            cosine_similarity_check = alignments.max().item() > 0.33
+            cosine_similarity_check = alignments.max().item() > 0.2
             if cosine_similarity_check:
                 target_point = point
 

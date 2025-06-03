@@ -164,9 +164,9 @@ class DynamemTaskExecutor:
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
-                match_method="class",
+                match_method=self.match_method,
                 show_object_to_grasp=False,
-                show_servo_gui=True,
+                show_servo_gui=False,
                 delete_object_after_grasp=False,
             )
             # This retracts the arm
