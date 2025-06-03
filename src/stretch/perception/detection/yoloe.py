@@ -78,7 +78,6 @@ class YoloEPerception(PerceptionModule):
         config_file=None,
         vocabulary="coco",
         class_list: Optional[Union[List[str], Tuple[str]]] = None,
-        sem_gpu_id=0,
         verbose: bool = False,
         size: str = "s",
         confidence_threshold: Optional[float] = None,
@@ -91,7 +90,6 @@ class YoloEPerception(PerceptionModule):
              for a custom set of categories
             custom_vocabulary: if vocabulary="custom", this should be a comma-separated
              list of classes (as a single string)
-            sem_gpu_id: GPU ID to load the model on, -1 for CPU
             verbose: whether to print out debug information
         """
         self.verbose = verbose
