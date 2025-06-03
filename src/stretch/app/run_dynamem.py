@@ -85,8 +85,8 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--match-method",
     "--match_method",
-    type=click.Choice(["class", "feature"]),
-    default="feature",
+    type=click.Choice(["class(dynamem)", "feature"]),
+    default="class(dynamem)",
     help="feature for visual servoing",
 )
 @click.option(

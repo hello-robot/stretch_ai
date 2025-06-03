@@ -13,7 +13,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 
@@ -152,10 +152,16 @@ class OvmmPerception:
     def current_vocabulary(self) -> RearrangeDETICCategories:
         return self._current_vocabulary
 
-    def update_vocabulary_list(self, vocabulary: RearrangeDETICCategories, vocabulary_id: int):
+    def update_vocabulary_list(
+        self, vocabulary: Union[RearrangeDETICCategories, List[str]], vocabulary_id: int
+    ):
         """
         Update/insert a given vocabulary for the given ID.
         """
+
+        if not isinstance(vocabulary, RearrangeDETICCategories):
+            vocabulary_id_to_name = {(i + 1): name for i, name in enumerate(vocabulary)}
+            vocabulary = RearrangeDETICCategories(vocabulary_id_to_name, len(vocabulary))
         self._vocabularies[vocabulary_id] = vocabulary
 
     def set_vocabulary(self, vocabulary_id: int):

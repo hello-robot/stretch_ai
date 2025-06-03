@@ -177,9 +177,9 @@ class GraspObjectOperation(ManagedOperation):
         self.talk = talk
         self.match_method = match_method
         self._try_open_loop = try_open_loop
-        if self.match_method not in ["class", "feature"]:
+        if self.match_method not in ["class", "feature", "class(dynamem)"]:
             raise ValueError(
-                f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
+                f"Unknown match method {self.match_method}. Should be 'class', 'feature', or 'class(dynamem)'."
             )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
@@ -262,7 +262,7 @@ class GraspObjectOperation(ManagedOperation):
 
         if self.verbose:
             print("[GRASP OBJECT] match method =", self.match_method)
-        if self.match_method == "class":
+        if self.match_method.startswith("class"):
 
             # Get the target class
             if self.agent.current_object is not None:
@@ -593,6 +593,9 @@ class GraspObjectOperation(ManagedOperation):
             center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
+            if self.match_method == "class(dynamem)":
+                self.agent.semantic_sensor.update_vocabulary_list([self.target_object], 1)
+                self.agent.semantic_sensor.set_vocabulary(1)
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(servo, center=(center_x, center_y))
 

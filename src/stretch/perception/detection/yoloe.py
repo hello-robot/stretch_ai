@@ -112,7 +112,6 @@ class YoloEPerception(PerceptionModule):
 
     def reset_vocab(self, new_vocab: List[str], vocab_type="custom"):
         self.class_list = new_vocab
-        self._current_vocabulary = {i: self.class_list[i] for i in range(len(self.class_list))}
 
     def predict(
         self,
@@ -172,7 +171,10 @@ class YoloEPerception(PerceptionModule):
         # Sort instances by mask size
         scores = pred[0].boxes.conf.cpu().numpy()
 
-        masks = draw_masks(pred[0].masks.xyn, height, width)
+        if pred[0].masks is not None:
+            masks = draw_masks(pred[0].masks.xyn, height, width)
+        else:
+            masks = []
 
         if depth_threshold is not None and depth is not None:
             masks = np.array([filter_depth(mask, depth, depth_threshold) for mask in masks])
