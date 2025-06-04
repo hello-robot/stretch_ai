@@ -16,6 +16,20 @@ from typing import Optional, Union
 import numpy as np
 import open_clip
 import torch
+
+from ultralytics.utils import checks
+
+try:
+    import warnings
+
+    # Suppress 'timm.models.layers is deprecated, please import via timm.layers' warning from mobileclip usage
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        import mobileclip
+except ImportError:
+    # Ultralytics fork preferred since Apple MobileCLIP repo has incorrect version of torchvision
+    checks.check_requirements("git+https://github.com/ultralytics/mobileclip.git")
+    import mobileclip
 from mobileclip.modules.common.mobileone import reparameterize_model
 from PIL import Image
 
@@ -76,22 +90,16 @@ class MaskMobileClipEncoder(MobileClipEncoder):
             version=version,
         )
         self.clip_model, self.clip_preprocess = self.model, self.preprocess
-        if version != "B":
-            # Instead of global pool all patch level features and project them with head
-            self.clip_head = self.clip_model.visual.trunk.head
-            self.clip_model.visual.trunk.head = torch.nn.Identity()
+
+        # We don't support B version for MaskClip for now
+        assert version in ["S1", "S2"], f"Invalid version: {version}"
+        self.clip_head = self.clip_model.visual.trunk.head
+        self.clip_model.visual.trunk.head = torch.nn.Identity()
 
     def extract_mask_siglip_features(self, x, image_shape):
         with torch.no_grad():
-            if self.version != "MobileCLIP-B":
-                x = self.clip_model.visual(x)
-                x = self.clip_head.fc(x.permute(0, 2, 3, 1))
-            else:
-                x = self.clip_model.visual.trunk.forward_features(x)[:, 1:]
-                x = self.clip_model.visual.trunk.head(x)
-                N, P, L = x.shape
-                assert P == 196
-                x = x.reshape(N, 14, 14, L)
+            x = self.clip_model.visual(x)
+            x = self.clip_head.fc(x.permute(0, 2, 3, 1))
             feat = x.permute(0, 3, 1, 2)
         feat = F.interpolate(feat, image_shape, mode="bilinear", align_corners=True)
         feat = F.normalize(feat, dim=1)
