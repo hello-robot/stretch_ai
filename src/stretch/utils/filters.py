@@ -130,7 +130,7 @@ class MaskTemporalFilter(TemporalFilter):
             mask_center = None
         else:
             mask_pts = np.argwhere(mask)
-            mask_center = mask_pts.mean(axis=0)
+            mask_center = np.median(mask_pts, axis=0)
 
         return mask_center
 

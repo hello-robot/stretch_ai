@@ -517,9 +517,9 @@ class RobotAgent(RobotAgentBase):
         """
         # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
-        if not os.path.exists(self.log):
-            os.makedirs(self.log)
-        rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
+        # if not os.path.exists(self.log):
+        #     os.makedirs(self.log)
+        # rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
         finished = False
         step = 0
         end_point = None

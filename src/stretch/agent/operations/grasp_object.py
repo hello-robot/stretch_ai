@@ -16,11 +16,11 @@
 # license information maybe found below, if so.
 
 import os
+import random
 import time
 import timeit
 from datetime import datetime
 from typing import Optional, Tuple
-import random
 
 import cv2
 import numpy as np
@@ -77,8 +77,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 30
-    align_y_threshold: int = 25
+    align_x_threshold: int = 25
+    align_y_threshold: int = 20
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
@@ -98,8 +98,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
-    base_x_step: float = 0.10
-    wrist_pitch_step: float = 0.25  # 075  # Maybe too fast
+    base_x_step: float = 0.1
+    wrist_pitch_step: float = 0.12  # 075  # Maybe too fast
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -114,7 +114,7 @@ class GraspObjectOperation(ManagedOperation):
     _grasp_lift_offset: float = 0.0  # -0.05
 
     # Visual servoing config
-    track_image_center: bool = False
+    track_image_center: bool = True  # Set to False if you want to use aruco marker, but since the position between gripper center and the image is fixed, this is not needed.
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
     detected_center_offset_x: int = 0  # -10
@@ -581,7 +581,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Compute the center of the image that we will be tracking
             if self.track_image_center:
-                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
+                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] * 13 // 20
             else:
                 center = self.gripper_aruco_detector.detect_center(servo.ee_rgb)
                 if center is not None:
@@ -699,12 +699,16 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Concatenate the two images side by side
                 viz_image = np.concatenate([servo_ee_rgb, viz_ee_depth], axis=1)
-                cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
-                cv2.imshow("Visual Servoing", viz_image)
-                cv2.waitKey(1)
-                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
-                if res == ord("q"):
-                    break
+                from matplotlib import pyplot as plt
+
+                plt.imshow(viz_image)
+                plt.show()
+                # cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
+                # cv2.imshow("Visual Servoing", viz_image)
+                # cv2.waitKey(1)
+                # res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                # if res == ord("q"):
+                #     break
 
             if self.debug_grasping:
                 # show all four images
@@ -806,8 +810,8 @@ class GraspObjectOperation(ManagedOperation):
 
             # Add these to do some really hacky proportionate control
             # Add some random noise to avoid the robot getting stuck due to detection noise
-            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.2, 0.2)
-            py = max(0.5, np.abs(2 * dy / target_mask.shape[0])) + random.uniform(-0.1, 0.1)
+            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.05, 0.1)
+            py = max(0.5, np.abs(2 * dy / target_mask.shape[0]))
 
             # Move the base and modify the wrist pitch
             # TODO: remove debug code
@@ -820,7 +824,7 @@ class GraspObjectOperation(ManagedOperation):
                 base_x += self.base_x_step * px
             print("base x =", base_x)
             if dy > self.align_y_threshold:
-                # Move in y - this means translate the base
+                # Move in y - this means move the wrist
                 wrist_pitch += -self.wrist_pitch_step * py
             elif dy < -1 * self.align_y_threshold:
                 wrist_pitch += self.wrist_pitch_step * py
@@ -954,8 +958,8 @@ class GraspObjectOperation(ManagedOperation):
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
             # Since the camera is slightly tilted up, we need to subtract a bit from the pitch
-            # pitch_from_vertical = np.arctan2(dy, dz) - 0.05
-            pitch_from_vertical = np.arctan2(dy, dz)
+            pitch_from_vertical = np.arctan2(dy, dz) - 0.05
+            # pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
 
