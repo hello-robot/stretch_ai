@@ -20,6 +20,7 @@ import time
 import timeit
 from datetime import datetime
 from typing import Optional, Tuple
+import random
 
 import cv2
 import numpy as np
@@ -86,7 +87,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.18
+    median_distance_when_grasping: float = 0.16
     lift_min_height: float = 0.1
     lift_max_height: float = 1.0
 
@@ -98,7 +99,7 @@ class GraspObjectOperation(ManagedOperation):
     # Movement parameters
     lift_arm_ratio: float = 0.05
     base_x_step: float = 0.10
-    wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
+    wrist_pitch_step: float = 0.25  # 075  # Maybe too fast
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -804,8 +805,9 @@ class GraspObjectOperation(ManagedOperation):
                 lift += lift_component
 
             # Add these to do some really hacky proportionate control
-            px = max(0.5, np.abs(2 * dx / target_mask.shape[1]))
-            py = max(0.5, np.abs(2 * dy / target_mask.shape[0]))
+            # Add some random noise to avoid the robot getting stuck due to detection noise
+            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.2, 0.2)
+            py = max(0.5, np.abs(2 * dy / target_mask.shape[0])) + random.uniform(-0.1, 0.1)
 
             # Move the base and modify the wrist pitch
             # TODO: remove debug code
@@ -951,6 +953,8 @@ class GraspObjectOperation(ManagedOperation):
             # dz = np.abs(head_pos[2] - relative_object_xyz[2])
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
+            # Since the camera is slightly tilted up, we need to subtract a bit from the pitch
+            # pitch_from_vertical = np.arctan2(dy, dz) - 0.05
             pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0

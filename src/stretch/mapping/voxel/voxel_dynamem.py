@@ -660,6 +660,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 )
             else:
                 debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
+        print("--------------------------------")
+        print(debug_text)
         if not debug:
             return target_point
         elif not return_debug:

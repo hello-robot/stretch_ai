@@ -222,7 +222,7 @@ class RobotAgent(RobotAgentBase):
             # )
             self.detection_model = YoloEPerception(confidence_threshold=0.05, size="l")
             semantic_memory_resolution = 0.05
-            image_shape = (480, 360)
+            image_shape = (320, 240)
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             semantic_memory_resolution=semantic_memory_resolution,
@@ -517,6 +517,9 @@ class RobotAgent(RobotAgentBase):
         """
         # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
+        if not os.path.exists(self.log):
+            os.makedirs(self.log)
+        rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
         finished = False
         step = 0
         end_point = None
