@@ -699,16 +699,12 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Concatenate the two images side by side
                 viz_image = np.concatenate([servo_ee_rgb, viz_ee_depth], axis=1)
-                from matplotlib import pyplot as plt
-
-                plt.imshow(viz_image)
-                plt.show()
-                # cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
-                # cv2.imshow("Visual Servoing", viz_image)
-                # cv2.waitKey(1)
-                # res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
-                # if res == ord("q"):
-                #     break
+                cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
+                cv2.imshow("Visual Servoing", viz_image)
+                cv2.waitKey(1)
+                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                if res == ord("q"):
+                    break
 
             if self.debug_grasping:
                 # show all four images
