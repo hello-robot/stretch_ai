@@ -16,7 +16,6 @@ from typing import Optional, Union
 import numpy as np
 import open_clip
 import torch
-
 from ultralytics.utils import checks
 
 try:
@@ -25,12 +24,13 @@ try:
     # Suppress 'timm.models.layers is deprecated, please import via timm.layers' warning from mobileclip usage
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=FutureWarning)
-        import mobileclip
+        from mobileclip.modules.common.mobileone import reparameterize_model
 except ImportError:
     # Ultralytics fork preferred since Apple MobileCLIP repo has incorrect version of torchvision
     checks.check_requirements("git+https://github.com/ultralytics/mobileclip.git")
-    import mobileclip
-from mobileclip.modules.common.mobileone import reparameterize_model
+    from mobileclip.modules.common.mobileone import reparameterize_model
+
+
 from PIL import Image
 
 from .base_encoder import BaseImageTextEncoder
@@ -39,7 +39,9 @@ from .base_encoder import BaseImageTextEncoder
 class MobileClipEncoder(BaseImageTextEncoder):
     """Simple wrapper for encoding different things as text."""
 
-    def __init__(self, version="S2", device: Optional[str] = None):
+    def __init__(
+        self, version="S2", device: Optional[str] = None, feature_matching_threshold: float = 0.21
+    ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
@@ -53,6 +55,8 @@ class MobileClipEncoder(BaseImageTextEncoder):
         self.tokenizer = open_clip.get_tokenizer(self.version)
         self.model.eval()
         self.model = reparameterize_model(self.model)
+
+        self.feature_matching_threshold = feature_matching_threshold
 
     def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
         """Encode this input image to a CLIP vector"""
@@ -84,10 +88,13 @@ from torchvision import transforms
 
 
 class MaskMobileClipEncoder(MobileClipEncoder):
-    def __init__(self, version="S2", device: Optional[str] = None) -> None:
+    def __init__(
+        self, version="S2", device: Optional[str] = None, feature_matching_threshold: float = 0.21
+    ) -> None:
         super().__init__(
             device=device,
             version=version,
+            feature_matching_threshold=feature_matching_threshold,
         )
         self.clip_model, self.clip_preprocess = self.model, self.preprocess
 

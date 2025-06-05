@@ -15,7 +15,6 @@ from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
 from .custom import CustomImageTextEncoder
-from .masksiglip_encoder import MaskSiglipEncoder
 
 encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
 

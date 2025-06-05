@@ -24,12 +24,18 @@ from .base_encoder import BaseImageTextEncoder
 class ClipEncoder(BaseImageTextEncoder):
     """Simple wrapper for encoding different things as text."""
 
-    def __init__(self, version="ViT-B/32", device: Optional[str] = None):
+    def __init__(
+        self,
+        version="ViT-B/32",
+        device: Optional[str] = None,
+        feature_matching_threshold: float = 0.3,
+    ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.version = version
         self.model, self.preprocess = clip.load(self.version, device=self.device)
+        self.feature_matching_threshold = feature_matching_threshold
 
     def encode_image(self, image: Union[torch.tensor, np.ndarray]) -> torch.Tensor:
         """Encode this input image to a CLIP vector"""
@@ -73,12 +79,18 @@ from torchvision import transforms
 
 
 class MaskClipEncoder(NormalizedClipEncoder):
-    def __init__(self, version="ViT-B/16", device: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        version="ViT-B/16",
+        device: Optional[str] = None,
+        feature_matching_threshold: float = 0.3,
+    ) -> None:
         super().__init__(
             device=device,
             version=version,
         )
         self.clip_model, self.clip_preprocess = self.model, self.preprocess
+        self.feature_matching_threshold = feature_matching_threshold
 
     def forward_one_block(self, resblocks, x):
         q, k, v = None, None, None

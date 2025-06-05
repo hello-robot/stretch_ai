@@ -44,14 +44,10 @@ from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
 from stretch.motion.algo.a_star import AStar
-
-# from stretch.perception.detection.owl import OwlPerception
+from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.detection.yoloe import YoloEPerception
-
-# from stretch.perception.encoders.masksiglip2_encoder import MaskSiglip2Encoder as MaskSiglipEncoder
-from stretch.perception.encoders.mobile_clip_encoder import (
-    MaskMobileClipEncoder as MaskSiglipEncoder,
-)
+from stretch.perception.encoders.mobile_clip_encoder import MaskMobileClipEncoder
+from stretch.perception.encoders.siglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -86,6 +82,7 @@ class RobotAgent(RobotAgentBase):
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -111,7 +108,12 @@ class RobotAgent(RobotAgentBase):
         # For placing
         self.owl_sam_detector = None
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # cpu only is a lightweighted version of DynaMem for running everything on robot NUC
+        self.cpu_only = cpu_only
+        if self.cpu_only:
+            self.device = "cpu"
+        else:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
@@ -199,30 +201,44 @@ class RobotAgent(RobotAgentBase):
         """
         if self.manipulation_only:
             self.encoder = None
+        elif self.cpu_only:
+            # Assume we only have CPU, we will use MobileClip-S2 for fast inference
+            self.encoder = MaskMobileClipEncoder(
+                version="S2", feature_matching_threshold=0.21, device=self.device
+            )
         else:
-            # self.encoder = MaskSiglipEncoder(device=self.device, version="base")
-            self.encoder = MaskSiglipEncoder()
+            # Use SIGLip-so400m for fast inference
+            self.encoder = MaskSiglipEncoder(
+                version="so400m", feature_matching_threshold=0.14, device=self.device
+            )
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
         if self.manipulation_only:
+            # No object detection, just need to test manipulation
             self.detection_model = None
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
         elif self.mllm:
-            # self.detection_model = OwlPerception(
-            #     version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
-            # )
-            self.detection_model = YoloEPerception(confidence_threshold=0.01, size="s")
+            # Use GPT4o to localize objects, we use OWLV2-B for fast inference
+            self.detection_model = OwlPerception(
+                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
+            )
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
-        else:
-            # self.detection_model = OwlPerception(
-            #     version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
-            # )
-            self.detection_model = YoloEPerception(confidence_threshold=0.05, size="l")
+        elif self.cpu_only:
+            # Assume we only have CPU, we will use YOLOE-L for fast inference
+            self.detection_model = YoloEPerception(
+                confidence_threshold=0.05, device=self.device, size="l"
+            )
             semantic_memory_resolution = 0.05
             image_shape = (360, 270)
+        else:
+            self.detection_model = OwlPerception(
+                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
+            )
+            semantic_memory_resolution = 0.05
+            image_shape = (480, 360)
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             semantic_memory_resolution=semantic_memory_resolution,
@@ -398,7 +414,11 @@ class RobotAgent(RobotAgentBase):
         if text is not None and text != "" and self.space.traj is not None:
             print("saved traj", self.space.traj)
             traj_target_point = self.space.traj[-1]
-            if self.voxel_map.verify_point(text, traj_target_point):
+            if hasattr(self.encoder, "feature_matching_threshold") and self.voxel_map.verify_point(
+                text,
+                traj_target_point,
+                similarity_threshold=self.encoder.feature_matching_threshold,
+            ):
                 localized_point = traj_target_point
                 debug_text += "## Last visual grounding results looks fine so directly use it.\n"
 
@@ -561,10 +581,14 @@ class RobotAgent(RobotAgentBase):
             )
         else:
             if self.owl_sam_detector is None:
+                # We can opt to use OWLv2 + SAMv2 for accurate object detection, but the placing receptacles are usually very easy to detect,
+                # so we don't see the point of installing SAMv2 and using it
                 # from stretch.perception.detection.owl import OWLSAMProcessor
 
                 # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
-                self.owl_sam_detector = YoloEPerception(confidence_threshold=0.05, size="l")
+                self.owl_sam_detector = YoloEPerception(
+                    confidence_threshold=0.05, size="l", device=self.device
+                )
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,

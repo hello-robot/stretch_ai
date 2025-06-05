@@ -56,12 +56,14 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
         discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
         self.discord_bot = discord_bot
+        self.cpu_only = cpu_only
 
         # Other parameters
         self.visual_servo = visual_servo
@@ -96,6 +98,7 @@ class DynamemTaskExecutor:
             server_ip=server_ip,
             mllm=mllm,
             manipulation_only=manipulation_only,
+            cpu_only=self.cpu_only,
         )
         self.agent.start()
 

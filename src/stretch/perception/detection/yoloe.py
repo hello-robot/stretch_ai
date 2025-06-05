@@ -81,6 +81,7 @@ class YoloEPerception(PerceptionModule):
         verbose: bool = False,
         size: str = "l",
         confidence_threshold: Optional[float] = None,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         """Load trained YOLO model for inference.
 
@@ -98,9 +99,10 @@ class YoloEPerception(PerceptionModule):
         if class_list is None:
             self.class_list = CLASS_LABELS_200
 
+        self.device = device
         checkpoint_file = f"yoloe-v8{size}-seg.pt"
         self.model = YOLOE(checkpoint_file)
-        self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
         self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
         self._current_vocabulary = {i: self.class_list[i] for i in range(len(self.class_list))}
