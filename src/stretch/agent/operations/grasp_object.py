@@ -99,7 +99,7 @@ class GraspObjectOperation(ManagedOperation):
     # Movement parameters
     lift_arm_ratio: float = 0.05
     base_x_step: float = 0.1
-    wrist_pitch_step: float = 0.12  # 075  # Maybe too fast
+    wrist_pitch_step: float = 0.1
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -674,7 +674,7 @@ class GraspObjectOperation(ManagedOperation):
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 print(" -> Displaying visual servoing GUI.")
-                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+                servo_ee_rgb = servo.ee_rgb
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
@@ -806,7 +806,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Add these to do some really hacky proportionate control
             # Add some random noise to avoid the robot getting stuck due to detection noise
-            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.05, 0.1)
+            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.05, 0.05)
             py = max(0.5, np.abs(2 * dy / target_mask.shape[0]))
 
             # Move the base and modify the wrist pitch

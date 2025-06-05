@@ -176,7 +176,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         text: str,
         point: Union[torch.Tensor, np.ndarray],
         distance_threshold: float = 0.1,
-        similarity_threshold: float = 0.2,
+        similarity_threshold: float = 0.21,
     ):
         """
         Running visual grounding is quite time consuming.
@@ -623,7 +623,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         else:
             return target_point, debug_text, image_id, point
 
-    def localize_with_feature_similarity(self, text, debug=True, return_debug=False):
+    def localize_with_feature_similarity(
+        self, text, similarity_threshold: float = 0.14, debug=True, return_debug=False
+    ):
         points, _, _, _ = self.semantic_memory.get_pointcloud()
         alignments = self.find_alignment_over_model(text).cpu()
         point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
@@ -651,7 +653,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
             )
         else:
-            cosine_similarity_check = alignments.max().item() > 0.2
+            cosine_similarity_check = alignments.max().item() > 0.21
             if cosine_similarity_check:
                 target_point = point
 

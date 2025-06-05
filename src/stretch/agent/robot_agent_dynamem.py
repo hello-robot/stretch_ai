@@ -222,7 +222,7 @@ class RobotAgent(RobotAgentBase):
             # )
             self.detection_model = YoloEPerception(confidence_threshold=0.05, size="l")
             semantic_memory_resolution = 0.05
-            image_shape = (320, 240)
+            image_shape = (360, 270)
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             semantic_memory_resolution=semantic_memory_resolution,
