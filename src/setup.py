@@ -53,14 +53,16 @@ setuptools.setup(
         # From openai
         "openai",
         "openai-clip",
+        # For gemini
+        "google-genai",
         # For Yolo
-        # "ultralytics",
+        "ultralytics>=8.3.146",
         # Hardware dependencies
         "hello-robot-stretch-urdf",
         "pyrealsense2",
         "urchin",
         # Visualization
-        "rerun-sdk>=0.18.0",
+        "rerun-sdk==0.18.0",
         # For siglip encoder
         "sentencepiece",
         # For git tools
@@ -68,9 +70,14 @@ setuptools.setup(
         # Configuration tools and neural networks
         "hydra-core",
         "timm>1.0.0",
-        "huggingface_hub[cli]",
-        "transformers>=4.39.2",
-        "accelerate",
+        "huggingface_hub[cli]>=0.24.7",
+        "open-clip-torch>=2.32.0",
+        "transformers>=4.50.0",
+        "retry",
+        "qwen_vl_utils",
+        "bitsandbytes",
+        "triton >= 2.3.1",
+        "accelerate >= 1.5.0",
         "einops",
         # Meta neural nets
         "segment-anything",

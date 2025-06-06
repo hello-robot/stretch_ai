@@ -204,13 +204,13 @@ else
     echo "Install detectron2 for perception (required by Detic)"
     git submodule update --init --recursive
     cd third_party/detectron2
-    pip install -e .
+    python -m pip install -e .
 
     echo "Install Detic for perception"
     cd ../../src/stretch/perception/detection/detic/Detic
     # Make sure it's up to date
     git submodule update --init --recursive
-    pip install -r requirements.txt
+    python -m pip install -r requirements.txt
 
     # cd ../../src/stretch/perception/detection/detic/Detic
     # Create folder for checkpoints and download

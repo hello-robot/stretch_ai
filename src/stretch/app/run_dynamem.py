@@ -85,7 +85,7 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--match-method",
     "--match_method",
-    type=click.Choice(["class", "feature"]),
+    type=click.Choice(["class(dynamem)", "feature"]),
     default="feature",
     help="feature for visual servoing",
 )
@@ -99,6 +99,12 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option("--device_id", default=0, type=int, help="Device ID for semantic sensor")
 @click.option(
     "--manipulation-only", "--manipulation", is_flag=True, help="For debugging manipulation"
+)
+@click.option(
+    "--cpu-only",
+    "--cpu",
+    is_flag=True,
+    help="Run everything on CPU",
 )
 def main(
     server_ip,
@@ -119,6 +125,7 @@ def main(
     debug_llm: bool = False,
     llm: str = "qwen25-3B-Instruct",
     manipulation_only: bool = False,
+    cpu_only: bool = False,
     **kwargs,
 ):
     """
@@ -146,6 +153,7 @@ def main(
         skip_confirmations=skip_confirmations,
         mllm=kwargs["mllm_for_visual_grounding"],
         manipulation_only=manipulation_only,
+        cpu_only=cpu_only,
     )
 
     if not manipulation_only:
