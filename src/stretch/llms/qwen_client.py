@@ -18,15 +18,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
-# Coder: 32B, 14B, 7B, 3B, 1.5B, 0.5B, (None, Instruct, Instruct-AWQ, Instruct-GGUF, Instruct-GPTQ-Int4, Instruct-GPTQ-Int8)
-# Math: 72B, 7B, 1.5B (None, Instruct)
-# "0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"
-# Deepseek: 1.5B, 7B, 14B, 32B
-
 qwen_typing_options = ["Math", "Coder", "Deepseek", None]
 qwen_quantization_options = {
-    None: [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
-    "Coder": [None, "AWQ", "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    None: [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Coder": [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
     "Math": [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
     "Deepseek": [None, "Int4", "Int8"],
 }
@@ -93,10 +88,7 @@ class Qwen25Client(AbstractLLMClient):
         if quantization is not None:
             quantization = quantization.lower()
             # Note: there were supposed to be other options but this is the only one that worked this way
-            if quantization == "awq":
-                model_kwargs["torch_dtype"] = torch.float16
-                model_name += "-AWQ"
-            elif quantization in ["int8", "int4"]:
+            if quantization in ["int8", "int4"]:
                 try:
                     import bitsandbytes  # noqa: F401
                     from transformers import BitsAndBytesConfig
@@ -191,7 +183,7 @@ class Qwen25VLClient:
         A simple API for Qwen2.5-VL models
 
         Parameters:
-            quantization: we support no quatization, AWQ, and bitsandbytes int4 and int8
+            quantization: we support no quatization, and bitsandbytes int4 and int8
         """
         self.system_prompt = prompt
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
@@ -214,11 +206,7 @@ class Qwen25VLClient:
         quantization_config = None
         if quantization is not None:
             quantization = quantization.lower()
-            # Note: we only support AWQ and bitsandbytes here
-            if quantization == "awq":
-                model_kwargs["torch_dtype"] = torch.float16
-                model_name += "-AWQ"
-            elif quantization in ["int8", "int4"]:
+            if quantization in ["int8", "int4"]:
                 try:
                     import bitsandbytes  # noqa: F401
                     from transformers import BitsAndBytesConfig

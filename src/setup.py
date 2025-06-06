@@ -56,7 +56,7 @@ setuptools.setup(
         # For gemini
         "google-genai",
         # For Yolo
-        # "ultralytics",
+        "ultralytics>=8.3.146",
         # Hardware dependencies
         "hello-robot-stretch-urdf",
         "pyrealsense2",
@@ -71,13 +71,12 @@ setuptools.setup(
         "hydra-core",
         "timm>1.0.0",
         "huggingface_hub[cli]>=0.24.7",
-        # "flash-attn",
+        "open-clip-torch>=2.32.0",
         "transformers>=4.50.0",
         "retry",
         "qwen_vl_utils",
         "bitsandbytes",
-        "autoawq>=0.1.5",
-        "triton >= 3.0.0",
+        "triton >= 2.3.1",
         "accelerate >= 1.5.0",
         "einops",
         # Meta neural nets

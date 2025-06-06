@@ -26,10 +26,10 @@ max_depth: 2.5
 
 # Object detection parameters
 detection:
-  module: "detic"
+  module: "yoloe"
   category_map_file: example_cat_map.json
   use_detic_viz: False
-  confidence_threshold: 0.2
+  confidence_threshold: 0.02
 
 # Point cloud cleanup
 filters:

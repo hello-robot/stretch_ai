@@ -16,6 +16,7 @@
 # license information maybe found below, if so.
 
 import os
+import random
 import time
 import timeit
 from datetime import datetime
@@ -76,8 +77,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 30
-    align_y_threshold: int = 25
+    align_x_threshold: int = 25
+    align_y_threshold: int = 18
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
@@ -86,7 +87,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.18
+    median_distance_when_grasping: float = 0.16
     lift_min_height: float = 0.1
     lift_max_height: float = 1.0
 
@@ -97,8 +98,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
-    base_x_step: float = 0.10
-    wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
+    base_x_step: float = 0.1
+    wrist_pitch_step: float = 0.1
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -113,7 +114,7 @@ class GraspObjectOperation(ManagedOperation):
     _grasp_lift_offset: float = 0.0  # -0.05
 
     # Visual servoing config
-    track_image_center: bool = False
+    track_image_center: bool = True  # Set to False if you want to use aruco marker, but since the position between gripper center and the image is fixed, this is not needed.
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
     detected_center_offset_x: int = 0  # -10
@@ -177,9 +178,9 @@ class GraspObjectOperation(ManagedOperation):
         self.talk = talk
         self.match_method = match_method
         self._try_open_loop = try_open_loop
-        if self.match_method not in ["class", "feature"]:
+        if self.match_method not in ["class", "feature", "class(dynamem)"]:
             raise ValueError(
-                f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
+                f"Unknown match method {self.match_method}. Should be 'class', 'feature', or 'class(dynamem)'."
             )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
@@ -262,7 +263,7 @@ class GraspObjectOperation(ManagedOperation):
 
         if self.verbose:
             print("[GRASP OBJECT] match method =", self.match_method)
-        if self.match_method == "class":
+        if self.match_method.startswith("class"):
 
             # Get the target class
             if self.agent.current_object is not None:
@@ -580,7 +581,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Compute the center of the image that we will be tracking
             if self.track_image_center:
-                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
+                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] * 13 // 20
             else:
                 center = self.gripper_aruco_detector.detect_center(servo.ee_rgb)
                 if center is not None:
@@ -593,6 +594,9 @@ class GraspObjectOperation(ManagedOperation):
             center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
+            if self.match_method == "class(dynamem)":
+                self.agent.semantic_sensor.update_vocabulary_list([self.target_object], 1)
+                self.agent.semantic_sensor.set_vocabulary(1)
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(servo, center=(center_x, center_y))
 
@@ -670,7 +674,7 @@ class GraspObjectOperation(ManagedOperation):
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 print(" -> Displaying visual servoing GUI.")
-                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+                servo_ee_rgb = servo.ee_rgb
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
@@ -801,8 +805,9 @@ class GraspObjectOperation(ManagedOperation):
                 lift += lift_component
 
             # Add these to do some really hacky proportionate control
-            px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
-            py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+            # Add some random noise to avoid the robot getting stuck due to detection noise
+            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.05, 0.05)
+            py = max(0.5, np.abs(2 * dy / target_mask.shape[0]))
 
             # Move the base and modify the wrist pitch
             # TODO: remove debug code
@@ -815,7 +820,7 @@ class GraspObjectOperation(ManagedOperation):
                 base_x += self.base_x_step * px
             print("base x =", base_x)
             if dy > self.align_y_threshold:
-                # Move in y - this means translate the base
+                # Move in y - this means move the wrist
                 wrist_pitch += -self.wrist_pitch_step * py
             elif dy < -1 * self.align_y_threshold:
                 wrist_pitch += self.wrist_pitch_step * py
@@ -948,7 +953,9 @@ class GraspObjectOperation(ManagedOperation):
             # dz = np.abs(head_pos[2] - relative_object_xyz[2])
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
-            pitch_from_vertical = np.arctan2(dy, dz)
+            # Since the camera is slightly tilted up, we need to subtract a bit from the pitch
+            pitch_from_vertical = np.arctan2(dy, dz) - 0.05
+            # pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
 

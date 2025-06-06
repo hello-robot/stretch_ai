@@ -39,7 +39,7 @@ from stretch.mapping.voxel import (
 )
 from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
-from stretch.perception.encoders.masksiglip_encoder import MaskSiglipEncoder
+from stretch.perception.encoders.siglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 

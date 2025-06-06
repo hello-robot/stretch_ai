@@ -56,12 +56,14 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
         discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
         self.discord_bot = discord_bot
+        self.cpu_only = cpu_only
 
         # Other parameters
         self.visual_servo = visual_servo
@@ -96,6 +98,7 @@ class DynamemTaskExecutor:
             server_ip=server_ip,
             mllm=mllm,
             manipulation_only=manipulation_only,
+            cpu_only=self.cpu_only,
         )
         self.agent.start()
 
@@ -164,9 +167,9 @@ class DynamemTaskExecutor:
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
-                match_method="feature",
+                match_method=self.match_method,
                 show_object_to_grasp=False,
-                show_servo_gui=True,
+                show_servo_gui=False,
                 delete_object_after_grasp=False,
             )
             # This retracts the arm

@@ -14,9 +14,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import timeit
 from datetime import datetime
-from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -45,10 +43,12 @@ from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
-from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
-from stretch.perception.encoders import MaskSiglipEncoder
+from stretch.perception.detection.yoloe import YoloEPerception
+# from stretch.perception.encoders.mobile_clip_encoder import MaskMobileClipEncoder
+from stretch.perception.encoders.clip_encoder import MaskClipEncoder
+from stretch.perception.encoders.siglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -73,7 +73,6 @@ class RobotAgent(RobotAgentBase):
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
         grasp_client: Optional[AbstractGraspClient] = None,
-        voxel_map: Optional[SparseVoxelMap] = None,
         debug_instances: bool = True,
         show_instances_detected: bool = False,
         use_instance_memory: bool = False,
@@ -84,6 +83,7 @@ class RobotAgent(RobotAgentBase):
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -109,7 +109,12 @@ class RobotAgent(RobotAgentBase):
         # For placing
         self.owl_sam_detector = None
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # cpu only is a lightweighted version of DynaMem for running everything on robot NUC
+        self.cpu_only = cpu_only
+        if self.cpu_only:
+            self.device = "cpu"
+        else:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
@@ -121,10 +126,6 @@ class RobotAgent(RobotAgentBase):
             self.log = "dynamem_log/" + log
 
         self.create_obstacle_map(parameters)
-
-        # Create voxel map information for multithreaded access
-        self._voxel_map_lock = Lock()
-        self.voxel_map_proxy = SparseVoxelMapProxy(self.voxel_map, self._voxel_map_lock)
 
         # ==============================================
         self.obs_count = 0
@@ -201,20 +202,37 @@ class RobotAgent(RobotAgentBase):
         """
         if self.manipulation_only:
             self.encoder = None
+        elif self.cpu_only:
+            # Assume we only have CPU, we will use CLIP ViT-B/16 for fast inference
+            self.encoder = MaskClipEncoder(
+                version="ViT-B/16", feature_matching_threshold=0.32, device=self.device
+            )
         else:
-            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+            # Use SIGLip-so400m for fast inference
+            self.encoder = MaskSiglipEncoder(
+                version="so400m", feature_matching_threshold=0.14, device=self.device
+            )
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
         if self.manipulation_only:
+            # No object detection, just need to test manipulation
             self.detection_model = None
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
         elif self.mllm:
+            # Use GPT4o to localize objects, we use OWLV2-B for fast inference
             self.detection_model = OwlPerception(
                 version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
             )
             semantic_memory_resolution = 0.1
+            image_shape = (360, 270)
+        elif self.cpu_only:
+            # Assume we only have CPU, we will use YOLOE-L for fast inference
+            self.detection_model = YoloEPerception(
+                confidence_threshold=0.05, device=self.device, size="l"
+            )
+            semantic_memory_resolution = 0.05
             image_shape = (360, 270)
         else:
             self.detection_model = OwlPerception(
@@ -277,140 +295,6 @@ class RobotAgent(RobotAgentBase):
             collapse_panels=True,
         )
         rr.send_blueprint(my_blueprint)
-
-    def update_map_with_pose_graph(self):
-        """
-
-        Update our voxel map using a pose graph. Used for realtime update.
-        By default DynaMem will ask the robot stop to take new observations so this function will not be called.
-
-        """
-
-        t0 = timeit.default_timer()
-        self.pose_graph = self.robot.get_pose_graph()
-
-        t1 = timeit.default_timer()
-
-        # Update past observations based on our new pose graph
-        # print("Updating past observations")
-        self._obs_history_lock.acquire()
-        for idx in range(len(self.obs_history)):
-            lidar_timestamp = self.obs_history[idx].lidar_timestamp
-            gps_past = self.obs_history[idx].gps
-
-            for vertex in self.pose_graph:
-                if abs(vertex[0] - lidar_timestamp) < 0.05:
-                    # print(f"Exact match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    # print(
-                    #     f"obs gps: {self.obs_history[idx].gps}, compass: {self.obs_history[idx].compass}"
-                    # )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-                # check if the gps is close to the gps of the pose graph node
-                elif (
-                    np.linalg.norm(gps_past - np.array([vertex[1], vertex[2]])) < 0.3
-                    and self.obs_history[idx].pose_graph_timestamp is None
-                ):
-                    # print(f"Close match found! {vertex[0]} and obs {idx}: {lidar_timestamp}")
-
-                    self.obs_history[idx].is_pose_graph_node = True
-                    self.obs_history[idx].pose_graph_timestamp = vertex[0]
-                    self.obs_history[idx].initial_pose_graph_gps = np.array([vertex[1], vertex[2]])
-                    self.obs_history[idx].initial_pose_graph_compass = np.array(
-                        [
-                            vertex[3],
-                        ]
-                    )
-
-                    if (
-                        self.obs_history[idx].task_observations is None
-                        and self.semantic_sensor is not None
-                    ):
-                        self.obs_history[idx] = self.semantic_sensor.predict(self.obs_history[idx])
-
-                elif self.obs_history[idx].pose_graph_timestamp == vertex[0]:
-                    # Calculate delta between old (initial pose graph) vertex gps and new vertex gps
-                    delta_gps = vertex[1:3] - self.obs_history[idx].initial_pose_graph_gps
-                    delta_compass = vertex[3] - self.obs_history[idx].initial_pose_graph_compass
-
-                    # Calculate new gps and compass
-                    new_gps = self.obs_history[idx].gps + delta_gps
-                    new_compass = self.obs_history[idx].compass + delta_compass
-
-                    # print(f"Updating obs {idx} with new gps: {new_gps}, compass: {new_compass}")
-                    self.obs_history[idx].gps = new_gps
-                    self.obs_history[idx].compass = new_compass
-
-        t2 = timeit.default_timer()
-        # print(f"Done updating past observations. Time: {t2- t1}")
-
-        # print("Updating voxel map")
-        t3 = timeit.default_timer()
-        # self.voxel_map.reset()
-        # for obs in self.obs_history:
-        #     if obs.is_pose_graph_node:
-        #         self.voxel_map.add_obs(obs)
-        if len(self.obs_history) > 0:
-            obs = self.obs_history[-1]
-        else:
-            obs = None
-
-        self._obs_history_lock.release()
-
-        if obs is not None and self.robot.in_navigation_mode():
-            self.voxel_map.process_rgbd_images(obs.rgb, obs.depth, obs.camera_K, obs.camera_pose)
-
-        robot_center = np.zeros(3)
-        robot_center[:2] = self.robot.get_base_pose()[:2]
-
-        t4 = timeit.default_timer()
-        # print(f"Done updating voxel map. Time: {t4 - t3}")
-
-        if self.use_scene_graph:
-            self._update_scene_graph()
-            self.scene_graph.get_relationships()
-
-        t5 = timeit.default_timer()
-        # print(f"Done updating scene graph. Time: {t5 - t4}")
-
-        self._obs_history_lock.acquire()
-
-        # print(f"Total observation count: {len(self.obs_history)}")
-
-        # Clear out observations that are too old and are not pose graph nodes
-        if len(self.obs_history) > 500:
-            # print("Clearing out old observations")
-            # Remove 10 oldest observations that are not pose graph nodes
-            del_count = 0
-            del_idx = 0
-            while del_count < 15 and len(self.obs_history) > 0 and del_idx < len(self.obs_history):
-                # print(f"Checking obs {self.obs_history[del_idx].lidar_timestamp}. del_count: {del_count}, len: {len(self.obs_history)}, is_pose_graph_node: {self.obs_history[del_idx].is_pose_graph_node}")
-                if not self.obs_history[del_idx].is_pose_graph_node:
-                    # print(f"Deleting obs {self.obs_history[del_idx].lidar_timestamp}")
-                    del self.obs_history[del_idx]
-                    del_count += 1
-                else:
-                    del_idx += 1
-
-                    if del_idx >= len(self.obs_history):
-                        break
-
-        t6 = timeit.default_timer()
-        # print(f"Done clearing out old observations. Time: {t6 - t5}")
-        self._obs_history_lock.release()
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
@@ -531,7 +415,11 @@ class RobotAgent(RobotAgentBase):
         if text is not None and text != "" and self.space.traj is not None:
             print("saved traj", self.space.traj)
             traj_target_point = self.space.traj[-1]
-            if self.voxel_map.verify_point(text, traj_target_point):
+            if hasattr(self.encoder, "feature_matching_threshold") and self.voxel_map.verify_point(
+                text,
+                traj_target_point,
+                similarity_threshold=self.encoder.feature_matching_threshold,
+            ):
                 localized_point = traj_target_point
                 debug_text += "## Last visual grounding results looks fine so directly use it.\n"
 
@@ -553,7 +441,6 @@ class RobotAgent(RobotAgentBase):
             mode = "exploration"
 
         if obs is not None and mode == "navigation":
-            print(obs, len(self.voxel_map.observations))
             obs = self.voxel_map.find_obs_id_for_text(text)
             rgb = self.voxel_map.observations[obs - 1].rgb
             self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
@@ -651,6 +538,9 @@ class RobotAgent(RobotAgentBase):
         """
         # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
+        # if not os.path.exists(self.log):
+        #     os.makedirs(self.log)
+        # rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
         finished = False
         step = 0
         end_point = None
@@ -692,9 +582,14 @@ class RobotAgent(RobotAgentBase):
             )
         else:
             if self.owl_sam_detector is None:
-                from stretch.perception.detection.owl import OWLSAMProcessor
+                # We can opt to use OWLv2 + SAMv2 for accurate object detection, but the placing receptacles are usually very easy to detect,
+                # so we don't see the point of installing SAMv2 and using it
+                # from stretch.perception.detection.owl import OWLSAMProcessor
 
-                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+                # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+                self.owl_sam_detector = YoloEPerception(
+                    confidence_threshold=0.05, size="l", device=self.device
+                )
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,
