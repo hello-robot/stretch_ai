@@ -25,7 +25,6 @@ from torch import Tensor
 from stretch.llms import OpenaiClient
 from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from stretch.llms.qwen_client import Qwen25VLClient
-from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
@@ -59,7 +58,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder: Optional[MaskSiglipEncoder] = None,
+        encoder = None,
         map_2d_device: str = "cpu",
         device: Optional[str] = None,
         use_instance_memory: bool = False,

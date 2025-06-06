@@ -254,7 +254,7 @@ on CPU, especially your robot NUC. While this lightweighted version is not as go
 
 Try this out by calling
 ```bash
-python -m stretch.app.run_dynamem --cpu
+python -m stretch.app.run_dynamem  --robot_ip $ROBOT_IP --cpu --match-method "class(dynamem)" --vs
 ```
 
 ## Cite Dynamem

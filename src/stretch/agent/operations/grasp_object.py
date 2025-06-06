@@ -78,7 +78,7 @@ class GraspObjectOperation(ManagedOperation):
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
     align_x_threshold: int = 25
-    align_y_threshold: int = 20
+    align_y_threshold: int = 18
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose

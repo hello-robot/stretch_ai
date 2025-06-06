@@ -46,7 +46,8 @@ from stretch.mapping.voxel import (
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.detection.yoloe import YoloEPerception
-from stretch.perception.encoders.mobile_clip_encoder import MaskMobileClipEncoder
+# from stretch.perception.encoders.mobile_clip_encoder import MaskMobileClipEncoder
+from stretch.perception.encoders.clip_encoder import MaskClipEncoder
 from stretch.perception.encoders.siglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
@@ -202,9 +203,9 @@ class RobotAgent(RobotAgentBase):
         if self.manipulation_only:
             self.encoder = None
         elif self.cpu_only:
-            # Assume we only have CPU, we will use MobileClip-S2 for fast inference
-            self.encoder = MaskMobileClipEncoder(
-                version="S2", feature_matching_threshold=0.21, device=self.device
+            # Assume we only have CPU, we will use CLIP ViT-B/16 for fast inference
+            self.encoder = MaskClipEncoder(
+                version="ViT-B/16", feature_matching_threshold=0.32, device=self.device
             )
         else:
             # Use SIGLip-so400m for fast inference
