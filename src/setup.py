@@ -29,9 +29,10 @@ setuptools.setup(
     include_package_data=True,
     package_data={"stretch": ["config/**/*.yaml", "perception/*.tsv", "simulation/models/*"]},
     install_requires=[
-        # Machine learning code
-        "torch<2.4",
-        "torchvision",
+        # Machine learning code, we will install these packages in install.sh instead
+        # "torch<2.4",
+        # "torchvision",
+        # "torchaudio",
         # General utilities
         "pyyaml",
         "pyzmq",

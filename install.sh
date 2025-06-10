@@ -80,7 +80,7 @@ if [ "$CPU_ONLY" == "true" ]; then
         ENV_NAME=stretch_ai_cpu_${VERSION}
     fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
-    export PYTORCH_VERSION=2.1.2
+    # export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
     if [ "$NO_VERSION" == "true" ]; then
@@ -88,7 +88,7 @@ else
     else
         ENV_NAME=stretch_ai_${VERSION}
     fi
-    export PYTORCH_VERSION=2.3.1
+    # export PYTORCH_VERSION=2.3.1
 fi
 
 echo "=============================================="
@@ -96,7 +96,7 @@ echo "         INSTALLING STRETCH AI TOOLS"
 echo "=============================================="
 echo "---------------------------------------------"
 echo "Environment name: $ENV_NAME"
-echo "PyTorch Version: $PYTORCH_VERSION"
+# echo "PyTorch Version: $PYTORCH_VERSION"
 echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
 echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
@@ -105,7 +105,7 @@ echo "---------------------------------------------"
 echo "Notes:"
 echo " - This script will remove the existing environment if it exists."
 echo " - This script will install the following packages:"
-echo "   - pytorch=$PYTORCH_VERSION"
+# echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
 if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then

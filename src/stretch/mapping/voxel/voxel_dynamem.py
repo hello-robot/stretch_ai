@@ -58,7 +58,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder = None,
+        encoder=None,
         map_2d_device: str = "cpu",
         device: Optional[str] = None,
         use_instance_memory: bool = False,
@@ -141,7 +141,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             from stretch.llms.gemini_client import GeminiClient
             from stretch.llms.prompts.eqa_prompt import EQA_PROMPT
 
-            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-pro-preview-03-25")
+            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-flash-preview-05-20")
 
         # Attributes for EQA, If you are not running EQA module, this will stay the same.
         self._question: Optional[str] = None
