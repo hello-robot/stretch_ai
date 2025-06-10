@@ -99,7 +99,7 @@ class GraspObjectOperation(ManagedOperation):
     # Movement parameters
     lift_arm_ratio: float = 0.05
     base_x_step: float = 0.1
-    wrist_pitch_step: float = 0.12
+    wrist_pitch_step: float = 0.15
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -217,7 +217,7 @@ class GraspObjectOperation(ManagedOperation):
         target_mask: np.ndarray,
         center_y: int,
         center_x: int,
-        local_region_size: int = 11,
+        local_region_size: int = 15,
     ) -> float:
         """Compute the center depth of the object.
 
