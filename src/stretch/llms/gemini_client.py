@@ -21,15 +21,6 @@ class GeminiClient(AbstractLLMClient):
     Parameters:
         use_specific_objects(bool): override list of objects and have the AI only return those."""
 
-    model_choices = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-pro",
-        "gemini-1.5-flash",
-        "gemini-2.5-pro-preview-03-25",
-        "gemini-2.5-flash-preview-04-17",
-    ]
-
     def __init__(
         self,
         prompt: Union[str, AbstractPromptBuilder],
@@ -38,9 +29,6 @@ class GeminiClient(AbstractLLMClient):
     ):
         super().__init__(prompt, prompt_kwargs)
         self.model = model
-        assert (
-            self.model in self.model_choices
-        ), f"model must be one of {self.model_choices}, got {self.model}"
 
         if "GOOGLE_API_KEY" in os.environ:
             self._gemini = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
