@@ -56,12 +56,14 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
         discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
         self.discord_bot = discord_bot
+        self.cpu_only = cpu_only
 
         # Other parameters
         self.visual_servo = visual_servo
@@ -96,6 +98,7 @@ class DynamemTaskExecutor:
             server_ip=server_ip,
             mllm=mllm,
             manipulation_only=manipulation_only,
+            cpu_only=self.cpu_only,
         )
         self.agent.start()
 
@@ -164,9 +167,9 @@ class DynamemTaskExecutor:
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
-                match_method="feature",
+                match_method=self.match_method,
                 show_object_to_grasp=False,
-                show_servo_gui=True,
+                show_servo_gui=False,
                 delete_object_after_grasp=False,
             )
             # This retracts the arm
@@ -285,9 +288,12 @@ class DynamemTaskExecutor:
                 # Navigation
 
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
-                if self.skip_confirmations or (
-                    not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                if not self.manipulation_only and (
+                    self.skip_confirmations
+                    or (
+                        not self.skip_confirmations
+                        and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                    )
                 ):
                     self.robot.move_to_nav_posture()
                     point = self._find(args)
@@ -321,9 +327,12 @@ class DynamemTaskExecutor:
                 # Navigation
 
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
-                if self.skip_confirmations or (
-                    not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                if not self.manipulation_only and (
+                    self.skip_confirmations
+                    or (
+                        not self.skip_confirmations
+                        and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                    )
                 ):
                     point = self._find(args)
                 # Or the user explicitly tells that he or she does not want to run navigation.
@@ -401,3 +410,37 @@ class DynamemTaskExecutor:
             i += 1
         # If we did not explicitly receive a quit command, we are not yet done.
         return True
+
+
+from stretch.agent.robot_agent_eqa import RobotAgent as RobotAgentEQA
+
+
+class EQAExecuter:
+    def __init__(self, agent: RobotAgentEQA, discord_bot=None) -> None:
+        """
+        Initialize the executor. Make sure EQA module can be used in the same way as DynaMem module
+        TODO: Itegrate this module with DynaMem
+        """
+
+        self.agent = agent
+        self.discord_bot = discord_bot
+
+    def rotate_in_place(self):
+        self.agent.rotate_in_place()
+
+    def __call__(self, response: List[Tuple[str, str]], channel=None):
+        """Answer the question given by the LLM bot.
+
+        Args:
+            response: A question
+
+        Returns:
+            Answer
+        """
+        discord_text, relevant_images = self.agent.run_eqa(response)
+        if channel is not None:
+            self.discord_bot.send_message(
+                channel=channel,
+                message=discord_text,
+                content=numpy_image_to_bytes(relevant_images),
+            )

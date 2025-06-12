@@ -100,8 +100,8 @@ def capture_and_process_image(mode, obj, socket, hello_robot):
     head_tilt_angles = [0, -0.1, 0.1]
     tilt_retries, side_retries = 1, 0
     retry_flag = True
-    head_tilt = -0.65
-    head_pan = -1.57
+    head_tilt = hello_robot.tilt
+    head_pan = hello_robot.pan
 
     while retry_flag:
 

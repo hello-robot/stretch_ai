@@ -96,7 +96,7 @@ echo "         INSTALLING STRETCH AI TOOLS"
 echo "=============================================="
 echo "---------------------------------------------"
 echo "Environment name: $ENV_NAME"
-echo "PyTorch Version: $PYTORCH_VERSION"
+# echo "PyTorch Version: $PYTORCH_VERSION"
 echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
 echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
@@ -105,7 +105,7 @@ echo "---------------------------------------------"
 echo "Notes:"
 echo " - This script will remove the existing environment if it exists."
 echo " - This script will install the following packages:"
-echo "   - pytorch=$PYTORCH_VERSION"
+# echo "   - pytorch=$PYTORCH_VERSION"
 echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
 if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
@@ -204,13 +204,13 @@ else
     echo "Install detectron2 for perception (required by Detic)"
     git submodule update --init --recursive
     cd third_party/detectron2
-    pip install -e .
+    python -m pip install -e .
 
     echo "Install Detic for perception"
     cd ../../src/stretch/perception/detection/detic/Detic
     # Make sure it's up to date
     git submodule update --init --recursive
-    pip install -r requirements.txt
+    python -m pip install -r requirements.txt
 
     # cd ../../src/stretch/perception/detection/detic/Detic
     # Create folder for checkpoints and download
