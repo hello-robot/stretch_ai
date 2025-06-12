@@ -80,7 +80,7 @@ if [ "$CPU_ONLY" == "true" ]; then
         ENV_NAME=stretch_ai_cpu_${VERSION}
     fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
-    # export PYTORCH_VERSION=2.1.2
+    export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
     if [ "$NO_VERSION" == "true" ]; then
@@ -88,7 +88,7 @@ else
     else
         ENV_NAME=stretch_ai_${VERSION}
     fi
-    # export PYTORCH_VERSION=2.3.1
+    export PYTORCH_VERSION=2.3.1
 fi
 
 echo "=============================================="

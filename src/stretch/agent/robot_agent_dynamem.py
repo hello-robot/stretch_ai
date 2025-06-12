@@ -237,7 +237,7 @@ class RobotAgent(RobotAgentBase):
             image_shape = (360, 270)
         else:
             self.detection_model = OwlPerception(
-                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
+                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.1
             )
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)

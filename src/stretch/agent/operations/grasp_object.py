@@ -87,14 +87,14 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.165
+    median_distance_when_grasping: float = 0.18
     lift_min_height: float = 0.1
     lift_max_height: float = 1.0
 
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
-    # grasp_distance = 0.12
-    grasp_distance = 0.14
+    grasp_distance = 0.12
+    # grasp_distance = 0.14
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
@@ -492,7 +492,7 @@ class GraspObjectOperation(ManagedOperation):
 
         # Lifted joint state
         lifted_joint_state = joint_state.copy()
-        lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
+        lifted_joint_state[HelloStretchIdx.LIFT] += 0.3
         self.robot.arm_to(lifted_joint_state, head=constants.look_at_ee, blocking=True)
         return True
 
@@ -699,12 +699,16 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Concatenate the two images side by side
                 viz_image = np.concatenate([servo_ee_rgb, viz_ee_depth], axis=1)
-                cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
-                cv2.imshow("Visual Servoing", viz_image)
-                cv2.waitKey(1)
-                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
-                if res == ord("q"):
-                    break
+                from matplotlib import pyplot as plt
+
+                plt.imshow(viz_image)
+                plt.show()
+                # cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
+                # cv2.imshow("Visual Servoing", viz_image)
+                # cv2.waitKey(1)
+                # res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                # if res == ord("q"):
+                #     break
 
             if self.debug_grasping:
                 # show all four images
@@ -985,6 +989,10 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
 
         # Go back to manipulation posture
+        # Shrink arm first
+        current_state = self.robot.get_joint_positions()
+        current_state[HelloStretchIdx.ARM] = 0
+        self.robot.arm_to(current_state)
         self.robot.move_to_manip_posture()
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.35):
