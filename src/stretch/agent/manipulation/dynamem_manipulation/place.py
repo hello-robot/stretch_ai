@@ -124,7 +124,7 @@ class Placing:
         transformed_points = np.dot(points1, cam_to_3d_rot)
 
         # Removing floor points from point cloud
-        floor_mask = transformed_points[:, 1] > -1.25
+        floor_mask = transformed_points[:, 1] > -1.2
         transformed_points = transformed_points[floor_mask]
         transformed_x = transformed_points[:, 0]
         transformed_y = transformed_points[:, 1]
@@ -166,7 +166,7 @@ class Placing:
                 rerun_name="proposed_placing_location",
             )
 
-        point[1] += 0.1
+        point[1] += 0.15
         transformed_point = cam_to_3d_rot @ point
         print(f"Placing point of Object relative to camera: {transformed_point}")
 

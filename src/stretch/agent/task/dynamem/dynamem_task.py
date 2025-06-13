@@ -169,7 +169,7 @@ class DynamemTaskExecutor:
                 object_xyz=point,
                 match_method=self.match_method,
                 show_object_to_grasp=False,
-                show_servo_gui=False,
+                show_servo_gui=True,
                 delete_object_after_grasp=False,
             )
             # This retracts the arm
