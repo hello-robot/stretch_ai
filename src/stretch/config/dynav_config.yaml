@@ -25,6 +25,7 @@ min_depth: 0.25
 max_depth: 2.5
 
 # Object detection parameters
+# We don't use these parameters for now as we use whether we use CUP or GPU to decide which model to use, but we keep them here for future reference.
 detection:
   module: "owlsam"
   category_map_file: example_cat_map.json

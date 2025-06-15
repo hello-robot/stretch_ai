@@ -64,6 +64,10 @@ class DynamemTaskExecutor:
         self.parameters = parameters
         self.discord_bot = discord_bot
         self.cpu_only = cpu_only
+        # If there is no GPU, we have to use CPU
+        if not torch.cuda.is_available():
+            print("Setting up to use CPU as there is no GPU!")
+            self.cpu_only = True
 
         # Other parameters
         self.visual_servo = visual_servo
@@ -80,6 +84,7 @@ class DynamemTaskExecutor:
         # Create semantic sensor if visual servoing is enabled
         print("- Create semantic sensor if visual servoing is enabled")
         if self.visual_servo:
+            self.parameters["detection"]["module"] = "yoloe" if self.cpu_only else "owlsam"
             self.semantic_sensor = create_semantic_sensor(
                 parameters=self.parameters,
                 device_id=device_id,
