@@ -124,7 +124,7 @@ class Placing:
         transformed_points = np.dot(points1, cam_to_3d_rot)
 
         # Removing floor points from point cloud
-        floor_mask = transformed_points[:, 1] > -1.2
+        floor_mask = transformed_points[:, 1] > -1.25
         transformed_points = transformed_points[floor_mask]
         transformed_x = transformed_points[:, 0]
         transformed_y = transformed_points[:, 1]
