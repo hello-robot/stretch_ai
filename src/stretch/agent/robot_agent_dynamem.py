@@ -585,12 +585,14 @@ class RobotAgent(RobotAgentBase):
             if self.owl_sam_detector is None:
                 # We can opt to use OWLv2 + SAMv2 for accurate object detection, but the placing receptacles are usually very easy to detect,
                 # so we don't see the point of installing SAMv2 and using it
-                from stretch.perception.detection.owl import OWLSAMProcessor
+                # from stretch.perception.detection.owl import OWLSAMProcessor
 
-                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
-                # self.owl_sam_detector = YoloEPerception(
-                #     confidence_threshold=0.05, size="l", device=self.device
-                # )
+                # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+
+                # A misnomer, this is actually YOLOE while its named as self.owl_sam_detector
+                self.owl_sam_detector = YoloEPerception(
+                    confidence_threshold=0.05, size="l", device=self.device
+                )
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,
