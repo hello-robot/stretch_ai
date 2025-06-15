@@ -211,7 +211,7 @@ class RobotAgent(RobotAgentBase):
         else:
             # Use SIGLip-so400m for fast inference
             self.encoder = MaskSiglipEncoder(
-                version="so400m", feature_matching_threshold=0.14, device=self.device
+                version="so400m", feature_matching_threshold=0.135, device=self.device
             )
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
@@ -237,7 +237,7 @@ class RobotAgent(RobotAgentBase):
             image_shape = (360, 270)
         else:
             self.detection_model = OwlPerception(
-                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.1
+                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.15
             )
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)
@@ -588,6 +588,8 @@ class RobotAgent(RobotAgentBase):
                 # from stretch.perception.detection.owl import OWLSAMProcessor
 
                 # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+
+                # A misnomer, this is actually YOLOE while its named as self.owl_sam_detector
                 self.owl_sam_detector = YoloEPerception(
                     confidence_threshold=0.05, size="l", device=self.device
                 )
