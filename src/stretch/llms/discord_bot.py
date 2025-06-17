@@ -17,7 +17,7 @@ from termcolor import colored
 
 # import stretch.utils.logger as logger
 from stretch.agent.robot_agent import RobotAgent
-from stretch.agent.task.dynamem import DynamemTaskExecutor
+from stretch.agent.task.dynamem import DynamemTaskExecutor, EQAExecuter
 from stretch.agent.task.pickup import PickupExecutor
 from stretch.llms import PickupPromptBuilder, get_llm_client
 from stretch.utils.discord_bot import DiscordBot, Task
@@ -117,11 +117,17 @@ class StretchDiscordBot(DiscordBot):
                 manipulation_only=manipulation_only,
                 discord_bot=self,
             )  # type: ignore
+        elif self.task == "eqa":
+            self.executor = EQAExecuter(agent, discord_bot=self)  # type: ignore
         else:
             raise NotImplementedError(f"Task {task} is not implemented.")
 
         # Get the LLM client
-        self.llm_client = get_llm_client(llm, prompt=prompt)
+        # if task is eqa, all llms will be created within self.agent, llm_client will not be used.
+        if self.task != "eqa":
+            self.llm_client = get_llm_client(llm, prompt=prompt)
+        else:
+            self.llm_client = None
 
         self._llm_lock = threading.Lock()
 
@@ -246,11 +252,14 @@ class StretchDiscordBot(DiscordBot):
             print(colored("Error in handling task: " + str(e), "red"))
 
         with self._llm_lock:
-            response = self.llm_client(text, verbose=True)
-            print("Response:", response)
-            parsed_response = self.prompt.parse_response(response)
-            print("Parsed response:", parsed_response)
-            self.add_robot_plan(parsed_response, channel=task.channel)
+            if self.task != "eqa":
+                response = self.llm_client(text, verbose=True)
+                print("Response:", response)
+                parsed_response = self.prompt.parse_response(response)
+                print("Parsed response:", parsed_response)
+                self.add_robot_plan(parsed_response, channel=task.channel)
+            else:
+                self.add_robot_plan(text, channel=task.channel)
 
     def add_robot_plan(self, response: List[Tuple[str, str]], channel: discord.TextChannel):
         """Add a task to the task queue."""
@@ -265,6 +274,8 @@ class StretchDiscordBot(DiscordBot):
                 with self._plan_lock:
                     response, channel = self.next_plan
                     self.next_plan = None
+                # response is in the form of "User: ******"
+                response = response.split(":", 1)[1]
                 self.executor(response, channel=channel)
             else:
                 time.sleep(0.01)

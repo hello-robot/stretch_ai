@@ -85,23 +85,23 @@ class SAM2Perception(PerceptionModule):
         # to download sam weights.
         # Here we still provide weight checking and automatic downloading.
         # By default, we use the largest model now.
-        base_url = "https://dl.fbaipublicfiles.com/segment_anything_2/072824/"
+        base_url = "https://dl.fbaipublicfiles.com/segment_anything_2/092824/"
         if configuration == "t":
-            checkpoint = "./sam2_hiera_tiny.pt"
-            model_cfg = "sam2_hiera_t.yaml"
-            url = base_url + "sam2_hiera_tiny.pt"
+            checkpoint = "./sam2.1_hiera_tiny.pt"
+            model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
+            url = base_url + "sam2.1_hiera_tiny.pt"
         elif configuration == "s":
-            checkpoint = "./sam2_hiera_small.pt"
-            model_cfg = "sam2_hiera_s.yaml"
-            url = base_url + "sam2_hiera_small.pt"
+            checkpoint = "./sam2.1_hiera_small.pt"
+            model_cfg = "configs/sam2.1/sam2.1_hiera_s.yaml"
+            url = base_url + "sam2.1_hiera_small.pt"
         elif configuration == "b+":
-            checkpoint = "./sam2_hiera_base_plus.pt"
-            model_cfg = "sam2_hiera_b+.yaml"
-            url = base_url + "sam2_hiera_base_plus.pt"
+            checkpoint = "./sam2.1_hiera_base_plus.pt"
+            model_cfg = "configs/sam2.1/sam2.1_hiera_b+.yaml"
+            url = base_url + "sam2.1_hiera_base_plus.pt"
         else:
-            checkpoint = "./sam2_hiera_large.pt"
-            model_cfg = "sam2_hiera_l.yaml"
-            url = base_url + "sam2_hiera_large.pt"
+            checkpoint = "./sam2.1_hiera_large.pt"
+            model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
+            url = base_url + "sam2.1_hiera_large.pt"
         if not os.path.exists(checkpoint):
             wget.download(url, out=checkpoint)
 
