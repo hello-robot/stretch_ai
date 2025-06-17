@@ -225,6 +225,13 @@ If you do not have access to AnyGrasp, you can run with the Stretch AI Visual Se
 python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --visual-servo
 ```
 
+If you use this manipulation on GPU, it will use Owlv2 + SAMv2 as segmentation models. This means that you need to install SAMv2. **Be aware that Stretch AI does not install SAMvs by default**, so you need to install SAMv2 yourself. Following these commands:
+
+```
+cd third_party/segment-anything-2
+pip install -e .
+```
+
 ### Running with the LLM Agent
 
 You can also run an equivalent of the [LLM agent](llm_agent.md) with Dynamem. In this case, you can run Dynamem with the following command:
