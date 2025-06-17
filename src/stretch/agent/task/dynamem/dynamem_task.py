@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+import torch
 from PIL import Image
 
 from stretch.agent.operations import GraspObjectOperation
