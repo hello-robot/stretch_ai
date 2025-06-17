@@ -826,7 +826,7 @@ class InstanceMemory:
                 else:
                     # get instance view
                     if self.captioner is not None:
-                        # ViT_GPT2, Moondream, and GiT captioners take image of shape (H, W, C)
+                        # ViT_GPT2 and GiT captioners take image of shape (H, W, C)
                         # They also require the image to be scaled up cropped_image's pixel values within [0, 256)
                         text_description = self.captioner.caption_image(
                             cropped_image.to(dtype=torch.uint8)

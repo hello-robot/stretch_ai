@@ -24,10 +24,6 @@ def test_get_captioner():
     assert captioner is not None
     assert captioner.__class__.__name__ == "GitCaptioner"
 
-    captioner = get_captioner("moondream", {})
-    assert captioner is not None
-    assert captioner.__class__.__name__ == "MoondreamCaptioner"
-
     captioner = get_captioner("vit_gpt2", {})
     assert captioner is not None
     assert captioner.__class__.__name__ == "VitGPT2Captioner"
@@ -60,6 +56,5 @@ def test_get_captioner_all(captioner_name):
 if __name__ == "__main__":
     test_get_captioner()
     test_get_captioner_all("git")
-    test_get_captioner_all("moondream")
     test_get_captioner_all("vit_gpt2")
     print("All tests passed!")
