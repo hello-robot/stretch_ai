@@ -39,7 +39,6 @@ max_depth: 2.0
 
 # Object detection parameters
 # Recommendations for this part: 
-# For yolo world, threshold should be 0.05 - 0.2, for Detic, threshold should be < 0.5
 # If you want to detect as many objects in the environment, threshold should be low
 # If you want to determine whether one object exists, 
 # you'd better refer to the official documentation for the best threshold hyperparemeters

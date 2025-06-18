@@ -87,28 +87,6 @@ class OvmmPerception:
             from stretch.perception.detection.sam2 import SAM2Perception
 
             self._segmentation = SAM2Perception()
-
-        elif self._detection_module == "yolo":
-            from stretch.perception.detection.yolo import YoloPerception
-
-            self._segmentation = YoloPerception(
-                sem_gpu_id=gpu_device_id,
-                verbose=verbose,
-                **module_kwargs,
-            )
-        elif self._detection_module == "yolo_world":
-            from stretch.perception.detection.yolo_world import YoloWorldPerception
-
-            yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "m")
-            yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.05)
-
-            self._segmentation = YoloWorldPerception(
-                sem_gpu_id=gpu_device_id,
-                size=yolo_world_model_size,
-                verbose=verbose,
-                confidence_threshold=yolo_threshold,
-                **module_kwargs,
-            )
         elif self._detection_module == "yoloe":
             from stretch.perception.detection.yoloe import YoloEPerception
 
@@ -125,7 +103,7 @@ class OvmmPerception:
             from stretch.perception.detection.owl import OWLSAMProcessor
 
             self._segmentation = OWLSAMProcessor(
-                version="owlv2-B-p16-ensemble", confidence_threshold=0.1
+                version="owlv2-L-p14-ensemble", confidence_threshold=0.1
             )
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
