@@ -19,8 +19,7 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m pip install --upgrade pip
 
 # Install audio dependencies
-RUN python3 -m pip install --user pyaudio simpleaudio sounddevice google-cloud-texttospeech \
-    overrides pydub gtts
+RUN python3 -m pip install --user pyaudio simpleaudio sounddevice overrides pydub
 
 # Other dependencies - networking and visualization
 RUN python3 -m pip install --user pyzmq rerun-sdk pyliblzfse

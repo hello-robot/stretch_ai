@@ -86,8 +86,6 @@ setuptools.setup(
         # UI tools
         "termcolor",
         # Audio
-        "google-cloud-texttospeech",  # online TTS engine, requiring credentials.
-        "gtts",  # online TTS engine, not requiring credentials.
         "librosa",  # audio analysis (e.g., spectral similarity)
         "PyAudio>=0.2.14",  # the version specification is necessary because apt has 0.2.12 which is incompatible with recent numpy
         "openai-whisper",
@@ -97,7 +95,7 @@ setuptools.setup(
         "simpleaudio",  # playback audio
         "sounddevice",  # Suppresses ALSA warnings when launching PyAudio
         # "wave",
-        # These are not supported in python 3.12
+        # These are not supported > python 3.11
         "scikit-fmm",
         "open3d",
     ],
