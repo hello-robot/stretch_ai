@@ -62,8 +62,8 @@ class PyTTSx3TextToSpeech(AbstractTextToSpeech):
         self.voice_id = "default"
 
         # Initialize the speeds
-        self.slow_speed = 100  # wpm
-        self.default_speed = 150  # wpm
+        self.slow_speed = 40  # wpm
+        self.default_speed = 80  # wpm
 
     @AbstractTextToSpeech.voice_id.setter  # type: ignore
     @override  # inherit the docstring from the parent class
