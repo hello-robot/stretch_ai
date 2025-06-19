@@ -80,7 +80,6 @@ if [ "$CPU_ONLY" == "true" ]; then
         ENV_NAME=stretch_ai_cpu_${VERSION}
     fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
-    export PYTORCH_VERSION=2.1.2
 else
     export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
     if [ "$NO_VERSION" == "true" ]; then
@@ -88,7 +87,6 @@ else
     else
         ENV_NAME=stretch_ai_${VERSION}
     fi
-    export PYTORCH_VERSION=2.3.1
 fi
 
 echo "=============================================="
@@ -152,12 +150,13 @@ if [ "$NO_REMOVE" == "false" ]; then
     $MAMBA env remove -n $ENV_NAME -y || true
 fi
 # If using cpu only, create a separate environment
-if [ "$CPU_ONLY" == "true" ]; then
-    $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision torchaudio cpuonly python=$PYTHON_VERSION -y
-else
-    # Else, install the cuda version
-    $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
-fi
+# if [ "$CPU_ONLY" == "true" ]; then
+#     $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision torchaudio cpuonly python=$PYTHON_VERSION -y
+# else
+#     # Else, install the cuda version
+#     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
+# fi
+$MAMBA create -n $ENV_NAME python=$PYTHON_VERSION -y
 
 echo "Activate env $ENV_NAME"
 
@@ -173,51 +172,7 @@ echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
-python -m pip install -e ./src[dev]
-
-# echo "---- Install SAM ----"
-# pip install git+https://github.com/facebookresearch/segment-anything.git
-
-# echo ""
-# echo "---------------------------------------------"
-# echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
-# # echo "The third_party folder will be removed!"
-# if [ "$SKIP_ASKING" == "true" ]; then
-#     echo "Proceeding with installation because you passed in the -y flag."
-#     yn="y"
-# else
-#     read -p "Do you want to proceed? (y/n) " yn
-#     case $yn in
-#         y ) echo "Starting installation..." ;;
-#         n ) echo "Exiting...";
-#             CPU_ONLY="true" ;;
-#         * ) echo Invalid response!;
-#             exit 1 ;;
-#     esac
-# fi
-
-# # If not cpu only, then we can use perception
-# # OR if no submodules, then we can't install perception
-# if [ "$CPU_ONLY" == "true" ] || [ "$NO_SUBMODULES" == "true" ]; then
-#     echo "Skipping perception installation for CPU only"
-# else
-#     echo "Install detectron2 for perception (required by Detic)"
-#     git submodule update --init --recursive
-#     cd third_party/detectron2
-#     python -m pip install -e .
-
-#     echo "Install Detic for perception"
-#     cd ../../src/stretch/perception/detection/detic/Detic
-#     # Make sure it's up to date
-#     git submodule update --init --recursive
-#     python -m pip install -r requirements.txt
-
-#     # cd ../../src/stretch/perception/detection/detic/Detic
-#     # Create folder for checkpoints and download
-#     mkdir -p models
-#     echo "Download DETIC checkpoint..."
-#     wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
-# fi
+python -m pip install -e ./src[dev] --no-cache-dir
 
 echo ""
 echo "=============================================="

@@ -12,7 +12,7 @@ from PIL import Image
 
 from stretch.perception.captioners import get_captioner
 
-captioners = ["git", "vit_gpt2"]
+captioners = ["git", "qwen"]
 
 # With these two images from docs:
 images = ["../docs/object.png", "../docs/receptacle.png"]
@@ -24,9 +24,9 @@ def test_get_captioner():
     assert captioner is not None
     assert captioner.__class__.__name__ == "GitCaptioner"
 
-    captioner = get_captioner("vit_gpt2", {})
+    captioner = get_captioner("qwen", {})
     assert captioner is not None
-    assert captioner.__class__.__name__ == "VitGPT2Captioner"
+    assert captioner.__class__.__name__ == "QwenCaptioner"
 
     with pytest.raises(ValueError):
         get_captioner("invalid_captioner", {})
@@ -56,5 +56,5 @@ def test_get_captioner_all(captioner_name):
 if __name__ == "__main__":
     test_get_captioner()
     test_get_captioner_all("git")
-    test_get_captioner_all("vit_gpt2")
+    test_get_captioner_all("qwen")
     print("All tests passed!")

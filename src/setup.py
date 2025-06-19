@@ -30,9 +30,9 @@ setuptools.setup(
     package_data={"stretch": ["config/**/*.yaml", "perception/*.tsv", "simulation/models/*"]},
     install_requires=[
         # Machine learning code, we will install these packages in install.sh instead
-        # "torch<2.4",
-        # "torchvision",
-        # "torchaudio",
+        "torch>=2.6",
+        "torchvision",
+        "torchaudio",
         # General utilities
         "pyyaml",
         "pyzmq",
@@ -80,8 +80,6 @@ setuptools.setup(
         "triton >= 2.3.1",
         "accelerate >= 1.5.0",
         "einops",
-        # Meta neural nets
-        "segment-anything",
         # Compression tools
         "pyliblzfse",
         "webp>=0.3.0",
@@ -98,7 +96,7 @@ setuptools.setup(
         "pyttsx3",  # offline TTS engine. TODO: There are better options, such as "tts_models/en/ljspeech/fast_pitch" from https://github.com/coqui-ai/TTS
         "simpleaudio",  # playback audio
         "sounddevice",  # Suppresses ALSA warnings when launching PyAudio
-        "wave",
+        # "wave",
         # These are not supported in python 3.12
         "scikit-fmm",
         "open3d",

@@ -16,10 +16,8 @@ from PIL import Image
 from torch import Tensor
 from transformers import AutoModelForCausalLM, AutoProcessor
 
-from .base_captioner import BaseCaptioner
 
-
-class GitCaptioner(BaseCaptioner):
+class GitCaptioner:
     """Image captioner using GIT (Generative Image-to-text Transformer) model."""
 
     def __init__(self, max_length: int = 30, num_beams: int = 4, device: Optional[str] = None):
@@ -30,7 +28,6 @@ class GitCaptioner(BaseCaptioner):
             num_beams (int, optional): Number of beams for beam search. Defaults to 4.
             device (str, optional): Device to run the model on. Defaults to None (auto-detect).
         """
-        super(GitCaptioner, self).__init__()
         self.max_length = max_length
         self.num_beams = num_beams
         if device is None:

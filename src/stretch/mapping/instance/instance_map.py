@@ -29,7 +29,6 @@ from stretch.mapping.instance.matching import (
     ViewMatchingConfig,
     get_similarity,
 )
-from stretch.perception.captioners import BaseCaptioner
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
@@ -102,7 +101,7 @@ class InstanceMemory:
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
-        captioner: Optional[BaseCaptioner] = None,
+        captioner=None,
         save_original_image: bool = False,
     ):
         """See class definition for information about InstanceMemory
