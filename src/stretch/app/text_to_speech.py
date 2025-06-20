@@ -23,9 +23,6 @@ import readline  # Improve interactive input, e.g., up to access history, tab au
 
 from stretch.audio.text_to_speech import PiperTextToSpeech, TextToSpeechExecutor
 
-# Local imports
-from stretch.audio.utils.cli import HistoryCompleter
-
 
 class TextToSpeechComandLineInterface:
     """
@@ -110,12 +107,6 @@ def get_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Text-to-speech command line interface.")
     parser.add_argument(
-        "--history_file",
-        type=str,
-        default="",
-        help="The history file to load and save.",
-    )
-    parser.add_argument(
         "--engine",
         type=str,
         default="piper",
@@ -146,14 +137,6 @@ def main():
     # Get the arguments
     args = get_args()
 
-    # Load the history
-    if len(args.history_file) > 0 and os.path.exists(args.history_file):
-        readline.read_history_file(args.history_file)
-        print(f"Loaded the history from {args.history_file}")
-    readline.set_completer(HistoryCompleter().complete)
-    readline.parse_and_bind("tab: complete")
-    readline.set_completer_delims("")  # Match the entire string, not individual words
-
     # Initialize the text-to-speech command line interface
     cli = TextToSpeechComandLineInterface(
         engine=args.engine, voice_id=args.voice_id, is_slow=args.slow
@@ -165,18 +148,6 @@ def main():
         cli.run()
     except KeyboardInterrupt:
         pass
-    finally:
-        # Save the history
-        if len(args.history_file) > 0:
-            readline.write_history_file(args.history_file)
-            print(f"Saved the history to {args.history_file}")
-        else:
-            print("Did not save the history. To do so, pass in --history_file")
-
-        # Stop the text-to-speech command line interface
-        cli.stop()
-
-        print("Cleanly terminated.")
 
 
 if __name__ == "__main__":
