@@ -94,7 +94,7 @@ class PiperTextToSpeech(AbstractTextToSpeech):
 
         # Set a common framerate that's widely useful
         self.slow_speed = 16000
-        self.default_speed = 24000
+        self.default_speed = 22050
         self.sample_rate: int = self.default_speed
 
     @AbstractTextToSpeech.voice_id.setter  # type: ignore
