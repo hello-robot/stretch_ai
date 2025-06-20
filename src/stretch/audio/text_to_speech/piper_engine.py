@@ -119,17 +119,16 @@ class PiperTextToSpeech(AbstractTextToSpeech):
             return False
         return True
 
-    def __play_text(self, raw_pcm: bytes):
+    def __play_text(self, raw_pcm: bytes) -> None:
         """
         Play the given audio bytes.
         """
-        play_obj = sa.play_buffer(raw_pcm, 1, 2, self.target_frame_rate)
-        return play_obj
+        self.play_obj = sa.play_buffer(raw_pcm, 1, 2, self.target_frame_rate)
 
     @override  # inherit the docstring from the parent class
     def say(self, text: str) -> None:
         wave_data = self.__generate_audio(text)
-        self.play_obj = self.__play_text(wave_data)
+        self.__play_text(wave_data)
         self.play_obj.wait_done()  # Wait until playback is finished
         self.play_obj = None
 
