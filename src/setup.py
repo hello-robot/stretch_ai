@@ -52,7 +52,7 @@ setuptools.setup(
         "overrides",
         "wget",
         # From openai
-        "openai",
+        "openai >= 1.88.0",
         "openai-clip",
         # For gemini
         "google-genai",
