@@ -15,8 +15,7 @@ import subprocess
 import tarfile
 from typing import Any
 
-import numpy as np
-import sounddevice as sd
+import simpleaudio as sa
 import wget
 from overrides import override
 
@@ -93,9 +92,10 @@ class PiperTextToSpeech(AbstractTextToSpeech):
                 print(f"{fname} already exists; skipping download.")
 
         self._model_path = os.path.join(base_dir, "en_US-amy-medium.onnx")
+        self.play_obj = None
 
     @override  # inherit the docstring from the parent class
-    def say_async(self, text: str) -> None: 
+    def say_async(self, text: str) -> None:
         wave_data = self.__generate_audio(text)
         self.__play_text(wave_data)
 
@@ -111,33 +111,32 @@ class PiperTextToSpeech(AbstractTextToSpeech):
 
     @override  # inherit the docstring from the parent class
     def is_speaking(self) -> bool:
-        self.logger.warning("Is speaking is not implemented yet.")
-        return False
+        if self.play_obj is None:
+            return False
+        if not self.play_obj.is_playing():
+            self.play_obj = None
+            return False
+        return True
 
-    def __play_text(self, raw_pcm: bytes) -> None:
+    def __play_text(self, raw_pcm: bytes):
         """
         Play the given audio bytes.
-
-        Parameters
-        ----------
-        audio_bytes : bytes
-            The audio bytes.
         """
-        audio = np.frombuffer(raw_pcm, dtype=np.int16)
-
-        # Play audio
-        print("Playing audio...")
-        return sd.play(audio, samplerate=self.target_frame_rate)
+        play_obj = sa.play_buffer(raw_pcm, 1, 2, self.target_frame_rate)
+        return play_obj
 
     @override  # inherit the docstring from the parent class
     def say(self, text: str) -> None:
         wave_data = self.__generate_audio(text)
-        self.__play_text(wave_data)
-        sd.wait()  # Wait until playback is finished
+        self.play_obj = self.__play_text(wave_data)
+        self.play_obj.wait_done()  # Wait until playback is finished
+        self.play_obj = None
 
     @override  # inherit the docstring from the parent class
     def stop(self):
-        self.logger.warning("Stop is not implemented yet.")
+        if self.play_obj is not None:
+            self.play_obj.stop()
+            self.play_obj = None
 
     @override  # inherit the docstring from the parent class
     def save_to_file(self, text: str, filepath: str, **kwargs: Any) -> None:
