@@ -75,7 +75,7 @@ Visualize output from the cameras and other sensors on the robot. This will open
 python -m stretch.app.view_images --robot_ip $ROBOT_IP
 ```
 
-You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
+You can also visualize it with semantic segmentation (defaults to [YOLOE](https://docs.ultralytics.com/models/yoloe/):
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP ----run_semantic_segmentation

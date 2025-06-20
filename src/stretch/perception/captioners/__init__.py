@@ -8,23 +8,18 @@
 # license information maybe found below, if so.
 from typing import Any
 
-from .base_captioner import BaseCaptioner
 from .git_captioner import GitCaptioner
-from .moondream_captioner import MoondreamCaptioner
 from .qwen_captioner import QwenCaptioner
-from .vit_gpt2_captioner import VitGPT2Captioner
 
-captioners = ["git", "moondream", "vit_gpt2", "qwen"]
+captioners = ["git", "qwen"]
 
 
-def get_captioner(captioner_name, args: Any) -> BaseCaptioner:
+def get_captioner(captioner_name, args: Any):
     """Get captioner."""
     if captioner_name == "git":
         return GitCaptioner(**args)
-    elif captioner_name == "moondream":
-        return MoondreamCaptioner(**args)
-    elif captioner_name == "vit_gpt2":
-        return VitGPT2Captioner(**args)
+    elif captioner_name == "qwen":
+        return QwenCaptioner(**args)
     else:
         raise ValueError(
             f"Captioner {captioner_name} not implemented or not supported. Should be one of {captioners}."

@@ -224,6 +224,7 @@ class PickupTask:
         # task.connect_on_cannot_start(go_to_receptacle.name, search_for_receptacle.name)
 
         # Terminate on a successful place
+        print(place_object_on_receptacle.name)
         task.terminate_on_success(place_object_on_receptacle.name)
 
         return task
