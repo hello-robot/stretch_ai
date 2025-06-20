@@ -78,6 +78,7 @@ class PiperTextToSpeech(AbstractTextToSpeech):
         self._piper_bin = piper_bin
 
         # 4) Download voice model + JSON
+        # We currently only support the amy voice.
         files = {
             "en_US-amy-medium.onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/medium/en_US-amy-medium.onnx?download=true",
             "en_US-amy-medium.onnx.json": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/medium/en_US-amy-medium.onnx.json?download=true",
