@@ -8,7 +8,7 @@
 # license information maybe found below, if so.
 
 from .executor import AbstractTextToSpeech, TextToSpeechExecutor, TextToSpeechOverrideBehavior
-from .pyttsx3_engine import PyTTSx3TextToSpeech
+from .piper_engine import PiperTextToSpeech
 
 
 def get_text_to_speech(name: str) -> AbstractTextToSpeech:
@@ -28,11 +28,7 @@ def get_text_to_speech(name: str) -> AbstractTextToSpeech:
         The text-to-speech engine.
     """
     name = name.lower()
-    if name == "pyttsx3":
-        from .pyttsx3_engine import PyTTSx3TextToSpeech
-
-        return PyTTSx3TextToSpeech()
-    elif name == "piper":
+    if name == "piper":
         from .piper_engine import PiperTextToSpeech
 
         return PiperTextToSpeech()

@@ -21,7 +21,7 @@ import argparse
 import os
 import readline  # Improve interactive input, e.g., up to access history, tab auto-completion.
 
-from stretch.audio.text_to_speech import PyTTSx3TextToSpeech, TextToSpeechExecutor
+from stretch.audio.text_to_speech import PiperTextToSpeech, TextToSpeechExecutor
 
 # Local imports
 from stretch.audio.utils.cli import HistoryCompleter
@@ -32,23 +32,23 @@ class TextToSpeechComandLineInterface:
     A command-line interface to use text-to-speech.
     """
 
-    def __init__(self, engine: str = "pyttsx3", voice_id: str = "", is_slow: bool = False):
+    def __init__(self, engine: str = "piper", voice_id: str = "", is_slow: bool = False):
         """
         Initialize the TextToSpeechComandLineInterface.
 
         Parameters
         ----------
         engine : str, optional
-            The text-to-speech engine to use. Default is "pyttsx3".
+            The text-to-speech engine to use. Default is "piper".
         voice_id : str, optional
             The voice ID to use. Ignored if empty string.
         is_slow : bool, optional
             Whether to speak slowly or not. Default is False
         """
-        if engine == "pyttsx3":
-            engine = PyTTSx3TextToSpeech()
+        if engine == "piper":
+            engine = PiperTextToSpeech()
         else:
-            raise ValueError(f"Unknown engine: {engine}. Must be one of 'pyttsx3'.")
+            raise ValueError(f"Unknown engine: {engine}. Must be one of 'piper'.")
         if len(voice_id) > 0:
             engine.voice_id = voice_id
         self.is_slow = is_slow
@@ -118,9 +118,9 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--engine",
         type=str,
-        default="pyttsx3",
-        choices=["pyttsx3"],
-        help="The text-to-speech engine to use. Default is pyttsx3.",
+        default="piper",
+        choices=["piper"],
+        help="The text-to-speech engine to use. Default is piper.",
     )
     parser.add_argument(
         "--voice_id",

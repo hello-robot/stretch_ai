@@ -15,7 +15,7 @@ encoder_args:
   # version: "base"
   # feature_match_threshold: 0.05
 open_vocab_category_map_file: example_cat_map.json
-tts_engine: "pyttsx3"
+tts_engine: "piper"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.04 # Size of a voxel in meters

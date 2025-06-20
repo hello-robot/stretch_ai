@@ -4,7 +4,7 @@
 # Encoder is used to compute per-object embeddings.
 encoder: "siglip"
 open_vocab_category_map_file: example_cat_map.json
-tts_engine: "pyttsx3"
+tts_engine: "piper"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.1

@@ -51,7 +51,7 @@ class BaseZmqServer(CommsNode, ABC):
         ee_image_scaling: float = 0.5,  # 0.6,
         depth_scaling: float = 0.001,
         ee_depth_scaling: float = 0.001,
-        text_to_speech_engine: str = "pyttsx3",
+        text_to_speech_engine: str = "piper",
     ):
         self.verbose = verbose
         self.context = zmq.Context()

@@ -32,9 +32,6 @@ class PiperTextToSpeech(AbstractTextToSpeech):
     Text-to-speech engine using gTTS.
     """
 
-    # Set a common framerate that's widely useful
-    target_frame_rate: int = 24000
-
     @override  # inherit the docstring from the parent class
     def __init__(self, logger: logging.Logger = DEFAULT_LOGGER):
         super().__init__(logger)
@@ -95,6 +92,25 @@ class PiperTextToSpeech(AbstractTextToSpeech):
         self._model_path = os.path.join(base_dir, "en_US-amy-medium.onnx")
         self.play_obj = None
 
+        # Set a common framerate that's widely useful
+        self.slow_speed = 16000
+        self.default_speed = 24000
+        self.sample_rate: int = self.default_speed
+
+    @AbstractTextToSpeech.voice_id.setter  # type: ignore
+    @override  # inherit the docstring from the parent class
+    def voice_id(self, voice_id: str) -> None:
+        self.logger.warning("Piper only supports one voice id.")
+
+    @AbstractTextToSpeech.is_slow.setter  # type: ignore
+    @override  # inherit the docstring from the parent class
+    def is_slow(self, is_slow: bool) -> None:
+        AbstractTextToSpeech.is_slow.fset(self, is_slow)
+        if is_slow:
+            self.sample_rate = self.slow_speed
+        else:
+            self.sample_rate = self.default_speed
+
     @override  # inherit the docstring from the parent class
     def say_async(self, text: str) -> None:
         wave_data = self.__generate_audio(text)
@@ -123,7 +139,7 @@ class PiperTextToSpeech(AbstractTextToSpeech):
         """
         Play the given audio bytes.
         """
-        self.play_obj = sa.play_buffer(raw_pcm, 1, 2, self.target_frame_rate)
+        self.play_obj = sa.play_buffer(raw_pcm, 1, 2, self.sample_rate)
 
     @override  # inherit the docstring from the parent class
     def say(self, text: str) -> None:

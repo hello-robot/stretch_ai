@@ -14,7 +14,7 @@ import os
 from tempfile import NamedTemporaryFile
 
 # Local imports
-from stretch.audio.text_to_speech import PyTTSx3TextToSpeech
+from stretch.audio.text_to_speech import PiperTextToSpeech
 from stretch.audio.utils.metrics import spectral_contrast_similarity
 
 logging.basicConfig(level=logging.INFO)
@@ -43,11 +43,8 @@ def test_text_to_speech(
     """
 
     # Configure the test cases
-    engines_and_voice_ids = [
-        (PyTTSx3TextToSpeech(logger), ["english+m1", "english+f1"]),
-    ]
     engine_names = {
-        PyTTSx3TextToSpeech: "PyTTSx3",
+        PiperTextToSpeech: "Piper",
     }
     texts = {
         "intro": "Hello, my name is Stretch, and I am a robot here to assist you.",
@@ -61,50 +58,44 @@ def test_text_to_speech(
         os.path.dirname(os.path.abspath(__file__)),
         "assets",
     )
-    for engine, voice_ids in engines_and_voice_ids:
-        engine_name = engine_names[engine.__class__]
-        for voice_id in voice_ids:
-            engine.voice_id = voice_id
-            for filename, text in texts.items():
-                for is_slow in [False, True]:
-                    engine.is_slow = is_slow
+    for engine_class, engine_name in engine_names.items():
+        engine = engine_class(logger)
+        for filename, text in texts.items():
+            full_filename = f"{engine_name}_{filename}.{ext}"
 
-                    # Get the ground truth filepath
-                    voice_id_cleaned = voice_id.replace(".", "_").replace("+", "_")
-                    full_filename = f"{engine_name}_{voice_id_cleaned}_{'slow_' if is_slow else ''}{filename}.{ext}"
+            ground_truth_filepath = os.path.join(save_dir, full_filename)
 
-                    ground_truth_filepath = os.path.join(save_dir, full_filename)
+            # Either save the ground truth audio, or save a tempfile and compare
+            # it to the groundtruth audio.
+            if save:
+                engine.save_to_file(text, ground_truth_filepath)
+                logger.info(f"Saved ground truth audio to {ground_truth_filepath}")
+            else:
+                # Save to a tempfile
+                tempfile = NamedTemporaryFile(suffix=f".{ext}")
+                engine.save_to_file(text, tempfile.name)
 
-                    # Either save the ground truth audio, or save a tempfile and compare
-                    # it to the groundtruth audio.
-                    if save:
-                        engine.save_to_file(text, ground_truth_filepath)
-                        logger.info(f"Saved ground truth audio to {ground_truth_filepath}")
-                    else:
-                        # Save to a tempfile
-                        tempfile = NamedTemporaryFile(suffix=f".{ext}")
-                        engine.save_to_file(text, tempfile.name)
-
-                        if verbose:
-                            with open(tempfile.name, "rb") as f:
-                                logger.info(
-                                    f"Saved {len(f.read())} bytes of audio to {tempfile.name}"
-                                )
-
-                        logger.info(f"Checking similarity for {full_filename}...")
-
-                        similarity = spectral_contrast_similarity(
-                            ground_truth_filepath, tempfile.name
+                if verbose:
+                    with open(tempfile.name, "rb") as f:
+                        logger.info(
+                            f"Saved {len(f.read())} bytes of audio to {tempfile.name}"
                         )
 
-                        # Log the results
-                        logger.info(f"...similarity for {full_filename}: {similarity}")
+                logger.info(f"Checking similarity for {full_filename}...")
 
-                        # Assert the similarity
-                        assert similarity > similarity_threshold, (
-                            f"Similarity for {full_filename} was {similarity}, "
-                            f"below the threshold of {similarity_threshold}"
-                        )
+                similarity = spectral_contrast_similarity(
+                    ground_truth_filepath, tempfile.name
+                )
+
+                # Log the results
+                logger.info(f"...similarity for {full_filename}: {similarity}")
+
+                # Assert the similarity
+                assert similarity > similarity_threshold, (
+                    f"Similarity for {full_filename} was {similarity}, "
+                    f"below the threshold of {similarity_threshold}"
+                )
+
     if save:
         logger.info("Saved the ground truth audio files. Now run the tests without --save.")
     else:
