@@ -26,7 +26,7 @@ from stretch.utils.config import get_full_config_path
 
 class OvmmPerception:
     """
-    Wrapper around DETIC for use in OVMM Agent.
+    Wrapper around perception models for use in OVMM Agent.
     It performs some preprocessing of observations necessary for OVMM skills.
     It also maintains a list of vocabularies to use in segmentation and can switch between them at runtime.
     """
