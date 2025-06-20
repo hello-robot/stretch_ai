@@ -89,12 +89,10 @@ class TextToSpeechComandLineInterface:
             elif len(message) == 1:
                 if message.upper() == "Q":
                     self._executor.stop_utterance()
-                    readline.remove_history_item(readline.get_current_history_length() - 1)
                     raise KeyboardInterrupt
                 elif message.upper() == "S":
                     # Stop the current message
                     self._executor.stop_utterance()
-                    readline.remove_history_item(readline.get_current_history_length() - 1)
                     continue
 
             # Publish the message
