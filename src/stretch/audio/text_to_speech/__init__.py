@@ -32,4 +32,8 @@ def get_text_to_speech(name: str) -> AbstractTextToSpeech:
         from .pyttsx3_engine import PyTTSx3TextToSpeech
 
         return PyTTSx3TextToSpeech()
+    elif name == "piper":
+        from .piper_engine import PiperTextToSpeech
+
+        return PiperTextToSpeech()
     raise ValueError(f"Unsupported text-to-speech engine: {name}")

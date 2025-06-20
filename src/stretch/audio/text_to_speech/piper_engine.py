@@ -34,7 +34,7 @@ class PiperTextToSpeech(AbstractTextToSpeech):
     """
 
     # Set a common framerate that's widely useful
-    target_frame_rate: int = 44100
+    target_frame_rate: int = 24000
 
     @override  # inherit the docstring from the parent class
     def __init__(self, logger: logging.Logger = DEFAULT_LOGGER):
@@ -95,15 +95,23 @@ class PiperTextToSpeech(AbstractTextToSpeech):
         self._model_path = os.path.join(base_dir, "en_US-amy-medium.onnx")
 
     @override  # inherit the docstring from the parent class
-    def say_async(self, text: str) -> None:
-        self._logger.warning("Asynchronous speaking is not supported for Piper on Linux.")
+    def say_async(self, text: str) -> None: 
+        wave_data = self.__generate_audio(text)
+        self.__play_text(wave_data)
+
+    def __generate_audio(self, text: str) -> bytes:
+        proc = subprocess.run(
+            [self._piper_bin, "--model", self._model_path, "--output-raw"],
+            input=text.encode("utf-8"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        return proc.stdout
 
     @override  # inherit the docstring from the parent class
     def is_speaking(self) -> bool:
-        # Because asynchronous speaking is not supported in piper on Linux,
-        # if this function is called, it is assumed that the engine is not speaking.
-        # This works as long as `is_speaking` and `say` will be called from
-        # the same thread.
+        self.logger.warning("Is speaking is not implemented yet.")
         return False
 
     def __play_text(self, raw_pcm: bytes) -> None:
@@ -119,25 +127,17 @@ class PiperTextToSpeech(AbstractTextToSpeech):
 
         # Play audio
         print("Playing audio...")
-        sd.play(audio, samplerate=self.target_frame_rate)
-        sd.wait()  # Wait until playback is finished
-        print("Playback finished.")
+        return sd.play(audio, samplerate=self.target_frame_rate)
 
     @override  # inherit the docstring from the parent class
     def say(self, text: str) -> None:
-        proc = subprocess.run(
-            [self._piper_bin, "--model", self._model_path, "--output-raw"],
-            input=text.encode("utf-8"),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-        )
-        wave_data = proc.stdout
+        wave_data = self.__generate_audio(text)
         self.__play_text(wave_data)
+        sd.wait()  # Wait until playback is finished
 
     @override  # inherit the docstring from the parent class
     def stop(self):
-        self._logger.warning("Asynchronous stopping is not supported for Piper on Linux.")
+        self.logger.warning("Stop is not implemented yet.")
 
     @override  # inherit the docstring from the parent class
     def save_to_file(self, text: str, filepath: str, **kwargs: Any) -> None:
