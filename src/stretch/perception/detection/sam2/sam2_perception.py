@@ -69,7 +69,7 @@ class SAM2Perception(PerceptionModule):
         text_threshold: float = None,
         mask_generator_kwargs: Dict[str, Any] = _DEFAULT_MASK_GENERATOR_KWARGS,
     ):
-        """Load trained Detic model for inference.
+        """Load trained SAM2 model for inference.
 
         Arguments:
             config_file: path to model config

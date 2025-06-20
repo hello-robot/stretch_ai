@@ -64,9 +64,9 @@ echo "Checking for required packages: "
 echo "     libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg"
 echo "If these are not installed, you will run into issues with pyaudio."
 if [ "$SKIP_ASKING" == "true" ]; then
-    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg build-essential wget unzip libsndfile1 -y
 else
-    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg build-essential wget unzip libsndfile1
 fi
 
 # If cpu only, set the cuda version to cpu
@@ -149,13 +149,7 @@ if [ "$NO_REMOVE" == "false" ]; then
     echo "Removing existing environment..."
     $MAMBA env remove -n $ENV_NAME -y || true
 fi
-# If using cpu only, create a separate environment
-# if [ "$CPU_ONLY" == "true" ]; then
-#     $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision torchaudio cpuonly python=$PYTHON_VERSION -y
-# else
-#     # Else, install the cuda version
-#     $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
-# fi
+
 $MAMBA create -n $ENV_NAME python=$PYTHON_VERSION -y
 
 echo "Activate env $ENV_NAME"
