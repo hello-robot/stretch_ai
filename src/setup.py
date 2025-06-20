@@ -91,9 +91,7 @@ setuptools.setup(
         "openai-whisper",
         "overrides",  # better inheritance of docstrings
         "pydub",  # playback audio
-        "pyttsx3",  # offline TTS engine. TODO: There are better options, such as "tts_models/en/ljspeech/fast_pitch" from https://github.com/coqui-ai/TTS
         "simpleaudio",  # playback audio
-        "sounddevice",  # Suppresses ALSA warnings when launching PyAudio
         # "wave",
         # These are not supported > python 3.11
         "scikit-fmm",
