@@ -20,7 +20,7 @@ import wget
 from overrides import override
 
 # Local imports
-from ..base import AbstractTextToSpeech
+from .base import AbstractTextToSpeech
 
 # Create the default logger
 logging.basicConfig(level=logging.INFO)
