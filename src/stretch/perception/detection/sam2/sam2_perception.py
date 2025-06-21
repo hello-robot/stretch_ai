@@ -129,7 +129,7 @@ class SAM2Perception(PerceptionModule):
         self.mask_generator = SAM2AutomaticMaskGenerator(self.sam2_predictor)
 
     def reset_vocab(self, new_vocab: List[str]):
-        """Resets the vocabulary of Detic model allowing you to change detection on
+        """Resets the vocabulary of the model allowing you to change detection on
         the fly. Note that previous vocabulary is not preserved.
         Args:
             new_vocab: list of strings representing the new vocabulary
