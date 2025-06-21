@@ -137,7 +137,7 @@ You should see something like this:
 Chat with the robot using LLMs.
 
 ```bash
-python -m stretch.app.voice_chat
+python -m stretch.app.chat --voice
 ```
 
 ### Dex Teleop for Data Collection
