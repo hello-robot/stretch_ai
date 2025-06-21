@@ -7,7 +7,7 @@
 # Some code may be adapted from other open-source works with their respective licenses. Original
 # license information maybe found below, if so.
 
-from .executor import AbstractTextToSpeech, TextToSpeechExecutor, TextToSpeechOverrideBehavior
+from ..base import AbstractTextToSpeech
 from .piper_engine import PiperTextToSpeech
 
 
