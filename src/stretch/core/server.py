@@ -23,7 +23,7 @@ from stretch.utils.logger import Logger
 logger = Logger(__name__)
 
 try:
-    from stretch.audio.text_to_speech import get_text_to_speech
+    from stretch.audio.text_to_speech import PiperTextToSpeech
 
     imported_text_to_speech = True
 except ImportError:
@@ -76,7 +76,7 @@ class BaseZmqServer(CommsNode, ABC):
         # Extensions to the ROS server
         # Text to speech engine - let's let the robot talk
         if imported_text_to_speech:
-            self.text_to_speech = get_text_to_speech(text_to_speech_engine)
+            self.text_to_speech = PiperTextToSpeech()
         else:
             self.text_to_speech = None
 
