@@ -43,7 +43,7 @@ logger = Logger(__name__)
 
 
 try:
-    from stretch.audio.text_to_speech import get_text_to_speech
+    from stretch.audio.text_to_speech import PiperTextToSpeech
 
     imported_tts = True
 except ImportError as e:
@@ -130,7 +130,7 @@ class RobotAgent:
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
         if imported_tts:
-            self.tts = get_text_to_speech(self.parameters["tts_engine"])
+            self.tts = PiperTextToSpeech()
         else:
             self.tts = None
         self._use_instance_memory = use_instance_memory

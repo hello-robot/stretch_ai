@@ -18,10 +18,8 @@ This script adds a command-line interface (CLI) for text-to-speech. The CLI supp
 """
 # Standard imports
 import argparse
-import os
-import readline  # Improve interactive input, e.g., up to access history, tab auto-completion.
 
-from stretch.audio.text_to_speech import PiperTextToSpeech, TextToSpeechExecutor
+from stretch.audio.text_to_speech import PiperTextToSpeech
 
 
 class TextToSpeechComandLineInterface:
@@ -43,27 +41,18 @@ class TextToSpeechComandLineInterface:
             Whether to speak slowly or not. Default is False
         """
         if engine == "piper":
-            engine = PiperTextToSpeech()
+            self.engine = PiperTextToSpeech()
         else:
             raise ValueError(f"Unknown engine: {engine}. Must be one of 'piper'.")
         if len(voice_id) > 0:
             engine.voice_id = voice_id
         self.is_slow = is_slow
-        self._executor = TextToSpeechExecutor(
-            engine=engine,
-        )
-
-    def start(self) -> None:
-        """
-        Start the text-to-speech command line interface.
-        """
-        self._executor.start()
 
     def stop(self) -> None:
         """
         Stop the text-to-speech command line interface.
         """
-        self._executor.stop()
+        self.engine.stop()
 
     def run(self):
         """
@@ -88,15 +77,15 @@ class TextToSpeechComandLineInterface:
                 continue
             elif len(message) == 1:
                 if message.upper() == "Q":
-                    self._executor.stop_utterance()
+                    self.engine.stop()
                     raise KeyboardInterrupt
                 elif message.upper() == "S":
                     # Stop the current message
-                    self._executor.stop_utterance()
+                    self.engine.stop()
                     continue
 
             # Publish the message
-            self._executor.say_utterance(message, is_slow=self.is_slow)
+            self.engine.say_async(message)
 
 
 def get_args() -> argparse.Namespace:
@@ -139,7 +128,6 @@ def main():
     cli = TextToSpeechComandLineInterface(
         engine=args.engine, voice_id=args.voice_id, is_slow=args.slow
     )
-    cli.start()
 
     # Run the text-to-speech command line interface
     try:
