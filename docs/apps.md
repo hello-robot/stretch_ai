@@ -137,7 +137,7 @@ You should see something like this:
 Chat with the robot using LLMs.
 
 ```bash
-python -m stretch.app.voice_chat
+python -m stretch.app.chat --voice
 ```
 
 ### Dex Teleop for Data Collection
@@ -249,4 +249,4 @@ Options include:
 
 - `--robot_ip` - The IP address of the robot.
 - `--task` - The task to perform. Can be a natural language command for the robot.
-- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma2b`.
+- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma`.

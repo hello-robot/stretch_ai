@@ -106,3 +106,9 @@ class GemmaCaptioner:
             pil_image.save("test_caption/" + output_text + ".jpg")
 
         return output_text
+
+
+if __name__ == "__main__":
+    captioner = GemmaCaptioner()
+    caption = captioner.caption_image(Image.open("example.jpg"))
+    print("caption for the image:", caption)

@@ -33,9 +33,8 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 )
 @click.option(
     "--llm",
-    # default="gemma2b",
     default="qwen25-3B-Instruct",
-    help="Client to use for language model. Recommended: gemma2b, openai",
+    help="Client to use for language model. Recommended: gemma, openai",
     type=click.Choice(get_llm_choices()),
 )
 @click.option("--debug_llm", "--debug-llm", is_flag=True, help="Set to debug the language model")
