@@ -44,10 +44,9 @@ logger = Logger(__name__)
 )
 @click.option(
     "--llm",
-    # default="gemma2b",
     # default="qwen25-3B-Instruct",
     default="qwen25",
-    help="Client to use for language model. Recommended: gemma2b, openai",
+    help="Client to use for language model. Recommended: gemma, openai",
     type=click.Choice(get_llm_choices()),
 )
 @click.option(

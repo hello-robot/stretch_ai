@@ -249,4 +249,4 @@ Options include:
 
 - `--robot_ip` - The IP address of the robot.
 - `--task` - The task to perform. Can be a natural language command for the robot.
-- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma2b`.
+- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma`.

@@ -24,7 +24,7 @@ from stretch.llms import get_llm_choices, get_llm_client, get_prompt_builder, ge
 @click.command()
 @click.option(
     "--llm",
-    default="gemma2b",
+    default="gemma",
     help="The model to use (gemma or llama)",
     type=click.Choice(get_llm_choices()),
 )
@@ -41,7 +41,7 @@ from stretch.llms import get_llm_choices, get_llm_client, get_prompt_builder, ge
 @click.option("--voice", default=False, help="Enable voice chat", is_flag=True)
 @click.option("--talk", default=False, help="Robot will speak its responses out load", is_flag=True)
 def main(
-    llm="gemma2b",
+    llm="gemma",
     max_audio_duration: float = 10.0,
     silence_limit: float = 2.0,
     voice=False,

@@ -105,23 +105,6 @@ class QwenCaptioner:
         else:
             prompt = "Describe the object in the box " + str(bbox)
 
-        # messages = [
-        #     {
-        #         "role": "user",
-        #         "content": [
-        #             {
-        #                 "type": "image",
-        #                 "image": pil_image,
-        #             },
-        #             {"type": "text", "text": prompt},
-        #             {
-        #                 "type": "text",
-        #                 "text": "Limit your answer in 10 words. E.G. a yellow banana; a white hand sanitizer",
-        #             },
-        #         ],
-        #     }
-        # ]
-
         messages = [
             pil_image,
             prompt,

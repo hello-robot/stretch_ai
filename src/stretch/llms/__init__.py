@@ -10,7 +10,7 @@ from typing import Union
 
 from .base import AbstractLLMClient, AbstractPromptBuilder
 from .chat_wrapper import LLMChatWrapper
-from .gemma_client import Gemma2bClient
+from .gemma_client import GemmaClient
 from .llama_client import LlamaClient
 from .openai_client import OpenaiClient
 from .prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
@@ -22,7 +22,7 @@ from .qwen_client import Qwen25Client, get_qwen_variants
 # This is a list of all the modules that are imported when you use the import * syntax.
 # The __all__ variable is used to define what symbols get exported when from a module when you use the import * syntax.
 __all__ = [
-    "Gemma2bClient",
+    "GemmaClient",
     "LlamaClient",
     "OpenaiClient",
     "ObjectManipNavPromptBuilder",
@@ -36,7 +36,7 @@ __all__ = [
 ]
 
 llms = {
-    "gemma2b": Gemma2bClient,
+    "gemma": GemmaClient,
     "llama": LlamaClient,
     "openai": OpenaiClient,
     "qwen25": Qwen25Client,
@@ -46,6 +46,8 @@ llms = {
 # Add all the various Qwen25 variants
 qwen_variants = get_qwen_variants()
 llms.update({variant: Qwen25Client for variant in qwen_variants})
+
+llms.update({variant: GemmaClient for variant in ["gemma4b", "gemma1b"]})
 
 
 def process_incoming_qwen_types(qwen_type: str):
@@ -83,7 +85,7 @@ def process_incoming_qwen_types(qwen_type: str):
         else:
             finetuning_option, quantization_option = None, terms[2].lower()
 
-        return model_size, typing_option, finetuning_option, quantization_option
+    return model_size, typing_option, finetuning_option, quantization_option
 
 
 prompts = {
@@ -130,8 +132,17 @@ def get_llm_client(
     Returns:
         An LLM client.
     """
-    if client_type == "gemma2b":
-        return Gemma2bClient(prompt, **kwargs)
+    if "gemma" in client_type:
+        # We assume the user enter gemma, gemma4b, or gemma1b
+        if client_type not in ["gemma", "gemma4b", "gemma1b"]:
+            raise ValueError(
+                f"Invalid model size: {client_type}, we only support gemma, gemma4b, and gemma1b"
+            )
+        elif client_type == "gemma":
+            model_size = "1b"
+        else:
+            model_size = client_type[-2:]
+        return GemmaClient(prompt, model_size=model_size, **kwargs)
     elif client_type == "llama":
         return LlamaClient(prompt, **kwargs)
     elif client_type == "openai":
