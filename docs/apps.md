@@ -110,13 +110,6 @@ python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
 python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
 ```
 
-Alternately:
-
-```
-python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
-python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
-```
-
 #### Rerun Web Server
 
 We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
