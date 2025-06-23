@@ -183,7 +183,7 @@ def demo_main(
     object_to_find, location_to_place = parameters.get_task_goals()
 
     if write_instance_images or object_to_find is not None:
-        print("- Create semantic sensor based on detic")
+        print("- Create semantic sensor based on YOLOE or OWLv2")
         semantic_sensor = create_semantic_sensor(
             parameters=parameters,
             device_id=device_id,
