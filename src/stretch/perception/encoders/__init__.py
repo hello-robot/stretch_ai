@@ -15,7 +15,7 @@ from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
 
-encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
+encoders = ["clip", "normalized_clip", "siglip"]
 
 
 def get_encoder(encoder_name, args: Any):
@@ -35,9 +35,5 @@ def get_encoder(encoder_name, args: Any):
         from .siglip2_encoder import Siglip2Encoder
 
         return Siglip2Encoder(**args)
-    elif encoder_name == "dinov2siglip":
-        from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
-
-        return Dinov2SigLIPEncoder(**args)
     else:
         raise ValueError(f"Encoder {encoder_name} not implemented or not supported.")
