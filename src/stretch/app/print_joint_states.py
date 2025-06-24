@@ -49,7 +49,7 @@ def main(
                 print(
                     f"Arm: {joint_state[HelloStretchIdx.ARM]}, Lift: {joint_state[HelloStretchIdx.LIFT]}, Gripper: {joint_state[HelloStretchIdx.GRIPPER]}"
                 )
-            time.sleep(0.01)
+            time.sleep(0.3)
 
     except KeyboardInterrupt:
         pass
