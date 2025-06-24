@@ -38,8 +38,6 @@ class QwenCaptioner:
             max_length (int, optional): Maximum length of the generated caption. Defaults to 100.
             num_beams (int, optional): Number of beams for beam search. Defaults to 1.
             device (str, optional): Device to run the model on. Defaults to None (auto-detect).
-
-        TODO: Integrate other QwenVL2.5 versions, for now it supports 7B so that the model is good enough while not too large.
         """
         self.max_length = max_length
         self.num_beams = num_beams
