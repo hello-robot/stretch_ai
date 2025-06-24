@@ -38,6 +38,9 @@ def main(
         enable_rerun_server=False,
     )
     robot.start()
+    print(f"Robot IP: {robot_ip}")
+    print(f"Robot was homed: {robot.is_homed}")
+    print(f"Robot is runstopped: {robot.is_runstopped}")
     try:
         while True:
             joint_state = robot.get_joint_positions()
