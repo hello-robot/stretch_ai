@@ -222,14 +222,6 @@ python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --
 
 ## Experimental
 
-### VLM Planning
-
-This is an experimental app that uses the voxel map to plan a path to a goal. It is not yet fully functional.
-
-```bash
-python -m stretch.app.vlm_planning
-```
-
 ### Open-Vocabulary Mobile Manipulation
 
 This is an experimental app that uses a language model to generate commands for the robot given a natural language input. It is not yet fully functional.
