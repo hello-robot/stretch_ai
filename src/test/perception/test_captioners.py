@@ -12,7 +12,7 @@ from PIL import Image
 
 from stretch.perception.captioners import get_captioner
 
-captioners = ["git", "qwen"]
+captioners = ["qwen", "blip"]
 
 # With these two images from docs:
 images = ["../docs/object.png", "../docs/receptacle.png"]
@@ -20,13 +20,13 @@ images = ["../docs/object.png", "../docs/receptacle.png"]
 
 def test_get_captioner():
 
-    captioner = get_captioner("git", {})
-    assert captioner is not None
-    assert captioner.__class__.__name__ == "GitCaptioner"
-
     captioner = get_captioner("qwen", {})
     assert captioner is not None
     assert captioner.__class__.__name__ == "QwenCaptioner"
+
+    captioner = get_captioner("blip", {})
+    assert captioner is not None
+    assert captioner.__class__.__name__ == "BlipCaptioner"
 
     with pytest.raises(ValueError):
         get_captioner("invalid_captioner", {})
