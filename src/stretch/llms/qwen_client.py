@@ -8,12 +8,44 @@
 # license information maybe found below, if so.
 
 import timeit
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
+import torch
+from PIL import Image
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
+
+qwen_typing_options = ["Math", "Coder", "Deepseek", None]
+qwen_quantization_options = {
+    None: [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Coder": [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Math": [None, "Int4", "Int8", "Instruct", "Instruct-Int4", "Instruct-Int8"],
+    "Deepseek": [None, "Int4", "Int8"],
+}
+qwen_sizes = {
+    None: ["0.5B", "1.5B", "3B", "7B", "14B", "32B", "72B"],
+    "Coder": ["0.5B", "1.5B", "3B", "7B", "14B", "32B"],
+    "Math": ["1.5B", "7B", "72B"],
+    "Deepseek": ["1.5B", "7B", "14B", "72B"],
+}
+
+
+def get_qwen_variants():
+    qwen_variants = []
+    for qwen_typing_option in qwen_typing_options:
+        for qwen_quantization_option in qwen_quantization_options[qwen_typing_option]:
+            for qwen_size in qwen_sizes[qwen_typing_option]:
+                qwen_type = "qwen25"
+                if qwen_typing_option is not None:
+                    qwen_type += "-" + qwen_typing_option
+                qwen_type += "-" + qwen_size
+                if qwen_quantization_option is not None:
+                    qwen_type += "-" + qwen_quantization_option
+                qwen_variants.append(qwen_type)
+    return qwen_variants
 
 
 class Qwen25Client(AbstractLLMClient):
@@ -22,25 +54,62 @@ class Qwen25Client(AbstractLLMClient):
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
         model_size: str = "3B",
-        fine_tuning: str = "Instruct",
+        fine_tuning: Optional[str] = "Instruct",
+        model_type: Optional[str] = None,
         max_tokens: int = 4096,
         device: str = "cuda",
+        quantization: Optional[str] = "int4",
     ):
         super().__init__(prompt, prompt_kwargs)
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
-        assert model_size in [
-            "0.5B",
-            "1.5B",
-            "3B",
-            "7B",
-            "14B",
-            "32B",
-            "72B",
-        ], f"Invalid model size: {model_size}"
-        assert fine_tuning in ["Instruct", "Coder", "Math"], f"Invalid fine-tuning: {fine_tuning}"
+        assert model_type in qwen_typing_options, f"Invalid model type: {model_type}"
+        assert model_size in qwen_sizes[model_type], f"Invalid model size: {model_size}"
+        assert fine_tuning in [None, "Instruct"], f"Invalid fine-tuning: {fine_tuning}"
 
         self.max_tokens = max_tokens
-        model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
+
+        if model_type == "Deepseek":
+            model_name = f"deepseek-ai/DeepSeek-R1-Distill-Qwen-{model_size}"
+        elif model_type is None:
+            if fine_tuning is None:
+                model_name = f"Qwen/Qwen2.5-{model_size}"
+            else:
+                model_name = f"Qwen/Qwen2.5-{model_size}-{fine_tuning}"
+        else:
+            if fine_tuning is None:
+                model_name = f"Qwen/Qwen2.5-{model_type}-{model_size}"
+            else:
+                model_name = f"Qwen/Qwen2.5-{model_type}-{model_size}-{fine_tuning}"
+
+        print(f"Loading model: {model_name}")
+        model_kwargs = {"torch_dtype": "auto"}
+
+        quantization_config = None
+        if quantization is not None:
+            quantization = quantization.lower()
+            # Note: there were supposed to be other options but this is the only one that worked this way
+            if quantization in ["int8", "int4"]:
+                try:
+                    import bitsandbytes  # noqa: F401
+                    from transformers import BitsAndBytesConfig
+                except ImportError:
+                    raise ImportError(
+                        "bitsandbytes required for int4/int8 quantization: pip install bitsandbytes"
+                    )
+
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=(quantization == "int4"),
+                    load_in_8bit=(quantization == "int8"),
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                )
+                model_kwargs["quantization_config"] = quantization_config
+            else:
+                raise ValueError(f"Unknown quantization method: {quantization}")
+
+        if quantization_config is not None:
+            model_kwargs["quantization_config"] = quantization_config
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -48,7 +117,11 @@ class Qwen25Client(AbstractLLMClient):
             torch_dtype="auto",
         )
         self.pipe = pipeline(
-            "text-generation", model=self.model, tokenizer=self.tokenizer, device=device
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            device=device,
+            model_kwargs=model_kwargs,
         )
 
     def __call__(self, command: str, verbose: bool = False):
@@ -77,6 +150,180 @@ class Qwen25Client(AbstractLLMClient):
             print(f"Assistant response: {assistant_response}")
             print(f"Time taken: {t1 - t0:.2f}s")
         return assistant_response
+
+    def sample(self, command: str, n_samples: int = 5, verbose: bool = False):
+        if verbose:
+            print(f"{self.system_prompt=}")
+        plan = []
+        for i in range(n_samples):
+            self.reset()
+            plan.append(self.__call__(command, verbose))
+        if verbose:
+            print(f"plan={plan}")
+        return plan
+
+
+from qwen_vl_utils import process_vision_info
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
+
+class Qwen25VLClient:
+    def __init__(
+        self,
+        prompt: Optional[str] = None,
+        model_size: str = "3B",
+        fine_tuning: Optional[str] = "Instruct",
+        max_tokens: int = 4096,
+        num_beams: int = 1,
+        device: str = "cuda",
+        quantization: Optional[str] = "int4",
+        use_fast_attn: bool = False,
+    ):
+        """
+        A simple API for Qwen2.5-VL models
+
+        Parameters:
+            quantization: we support no quatization, and bitsandbytes int4 and int8
+        """
+        self.system_prompt = prompt
+        assert device in ["cuda", "mps"], f"Invalid device: {device}"
+        assert model_size in ["3B", "7B", "72B"], f"Invalid model size: {model_size}"
+        assert fine_tuning in [None, "Instruct"], f"Invalid fine-tuning: {fine_tuning}"
+
+        self._device = device
+        self.max_tokens = max_tokens
+        self.num_beams = num_beams
+        self.use_fast_attn = use_fast_attn
+
+        if fine_tuning is None:
+            model_name = f"Qwen/Qwen2.5-VL-{model_size}"
+        else:
+            model_name = f"Qwen/Qwen2.5-VL-{model_size}-{fine_tuning}"
+
+        print(f"Loading model: {model_name}")
+        model_kwargs = {"torch_dtype": "auto"}
+
+        quantization_config = None
+        if quantization is not None:
+            quantization = quantization.lower()
+            if quantization in ["int8", "int4"]:
+                try:
+                    import bitsandbytes  # noqa: F401
+                    from transformers import BitsAndBytesConfig
+                except ImportError:
+                    raise ImportError(
+                        "bitsandbytes required for int4/int8 quantization: pip install bitsandbytes"
+                    )
+
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=(quantization == "int4"),
+                    load_in_8bit=(quantization == "int8"),
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                )
+                model_kwargs["quantization_config"] = quantization_config
+            else:
+                raise ValueError(f"Unknown quantization method: {quantization}")
+
+        if quantization_config is not None:
+            model_kwargs["quantization_config"] = quantization_config
+
+        self.processor = AutoProcessor.from_pretrained(model_name)
+        if self.use_fast_attn:
+            attn_implementaion = "flash_attention_2"
+        else:
+            attn_implementaion = None
+        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model_name,
+            attn_implementation=attn_implementaion,
+            device_map=device,
+            **model_kwargs,
+        )
+
+    def _process_input(self, command):
+        """
+        Transform command sent from the user to the command query OpenAI GPT
+
+        TODO: Add this function to Qwen25Client as well
+        """
+        if isinstance(command, str):
+            user_commands = command
+        else:
+            user_commands = []  # type:ignore
+            for c in command:
+                # If this is a strungm then we assume it is a text message from the user
+                if isinstance(c, str):
+                    user_commands.append({"type": "text", "text": c})
+                # For now, the only remaining option is image
+                elif isinstance(c, Image.Image) or isinstance(c, np.ndarray):
+                    if isinstance(c, np.ndarray):
+                        image = Image.fromarray(c.astype(np.uint8), mode="RGB")
+                    else:
+                        image = c
+
+                    user_commands.append(
+                        {
+                            "type": "image",
+                            "image": image,
+                        }
+                    )
+                else:
+                    raise NotImplementedError("We only support text and image for now!")
+
+        return user_commands
+
+    def __call__(
+        self, command: Union[str, List[Dict[str, Any]], Image.Image], verbose: bool = False
+    ):
+        if self.system_prompt is not None:
+            messages = [{"role": "system", "content": self.system_prompt}]
+        else:
+            messages = []
+
+        # Prepare the messages
+        inputs = (
+            [{"role": "user", "content": self._process_input(command=command)}]
+            if not isinstance(command[0], dict)
+            else command
+        )
+        messages += inputs  # type:ignore
+
+        if verbose:
+            print("input", messages)
+
+        t0 = timeit.default_timer()
+
+        text = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        image_inputs, video_inputs = process_vision_info(messages)
+        inputs = self.processor(
+            text=[text],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt",
+        )
+        inputs = inputs.to(self._device)
+
+        generated_ids = self.model.generate(
+            **inputs, max_new_tokens=self.max_tokens, num_beams=self.num_beams
+        )
+        generated_ids_trimmed = [
+            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        ]
+        output_text = self.processor.batch_decode(
+            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )[0]
+
+        t1 = timeit.default_timer()
+
+        if verbose:
+            print(f"Assistant response: {output_text}")
+            print(f"Time taken: {t1 - t0:.2f}s")
+
+        return output_text
 
 
 if __name__ == "__main__":

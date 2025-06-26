@@ -14,7 +14,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
+import timeit
 from datetime import datetime
+from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -33,6 +35,8 @@ from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
     pickup,
     process_image_for_placing,
 )
+from stretch.demo.communication_util import load_socket, send_array, recv_array, send_rgb_img, recv_rgb_img, send_depth_img, recv_depth_img, send_everything, recv_everything
+
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
 from stretch.audio.text_to_speech import get_text_to_speech
 from stretch.core.interfaces import Observations
@@ -43,13 +47,10 @@ from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
+from stretch.mapping.voxel import SparseVoxelMapProxy
 from stretch.motion.algo.a_star import AStar
 from stretch.perception.detection.owl import OwlPerception
-from stretch.perception.detection.yoloe import YoloEPerception
-
-# from stretch.perception.encoders.mobile_clip_encoder import MaskMobileClipEncoder
-from stretch.perception.encoders.clip_encoder import MaskClipEncoder
-from stretch.perception.encoders.siglip_encoder import MaskSiglipEncoder
+from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -84,7 +85,6 @@ class RobotAgent(RobotAgentBase):
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
         manipulation_only: bool = False,
-        cpu_only: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -94,7 +94,6 @@ class RobotAgent(RobotAgentBase):
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.grasp_client = grasp_client
         self.debug_instances = debug_instances
         self.show_instances_detected = show_instances_detected
 
@@ -110,12 +109,17 @@ class RobotAgent(RobotAgentBase):
         # For placing
         self.owl_sam_detector = None
 
-        # cpu only is a lightweighted version of DynaMem for running everything on robot NUC
-        self.cpu_only = cpu_only
-        if self.cpu_only:
-            self.device = "cpu"
-        else:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        context = zmq.Context()
+        self.img_socket = context.socket(zmq.REQ)
+        self.img_socket.connect("tcp://" + str(server_ip) + ":" + str(5555))
+        self.text_socket = context.socket(zmq.REQ)
+        self.text_socket.connect("tcp://" + str(server_ip) + ":" + str(5556))
+        self.question_socket = context.socket(zmq.REQ)
+        self.question_socket.connect("tcp://" + str(server_ip) + ":" + str(5558))
+        self.pose_socket = context.socket(zmq.REQ)
+        self.pose_socket.connect("tcp://" + str(server_ip) + ":" + str(5554))
 
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
@@ -125,8 +129,6 @@ class RobotAgent(RobotAgentBase):
             self.log = "dynamem_log/debug_" + current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
         else:
             self.log = "dynamem_log/" + log
-
-        self.create_obstacle_map(parameters)
 
         # ==============================================
         self.obs_count = 0
@@ -195,86 +197,6 @@ class RobotAgent(RobotAgentBase):
 
         self._running = True
 
-        self._start_threads()
-
-    def create_obstacle_map(self, parameters):
-        """
-        This function creates the MaskSiglipEncoder, Owlv2 detector, voxel map util class and voxel map navigation space util class
-        """
-        if self.manipulation_only:
-            self.encoder = None
-        elif self.cpu_only:
-            # Assume we only have CPU, we will use CLIP ViT-B/16 for fast inference
-            self.encoder = MaskClipEncoder(
-                version="ViT-B/16", feature_matching_threshold=0.35, device=self.device
-            )
-        else:
-            # Use SIGLip-so400m for fast inference
-            self.encoder = MaskSiglipEncoder(
-                version="so400m", feature_matching_threshold=0.135, device=self.device
-            )
-        # You can see a clear difference in hyperparameter selection in different querying strategies
-        # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
-        # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
-        if self.manipulation_only:
-            # No object detection, just need to test manipulation
-            self.detection_model = None
-            semantic_memory_resolution = 0.1
-            image_shape = (360, 270)
-        elif self.mllm:
-            # Use GPT4o to localize objects, we use OWLV2-B for fast inference
-            self.detection_model = OwlPerception(
-                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
-            )
-            semantic_memory_resolution = 0.1
-            image_shape = (360, 270)
-        elif self.cpu_only:
-            # Assume we only have CPU, we will use YOLOE-L for fast inference
-            self.detection_model = YoloEPerception(
-                confidence_threshold=0.05, device=self.device, size="l"
-            )
-            semantic_memory_resolution = 0.05
-            image_shape = (360, 270)
-        else:
-            self.detection_model = OwlPerception(
-                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.15
-            )
-            semantic_memory_resolution = 0.05
-            image_shape = (480, 360)
-        self.voxel_map = SparseVoxelMap(
-            resolution=parameters["voxel_size"],
-            semantic_memory_resolution=semantic_memory_resolution,
-            local_radius=parameters["local_radius"],
-            obs_min_height=parameters["obs_min_height"],
-            obs_max_height=parameters["obs_max_height"],
-            obs_min_density=parameters["obs_min_density"],
-            grid_resolution=0.1,
-            min_depth=parameters["min_depth"],
-            max_depth=parameters["max_depth"],
-            pad_obstacles=parameters["pad_obstacles"],
-            add_local_radius_points=parameters.get("add_local_radius_points", default=True),
-            remove_visited_from_obstacles=parameters.get(
-                "remove_visited_from_obstacles", default=False
-            ),
-            smooth_kernel_size=parameters.get("filters/smooth_kernel_size", -1),
-            use_median_filter=parameters.get("filters/use_median_filter", False),
-            median_filter_size=parameters.get("filters/median_filter_size", 5),
-            use_derivative_filter=parameters.get("filters/use_derivative_filter", False),
-            derivative_filter_threshold=parameters.get("filters/derivative_filter_threshold", 0.5),
-            detection=self.detection_model,
-            encoder=self.encoder,
-            image_shape=image_shape,
-            log=self.log,
-            mllm=self.mllm,
-        )
-        self.space = SparseVoxelMapNavigationSpace(
-            self.voxel_map,
-            rotation_step_size=parameters.get("motion_planner/rotation_step_size", 0.2),
-            dilate_frontier_size=parameters.get("motion_planner/frontier/dilate_frontier_size", 2),
-            dilate_obstacle_size=parameters.get("motion_planner/frontier/dilate_obstacle_size", 0),
-        )
-        self.planner = AStar(self.space)
-
     def setup_custom_blueprint(self):
         """
         This function define rerun blueprint of DynaMem module.
@@ -304,16 +226,7 @@ class RobotAgent(RobotAgentBase):
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
-        self.voxel_map.process_rgbd_images(rgb, depth, K, camera_pose)
-        if self.voxel_map.voxel_pcd._points is not None:
-            self.rerun_visualizer.update_voxel_map(space=self.space)
-        if self.voxel_map.semantic_memory._points is not None:
-            self.rerun_visualizer.log_custom_pointcloud(
-                "world/semantic_memory/pointcloud",
-                self.voxel_map.semantic_memory._points.detach().cpu(),
-                self.voxel_map.semantic_memory._rgb.detach().cpu() / 255.0,
-                0.03,
-            )
+        send_everything(self.img_socket, rgb, depth, K, camera_pose)
 
     def look_around(self):
         """
@@ -398,139 +311,16 @@ class RobotAgent(RobotAgentBase):
         """
         Process the text query and return the trajectory for the robot to follow.
         """
-
-        print("Processing", text, "starts")
-
-        self.rerun_visualizer.clear_identity("world/object")
-        self.rerun_visualizer.clear_identity("world/robot_start_pose")
-        self.rerun_visualizer.clear_identity("world/direction")
-        self.rerun_visualizer.clear_identity("robot_monologue")
-        self.rerun_visualizer.clear_identity("/observation_similar_to_text")
-
-        debug_text = ""
-        mode = "navigation"
-        obs = None
-        localized_point = None
-        waypoints = None
-
-        if text is not None and text != "" and self.space.traj is not None:
-            print("saved traj", self.space.traj)
-            traj_target_point = self.space.traj[-1]
-            if hasattr(self.encoder, "feature_matching_threshold") and self.voxel_map.verify_point(
-                text,
-                traj_target_point,
-                similarity_threshold=self.encoder.feature_matching_threshold,
-            ):
-                localized_point = traj_target_point
-                debug_text += "## Last visual grounding results looks fine so directly use it.\n"
-
-        print("Target verification finished")
-
-        if text is not None and text != "" and localized_point is None:
-            (
-                localized_point,
-                debug_text,
-                obs,
-                pointcloud,
-            ) = self.voxel_map.localize_text(text, debug=True, return_debug=True)
-            print("Target point selected!")
-
-        # Do Frontier based exploration
-        if text is None or text == "" or localized_point is None:
-            debug_text += "## Navigation fails, so robot starts exploring environments.\n"
-            localized_point = self.space.sample_frontier(self.planner, start_pose, text)
-            mode = "exploration"
-
-        if obs is not None and mode == "navigation":
-            obs = self.voxel_map.find_obs_id_for_text(text)
-            rgb = self.voxel_map.observations[obs - 1].rgb
-            self.rerun_visualizer.log_custom_2d_image("/observation_similar_to_text", rgb)
-
-        if localized_point is None:
-            return []
-
-        # TODO: Do we really need this line?
-        if len(localized_point) == 2:
-            localized_point = np.array([localized_point[0], localized_point[1], 0])
-
-        point = self.space.sample_navigation(start_pose, self.planner, localized_point)
-
-        print("Navigation endpoint selected")
-
-        waypoints = None
-
-        if point is None:
-            res = None
-            print("Unable to find any target point, some exception might happen")
-        else:
-            res = self.planner.plan(start_pose, point)
-
-        if res is not None and res.success:
-            waypoints = [pt.state for pt in res.trajectory]
-        elif res is not None:
-            waypoints = None
-            print("[FAILURE]", res.reason)
-        # If we are navigating to some object of interest, send (x, y, z) of
-        # the object so that we can make sure the robot looks at the object after navigation
-        traj = []
-        if waypoints is not None:
-
-            self.rerun_visualizer.log_custom_pointcloud(
-                "world/object",
-                [localized_point[0], localized_point[1], 1.5],
-                torch.Tensor([1, 0, 0]),
-                0.1,
-            )
-
-            finished = len(waypoints) <= 8 and mode == "navigation"
-            if finished:
-                self.space.traj = None
-            else:
-                self.space.traj = waypoints[8:] + [[np.nan, np.nan, np.nan], localized_point]
-            if not finished:
-                waypoints = waypoints[:8]
-            traj = self.planner.clean_path_for_xy(waypoints)
-            if finished:
-                traj.append([np.nan, np.nan, np.nan])
-                if isinstance(localized_point, torch.Tensor):
-                    localized_point = localized_point.tolist()
-                traj.append(localized_point)
-            print("Planned trajectory:", traj)
-
         # Talk about what you are doing, as the robot.
         if self.robot is not None:
             if text is not None and text != "":
                 self.robot.say("I am looking for a " + text + ".")
             else:
                 self.robot.say("I am exploring the environment.")
-
-        if text is not None and text != "":
-            debug_text = "### The goal is to navigate to " + text + ".\n" + debug_text
-        else:
-            debug_text = "### I have not received any text query from human user.\n ### So, I plan to explore the environment with Frontier-based exploration.\n"
-        debug_text = "# Robot's monologue: \n" + debug_text
-        self.rerun_visualizer.log_text("robot_monologue", debug_text)
-
-        if traj is not None:
-            origins = []
-            vectors = []
-            for idx in range(len(traj)):
-                if idx != len(traj) - 1:
-                    origins.append([traj[idx][0], traj[idx][1], 1.5])
-                    vectors.append(
-                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
-                    )
-            self.rerun_visualizer.log_arrow3D(
-                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
-            )
-            self.rerun_visualizer.log_custom_pointcloud(
-                "world/robot_start_pose",
-                [start_pose[0], start_pose[1], 1.5],
-                torch.Tensor([0, 0, 1]),
-                0.1,
-            )
-
-        return traj
+        self.text_socket.send_string(text)
+        self.text_socket.recv_string()
+        send_array(self.text_socket, start_pose)
+        return recv_array(self.text_socket)
 
     def navigate(self, text, max_step=10):
         """
@@ -539,9 +329,6 @@ class RobotAgent(RobotAgentBase):
         """
         # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
-        # if not os.path.exists(self.log):
-        #     os.makedirs(self.log)
-        # rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
         finished = False
         step = 0
         end_point = None
@@ -553,6 +340,91 @@ class RobotAgent(RobotAgentBase):
                 print("Navigation failed! The path might be blocked!")
                 return None
         return end_point
+
+    def run_eqa(self, question, max_planning_steps: int = 5):
+        """
+        API for calling EQA module
+        """
+
+        self.robot.switch_to_navigation_mode()
+
+        for _ in range(max_planning_steps):
+            answer, confidence = self.run_eqa_one_iter(question)
+            if confidence:
+                self.robot.say("The answer to " + question + " is " + answer)
+                break
+
+        return None, None
+
+    def run_eqa_one_iter(self, question, max_movement_step: int = 5):
+
+        if not self._realtime_updates:
+            self.robot.look_front()
+            self.look_around()
+            self.robot.look_front()
+            self.robot.switch_to_navigation_mode()
+
+        self.question_socket.send_string(question)
+        self.question_socket.recv_string()
+        send_array(self.question_socket, self.robot.get_base_pose())
+        answer = self.question_socket.recv_string()
+        self.question_socket.send_string("")
+        confidence = self.question_socket.recv_string().lower() == "true"
+
+        if confidence:
+            return answer, confidence
+        else:
+            self.question_socket.send_string("")
+            target_point = recv_array(self.question_socket) 
+
+        start_pose = self.robot.get_base_pose()
+
+        print("Target point", target_point)
+        # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
+        obstacles, _ = self.voxel_map.get_2d_map()
+        target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
+        if not obstacles[int(target_grid[0]), int(target_grid[1])]:
+            target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
+            print("Target theta", target_theta)
+        else:
+            target_theta = None
+
+        movement_step = 0
+        while movement_step < max_movement_step:
+            start_pose = self.robot.get_base_pose()
+            movement_step += 1
+            self.update()
+            finished = self.navigate_to_target_pose(target_point, start_pose, target_theta)
+            if finished:
+                break
+
+        return answer, confidence
+    
+    def navigate_to_target_pose(
+        self,
+        target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        target_theta = None
+    ):
+        send_array(self.pose_socket, start_pose)
+        self.pose_socket.recv_string()
+        send_array(self.pose_socket, target_pose)
+        self.pose_socket.recv_string()
+        if target_theta is None:
+            target_theta = 10
+        send_array(self.pose_socket, target_theta)
+        
+        traj = recv_array(self.pose_socket)
+
+        self.robot.execute_trajectory(
+                traj,
+                pos_err_threshold=self.pos_err_threshold,
+                rot_err_threshold=self.rot_err_threshold,
+                blocking=True,
+        )
+
+        self.pose_socket.send_string("")
+        return self.pose_socket.recv_string().lower() == 'true'
 
     def place(
         self,
@@ -583,16 +455,9 @@ class RobotAgent(RobotAgentBase):
             )
         else:
             if self.owl_sam_detector is None:
-                # We can opt to use OWLv2 + SAMv2 for accurate object detection, but the placing receptacles are usually very easy to detect,
-                # so we don't see the point of installing SAMv2 and using it
-                # from stretch.perception.detection.owl import OWLSAMProcessor
+                from stretch.perception.detection.owl import OWLSAMProcessor
 
-                # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
-
-                # A misnomer, this is actually YOLOE while its named as self.owl_sam_detector
-                self.owl_sam_detector = YoloEPerception(
-                    confidence_threshold=0.05, size="l", device=self.device
-                )
+                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,
@@ -628,10 +493,6 @@ class RobotAgent(RobotAgentBase):
             base_trans=-self.manip_wrapper.robot.get_six_joints()[0]
         )
         return True
-
-    def get_voxel_map(self):
-        """Return the voxel map"""
-        return self.voxel_map
 
     def manipulate(
         self,
