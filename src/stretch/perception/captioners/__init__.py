@@ -9,20 +9,17 @@
 from typing import Any
 
 from .base_captioner import BaseCaptioner
-from .blip_captioner import BlipCaptioner
 from .git_captioner import GitCaptioner
 from .moondream_captioner import MoondreamCaptioner
 from .qwen_captioner import QwenCaptioner
 from .vit_gpt2_captioner import VitGPT2Captioner
 
-captioners = ["blip", "git", "moondream", "vit_gpt2", "qwen"]
+captioners = ["git", "moondream", "vit_gpt2", "qwen"]
 
 
 def get_captioner(captioner_name, args: Any) -> BaseCaptioner:
     """Get captioner."""
-    if captioner_name == "blip":
-        return BlipCaptioner(**args)
-    elif captioner_name == "git":
+    if captioner_name == "git":
         return GitCaptioner(**args)
     elif captioner_name == "moondream":
         return MoondreamCaptioner(**args)

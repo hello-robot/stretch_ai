@@ -25,7 +25,6 @@ from torch import Tensor
 from stretch.llms import OpenaiClient
 from stretch.llms.prompts import DYNAMEM_VISUAL_GROUNDING_PROMPT
 from stretch.llms.qwen_client import Qwen25VLClient
-from stretch.perception.encoders import MaskSiglipEncoder
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 from stretch.utils.morphology import binary_dilation, binary_erosion, get_edges
 from stretch.utils.point_cloud_torch import unproject_masked_depth_to_xyz_coordinates
@@ -59,7 +58,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         background_instance_label: int = -1,
         instance_memory_kwargs: Dict[str, Any] = {},
         voxel_kwargs: Dict[str, Any] = {},
-        encoder: Optional[MaskSiglipEncoder] = None,
+        encoder=None,
         map_2d_device: str = "cpu",
         device: Optional[str] = None,
         use_instance_memory: bool = False,
@@ -142,7 +141,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             from stretch.llms.gemini_client import GeminiClient
             from stretch.llms.prompts.eqa_prompt import EQA_PROMPT
 
-            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-flash-preview-04-17")
+            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-flash-preview-05-20")
 
         # Attributes for EQA, If you are not running EQA module, this will stay the same.
         self._question: Optional[str] = None
@@ -176,7 +175,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
         text: str,
         point: Union[torch.Tensor, np.ndarray],
         distance_threshold: float = 0.1,
-        similarity_threshold: float = 0.14,
+        similarity_threshold: float = 0.21,
     ):
         """
         Running visual grounding is quite time consuming.
@@ -623,7 +622,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
         else:
             return target_point, debug_text, image_id, point
 
-    def localize_with_feature_similarity(self, text, debug=True, return_debug=False):
+    def localize_with_feature_similarity(
+        self, text, similarity_threshold: float = 0.14, debug=True, return_debug=False
+    ):
         points, _, _, _ = self.semantic_memory.get_pointcloud()
         alignments = self.find_alignment_over_model(text).cpu()
         point = points[alignments.argmax(dim=-1)].detach().cpu().squeeze()
@@ -640,6 +641,9 @@ class SparseVoxelMap(SparseVoxelMapBase):
             depth = self.observations[obs_id - 1].depth
             K = self.observations[obs_id - 1].camera_K
 
+            rgb = cv2.cvtColor(rgb.numpy(), cv2.COLOR_RGB2BGR)
+            cv2.imwrite(self.log + "/rgb" + text + "_" + str(obs_id.item() - 1) + ".png", rgb)
+
             res = self.detection_model.compute_obj_coord(text, rgb, depth, K, pose)
 
         if res is not None:
@@ -648,8 +652,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 "#### - Object is detected in observations . **😃** Directly navigate to it.\n"
             )
         else:
-            # debug_text += '#### - Directly ignore this instance is the target. **😞** \n'
-            cosine_similarity_check = alignments.max().item() > 0.14
+            cosine_similarity_check = alignments.max().item() > 0.21
             if cosine_similarity_check:
                 target_point = point
 
@@ -658,7 +661,8 @@ class SparseVoxelMap(SparseVoxelMapBase):
                 )
             else:
                 debug_text += "#### - Cannot verify whether this instance is the target. **😞** \n"
-        # print('target_point', target_point)
+        print("--------------------------------")
+        print(debug_text)
         if not debug:
             return target_point
         elif not return_debug:

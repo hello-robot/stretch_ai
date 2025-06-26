@@ -262,7 +262,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return index, time_heuristics, alignments_heuristics, total_heuristics
 
     def _time_heuristic(
-        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=50, debug=False
+        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=10, debug=False
     ):
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         time_heuristics = history_soft.max() - history_soft

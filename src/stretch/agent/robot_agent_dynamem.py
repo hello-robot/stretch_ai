@@ -14,9 +14,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import timeit
 from datetime import datetime
-from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -46,10 +44,12 @@ from stretch.mapping.voxel import (
     SparseVoxelMapNavigationSpaceDynamem as SparseVoxelMapNavigationSpace,
 )
 from stretch.motion.algo.a_star import AStar
-# from stretch.perception.detection.owl import OwlPerception
+from stretch.perception.detection.owl import OwlPerception
 from stretch.perception.detection.yoloe import YoloEPerception
-# from stretch.perception.encoders import MaskSiglipEncoder
-from stretch.perception.encoders.clip_encoder import MaskClipEncoder as MaskSiglipEncoder
+
+# from stretch.perception.encoders.mobile_clip_encoder import MaskMobileClipEncoder
+from stretch.perception.encoders.clip_encoder import MaskClipEncoder
+from stretch.perception.encoders.siglip_encoder import MaskSiglipEncoder
 from stretch.perception.wrapper import OvmmPerception
 
 # Manipulation hyperparameters
@@ -84,6 +84,7 @@ class RobotAgent(RobotAgentBase):
         server_ip: Optional[str] = "127.0.0.1",
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -109,7 +110,12 @@ class RobotAgent(RobotAgentBase):
         # For placing
         self.owl_sam_detector = None
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # cpu only is a lightweighted version of DynaMem for running everything on robot NUC
+        self.cpu_only = cpu_only
+        if self.cpu_only:
+            self.device = "cpu"
+        else:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if not os.path.exists("dynamem_log"):
             os.makedirs("dynamem_log")
@@ -197,34 +203,41 @@ class RobotAgent(RobotAgentBase):
         """
         if self.manipulation_only:
             self.encoder = None
+        elif self.cpu_only:
+            # Assume we only have CPU, we will use CLIP ViT-B/16 for fast inference
+            self.encoder = MaskClipEncoder(
+                version="ViT-B/16", feature_matching_threshold=0.35, device=self.device
+            )
         else:
-            self.encoder = MaskSiglipEncoder(device=self.device, version="so400m")
+            # Use SIGLip-so400m for fast inference
+            self.encoder = MaskSiglipEncoder(
+                version="so400m", feature_matching_threshold=0.135, device=self.device
+            )
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
         if self.manipulation_only:
+            # No object detection, just need to test manipulation
             self.detection_model = None
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
         elif self.mllm:
-            # self.detection_model = OwlPerception(
-            #     version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
-            # )
-            self.detection_model = YoloEPerception(
-                device=self.device,
-                confidence_threshold=0.01,
-                size='s'
+            # Use GPT4o to localize objects, we use OWLV2-B for fast inference
+            self.detection_model = OwlPerception(
+                version="owlv2-B-p16", device=self.device, confidence_threshold=0.01
             )
             semantic_memory_resolution = 0.1
             image_shape = (360, 270)
-        else:
-            # self.detection_model = OwlPerception(
-            #     version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.2
-            # )
+        elif self.cpu_only:
+            # Assume we only have CPU, we will use YOLOE-L for fast inference
             self.detection_model = YoloEPerception(
-                device=self.device,
-                confidence_threshold=0.1,
-                size='s'
+                confidence_threshold=0.05, device=self.device, size="l"
+            )
+            semantic_memory_resolution = 0.05
+            image_shape = (360, 270)
+        else:
+            self.detection_model = OwlPerception(
+                version="owlv2-L-p14-ensemble", device=self.device, confidence_threshold=0.15
             )
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)
@@ -403,7 +416,11 @@ class RobotAgent(RobotAgentBase):
         if text is not None and text != "" and self.space.traj is not None:
             print("saved traj", self.space.traj)
             traj_target_point = self.space.traj[-1]
-            if self.voxel_map.verify_point(text, traj_target_point):
+            if hasattr(self.encoder, "feature_matching_threshold") and self.voxel_map.verify_point(
+                text,
+                traj_target_point,
+                similarity_threshold=self.encoder.feature_matching_threshold,
+            ):
                 localized_point = traj_target_point
                 debug_text += "## Last visual grounding results looks fine so directly use it.\n"
 
@@ -522,6 +539,9 @@ class RobotAgent(RobotAgentBase):
         """
         # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
+        # if not os.path.exists(self.log):
+        #     os.makedirs(self.log)
+        # rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
         finished = False
         step = 0
         end_point = None
@@ -563,9 +583,16 @@ class RobotAgent(RobotAgentBase):
             )
         else:
             if self.owl_sam_detector is None:
-                from stretch.perception.detection.owl import OWLSAMProcessor
+                # We can opt to use OWLv2 + SAMv2 for accurate object detection, but the placing receptacles are usually very easy to detect,
+                # so we don't see the point of installing SAMv2 and using it
+                # from stretch.perception.detection.owl import OWLSAMProcessor
 
-                self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+                # self.owl_sam_detector = OWLSAMProcessor(confidence_threshold=0.1)
+
+                # A misnomer, this is actually YOLOE while its named as self.owl_sam_detector
+                self.owl_sam_detector = YoloEPerception(
+                    confidence_threshold=0.05, size="l", device=self.device
+                )
             rotation, translation = process_image_for_placing(
                 obj=text,
                 hello_robot=self.manip_wrapper,

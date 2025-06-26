@@ -14,21 +14,18 @@
 
 
 import argparse
-import os
-from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-from PIL import Image
 import torch
-from ultralytics import YOLO
+from PIL import Image
+from ultralytics import YOLOE
 
 from stretch.core.abstract_perception import PerceptionModule
 from stretch.core.interfaces import Observations
 from stretch.perception.detection.scannet_200_classes import CLASS_LABELS_200
 from stretch.perception.detection.utils import filter_depth, overlay_masks
-from stretch.utils.config import get_full_config_path
 from stretch.utils.image import Camera, camera_xyz_to_global_xyz
 
 
@@ -62,14 +59,13 @@ def draw_masks(masks, height, width):
     panoptic_masks = []
     for mask in masks:
         xy_coords = (mask * [width, height]).astype(np.int32)
-        
         panotic_mask = np.zeros((height, width), dtype=np.uint8)
 
         # Draw filled polygon
         cv2.fillPoly(panotic_mask, [xy_coords], color=1)
 
         # Add to list
-        panoptic_masks.append(panotic_mask)
+        panoptic_masks.append(panotic_mask.astype(bool))
 
     return panoptic_masks
 
@@ -80,11 +76,10 @@ class YoloEPerception(PerceptionModule):
         config_file=None,
         vocabulary="coco",
         class_list: Optional[Union[List[str], Tuple[str]]] = None,
-        checkpoint_file=None,
-        sem_gpu_id=0,
         verbose: bool = False,
-        size: str = "m",
+        size: str = "l",
         confidence_threshold: Optional[float] = None,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         """Load trained YOLO model for inference.
 
@@ -94,8 +89,6 @@ class YoloEPerception(PerceptionModule):
              for a custom set of categories
             custom_vocabulary: if vocabulary="custom", this should be a comma-separated
              list of classes (as a single string)
-            checkpoint_file: path to model checkpoint
-            sem_gpu_id: GPU ID to load the model on, -1 for CPU
             verbose: whether to print out debug information
         """
         self.verbose = verbose
@@ -104,21 +97,13 @@ class YoloEPerception(PerceptionModule):
         if class_list is None:
             self.class_list = CLASS_LABELS_200
 
-        if checkpoint_file is None:
-            checkpoint_file = get_full_config_path(f"perception/yolo_world/yolov8{size}-world.pt")
+        self.device = device
+        checkpoint_file = f"yoloe-v8{size}-seg.pt"
+        self.model = YOLOE(checkpoint_file)
+        self.model.to(self.device)
 
-        # Check if checkpoint file exists
-        if not Path(checkpoint_file).exists():
-            # Make parent directory
-            Path(checkpoint_file).parent.mkdir(parents=True, exist_ok=True)
-            # Download the model
-            os.system(
-                f"wget -O {checkpoint_file} "
-                f"https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8{size}-worldv2.pt"
-            )
-
-        self.model = YOLO(checkpoint_file)
-        self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
+        self._current_vocabulary = {i: self.class_list[i] for i in range(len(self.class_list))}
 
         if self.verbose:
             print(f"Loaded YOLO model from {checkpoint_file}")
@@ -126,7 +111,7 @@ class YoloEPerception(PerceptionModule):
         self.num_sem_categories = 80
 
     def reset_vocab(self, new_vocab: List[str], vocab_type="custom"):
-        print("Resetting vocabulary not supported for YOLO")
+        self.class_list = new_vocab
 
     def predict(
         self,
@@ -135,7 +120,6 @@ class YoloEPerception(PerceptionModule):
         depth_threshold: Optional[float] = None,
         draw_instance_predictions: bool = True,
         confidence_threshold: Optional[float] = None,
-        texts: Optional[Union[str, List[str]]] = None,
     ) -> Observations:
         """
         Arguments:
@@ -150,13 +134,7 @@ class YoloEPerception(PerceptionModule):
              image of shape (H, W, 3)
         """
 
-        if isinstance(texts, str):
-            texts = [texts]
-
-        if texts is not None:
-            self.model.set_classes(texts, self.model.get_text_pe(texts))
-        else:
-            self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
+        self.model.set_classes(self.class_list, self.model.get_text_pe(self.class_list))
 
         if isinstance(rgb, np.ndarray):
             # This is expected
@@ -166,8 +144,7 @@ class YoloEPerception(PerceptionModule):
             rgb = rgb.numpy()
         else:
             raise ValueError(f"Expected rgb to be a numpy array or torch tensor, got {type(rgb)}")
-        # image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        image = Image.fromarray(rgb)
+        image = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         height, width, _ = image.shape
         if confidence_threshold is None:
             pred = self.model(image, verbose=self.verbose, conf=self.confidence)
@@ -194,7 +171,10 @@ class YoloEPerception(PerceptionModule):
         # Sort instances by mask size
         scores = pred[0].boxes.conf.cpu().numpy()
 
-        masks = draw_masks(pred[0].masks.xyn, height, width)
+        if pred[0].masks is not None:
+            masks = draw_masks(pred[0].masks.xyn, height, width)
+        else:
+            masks = []
 
         if depth_threshold is not None and depth is not None:
             masks = np.array([filter_depth(mask, depth, depth_threshold) for mask in masks])
@@ -214,24 +194,44 @@ class YoloEPerception(PerceptionModule):
 
     def is_instance(self):
         return True
-    
+
     def detect_object(
         self,
-        rgb: Union[np.ndarray, torch.Tensor],
+        rgb: Union[np.ndarray, torch.Tensor, Image.Image],
         text: Union[str, List[str]],
         confidence_threshold: Optional[float] = None,
+        output_mask: Optional[bool] = True,
+        visualize_mask: bool = False,
+        mask_filename: Optional[str] = None,
+        box_filename: Optional[str] = None,
     ):
         """Try to find target objects given one or many text queries.
         Arguments:
             rgb: ideally of shape (C, H, W), the pixel value should be integer between [0, 255]
         """
+        if confidence_threshold is None:
+            confidence_threshold = self.confidence
         if isinstance(rgb, torch.Tensor):
             rgb = rgb.numpy()
-        image = Image.fromarray(rgb)
-        self.model.get_text_pe([text], self.model.get_text_pe([text]))
-        results = self.model.predict(image, conf = self.confidence)
+        if not isinstance(rgb, Image.Image):
+            height, width, _ = rgb.shape
+            image = Image.fromarray(rgb.astype(np.uint8))
+        else:
+            width, height = rgb.size
+            image = rgb
+        if not isinstance(text, list):
+            text = [text]
+        self.model.set_classes(text, self.model.get_text_pe(text))
+        results = self.model.predict(image, conf=confidence_threshold)
 
-        return results[0].boxes.conf.cpu().numpy(), results[0].boxes.xyxy.cpu().numpy()
+        if output_mask:
+            if results[0].masks is None or len(results[0].masks) == 0:
+                return None, None
+            else:
+                masks = draw_masks(results[0].masks.xyn, height, width)
+                return masks[0], results[0].boxes.xyxy.cpu().numpy()[0]
+        else:
+            return results[0].boxes.conf.cpu().numpy(), results[0].boxes.xyxy.cpu().numpy()
 
     def compute_obj_coord(
         self,
@@ -249,7 +249,7 @@ class YoloEPerception(PerceptionModule):
         xyz = torch.Tensor(camera_xyz_to_global_xyz(camera_xyz, np.array(camera_pose)))
 
         scores, boxes = self.detect_object(
-            rgb=rgb, text=text, confidence_threshold=confidence_threshold
+            rgb=rgb, text=text, confidence_threshold=confidence_threshold, output_mask=False
         )
         for idx, (score, bbox) in enumerate(
             sorted(zip(scores, boxes), key=lambda x: x[0], reverse=True)
@@ -267,7 +267,6 @@ class YoloEPerception(PerceptionModule):
             if torch.min(depth[tl_y:br_y, tl_x:br_x].reshape(-1)) < depth_threshold:
                 return torch.median(xyz[tl_y:br_y, tl_x:br_x].reshape(-1, 3), dim=0).values
         return None
-
 
 
 def get_parser():

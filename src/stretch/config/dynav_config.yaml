@@ -25,15 +25,12 @@ min_depth: 0.25
 max_depth: 2.5
 
 # Object detection parameters
+# We don't use these parameters for now as we use whether we use CUP or GPU to decide which model to use, but we keep them here for future reference.
 detection:
-  # module: "detic"
-  # category_map_file: example_cat_map.json
-  # use_detic_viz: False
-  # confidence_threshold: 0.2
-  module: "yoloe"
+  module: "owlsam"
   category_map_file: example_cat_map.json
   use_detic_viz: False
-  confidence_threshold: 0.2
+  confidence_threshold: 0.02
 
 # Point cloud cleanup
 filters:

@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+import torch
 from PIL import Image
 
 from stretch.agent.operations import GraspObjectOperation
@@ -56,12 +57,18 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
         discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
         self.discord_bot = discord_bot
+        self.cpu_only = cpu_only
+        # If there is no GPU, we have to use CPU
+        if not torch.cuda.is_available():
+            print("Setting up to use CPU as there is no GPU!")
+            self.cpu_only = True
 
         # Other parameters
         self.visual_servo = visual_servo
@@ -78,6 +85,7 @@ class DynamemTaskExecutor:
         # Create semantic sensor if visual servoing is enabled
         print("- Create semantic sensor if visual servoing is enabled")
         if self.visual_servo:
+            self.parameters["detection"]["module"] = "yoloe" if self.cpu_only else "owlsam"
             self.semantic_sensor = create_semantic_sensor(
                 parameters=self.parameters,
                 device_id=device_id,
@@ -96,6 +104,7 @@ class DynamemTaskExecutor:
             server_ip=server_ip,
             mllm=mllm,
             manipulation_only=manipulation_only,
+            cpu_only=self.cpu_only,
         )
         self.agent.start()
 
@@ -164,9 +173,9 @@ class DynamemTaskExecutor:
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
-                match_method="feature",
+                match_method=self.match_method,
                 show_object_to_grasp=False,
-                show_servo_gui=True,
+                show_servo_gui=False,
                 delete_object_after_grasp=False,
             )
             # This retracts the arm
@@ -285,9 +294,12 @@ class DynamemTaskExecutor:
                 # Navigation
 
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
-                if self.skip_confirmations or (
-                    not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                if not self.manipulation_only and (
+                    self.skip_confirmations
+                    or (
+                        not self.skip_confirmations
+                        and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                    )
                 ):
                     self.robot.move_to_nav_posture()
                     point = self._find(args)
@@ -321,9 +333,12 @@ class DynamemTaskExecutor:
                 # Navigation
 
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
-                if self.skip_confirmations or (
-                    not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                if not self.manipulation_only and (
+                    self.skip_confirmations
+                    or (
+                        not self.skip_confirmations
+                        and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                    )
                 ):
                     point = self._find(args)
                 # Or the user explicitly tells that he or she does not want to run navigation.

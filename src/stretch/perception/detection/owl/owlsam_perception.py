@@ -41,7 +41,7 @@ class OWLSAMProcessor(OwlPerception):
         # Considering SAM2 is not installed by default, we would not import it unless we need to use it.
         from stretch.perception.detection.sam2 import SAM2Perception
 
-        self.sam_model = SAM2Perception(configuration="t")
+        self.sam_model = SAM2Perception(configuration="s")
 
     def reset_vocab(self, texts: Optional[List[str]] = None):
         if texts is None:

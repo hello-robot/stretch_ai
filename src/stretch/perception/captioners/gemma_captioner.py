@@ -20,7 +20,7 @@ from transformers import pipeline
 
 
 class GemmaCaptioner:
-    """Image captioner using Qwen2 model."""
+    """Image captioner using Gemma3 model."""
 
     def __init__(self, device: Optional[str] = None, image_shape=None, max_length: int = 100):
         """Initialize the GPT image captioner.
