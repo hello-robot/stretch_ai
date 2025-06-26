@@ -30,8 +30,8 @@ setuptools.setup(
     package_data={"stretch": ["config/**/*.yaml", "perception/*.tsv", "simulation/models/*"]},
     install_requires=[
         # Machine learning code
-        "torch<2.4",
-        "torchvision",
+        # "torch<2.4",
+        # "torchvision",
         # General utilities
         "pyyaml",
         "pyzmq",
@@ -80,6 +80,7 @@ setuptools.setup(
         "triton >= 3.0.0",
         "accelerate >= 1.5.0",
         "einops",
+        "protobuf",
         # Meta neural nets
         "segment-anything",
         # Compression tools
