@@ -248,7 +248,7 @@ python -m stretch.app.run_dynamem --use-llm --use-voice
 You can specify an LLM, e.g.:
 ```bash
 # Run Gemma 2B from Google locally
-python -m stretch.app.run_dynamem --use-llm --llm gemma2b
+python -m stretch.app.run_dynamem --use-llm --llm gemma
 
 # Run Openai GPT-4o-mini on the cloud, using an OpenAI API key
 OPENAI_API_KEY=your_key_here

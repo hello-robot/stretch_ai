@@ -29,7 +29,6 @@ from stretch.mapping.instance.matching import (
     ViewMatchingConfig,
     get_similarity,
 )
-from stretch.perception.captioners import BaseCaptioner
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
@@ -102,7 +101,7 @@ class InstanceMemory:
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
-        captioner: Optional[BaseCaptioner] = None,
+        captioner=None,
         save_original_image: bool = False,
     ):
         """See class definition for information about InstanceMemory
@@ -826,7 +825,7 @@ class InstanceMemory:
                 else:
                     # get instance view
                     if self.captioner is not None:
-                        # ViT_GPT2, Moondream, and GiT captioners take image of shape (H, W, C)
+                        # ViT_GPT2 and GiT captioners take image of shape (H, W, C)
                         # They also require the image to be scaled up cropped_image's pixel values within [0, 256)
                         text_description = self.captioner.caption_image(
                             cropped_image.to(dtype=torch.uint8)

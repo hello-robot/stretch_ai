@@ -569,7 +569,6 @@ class MujocoZmqServer(BaseZmqServer):
         elif "load_map" in action:
             logger.warning("Loading map not supported in Mujoco simulation")
         elif "say" in action:
-            # self.text_to_speech.say_async(action["say"])
             do_nothing = True
         if "joint" in action:
             # Move the robot to the given joint configuration

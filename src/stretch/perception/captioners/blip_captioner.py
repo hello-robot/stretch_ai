@@ -12,54 +12,44 @@ from typing import Optional, Union
 import click
 import torch
 from numpy import ndarray
-from overrides import override
 from PIL import Image
 from torch import Tensor
-from transformers import AutoTokenizer, VisionEncoderDecoderModel, ViTImageProcessor
-
-from .base_captioner import BaseCaptioner
+from transformers import BlipForConditionalGeneration, BlipProcessor
 
 
-class VitGPT2Captioner(BaseCaptioner):
-    """Image captioner using Vision Transformer and GPT-2 model."""
+class BlipCaptioner:
+    """Image captioner using BLIP (Bootstrapping Language-Image Pre-training) model."""
 
-    def __init__(self, max_length: int = 16, num_beams: int = 4, device: Optional[str] = None):
-        """Initialize the ViT-GPT2 image captioner.
+    def __init__(self, max_length: int = 30, num_beams: int = 4, device: Optional[str] = None):
+        """Initialize the BLIP image captioner.
 
         Args:
-            max_length (int, optional): Maximum length of the generated caption. Defaults to 16.
+            max_length (int, optional): Maximum length of the generated caption. Defaults to 30.
             num_beams (int, optional): Number of beams for beam search. Defaults to 4.
+            device (str, optional): Device to run the model on. Defaults to None (auto-detect).
         """
-        super(VitGPT2Captioner, self).__init__()
+        super(BlipCaptioner, self).__init__()
         self.max_length = max_length
         self.num_beams = num_beams
         if device is None:
-            if torch.cuda.is_available():
-                self._device = torch.device("cuda")
-            else:
-                self._device = torch.device("cpu")
+            self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self._device = torch.device(device)
 
         # Create models
-        self.model = VisionEncoderDecoderModel.from_pretrained(
-            "nlpconnect/vit-gpt2-image-captioning"
+        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+        self.model = BlipForConditionalGeneration.from_pretrained(
+            "Salesforce/blip-image-captioning-large"
         ).to(self._device)
-        self.feature_extractor = ViTImageProcessor.from_pretrained(
-            "nlpconnect/vit-gpt2-image-captioning"
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
 
-    @override
     def caption_image(self, image: Union[ndarray, Tensor, Image.Image]) -> str:
         """Generate a caption for the given image.
 
         Args:
-            image (Union[ndarray, Tensor]): Image to generate caption for.
+            image (Union[ndarray, Tensor, Image.Image]): The input image.
 
         Returns:
-            str: Generated caption.
-
+            str: The generated caption.
         """
         if isinstance(image, Image.Image):
             pil_image = image
@@ -70,31 +60,30 @@ class VitGPT2Captioner(BaseCaptioner):
                 _image = image
             pil_image = Image.fromarray(_image)
 
-        pixel_values = self.feature_extractor(images=[image], return_tensors="pt").pixel_values
-        pixel_values = pixel_values.to(self._device)
+        # Preprocess the image
+        inputs = self.processor(pil_image, return_tensors="pt").to(self._device)
 
         # Generate caption
-        output_ids = self.model.generate(
-            pixel_values,
+        output = self.model.generate(
+            **inputs,
             max_length=self.max_length,
             num_beams=self.num_beams,
-            use_cache=True,
-            no_repeat_ngram_size=3,
             do_sample=False,
             output_attentions=False,
             output_hidden_states=False,
-            return_dict_in_generate=False,
+            return_dict_in_generate=False
         )
 
         # Decode the output ids to text
-        caption = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        caption = self.processor.decode(output[0], skip_special_tokens=True)
+
         return caption
 
 
 @click.command()
-@click.option("--image_path", default="object.png", help="Path to image file")
+@click.option("--image_path", default="example.jpg", help="Path to image file")
 def main(image_path: str):
-    captioner = VitGPT2Captioner()
+    captioner = BlipCaptioner()
 
     # Load image from file
     image = Image.open(image_path)

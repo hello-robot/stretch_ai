@@ -17,20 +17,23 @@ from transformers import pipeline
 from stretch.llms.base import AbstractLLMClient, AbstractPromptBuilder
 
 
-class Gemma2bClient(AbstractLLMClient):
+class GemmaClient(AbstractLLMClient):
     def __init__(
         self,
         prompt: Union[str, AbstractPromptBuilder],
         prompt_kwargs: Optional[Dict[str, Any]] = None,
         max_tokens: int = 4096,
         device: str = "cuda",
+        model_size: str = "4b",
     ):
+        # We plan to support only 4b and 1b model as we assume we only have a 4090 GPU
+        # If you have a better GPU, you can use larger model size
         super().__init__(prompt, prompt_kwargs)
         assert device in ["cuda", "mps"], f"Invalid device: {device}"
         self.max_tokens = max_tokens
         self.pipe = pipeline(
             "text-generation",
-            model="google/gemma-2-2b-it",
+            model="google/gemma-3-" + model_size + "-it",
             model_kwargs={"torch_dtype": torch.bfloat16},
             device=device,
         )
@@ -64,7 +67,7 @@ if __name__ == "__main__":
     prompt = PickupPromptBuilder()
 
     # prompt = ObjectManipNavPromptBuilder()
-    client = Gemma2bClient(prompt)
+    client = GemmaClient(prompt)
     for _ in range(50):
         msg = input("Enter a message (empty to quit): ")
         if len(msg) == 0:

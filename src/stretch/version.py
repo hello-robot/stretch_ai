@@ -12,7 +12,7 @@
 # 2) we can import it in setup.py for the same reason
 # 3) we can import it into your module
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 __stretchpy_protocol__ = "spp0"
 

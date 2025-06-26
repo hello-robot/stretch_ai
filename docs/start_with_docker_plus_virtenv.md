@@ -189,31 +189,6 @@ You can pass the `--conda` flag into the install script if you have it installed
 ./install.sh --conda
 ```
 
-##### Manual Perception Installation
-
-If you don't have CUDA installed or don't know what it is, you can answer **no** to the prompt to install Detic. If you do have CUDA installed, you can answer **yes** to the prompt to install Detic.
-
-If you answered no, you can then install Detic manually. Take note of the name of the environment. It will be something like `stretch_ai_<version>`.
-
-Next, run:
-
-```bash
-# Install detectron2 for perception (required by Detic)
-git submodule update --init --recursive
-cd third_party/detectron2
-pip install -e .
-
-# Install Detic for perception
-cd ../../src/stretch/perception/detection/detic/Detic
-# Make sure it's up to date
-git submodule update --init --recursive
-pip install -r requirements.txt
-
-# Download DETIC checkpoint...
-mkdir -p models
-wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
-```
-
 ## Simple Installation Test
 
 You can test your installation by running the `view_images` app.
