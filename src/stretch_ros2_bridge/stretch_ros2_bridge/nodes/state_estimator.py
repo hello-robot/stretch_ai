@@ -394,6 +394,8 @@ class NavStateEstimator(Node):
                     self.fuse_measurements(self.measurement1, self.measurement2)
 
         except TransformException as ex:
+            self.get_logger().info(self.orb_slam3_tracking_ok)
+            self.get_logger().info("\n" * 20)
             self.get_logger().info(f"Could not transform the base pose {ex}")
 
     def create_pubs_and_subs(self):
