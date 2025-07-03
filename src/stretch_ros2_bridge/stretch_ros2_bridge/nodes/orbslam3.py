@@ -26,7 +26,109 @@ from std_msgs.msg import Bool
 from tf2_ros import TransformBroadcaster
 from tf_transformations import quaternion_from_euler
 
-from stretch.navigation.utils.geometry import transformation_matrix_to_pose
+from scipy.spatial.transform import Rotation
+
+class Pose:
+    """Stores estimated pose from a SLAM backend"""
+
+    def __init__(
+        self,
+        timestamp: float = 0.0,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+        roll: float = 0.0,
+        pitch: float = 0.0,
+        yaw: float = 0.0,
+    ):
+        self.timestamp = timestamp
+        self.x = x
+        self.y = y
+        self.z = z
+        self.roll = roll
+        self.pitch = pitch
+        self.yaw = yaw
+
+    def __repr__(self) -> str:
+        return f"timestamp: {self.timestamp}, x: {self.x}, y: {self.y}, z: \
+            {self.z}, roll: {self.roll}, pitch: {self.pitch}, yaw: {self.yaw}"
+
+    def set_timestamp(self, timestamp: float):
+        """set pose timestamp (seconds)"""
+        self.timestamp = timestamp
+
+    def set_x(self, x: float):
+        """set pose x-value (meters)"""
+        self.x = x
+
+    def set_y(self, y: float):
+        """set pose y-value (meters)"""
+        self.y = y
+
+    def set_z(self, z: float):
+        """set pose z-value (meters)"""
+        self.z = z
+
+    def set_roll(self, roll: float):
+        """set pose roll (radians)"""
+        self.roll = roll
+
+    def set_pitch(self, pitch: float):
+        """set pose pitch (radians)"""
+        self.pitch = pitch
+
+    def set_yaw(self, yaw: float):
+        """set pose yaw (radians)"""
+        self.yaw = yaw
+
+    def get_timestamp(self) -> float:
+        """get pose timestamp"""
+        return self.timestamp
+
+    def get_x(self) -> float:
+        """get pose x-value"""
+        return self.x
+
+    def get_y(self) -> float:
+        """get pose y-value"""
+        return self.y
+
+    def get_z(self) -> float:
+        """get pose z-value"""
+        return self.z
+
+    def get_roll(self) -> float:
+        """get pose roll"""
+        return self.roll
+
+    def get_pitch(self) -> float:
+        """get pose pitch"""
+        return self.pitch
+
+    def get_yaw(self) -> float:
+        """get pose yaw"""
+        return self.yaw
+
+    def get_rotation_matrix(self) -> np.ndarray:
+        """get rotation matrix from euler angles"""
+        return Rotation.from_euler("xyz", [self.roll, self.pitch, self.yaw]).as_matrix()
+
+
+def transformation_matrix_to_pose(T: np.ndarray) -> Pose:
+    """
+    Convert a transformation matrix into a Pose object.
+
+    Parameters:
+    T (np.ndarray): Transformation matrix.
+
+    Returns:
+    Pose: Pose object.
+    """
+    roll = np.arctan2(T[2, 1], T[2, 2])
+    pitch = np.arctan2(-T[2, 0], np.sqrt(T[2, 1] ** 2 + T[2, 2] ** 2))
+    yaw = np.arctan2(T[1, 0], T[0, 0])
+
+    return Pose(0, T[0, 3], T[1, 3], T[2, 3], roll, pitch, yaw)
 
 
 class OrbSlam3(Node):
@@ -146,6 +248,10 @@ class OrbSlam3(Node):
             with open(file.name, "w") as f:
                 f.write("%YAML:1.0\n" + content)
 
+            for _ in range(10):
+                self.get_logger().info(self.VOCABULARY_FILE)
+                self.get_logger().info(file.name)
+
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
             self.slam.set_use_viewer(self.use_pangolin_viewer)
             self.slam.initialize()
@@ -157,6 +263,7 @@ class OrbSlam3(Node):
         Parameters:
         msg (Image): RGB Image message
         """
+        self.get_logger().info(f"RGB Image received: {msg.height}x{msg.width}")
         self.rgb_image = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
 
     def depth_callback(self, msg):
