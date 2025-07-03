@@ -120,6 +120,7 @@ class OrbSlam3(Node):
             self.get_logger().info(f"Camera intrinsics: fx={fx}, fy={fy}, cx={cx}, cy={cy}")
 
             # Modify camera intrinsics in config
+            self.config = {}
             self.config["Camera1.fx"] = float(fx)
             self.config["Camera1.fy"] = float(fy)
             self.config["Camera1.cx"] = float(cx)
@@ -148,7 +149,6 @@ class OrbSlam3(Node):
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
             self.slam.set_use_viewer(self.use_pangolin_viewer)
             self.slam.initialize()
-            print("ORB-SLAM3 initialized")
 
     def rgb_callback(self, msg):
         """
