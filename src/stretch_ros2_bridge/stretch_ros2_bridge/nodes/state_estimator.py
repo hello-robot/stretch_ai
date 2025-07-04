@@ -84,7 +84,7 @@ class NavStateEstimator(Node):
         self.measurement3 = None  # vio (ORB-SLAM3)
 
         # ORB-SLAM3 tracking state
-        self.orb_slam3_tracking_ok = True
+        self.orb_slam3_tracking_ok = False
 
     def predict_kalman(self):
         """
@@ -407,7 +407,6 @@ class NavStateEstimator(Node):
         self._estimator_kf_pub = self.create_publisher(PoseStamped, "/state_estimator/pose_kf", 1)
         self._world_frame_id = "map"
         # TODO: if we need to debug this vs. the scan matcher
-        # self._base_frame_id = "base_link_estimator"
         self._base_frame_id = "base_link_estimator"
         self._tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
