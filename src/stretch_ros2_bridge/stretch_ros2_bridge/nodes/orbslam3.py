@@ -248,10 +248,6 @@ class OrbSlam3(Node):
             with open(file.name, "w") as f:
                 f.write("%YAML:1.0\n" + content)
 
-            for _ in range(10):
-                self.get_logger().info(self.VOCABULARY_FILE)
-                self.get_logger().info(file.name)
-
             self.slam = orbslam3.System(self.VOCABULARY_FILE, file.name, orbslam3.Sensor.RGBD)
             self.slam.set_use_viewer(self.use_pangolin_viewer)
             self.slam.initialize()
