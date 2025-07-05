@@ -39,12 +39,16 @@ class EmoteTask:
             task.add_operation(emote_operation)
         elif isinstance(emote_operation, str):
             if emote_operation == "nod" or emote_operation == "nod_head":
+                self.agent.robot_say("I'm nodding my head.")
                 task.add_operation(NodHeadOperation("emote", self.agent))
             elif emote_operation == "shake" or emote_operation == "shake_head":
+                self.agent.robot_say("I'm shaking my head.")
                 task.add_operation(ShakeHeadOperation("emote", self.agent))
             elif emote_operation == "wave":
+                self.agent.robot_say("I'm waving my hand.")
                 task.add_operation(WaveOperation("emote", self.agent))
             elif emote_operation == "avert" or emote_operation == "avert_gaze":
+                self.agent.robot_say("I'm looking away.")
                 task.add_operation(AvertGazeOperation("emote", self.agent))
             else:
                 raise ValueError(f"Invalid emote operation: {emote_operation}")

@@ -74,9 +74,11 @@ RUN chmod +x install.sh && \
     ./install.sh -y --no-version --no-remove
 
 # Configure mamba to start in the correct environment
-RUN mamba init
+# after installing mamba into /root/miniforge3/bin
+RUN mkdir -p ~/.local/share/mamba \
+    && mamba shell init --shell bash --root-prefix /root/miniforge3
 
-# Add to bashrc so that it starts into the correct environment
+# # Add to bashrc so that it starts into the correct environment
 RUN echo "mamba activate stretch_ai" >> ~/.bashrc
 
 # ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "stretch_ai", "python", "your_script.py"]

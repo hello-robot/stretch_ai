@@ -35,7 +35,6 @@ repos:
         types: [python]
         exclude: >
           (?x)^(
-            src/stretch/perception/detection/detic/Detic|
             src/stretch/app|
             src/stretch_ros2_bridge|
             third_party/|

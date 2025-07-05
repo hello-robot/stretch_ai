@@ -181,6 +181,16 @@ class Task:
         self._terminal_operations.append(operation)
         operation.on_success = None
 
+    def terminate_on_failure(self, operation_name: str):
+        """Terminate the task on failure.
+
+        Args:
+            operation_name: The operation to terminate on failure.
+        """
+        operation = self._operations[operation_name]
+        self._terminal_operations.append(operation)
+        operation.on_failure = None
+
     def get_operation(self, operation_name: str) -> Operation:
         """Get the operation by name."""
         return self._operations[operation_name]

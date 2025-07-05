@@ -15,7 +15,6 @@ encoder_args:
   # version: "base"
   # feature_match_threshold: 0.05
 open_vocab_category_map_file: example_cat_map.json
-tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.04 # Size of a voxel in meters
@@ -39,14 +38,14 @@ max_depth: 2.0
 
 # Object detection parameters
 # Recommendations for this part: 
-# For yolo world, threshold should be 0.05 - 0.2, for Detic, threshold should be < 0.5
+# For yoloe, threshold should be 0.05 - 0.1
 # If you want to detect as many objects in the environment, threshold should be low
 # If you want to determine whether one object exists, 
 # you'd better refer to the official documentation for the best threshold hyperparemeters
 detection:
-  module: "detic"  # Best performing method for our system
-  confidence_threshold: 0.2
-  category_map_file: simple_sim_cat_map.json  # This is used for Detic
+  module: "yoloe"  # Best performing method for our system
+  confidence_threshold: 0.05
+  category_map_file: example_cat_map.json
   use_detic_viz: False
 
 # Point cloud cleanup

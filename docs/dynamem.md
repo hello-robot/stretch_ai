@@ -107,12 +107,7 @@ You need to first install the conda environments on the workstation, we recommen
 ```
 ./install.sh --no-version
 mamba activate stretch_ai
-```
-If you use visual servo manipulation, you would need to further install SAM2
-```
-cd third_party/segment-anything-2
-pip install -e .
-```
+
 If you use AnyGrasp manipulation, please refer to [these instructions](#prepare-manipulation-with-anygrasp) for the installation, 
 you would need to create a new conda environment on your worstation.
 
@@ -248,7 +243,7 @@ python -m stretch.app.run_dynamem --use-llm --use-voice
 You can specify an LLM, e.g.:
 ```bash
 # Run Gemma 2B from Google locally
-python -m stretch.app.run_dynamem --use-llm --llm gemma2b
+python -m stretch.app.run_dynamem --use-llm --llm gemma
 
 # Run Openai GPT-4o-mini on the cloud, using an OpenAI API key
 OPENAI_API_KEY=your_key_here

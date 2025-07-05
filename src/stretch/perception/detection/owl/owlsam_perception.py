@@ -33,6 +33,7 @@ class OWLSAMProcessor(OwlPerception):
         Marrying Owlv2 and Samv2 to complete open vocabulary segmentation.
         """
         super().__init__(version=version, device=device, confidence_threshold=confidence_threshold)
+        print("OWLSAMProcessor initialized!")
         # We assume that you use OWLSAM because you want to work on open vocab segmentation,
         # in this case, open vocab is the concentration
 
