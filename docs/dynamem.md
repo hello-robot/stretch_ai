@@ -259,6 +259,8 @@ python -m stretch.app.run_dynamem --use-llm --llm openai
 Last but not the least, we understand in some cases GPU might not be available, therefore we prepare a lightweighted version of DynaMem that can be deployed
 on CPU, especially your robot NUC. While this lightweighted version is not as good as the normal one, it can still do some cool things.
 
+If you want to install an environment to try this version on your robot, instead of commonly used `./install.sh`, you should use this command to install `./install.sh --conda --cpu`.
+
 Try this out by calling
 ```bash
 python -m stretch.app.run_dynamem  --robot_ip $ROBOT_IP --cpu --match-method "class(dynamem)" --vs
