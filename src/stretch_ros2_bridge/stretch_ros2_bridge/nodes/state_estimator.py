@@ -81,10 +81,6 @@ class NavStateEstimator(Node):
 
         self.measurement1 = None  # wheel odometry
         self.measurement2 = None  # 2D SLAM (Hector)
-        self.measurement3 = None  # vio (ORB-SLAM3)
-
-        # ORB-SLAM3 tracking state
-        self.orb_slam3_tracking_ok = False
 
     def predict_kalman(self):
         """
@@ -138,7 +134,6 @@ class NavStateEstimator(Node):
 
         self.measurement1 = None
         self.measurement2 = None
-        self.measurement3 = None
 
     def publish_kf_state(self):
         """
@@ -252,47 +247,6 @@ class NavStateEstimator(Node):
         pose_diff_log = coeff * pose_diff_odom.log() + (1 - coeff) * pose_diff_slam.log()
         return slam_pose * sp.SE3.exp(pose_diff_log)
 
-    def _vio_odom_callback(self, pose: PoseStamped):
-        """
-        Callback for VIO odometry.
-
-        Parameters:
-        pose (PoseStamped): VIO odometry pose.
-        """
-        # self.get_clock().now() alternative for rospy.Time().now()
-        t_curr = self.get_clock().now()
-
-        # Compute injected signals into filtered pose
-        pose_odom = sp.SE3(matrix_from_pose_msg(pose.pose))
-
-        # Update filtered pose
-        if self._t_odom_prev is None:
-            self._t_odom_prev = t_curr
-        #
-        t_interval_secs = (t_curr - self._t_odom_prev).nanoseconds * 1e-9
-
-        self._filtered_pose = self._filter_signals(self._slam_pose_sp, pose_odom, t_interval_secs)
-        self._publish_filtered_state(pose.header.stamp)
-
-        # Update variables
-        self._pose_odom_prev = pose_odom
-        self._t_odom_prev = t_curr
-
-        self.measurement3 = [
-            pose.pose.position.x,
-            pose.pose.position.y,
-            pose.pose.position.z,
-            pose.pose.orientation.x,
-            pose.pose.orientation.y,
-            pose.pose.orientation.z,
-        ]
-
-        if self.measurement2 is not None and self.measurement1 is not None:
-            if self.orb_slam3_tracking_ok:
-                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
-            else:
-                self.fuse_measurements(self.measurement1, self.measurement2)
-
     def _wheel_odom_callback(self, pose: Odometry):
         """
         Callback for wheel odometry.
@@ -314,6 +268,7 @@ class NavStateEstimator(Node):
 
         self._filtered_pose = self._filter_signals(self._slam_pose_sp, pose_odom, t_interval_secs)
         self._publish_filtered_state(pose.header.stamp)
+        # self.publish_kf_state()
 
         # Update variables
         self._pose_odom_prev = pose_odom
@@ -328,11 +283,8 @@ class NavStateEstimator(Node):
             pose.pose.pose.orientation.z,
         ]
 
-        if self.measurement2 is not None and self.measurement3 is not None:
-            if self.orb_slam3_tracking_ok:
-                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
-            else:
-                self.fuse_measurements(self.measurement1, self.measurement2)
+        if self.measurement2 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2)
 
     def _slam_pose_callback(self, pose: PoseWithCovarianceStamped) -> None:
         """Update slam pose for filtering
@@ -354,21 +306,8 @@ class NavStateEstimator(Node):
             pose.pose.pose.orientation.z,
         ]
 
-        if self.measurement1 is not None and self.measurement3 is not None:
-            if self.orb_slam3_tracking_ok:
-                self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
-            else:
-                self.fuse_measurements(self.measurement1, self.measurement2)
-
-    def _vio_status_callback(self, status: Bool):
-        """
-        Callback for VIO status.
-
-        Parameters:
-        status (Bool): VIO status.
-        True if ORB_SLAM3 is tracking landmarks well, False otherwise.
-        """
-        self.orb_slam3_tracking_ok = status.data
+        if self.measurement1 is not None:
+            self.fuse_measurements(self.measurement1, self.measurement2)
 
     def get_pose(self):
         """
@@ -387,11 +326,8 @@ class NavStateEstimator(Node):
 
             self.measurement2 = [trans[0], trans[1], trans[2], rot[0], rot[1], rot[2]]
 
-            if self.measurement1 is not None and self.measurement3 is not None:
-                if self.orb_slam3_tracking_ok:
-                    self.fuse_measurements(self.measurement1, self.measurement2, self.measurement3)
-                else:
-                    self.fuse_measurements(self.measurement1, self.measurement2)
+            if self.measurement1 is not None:
+                self.fuse_measurements(self.measurement1, self.measurement2)
 
         except TransformException as ex:
             self.get_logger().info(f"Could not transform the base pose {ex}")
@@ -430,16 +366,6 @@ class NavStateEstimator(Node):
         # This pose update comes from wheel odometry
         self.wheel_odom_subcriber = self.create_subscription(
             Odometry, "/odom", self._wheel_odom_callback, 1
-        )
-
-        # VIO odometry
-        self.vio_odom_subcriber = self.create_subscription(
-            PoseStamped, "/orb_slam3/pose", self._vio_odom_callback, 1
-        )
-
-        # VIO status
-        self.vio_status_subcriber = self.create_subscription(
-            Bool, "/orb_slam3/tracking_status", self._vio_status_callback, 1
         )
 
         # Run
