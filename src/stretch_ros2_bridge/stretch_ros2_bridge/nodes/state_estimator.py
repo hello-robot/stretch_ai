@@ -114,21 +114,15 @@ class NavStateEstimator(Node):
         self.x = self.x + K @ y
         self.P = (np.eye(6) - K @ self.H) @ self.P
 
-    def fuse_measurements(self, wheel_measurement, slam_measurement, vio_measurement=None):
+    def fuse_measurements(self, wheel_measurement, slam_measurement):
         """
         Fuse the measurements from wheel odometry, 2D SLAM, and VIO.
 
         Parameters:
         wheel_measurement (list): Wheel odometry measurement.
         slam_measurement (list): 2D SLAM measurement.
-        vio_measurement (list): VIO measurement.
         """
-        if vio_measurement is not None:
-            combined_measurement = (
-                np.array(wheel_measurement) + np.array(slam_measurement) + np.array(vio_measurement)
-            ) / 3
-        else:
-            combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement)) / 2
+        combined_measurement = (np.array(wheel_measurement) + np.array(slam_measurement)) / 2
         self.update_kalman(combined_measurement)
         self.publish_kf_state()
 
