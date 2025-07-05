@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # This script (c) 2024 Hello Robot under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
-export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
 
 script_dir="$(dirname "$0")"
@@ -41,11 +40,6 @@ do
             NO_VERSION="true"
             shift
             ;;
-        --cuda=*)
-            CUDA_VERSION="${arg#*=}"
-            echo "Setting CUDA Version: $CUDA_VERSION"
-            shift
-            ;;
         *)
             shift
             # unknown option
@@ -53,8 +47,6 @@ do
     esac
 done
 
-CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 # Check if the user has the required packages
 # If not, install them
@@ -71,9 +63,6 @@ fi
 
 # If cpu only, set the cuda version to cpu
 if [ "$CPU_ONLY" == "true" ]; then
-    export CUDA_VERSION=cpu
-    export CUDA_VERSION_NODOT=cpu
-    export CUDA_HOME=""
     if [ "$NO_VERSION" == "true" ]; then
         ENV_NAME=stretch_ai_cpu
     else
@@ -81,7 +70,6 @@ if [ "$CPU_ONLY" == "true" ]; then
     fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
 else
-    export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
     if [ "$NO_VERSION" == "true" ]; then
         ENV_NAME=stretch_ai
     else
@@ -94,17 +82,12 @@ echo "         INSTALLING STRETCH AI TOOLS"
 echo "=============================================="
 echo "---------------------------------------------"
 echo "Environment name: $ENV_NAME"
-# echo "PyTorch Version: $PYTORCH_VERSION"
-echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
-echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
 echo "Using tool: $MAMBA"
 echo "---------------------------------------------"
 echo "Notes:"
 echo " - This script will remove the existing environment if it exists."
 echo " - This script will install the following packages:"
-# echo "   - pytorch=$PYTORCH_VERSION"
-echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
 if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
     echo "   - torch-geometric"
@@ -114,7 +97,6 @@ fi
 echo "   - python=$PYTHON_VERSION"
 echo "---------------------------------------------"
 echo "Currently:"
-echo " - CUDA_HOME=$CUDA_HOME"
 echo " - python=`which python`"
 
 
@@ -166,6 +148,12 @@ echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
+echo "Installing segment-anything-2"
+cd third_party/segment-anything-2
+python -m pip install -e . --no-cache-dir
+
+echo "Installing other stretch-ai dependencies"
+cd ../..
 python -m pip install -e ./src[dev] --no-cache-dir
 
 echo ""
@@ -173,10 +161,7 @@ echo "=============================================="
 echo "         INSTALLATION COMPLETE"
 echo "Finished setting up the StretchPy environment."
 echo "Environment name: $ENV_NAME"
-echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
-echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
-echo "CUDA_HOME=$CUDA_HOME"
 echo "python=`which python`"
 echo "You can start using it with:"
 echo ""
