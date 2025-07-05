@@ -40,11 +40,9 @@ setup(
     entry_points={
         "console_scripts": [
             "camera_pose_publisher = stretch_ros2_bridge.nodes.camera_pose_publisher:main",
-            "rotate_images = scripts.rotate_images",
             "state_estimator = stretch_ros2_bridge.nodes.state_estimator:main",
             "goto_controller = stretch_ros2_bridge.nodes.goto_controller:main",
             "odom_tf_publisher = stretch_ros2_bridge.nodes.odom_tf_publisher:main",
-            "orbslam3 = stretch_ros2_bridge.nodes.orbslam3:main",
             "server = stretch_ros2_bridge.remote.server:main",
             "server_no_d405 = stretch_ros2_bridge.remote.server_no_d405:main",
         ],

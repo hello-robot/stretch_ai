@@ -124,11 +124,11 @@ class HybridAction(Action):
     def __init__(
         self,
         action=None,
-        xyt: np.ndarray = None,
-        joints: np.ndarray = None,
-        pos: np.ndarray = None,
-        ori: np.ndarray = None,
-        gripper: np.ndarray = None,
+        xyt: Optional[np.ndarray] = None,
+        joints: Optional[np.ndarray] = None,
+        pos: Optional[np.ndarray] = None,
+        ori: Optional[np.ndarray] = None,
+        gripper: Optional[np.ndarray] = None,
     ):
         """Make sure that we were passed a useful generic action here. Process it into something useful."""
         if action is not None:
