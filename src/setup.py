@@ -80,6 +80,9 @@ setuptools.setup(
         "triton >= 2.3.1",
         "accelerate >= 1.5.0",
         "einops",
+        "protobuf",
+        # Meta neural nets
+        "segment-anything",
         # Compression tools
         "pyliblzfse",
         "webp>=0.3.0",
