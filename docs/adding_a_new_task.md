@@ -90,7 +90,7 @@ The NavigateToObjectOperation navigates to the current target object, which is s
 
 Notably, many of the steps in the pick and place demo use the "feature" match method to find instances. The "feature" match method uses embeddings to match text to images of the instance. We did not have success using the "feature" match method to find a person instance, so we instead used the original class label assigned by the underlying object detector that results in the creation of instances. 
 
-**By default, the robot only creates instances for object categories listed in [example_cat_map.json](../src/stretch/config/example_cat_map.json) and detected by [Detic](https://github.com/facebookresearch/Detic).** Detic was trained with the [twenty-one-thousand classes](https://huggingface.co/datasets/huggingface/label-files/raw/main/imagenet-22k-id2label.json) used in the [ImageNet](https://en.wikipedia.org/wiki/ImageNet) database. By default, Stretch AI uses a relatively small number of classes (e.g., 108 classes when the handover task was originally created).
+**By default, the robot only creates instances for object categories listed in [example_cat_map.json](../src/stretch/config/example_cat_map.json) and detected by [YOLO-E](https://docs.ultralytics.com/models/yoloe/). By default, Stretch AI uses a relatively small number of classes (e.g., 108 classes when the handover task was originally created).
 
 **To detect people for the handover task, we [added the "person" category](https://github.com/hello-robot/stretch_ai/blob/4be200f8ffa908bfe23b55139a8341916c4342f4/src/stretch/config/example_cat_map.json#L111) to example_cat_map.json.**
 
