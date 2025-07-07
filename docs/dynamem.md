@@ -107,6 +107,7 @@ You need to first install the conda environments on the workstation, we recommen
 ```
 ./install.sh --no-version
 mamba activate stretch_ai
+```
 
 If you use AnyGrasp manipulation, please refer to [these instructions](#prepare-manipulation-with-anygrasp) for the installation, 
 you would need to create a new conda environment on your worstation.

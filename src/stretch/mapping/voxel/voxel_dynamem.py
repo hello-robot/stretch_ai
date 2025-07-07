@@ -141,7 +141,7 @@ class SparseVoxelMap(SparseVoxelMapBase):
             from stretch.llms.gemini_client import GeminiClient
             from stretch.llms.prompts.eqa_prompt import EQA_PROMPT
 
-            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-flash-preview-05-20")
+            self.eqa_client = GeminiClient(EQA_PROMPT, model="gemini-2.5-flash")
 
         # Attributes for EQA, If you are not running EQA module, this will stay the same.
         self._question: Optional[str] = None
