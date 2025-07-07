@@ -1378,7 +1378,7 @@ class RobotAgent:
         return activation > self.feature_match_threshold
 
     def print_found_classes(self, goal: Optional[str] = None, verbose: bool = False):
-        """Helper. print out what we have found according to detic."""
+        """Helper. print out what we have found according to object detection model."""
         if self.semantic_sensor is None:
             logger.warning("Tried to print classes without semantic sensor!")
             return
