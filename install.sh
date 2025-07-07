@@ -166,15 +166,23 @@ echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
-if [ "$CPU_ONLY" == "true" ]; then
-    echo "Installing segment-anything-2"
+if [ "$CPU_ONLY" = "false" ]; then
+    echo "Installing segment-anything-2..."
+
     cd third_party/segment-anything-2
     python -m pip install -e . --no-cache-dir
-then
+    cd ../..
+else
+    # Provide feedback if the condition is not met
+    echo "Skipping segment-anything-2 installation because CPU_ONLY is 'true'."
+fi
+
 
 echo "Installing other stretch-ai dependencies"
-cd ../..
 python -m pip install -e ./src[dev] --no-cache-dir
+
+# Uninstall av to avoid conflict between torchvision and cv2.imshow
+python -m pip uninstall av -y
 
 echo ""
 echo "=============================================="
