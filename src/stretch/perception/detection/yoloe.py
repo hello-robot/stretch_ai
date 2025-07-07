@@ -55,12 +55,10 @@ def merge_masks(masks, height, width) -> np.ndarray:
 
     return merged_mask
 
-
 def draw_masks(masks, height, width):
     panoptic_masks = []
     for mask in masks:
         xy_coords = (mask * [width, height]).astype(np.int32)
-
         panotic_mask = np.zeros((height, width), dtype=np.uint8)
 
         # Draw filled polygon

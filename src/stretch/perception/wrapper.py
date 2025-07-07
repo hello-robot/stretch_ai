@@ -48,11 +48,7 @@ class OvmmPerception:
         self._current_vocabulary_id: int = None
         self.verbose = verbose
 
-        if self._detection_module == "mobile_sam":
-            from stretch.perception.detection.mobile_sam import MobileSAMPerception
-
-            self._segmentation = MobileSAMPerception()
-        elif self._detection_module == "sam2":
+        if self._detection_module == "sam2":
             from stretch.perception.detection.sam2 import SAM2Perception
 
             self._segmentation = SAM2Perception()
