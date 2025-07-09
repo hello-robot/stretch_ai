@@ -70,7 +70,7 @@ class ManagedSearchOperation(ManagedOperation):
         if self._object_class_feature is None:
             self._object_class_feature = self.agent.encode_text(self.object_class)
         emb = instance.get_image_embedding(
-            aggregation_method=self.aggregation_method, normalize=False
+            aggregation_method=self.aggregation_method, normalize=True
         ).to(self._object_class_feature.device)
         activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
         print(
@@ -320,6 +320,10 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                         )
                         self.agent.current_object = instance
                         break
+            else:
+                # If we don't find a match, since you are going through instances in the order of their similarity,
+                # we can break out of the loop early.
+                break
 
         # Check to see if there is a visitable frontier
         if self.agent.current_object is None:

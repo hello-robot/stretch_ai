@@ -97,7 +97,7 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
-        min_instance_points: int = 1200,
+        min_instance_points: int = 1500,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
@@ -339,7 +339,7 @@ class InstanceMemory:
                             instance.get_image_embedding(
                                 aggregation_method="mean",
                                 use_visual_feat=self.use_visual_feat,
-                                normalize=False,
+                                normalize=True,
                             ),
                         )  # Slow since we concatenate all global vectors each time for each image instance
                         for inst_id, instance in global_ids_to_instances.items()

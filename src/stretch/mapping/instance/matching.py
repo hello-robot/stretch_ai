@@ -37,10 +37,10 @@ class ViewMatchingConfig:
     box_match_mode: Bbox3dOverlapMethodEnum = Bbox3dOverlapMethodEnum.ONE_SIDED_IOU
     box_overlap_eps: float = 1e-7
     box_min_iou_thresh: float = 0.1  # TODO: pass it using a config file
-    box_overlap_weight: float = 0.5  # High weight on bounding box overlap
+    box_overlap_weight: float = 0.1  # Low weight on bounding box overlap
 
-    visual_similarity_weight: float = 0.5
-    min_similarity_thresh: float = 0.5  # TODO: pass it using a config file
+    visual_similarity_weight: float = 0.9
+    min_similarity_thresh: float = 0.1  # TODO: pass it using a config file
 
 
 def get_nn_ratio_similarity(points1, points2, voxel_size=0.05, delta_nn=0.15):
