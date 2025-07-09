@@ -485,25 +485,6 @@ class RobotAgent:
         """Returns reference to the navigation space."""
         return self.space
 
-    def place_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
-        """Try to place an object."""
-        if not self.robot.in_manipulation_mode():
-            self.robot.switch_to_manipulation_mode()
-        if self.grasp_client is None:
-            logger.warn("Tried to place without providing a grasp client.")
-            return False
-        return self.grasp_client.try_placing(object_goal=object_goal, **kwargs)
-
-    def grasp_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
-        """Try to grasp a potentially specified object."""
-        # Put the robot in manipulation mode
-        if not self.robot.in_manipulation_mode():
-            self.robot.switch_to_manipulation_mode()
-        if self.grasp_client is None:
-            logger.warn("Tried to grasp without providing a grasp client.")
-            return False
-        return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
-
     def rotate_in_place(
         self,
         steps: Optional[int] = -1,
