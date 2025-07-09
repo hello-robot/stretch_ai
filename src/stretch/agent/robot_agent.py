@@ -1037,8 +1037,8 @@ class RobotAgent:
         instance: Instance,
         start: np.ndarray,
         verbose: bool = False,
-        max_tries: int = 10,
-        radius_m: float = 0.5,
+        max_tries: int = 20,
+        radius_m: float = 0.7,
         rotation_offset: float = 0.0,
         use_cache: bool = False,
     ) -> PlanResult:
@@ -1994,45 +1994,6 @@ class RobotAgent:
 
         # Move to the instance
         return self.move_to_instance(instance)
-
-    def pick(self, object_goal: str, **kwargs) -> bool:
-        """Pick up an object."""
-        # Find closest instance
-        instances = self.get_found_instances_by_class(object_goal)
-        if len(instances) == 0:
-            return False
-
-        # Move to the instance with the highest score
-        # Sort by score
-        instances.sort(key=lambda x: x[1].score, reverse=True)
-        instance = instances[0][1]
-
-        # Move to the instance
-        if not self.move_to_instance(instance):
-            return False
-
-        # Grasp the object
-        return self.grasp_object(object_goal)
-
-    def place(self, object_goal: str, **kwargs) -> bool:
-        """Place an object."""
-        # Find closest instance
-        instances = self.get_found_instances_by_class(object_goal)
-
-        if len(instances) == 0:
-            return False
-
-        # Move to the instance with the highest score
-        # Sort by score
-        instances.sort(key=lambda x: x[1].score, reverse=True)
-        instance = instances[0][1]
-
-        # Move to the instance
-        if not self.move_to_instance(instance):
-            return False
-
-        # Place the object
-        return self.place_object(object_goal)
 
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""

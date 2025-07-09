@@ -11,7 +11,7 @@ encoder_args:
   # Set this value by experimting with:
   #   python -m stretch.app.query --threshold 0.05
   # You can change the threshold to anything that makes sense.
-  feature_match_threshold: 0.05
+  feature_match_threshold: 0.08
   grasp_feature_match_threshold: 0.05
   # version: "base"
   # feature_match_threshold: 0.05
@@ -157,8 +157,7 @@ motion_planner:
     # Subsampling frontier space at this discretization
     step_dist: 0.2
   goals:
-    manipulation_radius: 0.45
-    # manipulation_radius: 0.55
+    manipulation_radius: 0.66
 
 # Trajectory following - how closely we follow intermediate waypoints
 # These should be less strict than whatever parameters the low-level controller is using; this will
