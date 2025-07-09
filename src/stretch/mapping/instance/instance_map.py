@@ -97,7 +97,7 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
-        min_instance_points: int = 100,
+        min_instance_points: int = 400,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
