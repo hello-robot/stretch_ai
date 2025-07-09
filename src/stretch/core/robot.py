@@ -124,14 +124,3 @@ class AbstractRobotClient(ABC):
     def at_goal(self) -> bool:
         """Is the robot at a goal?"""
         raise NotImplementedError()
-
-
-class AbstractGraspClient(ABC):
-    """Connection to grasping."""
-
-    def set_robot_client(self, robot_client: AbstractRobotClient):
-        """Update the robot client this grasping client uses"""
-        self.robot_client = robot_client
-
-    def try_grasping(self, object_goal: Optional[str] = None) -> bool:
-        raise NotImplementedError
