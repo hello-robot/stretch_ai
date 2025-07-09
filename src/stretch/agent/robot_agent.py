@@ -2154,26 +2154,6 @@ class RobotAgent:
         )
         self.get_voxel_map().show()
 
-    def get_detections(self, **kwargs) -> List[str]:
-        """Get the current detections."""
-        instances = self.get_voxel_map().get_instances()
-
-        # Consider only instances close to the robot
-        robot_pose = self.robot.get_base_pose()
-        close_instances = []
-
-        for instance in instances:
-            instance_pose = instance.get_best_view().cam_to_world
-            distance = np.linalg.norm(robot_pose[:2] - instance_pose[:2])
-            if distance < 2.0:
-                close_instances.append(instance)
-
-        close_instances_names = [
-            self.semantic_sensor.get_class_name_for_id(instance.category_id)
-            for instance in close_instances
-        ]
-        return close_instances_names
-
     def execute(self, plan: str) -> bool:
         """Execute a plan function given as a string."""
         try:

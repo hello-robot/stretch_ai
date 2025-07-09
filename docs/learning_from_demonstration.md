@@ -262,7 +262,7 @@ Locations in this demo are pre-saved as { name: (x,y,theta) } pairs based on an 
 Enter a long horizon task: Can you bring me the bottle that's inside the cabinet? You might need to open the cabinet first, also do not use detections
 Generated plan:
 ```python
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if go_to("cabinet"):
         if open_cabinet():
             if pick("bottle"):

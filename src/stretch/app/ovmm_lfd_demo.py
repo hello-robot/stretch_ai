@@ -294,7 +294,7 @@ def main(
         if plan.endswith("```"):
             plan = plan.rsplit("\n", 1)[0]
 
-        plan += "\nexecute_task(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave, self.get_detections)"
+        plan += "\nexecute_task(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave)"
 
         if proceed != "y":
             print("Exiting...")
