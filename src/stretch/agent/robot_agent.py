@@ -576,14 +576,6 @@ class RobotAgent:
 
         return True
 
-    def get_command(self):
-        """Get a command from config file or from user input if not specified."""
-        task = self.parameters.get("task").get("command")
-        if task is not None and len(task) > 0:
-            return task
-        else:
-            return self.ask("Please type any task you want the robot to do: ")
-
     def show_map(self) -> None:
         """Helper function to visualize the 3d map as it stands right now."""
         self.get_voxel_map().show(
@@ -1614,44 +1606,6 @@ class RobotAgent:
         else:
             print("Can't go home; planning failed!")
 
-    def choose_best_goal_instance(self, goal: str, debug: bool = False) -> Instance:
-        """Choose the best instance to move to based on the goal. This is done by comparing the goal to the embeddings of the instances in the world. The instance with the highest score is returned. If debug is true, we also print out the scores for the goal and two negative examples. These examples are:
-        - "the color purple"
-        - "a blank white wall"
-
-        Args:
-            goal(str): the goal to move to
-            debug(bool): whether to print out debug information
-
-        Returns:
-            Instance: the best instance to move to
-        """
-        instances = self.get_voxel_map().get_instances()
-        goal_emb = self.encode_text(goal)
-        if debug:
-            neg1_emb = self.encode_text("the color purple")
-            neg2_emb = self.encode_text("a blank white wall")
-        best_instance = None
-        best_score = -float("Inf")
-        for instance in instances:
-            if debug:
-                print("# views =", len(instance.instance_views))
-                print("    cls =", instance.category_id)
-            # TODO: remove debug code when not needed for visualization
-            # instance._show_point_cloud_open3d()
-            img_emb = instance.get_image_embedding(
-                aggregation_method="mean", normalize=self.normalize_embeddings
-            )
-            goal_score = self.compare_embeddings(goal_emb, img_emb)
-            if debug:
-                neg1_score = self.compare_embeddings(neg1_emb, img_emb)
-                neg2_score = self.compare_embeddings(neg2_emb, img_emb)
-                print("scores =", goal_score, neg1_score, neg2_score)
-            if goal_score > best_score:
-                best_instance = instance
-                best_score = goal_score
-        return best_instance
-
     def set_allowed_radius(self, radius: float):
         """Set the allowed radius for the robot to move to. This is used to limit the robot's movement, particularly when exploring.
 
@@ -2107,14 +2061,6 @@ class RobotAgent:
         """Have the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
         msg = msg.strip('"' + "'")
         self.robot.say(msg)
-
-    def ask(self, msg: str) -> str:
-        """Receive input from the user either via the command line or something else"""
-        # if self.chat is not None:
-        #  return self.chat.input(msg)
-        # else:
-        # TODO: support other ways of saying
-        return input(msg)
 
     def open_cabinet(self, object_goal: str, **kwargs) -> bool:
         """Open a cabinet."""
