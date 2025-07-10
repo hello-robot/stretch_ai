@@ -259,7 +259,7 @@ If you want to install an environment to try this version on your robot, instead
 
 Try this out by calling
 ```bash
-python -m stretch.app.run_dynamem  --robot_ip $ROBOT_IP --cpu --match-method "class(dynamem)" --vs
+python -m stretch.app.run_dynamem  --robot_ip $ROBOT_IP --cpu --match-method "class" --vs
 ```
 
 ## Cite Dynamem

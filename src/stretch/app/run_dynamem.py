@@ -84,8 +84,8 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--match-method",
     "--match_method",
-    type=click.Choice(["class(dynamem)", "feature"]),
-    default="class(dynamem)",
+    type=click.Choice(["class", "feature"]),
+    default="class",
     help="match method for visual servoing",
 )
 @click.option(
@@ -110,7 +110,7 @@ def main(
     manual_wait,
     explore_iter: int = 3,
     mode: str = "navigation",
-    match_method: str = "class(dynamem)",
+    match_method: str = "class",
     input_path: Optional[str] = None,
     output_path: Optional[str] = None,
     robot_ip: str = "",
