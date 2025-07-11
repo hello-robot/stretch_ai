@@ -182,7 +182,11 @@ def main(
 
     # Executor handles outputs from the LLM client and converts them into executable actions
     executor = PickupExecutor(
-        robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+        robot,
+        agent,
+        available_actions=prompt.get_available_actions(),
+        match_method=match_method,
+        dry_run=False,
     )
 
     # Get the LLM client

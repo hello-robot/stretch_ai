@@ -266,11 +266,7 @@ class GraspObjectOperation(ManagedOperation):
         if self.match_method == "class":
 
             # Get the target class
-            if self.agent.current_object is not None:
-                target_class_id = self.agent.current_object.category_id
-                target_class = self.agent.semantic_sensor.get_class_name_for_id(target_class_id)
-            else:
-                target_class = self.target_object
+            target_class = self.target_object
 
             if self.verbose:
                 print("[GRASP OBJECT] Detecting objects of class", target_class)
@@ -675,7 +671,7 @@ class GraspObjectOperation(ManagedOperation):
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 print(" -> Displaying visual servoing GUI.")
-                servo_ee_rgb = servo.ee_rgb
+                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_BGR2RGB)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0

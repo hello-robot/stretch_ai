@@ -117,7 +117,7 @@ class PickupTask:
             agent=self.agent,
             parent=rotate_in_place if add_rotate else go_to_navigation_mode,
             retry_on_failure=True,
-            match_method=matching,
+            match_method="feature",
         )
 
         # Try to expand the frontier and find an object; or just wander around for a while.
@@ -125,7 +125,7 @@ class PickupTask:
             name=f"search_for_{self.target_object}_on_floor",
             agent=self.agent,
             retry_on_failure=True,
-            match_method=matching,
+            match_method="feature",
         )
 
         # Set objects to search for

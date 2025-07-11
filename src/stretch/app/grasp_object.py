@@ -45,7 +45,7 @@ def get_task(robot, demo, target_object, verbose: bool = False, show_gui: bool =
             show_servo_gui=show_gui,
             reset_observation=False,
             grasp_loose=(target_object == "cup"),
-            match_method="feature",
+            match_method="class",
         )
         grasp_object.set_target_object_class(target_object)
         grasp_object.verbose = verbose
