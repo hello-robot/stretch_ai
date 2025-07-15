@@ -18,6 +18,7 @@ import click
 import numpy as np
 from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
 try:
     from stretch.simulation.robocasa_gen import load_model_from_xml, model_generation_wizard
@@ -176,6 +177,7 @@ class MujocoZmqServer(BaseZmqServer):
         scene_path: Optional[str] = None,
         scene_model: Optional[str] = None,
         simulation_rate: int = 200,
+        camera_hz: int = 15,
         config_name: str = "noplan_velocity_sim",
         objects_info: Optional[Dict[str, Any]] = None,
         **kwargs,
@@ -188,9 +190,27 @@ class MujocoZmqServer(BaseZmqServer):
         if scene_model is not None:
             if scene_path is not None:
                 logger.warning("Both scene model and scene path provided. Using scene model.")
-            self.robot_sim = StretchMujocoSimulator(model=scene_model)
+            self.robot_sim = StretchMujocoSimulator(
+                model=scene_model,
+                cameras_to_use=[
+                    StretchCameras.cam_d405_rgb,
+                    StretchCameras.cam_d435i_rgb,
+                    StretchCameras.cam_d405_depth,
+                    StretchCameras.cam_d435i_depth,
+                ],
+                camera_hz=camera_hz,
+            )
         else:
-            self.robot_sim = StretchMujocoSimulator(scene_xml_path=scene_path)
+            self.robot_sim = StretchMujocoSimulator(
+                scene_xml_path=scene_path,
+                cameras_to_use=[
+                    StretchCameras.cam_d405_rgb,
+                    StretchCameras.cam_d435i_rgb,
+                    StretchCameras.cam_d405_depth,
+                    StretchCameras.cam_d435i_depth,
+                ],
+                camera_hz=camera_hz,
+            )
         self.simulation_rate = simulation_rate
         self.objects_info = objects_info
 
@@ -279,7 +299,7 @@ class MujocoZmqServer(BaseZmqServer):
         if self._status is None:
             vel_odom = [0, 0]
         else:
-            vel_odom = self._status["base"]["x_vel"], self._status["base"]["theta_vel"]
+            vel_odom = self._status["base"].x_vel, self._status["base"].theta_vel
 
         if self.debug_control_loop:
             print("Control loop callback: ", self.active, self.xyt_goal, vel_odom)
@@ -344,36 +364,36 @@ class MujocoZmqServer(BaseZmqServer):
             return positions, velocities, efforts
 
         # Lift joint
-        positions[HelloStretchIdx.LIFT] = status["lift"]["pos"]
-        velocities[HelloStretchIdx.LIFT] = status["lift"]["vel"]
+        positions[HelloStretchIdx.LIFT] = status["lift"].pos
+        velocities[HelloStretchIdx.LIFT] = status["lift"].vel
 
         # Arm joints
-        positions[HelloStretchIdx.ARM] = status["arm"]["pos"]
-        velocities[HelloStretchIdx.ARM] = status["arm"]["vel"]
+        positions[HelloStretchIdx.ARM] = status["arm"].pos
+        velocities[HelloStretchIdx.ARM] = status["arm"].vel
 
         # Wrist roll joint
-        positions[HelloStretchIdx.WRIST_ROLL] = status["wrist_roll"]["pos"]
-        velocities[HelloStretchIdx.WRIST_ROLL] = status["wrist_roll"]["vel"]
+        positions[HelloStretchIdx.WRIST_ROLL] = status["wrist_roll"].pos
+        velocities[HelloStretchIdx.WRIST_ROLL] = status["wrist_roll"].vel
 
         # Wrist yaw joint
-        positions[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"]["pos"]
-        velocities[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"]["vel"]
+        positions[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"].pos
+        velocities[HelloStretchIdx.WRIST_YAW] = status["wrist_yaw"].vel
 
         # Wrist pitch joint
-        positions[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["pos"]
-        velocities[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"]["vel"]
+        positions[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"].pos
+        velocities[HelloStretchIdx.WRIST_PITCH] = status["wrist_pitch"].vel
 
         # Gripper joint
-        positions[HelloStretchIdx.GRIPPER] = status["gripper"]["pos"]
-        velocities[HelloStretchIdx.GRIPPER] = status["gripper"]["vel"]
+        positions[HelloStretchIdx.GRIPPER] = status["gripper"].pos
+        velocities[HelloStretchIdx.GRIPPER] = status["gripper"].vel
 
         # Head pan joint
-        positions[HelloStretchIdx.HEAD_PAN] = status["head_pan"]["pos"]
-        velocities[HelloStretchIdx.HEAD_PAN] = status["head_pan"]["vel"]
+        positions[HelloStretchIdx.HEAD_PAN] = status["head_pan"].pos
+        velocities[HelloStretchIdx.HEAD_PAN] = status["head_pan"].vel
 
         # Head tilt joint
-        positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["pos"]
-        velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"]["vel"]
+        positions[HelloStretchIdx.HEAD_TILT] = status["head_tilt"].pos
+        velocities[HelloStretchIdx.HEAD_TILT] = status["head_tilt"].vel
 
         if self.in_manipulation_mode:
             # Get current base xyt
@@ -404,6 +424,9 @@ class MujocoZmqServer(BaseZmqServer):
         if self._initial_xyt is None:
             return None
         pose = self.robot_sim.get_link_pose("camera_color_optical_frame")
+        # pose[:3, :3] = np.array([[ 0, 1, 0],
+        #                         [-1, 0, 0],
+        #                         [ 0, 0, 1]]) @ pose[:3, :3]
         return pose_global_to_base(pose, self._initial_xyt)
 
     def get_ee_camera_pose(self) -> np.ndarray:
@@ -510,7 +533,7 @@ class MujocoZmqServer(BaseZmqServer):
 
         while self.is_running():
             self._camera_data = self.robot_sim.pull_camera_data()
-            self._status = self.robot_sim._pull_status()
+            self._status = self.robot_sim.pull_status()
             time.sleep(1 / self.simulation_rate)
 
     @override
@@ -596,8 +619,20 @@ class MujocoZmqServer(BaseZmqServer):
         if cam_data is None:
             return None
 
-        rgb = cam_data["cam_d435i_rgb"]
-        depth = cam_data["cam_d435i_depth"]
+        # Rotate the camera matrix and images
+        rotated_camera_K = cam_data.cam_d435i_K.copy()
+        rotated_camera_K[0, 0], rotated_camera_K[1, 1] = (
+            rotated_camera_K[1, 1],
+            rotated_camera_K[0, 0],
+        )
+        rotated_camera_K[0, 2], rotated_camera_K[1, 2] = (
+            rotated_camera_K[1, 2],
+            rotated_camera_K[0, 2],
+        )
+        rgb = cam_data.cam_d435i_rgb
+        depth = cam_data.cam_d435i_depth
+        rgb = np.rot90(rgb, k=-1)
+        depth = np.rot90(depth, k=-1)
         width, height = rgb.shape[:2]
 
         # Convert depth into int format
@@ -616,7 +651,7 @@ class MujocoZmqServer(BaseZmqServer):
         message = {
             "rgb": rgb,
             "depth": depth,
-            "camera_K": cam_data["cam_d435i_K"],
+            "camera_K": rotated_camera_K,
             "camera_pose": self.get_head_camera_pose(),
             "ee_pose": self.get_ee_pose(),
             "joint": positions,
@@ -661,10 +696,12 @@ class MujocoZmqServer(BaseZmqServer):
         if cam_data is None:
             return None
 
-        head_color_image = cam_data["cam_d435i_rgb"]
-        head_depth_image = cam_data["cam_d435i_depth"]
-        ee_color_image = cam_data["cam_d405_rgb"]
-        ee_depth_image = cam_data["cam_d405_depth"]
+        head_color_image = cam_data.cam_d435i_rgb
+        head_depth_image = cam_data.cam_d435i_depth
+        head_color_image = np.rot90(head_color_image, k=-1)
+        head_depth_image = np.rot90(head_depth_image, k=-1)
+        ee_color_image = cam_data.cam_d405_rgb
+        ee_depth_image = cam_data.cam_d405_depth
 
         # Adapt color so we can use higher shutter speed
         # TODO: do we need this? Probably not.
@@ -690,11 +727,14 @@ class MujocoZmqServer(BaseZmqServer):
         # Get position info
         positions, _, _ = self.get_joint_state()
 
-        # Get the camera matrices
-        head_rgb_K = cam_data["cam_d435i_K"]
-        head_dpt_K = cam_data["cam_d435i_K"]
-        ee_rgb_K = cam_data["cam_d405_K"]
-        ee_dpt_K = cam_data["cam_d405_K"]
+        head_rgb_K = cam_data.cam_d435i_K.copy()
+        head_dpt_K = cam_data.cam_d435i_K.copy()
+        head_rgb_K[0, 0], head_rgb_K[1, 1] = head_rgb_K[1, 1], head_rgb_K[0, 0]
+        head_rgb_K[0, 2], head_rgb_K[1, 2] = head_rgb_K[1, 2], head_rgb_K[0, 2]
+        head_dpt_K[0, 0], head_dpt_K[1, 1] = head_dpt_K[1, 1], head_dpt_K[0, 0]
+        head_dpt_K[0, 2], head_dpt_K[1, 2] = head_dpt_K[1, 2], head_dpt_K[0, 2]
+        ee_rgb_K = cam_data.cam_d405_K
+        ee_dpt_K = cam_data.cam_d405_K
 
         message = {
             "ee_cam/color_camera_K": scale_camera_matrix(ee_rgb_K, self.ee_image_scaling),
@@ -737,8 +777,8 @@ class MujocoZmqServer(BaseZmqServer):
 @click.option("--send_servo_port", default=4404, help="Port to send images for visual servoing")
 @click.option("--use_remote_computer", default=True, help="Whether to use a remote computer")
 @click.option("--verbose", default=False, help="Whether to print verbose messages", is_flag=True)
-@click.option("--image_scaling", default=0.5, help="Scaling factor for images")
-@click.option("--ee_image_scaling", default=0.5, help="Scaling factor for end-effector images")
+@click.option("--image_scaling", default=1.0, help="Scaling factor for images")
+@click.option("--ee_image_scaling", default=1.0, help="Scaling factor for end-effector images")
 @click.option("--depth_scaling", default=0.001, help="Scaling factor for depth images")
 @click.option(
     "--scene_path", default=None, help="Provide a path to mujoco scene file with stretch.xml"
