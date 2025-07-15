@@ -176,7 +176,7 @@ class MujocoZmqServer(BaseZmqServer):
         *args,
         scene_path: Optional[str] = None,
         scene_model: Optional[str] = None,
-        simulation_rate: int = 200,
+        simulation_rate: int = 80,
         camera_hz: int = 15,
         config_name: str = "noplan_velocity_sim",
         objects_info: Optional[Dict[str, Any]] = None,
@@ -211,6 +211,36 @@ class MujocoZmqServer(BaseZmqServer):
                 ],
                 camera_hz=camera_hz,
             )
+        # Get the intrinsic parameters of the d435i rgb camera
+        (
+            fx,
+            _,
+            cx,
+            _,
+            fy,
+            cy,
+            _,
+            _,
+            _,
+        ) = StretchCameras.cam_d435i_rgb.initial_camera_settings.get_intrinsic_params_k()
+        # Rotate the head camera matrix as the head camera realsense is rotated 90 degrees
+        self.head_K = np.array([[fy, 0, cy], [0, fx, cx], [0, 0, 1]])
+
+        # Get the intrinsic parameters of the d405 rgb camera
+        (
+            fx,
+            _,
+            cx,
+            _,
+            fy,
+            cy,
+            _,
+            _,
+            _,
+        ) = StretchCameras.cam_d405_rgb.initial_camera_settings.get_intrinsic_params_k()
+        # No need to rotate the ee camera matrix as it is not rotated
+        self.ee_K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+
         self.simulation_rate = simulation_rate
         self.objects_info = objects_info
 
@@ -424,9 +454,8 @@ class MujocoZmqServer(BaseZmqServer):
         if self._initial_xyt is None:
             return None
         pose = self.robot_sim.get_link_pose("camera_color_optical_frame")
-        # pose[:3, :3] = np.array([[ 0, 1, 0],
-        #                         [-1, 0, 0],
-        #                         [ 0, 0, 1]]) @ pose[:3, :3]
+        # We are going to rotate the head camera
+        pose[:3, :3] = pose[:3, :3] @ np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         return pose_global_to_base(pose, self._initial_xyt)
 
     def get_ee_camera_pose(self) -> np.ndarray:
@@ -620,15 +649,6 @@ class MujocoZmqServer(BaseZmqServer):
             return None
 
         # Rotate the camera matrix and images
-        rotated_camera_K = cam_data.cam_d435i_K.copy()
-        rotated_camera_K[0, 0], rotated_camera_K[1, 1] = (
-            rotated_camera_K[1, 1],
-            rotated_camera_K[0, 0],
-        )
-        rotated_camera_K[0, 2], rotated_camera_K[1, 2] = (
-            rotated_camera_K[1, 2],
-            rotated_camera_K[0, 2],
-        )
         rgb = cam_data.cam_d435i_rgb
         depth = cam_data.cam_d435i_depth
         rgb = np.rot90(rgb, k=-1)
@@ -651,7 +671,7 @@ class MujocoZmqServer(BaseZmqServer):
         message = {
             "rgb": rgb,
             "depth": depth,
-            "camera_K": rotated_camera_K,
+            "camera_K": self.head_K,
             "camera_pose": self.get_head_camera_pose(),
             "ee_pose": self.get_ee_pose(),
             "joint": positions,
@@ -727,18 +747,9 @@ class MujocoZmqServer(BaseZmqServer):
         # Get position info
         positions, _, _ = self.get_joint_state()
 
-        head_rgb_K = cam_data.cam_d435i_K.copy()
-        head_dpt_K = cam_data.cam_d435i_K.copy()
-        head_rgb_K[0, 0], head_rgb_K[1, 1] = head_rgb_K[1, 1], head_rgb_K[0, 0]
-        head_rgb_K[0, 2], head_rgb_K[1, 2] = head_rgb_K[1, 2], head_rgb_K[0, 2]
-        head_dpt_K[0, 0], head_dpt_K[1, 1] = head_dpt_K[1, 1], head_dpt_K[0, 0]
-        head_dpt_K[0, 2], head_dpt_K[1, 2] = head_dpt_K[1, 2], head_dpt_K[0, 2]
-        ee_rgb_K = cam_data.cam_d405_K
-        ee_dpt_K = cam_data.cam_d405_K
-
         message = {
-            "ee_cam/color_camera_K": scale_camera_matrix(ee_rgb_K, self.ee_image_scaling),
-            "ee_cam/depth_camera_K": scale_camera_matrix(ee_dpt_K, self.ee_image_scaling),
+            "ee_cam/color_camera_K": scale_camera_matrix(self.ee_K, self.ee_image_scaling),
+            "ee_cam/depth_camera_K": scale_camera_matrix(self.ee_K, self.ee_image_scaling),
             "ee_cam/color_image": compressed_ee_color_image,
             "ee_cam/depth_image": compressed_ee_depth_image,
             "ee_cam/color_image/shape": ee_color_image.shape,
@@ -747,8 +758,8 @@ class MujocoZmqServer(BaseZmqServer):
             "ee_cam/depth_scaling": self.ee_depth_scaling,
             "ee_cam/pose": self.get_ee_camera_pose(),
             "ee/pose": self.get_ee_pose(),
-            "head_cam/color_camera_K": scale_camera_matrix(head_rgb_K, self.image_scaling),
-            "head_cam/depth_camera_K": scale_camera_matrix(head_dpt_K, self.image_scaling),
+            "head_cam/color_camera_K": scale_camera_matrix(self.head_K, self.image_scaling),
+            "head_cam/depth_camera_K": scale_camera_matrix(self.head_K, self.image_scaling),
             "head_cam/color_image": compressed_head_color_image,
             "head_cam/depth_image": compressed_head_depth_image,
             "head_cam/color_image/shape": head_color_image.shape,
