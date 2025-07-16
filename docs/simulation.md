@@ -7,40 +7,20 @@ You can install Robocasa by following the instructions below, or you can try the
 
 ## Installation
 
-### Install Robosuite
+Here we provide a script to follow installation instructions in [Stretch Mujoco](https://github.com/hello-robot/stretch_mujoco/tree/main#getting-started)
+
+First, you need to make sure you have already installed [Stretch AI](./install_details.md) and activate installed conda env.
 
 ```bash
-git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1
-cd robosuite
-pip install -e .
-```
-
-### Install Robocasa
-
-```bash
-cd ..
-git clone https://github.com/robocasa/robocasa
-cd robocasa
-pip install -e .
-```
-
-### Install Stretch Mujoco
-
-```bash
-cd ..
-git clone git@github.com:hello-robot/stretch_mujoco.git
+git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
 pip install -e .
+pip install -e "third_party/robocasa"
+pip install -e "third_party/robosuite"
+python third_party/robosuite/robosuite/scripts/setup_macros.py
+python third_party/robocasa/robocasa/scripts/setup_macros.py
+python third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
 ```
-
-### Download assets
-
-```bash
-python robocasa/scripts/download_kitchen_assets.py   # Caution: Assets to be downloaded are around 5GB.
-python robocasa/scripts/setup_macros.py              # Set up system variables.
-```
-
-### Upgrade Protobuf
 
 As of 2024-12-04, you may need to update Google protobuf because of an issue with Google text-to-speech:
 ```bash
@@ -62,7 +42,7 @@ python -m stretch.simulation.mujoco_server
 Then run the grasping app:
 
 ```bash
-python -m stretch.app.grasp_object  --robot_ip 192.168.1.10 --target_object "red cylinder" --parameter_file=sim_planner.yaml
+python -m stretch.app.grasp_object  --robot_ip 127.0.0.1 --target_object "red cylinder" --parameter_file=sim_planner.yaml --show_gui
 ```
 
 A few notes:
@@ -95,4 +75,4 @@ Using the `--robot_ip` option will update your default IP address; you will need
 
 ## Creating your own scenes
 
-Mujoco scenes are stored as XML files. You can see an example at [../src/stretch/simulation/models/scene.xml](../src/stretch/simulation/models/scene.xml). You can create your own scenes by modifying this file or creating a new one.
+Mujoco scenes are stored as XML files. You can see an example at [stretch_mujoco/models/scene.xml](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco/models/stretch.xml). You can create your own scenes by modifying this file or creating a new one.
