@@ -1,6 +1,6 @@
 # Robocasa Installation
 
-You can install Robocasa by following the instructions below, or you can try the [install script](scripts/install_robocasa.sh). Our simulation has three dependencies:
+You can install Robocasa by following the instructions below. Our simulation has three dependencies:
   - [Robosuite](https://github.com/ARISE-Initiative/robosuite)
   - [Robocasa](https://github.com/robocasa/robocasa) - [project page](https://robocasa.ai/)
   - [Stretch Mujoco](https://github.com/hello-robot/stretch_mujoco/)
@@ -10,6 +10,8 @@ You can install Robocasa by following the instructions below, or you can try the
 Here we provide a script to follow installation instructions in [Stretch Mujoco](https://github.com/hello-robot/stretch_mujoco/tree/main#getting-started)
 
 First, you need to make sure you have already installed [Stretch AI](./install_details.md) and activate installed conda env.
+
+After that, following these scripts to install the remaining dependencies.
 
 ```bash
 git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
