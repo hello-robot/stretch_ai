@@ -21,16 +21,15 @@ from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
 try:
-    from stretch.simulation.robocasa_gen import load_model_from_xml, model_generation_wizard
+    from stretch_mujoco.robocasa_gen import model_generation_wizard
 except ImportError as e:
-    from stretch.utils.logger import error
+    print(
+        "Not installing mujoco yet! Please install robosuite, robocasa and stretch_mujoco in order to use model generation wizard."
+    )
 
-    error("Could not import robocasa!")
-    error("Install robosuite and robocasa in order to use model generation wizard.")
-    error(f"Error: {e}")
+from importlib.resources import as_file, files
 
 import stretch.motion.constants as constants
-import stretch.simulation.utils as sim_utils
 import stretch.utils.compression as compression
 import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
@@ -39,6 +38,10 @@ from stretch.motion.control.goto_controller import GotoVelocityController
 from stretch.utils.config import get_control_config
 from stretch.utils.geometry import pose_global_to_base, xyt_base_to_global, xyt_global_to_base
 from stretch.utils.image import scale_camera_matrix
+
+ref = files("stretch_mujoco") / "models"
+with as_file(ref) as models_dir:
+    default_scene_xml_path = str(models_dir / "scene.xml")
 
 # Maps HelloStretchIdx to actuators
 mujoco_actuators = {
@@ -80,13 +83,13 @@ class MujocoZmqServer(BaseZmqServer):
     """
 
     # Do we use a navigation controller command to move the robot back at the start of a Robocasa task?
-    _move_back_at_start: bool = False
+    _move_back_at_start: bool = True
 
     hz = CONTROL_HZ
     # How long should the controller report done before we're actually confident that we're done?
     done_t = 0.1
 
-    robocasa_start_offset = np.array([0.5, 0, -np.pi / 2])
+    robocasa_start_offset = np.array([-0.3, 0, 0])
 
     # Print debug messages for control loop
     debug_control_loop = False
@@ -186,7 +189,7 @@ class MujocoZmqServer(BaseZmqServer):
         # TODO: decide how we want to save scenes, if they should be here in stretch_ai or in stretch_mujoco
         # They should probably stay in stretch mujoco
         if scene_path is None:
-            scene_path = sim_utils.get_default_scene_path()
+            scene_path = default_scene_xml_path
         if scene_model is not None:
             if scene_path is not None:
                 logger.warning("Both scene model and scene path provided. Using scene model.")
@@ -861,19 +864,16 @@ def main(
         random.seed(seed)
 
     if use_robocasa:
-        if not robocasa_write_to_xml and (scene_path is not None and len(scene_path) > 0):
-            scene_model = load_model_from_xml(scene_path)
-        else:
-            scene_model, scene_xml, objects_info = model_generation_wizard(
-                task=robocasa_task,
-                style=robocasa_style,
-                layout=robocasa_layout,
-                write_to_file=scene_path,
-            )
+        scene_model, scene_xml, objects_info = model_generation_wizard(
+            task=robocasa_task,
+            style=robocasa_style,
+            layout=robocasa_layout,
+            write_to_file=scene_path,
+        )
 
     # If no scene path
     if scene_path is None or len(scene_path) == 0:
-        scene_path = sim_utils.get_default_scene_path()
+        scene_path = default_scene_xml_path
 
     server = MujocoZmqServer(
         send_port,
