@@ -72,6 +72,7 @@ setuptools.setup(
         "hydra-core",
         "timm>1.0.0",
         "huggingface_hub[cli]>=0.24.7",
+        # For mobile clip
         "open-clip-torch>=2.32.0",
         "transformers>=4.50.0",
         "retry",
@@ -81,8 +82,6 @@ setuptools.setup(
         "accelerate >= 1.5.0",
         "einops",
         "protobuf",
-        # Meta neural nets
-        "segment-anything",
         # Compression tools
         "pyliblzfse",
         "webp>=0.3.0",
