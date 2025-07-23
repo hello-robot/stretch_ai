@@ -98,7 +98,7 @@ def main(
         while True:
 
             # If target object and receptacle are provided, set mode to manipulation
-            question = input("Question (Pess enter to quit):").lower()
+            question = input("Question (Press enter to quit):").lower()
             if question.replace(" ", "") == "":
                 break
 

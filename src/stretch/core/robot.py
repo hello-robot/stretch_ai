@@ -124,13 +124,3 @@ class AbstractRobotClient(ABC):
     def at_goal(self) -> bool:
         """Is the robot at a goal?"""
         raise NotImplementedError()
-
-    @abstractmethod
-    def save_map(self, filename: str):
-        """Save the current map to a file"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load_map(self, filename: str):
-        """Load a map from a file"""
-        raise NotImplementedError()

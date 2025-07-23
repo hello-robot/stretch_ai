@@ -43,9 +43,6 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
     def set_target_object_class(self, target_object: str) -> None:
         self.target_object = target_object
 
-    def set_target_object(self, target_object: str) -> None:
-        self.target_object = target_object
-
     def can_start(self):
         """Grasping can start if we have a target object picked out, and are moving to its instance, and if the robot is ready to begin manipulation."""
         if self.target_object is None:
@@ -157,6 +154,10 @@ class OpenLoopGraspObjectOperation(ManagedOperation):
         current_xyz = obs.get_xyz_in_world_frame()
 
         # Find the best object mask
+        if self.match_method == "class":
+            # This means that we are just using an open-vocabulary object detector to find the object so we need to update the vocabulary.
+            self.agent.semantic_sensor.update_vocabulary_list([self.target_object], 1)
+            self.agent.semantic_sensor.set_vocabulary(1)
         mask = self.get_class_mask(obs)
 
         # If the mask is empty, just use blind grasp based on instance center

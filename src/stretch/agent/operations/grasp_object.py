@@ -178,9 +178,9 @@ class GraspObjectOperation(ManagedOperation):
         self.talk = talk
         self.match_method = match_method
         self._try_open_loop = try_open_loop
-        if self.match_method not in ["class", "feature", "class(dynamem)"]:
+        if self.match_method not in ["class", "feature"]:
             raise ValueError(
-                f"Unknown match method {self.match_method}. Should be 'class', 'feature', or 'class(dynamem)'."
+                f"Unknown match method {self.match_method}. Should be 'class', 'feature'."
             )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
@@ -263,14 +263,10 @@ class GraspObjectOperation(ManagedOperation):
 
         if self.verbose:
             print("[GRASP OBJECT] match method =", self.match_method)
-        if self.match_method.startswith("class"):
+        if self.match_method == "class":
 
             # Get the target class
-            if self.agent.current_object is not None:
-                target_class_id = self.agent.current_object.category_id
-                target_class = self.agent.semantic_sensor.get_class_name_for_id(target_class_id)
-            else:
-                target_class = self.target_object
+            target_class = self.target_object
 
             if self.verbose:
                 print("[GRASP OBJECT] Detecting objects of class", target_class)
@@ -594,7 +590,8 @@ class GraspObjectOperation(ManagedOperation):
             center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
-            if self.match_method == "class(dynamem)":
+            if self.match_method == "class":
+                # This means that we are just using an open-vocabulary object detector to find the object so we need to update the vocabulary.
                 self.agent.semantic_sensor.update_vocabulary_list([self.target_object], 1)
                 self.agent.semantic_sensor.set_vocabulary(1)
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
@@ -674,7 +671,7 @@ class GraspObjectOperation(ManagedOperation):
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 print(" -> Displaying visual servoing GUI.")
-                servo_ee_rgb = servo.ee_rgb
+                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_BGR2RGB)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
@@ -699,16 +696,12 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Concatenate the two images side by side
                 viz_image = np.concatenate([servo_ee_rgb, viz_ee_depth], axis=1)
-                from matplotlib import pyplot as plt
-
-                plt.imshow(viz_image)
-                plt.show()
-                # cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
-                # cv2.imshow("Visual Servoing", viz_image)
-                # cv2.waitKey(1)
-                # res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
-                # if res == ord("q"):
-                #     break
+                cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
+                cv2.imshow("Visual Servoing", viz_image)
+                cv2.waitKey(1)
+                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                if res == ord("q"):
+                    break
 
             if self.debug_grasping:
                 # show all four images

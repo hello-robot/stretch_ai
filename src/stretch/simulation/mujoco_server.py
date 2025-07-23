@@ -617,12 +617,7 @@ class MujocoZmqServer(BaseZmqServer):
                     dt = timeit.default_timer() - t0
                     if dt > 5:
                         logger.error("Gripper move took too long")
-                        break
-
-        if "save_map" in action:
-            logger.warning("Saving map not supported in Mujoco simulation")
-        elif "load_map" in action:
-            logger.warning("Loading map not supported in Mujoco simulation")
+                        break   
         elif "say" in action:
             do_nothing = True
         if "joint" in action:
