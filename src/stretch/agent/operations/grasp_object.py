@@ -50,6 +50,7 @@ class GraspObjectOperation(ManagedOperation):
     verbose: bool = False
 
     offset_from_vertical = -np.pi / 2 - 0.1
+    node_for_grasp_pose = "link_gripper_s3_body"
 
     # Task information
     match_method: str = "class"
@@ -87,7 +88,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.18
+    median_distance_when_grasping: float = 0.17
     lift_min_height: float = 0.1
     lift_max_height: float = 1.0
 
@@ -126,7 +127,7 @@ class GraspObjectOperation(ManagedOperation):
     max_random_motions: int = 10
 
     # Timing issues
-    expected_network_delay = 0.1
+    expected_network_delay = 0.2
     open_loop: bool = False
 
     # Observation memory
@@ -931,16 +932,17 @@ class GraspObjectOperation(ManagedOperation):
             joint_state = obs.joint
             model = self.robot.get_robot_model()
 
-            ee_pos, ee_rot = model.manip_fk(joint_state)
+            # link_gripper_s3_body is the the joint connecting the gripper with arm end effector
+            ee_pos, ee_rot = model.manip_fk(joint_state, node=self.node_for_grasp_pose)
 
             # Convert quaternion to pose
             pose = np.eye(4)
             pose[:3, :3] = R.from_quat(ee_rot).as_matrix()
             pose[:3, 3] = ee_pos
 
-            # Move back 0.3m from grasp coordinate
+            # Move back 0.35m from grasp coordinate
             delta = np.eye(4)
-            delta[2, 3] = -0.3
+            delta[2, 3] = -0.35
             pose = np.dot(pose, delta)
 
             # New ee pose = roughly the end of the arm
@@ -950,9 +952,7 @@ class GraspObjectOperation(ManagedOperation):
             # dz = np.abs(head_pos[2] - relative_object_xyz[2])
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
-            # Since the camera is slightly tilted up, we need to subtract a bit from the pitch
-            pitch_from_vertical = np.arctan2(dy, dz) - 0.05
-            # pitch_from_vertical = np.arctan2(dy, dz)
+            pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
 
