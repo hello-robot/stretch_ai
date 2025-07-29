@@ -49,6 +49,7 @@ class DynamemTaskExecutor:
         robot: AbstractRobotClient,
         parameters: Parameters,
         match_method: str = "feature",
+        visual_servo: bool = False,
         device_id: int = 0,
         output_path: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
@@ -70,6 +71,7 @@ class DynamemTaskExecutor:
             self.cpu_only = True
 
         # Other parameters
+        self.visual_servo = visual_servo
         self.match_method = match_method
         self.skip_confirmations = skip_confirmations
         self.explore_iter = explore_iter
@@ -82,12 +84,16 @@ class DynamemTaskExecutor:
 
         # Create semantic sensor if visual servoing is enabled
         print("- Create semantic sensor if visual servoing is enabled")
-        self.parameters["detection"]["module"] = "yoloe" if self.cpu_only else "owlsam"
-        self.semantic_sensor = create_semantic_sensor(
-            parameters=self.parameters,
-            device_id=device_id,
-            verbose=False,
-        )
+        if self.visual_servo:
+            self.parameters["detection"]["module"] = "yoloe" if self.cpu_only else "owlsam"
+            self.semantic_sensor = create_semantic_sensor(
+                parameters=self.parameters,
+                device_id=device_id,
+                verbose=False,
+            )
+        else:
+            self.parameters["encoder"] = None
+            self.semantic_sensor = None
 
         print("- Start robot agent with data collection")
         self.agent = RobotAgent(
@@ -103,10 +109,13 @@ class DynamemTaskExecutor:
         self.agent.start()
 
         # Create grasp object operation
-        self.grasp_object = GraspObjectOperation(
-            "grasp_the_object",
-            self.agent,
-        )
+        if self.visual_servo:
+            self.grasp_object = GraspObjectOperation(
+                "grasp_the_object",
+                self.agent,
+            )
+        else:
+            self.grasp_object = None
 
         # Task stuff
         self.emote_task = EmoteTask(self.agent)
@@ -171,6 +180,11 @@ class DynamemTaskExecutor:
             )
             # This retracts the arm
             self.robot.move_to_nav_posture()
+        else:
+            # Otherwise, use the self.agent's manipulation method
+            # This is from OK Robot
+            print("Using self.agent to grasp object:", target_object)
+            self.agent.manipulate(target_object, theta, skip_confirmation=skip_confirmations)
         self.robot.look_front()
 
     def _take_picture(self, channel=None) -> None:
@@ -218,7 +232,7 @@ class DynamemTaskExecutor:
 
         self.robot.say("Placing object on the " + str(target_receptacle) + ".")
         # If you run this stack with visual servo, run it locally
-        self.agent.place(target_receptacle, init_tilt=theta, local=True)
+        self.agent.place(target_receptacle, init_tilt=theta, local=self.visual_servo)
         self.robot.move_to_nav_posture()
 
     def _hand_over(self) -> None:
