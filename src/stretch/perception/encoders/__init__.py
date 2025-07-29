@@ -14,10 +14,8 @@
 from typing import Any
 
 from .base_encoder import BaseImageTextEncoder
-from .custom import CustomImageTextEncoder
-from .masksiglip_encoder import MaskSiglipEncoder
 
-encoders = ["clip", "normalized_clip", "siglip", "dinov2siglip"]
+encoders = ["clip", "normalized_clip", "siglip"]
 
 
 def get_encoder(encoder_name, args: Any):
@@ -33,9 +31,9 @@ def get_encoder(encoder_name, args: Any):
         from .siglip_encoder import SiglipEncoder
 
         return SiglipEncoder(**args)
-    elif encoder_name == "dinov2siglip":
-        from .dinov2_siglip_encoder import Dinov2SigLIPEncoder
+    elif encoder_name == "siglip2":
+        from .siglip2_encoder import Siglip2Encoder
 
-        return Dinov2SigLIPEncoder(**args)
+        return Siglip2Encoder(**args)
     else:
         raise ValueError(f"Encoder {encoder_name} not implemented or not supported.")

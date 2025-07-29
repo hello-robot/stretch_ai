@@ -4,6 +4,8 @@
 
 Our data collection system is based on a low-cost teleoperation framework called [Dex Teleop](https://github.com/hello-robot/stretch_dex_teleop). You use a webcam to track a unique tool with AR markers, and the robot follows the tool. This system is designed to be easy to use and it allows us to collect high-quality data for training robot learning algorithms.
 
+To start with, we recommend you using our [Stretch Dexterous Teleop Kit](https://hello-robot.com/stretch-dex-teleop-kit). To collect data, connect the logitech C930 camera with the machine where you want to run data collection script and save the collected data. 
+
 ## Prerequisites:
 
 Follow the [instructions](../README.md#Installation) for installation of `stretch_ai` with Python 3.10 for both PC and robot.
@@ -24,6 +26,18 @@ python -m pip install webcam mediapipe
   ```
 
 - [Camera calibration](https://github.com/hello-robot/stretch_dex_teleop?tab=readme-ov-file#generate-specialized-urdfs) for dex teleop
+
+We recommend running all data collection commands without using docker, but we also realize that Dex teleop scripts might be unstable on some machine, it is also a good idea to use the docker for it. You should first make sure you understand how we use [Docker](./docker.md) in this repo. Then, follow these commands to open docker terminal. 
+
+To build docker image, run
+```bash
+./docker/build-dex-teleop-docker.sh
+```
+
+To run terminal command in your docker image. The `src` argument allows you to link the stretch ai in your PC with the stretch ai folder in the docker image. So the data you collected will automatically appear on your local machine after data collection finishes.
+```bash
+./scripts/run_stretch_ai_dex_teleop.sh --src $STRETCH_AI_FOLDER
+```
 
 ### On Robot:
 
@@ -83,16 +97,17 @@ Launch this command from the directory where URDFs are stored (default is root o
 If you have already ran an app with `--robot-ip` flag, such as the `view_images` test app, you can omit the flag in subsequent runs.
 
 ```bash
-# The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
-
-TASK_NAME=<name-of-task>
-python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --s --clutch
+python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --clutch
 ```
 
 For example:
 
 ```bash
+<<<<<<< HEAD
 python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --s --clutch
+=======
+python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --clutch
+>>>>>>> 809dfaee5a113cb2f0ecbea412805e71d1102175
 ```
 
 The optional `--clutch` flag enables the clutch. While your hand is over the dex teleop webcam, the robot will not move. This makes it easier to operate the robot and to collect data.

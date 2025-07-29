@@ -16,10 +16,8 @@ from PIL import Image
 from torch import Tensor
 from transformers import BlipForConditionalGeneration, BlipProcessor
 
-from .base_captioner import BaseCaptioner
 
-
-class BlipCaptioner(BaseCaptioner):
+class BlipCaptioner:
     """Image captioner using BLIP (Bootstrapping Language-Image Pre-training) model."""
 
     def __init__(self, max_length: int = 30, num_beams: int = 4, device: Optional[str] = None):
@@ -39,9 +37,9 @@ class BlipCaptioner(BaseCaptioner):
             self._device = torch.device(device)
 
         # Create models
-        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
         self.model = BlipForConditionalGeneration.from_pretrained(
-            "Salesforce/blip-image-captioning-base"
+            "Salesforce/blip-image-captioning-large"
         ).to(self._device)
 
     def caption_image(self, image: Union[ndarray, Tensor, Image.Image]) -> str:
@@ -83,7 +81,7 @@ class BlipCaptioner(BaseCaptioner):
 
 
 @click.command()
-@click.option("--image_path", default="object.png", help="Path to image file")
+@click.option("--image_path", default="example.jpg", help="Path to image file")
 def main(image_path: str):
     captioner = BlipCaptioner()
 

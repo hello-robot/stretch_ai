@@ -108,11 +108,7 @@ You need to first install the conda environments on the workstation, we recommen
 ./install.sh --no-version
 mamba activate stretch_ai
 ```
-If you use visual servo manipulation, you would need to further install SAM2
-```
-cd third_party/segment-anything-2
-pip install -e .
-```
+
 If you use AnyGrasp manipulation, please refer to [these instructions](#prepare-manipulation-with-anygrasp) for the installation, 
 you would need to create a new conda environment on your worstation.
 
@@ -129,6 +125,10 @@ python src/stretch/config/dynamem_urdf.py --urdf-path src/stretch/config/urdf/st
 ```
 
 Note that while URDF calibration is important for both manipulation systems, AnyGrasp manipulation has much higher requirement on robot calibration. On the other hand, even though the calibration is not perfect in visual servo manipulation, in most cases the robot is still going to complete the task.
+
+You might want to check your calibration if the following things happen:
+- Floor in the navigation pointcloud does not fall on `z=0` plane.
+- Manipulation does not follow AnyGrasp predictions.
 
 ### Specifying IPs in Dynamem scripts
 
@@ -221,6 +221,13 @@ If you do not have access to AnyGrasp, you can run with the Stretch AI Visual Se
 python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --server_ip $WORKSTATION_SERVER_IP --visual-servo
 ```
 
+If you use this manipulation on GPU, it will use Owlv2 + SAMv2 as segmentation models. This means that you need to install SAMv2. **Be aware that Stretch AI does not install SAMvs by default**, so you need to install SAMv2 yourself. Following these commands:
+
+```
+cd third_party/segment-anything-2
+pip install -e .
+```
+
 ### Running with the LLM Agent
 
 You can also run an equivalent of the [LLM agent](llm_agent.md) with Dynamem. In this case, you can run Dynamem with the following command:
@@ -237,11 +244,22 @@ python -m stretch.app.run_dynamem --use-llm --use-voice
 You can specify an LLM, e.g.:
 ```bash
 # Run Gemma 2B from Google locally
-python -m stretch.app.run_dynamem --use-llm --llm gemma2b
+python -m stretch.app.run_dynamem --use-llm --llm gemma
 
 # Run Openai GPT-4o-mini on the cloud, using an OpenAI API key
 OPENAI_API_KEY=your_key_here
 python -m stretch.app.run_dynamem --use-llm --llm openai
+```
+
+### Running on CPU
+Last but not the least, we understand in some cases GPU might not be available, therefore we prepare a lightweighted version of DynaMem that can be deployed
+on CPU, especially your robot NUC. While this lightweighted version is not as good as the normal one, it can still do some cool things.
+
+If you want to install an environment to try this version on your robot, instead of commonly used `./install.sh`, you should use this command to install `./install.sh --conda --cpu`.
+
+Try this out by calling
+```bash
+python -m stretch.app.run_dynamem  --robot_ip $ROBOT_IP --cpu --match-method "class" --vs
 ```
 
 ## Cite Dynamem

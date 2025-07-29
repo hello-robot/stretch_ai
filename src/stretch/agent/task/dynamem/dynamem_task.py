@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+import torch
 from PIL import Image
 
 from stretch.agent.operations import GraspObjectOperation
@@ -48,7 +49,6 @@ class DynamemTaskExecutor:
         robot: AbstractRobotClient,
         parameters: Parameters,
         match_method: str = "feature",
-        visual_servo: bool = False,
         device_id: int = 0,
         output_path: Optional[str] = None,
         server_ip: Optional[str] = "127.0.0.1",
@@ -56,15 +56,20 @@ class DynamemTaskExecutor:
         explore_iter: int = 5,
         mllm: bool = False,
         manipulation_only: bool = False,
+        cpu_only: bool = False,
         discord_bot=None,
     ) -> None:
         """Initialize the executor."""
         self.robot = robot
         self.parameters = parameters
         self.discord_bot = discord_bot
+        self.cpu_only = cpu_only
+        # If there is no GPU, we have to use CPU
+        if not torch.cuda.is_available():
+            print("Setting up to use CPU as there is no GPU!")
+            self.cpu_only = True
 
         # Other parameters
-        self.visual_servo = visual_servo
         self.match_method = match_method
         self.skip_confirmations = skip_confirmations
         self.explore_iter = explore_iter
@@ -77,15 +82,12 @@ class DynamemTaskExecutor:
 
         # Create semantic sensor if visual servoing is enabled
         print("- Create semantic sensor if visual servoing is enabled")
-        if self.visual_servo:
-            self.semantic_sensor = create_semantic_sensor(
-                parameters=self.parameters,
-                device_id=device_id,
-                verbose=False,
-            )
-        else:
-            self.parameters["encoder"] = None
-            self.semantic_sensor = None
+        self.parameters["detection"]["module"] = "yoloe" if self.cpu_only else "owlsam"
+        self.semantic_sensor = create_semantic_sensor(
+            parameters=self.parameters,
+            device_id=device_id,
+            verbose=False,
+        )
 
         print("- Start robot agent with data collection")
         self.agent = RobotAgent(
@@ -96,17 +98,15 @@ class DynamemTaskExecutor:
             server_ip=server_ip,
             mllm=mllm,
             manipulation_only=manipulation_only,
+            cpu_only=self.cpu_only,
         )
         self.agent.start()
 
         # Create grasp object operation
-        if self.visual_servo:
-            self.grasp_object = GraspObjectOperation(
-                "grasp_the_object",
-                self.agent,
-            )
-        else:
-            self.grasp_object = None
+        self.grasp_object = GraspObjectOperation(
+            "grasp_the_object",
+            self.agent,
+        )
 
         # Task stuff
         self.emote_task = EmoteTask(self.agent)
@@ -164,18 +164,13 @@ class DynamemTaskExecutor:
             self.grasp_object(
                 target_object=target_object,
                 object_xyz=point,
-                match_method="feature",
+                match_method=self.match_method,
                 show_object_to_grasp=False,
-                show_servo_gui=True,
+                show_servo_gui=False,
                 delete_object_after_grasp=False,
             )
             # This retracts the arm
             self.robot.move_to_nav_posture()
-        else:
-            # Otherwise, use the self.agent's manipulation method
-            # This is from OK Robot
-            print("Using self.agent to grasp object:", target_object)
-            self.agent.manipulate(target_object, theta, skip_confirmation=skip_confirmations)
         self.robot.look_front()
 
     def _take_picture(self, channel=None) -> None:
@@ -223,7 +218,7 @@ class DynamemTaskExecutor:
 
         self.robot.say("Placing object on the " + str(target_receptacle) + ".")
         # If you run this stack with visual servo, run it locally
-        self.agent.place(target_receptacle, init_tilt=theta, local=self.visual_servo)
+        self.agent.place(target_receptacle, init_tilt=theta, local=True)
         self.robot.move_to_nav_posture()
 
     def _hand_over(self) -> None:
@@ -285,9 +280,12 @@ class DynamemTaskExecutor:
                 # Navigation
 
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
-                if self.skip_confirmations or (
-                    not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                if not self.manipulation_only and (
+                    self.skip_confirmations
+                    or (
+                        not self.skip_confirmations
+                        and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                    )
                 ):
                     self.robot.move_to_nav_posture()
                     point = self._find(args)
@@ -321,9 +319,12 @@ class DynamemTaskExecutor:
                 # Navigation
 
                 # Either we wait for users to confirm whether to run navigation, or we just directly control the robot to navigate.
-                if self.skip_confirmations or (
-                    not self.skip_confirmations
-                    and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                if not self.manipulation_only and (
+                    self.skip_confirmations
+                    or (
+                        not self.skip_confirmations
+                        and input("Do you want to run navigation? [Y/n]: ").upper() != "N"
+                    )
                 ):
                     point = self._find(args)
                 # Or the user explicitly tells that he or she does not want to run navigation.
@@ -401,3 +402,34 @@ class DynamemTaskExecutor:
             i += 1
         # If we did not explicitly receive a quit command, we are not yet done.
         return True
+
+
+class EQAExecuter:
+    def __init__(self, agent: RobotAgent, discord_bot=None) -> None:
+        """
+        Initialize the executor. Make sure EQA module can be used in the same way as DynaMem module
+        TODO: Itegrate this module with DynaMem
+        """
+
+        self.agent = agent
+        self.discord_bot = discord_bot
+
+    def rotate_in_place(self):
+        self.agent.rotate_in_place()
+
+    def __call__(self, response: List[Tuple[str, str]], channel=None):
+        """Answer the question given by the LLM bot.
+
+        Args:
+            response: A question
+
+        Returns:
+            Answer
+        """
+        discord_text, relevant_images = self.agent.run_eqa(response)
+        if channel is not None:
+            self.discord_bot.send_message(
+                channel=channel,
+                message=discord_text,
+                content=numpy_image_to_bytes(relevant_images),
+            )

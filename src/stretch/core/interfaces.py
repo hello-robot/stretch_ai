@@ -20,14 +20,6 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 
-class GeneralTaskState(Enum):
-    NOT_STARTED = 0
-    PREPPING = 1
-    DOING_TASK = 2
-    IDLE = 3
-    STOP = 4
-
-
 class Action:
     """Controls."""
 
@@ -67,19 +59,6 @@ class ContinuousNavigationAction(Action):
         return f"xyt={self.xyt}"
 
 
-class ContinuousFullBodyAction:
-    xyt: np.ndarray
-    joints: np.ndarray
-
-    def __init__(self, joints: np.ndarray, xyt: np.ndarray = None):
-        """Create full-body continuous action"""
-        if xyt is not None and not len(xyt) == 3:
-            raise RuntimeError("continuous navigation action space has 3 dimensions, x y and theta")
-        self.xyt = xyt
-        # Joint states in robot action format
-        self.joints = joints
-
-
 class ContinuousEndEffectorAction:
     pos: np.ndarray
     ori: np.ndarray
@@ -113,78 +92,6 @@ class ActionType(Enum):
     CONTINUOUS_NAVIGATION = 1
     CONTINUOUS_MANIPULATION = 2
     CONTINUOUS_EE_MANIPULATION = 3
-
-
-class HybridAction(Action):
-    """Convenience for supporting multiple action types - provides handling to make sure we have the right class at any particular time"""
-
-    action_type: ActionType
-    action: Action
-
-    def __init__(
-        self,
-        action=None,
-        xyt: np.ndarray = None,
-        joints: np.ndarray = None,
-        pos: np.ndarray = None,
-        ori: np.ndarray = None,
-        gripper: np.ndarray = None,
-    ):
-        """Make sure that we were passed a useful generic action here. Process it into something useful."""
-        if action is not None:
-            if isinstance(action, HybridAction):
-                self.action_type = action.action_type
-            if isinstance(action, DiscreteNavigationAction):
-                self.action_type = ActionType.DISCRETE
-            elif isinstance(action, ContinuousNavigationAction):
-                self.action_type = ActionType.CONTINUOUS_NAVIGATION
-            elif isinstance(action, ContinuousEndEffectorAction):
-                self.action_type = ActionType.CONTINUOUS_EE_MANIPULATION
-            else:
-                self.action_type = ActionType.CONTINUOUS_MANIPULATION
-        elif joints is not None:
-            self.action_type = ActionType.CONTINUOUS_MANIPULATION
-            action = ContinuousFullBodyAction(joints, xyt)
-        elif xyt is not None:
-            self.action_type = ActionType.CONTINUOUS_NAVIGATION
-            action = ContinuousNavigationAction(xyt)
-        elif pos is not None:
-            self.action_type = ActionType.CONTINUOUS_EE_MANIPULATION
-            action = ContinuousEndEffectorAction(pos, ori, gripper)
-        else:
-            raise RuntimeError("Cannot create HybridAction without any action!")
-        if isinstance(action, HybridAction):
-            # TODO: should we copy like this?
-            self.action_type = action.action_type
-            action = action.action
-            # But more likely this was a mistake so let's actually throw an error
-            raise RuntimeError("Do not pass a HybridAction when creating another HybridAction!")
-        self.action = action
-
-    def is_discrete(self):
-        """Let environment know if we need to handle a discrete action"""
-        return self.action_type == ActionType.DISCRETE
-
-    def is_navigation(self):
-        return self.action_type == ActionType.CONTINUOUS_NAVIGATION
-
-    def is_manipulation(self):
-        return self.action_type in [
-            ActionType.CONTINUOUS_MANIPULATION,
-            ActionType.CONTINUOUS_EE_MANIPULATION,
-        ]
-
-    def get(self):
-        """Extract continuous component of the command and return it."""
-        if self.action_type == ActionType.DISCRETE:
-            return self.action
-        elif self.action_type == ActionType.CONTINUOUS_NAVIGATION:
-            return self.action.xyt
-        elif self.action_type == ActionType.CONTINUOUS_EE_MANIPULATION:
-            return self.action.pos, self.action.ori, self.action.g
-        else:
-            # Extract both the joints and the waypoint target
-            return self.action.joints, self.action.xyt
 
 
 @dataclass

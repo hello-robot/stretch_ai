@@ -24,7 +24,11 @@ import torch
 from torch import Tensor
 
 from stretch.mapping.instance import Instance, InstanceView
-from stretch.mapping.instance.matching import ViewMatchingConfig, get_similarity
+from stretch.mapping.instance.matching import (
+    Bbox3dOverlapMethodEnum,
+    ViewMatchingConfig,
+    get_similarity,
+)
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
@@ -93,10 +97,12 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
-        min_instance_points: int = 100,
+        min_instance_points: int = 1500,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
+        captioner=None,
+        save_original_image: bool = False,
     ):
         """See class definition for information about InstanceMemory
 
@@ -111,8 +117,10 @@ class InstanceMemory:
             erode_mask_num_iter (int, optional): If erode_mask_num_pix is nonzero, how times to iterate erode instance masks. Defaults to 1.
             instance_view_score_aggregation_mode (str): When adding views to an instance, how to update instance scores. Defaults to 'max'
             mask_cropped_instances (bool): true if we want to save crops of just objects on black background; false otherwise
+            save_original_image (bool): Set to True if you want to associate the original image with each instance view or the cropped image will associate with the instance
         """
         self.mask_cropped_instances = mask_cropped_instances
+        self.save_original_image = save_original_image
         self.num_envs = num_envs
         self.du_scale = du_scale
         self.debug_visualize = debug_visualize
@@ -125,6 +133,7 @@ class InstanceMemory:
         self.instance_box_compression_drop_prop = instance_box_compression_drop_prop
         self.instance_box_compression_resolution = instance_box_compression_resolution
         self.encoder = encoder
+        self.captioner = captioner
 
         self.min_instance_vol = min_instance_vol
         self.max_instance_vol = max_instance_vol
@@ -330,7 +339,7 @@ class InstanceMemory:
                             instance.get_image_embedding(
                                 aggregation_method="mean",
                                 use_visual_feat=self.use_visual_feat,
-                                normalize=False,
+                                normalize=True,
                             ),
                         )  # Slow since we concatenate all global vectors each time for each image instance
                         for inst_id, instance in global_ids_to_instances.items()
@@ -338,17 +347,36 @@ class InstanceMemory:
                 )
 
                 # Similarity config
-                similarity = get_similarity(
-                    instance_bounds1=instance_view.bounds.unsqueeze(0),
-                    instance_bounds2=global_bounds,
-                    visual_embedding1=instance_view.visual_feat
-                    if self.use_visual_feat
-                    else instance_view.embedding,
-                    visual_embedding2=global_embedding,
-                    text_embedding1=None,
-                    text_embedding2=None,
-                    view_matching_config=self.view_matching_config,
-                )
+                if self.view_matching_config.box_match_mode == Bbox3dOverlapMethodEnum.NN_RATIO:
+                    # To avoid having too many arguments, here we directly send pointcloud through instance bounds attr to get_similarity
+                    # So this setting is following the idea of concept graphs (https://concept-graphs.github.io) to compute nn ratio as overlap similarity
+                    point_clouds = [
+                        instance.point_cloud
+                        for inst_id, instance in global_ids_to_instances.items()
+                    ]
+                    similarity = get_similarity(
+                        instance_bounds1=instance_view.point_cloud,
+                        instance_bounds2=point_clouds,
+                        visual_embedding1=instance_view.visual_feat
+                        if self.use_visual_feat
+                        else instance_view.embedding,
+                        visual_embedding2=global_embedding,
+                        text_embedding1=None,
+                        text_embedding2=None,
+                        view_matching_config=self.view_matching_config,
+                    )
+                else:
+                    similarity = get_similarity(
+                        instance_bounds1=instance_view.bounds.unsqueeze(0),
+                        instance_bounds2=global_bounds,
+                        visual_embedding1=instance_view.visual_feat
+                        if self.use_visual_feat
+                        else instance_view.embedding,
+                        visual_embedding2=global_embedding,
+                        text_embedding1=None,
+                        text_embedding2=None,
+                        view_matching_config=self.view_matching_config,
+                    )
                 max_similarity, matched_idx = similarity.max(dim=1)
                 total_weight = (
                     self.view_matching_config.visual_similarity_weight
@@ -796,6 +824,17 @@ class InstanceMemory:
                         )
                 else:
                     # get instance view
+                    if self.captioner is not None:
+                        # ViT_GPT2 and GiT captioners take image of shape (H, W, C)
+                        # They also require the image to be scaled up cropped_image's pixel values within [0, 256)
+                        text_description = self.captioner.caption_image(
+                            cropped_image.to(dtype=torch.uint8)
+                        )
+                    else:
+                        text_description = None
+                    if self.save_original_image:
+                        cropped_image = image_downsampled.permute(1, 2, 0)
+                        instance_mask = instance_mask_downsampled
                     instance_view = InstanceView(
                         bbox=bbox,
                         timestep=self.timesteps[env_id],
@@ -810,6 +849,7 @@ class InstanceMemory:
                         score=score,
                         bounds=bounds,  # .cpu().numpy(),
                         pose=pose,
+                        text_description=text_description
                         # open_vocab_label=open_vocab_label,
                     )
                     # append instance view to list of instance views
