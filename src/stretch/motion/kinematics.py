@@ -19,12 +19,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from stretch.motion.base import IKSolverBase
-from stretch.motion.constants import (
-    MANIP_STRETCH_URDF,
-    PLANNER_STRETCH_URDF,
-    STRETCH_GRASP_FRAME,
-    STRETCH_HOME_Q,
-)
+from stretch.motion.constants import MANIP_STRETCH_URDF, STRETCH_GRASP_FRAME, STRETCH_HOME_Q
 from stretch.motion.pinocchio_ik_solver import PinocchioIKSolver, PositionIKOptimizer
 from stretch.motion.robot import Footprint
 
@@ -196,12 +191,9 @@ class HelloStretchKinematics:
 
         # urdf
         if not urdf_path:
-            full_body_urdf = PLANNER_STRETCH_URDF
             manip_urdf = MANIP_STRETCH_URDF
         else:
-            full_body_urdf = os.path.join(urdf_path, "planner_calibrated.urdf")
-            manip_urdf = os.path.join(urdf_path, "planner_calibrated_manipulation_mode.urdf")
-        self.full_body_urdf_path = os.path.join(root, full_body_urdf)
+            manip_urdf = os.path.join(urdf_path, "stretch.urdf")
         self.manip_mode_urdf_path = os.path.join(root, manip_urdf)
         self.name = name
         self.visualize = visualize
