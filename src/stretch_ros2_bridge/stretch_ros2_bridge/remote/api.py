@@ -22,7 +22,7 @@ import trimesh.transformations as tra
 from stretch.core.interfaces import Observations
 from stretch.core.robot import AbstractRobotClient, ControlMode
 from stretch.motion import RobotModel
-from stretch.motion.constants import STRETCH_NAVIGATION_Q, STRETCH_PREGRASP_Q
+from stretch.motion.constants import STRETCH_CAMERA_FRAME, STRETCH_NAVIGATION_Q, STRETCH_PREGRASP_Q
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import xyt2sophus
 
@@ -38,7 +38,7 @@ JOINT_ANG_TOL = 0.03
 class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
-    head_camera_frame = "camera_color_optical_frame"
+    head_camera_frame = STRETCH_CAMERA_FRAME
     ee_camera_frame = "gripper_camera_color_optical_frame"
     ee_frame = "link_grasp_center"
     world_frame = "map"

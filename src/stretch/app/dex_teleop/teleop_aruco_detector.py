@@ -14,6 +14,8 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 
+from stretch.motion.constants import STRETCH_CAMERA_FRAME
+
 
 def minimum_distance_between_corners(corners):
     # calculate the 6 distances between the corners and return the minimum
@@ -39,7 +41,7 @@ class ArucoMarker:
         bgr = id_color_image[0, 0]
         self.id_color = [bgr[2], bgr[1], bgr[0]]
 
-        self.frame_id = "camera_color_optical_frame"
+        self.frame_id = STRETCH_CAMERA_FRAME
         self.info = marker_info.get(str(self.aruco_id), None)
 
         if self.info is None:

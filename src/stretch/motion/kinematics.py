@@ -144,20 +144,6 @@ class HelloStretchKinematics:
         "joint_wrist_pitch",
         "joint_wrist_roll",
     ]
-    manip_indices = [0, 3, 4, 5, 6, 7, 8, 9, 10]
-    full_body_controlled_joints = [
-        "base_x_joint",
-        "base_y_joint",
-        "base_theta_joint",
-        "joint_lift",
-        "joint_arm_l3",
-        "joint_arm_l2",
-        "joint_arm_l1",
-        "joint_arm_l0",
-        "joint_wrist_yaw",
-        "joint_wrist_pitch",
-        "joint_wrist_roll",
-    ]
 
     def get_footprint(self) -> Footprint:
         """Return footprint for the robot. This is expected to be a mask."""
