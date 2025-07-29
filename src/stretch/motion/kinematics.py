@@ -18,7 +18,6 @@ from typing import List, Optional, Tuple
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from stretch.core.interfaces import ContinuousFullBodyAction
 from stretch.motion.base import IKSolverBase
 from stretch.motion.constants import (
     MANIP_STRETCH_URDF,
@@ -233,10 +232,6 @@ class HelloStretchKinematics:
         # ranges for joints
         self.range = np.zeros((self.dof, 2))
 
-        # Create object reference
-        # self.set_pose = self.ref.set_pose
-        # self.set_joint_position = self.ref.set_joint_position
-
         self._ik_type = ik_type
         self._ee_link_name = ee_link_name if ee_link_name is not None else self.default_ee_link_name
         self._grasp_frame = grasp_frame if grasp_frame is not None else STRETCH_GRASP_FRAME
@@ -284,106 +279,8 @@ class HelloStretchKinematics:
         q[HelloStretchIdx.GRIPPER] = self.range[HelloStretchIdx.GRIPPER][0]
         return q
 
-    def _update_joints(self, verbose: bool = False):
-        """Get joint info from URDF or otherwise provide it"""
-        self.joint_idx = [-1] * self.dof
-        # Get the joint info we need from this
-        joint_lift = self.ref.get_joint_info_by_name("joint_lift")
-        self.range[:3, 0] = -float("Inf") * np.ones(3)
-        self.range[:3, 1] = float("Inf") * np.ones(3)
-        self.range[HelloStretchIdx.LIFT] = np.array(
-            [
-                joint_lift.lower_limit + self.joint_tol,
-                joint_lift.upper_limit - self.joint_tol,
-            ]
-        )
-        self.joint_idx[HelloStretchIdx.LIFT] = joint_lift.index
-        joint_head_pan = self.ref.get_joint_info_by_name("joint_head_pan")
-        self.range[HelloStretchIdx.HEAD_PAN] = np.array(
-            [
-                joint_head_pan.lower_limit + self.joint_tol,
-                joint_head_pan.upper_limit - self.joint_tol,
-            ]
-        )
-        self.joint_idx[HelloStretchIdx.HEAD_PAN] = joint_head_pan.index
-        joint_head_tilt = self.ref.get_joint_info_by_name("joint_head_tilt")
-        self.range[HelloStretchIdx.HEAD_TILT] = np.array(
-            [joint_head_tilt.lower_limit, joint_head_tilt.upper_limit]
-        )
-        self.joint_idx[HelloStretchIdx.HEAD_TILT] = joint_head_tilt.index
-        joint_wrist_yaw = self.ref.get_joint_info_by_name("joint_wrist_yaw")
-        self.range[HelloStretchIdx.WRIST_YAW] = np.array(
-            [
-                joint_wrist_yaw.lower_limit + self.joint_tol,
-                joint_wrist_yaw.upper_limit - self.joint_tol,
-            ]
-        )
-        self.joint_idx[HelloStretchIdx.WRIST_YAW] = joint_wrist_yaw.index
-        joint_wrist_roll = self.ref.get_joint_info_by_name("joint_wrist_roll")
-        self.range[HelloStretchIdx.WRIST_ROLL] = np.array(
-            [
-                joint_wrist_roll.lower_limit + self.joint_tol,
-                joint_wrist_roll.upper_limit - self.joint_tol,
-            ]
-        )
-        self.joint_idx[HelloStretchIdx.WRIST_ROLL] = joint_wrist_roll.index
-        joint_wrist_pitch = self.ref.get_joint_info_by_name("joint_wrist_pitch")
-        self.range[HelloStretchIdx.WRIST_PITCH] = np.array(
-            [
-                joint_wrist_pitch.lower_limit + self.joint_tol,
-                joint_wrist_pitch.upper_limit - self.joint_tol,
-            ]
-        )
-        self.joint_idx[HelloStretchIdx.WRIST_PITCH] = joint_wrist_pitch.index
-
-        # arm position
-        # TODO: fix this so that it is not hard-coded any more
-        self.range[HelloStretchIdx.ARM] = np.array([0.0, 0.75])
-        self.arm_idx = []
-        upper_limit = 0
-        for i in range(4):
-            joint = self.ref.get_joint_info_by_name("joint_arm_l%d" % i)
-            self.arm_idx.append(joint.index)
-            upper_limit += joint.upper_limit
-
-        # TODO: gripper
-        self.gripper_idx = []
-        for side in ["right", "left"]:
-            joint = self.ref.get_joint_info_by_name("joint_gripper_finger_%s" % side)
-            self.gripper_idx.append(joint.index)
-            if verbose:
-                print(side, joint.name, joint.lower_limit, joint.upper_limit)
-            self.range[HelloStretchIdx.GRIPPER] = (
-                np.array([joint.lower_limit, joint.upper_limit]) * 0.5
-            )
-
-        self._mins = self.range[:, 0]
-        self._maxs = self.range[:, 1]
-        self._rngs = self.range[:, 1] - self.range[:, 0]
-
     def get_backend(self):
         return self.backend
-
-    def _set_joint_group(self, idxs, val):
-        for idx in idxs:
-            self.ref.set_joint_position(idx, val)
-
-    def set_config(self, q):
-        assert len(q) == self.dof
-        x, y, theta = q[:3]
-        # quaternion = pb.getQuaternionFromEuler((0, 0, theta))
-        self.ref.set_pose((0, 0, self.base_height), [0, 0, 0, 1])
-        # self.ref.set_pose((x, y, self.base_height), quaternion)
-        self.ref.set_joint_position(0, x)
-        self.ref.set_joint_position(1, y)
-        self.ref.set_joint_position(2, theta)
-        for idx, qq in zip(self.joint_idx, q):
-            if idx < 0:
-                continue
-            self.ref.set_joint_position(idx, qq)
-        # Finally set the arm and gripper as groups
-        self._set_joint_group(self.arm_idx, q[HelloStretchIdx.ARM] / 4.0)
-        self._set_joint_group(self.gripper_idx, q[HelloStretchIdx.GRIPPER])
 
     def interpolate(self, q0, qg, step=None, xy_tol=0.05, theta_tol=0.01):
         """interpolate from initial to final configuration. for this robot we break it up into
@@ -683,64 +580,6 @@ class HelloStretchKinematics:
         q[HelloStretchIdx.BASE_X] += dx
         q[HelloStretchIdx.BASE_Y] += dy
         return q
-
-    def create_action_from_config(self, q: np.ndarray) -> ContinuousFullBodyAction:
-        """Create a default interface action from this"""
-        xyt = np.zeros(3)
-        xyt[0] = q[HelloStretchIdx.BASE_X]
-        xyt[1] = q[HelloStretchIdx.BASE_Y]
-        xyt[2] = q[HelloStretchIdx.BASE_THETA]
-        return self.create_action(
-            lift=q[HelloStretchIdx.LIFT],
-            arm=q[HelloStretchIdx.ARM],
-            pitch=q[HelloStretchIdx.WRIST_PITCH],
-            roll=q[HelloStretchIdx.WRIST_ROLL],
-            yaw=q[HelloStretchIdx.WRIST_YAW],
-            xyt=xyt,
-        )
-
-    def create_action(
-        self,
-        lift=None,
-        arm=None,
-        roll=None,
-        pitch=None,
-        yaw=None,
-        pan=None,
-        tilt=None,
-        xyt=None,
-        defaults: np.ndarray = None,
-    ) -> ContinuousFullBodyAction:
-        """
-        Original Arm Action Space: We define the action space that jointly controls (1) arm extension (horizontal), (2) arm height (vertical), (3) gripper wrist’s roll, pitch, and yaw, and (4) the camera’s yaw and pitch. The resulting size of the action space is 10.
-        - Arm extension (size: 4): It consists of 4 motors that extend the arm: joint_arm_l0 (index 28 in robot interface), joint_arm_l1 (27), joint_arm_l2 (26), joint_arm_l3 (25)
-        - Arm height (size: 1): It consists of 1 motor that moves the arm vertically: joint_lift (23)
-        - Gripper wrist (size: 3): It consists of 3 motors that control the roll, pitch, and yaw of the gripper wrist: joint_wrist_yaw (31),  joint_wrist_pitch (39),  joint_wrist_roll (40)
-        - Camera (size 2): It consists of 2 motors that control the yaw and pitch of the camera: joint_head_pan (7), joint_head_tilt (8)
-
-        As a result, the original action space is the order of [joint_arm_l0, joint_arm_l1, joint_arm_l2, joint_arm_l3, joint_lift, joint_wrist_yaw, joint_wrist_pitch, joint_wrist_roll, joint_head_pan, joint_head_tilt] defined in habitat/robots/stretch_robot.py
-        """
-        assert self.joints_dof == 10
-        if defaults is None:
-            joints = np.zeros(self.joints_dof)
-        else:
-            assert len(defaults) == self.joints_dof
-            joints = defaults.copy()
-        if arm is not None:
-            joints[:4] = np.ones(4) * (arm / 4.0)
-        if lift is not None:
-            joints[4] = lift
-        if roll is not None:
-            joints[5] = roll
-        if pitch is not None:
-            joints[6] = pitch
-        if yaw is not None:
-            joints[7] = yaw
-        if pan is not None:
-            joints[8] = pan
-        if tilt is not None:
-            joints[9] = tilt
-        return ContinuousFullBodyAction(joints=joints, xyt=xyt)
 
     def manip_ik_for_grasp_frame(self, ee_pos, ee_rot, q0: Optional[np.ndarray] = None) -> Tuple:
         # Construct the final end effector pose
