@@ -48,21 +48,6 @@ look_close = np.array([0.0, math.radians(-45)])
 look_down = np.array([0.0, math.radians(-58)])
 
 
-# Stores joint indices for the Stretch configuration space
-class HelloStretchIdx:
-    BASE_X = 0
-    BASE_Y = 1
-    BASE_THETA = 2
-    LIFT = 3
-    ARM = 4
-    GRIPPER = 5
-    WRIST_ROLL = 6
-    WRIST_PITCH = 7
-    WRIST_YAW = 8
-    HEAD_PAN = 9
-    HEAD_TILT = 10
-
-
 STRETCH_HOME_Q = np.array(
     [
         0,  # x

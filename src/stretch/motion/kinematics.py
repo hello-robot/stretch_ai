@@ -260,43 +260,6 @@ class HelloStretchKinematics:
     def get_backend(self):
         return self.backend
 
-    def interpolate(self, q0, qg, step=None, xy_tol=0.05, theta_tol=0.01):
-        """interpolate from initial to final configuration. for this robot we break it up into
-        four stages:
-        1) rotate to point towards final location
-        2) drive to final location
-        3) rotate to final orientation
-        4) move everything else
-        """
-        if step is None:
-            step = self.default_step
-        qi = q0.copy()
-        theta0 = q0[HelloStretchIdx.BASE_THETA]
-        thetag = qg[HelloStretchIdx.BASE_THETA]
-        xy0 = q0[[HelloStretchIdx.BASE_X, HelloStretchIdx.BASE_Y]]
-        xyg = qg[[HelloStretchIdx.BASE_X, HelloStretchIdx.BASE_Y]]
-        dist = np.linalg.norm(xy0 - xyg)
-        if dist > xy_tol:
-            dx, dy = xyg - xy0
-            theta = np.arctan2(dy, dx)
-            for qi, ai in self.interpolate_angle(
-                qi, theta0, theta, step[HelloStretchIdx.BASE_THETA]
-            ):
-                yield qi, ai
-            for qi, ai in self.interpolate_xy(qi, xy0, dist, step[HelloStretchIdx.BASE_X]):
-                yield qi, ai
-        else:
-            theta = theta0
-        # update angle
-        if np.abs(thetag - theta) > theta_tol:
-            for qi, ai in self.interpolate_angle(
-                qi, theta, thetag, step[HelloStretchIdx.BASE_THETA]
-            ):
-                yield qi, ai
-        # Finally interpolate the whole joint space
-        for qi, ai in self.interpolate_arm(qi, qg, step):
-            yield qi, ai
-
     def manip_fk(self, q: np.ndarray = None, node: str = None) -> Tuple[np.ndarray, np.ndarray]:
         """manipulator specific forward kinematics; uses separate URDF than the full-body fk() method"""
         assert q.shape == (self.dof,)
@@ -320,28 +283,6 @@ class HelloStretchKinematics:
         else:
             qi[HelloStretchIdx.GRIPPER] = self.GRIPPER_CLOSED
         return qi
-
-    def interpolate_xy(self, qi, xy0, dist, step=0.1):
-        """just move forward with step to target distance"""
-        # create a trajectory here
-        x, y = xy0
-        theta = qi[HelloStretchIdx.BASE_THETA]
-        while dist > 0:
-            qi = self.update_head(qi.copy(), self.look_front)
-            ai = np.zeros(self.dof)
-            if dist > step:
-                dx = step
-            else:
-                dx = dist
-            dist -= dx
-            x += np.cos(theta) * dx
-            y += np.sin(theta) * dx
-            # x += np.sin(theta) * dx
-            # y += np.cos(theta) * dx
-            qi[HelloStretchIdx.BASE_X] = x
-            qi[HelloStretchIdx.BASE_Y] = y
-            ai[0] = dx
-            yield qi, ai
 
     def _to_ik_format(self, q):
         qi = np.zeros(self.ik_solver.get_num_joints())
@@ -484,61 +425,6 @@ class HelloStretchKinematics:
 
     def get_ee_pose(self, q=None):
         raise NotImplementedError()
-
-    def interpolate_angle(self, qi, theta0, thetag, step=0.1):
-        """just rotate to target angle"""
-        if theta0 > thetag:
-            thetag2 = thetag + 2 * np.pi
-        else:
-            thetag2 = thetag - 2 * np.pi
-        dist1 = np.abs(thetag - theta0)
-        dist2 = np.abs(thetag2 - theta0)
-        # TODO remove debug code
-        # print("....", qi)
-        print("interp from", theta0, "to", thetag, "or maybe", thetag2)
-        # print("dists =", dist1, dist2)
-        if dist2 < dist1:
-            dist = dist2
-            thetag = thetag2
-        else:
-            dist = dist1
-        # Dumb check to see if we can get the rotation right
-        # if dist > np.pi:
-        #    thetag -= np.pi/2
-        #    dist = np.abs(thetag - theta0)
-        # TODO remove debug code
-        # print(" > interp from", theta0, "to", thetag)
-        # Getting the direction right here
-        dirn = 1.0 if thetag > theta0 else -1.0
-        while dist > 0:
-            qi = qi.copy()
-            ai = np.zeros(self.dof)
-            # TODO: we should handle look differently
-            # qi = self.update_head(qi, self.look_front)
-            if dist > step:
-                dtheta = step
-            else:
-                dtheta = dist
-            dist -= dtheta
-            ai[2] = dirn * dtheta
-            qi[HelloStretchIdx.BASE_THETA] += dirn * dtheta
-            yield qi, ai
-
-    def interpolate_arm(self, q0, qg, step=None):
-        if step is None:
-            step = self.default_step
-        qi = q0
-        while np.any(np.abs(qi - qg) > self.default_tols):
-            qi = qi.copy()
-            ai = qi.copy()
-            ai[:3] = np.zeros(3)  # action does not move the base
-            # TODO: we should handle look differently
-            qi = self.update_head(qi.copy(), self.look_at_ee)
-            dq = qg - qi
-            dq = np.clip(dq, -1 * step, step)
-            qi += dq
-            qi = self.update_head(qi, self.look_at_ee)
-            yield qi, ai
 
     def extend_arm_to(self, q, arm):
         """
