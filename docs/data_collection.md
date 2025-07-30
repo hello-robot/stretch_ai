@@ -103,11 +103,7 @@ python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $
 For example:
 
 ```bash
-<<<<<<< HEAD
-python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --s --clutch
-=======
 python3 -m stretch.app.dex_teleop.ros2_leader --task-name default_task --teleop-mode base_x --clutch
->>>>>>> 809dfaee5a113cb2f0ecbea412805e71d1102175
 ```
 
 The optional `--clutch` flag enables the clutch. While your hand is over the dex teleop webcam, the robot will not move. This makes it easier to operate the robot and to collect data.
