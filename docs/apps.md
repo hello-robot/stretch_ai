@@ -75,7 +75,7 @@ Visualize output from the cameras and other sensors on the robot. This will open
 python -m stretch.app.view_images --robot_ip $ROBOT_IP
 ```
 
-You can also visualize it with semantic segmentation (defaults to [Detic](https://github.com/facebookresearch/Detic/):
+You can also visualize it with semantic segmentation (defaults to [YOLOE](https://docs.ultralytics.com/models/yoloe/):
 
 ```bash
 python -m stretch.app.view_images --robot_ip $ROBOT_IP ----run_semantic_segmentation
@@ -110,13 +110,6 @@ python -m stretch.app.gripper --robot_ip $ROBOT_IP --open
 python -m stretch.app.gripper --robot_ip $ROBOT_IP --close
 ```
 
-Alternately:
-
-```
-python -m stretch.app.open_gripper --robot_ip $ROBOT_IP
-python -m stretch.app.close_gripper --robot_ip $ROBOT_IP
-```
-
 #### Rerun Web Server
 
 We provide the tools to publish information from the robot to a [Rerun](https://rerun.io/) web server. This is run automatically with our other apps, but if you want to just run the web server, you can do so with:
@@ -137,7 +130,7 @@ You should see something like this:
 Chat with the robot using LLMs.
 
 ```bash
-python -m stretch.app.voice_chat
+python -m stretch.app.chat --voice
 ```
 
 ### Dex Teleop for Data Collection
@@ -229,14 +222,6 @@ python -m stretch.app.read_map -i hq_small.pkl --test-remove --show-instances --
 
 ## Experimental
 
-### VLM Planning
-
-This is an experimental app that uses the voxel map to plan a path to a goal. It is not yet fully functional.
-
-```bash
-python -m stretch.app.vlm_planning
-```
-
 ### Open-Vocabulary Mobile Manipulation
 
 This is an experimental app that uses a language model to generate commands for the robot given a natural language input. It is not yet fully functional.
@@ -249,4 +234,4 @@ Options include:
 
 - `--robot_ip` - The IP address of the robot.
 - `--task` - The task to perform. Can be a natural language command for the robot.
-- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma2b`.
+- `--llm` - The language model to use. Can be `qwen25-3B-Instruct` (default), `openai`, or `gemma`.

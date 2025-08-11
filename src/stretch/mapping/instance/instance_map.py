@@ -29,7 +29,6 @@ from stretch.mapping.instance.matching import (
     ViewMatchingConfig,
     get_similarity,
 )
-from stretch.perception.captioners import BaseCaptioner
 from stretch.perception.encoders import BaseImageTextEncoder
 from stretch.utils.bboxes_3d import (
     box3d_intersection_from_bounds,
@@ -98,11 +97,11 @@ class InstanceMemory:
         min_instance_thickness: float = 0.01,
         min_instance_height: float = 0.1,
         max_instance_height: float = 1.8,
-        min_instance_points: int = 100,
+        min_instance_points: int = 1500,
         use_visual_feat: bool = False,
         open_vocab_cat_map_file: str = None,
         encoder: Optional[BaseImageTextEncoder] = None,
-        captioner: Optional[BaseCaptioner] = None,
+        captioner=None,
         save_original_image: bool = False,
     ):
         """See class definition for information about InstanceMemory
@@ -340,7 +339,7 @@ class InstanceMemory:
                             instance.get_image_embedding(
                                 aggregation_method="mean",
                                 use_visual_feat=self.use_visual_feat,
-                                normalize=False,
+                                normalize=True,
                             ),
                         )  # Slow since we concatenate all global vectors each time for each image instance
                         for inst_id, instance in global_ids_to_instances.items()
@@ -826,7 +825,7 @@ class InstanceMemory:
                 else:
                     # get instance view
                     if self.captioner is not None:
-                        # ViT_GPT2, Moondream, and GiT captioners take image of shape (H, W, C)
+                        # ViT_GPT2 and GiT captioners take image of shape (H, W, C)
                         # They also require the image to be scaled up cropped_image's pixel values within [0, 256)
                         text_description = self.captioner.caption_image(
                             cropped_image.to(dtype=torch.uint8)

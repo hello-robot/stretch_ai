@@ -15,7 +15,7 @@
 
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import numpy as np
@@ -23,6 +23,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 import torch
 import zmq
+from PIL import Image
 
 from stretch.agent.manipulation.dynamem_manipulation.dynamem_manipulation import (
     DynamemManipulationWrapper as ManipulationWrapper,
@@ -34,10 +35,10 @@ from stretch.agent.manipulation.dynamem_manipulation.grasper_utils import (
     process_image_for_placing,
 )
 from stretch.agent.robot_agent import RobotAgent as RobotAgentBase
-from stretch.audio.text_to_speech import get_text_to_speech
+from stretch.audio.text_to_speech import PiperTextToSpeech
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters
-from stretch.core.robot import AbstractGraspClient, AbstractRobotClient
+from stretch.core.robot import AbstractRobotClient
 from stretch.mapping.instance import Instance
 from stretch.mapping.voxel import SparseVoxelMapDynamem as SparseVoxelMap
 from stretch.mapping.voxel import (
@@ -73,9 +74,7 @@ class RobotAgent(RobotAgentBase):
         robot: AbstractRobotClient,
         parameters: Union[Parameters, Dict[str, Any]],
         semantic_sensor: Optional[OvmmPerception] = None,
-        grasp_client: Optional[AbstractGraspClient] = None,
-        debug_instances: bool = True,
-        show_instances_detected: bool = False,
+        save_rerun: bool = False,
         use_instance_memory: bool = False,
         realtime_updates: bool = False,
         re: int = 3,
@@ -85,6 +84,7 @@ class RobotAgent(RobotAgentBase):
         mllm: bool = False,
         manipulation_only: bool = False,
         cpu_only: bool = False,
+        eqa: bool = False,
     ):
         self.reset_object_plans()
         if isinstance(parameters, Dict):
@@ -94,9 +94,6 @@ class RobotAgent(RobotAgentBase):
         else:
             raise RuntimeError(f"parameters of unsupported type: {type(parameters)}")
         self.robot = robot
-        self.grasp_client = grasp_client
-        self.debug_instances = debug_instances
-        self.show_instances_detected = show_instances_detected
 
         self.semantic_sensor = semantic_sensor
         self.pos_err_threshold = parameters["trajectory_pos_err_threshold"]
@@ -107,6 +104,7 @@ class RobotAgent(RobotAgentBase):
 
         self.mllm = mllm
         self.manipulation_only = manipulation_only
+        self.eqa = eqa
         # For placing
         self.owl_sam_detector = None
 
@@ -134,7 +132,7 @@ class RobotAgent(RobotAgentBase):
 
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
-        self.tts = get_text_to_speech(self.parameters["tts_engine"])
+        self.tts = PiperTextToSpeech()
         self._use_instance_memory = use_instance_memory
         self._realtime_updates = realtime_updates
 
@@ -187,6 +185,8 @@ class RobotAgent(RobotAgentBase):
 
         self.re = re
 
+        self.save_rerun = save_rerun
+
         # Store the current scene graph computed from detected objects
         self.scene_graph = None
 
@@ -195,12 +195,16 @@ class RobotAgent(RobotAgentBase):
 
         self._running = True
 
+        self.rerun_iter = 0
+
         self._start_threads()
 
     def create_obstacle_map(self, parameters):
         """
         This function creates the MaskSiglipEncoder, Owlv2 detector, voxel map util class and voxel map navigation space util class
         """
+
+        # Initialize the encoder in different ways depending on the configuration
         if self.manipulation_only:
             self.encoder = None
         elif self.cpu_only:
@@ -209,14 +213,16 @@ class RobotAgent(RobotAgentBase):
                 version="ViT-B/16", feature_matching_threshold=0.35, device=self.device
             )
         else:
-            # Use SIGLip-so400m for fast inference
+            # Use SIGLip-so400m for accurate inference
+            # We personally feel that Siglipv1 is better than Siglipv2, but we still include the Siglipv2 in src/stretch/perception/encoders/ for future reference
             self.encoder = MaskSiglipEncoder(
-                version="so400m", feature_matching_threshold=0.135, device=self.device
+                version="so400m", feature_matching_threshold=0.14, device=self.device
             )
+
         # You can see a clear difference in hyperparameter selection in different querying strategies
         # Running gpt4o is time consuming, so we don't want to waste more time on object detection or Siglip or voxelization
         # On the other hand querying by feature similarity is fast and we want more fine grained details in semantic memory
-        if self.manipulation_only:
+        if self.manipulation_only or self.eqa:
             # No object detection, just need to test manipulation
             self.detection_model = None
             semantic_memory_resolution = 0.1
@@ -241,6 +247,7 @@ class RobotAgent(RobotAgentBase):
             )
             semantic_memory_resolution = 0.05
             image_shape = (480, 360)
+
         self.voxel_map = SparseVoxelMap(
             resolution=parameters["voxel_size"],
             semantic_memory_resolution=semantic_memory_resolution,
@@ -266,6 +273,7 @@ class RobotAgent(RobotAgentBase):
             image_shape=image_shape,
             log=self.log,
             mllm=self.mllm,
+            run_eqa=self.eqa,
         )
         self.space = SparseVoxelMapNavigationSpace(
             self.voxel_map,
@@ -283,7 +291,7 @@ class RobotAgent(RobotAgentBase):
             rrb.Spatial3DView(name="3D View", origin="world"),
             rrb.Vertical(
                 rrb.TextDocumentView(name="text", origin="robot_monologue"),
-                rrb.Spatial2DView(name="image", origin="/observation_similar_to_text"),
+                rrb.Spatial2DView(name="relevant image", origin="/observation_similar_to_text"),
             ),
             rrb.Vertical(
                 rrb.Spatial2DView(name="head_rgb", origin="/world/head_camera"),
@@ -299,8 +307,7 @@ class RobotAgent(RobotAgentBase):
 
     def update(self):
         """Step the data collector. Get a single observation of the world. Remove bad points, such as those from too far or too near the camera. Update the 3d world representation."""
-        # Sleep some time for the robot camera to focus
-        # time.sleep(0.3)
+
         obs = self.robot.get_observation()
         self.obs_count += 1
         rgb, depth, K, camera_pose = obs.rgb, obs.depth, obs.camera_K, obs.camera_pose
@@ -328,6 +335,10 @@ class RobotAgent(RobotAgentBase):
 
     def rotate_in_place(self):
         print("*" * 10, "Rotate in place", "*" * 10)
+        if self.save_rerun:
+            if not os.path.exists(self.log):
+                os.makedirs(self.log)
+            rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
         xyt = self.robot.get_base_pose()
         self.robot.head_to(head_pan=0, head_tilt=-0.6, blocking=True)
         for i in range(8):
@@ -335,12 +346,26 @@ class RobotAgent(RobotAgentBase):
             self.robot.move_base_to(xyt, blocking=True)
             if not self._realtime_updates:
                 self.update()
+        self.rerun_iter += 1
 
     def execute_action(
         self,
         text: str,
-    ):
-        """ """
+    ) -> Tuple[Optional[bool], Optional[np.ndarray]]:
+        """
+        This function is used to navigate the robot give text query.
+        It will call the process_text function to get the trajectory for the robot to follow.
+        It will then execute the trajectory using the execute_trajectory function.
+        If text is empty, it will just explore the environment.
+
+        Args:
+            text: The text query for the robot to navigate to / explore.
+
+        Returns:
+            The first element is a boolean indicating whether the navigation is finished. If it is None, it means the navigation has some problem.
+            The second element is the location of the target object, useful used to tell the robot how to orient itself and prepare pregrasp pose for manipulation.
+                If it is None, it means the navigation has some problem.
+        """
         if not self._realtime_updates:
             self.robot.look_front()
             self.look_around()
@@ -357,7 +382,7 @@ class RobotAgent(RobotAgentBase):
         if len(res) > 0:
             print("Plan successful!")
             # This means that the robot has already finished all of its trajectories and should stop to manipulate the object.
-            # We will append two nan on the trajectory to denote that the robot is reaching the target point
+            # We will append a nan and point coordinates of the target object on the trajectory to denote that the robot is reaching the target point
             if len(res) >= 2 and np.isnan(res[-2]).all():
                 if len(res) > 2:
                     self.robot.execute_trajectory(
@@ -539,9 +564,10 @@ class RobotAgent(RobotAgentBase):
         """
         # Start a new rerun recording to avoid an overly large rerun video.
         rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
-        # if not os.path.exists(self.log):
-        #     os.makedirs(self.log)
-        # rr.save(self.log + "/" + "data_" + str(text) + ".rrd")
+        if self.save_rerun:
+            if not os.path.exists(self.log):
+                os.makedirs(self.log)
+            rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
         finished = False
         step = 0
         end_point = None
@@ -700,3 +726,217 @@ class RobotAgent(RobotAgentBase):
         )
 
         return True
+
+    def _patch_images(self, images: List[Image.Image], patch_size=(480, 640), gap=5):
+        """
+        Patch a list of PIL Images into a numpy array, used for dicrod bot
+        """
+        # Resize all images to the same patch size
+        images = [img.resize(patch_size) for img in images]
+
+        # Calculate total width and height
+        n_images = len(images)
+        total_width = patch_size[0] * n_images + gap * (n_images - 1)
+        total_height = patch_size[1]
+
+        # Create a blank canvas
+        canvas = Image.new("RGB", (total_width, total_height))
+
+        # Paste images side-by-side
+        for idx, img in enumerate(images):
+            x = idx * (patch_size[0] + gap)
+            canvas.paste(img, (x, 0))
+
+        # Convert to numpy array
+        return np.array(canvas)
+
+    def run_eqa(self, question, max_planning_steps: int = 5):
+        """
+        API for calling EQA module
+        """
+        rr.init("Stretch_robot", recording_id=uuid4(), spawn=True)
+        if self.save_rerun:
+            if not os.path.exists(self.log):
+                os.makedirs(self.log)
+            rr.save(self.log + "/" + "data_" + str(self.rerun_iter) + ".rrd")
+
+        self.robot.switch_to_navigation_mode()
+
+        discord_text, relevant_images = "", []
+
+        for cnt_step in range(max_planning_steps):
+            answer, discord_text, relevant_images, confidence = self.run_eqa_one_iter(question)
+            if confidence:
+                self.robot.say("The answer to " + question + " is " + answer)
+                break
+
+        relevant_image = self._patch_images(relevant_images, patch_size=(270, 360))
+        self.rerun_iter += 1
+
+        return discord_text, relevant_image
+
+    def run_eqa_one_iter(self, question, max_movement_step: int = 5):
+        answer_output = None
+
+        if not self._realtime_updates:
+            self.robot.look_front()
+            self.look_around()
+            self.robot.look_front()
+            self.robot.switch_to_navigation_mode()
+
+        try:
+            (
+                reasoning,
+                answer,
+                confidence,
+                confidence_reasoning,
+                target_point,
+                relevant_images,
+            ) = self.voxel_map.query_answer(question, self.robot.get_base_pose(), self.planner)
+        except:
+            reasoning, answer, confidence, confidence_reasoning, target_point, relevant_images = (
+                "Exception happens in LLM querying!",
+                "Unknown",
+                False,
+                "Exception happens in LLM querying!",
+                self.space.sample_frontier(self.planner, self.robot.get_base_pose(), text=None),
+                [],
+            )
+
+        # Log the texts to rerun visualizer
+        confidence_text = (
+            "I am confident with the answer" if confidence else "I am NOT confident with the answer"
+        )
+
+        reasoning_output = (
+            "\n#### Reasoning for the answer: " + reasoning
+            if confidence
+            else "\n#### Reasoning for the confidence: " + confidence_reasoning
+        )
+
+        answer_output = (
+            "#### **Question:** "
+            + question
+            + "\n#### **Answer:** "
+            + answer
+            + "\n#### **Confidence:** "
+            + confidence_text
+            + reasoning_output
+        )
+
+        self.rerun_visualizer.log_text("robot_monologue", answer_output)
+        if len(relevant_images) != 0:
+            self.rerun_visualizer.log_custom_2d_image(
+                "/observation_similar_to_text", self._patch_images(relevant_images)
+            )
+
+        # chat with user in the rerun
+        if confidence:
+            discord_text = answer + ". I believe this answer is correct because " + reasoning
+        else:
+            discord_text = (
+                "I am not confident to answer the question because " + confidence_reasoning
+            )
+
+        discord_text += "\nI also provide relevant images here."
+
+        if confidence:
+            return answer, discord_text, relevant_images, confidence
+
+        start_pose = self.robot.get_base_pose()
+
+        print("Target point", target_point)
+        # If we want to explore non obstacles (especially frontiers), remember where we currently want to face
+        obstacles, _ = self.voxel_map.get_2d_map()
+        target_grid = self.voxel_map.xy_to_grid_coords((target_point[0], target_point[1]))
+        if not obstacles[int(target_grid[0]), int(target_grid[1])]:
+            target_theta = self.space.sample_navigation(start_pose, self.planner, target_point)[-1]
+            print("Target theta", target_theta)
+        else:
+            target_theta = None
+
+        movement_step = 0
+        while movement_step < max_movement_step:
+            start_pose = self.robot.get_base_pose()
+            movement_step += 1
+            self.update()
+            finished = self.navigate_to_target_pose(target_point, start_pose, target_theta)
+            if finished:
+                break
+
+        return answer, discord_text, relevant_images, confidence
+
+    def navigate_to_target_pose(
+        self,
+        target_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        start_pose: Optional[Union[torch.Tensor, np.ndarray, list, tuple]],
+        target_theta: Optional[float] = None,
+    ):
+        res = None
+        original_target_pose = target_pose
+        if target_pose is not None:
+            # target_pose originally represents the place where the object of interest is.
+            # This line finds the pose where the robot should stop
+            target_pose = self.space.sample_navigation(start_pose, self.planner, target_pose)
+
+            # A* planning
+            if target_pose is not None:
+                res = self.planner.plan(start_pose, target_pose)
+
+        # Parse A* results into traj
+        if res is not None and res.success:
+            waypoints = [pt.state for pt in res.trajectory]
+        elif res is not None:
+            waypoints = None
+            print("[FAILURE]", res.reason)
+        else:
+            waypoints = None
+
+        if waypoints is not None:
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/target_pose",
+                [original_target_pose[0], original_target_pose[1], 1.5],
+                torch.Tensor([1, 0, 0]),
+                0.1,
+            )
+
+        finished = True
+        if waypoints is not None:
+            if not len(waypoints) <= 8:
+                waypoints = waypoints[:8]
+                finished = False
+            traj = self.planner.clean_path_for_xy(waypoints)
+            if finished and target_theta is not None:
+                traj[-1][2] = target_theta
+            print("Planned trajectory:", traj)
+        else:
+            traj = None
+
+        # draw traj on rerun and execute it
+        if traj is not None:
+            origins = []
+            vectors = []
+            for idx in range(len(traj)):
+                if idx != len(traj) - 1:
+                    origins.append([traj[idx][0], traj[idx][1], 1.5])
+                    vectors.append(
+                        [traj[idx + 1][0] - traj[idx][0], traj[idx + 1][1] - traj[idx][1], 0]
+                    )
+            self.rerun_visualizer.log_arrow3D(
+                "world/direction", origins, vectors, torch.Tensor([0, 1, 0]), 0.1
+            )
+            self.rerun_visualizer.log_custom_pointcloud(
+                "world/robot_start_pose",
+                [start_pose[0], start_pose[1], 1.5],
+                torch.Tensor([0, 0, 1]),
+                0.1,
+            )
+
+            self.robot.execute_trajectory(
+                traj,
+                pos_err_threshold=self.pos_err_threshold,
+                rot_err_threshold=self.rot_err_threshold,
+                blocking=True,
+            )
+
+        return finished

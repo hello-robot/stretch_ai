@@ -418,11 +418,8 @@ class DynamemTaskExecutor:
         return True
 
 
-from stretch.agent.robot_agent_eqa import RobotAgent as RobotAgentEQA
-
-
 class EQAExecuter:
-    def __init__(self, agent: RobotAgentEQA, discord_bot=None) -> None:
+    def __init__(self, agent: RobotAgent, discord_bot=None) -> None:
         """
         Initialize the executor. Make sure EQA module can be used in the same way as DynaMem module
         TODO: Itegrate this module with DynaMem

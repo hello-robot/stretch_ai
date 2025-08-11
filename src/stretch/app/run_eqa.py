@@ -9,7 +9,7 @@
 
 import click
 
-from stretch.agent.robot_agent_eqa import RobotAgent
+from stretch.agent.robot_agent_dynamem import RobotAgent
 from stretch.agent.task.dynamem import EQAExecuter
 from stretch.agent.zmq_client import HomeRobotZmqClient
 
@@ -65,7 +65,7 @@ def main(
     parameters["encoder"] = None
 
     print("- Start robot agent with data collection")
-    agent = RobotAgent(robot, parameters, save_rerun=save_rerun)
+    agent = RobotAgent(robot, parameters, save_rerun=save_rerun, eqa=True)
     agent.start()
 
     if discord:
@@ -98,7 +98,7 @@ def main(
         while True:
 
             # If target object and receptacle are provided, set mode to manipulation
-            question = input("Question (Pess enter to quit):").lower()
+            question = input("Question (Press enter to quit):").lower()
             if question.replace(" ", "") == "":
                 break
 

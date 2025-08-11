@@ -50,6 +50,7 @@ class GraspObjectOperation(ManagedOperation):
     verbose: bool = False
 
     offset_from_vertical = -np.pi / 2 - 0.1
+    node_for_grasp_pose = "link_gripper_s3_body"
 
     # Task information
     match_method: str = "class"
@@ -77,8 +78,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 25
-    align_y_threshold: int = 18
+    align_x_threshold: int = 28
+    align_y_threshold: int = 20
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
@@ -87,7 +88,7 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.18
+    median_distance_when_grasping: float = 0.17
     lift_min_height: float = 0.1
     lift_max_height: float = 1.0
 
@@ -126,7 +127,7 @@ class GraspObjectOperation(ManagedOperation):
     max_random_motions: int = 10
 
     # Timing issues
-    expected_network_delay = 0.1
+    expected_network_delay = 0.2
     open_loop: bool = False
 
     # Observation memory
@@ -178,9 +179,9 @@ class GraspObjectOperation(ManagedOperation):
         self.talk = talk
         self.match_method = match_method
         self._try_open_loop = try_open_loop
-        if self.match_method not in ["class", "feature", "class(dynamem)"]:
+        if self.match_method not in ["class", "feature"]:
             raise ValueError(
-                f"Unknown match method {self.match_method}. Should be 'class', 'feature', or 'class(dynamem)'."
+                f"Unknown match method {self.match_method}. Should be 'class', 'feature'."
             )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
@@ -263,14 +264,10 @@ class GraspObjectOperation(ManagedOperation):
 
         if self.verbose:
             print("[GRASP OBJECT] match method =", self.match_method)
-        if self.match_method.startswith("class"):
+        if self.match_method == "class":
 
             # Get the target class
-            if self.agent.current_object is not None:
-                target_class_id = self.agent.current_object.category_id
-                target_class = self.agent.semantic_sensor.get_class_name_for_id(target_class_id)
-            else:
-                target_class = self.target_object
+            target_class = self.target_object
 
             if self.verbose:
                 print("[GRASP OBJECT] Detecting objects of class", target_class)
@@ -594,7 +591,8 @@ class GraspObjectOperation(ManagedOperation):
             center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
-            if self.match_method == "class(dynamem)":
+            if self.match_method == "class":
+                # This means that we are just using an open-vocabulary object detector to find the object so we need to update the vocabulary.
                 self.agent.semantic_sensor.update_vocabulary_list([self.target_object], 1)
                 self.agent.semantic_sensor.set_vocabulary(1)
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
@@ -674,7 +672,7 @@ class GraspObjectOperation(ManagedOperation):
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 print(" -> Displaying visual servoing GUI.")
-                servo_ee_rgb = servo.ee_rgb
+                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_BGR2RGB)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
@@ -699,16 +697,12 @@ class GraspObjectOperation(ManagedOperation):
 
                 # Concatenate the two images side by side
                 viz_image = np.concatenate([servo_ee_rgb, viz_ee_depth], axis=1)
-                from matplotlib import pyplot as plt
-
-                plt.imshow(viz_image)
-                plt.show()
-                # cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
-                # cv2.imshow("Visual Servoing", viz_image)
-                # cv2.waitKey(1)
-                # res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
-                # if res == ord("q"):
-                #     break
+                cv2.namedWindow("Visual Servoing", cv2.WINDOW_NORMAL)
+                cv2.imshow("Visual Servoing", viz_image)
+                cv2.waitKey(1)
+                res = cv2.waitKey(1) & 0xFF  # 0xFF is a mask to get the last 8 bits
+                if res == ord("q"):
+                    break
 
             if self.debug_grasping:
                 # show all four images
@@ -938,16 +932,17 @@ class GraspObjectOperation(ManagedOperation):
             joint_state = obs.joint
             model = self.robot.get_robot_model()
 
-            ee_pos, ee_rot = model.manip_fk(joint_state)
+            # link_gripper_s3_body is the the joint connecting the gripper with arm end effector
+            ee_pos, ee_rot = model.manip_fk(joint_state, node=self.node_for_grasp_pose)
 
             # Convert quaternion to pose
             pose = np.eye(4)
             pose[:3, :3] = R.from_quat(ee_rot).as_matrix()
             pose[:3, 3] = ee_pos
 
-            # Move back 0.3m from grasp coordinate
+            # Move back 0.35m from grasp coordinate
             delta = np.eye(4)
-            delta[2, 3] = -0.3
+            delta[2, 3] = -0.35
             pose = np.dot(pose, delta)
 
             # New ee pose = roughly the end of the arm
@@ -957,9 +952,7 @@ class GraspObjectOperation(ManagedOperation):
             # dz = np.abs(head_pos[2] - relative_object_xyz[2])
             dy = np.abs(ee_pos[1] - relative_object_xyz[1])
             dz = np.abs(ee_pos[2] - relative_object_xyz[2])
-            # Since the camera is slightly tilted up, we need to subtract a bit from the pitch
-            pitch_from_vertical = np.arctan2(dy, dz) - 0.05
-            # pitch_from_vertical = np.arctan2(dy, dz)
+            pitch_from_vertical = np.arctan2(dy, dz)
         else:
             pitch_from_vertical = 0.0
 

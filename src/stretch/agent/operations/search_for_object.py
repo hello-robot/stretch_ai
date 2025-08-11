@@ -56,7 +56,7 @@ class ManagedSearchOperation(ManagedOperation):
         self._object_class = object_class
         self._object_class_feature = None
 
-    def is_match_by_feature(self, instance: Instance) -> bool:
+    def is_match_by_feature(self, instance: Instance, verbose: bool = False) -> bool:
         """Check if the instance is a match for the target object class by comparing feature vectors.
 
         Args:
@@ -70,12 +70,17 @@ class ManagedSearchOperation(ManagedOperation):
         if self._object_class_feature is None:
             self._object_class_feature = self.agent.encode_text(self.object_class)
         emb = instance.get_image_embedding(
-            aggregation_method=self.aggregation_method, normalize=False
+            aggregation_method=self.aggregation_method, normalize=True
         ).to(self._object_class_feature.device)
         activation = torch.cosine_similarity(emb, self._object_class_feature, dim=-1)
         print(
             f" - Found instance {instance.global_id} with similarity {activation} to {self.object_class}."
         )
+        if verbose:
+            from matplotlib import pyplot as plt
+
+            plt.imshow(instance.get_best_view().get_image())
+            plt.show()
         return activation > self.agent.feature_match_threshold
 
     def is_match(self, instance: Instance) -> bool:
@@ -141,9 +146,9 @@ class SearchForReceptacleOperation(ManagedSearchOperation):
             )
 
         # Check to see if we have a receptacle in the map
-        instances = self.agent.get_voxel_map().instances.get_instances()
+        instances = self.agent.get_ranked_instances(self.object_class)
         print("Check explored instances for reachable receptacles:")
-        for i, instance in enumerate(instances):
+        for i, (_, _, instance) in enumerate(instances):
             # For debugging during exploration
             if self.show_instances_detected:
                 name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
@@ -277,14 +282,14 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
             plt.show()
 
         # Check to see if we have a receptacle in the map
-        instances = self.agent.get_voxel_map().instances.get_instances()
+        instances = self.agent.get_ranked_instances(self.object_class)
 
         # Compute scene graph from instance memory so that we can use it
         scene_graph = self.agent.get_scene_graph()
 
         receptacle_options: List[Instance] = []
         print(f"Check explored instances for reachable {self.object_class} instances:")
-        for i, instance in enumerate(instances):
+        for i, (_, _, instance) in enumerate(instances):
             name = self.agent.semantic_sensor.get_class_name_for_id(instance.category_id)
             print(f" - Found instance {i} with name {name} and global id {instance.global_id}.")
 
@@ -315,6 +320,10 @@ class SearchForObjectOnFloorOperation(ManagedSearchOperation):
                         )
                         self.agent.current_object = instance
                         break
+            else:
+                # If we don't find a match, since you are going through instances in the order of their similarity,
+                # we can break out of the loop early.
+                break
 
         # Check to see if there is a visitable frontier
         if self.agent.current_object is None:
