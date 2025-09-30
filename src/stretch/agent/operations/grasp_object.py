@@ -16,6 +16,7 @@
 # license information maybe found below, if so.
 
 import os
+import random
 import time
 import timeit
 from datetime import datetime
@@ -49,6 +50,7 @@ class GraspObjectOperation(ManagedOperation):
     verbose: bool = False
 
     offset_from_vertical = -np.pi / 2 - 0.1
+    node_for_grasp_pose = "link_gripper_s3_body"
 
     # Task information
     match_method: str = "class"
@@ -76,8 +78,8 @@ class GraspObjectOperation(ManagedOperation):
 
     # Thresholds for centering on object
     # These are the values used to decide when it's aligned enough to grasp
-    align_x_threshold: int = 30
-    align_y_threshold: int = 25
+    align_x_threshold: int = 28
+    align_y_threshold: int = 20
 
     # This is the distance before we start servoing to the object
     # Standoff distance from actual grasp pose
@@ -86,19 +88,19 @@ class GraspObjectOperation(ManagedOperation):
     # ------------------------
     # Grasping motion planning parameters and offsets
     # This is the distance at which we close the gripper when visual servoing
-    median_distance_when_grasping: float = 0.18
+    median_distance_when_grasping: float = 0.17
     lift_min_height: float = 0.1
     lift_max_height: float = 1.0
 
     # How long is the gripper?
     # This is used to compute when we should not move the robot forward any farther
-    # grasp_distance = 0.12
-    grasp_distance = 0.14
+    grasp_distance = 0.12
+    # grasp_distance = 0.14
 
     # Movement parameters
     lift_arm_ratio: float = 0.05
-    base_x_step: float = 0.10
-    wrist_pitch_step: float = 0.2  # 075  # Maybe too fast
+    base_x_step: float = 0.1
+    wrist_pitch_step: float = 0.15
     # ------------------------
 
     # Tracked object features for making sure we are grabbing the right thing
@@ -113,7 +115,7 @@ class GraspObjectOperation(ManagedOperation):
     _grasp_lift_offset: float = 0.0  # -0.05
 
     # Visual servoing config
-    track_image_center: bool = False
+    track_image_center: bool = True  # Set to False if you want to use aruco marker, but since the position between gripper center and the image is fixed, this is not needed.
     gripper_aruco_detector: GripperArucoDetector = None
     min_points_to_approach: int = 100
     detected_center_offset_x: int = 0  # -10
@@ -125,7 +127,7 @@ class GraspObjectOperation(ManagedOperation):
     max_random_motions: int = 10
 
     # Timing issues
-    expected_network_delay = 0.1
+    expected_network_delay = 0.2
     open_loop: bool = False
 
     # Observation memory
@@ -179,7 +181,7 @@ class GraspObjectOperation(ManagedOperation):
         self._try_open_loop = try_open_loop
         if self.match_method not in ["class", "feature"]:
             raise ValueError(
-                f"Unknown match method {self.match_method}. Should be 'class' or 'feature'."
+                f"Unknown match method {self.match_method}. Should be 'class', 'feature'."
             )
 
     def _debug_show_point_cloud(self, servo: Observations, current_xyz: np.ndarray) -> None:
@@ -216,7 +218,7 @@ class GraspObjectOperation(ManagedOperation):
         target_mask: np.ndarray,
         center_y: int,
         center_x: int,
-        local_region_size: int = 5,
+        local_region_size: int = 15,
     ) -> float:
         """Compute the center depth of the object.
 
@@ -265,11 +267,7 @@ class GraspObjectOperation(ManagedOperation):
         if self.match_method == "class":
 
             # Get the target class
-            if self.agent.current_object is not None:
-                target_class_id = self.agent.current_object.category_id
-                target_class = self.agent.semantic_sensor.get_class_name_for_id(target_class_id)
-            else:
-                target_class = self.target_object
+            target_class = self.target_object
 
             if self.verbose:
                 print("[GRASP OBJECT] Detecting objects of class", target_class)
@@ -491,7 +489,7 @@ class GraspObjectOperation(ManagedOperation):
 
         # Lifted joint state
         lifted_joint_state = joint_state.copy()
-        lifted_joint_state[HelloStretchIdx.LIFT] += 0.2
+        lifted_joint_state[HelloStretchIdx.LIFT] += 0.3
         self.robot.arm_to(lifted_joint_state, head=constants.look_at_ee, blocking=True)
         return True
 
@@ -580,7 +578,7 @@ class GraspObjectOperation(ManagedOperation):
 
             # Compute the center of the image that we will be tracking
             if self.track_image_center:
-                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] // 2
+                center_x, center_y = servo.ee_rgb.shape[1] // 2, servo.ee_rgb.shape[0] * 13 // 20
             else:
                 center = self.gripper_aruco_detector.detect_center(servo.ee_rgb)
                 if center is not None:
@@ -593,6 +591,10 @@ class GraspObjectOperation(ManagedOperation):
             center_x += self.detected_center_offset_x  # move closer to top
 
             # Run semantic segmentation on it
+            if self.match_method == "class":
+                # This means that we are just using an open-vocabulary object detector to find the object so we need to update the vocabulary.
+                self.agent.semantic_sensor.update_vocabulary_list([self.target_object], 1)
+                self.agent.semantic_sensor.set_vocabulary(1)
             servo = self.agent.semantic_sensor.predict(servo, ee=True)
             latest_mask = self.get_target_mask(servo, center=(center_x, center_y))
 
@@ -670,7 +672,7 @@ class GraspObjectOperation(ManagedOperation):
             # Optionally display which object we are servoing to
             if self.show_servo_gui and not self.headless_machine:
                 print(" -> Displaying visual servoing GUI.")
-                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_RGB2BGR)
+                servo_ee_rgb = cv2.cvtColor(servo.ee_rgb, cv2.COLOR_BGR2RGB)
                 mask = target_mask.astype(np.uint8) * 255
                 mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 mask[:, :, 0] = 0
@@ -801,8 +803,9 @@ class GraspObjectOperation(ManagedOperation):
                 lift += lift_component
 
             # Add these to do some really hacky proportionate control
-            px = max(0.25, np.abs(2 * dx / target_mask.shape[1]))
-            py = max(0.25, np.abs(2 * dy / target_mask.shape[0]))
+            # Add some random noise to avoid the robot getting stuck due to detection noise
+            px = max(0.5, np.abs(2 * dx / target_mask.shape[1])) + random.uniform(-0.05, 0.05)
+            py = max(0.5, np.abs(2 * dy / target_mask.shape[0]))
 
             # Move the base and modify the wrist pitch
             # TODO: remove debug code
@@ -815,7 +818,7 @@ class GraspObjectOperation(ManagedOperation):
                 base_x += self.base_x_step * px
             print("base x =", base_x)
             if dy > self.align_y_threshold:
-                # Move in y - this means translate the base
+                # Move in y - this means move the wrist
                 wrist_pitch += -self.wrist_pitch_step * py
             elif dy < -1 * self.align_y_threshold:
                 wrist_pitch += self.wrist_pitch_step * py
@@ -929,16 +932,17 @@ class GraspObjectOperation(ManagedOperation):
             joint_state = obs.joint
             model = self.robot.get_robot_model()
 
-            ee_pos, ee_rot = model.manip_fk(joint_state)
+            # link_gripper_s3_body is the the joint connecting the gripper with arm end effector
+            ee_pos, ee_rot = model.manip_fk(joint_state, node=self.node_for_grasp_pose)
 
             # Convert quaternion to pose
             pose = np.eye(4)
             pose[:3, :3] = R.from_quat(ee_rot).as_matrix()
             pose[:3, 3] = ee_pos
 
-            # Move back 0.3m from grasp coordinate
+            # Move back 0.35m from grasp coordinate
             delta = np.eye(4)
-            delta[2, 3] = -0.3
+            delta[2, 3] = -0.35
             pose = np.dot(pose, delta)
 
             # New ee pose = roughly the end of the arm
@@ -978,6 +982,10 @@ class GraspObjectOperation(ManagedOperation):
             self.agent.robot_say(f"I think I grasped the {self.sayable_target_object()}.")
 
         # Go back to manipulation posture
+        # Shrink arm first
+        current_state = self.robot.get_joint_positions()
+        current_state[HelloStretchIdx.ARM] = 0
+        self.robot.arm_to(current_state)
         self.robot.move_to_manip_posture()
 
     def pregrasp_open_loop(self, object_xyz: np.ndarray, distance_from_object: float = 0.35):

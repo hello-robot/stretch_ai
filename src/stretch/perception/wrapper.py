@@ -13,20 +13,20 @@
 # LICENSE file in the root directory of this source tree.
 
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 
 import stretch.utils.logger as logger
 from stretch.core.interfaces import Observations
 from stretch.core.parameters import Parameters, get_parameters
-from stretch.perception.constants import RearrangeDETICCategories
+from stretch.perception.constants import RearrangeCategories
 from stretch.utils.config import get_full_config_path
 
 
 class OvmmPerception:
     """
-    Wrapper around DETIC for use in OVMM Agent.
+    Wrapper around perception models for use in OVMM Agent.
     It performs some preprocessing of observations necessary for OVMM skills.
     It also maintains a list of vocabularies to use in segmentation and can switch between them at runtime.
     """
@@ -43,74 +43,42 @@ class OvmmPerception:
         self._use_detic_viz = self.parameters.get("detection/use_detic_viz", False)
         self._detection_module = self.parameters.get("detection/module", "detic")
         self._confidence_threshold = self.parameters.get("detection/confidence_threshold", 0.5)
-        self._vocabularies: Dict[int, RearrangeDETICCategories] = {}
-        self._current_vocabulary: RearrangeDETICCategories = None
+        self._vocabularies: Dict[int, RearrangeCategories] = {}
+        self._current_vocabulary: RearrangeCategories = None
         self._current_vocabulary_id: int = None
         self.verbose = verbose
 
-        if self._detection_module == "detic":
-            # Lazy import
-            from stretch.perception.detection.detic import DeticPerception
-
-            if category_map_file is None:
-                category_map_file = get_full_config_path(
-                    parameters["detection"]["category_map_file"]
-                )
-
-            print("---- CREATING DETIC PERCEPTION OBJECT ----")
-            self._segmentation = DeticPerception(
-                vocabulary="custom",
-                custom_vocabulary=".",
-                sem_gpu_id=gpu_device_id,
-                verbose=verbose,
-                confidence_threshold=self._confidence_threshold,
-                **module_kwargs,
-            )
-            print("---- DETIC PERCEPTION OBJECT CREATED ----")
-
-            obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
-            vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
-            self.update_vocabulary_list(vocab, 0)
-            self.set_vocabulary(0)
-            print("... done.")
-
-        elif self._detection_module == "sam":
-            from stretch.perception.detection.sam import SAMPerception
-
-            self._segmentation = SAMPerception()
-
-        elif self._detection_module == "mobile_sam":
-            from stretch.perception.detection.mobile_sam import MobileSAMPerception
-
-            self._segmentation = MobileSAMPerception()
-        elif self._detection_module == "sam2":
+        if self._detection_module == "sam2":
             from stretch.perception.detection.sam2 import SAM2Perception
 
             self._segmentation = SAM2Perception()
+        elif self._detection_module == "yoloe":
+            from stretch.perception.detection.yoloe import YoloEPerception
 
-        elif self._detection_module == "yolo":
-            from stretch.perception.detection.yolo import YoloPerception
+            yolo_world_model_size = self.parameters.get("detection/model_size", "l")
+            yolo_threshold = self.parameters.get("detection/confidence_threshold", 0.05)
 
-            self._segmentation = YoloPerception(
-                sem_gpu_id=gpu_device_id,
+            self._segmentation = YoloEPerception(
                 verbose=verbose,
-                **module_kwargs,
-            )
-        elif self._detection_module == "yolo_world":
-            from stretch.perception.detection.yolo_world import YoloWorldPerception
-
-            yolo_world_model_size = self.parameters.get("detection/yolo_world_model_size", "m")
-            yolo_threshold = self.parameters.get("detection/yolo_confidence_threshold", 0.05)
-
-            self._segmentation = YoloWorldPerception(
-                sem_gpu_id=gpu_device_id,
                 size=yolo_world_model_size,
-                verbose=verbose,
                 confidence_threshold=yolo_threshold,
                 **module_kwargs,
             )
+        elif self._detection_module == "owlsam":
+            from stretch.perception.detection.owl import OWLSAMProcessor
+
+            self._segmentation = OWLSAMProcessor(
+                version="owlv2-L-p14-ensemble", confidence_threshold=0.1
+            )
         else:
             raise NotImplementedError(f"Detection module {self._detection_module} not supported.")
+
+        if category_map_file is None:
+            category_map_file = self.parameters.get("detection/category_map_file")
+        obj_name_to_id, rec_name_to_id = read_category_map_file(category_map_file)
+        vocab = build_vocab_from_category_map(obj_name_to_id, rec_name_to_id)
+        self.update_vocabulary_list(vocab, 0)
+        self.set_vocabulary(0)
 
     def is_semantic_segmentation(self) -> bool:
         """Whether the perception model is a semantic segmentation model."""
@@ -133,13 +101,19 @@ class OvmmPerception:
         return self._current_vocabulary_id
 
     @property
-    def current_vocabulary(self) -> RearrangeDETICCategories:
+    def current_vocabulary(self) -> RearrangeCategories:
         return self._current_vocabulary
 
-    def update_vocabulary_list(self, vocabulary: RearrangeDETICCategories, vocabulary_id: int):
+    def update_vocabulary_list(
+        self, vocabulary: Union[RearrangeCategories, List[str]], vocabulary_id: int
+    ):
         """
         Update/insert a given vocabulary for the given ID.
         """
+
+        if not isinstance(vocabulary, RearrangeCategories):
+            vocabulary_id_to_name = {(i + 1): name for i, name in enumerate(vocabulary)}
+            vocabulary = RearrangeCategories(vocabulary_id_to_name, len(vocabulary))
         self._vocabularies[vocabulary_id] = vocabulary
 
     def set_vocabulary(self, vocabulary_id: int):
@@ -281,7 +255,7 @@ def read_category_map_file(
 
 def build_vocab_from_category_map(
     obj_id_to_name_mapping: Dict[int, str], rec_id_to_name_mapping: Dict[int, str]
-) -> RearrangeDETICCategories:
+) -> RearrangeCategories:
     """
     Build vocabulary from category maps that can be used for semantic sensor and visualizations.
 
@@ -290,7 +264,7 @@ def build_vocab_from_category_map(
         rec_id_to_name_mapping: mapping from receptacle category IDs to receptacle category names
 
     Returns:
-        RearrangeDETICCategories: vocabulary object
+        RearrangeCategories: vocabulary object
     """
     obj_rec_combined_mapping = {}
     for i in range(len(obj_id_to_name_mapping) + len(rec_id_to_name_mapping)):
@@ -300,7 +274,7 @@ def build_vocab_from_category_map(
             obj_rec_combined_mapping[i + 1] = rec_id_to_name_mapping[
                 i - len(obj_id_to_name_mapping)
             ]
-    vocabulary = RearrangeDETICCategories(obj_rec_combined_mapping, len(obj_id_to_name_mapping))
+    vocabulary = RearrangeCategories(obj_rec_combined_mapping, len(obj_id_to_name_mapping))
     return vocabulary
 
 

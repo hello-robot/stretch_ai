@@ -22,7 +22,7 @@ from stretch.agent.robot_agent import RobotAgent
 from stretch.agent.zmq_client import HomeRobotZmqClient
 from stretch.app.lfd.ros2_lfd_leader import ROS2LfdLeader
 from stretch.core import get_parameters
-from stretch.llms.gemma_client import Gemma2bClient
+from stretch.llms.gemma_client import GemmaClient
 from stretch.llms.prompts.object_manip_nav_prompt import ObjectManipNavPromptBuilder
 
 # from stretch.perception import create_semantic_sensor
@@ -131,8 +131,7 @@ def main(
     agent.get_voxel_map().read_from_pickle(input_path, num_frames=-1)
 
     prompt = ObjectManipNavPromptBuilder()
-    # client = OpenaiClient(prompt)
-    client = Gemma2bClient(prompt)
+    client = GemmaClient(prompt)
 
     pos_err_threshold = parameters["trajectory_pos_err_threshold"]
     rot_err_threshold = parameters["trajectory_rot_err_threshold"]
@@ -295,7 +294,7 @@ def main(
         if plan.endswith("```"):
             plan = plan.rsplit("\n", 1)[0]
 
-        plan += "\nexecute_task(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave, self.get_detections)"
+        plan += "\nexecute_task(self.go_to, self.pick, self.place, self.say, self.open_cabinet, self.close_cabinet, self.wave)"
 
         if proceed != "y":
             print("Exiting...")

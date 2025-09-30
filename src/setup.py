@@ -29,9 +29,10 @@ setuptools.setup(
     include_package_data=True,
     package_data={"stretch": ["config/**/*.yaml", "perception/*.tsv", "simulation/models/*"]},
     install_requires=[
-        # Machine learning code
-        "torch<2.4",
+        # Machine learning code, we will install these packages in install.sh instead
+        "torch>=2.6",
         "torchvision",
+        "torchaudio",
         # General utilities
         "pyyaml",
         "pyzmq",
@@ -51,16 +52,18 @@ setuptools.setup(
         "overrides",
         "wget",
         # From openai
-        "openai",
+        "openai >= 1.88.0",
         "openai-clip",
+        # For gemini
+        "google-genai",
         # For Yolo
-        # "ultralytics",
+        "ultralytics==8.3.161",
         # Hardware dependencies
         "hello-robot-stretch-urdf",
         "pyrealsense2",
         "urchin",
         # Visualization
-        "rerun-sdk>=0.18.0",
+        "rerun-sdk==0.18.0",
         # For siglip encoder
         "sentencepiece",
         # For git tools
@@ -68,10 +71,16 @@ setuptools.setup(
         # Configuration tools and neural networks
         "hydra-core",
         "timm>1.0.0",
-        "huggingface_hub[cli]",
-        "transformers>=4.39.2",
-        "accelerate",
+        "huggingface_hub[cli]>=0.24.7",
+        "open-clip-torch>=2.32.0",
+        "transformers>=4.50.0",
+        "retry",
+        "qwen_vl_utils",
+        "bitsandbytes",
+        "triton >= 2.3.1",
+        "accelerate >= 1.5.0",
         "einops",
+        "protobuf",
         # Meta neural nets
         "segment-anything",
         # Compression tools
@@ -80,18 +89,14 @@ setuptools.setup(
         # UI tools
         "termcolor",
         # Audio
-        "google-cloud-texttospeech",  # online TTS engine, requiring credentials.
-        "gtts",  # online TTS engine, not requiring credentials.
         "librosa",  # audio analysis (e.g., spectral similarity)
         "PyAudio>=0.2.14",  # the version specification is necessary because apt has 0.2.12 which is incompatible with recent numpy
         "openai-whisper",
         "overrides",  # better inheritance of docstrings
         "pydub",  # playback audio
-        "pyttsx3",  # offline TTS engine. TODO: There are better options, such as "tts_models/en/ljspeech/fast_pitch" from https://github.com/coqui-ai/TTS
         "simpleaudio",  # playback audio
-        "sounddevice",  # Suppresses ALSA warnings when launching PyAudio
-        "wave",
-        # These are not supported in python 3.12
+        # "wave",
+        # These are not supported > python 3.11
         "scikit-fmm",
         "open3d",
     ],

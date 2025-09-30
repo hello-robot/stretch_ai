@@ -16,6 +16,7 @@
 - LLM agents
 - text to speech and speech to text
 - visualization and debugging
+- embodied question answering
 
 Much of the code is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file for more information. Parts of it are derived from the Meta [HomeRobot](https://github.com/facebookresearch/home-robot) project and are licensed under the [MIT license](META_LICENSE).
 
@@ -121,6 +122,7 @@ Check out additional documentation for ways to use Stretch AI:
 - [Add a New LLM Task](docs/adding_a_new_task.md) -- How to add a new task that can be called by an LLM
 - [DynaMem](docs/dynamem.md) -- Run the LLM agent in dynamic scenes, meaning you can walk around and place objects as the robot explores
 - [Data Collection for Learning from Demonstration](docs/data_collection.md) -- How to collect data for learning from demonstration
+- [Embodied Question Answering](docs/eqa.md) -- Allow the robot to explore the environment and answer questions from the users about the environment.
 - [Learning from Demonstration](docs/learning_from_demonstration.md)  -- How to train and evaluate policies with LfD
 - [Open-Vocabulary Mobile Manipulation](docs/ovmm.md) -- Experimental code which can handle more complex language commands
 - [Apps](docs/apps.md) -- List of many different apps that you can run

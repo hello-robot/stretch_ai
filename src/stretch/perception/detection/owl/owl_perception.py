@@ -12,7 +12,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -53,22 +53,22 @@ class OwlPerception:
 
         print(f"Loaded owl model from {configuration}")
 
-    def detect_object(
+    def predict(
         self,
-        rgb: torch.Tensor,
-        text: str,
+        rgb: Union[np.ndarray, torch.Tensor],
+        text: Union[str, List[str]],
         confidence_threshold: Optional[float] = None,
     ):
-        """Try to find target objects given one text query.
-        Arguments:
-            rgb: ideally of shape (C, H, W), the pixel value should be integer between [0, 255]
-        """
         if not isinstance(rgb, torch.Tensor):
             rgb = torch.Tensor(rgb).to(torch.uint8)
+        if isinstance(text, str):
+            text = ["a photo of a " + text]
+        else:
+            text = ["a photo of a " + t for t in text]
         rgb = rgb.squeeze()
         if rgb.shape[0] != 3:
             rgb = rgb.permute(2, 0, 1)
-        inputs = self.processor(text=[["a photo of a " + text]], images=rgb, return_tensors="pt")
+        inputs = self.processor(text=[text], images=rgb, return_tensors="pt")
         for input in inputs:
             inputs[input] = inputs[input].to(self.device)
 
@@ -81,6 +81,19 @@ class OwlPerception:
         results = self.processor.image_processor.post_process_object_detection(
             outputs, threshold=confidence_threshold, target_sizes=target_sizes
         )[0]
+        return results
+
+    def detect_object(
+        self,
+        rgb: Union[np.ndarray, torch.Tensor],
+        text: Union[str, List[str]],
+        confidence_threshold: Optional[float] = None,
+    ):
+        """Try to find target objects given one or many text queries.
+        Arguments:
+            rgb: ideally of shape (C, H, W), the pixel value should be integer between [0, 255]
+        """
+        results = self.predict(rgb, text, confidence_threshold)
 
         return results["scores"], results["boxes"]
 

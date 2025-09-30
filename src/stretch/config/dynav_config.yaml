@@ -1,8 +1,9 @@
+# Hyperparameters for DynaMem
+
 # Encoder setup
 # Encoder is used to compute per-object embeddings.
 encoder: "siglip"
 open_vocab_category_map_file: example_cat_map.json
-tts_engine: "gTTS"
 
 # Sparse Voxel Map parameters
 voxel_size: 0.1
@@ -23,11 +24,12 @@ min_depth: 0.25
 max_depth: 2.5
 
 # Object detection parameters
+# We don't use these parameters for now as we use whether we use CUP or GPU to decide which model to use, but we keep them here for future reference.
 detection:
-  module: "detic"
-  # module: "yolo"
+  module: "owlsam"
   category_map_file: example_cat_map.json
   use_detic_viz: False
+  confidence_threshold: 0.02
 
 # Point cloud cleanup
 filters:
@@ -55,7 +57,7 @@ agent:
     maximum_matched_observations: 10
     # Camera pose match threshold. Intuitively, there should already be a observation very similar to the current observation in the pose graph.
     camera_pose_match_threshold: 0.1
-  use_realtime_updates: True
+  use_realtime_updates: False
   realtime_rotation_steps: 4
   in_place_rotation_steps: 8  # If you are not moving the head, rotate more often
   sweep_head_on_update: False

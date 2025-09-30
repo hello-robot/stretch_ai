@@ -22,7 +22,6 @@ import stretch.utils.logger as logger
 from stretch.core.server import BaseZmqServer
 from stretch.utils.image import adjust_gamma, scale_camera_matrix
 from stretch_ros2_bridge.remote import StretchClient
-from stretch_ros2_bridge.ros.map_saver import MapSerializerDeserializer
 
 
 class ZmqServer(BaseZmqServer):
@@ -41,9 +40,6 @@ class ZmqServer(BaseZmqServer):
         # Check if the robot is runstopped
         if self.client.is_runstopped:
             raise RuntimeError("Robot is runstopped. Please unstop the robot first.")
-
-        # Map saver - write and load map information from SLAM
-        self.map_saver = MapSerializerDeserializer()
 
     @override
     def is_running(self) -> bool:
@@ -155,10 +151,6 @@ class ZmqServer(BaseZmqServer):
                     action["control_mode"],
                     "not recognized or supported.",
                 )
-        elif "save_map" in action:
-            self.client.save_map(action["save_map"])
-        elif "load_map" in action:
-            self.client.load_map(action["load_map"])
         elif "say" in action:
             # Text to speech from the robot, not the client/agent device
             print("Saying:", action["say"])

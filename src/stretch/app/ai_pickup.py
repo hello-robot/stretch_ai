@@ -42,9 +42,8 @@ logger = Logger(__name__)
 )
 @click.option(
     "--llm",
-    # default="gemma2b",
     default="qwen25-3B-Instruct",
-    help="Client to use for language model. Recommended: gemma2b, openai",
+    help="Client to use for language model. Recommended: gemma, openai",
     type=click.Choice(get_llm_choices()),
 )
 @click.option(
@@ -183,7 +182,11 @@ def main(
 
     # Executor handles outputs from the LLM client and converts them into executable actions
     executor = PickupExecutor(
-        robot, agent, available_actions=prompt.get_available_actions(), dry_run=False
+        robot,
+        agent,
+        available_actions=prompt.get_available_actions(),
+        match_method=match_method,
+        dry_run=False,
     )
 
     # Get the LLM client
