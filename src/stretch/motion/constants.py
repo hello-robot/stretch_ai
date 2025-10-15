@@ -14,8 +14,6 @@ import numpy as np
 from stretch.utils.config import get_full_config_path
 
 # Stretch stuff
-PLANNER_STRETCH_URDF = get_full_config_path("urdf/planner_calibrated.urdf")
-# MANIP_STRETCH_URDF = get_full_config_path("urdf/stretch_manip_mode.urdf")
 MANIP_STRETCH_URDF = get_full_config_path("urdf/stretch.urdf")
 
 # This is the gripper, and the distance in the gripper frame to where the fingers will roughly meet
@@ -48,21 +46,6 @@ look_front = np.array([0.0, -np.pi / 4])
 look_ahead = np.array([0.0, 0.0])
 look_close = np.array([0.0, math.radians(-45)])
 look_down = np.array([0.0, math.radians(-58)])
-
-
-# Stores joint indices for the Stretch configuration space
-class HelloStretchIdx:
-    BASE_X = 0
-    BASE_Y = 1
-    BASE_THETA = 2
-    LIFT = 3
-    ARM = 4
-    GRIPPER = 5
-    WRIST_ROLL = 6
-    WRIST_PITCH = 7
-    WRIST_YAW = 8
-    HEAD_PAN = 9
-    HEAD_TILT = 10
 
 
 STRETCH_HOME_Q = np.array(

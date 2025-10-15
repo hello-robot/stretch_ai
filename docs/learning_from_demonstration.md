@@ -32,7 +32,9 @@ Our LfD code is a [fork of LeRobot](https://github.com/hello-robot/lerobot). The
 
 ## Format data and push to huggingface repo
 
-### [Authenticate with huggingface-cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
+### [Authenticate with huggingface-cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli) 
+
+You should finish this before doing the remaining steps or you might waste 1 hour in uploading dataset to huggingface.
 
 ### Optional: login to weights and biases (wandb)
 

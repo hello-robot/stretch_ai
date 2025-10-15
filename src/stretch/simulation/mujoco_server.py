@@ -20,6 +20,8 @@ from overrides import override
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
+from stretch.motion.constants import STRETCH_CAMERA_FRAME
+
 try:
     from stretch_mujoco.robocasa_gen import model_generation_wizard
 except ImportError as e:
@@ -456,7 +458,7 @@ class MujocoZmqServer(BaseZmqServer):
         """Get the camera pose in world coords"""
         if self._initial_xyt is None:
             return None
-        pose = self.robot_sim.get_link_pose("camera_color_optical_frame")
+        pose = self.robot_sim.get_link_pose(STRETCH_CAMERA_FRAME)
         # We are going to rotate the head camera
         pose[:3, :3] = pose[:3, :3] @ np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         return pose_global_to_base(pose, self._initial_xyt)
@@ -617,7 +619,7 @@ class MujocoZmqServer(BaseZmqServer):
                     dt = timeit.default_timer() - t0
                     if dt > 5:
                         logger.error("Gripper move took too long")
-                        break   
+                        break
         elif "say" in action:
             do_nothing = True
         if "joint" in action:

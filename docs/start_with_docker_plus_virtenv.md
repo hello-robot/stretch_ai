@@ -136,9 +136,18 @@ First, check to see if mamba is installed on your computer:
 mamba
 ```
 
-If you get an "command not found" error, then follow the install instructions for mamba here: https://github.com/conda-forge/miniforge#download
+If you get an "command not found" error, then you have not yet installed mamba.
+
+Follow the install instructions for mamba [here](https://github.com/conda-forge/miniforge#download), also shown below
+
+```bash
+curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+bash Miniforge3-$(uname)-$(uname -m).sh
+```
 
 Make sure to run `mamba init` and restart your terminal before proceeding.
+
+Run `mamba activate` if not already in the base environment
 
 Then, run:
 
