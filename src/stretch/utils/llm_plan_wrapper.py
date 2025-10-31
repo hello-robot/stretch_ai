@@ -235,19 +235,6 @@ class LLMPlanWrapper:
         task.add_operation(speak_not_implemented, True)
         return task.run()
 
-    def get_detections(self):
-        """Adds a SpeakOperation (not implemented) to the task"""
-        task = Task()
-        speak_not_implemented = SpeakOperation(
-            name="get_detections" + f"_{str(self._operation_naming_counter)}",
-            agent=self.agent,
-            robot=self.robot,
-        )
-        self._operation_naming_counter += 1
-        speak_not_implemented.configure(message="Get detections operation not implemented")
-        task.add_operation(speak_not_implemented, True)
-        return task.run()
-
     def run(self):
         """Runs the task"""
         self.llm_plan += """\nexecute_task(self.go_to,
@@ -257,6 +244,5 @@ class LLMPlanWrapper:
                                            self.open_cabinet,
                                            self.close_cabinet,
                                            self.wave,
-                                           self.get_detections
                             )"""
         exec(self.llm_plan)

@@ -329,13 +329,15 @@ class SparseVoxelMapNavigationSpace(XYT):
     def _get_conservative_2d_map(self, obstacles, explored):
         """Get a conservative 2d map from the voxel map"""
         # Extract edges from our explored mask
-        obstacles = binary_dilation(
-            obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
-        )[0, 0].bool()
-        less_explored = binary_erosion(
-            explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
-        )[0, 0]
-        return obstacles, less_explored
+        if self.dilate_obstacles_kernel is not None:
+            obstacles = binary_dilation(
+                obstacles.float().unsqueeze(0).unsqueeze(0), self.dilate_obstacles_kernel
+            )[0, 0].bool()
+        if self.dilate_explored_kernel is not None:
+            explored = binary_erosion(
+                explored.float().unsqueeze(0).unsqueeze(0), self.dilate_explored_kernel
+            )[0, 0]
+        return obstacles, explored
 
     def sample_near_mask(
         self,
@@ -805,25 +807,6 @@ class SparseVoxelMapNavigationSpace(XYT):
 
         # Show the geometries of where we have explored
         open3d.visualization.draw_geometries(geoms)
-
-    def sample_valid_location(self, max_tries: int = 100) -> Optional[torch.Tensor]:
-        """Return a state that's valid and that we can move to.
-
-        Args:
-            max_tries(int): number of times to re-sample if cannot find a viable location.
-
-        Returns:
-            xyt(Tensor): a free space location, explored and collision-free
-        """
-
-        for i in range(max_tries):
-            xyt = torch.rand(3) * np.pi * 2
-            point = self.voxel_map.sample_explored()
-            xyt[:2] = point
-            if self.is_valid(xyt):
-                yield xyt
-        else:
-            yield None
 
     def push_locations_to_stack(self, locations: List[Union[np.ndarray, torch.Tensor]]):
         """Push locations to stack for sampling.

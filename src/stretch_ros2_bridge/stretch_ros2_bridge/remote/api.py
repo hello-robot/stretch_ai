@@ -22,13 +22,12 @@ import trimesh.transformations as tra
 from stretch.core.interfaces import Observations
 from stretch.core.robot import AbstractRobotClient, ControlMode
 from stretch.motion import RobotModel
-from stretch.motion.constants import STRETCH_NAVIGATION_Q, STRETCH_PREGRASP_Q
+from stretch.motion.constants import STRETCH_CAMERA_FRAME, STRETCH_NAVIGATION_Q, STRETCH_PREGRASP_Q
 from stretch.motion.kinematics import HelloStretchIdx, HelloStretchKinematics
 from stretch.utils.geometry import xyt2sophus
 
 from .modules.head import StretchHeadClient
 from .modules.manip import StretchManipulationClient
-from .modules.mapping import StretchMappingClient
 from .modules.nav import StretchNavigationClient
 from .ros import StretchRosInterface
 
@@ -39,7 +38,7 @@ JOINT_ANG_TOL = 0.03
 class StretchClient(AbstractRobotClient):
     """Defines a ROS-based interface to the real Stretch robot. Collect observations and command the robot."""
 
-    head_camera_frame = "camera_color_optical_frame"
+    head_camera_frame = STRETCH_CAMERA_FRAME
     ee_camera_frame = "gripper_camera_color_optical_frame"
     ee_frame = "link_grasp_center"
     world_frame = "map"
@@ -83,7 +82,6 @@ class StretchClient(AbstractRobotClient):
         self.nav = StretchNavigationClient(self._ros_client, self._robot_model)
         self.manip = StretchManipulationClient(self._ros_client, self._robot_model)
         self.head = StretchHeadClient(self._ros_client, self._robot_model)
-        self.mapping = StretchMappingClient(self._ros_client)
 
         # Init control mode
         self._base_control_mode = ControlMode.IDLE
@@ -281,12 +279,6 @@ class StretchClient(AbstractRobotClient):
             graph[i] = np.array([graph[i][0], gps[0], gps[1], theta])
 
         return graph
-
-    def load_map(self, filename: str):
-        self.mapping.load_map(filename)
-
-    def save_map(self, filename: str):
-        self.mapping.save_map(filename)
 
     def execute_trajectory(self, *args, **kwargs):
         """Open-loop trajectory execution wrapper. Executes a multi-step trajectory; this is always blocking since it waits to reach each one in turn."""

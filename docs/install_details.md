@@ -113,16 +113,6 @@ cd ~/ament_ws
 colcon build --packages-select stretch_ros2_bridge
 ```
 
-#### Experimental: Install ORB-SLAM3 On the Robot (Advanced)
-
-[ORB-SLAM3](https://arxiv.org/pdf/2007.11898) is an open-source VSLAM (visual slam) library. Using it in conjunction with LIDAR-based localization can improve performance in many environments. Installation is documented in a [separate file](docs/orbslam3.md).
-
-*Installation is not required to use Stretch AI.* If you chose to do so, you can then then use the ORB-SLAM3 version of the server launch file:
-
-```
-ros2 launch stretch_ros2_bridge server_orbslam3.launch.py
-```
-
 ### Using LLMs
 
 We use many open-source LLMs from [Huggingface](https://huggingface.co/). TO use them, you will need to make sure `transformers` is installed and up to date. You can install it with:

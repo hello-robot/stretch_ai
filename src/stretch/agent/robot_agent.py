@@ -43,7 +43,7 @@ logger = Logger(__name__)
 
 
 try:
-    from stretch.audio.text_to_speech import get_text_to_speech
+    from stretch.audio.text_to_speech import PiperTextToSpeech
 
     imported_tts = True
 except ImportError as e:
@@ -130,7 +130,7 @@ class RobotAgent:
         self.guarantee_instance_is_reachable = self.parameters.guarantee_instance_is_reachable
         self.use_scene_graph = self.parameters["use_scene_graph"]
         if imported_tts:
-            self.tts = get_text_to_speech(self.parameters["tts_engine"])
+            self.tts = PiperTextToSpeech()
         else:
             self.tts = None
         self._use_instance_memory = use_instance_memory
@@ -485,25 +485,6 @@ class RobotAgent:
         """Returns reference to the navigation space."""
         return self.space
 
-    def place_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
-        """Try to place an object."""
-        if not self.robot.in_manipulation_mode():
-            self.robot.switch_to_manipulation_mode()
-        if self.grasp_client is None:
-            logger.warn("Tried to place without providing a grasp client.")
-            return False
-        return self.grasp_client.try_placing(object_goal=object_goal, **kwargs)
-
-    def grasp_object(self, object_goal: Optional[str] = None, **kwargs) -> bool:
-        """Try to grasp a potentially specified object."""
-        # Put the robot in manipulation mode
-        if not self.robot.in_manipulation_mode():
-            self.robot.switch_to_manipulation_mode()
-        if self.grasp_client is None:
-            logger.warn("Tried to grasp without providing a grasp client.")
-            return False
-        return self.grasp_client.try_grasping(object_goal=object_goal, **kwargs)
-
     def rotate_in_place(
         self,
         steps: Optional[int] = -1,
@@ -575,14 +556,6 @@ class RobotAgent:
                 )
 
         return True
-
-    def get_command(self):
-        """Get a command from config file or from user input if not specified."""
-        task = self.parameters.get("task").get("command")
-        if task is not None and len(task) > 0:
-            return task
-        else:
-            return self.ask("Please type any task you want the robot to do: ")
 
     def show_map(self) -> None:
         """Helper function to visualize the 3d map as it stands right now."""
@@ -983,7 +956,6 @@ class RobotAgent:
             self.scene_graph.update(self.get_voxel_map().get_instances())
         # For debugging - TODO delete this code
         self.scene_graph.get_relationships(debug=False)
-        # self.robot._rerun.update_scene_graph(self.scene_graph, self.semantic_sensor)
 
     def get_scene_graph(self) -> SceneGraph:
         """Return scene graph, such as it is."""
@@ -1064,8 +1036,8 @@ class RobotAgent:
         instance: Instance,
         start: np.ndarray,
         verbose: bool = False,
-        max_tries: int = 10,
-        radius_m: float = 0.5,
+        max_tries: int = 20,
+        radius_m: float = 0.7,
         rotation_offset: float = 0.0,
         use_cache: bool = False,
     ) -> PlanResult:
@@ -1378,7 +1350,7 @@ class RobotAgent:
         return activation > self.feature_match_threshold
 
     def print_found_classes(self, goal: Optional[str] = None, verbose: bool = False):
-        """Helper. print out what we have found according to detic."""
+        """Helper. print out what we have found according to the object detection model."""
         if self.semantic_sensor is None:
             logger.warning("Tried to print classes without semantic sensor!")
             return
@@ -1613,44 +1585,6 @@ class RobotAgent:
             print("Went home!")
         else:
             print("Can't go home; planning failed!")
-
-    def choose_best_goal_instance(self, goal: str, debug: bool = False) -> Instance:
-        """Choose the best instance to move to based on the goal. This is done by comparing the goal to the embeddings of the instances in the world. The instance with the highest score is returned. If debug is true, we also print out the scores for the goal and two negative examples. These examples are:
-        - "the color purple"
-        - "a blank white wall"
-
-        Args:
-            goal(str): the goal to move to
-            debug(bool): whether to print out debug information
-
-        Returns:
-            Instance: the best instance to move to
-        """
-        instances = self.get_voxel_map().get_instances()
-        goal_emb = self.encode_text(goal)
-        if debug:
-            neg1_emb = self.encode_text("the color purple")
-            neg2_emb = self.encode_text("a blank white wall")
-        best_instance = None
-        best_score = -float("Inf")
-        for instance in instances:
-            if debug:
-                print("# views =", len(instance.instance_views))
-                print("    cls =", instance.category_id)
-            # TODO: remove debug code when not needed for visualization
-            # instance._show_point_cloud_open3d()
-            img_emb = instance.get_image_embedding(
-                aggregation_method="mean", normalize=self.normalize_embeddings
-            )
-            goal_score = self.compare_embeddings(goal_emb, img_emb)
-            if debug:
-                neg1_score = self.compare_embeddings(neg1_emb, img_emb)
-                neg2_score = self.compare_embeddings(neg2_emb, img_emb)
-                print("scores =", goal_score, neg1_score, neg2_score)
-            if goal_score > best_score:
-                best_instance = instance
-                best_score = goal_score
-        return best_instance
 
     def set_allowed_radius(self, radius: float):
         """Set the allowed radius for the robot to move to. This is used to limit the robot's movement, particularly when exploring.
@@ -2060,45 +1994,6 @@ class RobotAgent:
         # Move to the instance
         return self.move_to_instance(instance)
 
-    def pick(self, object_goal: str, **kwargs) -> bool:
-        """Pick up an object."""
-        # Find closest instance
-        instances = self.get_found_instances_by_class(object_goal)
-        if len(instances) == 0:
-            return False
-
-        # Move to the instance with the highest score
-        # Sort by score
-        instances.sort(key=lambda x: x[1].score, reverse=True)
-        instance = instances[0][1]
-
-        # Move to the instance
-        if not self.move_to_instance(instance):
-            return False
-
-        # Grasp the object
-        return self.grasp_object(object_goal)
-
-    def place(self, object_goal: str, **kwargs) -> bool:
-        """Place an object."""
-        # Find closest instance
-        instances = self.get_found_instances_by_class(object_goal)
-
-        if len(instances) == 0:
-            return False
-
-        # Move to the instance with the highest score
-        # Sort by score
-        instances.sort(key=lambda x: x[1].score, reverse=True)
-        instance = instances[0][1]
-
-        # Move to the instance
-        if not self.move_to_instance(instance):
-            return False
-
-        # Place the object
-        return self.place_object(object_goal)
-
     def say(self, msg: str):
         """Provide input either on the command line or via chat client"""
         self.tts.say_async(msg)
@@ -2107,14 +2002,6 @@ class RobotAgent:
         """Have the robot say something out loud. This will send the text over to the robot from wherever the client is running."""
         msg = msg.strip('"' + "'")
         self.robot.say(msg)
-
-    def ask(self, msg: str) -> str:
-        """Receive input from the user either via the command line or something else"""
-        # if self.chat is not None:
-        #  return self.chat.input(msg)
-        # else:
-        # TODO: support other ways of saying
-        return input(msg)
 
     def open_cabinet(self, object_goal: str, **kwargs) -> bool:
         """Open a cabinet."""
@@ -2207,26 +2094,6 @@ class RobotAgent:
             filename, perception=self.semantic_sensor, transform_pose=tform
         )
         self.get_voxel_map().show()
-
-    def get_detections(self, **kwargs) -> List[str]:
-        """Get the current detections."""
-        instances = self.get_voxel_map().get_instances()
-
-        # Consider only instances close to the robot
-        robot_pose = self.robot.get_base_pose()
-        close_instances = []
-
-        for instance in instances:
-            instance_pose = instance.get_best_view().cam_to_world
-            distance = np.linalg.norm(robot_pose[:2] - instance_pose[:2])
-            if distance < 2.0:
-                close_instances.append(instance)
-
-        close_instances_names = [
-            self.semantic_sensor.get_class_name_for_id(instance.category_id)
-            for instance in close_instances
-        ]
-        return close_instances_names
 
     def execute(self, plan: str) -> bool:
         """Execute a plan function given as a string."""

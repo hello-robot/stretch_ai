@@ -18,7 +18,6 @@ import numpy as np
 import torch
 
 from stretch.motion import Footprint
-from stretch.utils.morphology import binary_dilation, get_edges
 
 from .voxel import SparseVoxelMapProxy
 from .voxel_dynamem import SparseVoxelMap
@@ -153,59 +152,99 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
 
         return None
 
-    def sample_exploration(
-        self,
-        xyt,
-        planner,
-        use_alignment_heuristics=True,
-        text=None,
-        debug=False,
-    ):
-        obstacles, explored, history_soft = self.voxel_map.get_2d_map(return_history_id=True)
-        if len(xyt) == 3:
-            xyt = xyt[:2]
-        reachable_points = planner.get_reachable_points(planner.to_pt(xyt))
-        reachable_xs, reachable_ys = zip(*reachable_points)
-        reachable_xs = torch.tensor(reachable_xs)
-        reachable_ys = torch.tensor(reachable_ys)
+    def sample_exploration(self, xyt, planner, text=None, debug=False):
+        """
+        Sample an exploration target
+        """
+        obstacles, explored, history_soft = self.voxel_map.get_2d_map(
+            return_history_id=True, kernel=5
+        )
+        outside_frontier = self.voxel_map.get_outside_frontier(xyt, planner)
 
-        reachable_map = torch.zeros_like(obstacles)
-        reachable_map[reachable_xs, reachable_ys] = 1
-        reachable_map = reachable_map.to(torch.bool)
-        edges = get_edges(reachable_map)
-        # kernel = self._get_kernel(expand_size)
-        kernel = None
-        if kernel is not None:
-            expanded_frontier = binary_dilation(
-                edges.float().unsqueeze(0).unsqueeze(0),
-                kernel,
-            )[0, 0].bool()
-        else:
-            expanded_frontier = edges
-        outside_frontier = expanded_frontier & ~reachable_map
         time_heuristics = self._time_heuristic(history_soft, outside_frontier, debug=debug)
-        if (
-            use_alignment_heuristics
-            and len(self.voxel_map.semantic_memory._points) > 0
-            and text != ""
-            and text is not None
-        ):
-            alignments_heuristics = self.voxel_map.get_2d_alignment_heuristics(text)
-            alignments_heuristics = self._alignment_heuristic(
-                alignments_heuristics, outside_frontier, debug=debug
-            )
-            total_heuristics = time_heuristics + 0.3 * alignments_heuristics
-        else:
-            alignments_heuristics = None
-            total_heuristics = time_heuristics
+
+        # TODO: Find good alignment heuristic, we have found few candidates but none of them has satisfactory performance
+
+        ######################################
+        # Candidate 1: Borrow the idea from https://arxiv.org/abs/2310.10103
+        # for i, (cluster, _) in enumerate(image_descriptions):
+        #   cluser_string = ""
+        #   for ob in cluster:
+        #       cluser_string += ob + ", "
+        #   options += f"{i+1}. {cluser_string[:-2]}\n"
+
+        # if positive:
+        #     messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I search next if I try to {task}?"
+        #     choices = self.positive_score_client.sample(messages, n_samples=num_samples)
+        # else:
+        #     messages = f"I observe the following clusters of objects while exploring the room:\n\n {options}\nWhere should I avoid spending time searching if I try to {task}?"
+        #     choices = self.negative_score_client.sample(messages, n_samples=num_samples)
+
+        # answers = []
+        # reasonings = []
+        # for choice in choices:
+        #     complete_response = choice.lower()
+        #     reasoning = complete_response.split("reasoning: ")[1].split("\n")[0]
+        #     # Parse out the first complete integer from the substring after  the text "Answer: ". use regex
+        #     if len(complete_response.split("answer:")) > 1:
+        #          answer = complete_response.split("answer:")[1].split("\n")[0]
+        #          # Separate the answers by commas
+        #          answers.append([int(x) for x in answer.split(",")])
+        #      else:
+        #          answers.append([])
+        #      reasonings.append(reasoning)
+
+        # # Flatten answers
+        # flattened_answers = [item for sublist in answers for item in sublist]
+        # filtered_flattened_answers = [
+        #     x for x in flattened_answers if x >= 1 and x <= len(image_descriptions)
+        # ]
+        # # Aggregate into counts and normalize to probabilities
+        # answer_counts = {
+        #     x: filtered_flattened_answers.count(x) / len(answers)
+        #     for x in set(filtered_flattened_answers)
+        # }
+        ######################################
+        # Candidate 2: Naively use semantic feature alignment
+        # def get_2d_alignment_heuristics(self, text: str, debug: bool = False):
+        # if self.semantic_memory._points is None:
+        #     return None
+        # # Convert metric measurements to discrete
+        # # Gets the xyz correctly - for now everything is assumed to be within the correct distance of origin
+        # xyz, _, _, _ = self.semantic_memory.get_pointcloud()
+        # xyz = xyz.detach().cpu()
+        # if xyz is None:
+        #     xyz = torch.zeros((0, 3))
+
+        # device = xyz.device
+        # xyz = ((xyz / self.grid_resolution) + self.grid_origin).long()
+        # xyz[xyz[:, -1] < 0, -1] = 0
+
+        # # Crop to robot height
+        # min_height = int(self.obs_min_height / self.grid_resolution)
+        # max_height = int(self.obs_max_height / self.grid_resolution)
+        # grid_size = self.grid_size + [max_height]
+
+        # # Mask out obstacles only above a certain height
+        # obs_mask = xyz[:, -1] < max_height
+        # xyz = xyz[obs_mask, :]
+        # alignments = self.find_alignment_over_model(text)[0].detach().cpu()
+        # alignments = alignments[obs_mask][:, None]
+
+        # alignment_heuristics = scatter3d(xyz, alignments, grid_size, "max")
+        # alignment_heuristics = torch.max(alignment_heuristics, dim=-1).values
+        # alignment_heuristics = torch.from_numpy(
+        #     maximum_filter(alignment_heuristics.numpy(), size=5)
+        # )
+
+        alignments_heuristics = None
+        total_heuristics = time_heuristics
 
         rounded_heuristics = np.ceil(total_heuristics * 200) / 200
         max_heuristic = rounded_heuristics.max()
         indices = np.column_stack(np.where(rounded_heuristics == max_heuristic))
         closest_index = np.argmin(np.linalg.norm(indices - np.asarray(planner.to_pt(xyt)), axis=-1))
         index = indices[closest_index]
-        # index = np.unravel_index(np.argmax(total_heuristics), total_heuristics.shape)
-        # debug = True
         if debug:
             from matplotlib import pyplot as plt
 
@@ -222,29 +261,8 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
             plt.show()
         return index, time_heuristics, alignments_heuristics, total_heuristics
 
-    def _alignment_heuristic(
-        self,
-        alignments,
-        outside_frontier,
-        alignment_smooth=15,
-        alignment_threshold=0.13,
-        debug=False,
-    ):
-        alignments = np.ma.masked_array(alignments, ~outside_frontier)
-        alignment_heuristics = 1 / (
-            1 + np.exp(-alignment_smooth * (alignments - alignment_threshold))
-        )
-        index = np.unravel_index(np.argmax(alignment_heuristics), alignments.shape)
-        if debug:
-            plt.clf()
-            plt.title("alignment")
-            plt.imshow(alignment_heuristics)
-            plt.scatter(index[1], index[0], s=15, c="g")
-            plt.show()
-        return alignment_heuristics
-
     def _time_heuristic(
-        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=50, debug=False
+        self, history_soft, outside_frontier, time_smooth=0.1, time_threshold=10, debug=False
     ):
         history_soft = np.ma.masked_array(history_soft, ~outside_frontier)
         time_heuristics = history_soft.max() - history_soft
@@ -256,7 +274,7 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         if debug:
             # plt.clf()
             plt.title("time")
-            plt.imshow(time_heuristics)
+            plt.imshow(history_soft)
             plt.scatter(index[1], index[0], s=15, c="r")
             plt.show()
         return time_heuristics
@@ -309,28 +327,17 @@ class SparseVoxelMapNavigationSpace(SparseVoxelMapNavigationSpaceBase):
         return goal
 
     def sample_frontier(self, planner, start_pose=[0, 0, 0], text=None):
-        if text is not None and text != "":
-            (
-                index,
-                time_heuristics,
-                alignments_heuristics,
-                total_heuristics,
-            ) = self.sample_exploration(
-                start_pose,
-                planner,
-                use_alignment_heuristics=True,
-                text=text,
-                debug=False,
-            )
-        else:
-            index, time_heuristics, _, total_heuristics = self.sample_exploration(
-                start_pose,
-                planner,
-                use_alignment_heuristics=False,
-                text=None,
-                debug=False,
-            )
-            alignments_heuristics = time_heuristics
+        (
+            index,
+            time_heuristics,
+            alignments_heuristics,
+            total_heuristics,
+        ) = self.sample_exploration(
+            start_pose,
+            planner,
+            text=text,
+            debug=False,
+        )
 
         obstacles, explored = self.voxel_map.get_2d_map()
         return self.voxel_map.grid_coords_to_xyt(torch.tensor([index[0], index[1]]))

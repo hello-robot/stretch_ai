@@ -16,6 +16,7 @@ from typing import Optional, Tuple
 import numpy as np
 import trimesh.transformations as tra
 
+from stretch.motion.constants import STRETCH_CAMERA_FRAME
 from stretch.motion.kinematics import HelloStretchIdx
 from stretch.motion.robot import RobotModel
 
@@ -28,7 +29,7 @@ MAX_DEPTH_REPLACEMENT_VALUE = 10001
 class StretchHeadClient(AbstractControlModule):
     min_depth_val = 0.1
     max_depth_val = 4.0
-    camera_frame = "camera_color_optical_frame"
+    camera_frame = STRETCH_CAMERA_FRAME
 
     def __init__(
         self,

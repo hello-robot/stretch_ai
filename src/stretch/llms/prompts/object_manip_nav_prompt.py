@@ -75,11 +75,6 @@ def close_cabinet():
 def wave():
     Makes the robot wave at a person
 
-def get_detections():
-    Returns an array of nearby objects that are currently being detected by the robot
-    Returns:
-    List: Array of detected object names as strings
-
 """
 
 PROMPT_EXAMPLES = """
@@ -87,7 +82,7 @@ Here are some examples of commands and the corresponding code you can generate:
 Example 1:
 Command: Bring me a fanta can
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if pick("fanta can"):
         if go_to("user"):
             say("Here is the fanta can. Enjoy!")
@@ -99,7 +94,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
 Example 2:
 Command: Pick up the tennis ball and place it on the white table
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if pick("tennis ball"):
         if place("white table"):
             say("I have placed the tennis ball on the white table")
@@ -111,21 +106,21 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
 Example 3:
 Command: Wave at the person
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     wave()
     say("Hello! I am Stretch. How can I help you?")
 
 Example 4:
 Command: Open the drawer
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     open_cabinet()
     say("I have opened the drawer")
 
 Example 5:
 Command: Can you pick up the purple shampoo bottle and place it on the chair? But before that, can you crack a joke?
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     say("Why did the tomato turn red? Because it saw the salad dressing!")
     if pick("purple shampoo bottle"):
         if place("chair"):
@@ -138,19 +133,19 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
 Example 6:
 Command: Tell me a joke
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     say("Why did the tomato turn red? Because it saw the salad dressing!")
 
 Example 7:
 Command: Tell me a fact
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     say("The first oranges weren't orange")
 
 Example 8:
 Command: Pick up the cup.
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if pick("cup"):
         say("I have picked up the cup")
     else:
@@ -159,7 +154,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
 Example 9:
 Command: Can you bring me the wallet?
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if pick("wallet"):
         if go_to("user"):
             say("Here is your wallet")
@@ -171,7 +166,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
 Example 10:
 Command: Go to the chair.
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if go_to("chair"):
         say("I have reached the chair")
     else:
@@ -180,7 +175,7 @@ def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get
 Example 11:
 Command: Can you pick up the blue bottle and place it in the dustbin?
 Returns:
-def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave, get_detections):
+def execute_task(go_to, pick, place, say, open_cabinet, close_cabinet, wave):
     if pick("blue bottle"):
         if place("dustbin"):
             say("I have placed the blue bottle in the dustbin")

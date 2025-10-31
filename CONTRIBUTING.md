@@ -126,12 +126,6 @@ python -m stretch.perception.captioners.vit_gpt2_captioner --image_path object.p
 # Gives: "a box with a cat laying on top of it"
 python -m stretch.perception.captioners.vit_gpt2_captioner --image_path receptacle.png
 
-# Blip Captioner
-# Gives: "a stuffed dog on the floor"
-python -m stretch.perception.captioners.blip_captioner --image_path object.png
-# Gives: "a dog laying on the floor next to a cardboard box"
-python -m stretch.perception.captioners.blip_captioner --image_path receptacle.png
-
 # Git Captioner
 # Gives: "a stuffed animal that is laying on the floor"
 python -m stretch.perception.captioners.git_captioner --image_path object.png

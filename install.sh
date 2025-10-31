@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # This script (c) 2024 Hello Robot under the MIT license: https://opensource.org/licenses/MIT
 # This script is designed to install the HomeRobot/StretchPy environment.
-export CUDA_VERSION=11.8
 export PYTHON_VERSION=3.10
 
 script_dir="$(dirname "$0")"
@@ -41,11 +40,6 @@ do
             NO_VERSION="true"
             shift
             ;;
-        --cuda=*)
-            CUDA_VERSION="${arg#*=}"
-            echo "Setting CUDA Version: $CUDA_VERSION"
-            shift
-            ;;
         *)
             shift
             # unknown option
@@ -53,8 +47,6 @@ do
     esac
 done
 
-CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
-export CUDA_HOME=/usr/local/cuda-$CUDA_VERSION
 
 # Check if the user has the required packages
 # If not, install them
@@ -64,31 +56,25 @@ echo "Checking for required packages: "
 echo "     libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg"
 echo "If these are not installed, you will run into issues with pyaudio."
 if [ "$SKIP_ASKING" == "true" ]; then
-    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg -y
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg build-essential wget unzip libsndfile1 -y
 else
-    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg
+    sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 espeak ffmpeg build-essential wget unzip libsndfile1
 fi
 
 # If cpu only, set the cuda version to cpu
 if [ "$CPU_ONLY" == "true" ]; then
-    export CUDA_VERSION=cpu
-    export CUDA_VERSION_NODOT=cpu
-    export CUDA_HOME=""
     if [ "$NO_VERSION" == "true" ]; then
         ENV_NAME=stretch_ai_cpu
     else
         ENV_NAME=stretch_ai_cpu_${VERSION}
     fi
     ENV_NAME=stretch_ai_cpu_${VERSION}
-    export PYTORCH_VERSION=2.1.2
 else
-    export CUDA_VERSION_NODOT="${CUDA_VERSION//./}"
     if [ "$NO_VERSION" == "true" ]; then
         ENV_NAME=stretch_ai
     else
         ENV_NAME=stretch_ai_${VERSION}
     fi
-    export PYTORCH_VERSION=2.3.1
 fi
 
 echo "=============================================="
@@ -96,17 +82,12 @@ echo "         INSTALLING STRETCH AI TOOLS"
 echo "=============================================="
 echo "---------------------------------------------"
 echo "Environment name: $ENV_NAME"
-echo "PyTorch Version: $PYTORCH_VERSION"
-echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
-echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
 echo "Using tool: $MAMBA"
 echo "---------------------------------------------"
 echo "Notes:"
 echo " - This script will remove the existing environment if it exists."
 echo " - This script will install the following packages:"
-echo "   - pytorch=$PYTORCH_VERSION"
-echo "   - pytorch-cuda=$CUDA_VERSION"
 echo "   - torchvision"
 if [[ $INSTALL_TORCH_GEOMETRIC == "true" ]]; then
     echo "   - torch-geometric"
@@ -116,7 +97,6 @@ fi
 echo "   - python=$PYTHON_VERSION"
 echo "---------------------------------------------"
 echo "Currently:"
-echo " - CUDA_HOME=$CUDA_HOME"
 echo " - python=`which python`"
 
 
@@ -151,13 +131,8 @@ if [ "$NO_REMOVE" == "false" ]; then
     echo "Removing existing environment..."
     $MAMBA env remove -n $ENV_NAME -y || true
 fi
-# If using cpu only, create a separate environment
-if [ "$CPU_ONLY" == "true" ]; then
-    $MAMBA create -n $ENV_NAME -c pytorch pytorch=$PYTORCH_VERSION torchvision torchaudio cpuonly python=$PYTHON_VERSION -y
-else
-    # Else, install the cuda version
-    $MAMBA create -n $ENV_NAME -c pytorch -c nvidia pytorch=$PYTORCH_VERSION pytorch-cuda=$CUDA_VERSION torchvision torchaudio python=$PYTHON_VERSION -y
-fi
+
+$MAMBA create -n $ENV_NAME python=$PYTHON_VERSION -y
 
 echo "Activate env $ENV_NAME"
 
@@ -173,61 +148,30 @@ echo "---------------------------------------------"
 echo "---- INSTALLING STRETCH AI DEPENDENCIES  ----"
 echo "Will be installed via pip into env: $ENV_NAME"
 
-python -m pip install -e ./src[dev]
+if [ "$CPU_ONLY" = "false" ]; then
+    echo "Installing segment-anything-2..."
 
-# echo "---- Install SAM ----"
-# pip install git+https://github.com/facebookresearch/segment-anything.git
-
-echo ""
-echo "---------------------------------------------"
-echo "----   INSTALLING DETIC FOR PERCEPTION   ----"
-# echo "The third_party folder will be removed!"
-if [ "$SKIP_ASKING" == "true" ]; then
-    echo "Proceeding with installation because you passed in the -y flag."
-    yn="y"
+    cd third_party/segment-anything-2
+    python -m pip install -e . --no-cache-dir
+    cd ../..
 else
-    read -p "Do you want to proceed? (y/n) " yn
-    case $yn in
-        y ) echo "Starting installation..." ;;
-        n ) echo "Exiting...";
-            CPU_ONLY="true" ;;
-        * ) echo Invalid response!;
-            exit 1 ;;
-    esac
+    # Provide feedback if the condition is not met
+    echo "Skipping segment-anything-2 installation because CPU_ONLY is 'true'."
 fi
 
-# If not cpu only, then we can use perception
-# OR if no submodules, then we can't install perception
-if [ "$CPU_ONLY" == "true" ] || [ "$NO_SUBMODULES" == "true" ]; then
-    echo "Skipping perception installation for CPU only"
-else
-    echo "Install detectron2 for perception (required by Detic)"
-    git submodule update --init --recursive
-    cd third_party/detectron2
-    pip install -e .
 
-    echo "Install Detic for perception"
-    cd ../../src/stretch/perception/detection/detic/Detic
-    # Make sure it's up to date
-    git submodule update --init --recursive
-    pip install -r requirements.txt
+echo "Installing other stretch-ai dependencies"
+python -m pip install -e ./src[dev] --no-cache-dir
 
-    # cd ../../src/stretch/perception/detection/detic/Detic
-    # Create folder for checkpoints and download
-    mkdir -p models
-    echo "Download DETIC checkpoint..."
-    wget --no-check-certificate https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -O models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
-fi
+# Uninstall av to avoid conflict between torchvision and cv2.imshow
+python -m pip uninstall av -y
 
 echo ""
 echo "=============================================="
 echo "         INSTALLATION COMPLETE"
 echo "Finished setting up the StretchPy environment."
 echo "Environment name: $ENV_NAME"
-echo "CUDA Version: $CUDA_VERSION"
 echo "Python Version: $PYTHON_VERSION"
-echo "CUDA Version No Dot: $CUDA_VERSION_NODOT"
-echo "CUDA_HOME=$CUDA_HOME"
 echo "python=`which python`"
 echo "You can start using it with:"
 echo ""

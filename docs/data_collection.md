@@ -97,9 +97,6 @@ Launch this command from the directory where URDFs are stored (default is root o
 If you have already ran an app with `--robot-ip` flag, such as the `view_images` test app, you can omit the flag in subsequent runs.
 
 ```bash
-# The -s flag enables png images to be saved in addition to videos, which is faster for model training if training is CPU bound (no video decoding)
-
-TASK_NAME=<name-of-task>
 python3 -m stretch.app.dex_teleop.ros2_leader --robot_ip $ROBOT_IP --task-name $TASK_NAME --teleop-mode <teleop-mode> --clutch
 ```
 

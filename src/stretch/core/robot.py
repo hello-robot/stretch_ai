@@ -124,24 +124,3 @@ class AbstractRobotClient(ABC):
     def at_goal(self) -> bool:
         """Is the robot at a goal?"""
         raise NotImplementedError()
-
-    @abstractmethod
-    def save_map(self, filename: str):
-        """Save the current map to a file"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load_map(self, filename: str):
-        """Load a map from a file"""
-        raise NotImplementedError()
-
-
-class AbstractGraspClient(ABC):
-    """Connection to grasping."""
-
-    def set_robot_client(self, robot_client: AbstractRobotClient):
-        """Update the robot client this grasping client uses"""
-        self.robot_client = robot_client
-
-    def try_grasping(self, object_goal: Optional[str] = None) -> bool:
-        raise NotImplementedError

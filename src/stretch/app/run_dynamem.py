@@ -33,9 +33,8 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 )
 @click.option(
     "--llm",
-    # default="gemma2b",
     default="qwen25-3B-Instruct",
-    help="Client to use for language model. Recommended: gemma2b, openai",
+    help="Client to use for language model. Recommended: gemma, openai",
     type=click.Choice(get_llm_choices()),
 )
 @click.option("--debug_llm", "--debug-llm", is_flag=True, help="Set to debug the language model")
@@ -86,8 +85,8 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
     "--match-method",
     "--match_method",
     type=click.Choice(["class", "feature"]),
-    default="feature",
-    help="feature for visual servoing",
+    default="class",
+    help="match method for visual servoing",
 )
 @click.option(
     "--mllm-for-visual-grounding",
@@ -100,12 +99,18 @@ from stretch.llms import LLMChatWrapper, PickupPromptBuilder, get_llm_choices, g
 @click.option(
     "--manipulation-only", "--manipulation", is_flag=True, help="For debugging manipulation"
 )
+@click.option(
+    "--cpu-only",
+    "--cpu",
+    is_flag=True,
+    help="Run everything on CPU",
+)
 def main(
     server_ip,
     manual_wait,
     explore_iter: int = 3,
     mode: str = "navigation",
-    method: str = "dynamem",
+    match_method: str = "class",
     input_path: Optional[str] = None,
     output_path: Optional[str] = None,
     robot_ip: str = "",
@@ -119,6 +124,7 @@ def main(
     debug_llm: bool = False,
     llm: str = "qwen25-3B-Instruct",
     manipulation_only: bool = False,
+    cpu_only: bool = False,
     **kwargs,
 ):
     """
@@ -139,13 +145,14 @@ def main(
         robot,
         parameters,
         visual_servo=visual_servo,
-        match_method=kwargs["match_method"],
+        match_method=match_method,
         device_id=device_id,
         output_path=output_path,
         server_ip=server_ip,
         skip_confirmations=skip_confirmations,
         mllm=kwargs["mllm_for_visual_grounding"],
         manipulation_only=manipulation_only,
+        cpu_only=cpu_only,
     )
 
     if not manipulation_only:
