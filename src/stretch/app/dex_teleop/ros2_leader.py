@@ -586,18 +586,18 @@ class ZmqRos2Leader:
                         }
                         if self._recording and self.prev_goal_dict is not None:
                             self._recorder.add(
-                                ee_camera_rgb=gripper_color_image,
-                                ee_camera_depth=gripper_depth_image,
-                                ee_camera_pose=observation.ee_camera_pose,
+                                ee_rgb=gripper_color_image,
+                                ee_depth=gripper_depth_image,
+                                ee_cam_pose=observation.ee_camera_pose,
                                 xyz=goal_dict["relative_gripper_position"],
                                 quaternion=goal_dict["relative_gripper_orientation"],
                                 gripper=goal_dict["grip_width"],
-                                head_camera_rgb=head_color_image,
-                                head_camera_depth=head_depth_image,
-                                head_camera_pose=observation.camera_pose,
                                 ee_pose=observation.ee_pose,
                                 observations=joint_states,
                                 actions=goal_configuration,
+                                head_rgb=head_color_image,
+                                head_depth=head_depth_image,
+                                head_cam_pose=observation.camera_pose,
                             )
 
                             # Record waypoint
