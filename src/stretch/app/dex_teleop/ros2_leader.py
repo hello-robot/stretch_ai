@@ -588,15 +588,16 @@ class ZmqRos2Leader:
                             self._recorder.add(
                                 ee_rgb=gripper_color_image,
                                 ee_depth=gripper_depth_image,
+                                ee_cam_pose=observation.ee_camera_pose,
                                 xyz=goal_dict["relative_gripper_position"],
                                 quaternion=goal_dict["relative_gripper_orientation"],
                                 gripper=goal_dict["grip_width"],
-                                head_rgb=head_color_image,
-                                head_depth=head_depth_image,
+                                ee_pose=observation.ee_pose,
                                 observations=joint_states,
                                 actions=goal_configuration,
-                                ee_pos=observation.ee_camera_pose,
-                                ee_rot=observation.ee_camera_pose,
+                                head_rgb=head_color_image,
+                                head_depth=head_depth_image,
+                                head_cam_pose=observation.camera_pose,
                             )
 
                             # Record waypoint

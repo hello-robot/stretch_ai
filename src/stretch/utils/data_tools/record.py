@@ -92,15 +92,16 @@ class FileDataRecorder:
         self,
         ee_rgb: np.ndarray,
         ee_depth: np.ndarray,
+        ee_cam_pose: np.ndarray,
         xyz: np.ndarray,
         quaternion: np.ndarray,
         gripper: float,
-        ee_pos: np.ndarray,
-        ee_rot: np.ndarray,
+        ee_pose: np.ndarray,
         observations: Dict[str, float],
         actions: Dict[str, float],
         head_rgb: Optional[np.ndarray] = None,
         head_depth: Optional[np.ndarray] = None,
+        head_cam_pose: Optional[np.ndarray] = None,
     ):
         """Add data to the recorder."""
         self.rgbs.append(ee_rgb)
@@ -108,12 +109,13 @@ class FileDataRecorder:
         self.head_rgbs.append(head_rgb)
         self.head_depths.append(head_depth)
         self.data_dicts[self.step] = {
+            "ee_cam_pose": ee_cam_pose.tolist(),
+            "head_cam_pose": head_cam_pose.tolist(),
             "xyz": xyz.tolist(),
             "quats": quaternion.tolist(),
             "gripper": gripper,
             "step": self.step,
-            "ee_pos": ee_pos.tolist(),
-            "ee_rot": ee_rot.tolist(),
+            "ee_pose": ee_pose.tolist(),
             "observations": observations,
             "actions": actions,
             "waypoints": {},
