@@ -252,15 +252,94 @@ python -m stretch.app.run_dynamem --use-llm --llm openai
 ```
 
 ### Running on CPU
-Last but not the least, we understand in some cases GPU might not be available, therefore we prepare a lightweighted version of DynaMem that can be deployed
-on CPU, especially your robot NUC. While this lightweighted version is not as good as the normal one, it can still do some cool things.
 
-If you want to install an environment to try this version on your robot, instead of commonly used `./install.sh`, you should use this command to install `./install.sh --conda --cpu`.
+In some cases a GPU may not be available, so we provide a lightweight version of DynaMem that can run entirely on CPU, including on the robot's onboard NUC. While this version has reduced performance compared to the GPU version, it can still perform useful mobile manipulation tasks.
 
-Try this out by calling
+#### CPU vs GPU: Model Differences
+
+When running on CPU, DynaMem automatically switches to lighter-weight models:
+
+| Component | GPU Version | CPU Version |
+|-----------|-------------|-------------|
+| **Encoder** | SigLIP-so400m | CLIP ViT-B/16 |
+| **Object Detection** | OWLv2-L-p14-ensemble | YoloE-L |
+| **Segmentation** | SAM2 | Not available |
+| **Image Resolution** | 480 x 360 | 360 x 270 |
+
+#### CPU vs GPU: Threshold Differences
+
+The feature matching thresholds are adjusted for the different encoders:
+
+| Parameter | GPU (SigLIP) | CPU (CLIP) |
+|-----------|--------------|------------|
+| Feature matching threshold | 0.14 | 0.35 |
+| Detection confidence | 0.15 (OWLv2) | 0.05 (YoloE) |
+
+These thresholds are automatically configured when using `--cpu`.
+
+#### Installation for CPU
+
+Install a CPU-only environment with:
 ```bash
-python -m stretch.app.run_dynamem  --robot_ip $ROBOT_IP --cpu --match-method "class" --vs
+./install.sh --conda --cpu
 ```
+
+This creates a separate conda environment named `stretch_ai_cpu_<version>` and skips installing SAM2 (which requires GPU).
+
+Activate the environment:
+```bash
+conda activate stretch_ai_cpu_<version>
+```
+
+#### Running DynaMem on CPU
+
+Run DynaMem on CPU with:
+```bash
+python -m stretch.app.run_dynamem --robot_ip $ROBOT_IP --cpu --match-method "class" --vs
+```
+
+**Required flags for CPU mode:**
+- `--cpu`: Enables CPU-only mode (automatically detected if no GPU available)
+- `--vs` or `--visual-servo`: Uses visual servoing manipulation (required since AnyGrasp needs GPU)
+- `--match-method "class"`: Uses class-based matching instead of feature matching
+
+#### Limitations on CPU
+
+When running on CPU, be aware of the following limitations:
+
+1. **No SAM2 segmentation**: The Segment Anything Model 2 is not available, affecting placing accuracy
+2. **No AnyGrasp manipulation**: AnyGrasp requires GPU, so visual servoing (`--vs`) is required
+3. **No mLLM visual grounding**: GPT-4o visual grounding (`-M`) is not recommended due to latency
+4. **Slower inference**: Expect significantly slower perception compared to GPU
+5. **Lower resolution**: Images are processed at 360x270 instead of 480x360
+
+#### Automatic CPU Detection
+
+If no GPU is available, DynaMem automatically falls back to CPU mode:
+```python
+if not torch.cuda.is_available():
+    print("Setting up to use CPU as there is no GPU!")
+    cpu_only = True
+```
+
+This means you can omit the `--cpu` flag if running on hardware without a GPU.
+
+#### Typical CPU Workflow
+
+A typical workflow for running DynaMem on the robot's NUC (CPU-only):
+
+1. **On the robot** - Start the ROS2 bridge server:
+```bash
+./scripts/run_stretch_ai_ros2_bridge_server.sh
+```
+
+2. **On the robot** - Run DynaMem:
+```bash
+conda activate stretch_ai_cpu_<version>
+python -m stretch.app.run_dynamem --robot_ip 127.0.0.1 --cpu --match-method "class" --vs -S
+```
+
+The `-S` flag skips human confirmations for autonomous operation.
 
 ## Cite Dynamem
 
