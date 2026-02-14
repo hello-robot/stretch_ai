@@ -10,54 +10,29 @@ Before you start trying docker, unplug the USB dongle on the robot.
 
 Start by installing docker on your robot:
 
-```
+```bash
 sudo apt-get update
 sudo apt-get install docker.io
 ```
 
-### Optional: Setup Docker Group So You Do Not Need To Use `sudo`
-
-You can add your user to the `docker` group so you do not need to use `sudo` to run Docker commands. To do this, run the following command:
-
-1. Create the docker group if it doesn't already exist:
-
-```bash
-sudo groupadd docker
-```
-
-2. Add your user to the docker group:
+Add your user to the docker group (so sudo is not required):
 
 ```bash
 sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-3. Restart the Docker service:
-
-```bash
-sudo systemctl restart docker
-```
-
-4. Log out and log back in so that your group membership is re-evaluated. Then you can verify that you can run Docker commands without sudo:
+Verify the installation:
 
 ```bash
 docker run hello-world
 ```
 
-If you want to run a docker command without logging out, you can run the following command:
+You should see:
 
 ```bash
-newgrp docker
+Hello from Docker!
 ```
-
-This will change your group to the `docker` group for the current terminal session.
-
-**When performing these steps on your robot, you may find that logging out fails to make docker group membership take effect.** In this case, you can try restarting Docker with the following command:
-
-```bash
-sudo systemctl restart docker
-```
-
-If this doesn't work, we recommend that you reboot your robot's computer.
 
 
 ### Clone the Stretch-AI Repository on your robot
@@ -70,7 +45,11 @@ git clone https://github.com/hello-robot/stretch_ai.git
 
 ### Run the Robot's Script
 
-The GitHub *stretch-ai* repository provides a startup script for running *stretch-ai* software in a Docker container on your Stretch robot. Prior to running the script, you need to have homed your robot with `stretch_robot_home.py`.
+The GitHub *stretch-ai* repository provides a startup script for running *stretch-ai* software in a Docker container on your Stretch robot. Prior to running the script, you need to have homed your robot:
+ 
+```bash 
+stretch_robot_home.py
+```
 
 To use the Docker script, run the following command in the *stretch-ai* repository on the robot:
 
