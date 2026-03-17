@@ -125,7 +125,10 @@ class URDFVisualizer:
         for m, p in zip(mesh_list, pose_list):
             m.apply_transform(p)
         combined_mesh = np.sum(mesh_list)
-        combined_mesh.remove_duplicate_faces()
+        if hasattr(combined_mesh, "remove_duplicate_faces"):
+            combined_mesh.remove_duplicate_faces()
+        else:
+            combined_mesh.update_faces(combined_mesh.unique_faces())
         return combined_mesh
 
     def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:

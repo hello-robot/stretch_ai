@@ -74,7 +74,7 @@ setuptools.setup(
         "huggingface_hub[cli]>=0.24.7",
         # For mobile clip
         "open-clip-torch>=2.32.0",
-        "transformers>=4.50.0",
+        "transformers>=4.50.0,<5",
         "retry",
         "qwen_vl_utils",
         "bitsandbytes",
