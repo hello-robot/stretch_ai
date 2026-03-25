@@ -29,6 +29,11 @@ We recommend the following hardware to run Stretch AI. Other GPUs and other vers
 - **Computer with an NVIDIA GPU**
   - The computer should be running Ubuntu 22.04. Later versions might work, but have not been tested.
   - Most of our testing has used a high-end CPU with an NVIDIA GeForce RTX 4090.
+- **Microphone connected to the GPU computer**
+  - Required when using voice-enabled features such as:
+    ```bash
+    python -m stretch.app.ai_pickup --use_llm --use_voice
+    ```
 - **Dedicated WiFi access point**
   - Performance depends on high-bandwidth, low-latency wireless communication between the robot and the GPU computer.
   - The official [Stretch WiFi Access Point](https://hello-robot.com/stretch-access-point) provides a tested example.
