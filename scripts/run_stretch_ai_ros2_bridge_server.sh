@@ -49,9 +49,6 @@ parent_dir="$(dirname "$script_dir")"
 
 # echo "Reading version from $parent_dir/src/stretch/version.py"
 VERSION=`python3 $parent_dir/src/stretch/version.py`
-echo "Source version: $VERSION"
-
-VERSION="latest"
 echo "Docker image version: $VERSION"
 
 # sudo chown -R $USER:$USER /home/$USER/stretch_user
@@ -101,3 +98,4 @@ run_docker_command run -it --rm \
     -e HELLO_FLEET_ID=$HELLO_FLEET_ID \
     hellorobotinc/stretch-ai-ros2-bridge:$VERSION \
     bash -c "source /home/hello-robot/.bashrc; cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user; export HELLO_FLEET_ID=$HELLO_FLEET_ID; $launch_command"
+    
