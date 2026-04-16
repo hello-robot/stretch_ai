@@ -1,0 +1,73 @@
+FROM hellorobotinc/stretch-ai-ros2-bridge:latest
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Refresh ROS archive key before apt update
+RUN mkdir -p /usr/share/keyrings && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+      -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+# Disable RealSense apt repo (broken GPG key breaks apt-get update).
+# Safe: we are not installing/updating RealSense here; existing packages remain.
+RUN find /etc/apt/sources.list.d -type f \( -name '*realsense*' -o -name '*librealsense*' \) -delete || true
+
+# Install Terminator + dbus-launch support
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends terminator dbus-x11 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Make sure the runtime user has a real shell
+RUN usermod -s /bin/bash hello-robot
+
+# Remove baked robot identity from the image so compose/runtime can provide it
+RUN sed -i '/HELLO_FLEET_ID/d' /home/hello-robot/.bashrc
+
+# Pin numpy to a cmeel-compatible version
+RUN printf "numpy==1.24.4\n" > /tmp/constraints.txt
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip
+
+# Remove old user-site Stretch packages
+RUN su - hello-robot -c "python3 -m pip uninstall -y \
+    hello-robot-stretch-body \
+    hello-robot-stretch-body-tools \
+    hello-robot-stretch-urdf \
+    hello-robot-stretch-factory" || true
+
+# Reinstall latest Stretch Python packages into the runtime user environment
+RUN su - hello-robot -c "python3 -m pip install --upgrade --no-cache-dir --no-deps \
+    hello-robot-stretch-body \
+    hello-robot-stretch-body-tools \
+    hello-robot-stretch-urdf \
+    hello-robot-stretch-factory"
+
+COPY fix_python_user_site.sh /tmp/fix_python_user_site.sh
+
+RUN chmod +x /tmp/fix_python_user_site.sh && \
+    su - hello-robot -c "/tmp/fix_python_user_site.sh"
+
+# Update stretch_ros2 and rebuild workspace
+RUN su - hello-robot -c "bash -lc ' \
+    cd ~/ament_ws/src/stretch_ros2 && \
+    git pull && \
+    cd ~/ament_ws && \
+    source /opt/ros/humble/setup.bash && \
+    colcon build && \
+    source install/setup.bash \
+'"
+
+# Sanity checks at build time
+RUN su - hello-robot -c "python3 -m pip show \
+    hello-robot-stretch-body \
+    hello-robot-stretch-body-tools \
+    hello-robot-stretch-urdf \
+    hello-robot-stretch-factory"
+
+RUN su - hello-robot -c "python3 -c 'import stretch_body; print(stretch_body.__file__)'"
+
+USER hello-robot
+
+# Docker image version 0.4.0 
+
