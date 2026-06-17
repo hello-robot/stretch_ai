@@ -1,4 +1,4 @@
-FROM hellorobotinc/stretch-ai-ros2-bridge:latest
+FROM hellorobotinc/stretch-install-image:ros2
 
 USER root
 ENV DEBIAN_FRONTEND=noninteractive
@@ -43,7 +43,7 @@ RUN su - hello-robot -c "python3 -m pip install --upgrade --no-cache-dir --no-de
     hello-robot-stretch-urdf \
     hello-robot-stretch-factory"
 
-COPY fix_python_user_site.sh /tmp/fix_python_user_site.sh
+COPY docker/fix_python_user_site.sh /tmp/fix_python_user_site.sh
 
 RUN chmod +x /tmp/fix_python_user_site.sh && \
     su - hello-robot -c "/tmp/fix_python_user_site.sh"
