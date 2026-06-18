@@ -122,11 +122,8 @@ Follow the install instructions for mamba [here](https://github.com/conda-forge/
 ```bash
 curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
 bash Miniforge3-$(uname)-$(uname -m).sh
+source ~/.bashrc 
 ```
-
-Make sure to run `mamba init` and restart your terminal before proceeding.
-
-Run `mamba activate` if not already in the base environment
 
 Then, run:
 
