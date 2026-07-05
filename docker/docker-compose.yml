@@ -1,0 +1,41 @@
+services:
+  stretch-ai:
+    # cd repos/stretch_ai/
+    # xhost + local:root
+    # export VERSION=$(python3 ~/repos/stretch_ai/src/stretch/version.py)
+    image: hellorobotinc/stretch-ai-ros2-bridge:latest
+    container_name: stretch-ai-ros2-bridge
+    network_mode: host
+    privileged: true
+    stdin_open: true
+    tty: true
+
+    environment:
+      DISPLAY: ${DISPLAY}
+      HELLO_FLEET_ID: ${HELLO_FLEET_ID}
+
+    devices:
+      - /dev/snd:/dev/snd
+
+    volumes:
+      - /dev:/dev
+      - /run/udev:/run/udev:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /run/dbus:/run/dbus:rw
+      - /dev/shm:/dev/shm
+      - /home/${USER}/stretch_user:/home/hello-robot/stretch_user_copy
+      - /home/${USER}/ament_ws/install/stretch_description/share/stretch_description/urdf:/home/hello-robot/stretch_description/share/stretch_description/urdf
+      # make sure to match your local path to stretch_ai for creating this volume
+      # change this path: /home/${USER}/repos/stretch_ai to your local path
+      #- /home/${USER}/repos/stretch_ai:/home/hello-robot/stretch_ai:rw
+
+    group_add:
+      - audio
+
+    command:
+      - bash
+      - -lc
+      - |
+          cp -rf /home/hello-robot/stretch_user_copy/* /home/hello-robot/stretch_user
+          source /home/hello-robot/.bashrc
+          dbus-launch terminator -u --title="Task Container 0.4.0"
