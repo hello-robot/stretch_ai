@@ -22,6 +22,7 @@ from stretch.agent.task.pickup.place_task import PlaceOnReceptacleTask
 from stretch.core import AbstractRobotClient
 from stretch.utils.image import numpy_image_to_bytes
 from stretch.utils.logger import Logger
+from stretch.audio.text_to_speech import PiperTextToSpeech
 
 logger = Logger(__name__)
 # Default to hiding info messages
@@ -42,6 +43,7 @@ class PickupExecutor:
         dry_run: bool = False,
         available_actions: List[str] = None,
         discord_bot=None,
+        tts_target: str = "robot",
     ) -> None:
         """Initialize the executor.
 
@@ -70,6 +72,8 @@ class PickupExecutor:
         # Configuration
         self._match_method = match_method
         self._open_loop = open_loop
+        self.tts_target = tts_target
+        self.local_tts = PiperTextToSpeech() if tts_target == "pc" else None
 
     def _pickup(self, target_object: str, target_receptacle: str) -> None:
         """Create a task to pick up the object and execute it.
@@ -238,7 +242,10 @@ class PickupExecutor:
 
         if response is None or len(response) == 0:
             logger.error("No commands to execute!")
-            self.agent.robot_say("I'm sorry, I didn't understand that.")
+            if self.tts_target == "pc":
+                self.local_tts.say_async("I'm sorry, I didn't understand that.")
+            else:
+                self.agent.robot_say("I'm sorry, I didn't understand that.")
             return True
 
         logger.info("Resetting agent...")
@@ -251,16 +258,18 @@ class PickupExecutor:
             command, args = response[i]
             logger.info(f"Command: {i} {command} {args}")
             if command == "say":
-                # Use TTS to say the text
                 logger.info(f"Saying: {args}")
+
+                if isinstance(args, str) and args and args[0] == '"' and args[-1] == '"':
+                    args = args[1:-1]
+
                 if channel is not None:
-                    # obs = self.robot.get_observation()
-                    # self.discord_bot.send_message(channel=channel, message=args, content=numpy_image_to_bytes(obs.rgb))
-                    # Optionally strip quotes from args
-                    if args[0] == '"' and args[-1] == '"':
-                        args = args[1:-1]
                     self.discord_bot.send_message(channel=channel, message=args)
-                self.agent.robot_say(args)
+
+                if self.tts_target == "pc":
+                    self.local_tts.say_async(args)
+                else:
+                    self.agent.robot_say(args)
             elif command == "pickup":
                 logger.info(f"[Pickup task] Pickup: {args}")
                 target_object = args
